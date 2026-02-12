@@ -1,7 +1,0 @@
-apps/nextn/.next
-dist
-.nx
-node_modules
-.vercel
-.venv
-.env*.local

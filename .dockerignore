@@ -7,7 +7,15 @@ dist
 .git
 .gitignore
 README.md
-.nx
+.nx/cache
 apps/backend/node_modules
 apps/backend/dist
 apps/backend/*.db
+apps/nextn/.next
+apps/nextn/node_modules
+*.log
+.vscode
+.idea
+docker-compose*.yml
+Dockerfile*
+!Dockerfile
