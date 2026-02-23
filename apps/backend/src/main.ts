@@ -19,13 +19,7 @@ async function bootstrap() {
   // Enable CORS with strict validation
   const corsOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",")
-    : [
-        "http://localhost:3000",
-        "http://localhost:4200",
-        "http://localhost:9002",
-        "http://frontend:9002",
-        "http://internal-audit-frontend:9002",
-      ];
+    : ["http://localhost:9002"];
 
   app.enableCors({
     origin: (origin, callback) => {

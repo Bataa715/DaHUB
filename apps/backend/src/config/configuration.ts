@@ -13,13 +13,8 @@ export default registerAs("app", () => {
     throw new Error("JWT_SECRET must be changed from the default value");
   }
 
-  // Parse CORS origins
-  const corsOrigins = process.env.CORS_ORIGINS?.split(",") || [
-    "http://localhost:3000",
-    "http://localhost:4200",
-    "http://localhost:9002",
-    "http://frontend:9002",
-  ];
+  // Parse CORS origins — root .env дахь CORS_ORIGINS-с унших
+  const corsOrigins = process.env.CORS_ORIGINS?.split(",") || ["http://localhost:9002"];
 
   // Validate port
   const port = parseInt(process.env.PORT || "3001", 10);

@@ -10,7 +10,7 @@ services:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/audit.db
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://frontend:9002,http://localhost:9002}
+      - CORS_ORIGINS=${FRONTEND_URL:-http://localhost:9002}
     volumes:
       - backend-data:/app/data
     healthcheck:
@@ -30,7 +30,7 @@ services:
       - "9002:9002"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:3001}
+      - NEXT_PUBLIC_API_URL=${BACKEND_URL:-http://localhost:3001}
     depends_on:
       backend:
         condition: service_healthy
