@@ -1,4 +1,24 @@
 services:
+  # ─── ClickHouse ──────────────────────────────────────────────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DATABASE:-audit_db}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    restart: unless-stopped
+
+  # ─── Backend ─────────────────────────────────────────────────────────────────
   backend:
     build:
       context: ./apps/backend
@@ -8,11 +28,15 @@ services:
       - "3001:3001"
     environment:
       - NODE_ENV=production
-      - DATABASE_PATH=/app/data/audit.db
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
-      - CORS_ORIGINS=${FRONTEND_URL:-http://localhost:9002}
-    volumes:
-      - backend-data:/app/data
+      - PORT=${PORT:-3001}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGINS=${FRONTEND_URL}
+      - CLICKHOUSE_HOST=http://clickhouse:8123
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-audit_db}
+    depends_on:
+      - clickhouse
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
@@ -21,6 +45,7 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # ─── Frontend ────────────────────────────────────────────────────────────────
   frontend:
     build:
       context: .
@@ -30,7 +55,7 @@ services:
       - "9002:9002"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${BACKEND_URL:-http://localhost:3001}
+      - NEXT_PUBLIC_API_URL=${BACKEND_URL}
     depends_on:
       backend:
         condition: service_healthy
@@ -42,4 +67,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  backend-data:
+  clickhouse-data:
