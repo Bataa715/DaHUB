@@ -2,145 +2,189 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-} from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
-import { CreateDepartmentDto, UpdateDepartmentDto } from './dto/department.dto';
+} from "@nestjs/common";
+import { ClickHouseService } from "../clickhouse/clickhouse.service";
+import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
+import { randomUUID } from "crypto";
 
 @Injectable()
 export class DepartmentsService {
-  constructor(private database: DatabaseService) {}
-
-  private get db() {
-    return this.database.raw;
-  }
+  constructor(private clickhouse: ClickHouseService) {}
 
   async create(createDepartmentDto: CreateDepartmentDto) {
-    const existing = this.db
-      .prepare('SELECT id FROM departments WHERE name = ?')
-      .get(createDepartmentDto.name);
+    const existing = await this.clickhouse.query<any>(
+      "SELECT id FROM departments WHERE name = {name:String} LIMIT 1",
+      { name: createDepartmentDto.name },
+    );
 
-    if (existing) {
-      throw new ConflictException('Ийм нэртэй хэлтэс аль хэдийн байна');
+    if (existing.length > 0) {
+      throw new ConflictException("Ийм нэртэй хэлтэс аль хэдийн байна");
     }
 
-    const id = this.database.uuid();
-    this.db
-      .prepare(
-        'INSERT INTO departments (id, name, description, manager, employeeCount) VALUES (?, ?, ?, ?, ?)'
-      )
-      .run(
+    const id = randomUUID();
+    await this.clickhouse.insert("departments", [
+      {
         id,
-        createDepartmentDto.name,
-        createDepartmentDto.description || null,
-        createDepartmentDto.manager || null,
-        createDepartmentDto.employeeCount || 0
-      );
+        name: createDepartmentDto.name,
+        description: createDepartmentDto.description || "",
+        manager: createDepartmentDto.manager || "",
+        employeeCount: createDepartmentDto.employeeCount || 0,
+        createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        updatedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+      },
+    ]);
 
-    return this.db.prepare('SELECT * FROM departments WHERE id = ?').get(id);
+    const result = await this.clickhouse.query<any>(
+      "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    return result[0];
   }
 
   async findAll() {
-    const departments = this.db
-      .prepare('SELECT * FROM departments ORDER BY createdAt DESC')
-      .all() as any[];
+    const departments = await this.clickhouse.query<any>(
+      "SELECT * FROM departments ORDER BY createdAt DESC",
+    );
 
-    return departments.map(dept => {
-      const users = this.db
-        .prepare('SELECT id, userId, name, position, email, isActive FROM users WHERE departmentId = ?')
-        .all(dept.id);
-      return { ...dept, users };
-    });
+    const result = [];
+    for (const dept of departments) {
+      const users = await this.clickhouse.query<any>(
+        "SELECT id, userId, name, position, email, isActive FROM users WHERE departmentId = {deptId:String}",
+        { deptId: dept.id },
+      );
+      result.push({ ...dept, users });
+    }
+
+    return result;
   }
 
   async findOne(id: string) {
-    const department = this.db
-      .prepare('SELECT * FROM departments WHERE id = ?')
-      .get(id) as any;
+    const departments = await this.clickhouse.query<any>(
+      "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
 
-    if (!department) {
-      throw new NotFoundException('Хэлтэс олдсонгүй');
+    if (departments.length === 0) {
+      throw new NotFoundException("Хэлтэс олдсонгүй");
     }
 
-    const users = this.db
-      .prepare('SELECT id, userId, name, position, email, isActive FROM users WHERE departmentId = ?')
-      .all(id);
+    const department = departments[0];
+    const users = await this.clickhouse.query<any>(
+      "SELECT id, userId, name, position, email, isActive FROM users WHERE departmentId = {id:String}",
+      { id },
+    );
 
     return { ...department, users };
   }
 
   async findByName(name: string) {
-    const department = this.db
-      .prepare('SELECT * FROM departments WHERE name = ?')
-      .get(name) as any;
+    const departments = await this.clickhouse.query<any>(
+      "SELECT * FROM departments WHERE name = {name:String} LIMIT 1",
+      { name },
+    );
 
-    if (!department) {
-      throw new NotFoundException('Хэлтэс олдсонгүй');
+    if (departments.length === 0) {
+      throw new NotFoundException("Хэлтэс олдсонгүй");
     }
 
-    const users = this.db
-      .prepare(
-        'SELECT id, userId, name, position, email FROM users WHERE departmentId = ? AND isAdmin = 0'
-      )
-      .all(department.id);
+    const department = departments[0];
+    const users = await this.clickhouse.query<any>(
+      "SELECT id, userId, name, position, email FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
+      { deptId: department.id },
+    );
 
     return { ...department, users };
   }
 
   async update(id: string, updateDepartmentDto: UpdateDepartmentDto) {
-    const department = this.db
-      .prepare('SELECT * FROM departments WHERE id = ?')
-      .get(id) as any;
+    const departments = await this.clickhouse.query<any>(
+      "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
 
-    if (!department) {
-      throw new NotFoundException('Хэлтэс олдсонгүй');
+    if (departments.length === 0) {
+      throw new NotFoundException("Хэлтэс олдсонгүй");
     }
 
-    if (updateDepartmentDto.name && updateDepartmentDto.name !== department.name) {
-      const existing = this.db
-        .prepare('SELECT id FROM departments WHERE name = ?')
-        .get(updateDepartmentDto.name);
-      if (existing) {
-        throw new ConflictException('Ийм нэртэй хэлтэс аль хэдийн байна');
+    const department = departments[0];
+
+    if (
+      updateDepartmentDto.name &&
+      updateDepartmentDto.name !== department.name
+    ) {
+      const existing = await this.clickhouse.query<any>(
+        "SELECT id FROM departments WHERE name = {name:String} LIMIT 1",
+        { name: updateDepartmentDto.name },
+      );
+      if (existing.length > 0) {
+        throw new ConflictException("Ийм нэртэй хэлтэс аль хэдийн байна");
       }
     }
 
     const fields: string[] = [];
-    const values: any[] = [];
+    const params: Record<string, any> = { id };
 
-    if (updateDepartmentDto.name !== undefined) { fields.push('name = ?'); values.push(updateDepartmentDto.name); }
-    if (updateDepartmentDto.description !== undefined) { fields.push('description = ?'); values.push(updateDepartmentDto.description); }
-    if (updateDepartmentDto.manager !== undefined) { fields.push('manager = ?'); values.push(updateDepartmentDto.manager); }
-    if (updateDepartmentDto.employeeCount !== undefined) { fields.push('employeeCount = ?'); values.push(updateDepartmentDto.employeeCount); }
+    if (updateDepartmentDto.name !== undefined) {
+      fields.push("name = {name:String}");
+      params.name = updateDepartmentDto.name;
+    }
+    if (updateDepartmentDto.description !== undefined) {
+      fields.push("description = {description:String}");
+      params.description = updateDepartmentDto.description;
+    }
+    if (updateDepartmentDto.manager !== undefined) {
+      fields.push("manager = {manager:String}");
+      params.manager = updateDepartmentDto.manager;
+    }
+    if (updateDepartmentDto.employeeCount !== undefined) {
+      fields.push("employeeCount = {employeeCount:UInt32}");
+      params.employeeCount = updateDepartmentDto.employeeCount;
+    }
 
     if (fields.length > 0) {
-      fields.push("updatedAt = datetime('now')");
-      values.push(id);
-      this.db.prepare(`UPDATE departments SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-    }
-
-    return this.db.prepare('SELECT * FROM departments WHERE id = ?').get(id);
-  }
-
-  async remove(id: string) {
-    const department = this.db
-      .prepare('SELECT * FROM departments WHERE id = ?')
-      .get(id) as any;
-
-    if (!department) {
-      throw new NotFoundException('Хэлтэс олдсонгүй');
-    }
-
-    const users = this.db
-      .prepare('SELECT id FROM users WHERE departmentId = ?')
-      .all(id);
-
-    if (users.length > 0) {
-      throw new ConflictException(
-        'Энэ хэлтэст ажилтнууд байна. Эхлээд тэднийг шилжүүлнэ үү'
+      fields.push("updatedAt = {updatedAt:String}");
+      params.updatedAt = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ");
+      await this.clickhouse.exec(
+        `ALTER TABLE departments UPDATE ${fields.join(", ")} WHERE id = {id:String}`,
+        params,
       );
     }
 
-    this.db.prepare('DELETE FROM departments WHERE id = ?').run(id);
-    return { message: 'Хэлтсийг амжилттай устгалаа' };
+    const updated = await this.clickhouse.query<any>(
+      "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    return updated[0];
+  }
+
+  async remove(id: string) {
+    const departments = await this.clickhouse.query<any>(
+      "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+
+    if (departments.length === 0) {
+      throw new NotFoundException("Хэлтэс олдсонгүй");
+    }
+
+    const users = await this.clickhouse.query<any>(
+      "SELECT id FROM users WHERE departmentId = {id:String}",
+      { id },
+    );
+
+    if (users.length > 0) {
+      throw new ConflictException(
+        "Энэ хэлтэст ажилтнууд байна. Эхлээд тэднийг шилжүүлнэ үү",
+      );
+    }
+
+    await this.clickhouse.exec(
+      "ALTER TABLE departments DELETE WHERE id = {id:String}",
+      { id },
+    );
+    return { message: "Хэлтсийг амжилттай устгалаа" };
   }
 }

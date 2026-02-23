@@ -1,29 +1,29 @@
-import type { Metadata } from 'next';
-import { ThemeProvider } from '@/components/theme-provider';
-import { Toaster } from '@/components/ui/toaster';
-import './globals.css';
-import { AuthProvider } from '@/contexts/AuthContext';
-import MainLayout from '@/components/MainLayout';
-import { JetBrains_Mono } from 'next/font/google';
+import type { Metadata } from "next";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
+import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
+import MainLayout from "@/components/MainLayout";
+import { JetBrains_Mono } from "next/font/google";
 
 const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrainsMono',
-  display: 'swap',
+  subsets: ["latin"],
+  variable: "--font-jetbrainsMono",
+  display: "swap",
   preload: true,
 });
 
 export const metadata: Metadata = {
-  title: 'Дотоод аудит',
-  description: 'Дотоод аудитын байгууллагын дотоод систем',
+  title: "DaHUB",
+  description: "Дотоод аудитын систем - DaHUB",
   icons: {
-    icon: '/favicon.ico',
+    icon: "/favicon.ico",
   },
-  metadataBase: new URL('https://internalaudit.mn'),
+  metadataBase: new URL("https://internalaudit.mn"),
   openGraph: {
-    title: 'Дотоод аудит',
-    description: 'Дотоод аудитын байгууллагын дотоод систем',
-    type: 'website',
+    title: "DaHUB",
+    description: "Дотоод аудитын систем - DaHUB",
+    type: "website",
   },
   robots: {
     index: false,
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 5,
 };

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { memo, useState, useEffect, ComponentType } from 'react';
-import { LucideProps } from 'lucide-react';
+import { memo, useState, useEffect, ComponentType } from "react";
+import { LucideProps } from "lucide-react";
 
 interface DynamicIconProps extends LucideProps {
   name: string;
@@ -29,8 +29,8 @@ const DynamicIcon = memo(
       }
 
       // Dynamically import the icon
-      import('lucide-react')
-        .then(mod => {
+      import("lucide-react")
+        .then((mod) => {
           const LoadedIcon = (mod as any)[name];
           if (LoadedIcon) {
             iconCache.set(name, LoadedIcon);
@@ -54,9 +54,9 @@ const DynamicIcon = memo(
     }
 
     return <Icon {...props} />;
-  }
+  },
 );
 
-DynamicIcon.displayName = 'DynamicIcon';
+DynamicIcon.displayName = "DynamicIcon";
 
 export default DynamicIcon;

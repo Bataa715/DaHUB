@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { departmentsApi } from '@/lib/api';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { departmentsApi } from "@/lib/api";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -22,14 +22,14 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from '@/components/ui/sheet';
+} from "@/components/ui/sheet";
 import {
   Building2,
   Users,
@@ -46,26 +46,26 @@ import {
   Sparkles,
   UserCheck,
   UserX,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 // Fixed particle positions for SSR
 const PARTICLE_POSITIONS = [
-  { top: '8%', left: '12%', duration: 3.5 },
-  { top: '15%', left: '78%', duration: 4.2 },
-  { top: '28%', left: '8%', duration: 3.8 },
-  { top: '42%', left: '88%', duration: 4.5 },
-  { top: '58%', left: '18%', duration: 3.3 },
-  { top: '68%', left: '72%', duration: 4.0 },
-  { top: '78%', left: '35%', duration: 3.9 },
-  { top: '88%', left: '58%', duration: 4.3 },
-  { top: '22%', left: '45%', duration: 3.6 },
-  { top: '75%', left: '92%', duration: 4.1 },
-  { top: '48%', left: '5%', duration: 3.4 },
-  { top: '92%', left: '25%', duration: 4.4 },
+  { top: "8%", left: "12%", duration: 3.5 },
+  { top: "15%", left: "78%", duration: 4.2 },
+  { top: "28%", left: "8%", duration: 3.8 },
+  { top: "42%", left: "88%", duration: 4.5 },
+  { top: "58%", left: "18%", duration: 3.3 },
+  { top: "68%", left: "72%", duration: 4.0 },
+  { top: "78%", left: "35%", duration: 3.9 },
+  { top: "88%", left: "58%", duration: 4.3 },
+  { top: "22%", left: "45%", duration: 3.6 },
+  { top: "75%", left: "92%", duration: 4.1 },
+  { top: "48%", left: "5%", duration: 3.4 },
+  { top: "92%", left: "25%", duration: 4.4 },
 ];
 
 interface DepartmentUser {
@@ -89,34 +89,34 @@ interface DepartmentData {
 
 const cardGradients = [
   {
-    card: 'from-blue-500/20 to-cyan-500/10',
-    icon: 'from-blue-500 to-cyan-500',
-    border: 'hover:border-blue-500/50',
+    card: "from-blue-500/20 to-cyan-500/10",
+    icon: "from-blue-500 to-cyan-500",
+    border: "hover:border-blue-500/50",
   },
   {
-    card: 'from-purple-500/20 to-violet-500/10',
-    icon: 'from-purple-500 to-violet-500',
-    border: 'hover:border-purple-500/50',
+    card: "from-purple-500/20 to-violet-500/10",
+    icon: "from-purple-500 to-violet-500",
+    border: "hover:border-purple-500/50",
   },
   {
-    card: 'from-emerald-500/20 to-teal-500/10',
-    icon: 'from-emerald-500 to-teal-500',
-    border: 'hover:border-emerald-500/50',
+    card: "from-emerald-500/20 to-teal-500/10",
+    icon: "from-emerald-500 to-teal-500",
+    border: "hover:border-emerald-500/50",
   },
   {
-    card: 'from-amber-500/20 to-orange-500/10',
-    icon: 'from-amber-500 to-orange-500',
-    border: 'hover:border-amber-500/50',
+    card: "from-amber-500/20 to-orange-500/10",
+    icon: "from-amber-500 to-orange-500",
+    border: "hover:border-amber-500/50",
   },
   {
-    card: 'from-pink-500/20 to-rose-500/10',
-    icon: 'from-pink-500 to-rose-500',
-    border: 'hover:border-pink-500/50',
+    card: "from-pink-500/20 to-rose-500/10",
+    icon: "from-pink-500 to-rose-500",
+    border: "hover:border-pink-500/50",
   },
   {
-    card: 'from-cyan-500/20 to-sky-500/10',
-    icon: 'from-cyan-500 to-sky-500',
-    border: 'hover:border-cyan-500/50',
+    card: "from-cyan-500/20 to-sky-500/10",
+    icon: "from-cyan-500 to-sky-500",
+    border: "hover:border-cyan-500/50",
   },
 ];
 
@@ -133,8 +133,8 @@ export default function AdminDepartmentsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     employeeCount: 0,
   });
 
@@ -147,15 +147,15 @@ export default function AdminDepartmentsPage() {
       const data = await departmentsApi.getAll();
       const filteredData = data.map((dept: DepartmentData) => ({
         ...dept,
-        users: dept.users?.filter(u => !u.isAdmin) || [],
+        users: dept.users?.filter((u) => !u.isAdmin) || [],
       }));
       setDepartments(filteredData);
     } catch (error) {
-      console.error('Error loading departments:', error);
+      console.error("Error loading departments:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Хэлтсүүдийг ачаалахад алдаа гарлаа.',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Хэлтсүүдийг ачаалахад алдаа гарлаа.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -170,8 +170,8 @@ export default function AdminDepartmentsPage() {
   const handleEditDepartment = (dept: DepartmentData) => {
     setSelectedDepartment(dept);
     setFormData({
-      name: dept.name || '',
-      description: dept.description || '',
+      name: dept.name || "",
+      description: dept.description || "",
       employeeCount: dept.employeeCount || 0,
     });
     setIsEditOpen(true);
@@ -179,8 +179,8 @@ export default function AdminDepartmentsPage() {
 
   const handleAddDepartment = () => {
     setFormData({
-      name: '',
-      description: '',
+      name: "",
+      description: "",
       employeeCount: 0,
     });
     setIsAddOpen(true);
@@ -193,17 +193,17 @@ export default function AdminDepartmentsPage() {
     try {
       await departmentsApi.update(selectedDepartment.id, formData);
       toast({
-        title: 'Амжилттай',
-        description: 'Хэлтсийн мэдээлэл шинэчлэгдлээ.',
+        title: "Амжилттай",
+        description: "Хэлтсийн мэдээлэл шинэчлэгдлээ.",
       });
       setIsEditOpen(false);
       loadDepartments();
     } catch (error) {
-      console.error('Error updating department:', error);
+      console.error("Error updating department:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -213,9 +213,9 @@ export default function AdminDepartmentsPage() {
   const handleSaveAdd = async () => {
     if (!formData.name.trim()) {
       toast({
-        title: 'Алдаа',
-        description: 'Хэлтсийн нэрийг оруулна уу.',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Хэлтсийн нэрийг оруулна уу.",
+        variant: "destructive",
       });
       return;
     }
@@ -224,18 +224,18 @@ export default function AdminDepartmentsPage() {
     try {
       await departmentsApi.create(formData);
       toast({
-        title: 'Амжилттай',
-        description: 'Шинэ хэлтэс нэмэгдлээ.',
+        title: "Амжилттай",
+        description: "Шинэ хэлтэс нэмэгдлээ.",
       });
       setIsAddOpen(false);
       loadDepartments();
     } catch (error: any) {
-      console.error('Error creating department:', error);
+      console.error("Error creating department:", error);
       toast({
-        title: 'Алдаа',
+        title: "Алдаа",
         description:
-          error.response?.data?.message || 'Хэлтэс нэмэхэд алдаа гарлаа.',
-        variant: 'destructive',
+          error.response?.data?.message || "Хэлтэс нэмэхэд алдаа гарлаа.",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -244,7 +244,7 @@ export default function AdminDepartmentsPage() {
 
   const handleDeleteDepartment = async (
     e: React.MouseEvent,
-    dept: DepartmentData
+    dept: DepartmentData,
   ) => {
     e.stopPropagation();
     if (!confirm(`"${dept.name}" хэлтсийг устгахдаа итгэлтэй байна уу?`)) {
@@ -254,28 +254,29 @@ export default function AdminDepartmentsPage() {
     try {
       await departmentsApi.delete(dept.id);
       toast({
-        title: 'Амжилттай',
-        description: 'Хэлтэс устгагдлаа.',
+        title: "Амжилттай",
+        description: "Хэлтэс устгагдлаа.",
       });
       loadDepartments();
     } catch (error: any) {
-      console.error('Error deleting department:', error);
+      console.error("Error deleting department:", error);
       toast({
-        title: 'Алдаа',
+        title: "Алдаа",
         description:
-          error.response?.data?.message || 'Хэлтсийг устгахад алдаа гарлаа.',
-        variant: 'destructive',
+          error.response?.data?.message || "Хэлтсийг устгахад алдаа гарлаа.",
+        variant: "destructive",
       });
     }
   };
 
   const totalEmployees = departments.reduce(
     (sum, d) => sum + (d.users?.length || 0),
-    0
+    0,
   );
   const activeEmployees = departments.reduce(
-    (sum, d) => sum + (d.users?.filter(u => u.isActive !== false).length || 0),
-    0
+    (sum, d) =>
+      sum + (d.users?.filter((u) => u.isActive !== false).length || 0),
+    0,
   );
 
   if (!user?.isAdmin) {
@@ -296,7 +297,7 @@ export default function AdminDepartmentsPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         >
           <Loader2 className="h-12 w-12 text-emerald-400" />
         </motion.div>
@@ -329,7 +330,7 @@ export default function AdminDepartmentsPage() {
           animate={{
             rotate: [0, 360],
           }}
-          transition={{ duration: 50, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
         />
       </div>
 
@@ -346,7 +347,7 @@ export default function AdminDepartmentsPage() {
           transition={{
             duration: pos.duration,
             repeat: Infinity,
-            ease: 'easeInOut',
+            ease: "easeInOut",
           }}
         />
       ))}
@@ -412,30 +413,30 @@ export default function AdminDepartmentsPage() {
         >
           {[
             {
-              label: 'Нийт хэлтэс',
+              label: "Нийт хэлтэс",
               value: departments.length,
               icon: Building2,
-              color: 'from-emerald-500 to-teal-500',
+              color: "from-emerald-500 to-teal-500",
             },
             {
-              label: 'Нийт ажилтан',
+              label: "Нийт ажилтан",
               value: totalEmployees,
               icon: Users,
-              color: 'from-blue-500 to-cyan-500',
+              color: "from-blue-500 to-cyan-500",
             },
             {
-              label: 'Идэвхтэй',
+              label: "Идэвхтэй",
               value: activeEmployees,
               icon: UserCheck,
-              color: 'from-green-500 to-emerald-500',
+              color: "from-green-500 to-emerald-500",
             },
             {
-              label: 'Дундаж ажилтан',
+              label: "Дундаж ажилтан",
               value: Math.round(
-                totalEmployees / Math.max(departments.length, 1)
+                totalEmployees / Math.max(departments.length, 1),
               ),
               icon: TrendingUp,
-              color: 'from-purple-500 to-violet-500',
+              color: "from-purple-500 to-violet-500",
             },
           ].map((stat, index) => (
             <motion.div
@@ -503,7 +504,7 @@ export default function AdminDepartmentsPage() {
                 {departments.map((dept, index) => {
                   const gradient = cardGradients[index % cardGradients.length];
                   const activeCount =
-                    dept.users?.filter(u => u.isActive !== false).length || 0;
+                    dept.users?.filter((u) => u.isActive !== false).length || 0;
 
                   return (
                     <motion.div
@@ -535,13 +536,13 @@ export default function AdminDepartmentsPage() {
                             </motion.div>
                             <div
                               className="flex gap-1"
-                              onClick={e => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700/50"
-                                onClick={e => {
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   handleViewDepartment(dept);
                                 }}
@@ -552,7 +553,7 @@ export default function AdminDepartmentsPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700/50"
-                                onClick={e => {
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   handleEditDepartment(dept);
                                 }}
@@ -563,7 +564,7 @@ export default function AdminDepartmentsPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                onClick={e => handleDeleteDepartment(e, dept)}
+                                onClick={(e) => handleDeleteDepartment(e, dept)}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -577,7 +578,7 @@ export default function AdminDepartmentsPage() {
                               {dept.name}
                             </CardTitle>
                             <CardDescription className="line-clamp-2 text-slate-400">
-                              {dept.description || 'Тайлбар оруулаагүй'}
+                              {dept.description || "Тайлбар оруулаагүй"}
                             </CardDescription>
                           </div>
 
@@ -607,7 +608,7 @@ export default function AdminDepartmentsPage() {
                                 width:
                                   totalEmployees > 0
                                     ? `${((dept.users?.length || 0) / totalEmployees) * 100}%`
-                                    : '0%',
+                                    : "0%",
                               }}
                               transition={{
                                 duration: 1,
@@ -653,7 +654,7 @@ export default function AdminDepartmentsPage() {
                   Тайлбар / Чиг үүрэг
                 </Label>
                 <p className="mt-2 text-slate-200">
-                  {selectedDepartment.description || 'Тайлбар оруулаагүй'}
+                  {selectedDepartment.description || "Тайлбар оруулаагүй"}
                 </p>
               </div>
 
@@ -674,7 +675,7 @@ export default function AdminDepartmentsPage() {
                     <div className="text-center">
                       <p className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
                         {selectedDepartment.users?.filter(
-                          u => u.isActive !== false
+                          (u) => u.isActive !== false,
                         ).length || 0}
                       </p>
                       <p className="text-sm text-slate-400">Идэвхтэй</p>
@@ -722,11 +723,11 @@ export default function AdminDepartmentsPage() {
                           <Badge
                             className={
                               u.isActive !== false
-                                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                : 'bg-slate-700/50 text-slate-400 border-slate-600'
+                                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                : "bg-slate-700/50 text-slate-400 border-slate-600"
                             }
                           >
-                            {u.isActive !== false ? 'Идэвхтэй' : 'Идэвхгүй'}
+                            {u.isActive !== false ? "Идэвхтэй" : "Идэвхгүй"}
                           </Badge>
                         </motion.div>
                       ))
@@ -777,7 +778,7 @@ export default function AdminDepartmentsPage() {
               <Input
                 id="edit-name"
                 value={formData.name}
-                onChange={e =>
+                onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
                 className="bg-slate-800 border-slate-600 text-white focus:border-emerald-500"
@@ -790,7 +791,7 @@ export default function AdminDepartmentsPage() {
               <Textarea
                 id="edit-description"
                 value={formData.description}
-                onChange={e =>
+                onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
                 rows={4}
@@ -839,7 +840,7 @@ export default function AdminDepartmentsPage() {
               <Input
                 id="add-name"
                 value={formData.name}
-                onChange={e =>
+                onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
                 placeholder="Жишээ: Санхүүгийн хэлтэс"
@@ -853,7 +854,7 @@ export default function AdminDepartmentsPage() {
               <Textarea
                 id="add-description"
                 value={formData.description}
-                onChange={e =>
+                onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
                 rows={4}

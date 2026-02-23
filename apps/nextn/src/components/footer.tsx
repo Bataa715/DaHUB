@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
+import Image from "next/image";
 
 const Footer = () => {
   return (
@@ -15,7 +15,7 @@ const Footer = () => {
             className="rounded"
           />
           <span className="text-xs text-muted-foreground">
-            Голомт Банк • Дотоод Аудит • 2026
+            Голомт Банк • DaHUB • 2026
           </span>
         </div>
       </div>

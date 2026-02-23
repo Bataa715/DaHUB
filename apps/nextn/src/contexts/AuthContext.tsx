@@ -1,4 +1,4 @@
-'use client';
+﻿"use client";
 
 import {
   createContext,
@@ -6,9 +6,9 @@ import {
   useState,
   useEffect,
   ReactNode,
-} from 'react';
-import { authApi } from '@/lib/api';
-import Cookies from 'js-cookie';
+} from "react";
+import { authApi } from "@/lib/api";
+import Cookies from "js-cookie";
 
 interface User {
   id: string;
@@ -20,6 +20,8 @@ interface User {
   department?: string;
   departmentId?: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
+  isActive?: boolean;
   allowedTools: string[];
 }
 
@@ -29,111 +31,186 @@ interface AuthContextType {
   login: (
     department: string,
     username: string,
-    password: string
+    password: string,
   ) => Promise<void>;
   loginById: (userId: string, password: string) => Promise<void>;
   adminLogin: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Returns true when running inside an /admin route */
+const isAdminPath = () =>
+  typeof window !== "undefined" &&
+  window.location.pathname.startsWith("/admin");
+
+/** Read cached user from cookie synchronously - avoids header flicker on refresh */
+const getCachedUser = (): User | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const adminPath = window.location.pathname.startsWith("/admin");
+    const raw = adminPath ? Cookies.get("adminUser") : Cookies.get("user");
+    if (!raw) return null;
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(getCachedUser);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in from cookies
-    const token = Cookies.get('token');
-    const savedUser = Cookies.get('user');
+    const adminPath = isAdminPath();
+    const token = adminPath ? Cookies.get("adminToken") : Cookies.get("token");
 
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Failed to parse user data:', error);
-        Cookies.remove('token');
-        Cookies.remove('user');
-      }
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
+    authApi
+      .getProfile()
+      .then((profile) => {
+        setUser(profile);
+      })
+      .catch((error) => {
+        console.error("Profile fetch failed:", error);
+        if (adminPath) {
+          Cookies.remove("adminToken");
+          Cookies.remove("adminUser");
+        } else {
+          Cookies.remove("token");
+          Cookies.remove("user");
+        }
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
+
+  const saveUserSession = (
+    userData: User,
+    accessToken: string,
+    refreshToken: string,
+  ) => {
+    Cookies.set("token", accessToken, { expires: 1 / 24, sameSite: "lax" });
+    Cookies.set("refreshToken", refreshToken, { expires: 30, sameSite: "lax" });
+    Cookies.set("user", JSON.stringify(userData), {
+      expires: 30,
+      sameSite: "lax",
+    });
+    setUser(userData);
+  };
+
+  const saveAdminSession = (
+    userData: User,
+    accessToken: string,
+    refreshToken: string,
+  ) => {
+    Cookies.set("adminToken", accessToken, {
+      expires: 1 / 24,
+      sameSite: "lax",
+    });
+    Cookies.set("adminRefreshToken", refreshToken, {
+      expires: 30,
+      sameSite: "lax",
+    });
+    Cookies.set("adminUser", JSON.stringify(userData), {
+      expires: 30,
+      sameSite: "lax",
+    });
+    setUser(userData);
+  };
 
   const login = async (
     department: string,
     username: string,
-    password: string
+    password: string,
   ) => {
     try {
-      const response = await authApi.login(department, username, password);
-      const { user, token } = response;
-
-      // Save to cookies (expires in 7 days)
-      Cookies.set('token', token, { expires: 7, sameSite: 'strict' });
-      Cookies.set('user', JSON.stringify(user), {
-        expires: 7,
-        sameSite: 'strict',
-      });
-      setUser(user);
+      const { user, accessToken, refreshToken } = await authApi.login(
+        department,
+        username,
+        password,
+      );
+      saveUserSession(user, accessToken, refreshToken);
     } catch (error: any) {
       throw new Error(
-        error.response?.data?.message || 'Нэвтрэх үед алдаа гарлаа'
+        error.response?.data?.message || "Нэвтрэх үед алдаа гарлаа",
       );
     }
   };
 
   const loginById = async (userId: string, password: string) => {
     try {
-      const response = await authApi.loginById(userId, password);
-      const { user, token } = response;
-
-      // Save to cookies (expires in 7 days)
-      Cookies.set('token', token, { expires: 7, sameSite: 'strict' });
-      Cookies.set('user', JSON.stringify(user), {
-        expires: 7,
-        sameSite: 'strict',
-      });
-      setUser(user);
+      const { user, accessToken, refreshToken } = await authApi.loginById(
+        userId,
+        password,
+      );
+      saveUserSession(user, accessToken, refreshToken);
     } catch (error: any) {
       throw new Error(
-        error.response?.data?.message || 'Нэвтрэх үед алдаа гарлаа'
+        error.response?.data?.message || "Нэвтрэх үед алдаа гарлаа",
       );
     }
   };
 
-  const adminLogin = async (username: string, password: string) => {
+  const adminLogin = async (userId: string, password: string) => {
     try {
-      const response = await authApi.adminLogin(username, password);
-      const { user, token } = response;
-
-      if (!user.isAdmin) {
-        throw new Error('Та админ эрхгүй байна');
-      }
-
-      // Save to cookies (expires in 7 days)
-      Cookies.set('token', token, { expires: 7, sameSite: 'strict' });
-      Cookies.set('user', JSON.stringify(user), {
-        expires: 7,
-        sameSite: 'strict',
-      });
-      setUser(user);
+      const { user, accessToken, refreshToken } = await authApi.adminLogin(
+        userId,
+        password,
+      );
+      if (!user.isAdmin) throw new Error("Та админ эрхгүй байна");
+      saveAdminSession(user, accessToken, refreshToken);
     } catch (error: any) {
       throw new Error(
-        error.response?.data?.message || 'Нэвтрэх үед алдаа гарлаа'
+        error.response?.data?.message ||
+          error.message ||
+          "Нэвтрэх үед алдаа гарлаа",
       );
     }
   };
 
   const logout = () => {
-    Cookies.remove('token');
-    Cookies.remove('user');
+    if (user?.isAdmin) {
+      Cookies.remove("adminToken");
+      Cookies.remove("adminRefreshToken");
+      Cookies.remove("adminUser");
+    } else {
+      Cookies.remove("token");
+      Cookies.remove("refreshToken");
+      Cookies.remove("user");
+    }
     setUser(null);
+  };
+
+  const refreshUser = async () => {
+    try {
+      const profile = await authApi.getProfile();
+      setUser(profile);
+    } catch (error) {
+      console.error("Failed to refresh user profile:", error);
+    }
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, loginById, adminLogin, logout }}
+      value={{
+        user,
+        loading,
+        login,
+        loginById,
+        adminLogin,
+        logout,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -143,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

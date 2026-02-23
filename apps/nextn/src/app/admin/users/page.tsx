@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { usersApi } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usersApi } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Table,
   TableBody,
@@ -14,14 +14,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +31,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
 import {
   Loader2,
   Users as UsersIcon,
@@ -46,12 +46,12 @@ import {
   Lock,
   Sparkles,
   ArrowLeft,
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { DEPARTMENTS } from '@/lib/constants';
-import Link from 'next/link';
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { DEPARTMENTS } from "@/lib/constants";
+import Link from "next/link";
 
 interface UserData {
   id: string;
@@ -89,8 +89,8 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
 
   const [deleteUser, setDeleteUser] = useState<UserData | null>(null);
 
@@ -109,11 +109,11 @@ export default function UsersPage() {
       const data = await usersApi.getAll();
       setUsers((data || []).filter((u: UserData) => !u.isAdmin));
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error("Error loading users:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Хэрэглэгчдийг ачааллахад алдаа гарлаа.',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Хэрэглэгчдийг ачааллахад алдаа гарлаа.",
+        variant: "destructive",
       });
       setUsers([]);
     } finally {
@@ -124,17 +124,17 @@ export default function UsersPage() {
   const filterUsers = () => {
     let filtered = [...users];
 
-    if (departmentFilter !== 'all') {
-      filtered = filtered.filter(u => u.department === departmentFilter);
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter((u) => u.department === departmentFilter);
     }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        u =>
+        (u) =>
           u.name.toLowerCase().includes(query) ||
           (u.department && u.department.toLowerCase().includes(query)) ||
-          (u.position && u.position.toLowerCase().includes(query))
+          (u.position && u.position.toLowerCase().includes(query)),
       );
     }
 
@@ -143,21 +143,21 @@ export default function UsersPage() {
 
   const handleToggleUserStatus = async (
     userId: string,
-    currentStatus: boolean
+    currentStatus: boolean,
   ) => {
     try {
       await usersApi.updateStatus(userId, !currentStatus);
       toast({
-        title: 'Амжилттай',
-        description: `Хэрэглэгчийн эрх ${!currentStatus ? 'идэвхжүүллээ' : 'хааглаа'}.`,
+        title: "Амжилттай",
+        description: `Хэрэглэгчийн эрх ${!currentStatus ? "идэвхжүүллээ" : "хааглаа"}.`,
       });
       loadUsers();
     } catch (error) {
-      console.error('Error toggling user status:', error);
+      console.error("Error toggling user status:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Хэрэглэгчийн эрхийг өөрчлөхөд алдаа гарлаа.',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Хэрэглэгчийн эрхийг өөрчлөхөд алдаа гарлаа.",
+        variant: "destructive",
       });
     }
   };
@@ -169,17 +169,17 @@ export default function UsersPage() {
     try {
       await usersApi.delete(deleteUser.id);
       toast({
-        title: 'Амжилттай',
-        description: 'Хэрэглэгч устгагдлаа.',
+        title: "Амжилттай",
+        description: "Хэрэглэгч устгагдлаа.",
       });
       setDeleteUser(null);
       loadUsers();
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error("Error deleting user:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Хэрэглэгч устгахад алдаа гарлаа.',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Хэрэглэгч устгахад алдаа гарлаа.",
+        variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
@@ -224,16 +224,16 @@ export default function UsersPage() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Animated Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <motion.div
           className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-blue-600/10 to-transparent rounded-full blur-3xl"
           animate={{ x: [0, 100, 0], y: [0, 50, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         />
         <motion.div
           className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-cyan-600/10 to-transparent rounded-full blur-3xl"
           animate={{ x: [0, -100, 0], y: [0, -50, 0], scale: [1, 1.2, 1] }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
         />
 
         {/* Floating particles */}
@@ -311,7 +311,7 @@ export default function UsersPage() {
                   <Input
                     placeholder="Нэр, албан тушаалаар хайх..."
                     value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
                   />
                 </div>
@@ -329,7 +329,7 @@ export default function UsersPage() {
                     >
                       Бүх хэлтэс
                     </SelectItem>
-                    {DEPARTMENTS.map(dept => (
+                    {DEPARTMENTS.map((dept) => (
                       <SelectItem
                         key={dept}
                         value={dept}
@@ -384,9 +384,9 @@ export default function UsersPage() {
                           colSpan={7}
                           className="text-center py-12 text-slate-400"
                         >
-                          {searchQuery || departmentFilter !== 'all'
-                            ? 'Хайлтын үр дүн олдсонгүй'
-                            : 'Хэрэглэгч олдсонгүй'}
+                          {searchQuery || departmentFilter !== "all"
+                            ? "Хайлтын үр дүн олдсонгүй"
+                            : "Хэрэглэгч олдсонгүй"}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -405,7 +405,7 @@ export default function UsersPage() {
                                 onCheckedChange={() =>
                                   handleToggleUserStatus(
                                     userData.id,
-                                    userData.isActive !== false
+                                    userData.isActive !== false,
                                   )
                                 }
                               />
@@ -418,7 +418,7 @@ export default function UsersPage() {
                           </TableCell>
                           <TableCell>
                             <code className="text-xs bg-slate-700/50 px-2 py-1 rounded text-blue-400">
-                              {userData.userId || '-'}
+                              {userData.userId || "-"}
                             </code>
                           </TableCell>
                           <TableCell className="font-medium text-white">
@@ -458,7 +458,7 @@ export default function UsersPage() {
                               <div className="flex items-center gap-2 text-slate-400 text-sm">
                                 <Clock className="w-4 h-4" />
                                 {new Date(userData.lastLoginAt).toLocaleString(
-                                  'mn-MN'
+                                  "mn-MN",
                                 )}
                               </div>
                             ) : (

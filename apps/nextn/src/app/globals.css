@@ -163,7 +163,7 @@
     --chart-5: 330 89% 78%;
   }
 
-  html[class='dracula'] {
+  html[class="dracula"] {
     --background: 231 15% 18%;
     --foreground: 60 30% 96%;
     --card: 231 15% 22%;
@@ -185,7 +185,7 @@
     --ring: 265 89% 78%;
   }
 
-  html[class='neo'] {
+  html[class="neo"] {
     --background: 160 10% 4%;
     --foreground: 160 10% 98%;
     --card: 160 10% 7%;
@@ -207,7 +207,7 @@
     --ring: 142 76% 56%;
   }
 
-  html[class='tokyo-night'] {
+  html[class="tokyo-night"] {
     --background: 222 47% 11%;
     --foreground: 214 33% 91%;
     --card: 222 47% 14%;
@@ -229,7 +229,7 @@
     --ring: 195 100% 75%;
   }
 
-  html[class='rose-pine'] {
+  html[class="rose-pine"] {
     --background: 248 25% 12%;
     --foreground: 245 50% 91%;
     --card: 248 25% 15%;
@@ -251,7 +251,7 @@
     --ring: 343 35% 72%;
   }
 
-  html[class='light'] {
+  html[class="light"] {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -273,7 +273,7 @@
     --ring: 262 83% 58%;
   }
 
-  html[class='emerald'] {
+  html[class="emerald"] {
     --background: 220 17% 12%;
     --foreground: 160 5% 96%;
     --card: 220 17% 15%;
@@ -303,20 +303,20 @@
   body {
     @apply bg-background text-foreground;
     font-family:
-      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-      Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-      'Segoe UI Symbol', 'Noto Color Emoji';
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+      Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol", "Noto Color Emoji";
   }
 
   .font-emoji {
     font-family:
-      'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
-      'Android Emoji', 'EmojiSymbols', sans-serif;
+      "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
+      "Android Emoji", "EmojiSymbols", sans-serif;
   }
 }
 
 .card-glow::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
@@ -361,7 +361,7 @@
 
 .avatar-glow-wrapper::before,
 .avatar-glow-wrapper::after {
-  content: '';
+  content: "";
   position: absolute;
   z-index: 0;
   border-radius: inherit;
@@ -436,7 +436,7 @@
 }
 
 .page-container-wrapper::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 200%;
   height: 200%;
@@ -525,7 +525,7 @@
 }
 
 .glassmorphism-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   right: 0;
@@ -603,7 +603,7 @@
 }
 
 .animated-border-wrapper::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -200%;
   width: 500%;

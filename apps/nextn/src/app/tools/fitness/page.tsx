@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import BackButton from '@/components/shared/BackButton';
-import type { Exercise, WorkoutLog, BodyStats } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { fitnessApi, usersApi } from '@/lib/api';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import BackButton from "@/components/shared/BackButton";
+import type { Exercise, WorkoutLog, BodyStats } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { fitnessApi, usersApi } from "@/lib/api";
 import {
   PlusCircle,
   Trash2,
@@ -25,8 +25,8 @@ import {
   Award,
   Lock,
   Loader2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -36,12 +36,12 @@ import {
   DialogFooter,
   DialogClose,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,9 +51,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, subDays, eachDayOfInterval, parseISO } from 'date-fns';
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, subDays, eachDayOfInterval, parseISO } from "date-fns";
 import {
   ResponsiveContainer,
   XAxis,
@@ -64,7 +64,7 @@ import {
   LineChart,
   Area,
   AreaChart,
-} from 'recharts';
+} from "recharts";
 
 // Animation variants
 const containerVariants = {
@@ -74,16 +74,16 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
 };
 
 // Accent color
-const accentColor = '34, 197, 94'; // Green
+const accentColor = "34, 197, 94"; // Green
 
 // Interactive Particles Background
 const InteractiveParticles = ({ quantity = 30 }: { quantity?: number }) => {
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {Array.from({ length: quantity }).map((_, i) => (
         <motion.div
           key={i}
@@ -115,10 +115,10 @@ const calculateBMI = (weight: number, heightCm: number): number => {
 };
 
 const getBMICategory = (bmi: number): { label: string; color: string } => {
-  if (bmi < 18.5) return { label: 'Туранхай', color: 'text-blue-400' };
-  if (bmi < 25) return { label: 'Хэвийн', color: 'text-green-400' };
-  if (bmi < 30) return { label: 'Илүүдэл жин', color: 'text-yellow-400' };
-  return { label: 'Таргалалт', color: 'text-red-400' };
+  if (bmi < 18.5) return { label: "Туранхай", color: "text-blue-400" };
+  if (bmi < 25) return { label: "Хэвийн", color: "text-green-400" };
+  if (bmi < 30) return { label: "Илүүдэл жин", color: "text-yellow-400" };
+  return { label: "Таргалалт", color: "text-red-400" };
 };
 
 // Helper: parse date safely
@@ -140,7 +140,7 @@ const StatCard = ({
   label: string;
   value: string | number;
   unit?: string;
-  trend?: 'up' | 'down' | 'stable';
+  trend?: "up" | "down" | "stable";
   color?: string;
 }) => (
   <motion.div variants={itemVariants}>
@@ -171,11 +171,11 @@ const StatCard = ({
           </div>
           {trend && (
             <div
-              className={`${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-muted-foreground'}`}
+              className={`${trend === "up" ? "text-green-400" : trend === "down" ? "text-red-400" : "text-muted-foreground"}`}
             >
-              {trend === 'up' ? (
+              {trend === "up" ? (
                 <TrendingUp className="h-5 w-5" />
-              ) : trend === 'down' ? (
+              ) : trend === "down" ? (
                 <TrendingDown className="h-5 w-5" />
               ) : (
                 <Activity className="h-5 w-5" />
@@ -196,8 +196,8 @@ const AddBodyStatsDialog = ({
   onAdd: (stats: { weight: number; height: number }) => void;
   latestStats?: BodyStats | null;
 }) => {
-  const [weight, setWeight] = useState(latestStats?.weight?.toString() || '');
-  const [height, setHeight] = useState(latestStats?.height?.toString() || '');
+  const [weight, setWeight] = useState(latestStats?.weight?.toString() || "");
+  const [height, setHeight] = useState(latestStats?.height?.toString() || "");
   const [open, setOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -235,7 +235,7 @@ const AddBodyStatsDialog = ({
                 step="0.1"
                 placeholder="70"
                 value={weight}
-                onChange={e => setWeight(e.target.value)}
+                onChange={(e) => setWeight(e.target.value)}
                 className="rounded-xl"
                 required
               />
@@ -246,7 +246,7 @@ const AddBodyStatsDialog = ({
                 type="number"
                 placeholder="175"
                 value={height}
-                onChange={e => setHeight(e.target.value)}
+                onChange={(e) => setHeight(e.target.value)}
                 className="rounded-xl"
                 required
               />
@@ -281,20 +281,20 @@ const AddExerciseDialog = ({
     description?: string;
   }) => void;
 }) => {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
-  const [description, setDescription] = useState('');
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
   const [open, setOpen] = useState(false);
 
   const categories = [
-    'Цээж',
-    'Нуруу',
-    'Мөр',
-    'Гар',
-    'Хөл',
-    'Хэвлий',
-    'Кардио',
-    'Бусад',
+    "Цээж",
+    "Нуруу",
+    "Мөр",
+    "Гар",
+    "Хөл",
+    "Хэвлий",
+    "Кардио",
+    "Бусад",
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -305,9 +305,9 @@ const AddExerciseDialog = ({
         category: category || undefined,
         description: description || undefined,
       });
-      setName('');
-      setCategory('');
-      setDescription('');
+      setName("");
+      setCategory("");
+      setDescription("");
       setOpen(false);
     }
   };
@@ -333,7 +333,7 @@ const AddExerciseDialog = ({
             <Input
               placeholder="Жишээ: Bench Press"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               className="rounded-xl"
               required
             />
@@ -341,14 +341,14 @@ const AddExerciseDialog = ({
           <div className="space-y-2">
             <Label>Ангилал</Label>
             <div className="flex flex-wrap gap-2">
-              {categories.map(cat => (
+              {categories.map((cat) => (
                 <Button
                   key={cat}
                   type="button"
-                  variant={category === cat ? 'default' : 'outline'}
+                  variant={category === cat ? "default" : "outline"}
                   size="sm"
                   onClick={() => setCategory(cat)}
-                  className={`rounded-lg ${category === cat ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                  className={`rounded-lg ${category === cat ? "bg-green-500 hover:bg-green-600" : ""}`}
                 >
                   {cat}
                 </Button>
@@ -360,7 +360,7 @@ const AddExerciseDialog = ({
             <Textarea
               placeholder="Дасгалын тухай товч тайлбар..."
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               className="rounded-xl resize-none"
               rows={2}
             />
@@ -403,10 +403,10 @@ const ExerciseCard = ({
   recentLog?: WorkoutLog;
 }) => {
   const [logOpen, setLogOpen] = useState(false);
-  const [sets, setSets] = useState(recentLog?.sets?.toString() || '3');
-  const [reps, setReps] = useState(recentLog?.repetitions?.toString() || '12');
-  const [weight, setWeight] = useState(recentLog?.weight?.toString() || '');
-  const [notes, setNotes] = useState('');
+  const [sets, setSets] = useState(recentLog?.sets?.toString() || "3");
+  const [reps, setReps] = useState(recentLog?.repetitions?.toString() || "12");
+  const [weight, setWeight] = useState(recentLog?.weight?.toString() || "");
+  const [notes, setNotes] = useState("");
 
   const handleLog = (e: React.FormEvent) => {
     e.preventDefault();
@@ -417,7 +417,7 @@ const ExerciseCard = ({
       weight: weight ? Number(weight) : undefined,
       notes: notes || undefined,
     });
-    setNotes('');
+    setNotes("");
     setLogOpen(false);
   };
 
@@ -464,7 +464,7 @@ const ExerciseCard = ({
                         <Input
                           type="number"
                           value={sets}
-                          onChange={e => setSets(e.target.value)}
+                          onChange={(e) => setSets(e.target.value)}
                           className="rounded-lg"
                         />
                       </div>
@@ -473,7 +473,7 @@ const ExerciseCard = ({
                         <Input
                           type="number"
                           value={reps}
-                          onChange={e => setReps(e.target.value)}
+                          onChange={(e) => setReps(e.target.value)}
                           className="rounded-lg"
                         />
                       </div>
@@ -483,7 +483,7 @@ const ExerciseCard = ({
                           type="number"
                           step="0.5"
                           value={weight}
-                          onChange={e => setWeight(e.target.value)}
+                          onChange={(e) => setWeight(e.target.value)}
                           className="rounded-lg"
                           placeholder="--"
                         />
@@ -493,7 +493,7 @@ const ExerciseCard = ({
                       <Label className="text-xs">Тэмдэглэл</Label>
                       <Textarea
                         value={notes}
-                        onChange={e => setNotes(e.target.value)}
+                        onChange={(e) => setNotes(e.target.value)}
                         className="rounded-lg resize-none"
                         rows={2}
                         placeholder="Заавал биш..."
@@ -576,7 +576,7 @@ const WorkoutHistory = ({ logs }: { logs: WorkoutLog[] }) => {
                 </div>
                 <div>
                   <p className="font-medium text-sm">
-                    {log.exercise?.name || 'Дасгал'}
+                    {log.exercise?.name || "Дасгал"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {log.sets && `${log.sets} сет`}
@@ -586,7 +586,7 @@ const WorkoutHistory = ({ logs }: { logs: WorkoutLog[] }) => {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                {format(logDate, 'MM/dd HH:mm')}
+                {format(logDate, "MM/dd HH:mm")}
               </p>
             </div>
           </motion.div>
@@ -604,20 +604,20 @@ const WeeklyActivityChart = ({ logs }: { logs: WorkoutLog[] }) => {
       end: new Date(),
     });
 
-    return last7Days.map(day => {
-      const dayString = format(day, 'yyyy-MM-dd');
-      const logsForDay = logs.filter(log => {
+    return last7Days.map((day) => {
+      const dayString = format(day, "yyyy-MM-dd");
+      const logsForDay = logs.filter((log) => {
         const logDate = parseDate(log.date);
-        return format(logDate, 'yyyy-MM-dd') === dayString;
+        return format(logDate, "yyyy-MM-dd") === dayString;
       });
 
       return {
-        day: format(day, 'EEE'),
+        day: format(day, "EEE"),
         count: logsForDay.length,
         volume: logsForDay.reduce(
           (acc, log) =>
             acc + (log.sets || 1) * (log.repetitions || 0) * (log.weight || 1),
-          0
+          0,
         ),
       };
     });
@@ -652,13 +652,13 @@ const WeeklyActivityChart = ({ logs }: { logs: WorkoutLog[] }) => {
                 strokeDasharray="3 3"
                 stroke="rgba(255,255,255,0.1)"
               />
-              <XAxis dataKey="day" tick={{ fill: '#888', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#888', fontSize: 12 }} />
+              <XAxis dataKey="day" tick={{ fill: "#888", fontSize: 12 }} />
+              <YAxis tick={{ fill: "#888", fontSize: 12 }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'rgba(0,0,0,0.8)',
-                  border: 'none',
-                  borderRadius: '8px',
+                  backgroundColor: "rgba(0,0,0,0.8)",
+                  border: "none",
+                  borderRadius: "8px",
                 }}
               />
               <Area
@@ -683,8 +683,8 @@ const WeightProgressChart = ({ stats }: { stats: BodyStats[] }) => {
     return [...stats]
       .reverse()
       .slice(-14)
-      .map(stat => ({
-        date: format(parseDate(stat.date), 'MM/dd'),
+      .map((stat) => ({
+        date: format(parseDate(stat.date), "MM/dd"),
         weight: stat.weight,
       }));
   }, [stats]);
@@ -723,16 +723,16 @@ const WeightProgressChart = ({ stats }: { stats: BodyStats[] }) => {
                 strokeDasharray="3 3"
                 stroke="rgba(255,255,255,0.1)"
               />
-              <XAxis dataKey="date" tick={{ fill: '#888', fontSize: 12 }} />
+              <XAxis dataKey="date" tick={{ fill: "#888", fontSize: 12 }} />
               <YAxis
-                tick={{ fill: '#888', fontSize: 12 }}
-                domain={['dataMin - 2', 'dataMax + 2']}
+                tick={{ fill: "#888", fontSize: 12 }}
+                domain={["dataMin - 2", "dataMax + 2"]}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'rgba(0,0,0,0.8)',
-                  border: 'none',
-                  borderRadius: '8px',
+                  backgroundColor: "rgba(0,0,0,0.8)",
+                  border: "none",
+                  borderRadius: "8px",
                 }}
               />
               <Line
@@ -740,7 +740,7 @@ const WeightProgressChart = ({ stats }: { stats: BodyStats[] }) => {
                 dataKey="weight"
                 stroke="rgb(96, 165, 250)"
                 strokeWidth={2}
-                dot={{ fill: 'rgb(96, 165, 250)', strokeWidth: 2 }}
+                dot={{ fill: "rgb(96, 165, 250)", strokeWidth: 2 }}
                 name="Жин (кг)"
               />
             </LineChart>
@@ -778,10 +778,10 @@ export default function FitnessPage() {
       try {
         const freshUserData = await usersApi.getOne(authUser.id);
         const allowed =
-          freshUserData.allowedTools?.includes('fitness') || false;
+          freshUserData.allowedTools?.includes("fitness") || false;
         setHasAccess(allowed);
       } catch (error) {
-        console.error('Error checking permission:', error);
+        console.error("Error checking permission:", error);
         setHasAccess(false);
       }
     };
@@ -802,11 +802,11 @@ export default function FitnessPage() {
       setWorkoutLogs(data.workoutLogs || []);
       setBodyStats(data.bodyStats || []);
     } catch (error) {
-      console.error('Error fetching fitness data:', error);
+      console.error("Error fetching fitness data:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Мэдээлэл татахад алдаа гарлаа.',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Мэдээлэл татахад алдаа гарлаа.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -827,13 +827,13 @@ export default function FitnessPage() {
     try {
       await fitnessApi.createBodyStats(stats);
       toast({
-        title: 'Амжилттай',
-        description: 'Биеийн үзүүлэлт бүртгэгдлээ.',
+        title: "Амжилттай",
+        description: "Биеийн үзүүлэлт бүртгэгдлээ.",
       });
       fetchData();
     } catch (e) {
       console.error(e);
-      toast({ title: 'Алдаа', variant: 'destructive' });
+      toast({ title: "Алдаа", variant: "destructive" });
     }
   };
 
@@ -844,11 +844,11 @@ export default function FitnessPage() {
   }) => {
     try {
       await fitnessApi.createExercise(exercise);
-      toast({ title: 'Амжилттай', description: 'Шинэ дасгал нэмэгдлээ.' });
+      toast({ title: "Амжилттай", description: "Шинэ дасгал нэмэгдлээ." });
       fetchData();
     } catch (e) {
       console.error(e);
-      toast({ title: 'Алдаа', variant: 'destructive' });
+      toast({ title: "Алдаа", variant: "destructive" });
     }
   };
 
@@ -861,22 +861,22 @@ export default function FitnessPage() {
   }) => {
     try {
       await fitnessApi.createWorkoutLog(log);
-      toast({ title: 'Амжилттай', description: 'Дасгал бүртгэгдлээ.' });
+      toast({ title: "Амжилттай", description: "Дасгал бүртгэгдлээ." });
       fetchData();
     } catch (e) {
       console.error(e);
-      toast({ title: 'Алдаа', variant: 'destructive' });
+      toast({ title: "Алдаа", variant: "destructive" });
     }
   };
 
   const handleDeleteExercise = async (id: string) => {
     try {
       await fitnessApi.deleteExercise(id);
-      toast({ title: 'Устгагдлаа' });
+      toast({ title: "Устгагдлаа" });
       fetchData();
     } catch (e) {
       console.error(e);
-      toast({ title: 'Алдаа', variant: 'destructive' });
+      toast({ title: "Алдаа", variant: "destructive" });
     }
   };
 
@@ -887,9 +887,9 @@ export default function FitnessPage() {
     : null;
   const bmiCategory = bmi ? getBMICategory(bmi) : null;
 
-  const todayLogs = workoutLogs.filter(log => {
+  const todayLogs = workoutLogs.filter((log) => {
     const logDate = parseDate(log.date);
-    return format(logDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+    return format(logDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
   });
 
   const weeklyStats = useMemo(() => {
@@ -900,14 +900,14 @@ export default function FitnessPage() {
     let totalWorkouts = 0;
     let totalVolume = 0;
 
-    last7Days.forEach(day => {
-      const dayString = format(day, 'yyyy-MM-dd');
-      const logsForDay = workoutLogs.filter(log => {
+    last7Days.forEach((day) => {
+      const dayString = format(day, "yyyy-MM-dd");
+      const logsForDay = workoutLogs.filter((log) => {
         const logDate = parseDate(log.date);
-        return format(logDate, 'yyyy-MM-dd') === dayString;
+        return format(logDate, "yyyy-MM-dd") === dayString;
       });
       totalWorkouts += logsForDay.length;
-      logsForDay.forEach(log => {
+      logsForDay.forEach((log) => {
         totalVolume +=
           (log.sets || 1) * (log.repetitions || 0) * (log.weight || 1);
       });
@@ -919,12 +919,12 @@ export default function FitnessPage() {
   const groupedExercises = useMemo(() => {
     return exercises.reduce(
       (acc, ex) => {
-        const category = ex.category || 'Бусад';
+        const category = ex.category || "Бусад";
         if (!acc[category]) acc[category] = [];
         acc[category].push(ex);
         return acc;
       },
-      {} as Record<string, Exercise[]>
+      {} as Record<string, Exercise[]>,
     );
   }, [exercises]);
 
@@ -962,7 +962,7 @@ export default function FitnessPage() {
         <div className="p-4 md:p-8 space-y-6 relative z-10">
           <Skeleton className="h-10 w-24 rounded-xl" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => (
+            {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-24 rounded-2xl" />
             ))}
           </div>
@@ -1021,33 +1021,33 @@ export default function FitnessPage() {
           <StatCard
             icon={Scale}
             label="Жин"
-            value={latestStats?.weight || '--'}
+            value={latestStats?.weight || "--"}
             unit="кг"
             trend={
               bodyStats.length > 1 && bodyStats[0].weight < bodyStats[1].weight
-                ? 'down'
+                ? "down"
                 : bodyStats.length > 1 &&
                     bodyStats[0].weight > bodyStats[1].weight
-                  ? 'up'
-                  : 'stable'
+                  ? "up"
+                  : "stable"
             }
           />
           <StatCard
             icon={Ruler}
             label="Өндөр"
-            value={latestStats?.height || '--'}
+            value={latestStats?.height || "--"}
             unit="см"
           />
           <StatCard
             icon={Target}
             label="BMI"
-            value={bmi || '--'}
+            value={bmi || "--"}
             color={
               bmi && bmi >= 18.5 && bmi < 25
-                ? '34, 197, 94'
+                ? "34, 197, 94"
                 : bmi && bmi >= 25
-                  ? '234, 179, 8'
-                  : '96, 165, 250'
+                  ? "234, 179, 8"
+                  : "96, 165, 250"
             }
           />
           <StatCard
@@ -1078,7 +1078,7 @@ export default function FitnessPage() {
                         Биеийн жингийн индекс
                       </p>
                       <p className="text-lg font-bold">
-                        BMI {bmi} -{' '}
+                        BMI {bmi} -{" "}
                         <span className={bmiCategory.color}>
                           {bmiCategory.label}
                         </span>
@@ -1171,20 +1171,20 @@ export default function FitnessPage() {
                   animate="visible"
                   className="space-y-4 max-h-[500px] overflow-y-auto"
                 >
-                  {Object.keys(groupedExercises).map(category => (
+                  {Object.keys(groupedExercises).map((category) => (
                     <div key={category}>
                       <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">
                         {category}
                       </h3>
                       <div className="space-y-2">
-                        {groupedExercises[category].map(ex => (
+                        {groupedExercises[category].map((ex) => (
                           <ExerciseCard
                             key={ex.id}
                             exercise={ex}
                             onLog={handleLogWorkout}
                             onDelete={() => handleDeleteExercise(ex.id!)}
                             recentLog={workoutLogs.find(
-                              log => log.exerciseId === ex.id
+                              (log) => log.exerciseId === ex.id,
                             )}
                           />
                         ))}

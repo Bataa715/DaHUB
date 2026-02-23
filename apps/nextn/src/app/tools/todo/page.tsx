@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect, FormEvent } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect, FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Loader2,
   Trash2,
@@ -20,20 +20,20 @@ import {
   TrendingUp,
   Zap,
   Lock,
-} from 'lucide-react';
-import BackButton from '@/components/shared/BackButton';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { usersApi } from '@/lib/api';
+} from "lucide-react";
+import BackButton from "@/components/shared/BackButton";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { usersApi } from "@/lib/api";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -41,15 +41,15 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Todo {
   id: string;
   task: string;
   completed: boolean;
-  priority: 'high' | 'medium' | 'low';
+  priority: "high" | "medium" | "low";
   dueDate?: string;
   category?: string;
   createdAt: string;
@@ -57,31 +57,31 @@ interface Todo {
 
 const priorityConfig = {
   high: {
-    label: 'Чухал',
-    color: 'text-red-500',
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/30',
+    label: "Чухал",
+    color: "text-red-500",
+    bg: "bg-red-500/10",
+    border: "border-red-500/30",
   },
   medium: {
-    label: 'Дунд',
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/30',
+    label: "Дунд",
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
   },
   low: {
-    label: 'Энгийн',
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/30',
+    label: "Энгийн",
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
   },
 };
 
 const categories = [
-  { value: 'work', label: 'Ажил', emoji: '💼' },
-  { value: 'personal', label: 'Хувийн', emoji: '🏠' },
-  { value: 'health', label: 'Эрүүл мэнд', emoji: '💪' },
-  { value: 'study', label: 'Суралцах', emoji: '📚' },
-  { value: 'other', label: 'Бусад', emoji: '📌' },
+  { value: "work", label: "Ажил", emoji: "💼" },
+  { value: "personal", label: "Хувийн", emoji: "🏠" },
+  { value: "health", label: "Эрүүл мэнд", emoji: "💪" },
+  { value: "study", label: "Суралцах", emoji: "📚" },
+  { value: "other", label: "Бусад", emoji: "📌" },
 ];
 
 // Animation variants
@@ -114,7 +114,7 @@ const StatCard = ({
     className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 border border-border/30"
   >
     <div className="flex items-center gap-3">
-      <div className={cn('p-2.5 rounded-xl', color)}>
+      <div className={cn("p-2.5 rounded-xl", color)}>
         <Icon className="h-5 w-5" />
       </div>
       <div>
@@ -136,7 +136,7 @@ const TodoItem = ({
   onDelete: () => void;
 }) => {
   const priority = priorityConfig[todo.priority] || priorityConfig.low;
-  const category = categories.find(c => c.value === todo.category);
+  const category = categories.find((c) => c.value === todo.category);
   const isOverdue =
     todo.dueDate && new Date(todo.dueDate) < new Date() && !todo.completed;
 
@@ -147,20 +147,20 @@ const TodoItem = ({
       initial="hidden"
       animate="visible"
       exit="exit"
-      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      transition={{ type: "spring", stiffness: 400, damping: 30 }}
       className={cn(
-        'group relative flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300',
+        "group relative flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300",
         todo.completed
-          ? 'bg-muted/30 border-border/20'
-          : cn('bg-card/50 backdrop-blur-sm hover:bg-card/70', priority.border),
-        isOverdue && !todo.completed && 'border-red-500/50 bg-red-500/5'
+          ? "bg-muted/30 border-border/20"
+          : cn("bg-card/50 backdrop-blur-sm hover:bg-card/70", priority.border),
+        isOverdue && !todo.completed && "border-red-500/50 bg-red-500/5",
       )}
     >
       {/* Priority indicator */}
       <div
         className={cn(
-          'absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl',
-          priority.bg.replace('/10', '')
+          "absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl",
+          priority.bg.replace("/10", ""),
         )}
       />
 
@@ -168,10 +168,10 @@ const TodoItem = ({
       <button
         onClick={onToggle}
         className={cn(
-          'mt-0.5 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all',
+          "mt-0.5 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
           todo.completed
-            ? 'bg-emerald-500 border-emerald-500'
-            : 'border-muted-foreground/30 hover:border-emerald-500'
+            ? "bg-emerald-500 border-emerald-500"
+            : "border-muted-foreground/30 hover:border-emerald-500",
         )}
       >
         {todo.completed && <CheckCircle2 className="h-4 w-4 text-white" />}
@@ -181,8 +181,8 @@ const TodoItem = ({
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            'text-base font-medium transition-all',
-            todo.completed && 'line-through text-muted-foreground'
+            "text-base font-medium transition-all",
+            todo.completed && "line-through text-muted-foreground",
           )}
         >
           {todo.task}
@@ -197,9 +197,9 @@ const TodoItem = ({
           )}
           <span
             className={cn(
-              'text-xs px-2 py-0.5 rounded-full flex items-center gap-1',
+              "text-xs px-2 py-0.5 rounded-full flex items-center gap-1",
               priority.bg,
-              priority.color
+              priority.color,
             )}
           >
             <Flag className="h-3 w-3" />
@@ -208,16 +208,16 @@ const TodoItem = ({
           {todo.dueDate && (
             <span
               className={cn(
-                'text-xs px-2 py-0.5 rounded-full flex items-center gap-1',
+                "text-xs px-2 py-0.5 rounded-full flex items-center gap-1",
                 isOverdue && !todo.completed
-                  ? 'bg-red-500/10 text-red-500'
-                  : 'bg-muted/50 text-muted-foreground'
+                  ? "bg-red-500/10 text-red-500"
+                  : "bg-muted/50 text-muted-foreground",
               )}
             >
               <Calendar className="h-3 w-3" />
-              {new Date(todo.dueDate).toLocaleDateString('mn-MN', {
-                month: 'short',
-                day: 'numeric',
+              {new Date(todo.dueDate).toLocaleDateString("mn-MN", {
+                month: "short",
+                day: "numeric",
               })}
             </span>
           )}
@@ -243,14 +243,14 @@ export default function TodoPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const { toast } = useToast();
 
   // Form state
-  const [newTask, setNewTask] = useState('');
-  const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const [dueDate, setDueDate] = useState('');
-  const [category, setCategory] = useState('');
+  const [newTask, setNewTask] = useState("");
+  const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
+  const [dueDate, setDueDate] = useState("");
+  const [category, setCategory] = useState("");
 
   // Check permission
   useEffect(() => {
@@ -269,10 +269,10 @@ export default function TodoPage() {
 
       try {
         const freshUserData = await usersApi.getOne(user.id);
-        const allowed = freshUserData.allowedTools?.includes('todo') || false;
+        const allowed = freshUserData.allowedTools?.includes("todo") || false;
         setHasAccess(allowed);
       } catch (error) {
-        console.error('Error checking permission:', error);
+        console.error("Error checking permission:", error);
         setHasAccess(false);
       }
     };
@@ -280,25 +280,25 @@ export default function TodoPage() {
   }, [user]);
 
   // Local storage helpers
-  const STORAGE_KEY = 'todos_data';
+  const STORAGE_KEY = "todos_data";
 
   const loadTodosFromStorage = (): Todo[] => {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === "undefined") return [];
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.error('Error loading todos from storage:', error);
+      console.error("Error loading todos from storage:", error);
       return [];
     }
   };
 
   const saveTodosToStorage = (todos: Todo[]) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
     } catch (error) {
-      console.error('Error saving todos to storage:', error);
+      console.error("Error saving todos to storage:", error);
     }
   };
 
@@ -310,7 +310,7 @@ export default function TodoPage() {
 
   const addTodo = async (e: FormEvent) => {
     e.preventDefault();
-    if (newTask.trim() === '') return;
+    if (newTask.trim() === "") return;
 
     try {
       const newTodo: Todo = {
@@ -327,55 +327,55 @@ export default function TodoPage() {
       setTodos(updatedTodos);
       saveTodosToStorage(updatedTodos);
 
-      setNewTask('');
-      setPriority('medium');
-      setDueDate('');
-      setCategory('');
+      setNewTask("");
+      setPriority("medium");
+      setDueDate("");
+      setCategory("");
       setDialogOpen(false);
-      toast({ title: 'Амжилттай нэмлээ!' });
+      toast({ title: "Амжилттай нэмлээ!" });
     } catch (error) {
-      console.error('Error adding todo:', error);
+      console.error("Error adding todo:", error);
       toast({
-        title: 'Алдаа гарлаа',
-        variant: 'destructive',
+        title: "Алдаа гарлаа",
+        variant: "destructive",
       });
     }
   };
 
   const toggleTodo = async (id: string, completed: boolean) => {
     try {
-      const updatedTodos = todos.map(todo =>
-        todo.id === id ? { ...todo, completed: !completed } : todo
+      const updatedTodos = todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !completed } : todo,
       );
       setTodos(updatedTodos);
       saveTodosToStorage(updatedTodos);
     } catch (error) {
-      console.error('Error toggling todo:', error);
+      console.error("Error toggling todo:", error);
     }
   };
 
   const deleteTodo = async (id: string) => {
     try {
-      const updatedTodos = todos.filter(todo => todo.id !== id);
+      const updatedTodos = todos.filter((todo) => todo.id !== id);
       setTodos(updatedTodos);
       saveTodosToStorage(updatedTodos);
     } catch (error) {
-      console.error('Error deleting todo:', error);
+      console.error("Error deleting todo:", error);
     }
   };
 
   // Filter todos
-  const filteredTodos = todos.filter(todo => {
-    if (filter === 'active') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
+  const filteredTodos = todos.filter((todo) => {
+    if (filter === "active") return !todo.completed;
+    if (filter === "completed") return todo.completed;
     return true;
   });
 
   // Stats
-  const completedCount = todos.filter(t => t.completed).length;
-  const activeCount = todos.filter(t => !t.completed).length;
+  const completedCount = todos.filter((t) => t.completed).length;
+  const activeCount = todos.filter((t) => !t.completed).length;
   const highPriorityCount = todos.filter(
-    t => t.priority === 'high' && !t.completed
+    (t) => t.priority === "high" && !t.completed,
   ).length;
   const completionRate =
     todos.length > 0 ? Math.round((completedCount / todos.length) * 100) : 0;
@@ -434,7 +434,7 @@ export default function TodoPage() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ type: 'spring', delay: 0.2 }}
+              transition={{ type: "spring", delay: 0.2 }}
               className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30 mb-6"
             >
               <ListTodo className="h-10 w-10 text-white" />
@@ -492,7 +492,7 @@ export default function TodoPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                   <Tabs
                     value={filter}
-                    onValueChange={v => setFilter(v as any)}
+                    onValueChange={(v) => setFilter(v as any)}
                     className="w-full sm:w-auto"
                   >
                     <TabsList className="bg-muted/50 rounded-xl p-1">
@@ -530,12 +530,12 @@ export default function TodoPage() {
                 {highPriorityCount > 0 && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
+                    animate={{ opacity: 1, height: "auto" }}
                     className="flex items-center gap-3 p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/20"
                   >
                     <Zap className="h-5 w-5 text-red-500" />
                     <p className="text-sm text-red-500">
-                      <span className="font-semibold">{highPriorityCount}</span>{' '}
+                      <span className="font-semibold">{highPriorityCount}</span>{" "}
                       чухал ажил хийгдээгүй байна
                     </p>
                   </motion.div>
@@ -549,7 +549,7 @@ export default function TodoPage() {
                   className="space-y-3"
                 >
                   <AnimatePresence mode="popLayout">
-                    {filteredTodos.map(todo => (
+                    {filteredTodos.map((todo) => (
                       <TodoItem
                         key={todo.id}
                         todo={todo}
@@ -571,13 +571,13 @@ export default function TodoPage() {
                       <Sparkles className="h-10 w-10 text-emerald-500" />
                     </div>
                     <p className="text-lg font-medium text-muted-foreground">
-                      {filter === 'completed'
-                        ? 'Дууссан ажил алга'
-                        : filter === 'active'
-                          ? 'Идэвхтэй ажил алга, сайхан амар!'
-                          : 'Хийх ажил алга, сайхан амар!'}
+                      {filter === "completed"
+                        ? "Дууссан ажил алга"
+                        : filter === "active"
+                          ? "Идэвхтэй ажил алга, сайхан амар!"
+                          : "Хийх ажил алга, сайхан амар!"}
                     </p>
-                    {filter === 'all' && (
+                    {filter === "all" && (
                       <Button
                         onClick={() => setDialogOpen(true)}
                         variant="outline"
@@ -609,7 +609,7 @@ export default function TodoPage() {
               <Label>Ажлын нэр</Label>
               <Input
                 value={newTask}
-                onChange={e => setNewTask(e.target.value)}
+                onChange={(e) => setNewTask(e.target.value)}
                 placeholder="Юу хийх вэ?"
                 className="bg-background/50 border-border/50 rounded-xl"
                 autoFocus
@@ -621,7 +621,7 @@ export default function TodoPage() {
                 <Label>Ач холбогдол</Label>
                 <Select
                   value={priority}
-                  onValueChange={v => setPriority(v as any)}
+                  onValueChange={(v) => setPriority(v as any)}
                 >
                   <SelectTrigger className="bg-background/50 border-border/50 rounded-xl">
                     <SelectValue />
@@ -653,7 +653,7 @@ export default function TodoPage() {
                     <SelectValue placeholder="Сонгох" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {categories.map(cat => (
+                    {categories.map((cat) => (
                       <SelectItem
                         key={cat.value}
                         value={cat.value}
@@ -677,7 +677,7 @@ export default function TodoPage() {
               <Input
                 type="date"
                 value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
+                onChange={(e) => setDueDate(e.target.value)}
                 className="bg-background/50 border-border/50 rounded-xl"
               />
             </div>

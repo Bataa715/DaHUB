@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { usersApi } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usersApi } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   Shield,
@@ -14,6 +14,7 @@ import {
   UserCheck,
   UserX,
   Wrench,
+  Newspaper,
   ArrowRight,
   Sparkles,
   BarChart3,
@@ -23,11 +24,11 @@ import {
   Zap,
   Target,
   Award,
-} from 'lucide-react';
-import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
-import { DEPARTMENTS } from '@/lib/constants';
-import { Progress } from '@/components/ui/progress';
+} from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { DEPARTMENTS } from "@/lib/constants";
+import { Progress } from "@/components/ui/progress";
 
 interface DashboardStats {
   totalUsers: number;
@@ -59,6 +60,7 @@ const PARTICLE_POSITIONS = [
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     activeUsers: 0,
@@ -70,6 +72,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setMounted(true);
     loadDashboardData();
   }, []);
 
@@ -81,7 +84,7 @@ export default function AdminDashboard() {
       const adminUsers = allUsers.filter((u: any) => u.isAdmin).length;
 
       const usersByDepartment: Record<string, number> = {};
-      DEPARTMENTS.forEach(dept => {
+      DEPARTMENTS.forEach((dept) => {
         usersByDepartment[dept] = 0;
       });
 
@@ -110,11 +113,26 @@ export default function AdminDashboard() {
         }).length,
       });
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error("Error loading dashboard data:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!mounted || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <Loader2 className="w-12 h-12 animate-spin text-amber-500 mx-auto mb-4" />
+          <p className="text-slate-400">Ачаалж байна...</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!user?.isAdmin) {
     return (
@@ -136,97 +154,92 @@ export default function AdminDashboard() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
-          <Loader2 className="w-12 h-12 animate-spin text-amber-500 mx-auto mb-4" />
-          <p className="text-slate-400">Ачаалж байна...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
   const quickActions = [
     {
-      title: 'Хэрэглэгчид',
-      description: 'Бүх хэрэглэгчийг харах, удирдах',
+      title: "Хэрэглэгчид",
+      description: "Бүх хэрэглэгчийг харах, удирдах",
       icon: Users,
-      href: '/admin/users',
-      gradient: 'from-blue-600 via-blue-500 to-cyan-500',
-      bgColor: 'bg-blue-500/10',
-      iconColor: 'text-blue-400',
+      href: "/admin/users",
+      gradient: "from-blue-600 via-blue-500 to-cyan-500",
+      bgColor: "bg-blue-500/10",
+      iconColor: "text-blue-400",
       count: stats.totalUsers,
     },
     {
-      title: 'Хэлтсүүд',
-      description: 'Байгууллагын хэлтсүүдийг удирдах',
+      title: "Хэлтсүүд",
+      description: "Байгууллагын хэлтсүүдийг удирдах",
       icon: Building2,
-      href: '/admin/departments',
-      gradient: 'from-purple-600 via-purple-500 to-pink-500',
-      bgColor: 'bg-purple-500/10',
-      iconColor: 'text-purple-400',
+      href: "/admin/departments",
+      gradient: "from-purple-600 via-purple-500 to-pink-500",
+      bgColor: "bg-purple-500/10",
+      iconColor: "text-purple-400",
       count: DEPARTMENTS.length,
     },
     {
-      title: 'Хэрэгслүүд',
-      description: 'Эрх олгох, эрхийг удирдах',
+      title: "Хэрэгслүүд",
+      description: "Эрх олгох, эрхийг удирдах",
       icon: Wrench,
-      href: '/admin/tools',
-      gradient: 'from-emerald-600 via-emerald-500 to-teal-500',
-      bgColor: 'bg-emerald-500/10',
-      iconColor: 'text-emerald-400',
+      href: "/admin/tools",
+      gradient: "from-emerald-600 via-emerald-500 to-teal-500",
+      bgColor: "bg-emerald-500/10",
+      iconColor: "text-emerald-400",
       count: stats.activeUsers,
+    },
+    {
+      title: "Мэдээ",
+      description: "Мэдээ нийтлэх, засах, устгах",
+      icon: Newspaper,
+      href: "/admin/news",
+      gradient: "from-amber-600 via-orange-500 to-rose-500",
+      bgColor: "bg-amber-500/10",
+      iconColor: "text-amber-400",
+      count: 0,
     },
   ];
 
   const statCards = [
     {
-      title: 'Нийт хэрэглэгч',
+      title: "Нийт хэрэглэгч",
       value: stats.totalUsers,
       icon: Users,
-      gradient: 'from-blue-500 to-cyan-500',
-      bgColor: 'bg-blue-500/10',
-      iconColor: 'text-blue-400',
-      description: 'Бүртгэлтэй',
-      trend: '+12%',
+      gradient: "from-blue-500 to-cyan-500",
+      bgColor: "bg-blue-500/10",
+      iconColor: "text-blue-400",
+      description: "Бүртгэлтэй",
+      trend: "+12%",
       trendUp: true,
     },
     {
-      title: 'Идэвхтэй',
+      title: "Идэвхтэй",
       value: stats.activeUsers,
       icon: UserCheck,
-      gradient: 'from-emerald-500 to-teal-500',
-      bgColor: 'bg-emerald-500/10',
-      iconColor: 'text-emerald-400',
-      description: 'Эрхтэй',
-      trend: '+8%',
+      gradient: "from-emerald-500 to-teal-500",
+      bgColor: "bg-emerald-500/10",
+      iconColor: "text-emerald-400",
+      description: "Эрхтэй",
+      trend: "+8%",
       trendUp: true,
     },
     {
-      title: 'Идэвхгүй',
+      title: "Идэвхгүй",
       value: stats.inactiveUsers,
       icon: UserX,
-      gradient: 'from-orange-500 to-red-500',
-      bgColor: 'bg-orange-500/10',
-      iconColor: 'text-orange-400',
-      description: 'Хаагдсан',
-      trend: '-3%',
+      gradient: "from-orange-500 to-red-500",
+      bgColor: "bg-orange-500/10",
+      iconColor: "text-orange-400",
+      description: "Хаагдсан",
+      trend: "-3%",
       trendUp: false,
     },
     {
-      title: 'Сүүлийн 24 цагт',
+      title: "Сүүлийн 24 цагт",
       value: stats.recentActivity,
       icon: Activity,
-      gradient: 'from-amber-500 to-yellow-500',
-      bgColor: 'bg-amber-500/10',
-      iconColor: 'text-amber-400',
-      description: 'Нэвтэрсэн',
-      trend: 'Өнөөдөр',
+      gradient: "from-amber-500 to-yellow-500",
+      bgColor: "bg-amber-500/10",
+      iconColor: "text-amber-400",
+      description: "Нэвтэрсэн",
+      trend: "Өнөөдөр",
       trendUp: true,
     },
   ];
@@ -234,7 +247,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Modernized Animated Background with Gradients */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950">
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950">
         {/* Animated gradient orbs */}
         <motion.div
           className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 rounded-full blur-3xl"
@@ -244,7 +257,7 @@ export default function AdminDashboard() {
             scale: [1, 1.2, 1],
             rotate: [0, 90, 0],
           }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         />
         <motion.div
           className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-full blur-3xl"
@@ -254,7 +267,7 @@ export default function AdminDashboard() {
             scale: [1, 1.3, 1],
             rotate: [0, -90, 0],
           }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
         />
         <motion.div
           className="absolute top-1/2 left-1/2 w-96 h-96 bg-gradient-to-r from-emerald-600/15 to-teal-600/15 rounded-full blur-3xl"
@@ -263,7 +276,7 @@ export default function AdminDashboard() {
             y: [-80, 80, -80],
             scale: [1, 1.15, 1],
           }}
-          transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
         />
 
         {/* Floating particles with improved animation */}
@@ -276,10 +289,10 @@ export default function AdminDashboard() {
               top: `${pos.top}%`,
               background: `radial-gradient(circle, ${
                 i % 3 === 0
-                  ? 'rgba(59, 130, 246, 0.6)'
+                  ? "rgba(59, 130, 246, 0.6)"
                   : i % 3 === 1
-                    ? 'rgba(168, 85, 247, 0.6)'
-                    : 'rgba(16, 185, 129, 0.6)'
+                    ? "rgba(168, 85, 247, 0.6)"
+                    : "rgba(16, 185, 129, 0.6)"
               }, transparent)`,
             }}
             animate={{
@@ -291,7 +304,7 @@ export default function AdminDashboard() {
               duration: 4 + (i % 5),
               repeat: Infinity,
               delay: (i % 10) * 0.2,
-              ease: 'easeInOut',
+              ease: "easeInOut",
             }}
           />
         ))}
@@ -326,12 +339,13 @@ export default function AdminDashboard() {
               </h1>
               <p className="text-slate-300 flex items-center gap-2 text-sm sm:text-base">
                 <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                Сайн байна уу, <span className="font-semibold text-white">{user.name}</span>
+                Сайн байна уу,{" "}
+                <span className="font-semibold text-white">{user.name}</span>
                 <span className="hidden sm:inline text-slate-500">•</span>
                 <span className="hidden sm:inline text-slate-400">
-                  {new Date().toLocaleDateString('mn-MN', {
-                    month: 'long',
-                    day: 'numeric',
+                  {new Date().toLocaleDateString("mn-MN", {
+                    month: "long",
+                    day: "numeric",
                   })}
                 </span>
               </p>
@@ -359,8 +373,10 @@ export default function AdminDashboard() {
               >
                 <Card className="relative overflow-hidden bg-slate-900/60 backdrop-blur-xl border-slate-700/50 hover:border-slate-600/80 transition-all duration-300 shadow-xl hover:shadow-2xl">
                   {/* Gradient overlay on hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-                  
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
+                  />
+
                   <CardContent className="p-6 relative">
                     <div className="flex items-start justify-between mb-4">
                       <motion.div
@@ -372,7 +388,9 @@ export default function AdminDashboard() {
                       </motion.div>
                       <Badge
                         className={`${
-                          stat.trendUp ? 'bg-emerald-500/20 text-emerald-300' : 'bg-orange-500/20 text-orange-300'
+                          stat.trendUp
+                            ? "bg-emerald-500/20 text-emerald-300"
+                            : "bg-orange-500/20 text-orange-300"
                         } border-0 text-xs font-semibold`}
                       >
                         {stat.trend}
@@ -383,12 +401,19 @@ export default function AdminDashboard() {
                         className="text-4xl font-bold text-white mb-2"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        transition={{ delay: 0.3 + index * 0.1, type: 'spring' }}
+                        transition={{
+                          delay: 0.3 + index * 0.1,
+                          type: "spring",
+                        }}
                       >
                         {stat.value}
                       </motion.div>
-                      <p className="text-slate-400 text-sm mb-1">{stat.title}</p>
-                      <p className="text-slate-500 text-xs">{stat.description}</p>
+                      <p className="text-slate-400 text-sm mb-1">
+                        {stat.title}
+                      </p>
+                      <p className="text-slate-500 text-xs">
+                        {stat.description}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -397,76 +422,8 @@ export default function AdminDashboard() {
           })}
         </motion.div>
 
-        {/* Quick Actions with enhanced cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <Zap className="w-5 h-5 text-amber-400" />
-            <h2 className="text-2xl font-bold text-white">Түргэн үйлдэл</h2>
-          </div>
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
-            {quickActions.map((action, index) => {
-              const Icon = action.icon;
-              return (
-                <motion.div
-                  key={action.title}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + index * 0.1 }}
-                  whileHover={{ scale: 1.03, y: -5 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Link href={action.href} className="block">
-                    <Card className="group cursor-pointer bg-slate-900/60 backdrop-blur-xl border-slate-700/50 hover:border-slate-600/80 transition-all duration-300 shadow-xl hover:shadow-2xl overflow-hidden relative">
-                      {/* Animated gradient background */}
-                      <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-                      
-                      <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between mb-4">
-                          <motion.div
-                            className={`p-4 rounded-2xl ${action.bgColor} backdrop-blur-sm`}
-                            whileHover={{ rotate: 360 }}
-                            transition={{ duration: 0.6 }}
-                          >
-                            <Icon className={`w-7 h-7 ${action.iconColor}`} />
-                          </motion.div>
-                          <motion.div
-                            className="flex items-center gap-2"
-                            animate={{ x: [0, 5, 0] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                          >
-                            <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
-                          </motion.div>
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-400 transition-all mb-2">
-                            {action.title}
-                          </h3>
-                          <p className="text-slate-400 text-sm mb-3">
-                            {action.description}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Target className="w-4 h-4 text-slate-600" />
-                            <span className="text-xs text-slate-500 font-semibold">
-                              {action.count} Нэгж
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
-
         {/* Department Stats with progress bars */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -485,8 +442,7 @@ export default function AdminDashboard() {
                     .filter(([_, count]) => count > 0)
                     .sort((a, b) => b[1] - a[1])
                     .map(([dept, count], index) => {
-                      const percentage =
-                        (count / stats.totalUsers) * 100 || 0;
+                      const percentage = (count / stats.totalUsers) * 100 || 0;
                       return (
                         <motion.div
                           key={dept}
@@ -516,7 +472,7 @@ export default function AdminDashboard() {
                       );
                     })}
                   {Object.entries(stats.usersByDepartment).filter(
-                    ([_, count]) => count > 0
+                    ([_, count]) => count > 0,
                   ).length === 0 && (
                     <div className="text-center py-12">
                       <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -530,85 +486,6 @@ export default function AdminDashboard() {
             </Card>
           </motion.div>
 
-          {/* System Info with enhanced design */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            <Card className="bg-slate-900/60 backdrop-blur-xl border-slate-700/50 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-3">
-                  <BarChart3 className="w-6 h-6 text-emerald-400" />
-                  Системийн мэдээлэл
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-5 rounded-xl bg-slate-800/50 border border-slate-700/50 backdrop-blur-sm"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-slate-400 text-sm font-medium">
-                        Админ эрхтэй
-                      </p>
-                      <Award className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <p className="text-3xl font-bold text-white">
-                      {stats.adminUsers}
-                      <span className="text-sm font-normal text-slate-400 ml-2">
-                        хүн
-                      </span>
-                    </p>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-5 rounded-xl bg-slate-800/50 border border-slate-700/50 backdrop-blur-sm"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-slate-400 text-sm font-medium">
-                        Идэвхтэй хувь
-                      </p>
-                      <TrendingUp className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <p className="text-3xl font-bold text-emerald-400">
-                      {stats.totalUsers > 0
-                        ? Math.round(
-                            (stats.activeUsers / stats.totalUsers) * 100
-                          )
-                        : 0}
-                      %
-                    </p>
-                    <Progress
-                      value={
-                        stats.totalUsers > 0
-                          ? (stats.activeUsers / stats.totalUsers) * 100
-                          : 0
-                      }
-                      className="h-2 mt-3 bg-slate-800"
-                    />
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-5 rounded-xl bg-slate-800/50 border border-slate-700/50 backdrop-blur-sm"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-slate-400 text-sm font-medium">
-                        Хэлтсүүдийн тоо
-                      </p>
-                      <Building2 className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <p className="text-3xl font-bold text-white">
-                      {DEPARTMENTS.length}
-                    </p>
-                  </motion.div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
       </div>
     </div>

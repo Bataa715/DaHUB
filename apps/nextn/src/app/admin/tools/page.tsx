@@ -1,33 +1,33 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   CheckSquare,
   Dumbbell,
@@ -43,27 +43,29 @@ import {
   ArrowLeft,
   UserCheck,
   UserX,
-} from 'lucide-react';
-import Link from 'next/link';
-import { usersApi } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
-import { DEPARTMENTS } from '@/lib/constants';
-import { useAuth } from '@/contexts/AuthContext';
+  Dice6,
+  Table2,
+} from "lucide-react";
+import Link from "next/link";
+import { usersApi } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { DEPARTMENTS } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Fixed particle positions for SSR
 const PARTICLE_POSITIONS = [
-  { top: '10%', left: '5%', duration: 3.2 },
-  { top: '20%', left: '85%', duration: 4.1 },
-  { top: '35%', left: '15%', duration: 3.8 },
-  { top: '45%', left: '75%', duration: 4.5 },
-  { top: '55%', left: '25%', duration: 3.5 },
-  { top: '65%', left: '90%', duration: 4.2 },
-  { top: '75%', left: '10%', duration: 3.9 },
-  { top: '85%', left: '70%', duration: 4.0 },
-  { top: '15%', left: '50%', duration: 3.6 },
-  { top: '80%', left: '40%', duration: 4.3 },
-  { top: '30%', left: '95%', duration: 3.4 },
-  { top: '90%', left: '55%', duration: 4.4 },
+  { top: "10%", left: "5%", duration: 3.2 },
+  { top: "20%", left: "85%", duration: 4.1 },
+  { top: "35%", left: "15%", duration: 3.8 },
+  { top: "45%", left: "75%", duration: 4.5 },
+  { top: "55%", left: "25%", duration: 3.5 },
+  { top: "65%", left: "90%", duration: 4.2 },
+  { top: "75%", left: "10%", duration: 3.9 },
+  { top: "85%", left: "70%", duration: 4.0 },
+  { top: "15%", left: "50%", duration: 3.6 },
+  { top: "80%", left: "40%", duration: 4.3 },
+  { top: "30%", left: "95%", duration: 3.4 },
+  { top: "90%", left: "55%", duration: 4.4 },
 ];
 
 // Системд байгаа бүх хэрэгслүүд
@@ -78,20 +80,36 @@ interface Tool {
 
 const AVAILABLE_TOOLS: Tool[] = [
   {
-    id: 'todo',
-    name: 'Todo',
-    description: 'Хийх ажлын жагсаалт, даалгавар удирдах',
+    id: "todo",
+    name: "Todo",
+    description: "Хийх ажлын жагсаалт, даалгавар удирдах",
     icon: CheckSquare,
-    color: 'from-blue-500 to-cyan-500',
-    gradient: 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20',
+    color: "from-blue-500 to-cyan-500",
+    gradient: "bg-gradient-to-br from-blue-500/20 to-cyan-500/20",
   },
   {
-    id: 'fitness',
-    name: 'Fitness',
-    description: 'Биеийн тамирын бүртгэл, дасгал хөтлөх',
+    id: "fitness",
+    name: "Fitness",
+    description: "Биеийн тамирын бүртгэл, дасгал хөтлөх",
     icon: Dumbbell,
-    color: 'from-emerald-500 to-teal-500',
-    gradient: 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20',
+    color: "from-emerald-500 to-teal-500",
+    gradient: "bg-gradient-to-br from-emerald-500/20 to-teal-500/20",
+  },
+  {
+    id: "sanamsargui-tuuwer",
+    name: "Санамсаргүй түүвэр",
+    description: "Түүврийн хэмжээ тооцоолох, санамсаргүй сонгон авах хэрэгсэл",
+    icon: Dice6,
+    color: "from-violet-500 to-blue-500",
+    gradient: "bg-gradient-to-br from-violet-500/20 to-blue-500/20",
+  },
+  {
+    id: "pivot",
+    name: "Pivot & Түгвэр",
+    description: "Excel файлаас pivot хүснэгт болон давтамжийн хүснэгт үүсгэх",
+    icon: Table2,
+    color: "from-cyan-500 to-teal-500",
+    gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
   },
 ];
 
@@ -109,13 +127,18 @@ interface User {
 export default function AdminToolsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState('current');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [activeTab, setActiveTab] = useState("current");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Хэрэглэгчдийг татах
   useEffect(() => {
@@ -128,11 +151,11 @@ export default function AdminToolsPage() {
       const data = await usersApi.getAll();
       setUsers(data.filter((u: User) => !u.isAdmin));
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error("Error loading users:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Хэрэглэгчдийг татахад алдаа гарлаа',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Хэрэглэгчдийг татахад алдаа гарлаа",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -142,19 +165,19 @@ export default function AdminToolsPage() {
   // Tool сонгоход
   const handleToolSelect = (tool: Tool) => {
     setSelectedTool(tool);
-    setActiveTab('current');
+    setActiveTab("current");
     setSelectedUsers(new Set());
-    setSelectedDepartment('');
+    setSelectedDepartment("");
   };
 
   // Тухайн tool-д эрхтэй хэрэглэгчид
   const getUsersWithAccess = (toolId: string) => {
-    return users.filter(u => u.allowedTools?.includes(toolId));
+    return users.filter((u) => u.allowedTools?.includes(toolId));
   };
 
   // Тухайн tool-д эрхгүй хэрэглэгчид
   const getUsersWithoutAccess = (toolId: string) => {
-    return users.filter(u => !u.allowedTools?.includes(toolId));
+    return users.filter((u) => !u.allowedTools?.includes(toolId));
   };
 
   // Хэрэглэгч сонгох/болих
@@ -172,16 +195,16 @@ export default function AdminToolsPage() {
   const selectAllUsers = () => {
     if (!selectedTool) return;
     const usersWithoutAccess = getUsersWithoutAccess(selectedTool.id);
-    setSelectedUsers(new Set(usersWithoutAccess.map(u => u.id)));
+    setSelectedUsers(new Set(usersWithoutAccess.map((u) => u.id)));
   };
 
   // Хэлтсийн хэрэглэгчдийг сонгох
   const selectDepartmentUsers = (dept: string) => {
     if (!selectedTool) return;
     const deptUsers = getUsersWithoutAccess(selectedTool.id).filter(
-      u => u.department === dept
+      (u) => u.department === dept,
     );
-    setSelectedUsers(new Set(deptUsers.map(u => u.id)));
+    setSelectedUsers(new Set(deptUsers.map((u) => u.id)));
   };
 
   // Эрх олгох
@@ -190,8 +213,8 @@ export default function AdminToolsPage() {
 
     setIsSaving(true);
     try {
-      const promises = Array.from(selectedUsers).map(async userId => {
-        const user = users.find(u => u.id === userId);
+      const promises = Array.from(selectedUsers).map(async (userId) => {
+        const user = users.find((u) => u.id === userId);
         if (user) {
           const newTools = [...(user.allowedTools || []), selectedTool.id];
           await usersApi.updateTools(userId, newTools);
@@ -201,19 +224,19 @@ export default function AdminToolsPage() {
       await Promise.all(promises);
 
       toast({
-        title: 'Амжилттай',
+        title: "Амжилттай",
         description: `${selectedUsers.size} хэрэглэгчид ${selectedTool.name} эрх олголоо`,
       });
 
       await loadUsers();
       setSelectedUsers(new Set());
-      setActiveTab('current');
+      setActiveTab("current");
     } catch (error) {
-      console.error('Error granting access:', error);
+      console.error("Error granting access:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Эрх олгоход алдаа гарлаа',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Эрх олгоход алдаа гарлаа",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -225,38 +248,46 @@ export default function AdminToolsPage() {
     if (!selectedTool) return;
 
     try {
-      const user = users.find(u => u.id === userId);
+      const user = users.find((u) => u.id === userId);
       if (user) {
         const newTools = (user.allowedTools || []).filter(
-          t => t !== selectedTool.id
+          (t) => t !== selectedTool.id,
         );
         await usersApi.updateTools(userId, newTools);
 
         toast({
-          title: 'Амжилттай',
+          title: "Амжилттай",
           description: `${user.name}-с ${selectedTool.name} эрхийг хаслаа`,
         });
 
         await loadUsers();
       }
     } catch (error) {
-      console.error('Error revoking access:', error);
+      console.error("Error revoking access:", error);
       toast({
-        title: 'Алдаа',
-        description: 'Эрх хасахад алдаа гарлаа',
-        variant: 'destructive',
+        title: "Алдаа",
+        description: "Эрх хасахад алдаа гарлаа",
+        variant: "destructive",
       });
     }
   };
 
   // Нийт эрхийн статистик
   const totalUsersWithAnyTool = users.filter(
-    u => u.allowedTools?.length > 0
+    (u) => u.allowedTools?.length > 0,
   ).length;
   const totalPermissions = users.reduce(
     (acc, u) => acc + (u.allowedTools?.length || 0),
-    0
+    0,
   );
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
   if (!user?.isAdmin) {
     return (
@@ -296,7 +327,7 @@ export default function AdminToolsPage() {
           animate={{
             rotate: [0, 360],
           }}
-          transition={{ duration: 50, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
         />
       </div>
 
@@ -313,7 +344,7 @@ export default function AdminToolsPage() {
           transition={{
             duration: pos.duration,
             repeat: Infinity,
-            ease: 'easeInOut',
+            ease: "easeInOut",
           }}
         />
       ))}
@@ -364,28 +395,28 @@ export default function AdminToolsPage() {
         >
           {[
             {
-              label: 'Нийт хэрэглэгч',
+              label: "Нийт хэрэглэгч",
               value: users.length,
               icon: Users,
-              color: 'from-blue-500 to-cyan-500',
+              color: "from-blue-500 to-cyan-500",
             },
             {
-              label: 'Эрхтэй хэрэглэгч',
+              label: "Эрхтэй хэрэглэгч",
               value: totalUsersWithAnyTool,
               icon: UserCheck,
-              color: 'from-emerald-500 to-teal-500',
+              color: "from-emerald-500 to-teal-500",
             },
             {
-              label: 'Нийт эрх',
+              label: "Нийт эрх",
               value: totalPermissions,
               icon: Shield,
-              color: 'from-purple-500 to-pink-500',
+              color: "from-purple-500 to-pink-500",
             },
             {
-              label: 'Хэрэгсэл',
+              label: "Хэрэгсэл",
               value: AVAILABLE_TOOLS.length,
               icon: Wrench,
-              color: 'from-amber-500 to-orange-500',
+              color: "from-amber-500 to-orange-500",
             },
           ].map((stat, index) => (
             <motion.div
@@ -483,7 +514,7 @@ export default function AdminToolsPage() {
                           <span className="text-slate-300">
                             {users.length > 0
                               ? Math.round(
-                                  (usersWithAccess.length / users.length) * 100
+                                  (usersWithAccess.length / users.length) * 100,
                                 )
                               : 0}
                             %
@@ -497,7 +528,7 @@ export default function AdminToolsPage() {
                               width:
                                 users.length > 0
                                   ? `${(usersWithAccess.length / users.length) * 100}%`
-                                  : '0%',
+                                  : "0%",
                             }}
                             transition={{
                               duration: 1,
@@ -533,7 +564,7 @@ export default function AdminToolsPage() {
                     className={`p-4 rounded-2xl bg-gradient-to-br ${selectedTool.color}`}
                     initial={{ scale: 0.8, rotate: -10 }}
                     animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 200 }}
+                    transition={{ type: "spring", stiffness: 200 }}
                   >
                     <selectedTool.icon className="w-8 h-8 text-white" />
                   </motion.div>
@@ -588,7 +619,7 @@ export default function AdminToolsPage() {
                         <Button
                           variant="outline"
                           className="mt-4 border-slate-600 text-slate-300 hover:bg-slate-800"
-                          onClick={() => setActiveTab('grant')}
+                          onClick={() => setActiveTab("grant")}
                         >
                           <UserPlus className="w-4 h-4 mr-2" />
                           Эрх олгох
@@ -632,7 +663,7 @@ export default function AdminToolsPage() {
                                   Хасах
                                 </Button>
                               </motion.div>
-                            )
+                            ),
                           )}
                         </AnimatePresence>
                       </div>
@@ -674,7 +705,7 @@ export default function AdminToolsPage() {
                     {/* Department Select */}
                     <Select
                       value={selectedDepartment}
-                      onValueChange={value => {
+                      onValueChange={(value) => {
                         setSelectedDepartment(value);
                         selectDepartmentUsers(value);
                       }}
@@ -683,7 +714,7 @@ export default function AdminToolsPage() {
                         <SelectValue placeholder="Хэлтсээр сонгох..." />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700">
-                        {DEPARTMENTS.map(dept => (
+                        {DEPARTMENTS.map((dept) => (
                           <SelectItem
                             key={dept}
                             value={dept}
@@ -727,8 +758,8 @@ export default function AdminToolsPage() {
                                 transition={{ delay: index * 0.03 }}
                                 className={`flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all duration-200 ${
                                   selectedUsers.has(user.id)
-                                    ? 'bg-purple-500/20 border border-purple-500/50'
-                                    : 'bg-slate-800/50 border border-slate-700/50 hover:border-slate-600'
+                                    ? "bg-purple-500/20 border border-purple-500/50"
+                                    : "bg-slate-800/50 border border-slate-700/50 hover:border-slate-600"
                                 }`}
                                 onClick={() => toggleUserSelection(user.id)}
                               >
@@ -751,7 +782,7 @@ export default function AdminToolsPage() {
                                   </p>
                                 </div>
                               </motion.div>
-                            )
+                            ),
                           )}
                         </div>
                       )}

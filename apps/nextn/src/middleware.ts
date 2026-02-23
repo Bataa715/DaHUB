@@ -1,66 +1,63 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+﻿import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  const userCookie = request.cookies.get('user')?.value;
+// Public routes that don't require authentication
+const PUBLIC_ROUTES = ["/login", "/admin/login"];
+
+async function getTokenPayload(token: string | undefined) {
+  if (!token) return null;
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/admin/login'];
-  const isPublicRoute = publicRoutes.includes(pathname);
-
-  // Check if user is admin (securely)
-  let isAdmin = false;
-  if (userCookie && token) {
-    try {
-      const user = JSON.parse(userCookie);
-      isAdmin = user.isAdmin === true;
-    } catch (error) {
-      // Clear invalid cookies only if not on public routes
-      if (!isPublicRoute) {
-        const response = NextResponse.redirect(new URL('/login', request.url));
-        response.cookies.delete('token');
-        response.cookies.delete('user');
-        return response;
-      }
-    }
-  }
-
-  // Admin routes (excluding login)
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const isAdminRoute =
-    pathname.startsWith('/admin') && pathname !== '/admin/login';
+    pathname.startsWith("/admin") && pathname !== "/admin/login";
 
+  // Admin routes use adminToken; regular routes use token
+  const adminToken = request.cookies.get("adminToken")?.value;
+  const userToken = request.cookies.get("token")?.value;
+
+  const adminPayload = await getTokenPayload(adminToken);
+  const userPayload = await getTokenPayload(userToken);
+
+  const isAdminAuth =
+    !!adminPayload &&
+    (adminPayload["isAdmin"] === true || adminPayload["isAdmin"] === 1);
+  const isUserAuth = !!userPayload && !userPayload["isAdmin"];
+
+  //  Admin routes
   if (isAdminRoute) {
-    // Not logged in -> redirect to admin login
-    if (!token) {
-      return NextResponse.redirect(new URL('/admin/login', request.url));
-    }
-    // Logged in but not admin -> redirect to admin login (need admin account)
-    if (!isAdmin) {
-      // Clear cookies so they can login with admin account
+    if (!isAdminAuth) {
       const response = NextResponse.redirect(
-        new URL('/admin/login', request.url)
+        new URL("/admin/login", request.url),
       );
-      response.cookies.delete('token');
-      response.cookies.delete('user');
+      response.cookies.delete("adminToken");
+      response.cookies.delete("adminUser");
       return response;
     }
   }
 
-  // If user is not authenticated and trying to access protected route (non-admin)
-  if (!token && !isPublicRoute && !isAdminRoute) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  //  Protected non-admin routes
+  if (!isUserAuth && !isPublicRoute && !isAdminRoute) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // If user is authenticated and trying to access login pages
-  if (token) {
-    if (pathname === '/login') {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-    if (pathname === '/admin/login' && isAdmin) {
-      return NextResponse.redirect(new URL('/admin', request.url));
-    }
+  //  Redirect already-authenticated users away from login pages
+  if (pathname === "/login" && isUserAuth) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+  if (pathname === "/admin/login" && isAdminAuth) {
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   return NextResponse.next();
@@ -68,13 +65,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|images|sounds|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)).*)',
+    "/((?!_next/static|_next/image|favicon.ico|images|sounds|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)).*)",
   ],
 };

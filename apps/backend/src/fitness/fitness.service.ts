@@ -2,30 +2,34 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
-} from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+} from "@nestjs/common";
+import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import {
   CreateExerciseDto,
   CreateWorkoutLogDto,
   CreateBodyStatsDto,
-} from './dto/fitness.dto';
+} from "./dto/fitness.dto";
+import { randomUUID } from "crypto";
 
 @Injectable()
 export class FitnessService {
-  constructor(private database: DatabaseService) {}
+  constructor(private clickhouse: ClickHouseService) {}
 
-  private get db() {
-    return this.database.raw;
-  }
+  private async checkAccess(userId: string): Promise<boolean> {
+    const users = await this.clickhouse.query<any>(
+      "SELECT isAdmin, allowedTools FROM users WHERE id = {userId:String} LIMIT 1",
+      { userId },
+    );
 
-  private checkAccess(userId: string): boolean {
-    const user = this.db.prepare('SELECT isAdmin, allowedTools FROM users WHERE id = ?').get(userId) as any;
-    if (!user) return false;
+    if (users.length === 0) return false;
+    const user = users[0];
     if (user.isAdmin) return true;
 
     try {
-      const allowedTools = user.allowedTools ? JSON.parse(user.allowedTools) : [];
-      return allowedTools.includes('fitness');
+      const allowedTools = user.allowedTools
+        ? JSON.parse(user.allowedTools)
+        : [];
+      return allowedTools.includes("fitness");
     } catch {
       return false;
     }
@@ -34,154 +38,217 @@ export class FitnessService {
   // ============ EXERCISES ============
 
   async getExercises(userId: string) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    return this.db
-      .prepare('SELECT * FROM exercises WHERE userId = ? ORDER BY createdAt DESC')
-      .all(userId);
+    return await this.clickhouse.query<any>(
+      "SELECT * FROM exercises WHERE userId = {userId:String} ORDER BY createdAt DESC",
+      { userId },
+    );
   }
 
   async createExercise(userId: string, dto: CreateExerciseDto) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const id = this.database.uuid();
-    this.db
-      .prepare('INSERT INTO exercises (id, name, category, description, userId) VALUES (?, ?, ?, ?, ?)')
-      .run(id, dto.name, dto.category || null, dto.description || null, userId);
+    const id = randomUUID();
+    await this.clickhouse.insert("exercises", [
+      {
+        id,
+        name: dto.name,
+        category: dto.category || "",
+        description: dto.description || "",
+        userId,
+        createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+      },
+    ]);
 
-    return this.db.prepare('SELECT * FROM exercises WHERE id = ?').get(id);
+    const result = await this.clickhouse.query<any>(
+      "SELECT * FROM exercises WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    return result[0];
   }
 
   async deleteExercise(userId: string, exerciseId: string) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const exercise = this.db
-      .prepare('SELECT * FROM exercises WHERE id = ? AND userId = ?')
-      .get(exerciseId, userId);
+    const exercises = await this.clickhouse.query<any>(
+      "SELECT * FROM exercises WHERE id = {exerciseId:String} AND userId = {userId:String} LIMIT 1",
+      { exerciseId, userId },
+    );
 
-    if (!exercise) throw new NotFoundException('Дасгал олдсонгүй');
+    if (exercises.length === 0) throw new NotFoundException("Дасгал олдсонгүй");
 
-    this.db.prepare('DELETE FROM exercises WHERE id = ?').run(exerciseId);
-    return exercise;
+    await this.clickhouse.exec(
+      "ALTER TABLE exercises DELETE WHERE id = {exerciseId:String}",
+      { exerciseId },
+    );
+    return exercises[0];
   }
 
   // ============ WORKOUT LOGS ============
 
   async getWorkoutLogs(userId: string, limit = 100) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const logs = this.db
-      .prepare(
-        `SELECT wl.*, e.name as exerciseName, e.category as exerciseCategory
-         FROM workout_logs wl
-         LEFT JOIN exercises e ON wl.exerciseId = e.id
-         WHERE wl.userId = ?
-         ORDER BY wl.date DESC
-         LIMIT ?`
-      )
-      .all(userId, limit) as any[];
+    const logs = await this.clickhouse.query<any>(
+      `SELECT wl.*, e.name as exerciseName, e.category as exerciseCategory
+       FROM workout_logs wl
+       LEFT JOIN exercises e ON wl.exerciseId = e.id
+       WHERE wl.userId = {userId:String}
+       ORDER BY wl.date DESC
+       LIMIT {limit:UInt32}`,
+      { userId, limit },
+    );
 
-    return logs.map(log => ({
+    return logs.map((log) => ({
       ...log,
-      exercise: { id: log.exerciseId, name: log.exerciseName, category: log.exerciseCategory },
+      exercise: {
+        id: log.exerciseId,
+        name: log.exerciseName,
+        category: log.exerciseCategory,
+      },
     }));
   }
 
   async createWorkoutLog(userId: string, dto: CreateWorkoutLogDto) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const exercise = this.db
-      .prepare('SELECT * FROM exercises WHERE id = ? AND userId = ?')
-      .get(dto.exerciseId, userId);
+    const exercises = await this.clickhouse.query<any>(
+      "SELECT * FROM exercises WHERE id = {exerciseId:String} AND userId = {userId:String} LIMIT 1",
+      { exerciseId: dto.exerciseId, userId },
+    );
 
-    if (!exercise) throw new NotFoundException('Дасгал олдсонгүй');
+    if (exercises.length === 0) throw new NotFoundException("Дасгал олдсонгүй");
+    const exercise = exercises[0];
 
-    const id = this.database.uuid();
-    this.db
-      .prepare(
-        'INSERT INTO workout_logs (id, exerciseId, userId, sets, repetitions, weight, notes) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      )
-      .run(id, dto.exerciseId, userId, dto.sets || null, dto.repetitions || null, dto.weight || null, dto.notes || null);
+    const id = randomUUID();
+    await this.clickhouse.insert("workout_logs", [
+      {
+        id,
+        exerciseId: dto.exerciseId,
+        userId,
+        sets: dto.sets || 0,
+        repetitions: dto.repetitions || 0,
+        weight: dto.weight || 0,
+        notes: dto.notes || "",
+        date: new Date().toISOString().slice(0, 19).replace("T", " "),
+      },
+    ]);
 
-    const log = this.db.prepare('SELECT * FROM workout_logs WHERE id = ?').get(id) as any;
-    return { ...log, exercise };
+    const logs = await this.clickhouse.query<any>(
+      "SELECT * FROM workout_logs WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    return { ...logs[0], exercise };
   }
 
   async deleteWorkoutLog(userId: string, logId: string) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const log = this.db
-      .prepare('SELECT * FROM workout_logs WHERE id = ? AND userId = ?')
-      .get(logId, userId);
+    const logs = await this.clickhouse.query<any>(
+      "SELECT * FROM workout_logs WHERE id = {logId:String} AND userId = {userId:String} LIMIT 1",
+      { logId, userId },
+    );
 
-    if (!log) throw new NotFoundException('Бүртгэл олдсонгүй');
+    if (logs.length === 0) throw new NotFoundException("Бүртгэл олдсонгүй");
 
-    this.db.prepare('DELETE FROM workout_logs WHERE id = ?').run(logId);
-    return log;
+    await this.clickhouse.exec(
+      `ALTER TABLE workout_logs DELETE WHERE id = '${logId}'`,
+    );
+    return logs[0];
   }
 
   // ============ BODY STATS ============
 
   async getBodyStats(userId: string, limit = 30) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    return this.db
-      .prepare('SELECT * FROM body_stats WHERE userId = ? ORDER BY date DESC LIMIT ?')
-      .all(userId, limit);
+    return await this.clickhouse.query<any>(
+      "SELECT * FROM body_stats WHERE userId = {userId:String} ORDER BY date DESC LIMIT {limit:UInt32}",
+      { userId, limit },
+    );
   }
 
   async createBodyStats(userId: string, dto: CreateBodyStatsDto) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const id = this.database.uuid();
-    this.db
-      .prepare('INSERT INTO body_stats (id, userId, weight, height) VALUES (?, ?, ?, ?)')
-      .run(id, userId, dto.weight, dto.height);
+    const id = randomUUID();
+    await this.clickhouse.insert("body_stats", [
+      {
+        id,
+        userId,
+        weight: dto.weight,
+        height: dto.height,
+        date: new Date().toISOString().slice(0, 19).replace("T", " "),
+      },
+    ]);
 
-    return this.db.prepare('SELECT * FROM body_stats WHERE id = ?').get(id);
+    const result = await this.clickhouse.query<any>(
+      "SELECT * FROM body_stats WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    return result[0];
   }
 
   async deleteBodyStats(userId: string, statsId: string) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const stats = this.db
-      .prepare('SELECT * FROM body_stats WHERE id = ? AND userId = ?')
-      .get(statsId, userId);
+    const stats = await this.clickhouse.query<any>(
+      "SELECT * FROM body_stats WHERE id = {statsId:String} AND userId = {userId:String} LIMIT 1",
+      { statsId, userId },
+    );
 
-    if (!stats) throw new NotFoundException('Бүртгэл олдсонгүй');
+    if (stats.length === 0) throw new NotFoundException("Бүртгэл олдсонгүй");
 
-    this.db.prepare('DELETE FROM body_stats WHERE id = ?').run(statsId);
-    return stats;
+    await this.clickhouse.exec(
+      `ALTER TABLE body_stats DELETE WHERE id = '${statsId}'`,
+    );
+    return stats[0];
   }
 
   // ============ DASHBOARD DATA ============
 
   async getDashboardData(userId: string) {
-    if (!this.checkAccess(userId)) throw new ForbiddenException('Эрх хүрэхгүй байна');
+    if (!(await this.checkAccess(userId)))
+      throw new ForbiddenException("Эрх хүрэхгүй байна");
 
-    const exercises = this.db
-      .prepare('SELECT * FROM exercises WHERE userId = ? ORDER BY createdAt DESC')
-      .all(userId);
+    const exercises = await this.clickhouse.query<any>(
+      "SELECT * FROM exercises WHERE userId = {userId:String} ORDER BY createdAt DESC",
+      { userId },
+    );
 
-    const workoutLogsRaw = this.db
-      .prepare(
-        `SELECT wl.*, e.name as exerciseName, e.category as exerciseCategory
-         FROM workout_logs wl
-         LEFT JOIN exercises e ON wl.exerciseId = e.id
-         WHERE wl.userId = ?
-         ORDER BY wl.date DESC
-         LIMIT 100`
-      )
-      .all(userId) as any[];
+    const workoutLogsRaw = await this.clickhouse.query<any>(
+      `SELECT wl.*, e.name as exerciseName, e.category as exerciseCategory
+       FROM workout_logs wl
+       LEFT JOIN exercises e ON wl.exerciseId = e.id
+       WHERE wl.userId = {userId:String}
+       ORDER BY wl.date DESC
+       LIMIT 100`,
+      { userId },
+    );
 
-    const workoutLogs = workoutLogsRaw.map(log => ({
+    const workoutLogs = workoutLogsRaw.map((log) => ({
       ...log,
-      exercise: { id: log.exerciseId, name: log.exerciseName, category: log.exerciseCategory },
+      exercise: {
+        id: log.exerciseId,
+        name: log.exerciseName,
+        category: log.exerciseCategory,
+      },
     }));
 
-    const bodyStats = this.db
-      .prepare('SELECT * FROM body_stats WHERE userId = ? ORDER BY date DESC LIMIT 30')
-      .all(userId);
+    const bodyStats = await this.clickhouse.query<any>(
+      "SELECT * FROM body_stats WHERE userId = {userId:String} ORDER BY date DESC LIMIT 30",
+      { userId },
+    );
 
     return { exercises, workoutLogs, bodyStats };
   }
