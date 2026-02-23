@@ -17,15 +17,37 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 
 const BASE_NAV = [
-  { href: "/admin", label: "Самбар", icon: LayoutDashboard, exact: true, superOnly: false },
+  {
+    href: "/admin",
+    label: "Самбар",
+    icon: LayoutDashboard,
+    exact: true,
+    superOnly: false,
+  },
   { href: "/admin/users", label: "Хэрэглэгчид", icon: Users, superOnly: false },
-  { href: "/admin/departments", label: "Хэлтсүүд", icon: Building2, superOnly: false },
+  {
+    href: "/admin/departments",
+    label: "Хэлтсүүд",
+    icon: Building2,
+    superOnly: false,
+  },
   { href: "/admin/news", label: "Мэдээ", icon: Newspaper, superOnly: false },
   { href: "/admin/tools", label: "Хэрэгслүүд", icon: Wrench, superOnly: false },
-  { href: "/admin/admins", label: "Админ удирдлага", icon: ShieldCheck, superOnly: true },
+  {
+    href: "/admin/admins",
+    label: "Админ удирдлага",
+    icon: ShieldCheck,
+    superOnly: true,
+  },
 ];
 
-function AdminSidebar({ pathname, isSuperAdmin }: { pathname: string; isSuperAdmin: boolean }) {
+function AdminSidebar({
+  pathname,
+  isSuperAdmin,
+}: {
+  pathname: string;
+  isSuperAdmin: boolean;
+}) {
   const nav = BASE_NAV.filter((item) => !item.superOnly || isSuperAdmin);
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-slate-900/80 backdrop-blur-xl border-r border-slate-700/50 min-h-screen sticky top-0 z-30">
@@ -36,7 +58,9 @@ function AdminSidebar({ pathname, isSuperAdmin }: { pathname: string; isSuperAdm
         </div>
         <div>
           <p className="text-xs text-slate-500 leading-none mb-0.5">DaHUB</p>
-          <p className="text-sm font-bold text-white leading-none">Admin Panel</p>
+          <p className="text-sm font-bold text-white leading-none">
+            Admin Panel
+          </p>
         </div>
       </div>
 
@@ -57,14 +81,18 @@ function AdminSidebar({ pathname, isSuperAdmin }: { pathname: string; isSuperAdm
                     : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                 } ${item.superOnly ? "border border-amber-500/10" : ""}`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${active ? "text-blue-400" : item.superOnly ? "text-amber-400" : ""}`} />
+                <Icon
+                  className={`w-4 h-4 shrink-0 ${active ? "text-blue-400" : item.superOnly ? "text-amber-400" : ""}`}
+                />
                 <span className="flex-1">{item.label}</span>
                 {item.superOnly && !active && (
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/20">
                     SA
                   </span>
                 )}
-                {active && <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                {active && (
+                  <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                )}
               </motion.div>
             </Link>
           );
@@ -79,7 +107,11 @@ function AdminSidebar({ pathname, isSuperAdmin }: { pathname: string; isSuperAdm
   );
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -94,10 +126,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen">
-      <AdminSidebar pathname={pathname} isSuperAdmin={mounted ? !!user?.isSuperAdmin : false} />
-      <div className="flex-1 min-w-0">
-        {children}
-      </div>
+      <AdminSidebar
+        pathname={pathname}
+        isSuperAdmin={mounted ? !!user?.isSuperAdmin : false}
+      />
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
 }

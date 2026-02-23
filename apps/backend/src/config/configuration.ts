@@ -14,7 +14,10 @@ export default registerAs("app", () => {
   }
 
   // Parse CORS origins — root .env дахь CORS_ORIGINS-с унших
-  const corsOrigins = process.env.CORS_ORIGINS?.split(",") || ["http://localhost:9002"];
+  if (!process.env.CORS_ORIGINS) {
+    throw new Error("CORS_ORIGINS environment variable is required");
+  }
+  const corsOrigins = process.env.CORS_ORIGINS.split(",").map((s) => s.trim());
 
   // Validate port
   const port = parseInt(process.env.PORT || "3001", 10);
@@ -30,7 +33,11 @@ export default registerAs("app", () => {
 
     // ClickHouse configuration
     clickhouse: {
-      host: process.env.CLICKHOUSE_HOST || "http://localhost:8123",
+      host: (() => {
+        if (!process.env.CLICKHOUSE_HOST)
+          throw new Error("CLICKHOUSE_HOST environment variable is required");
+        return process.env.CLICKHOUSE_HOST;
+      })(),
       user: process.env.CLICKHOUSE_USER || "default",
       password: process.env.CLICKHOUSE_PASSWORD || "",
       database: process.env.CLICKHOUSE_DATABASE || "audit_db",

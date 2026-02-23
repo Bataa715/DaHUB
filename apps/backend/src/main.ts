@@ -17,9 +17,10 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   // Enable CORS with strict validation
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(",")
-    : ["http://localhost:9002"];
+  if (!process.env.CORS_ORIGINS) {
+    throw new Error("CORS_ORIGINS environment variable is required");
+  }
+  const corsOrigins = process.env.CORS_ORIGINS.split(",").map((s) => s.trim());
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -79,9 +80,8 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  logger.log(`🚀 Backend сервер ${port} порт дээр ажиллаж эхэллээ`);
-  logger.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
-  logger.log(`🔒 Security: SQL Injection protection enabled`);
-  logger.log(`⚡ Environment: ${process.env.NODE_ENV || "development"}`);
+  logger.log(` Backend сервер ${port} порт дээр ажиллаж эхэллээ`);
+  logger.log(` Security: SQL Injection protection enabled`);
+  logger.log(` Environment: ${process.env.NODE_ENV || "development"}`);
 }
 bootstrap();

@@ -31,15 +31,23 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 export const dynamic = "force-dynamic";
 
 const PARTICLES = [
-  { left: 12, top: 18 }, { left: 88, top: 8 },  { left: 44, top: 82 },
-  { left: 72, top: 34 }, { left: 22, top: 58 }, { left: 91, top: 72 },
-  { left: 8,  top: 92 }, { left: 56, top: 14 }, { left: 35, top: 48 },
-  { left: 78, top: 62 }, { left: 4,  top: 38 }, { left: 62, top: 96 },
+  { left: 12, top: 18 },
+  { left: 88, top: 8 },
+  { left: 44, top: 82 },
+  { left: 72, top: 34 },
+  { left: 22, top: 58 },
+  { left: 91, top: 72 },
+  { left: 8, top: 92 },
+  { left: 56, top: 14 },
+  { left: 35, top: 48 },
+  { left: 78, top: 62 },
+  { left: 4, top: 38 },
+  { left: 62, top: 96 },
 ];
 
 const formSchema = z.object({
@@ -113,9 +121,10 @@ export default function AdminLoginPage() {
   return (
     <div className="h-screen flex overflow-hidden bg-slate-950">
       {/* ── LEFT PANEL ── */}
-      <div className="hidden lg:flex lg:w-[52%] relative flex-col items-center justify-center overflow-hidden
-                      bg-gradient-to-br from-slate-900 via-blue-950/60 to-slate-900">
-
+      <div
+        className="hidden lg:flex lg:w-[52%] relative flex-col items-center justify-center overflow-hidden
+                      bg-gradient-to-br from-slate-900 via-blue-950/60 to-slate-900"
+      >
         {/* Mesh glow */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-32 -left-32 w-[480px] h-[480px] bg-blue-600/18 rounded-full blur-3xl" />
@@ -140,7 +149,11 @@ export default function AdminLoginPage() {
             className="absolute w-1.5 h-1.5 rounded-full bg-blue-400/50"
             style={{ left: `${p.left}%`, top: `${p.top}%` }}
             animate={{ y: [0, -14, 0], opacity: [0.35, 0.75, 0.35] }}
-            transition={{ duration: 3 + (i % 3), repeat: Infinity, delay: i * 0.25 }}
+            transition={{
+              duration: 3 + (i % 3),
+              repeat: Infinity,
+              delay: i * 0.25,
+            }}
           />
         ))}
 
@@ -178,7 +191,8 @@ export default function AdminLoginPage() {
             transition={{ delay: 0.45 }}
             className="text-3xl font-black text-white leading-tight mb-4"
           >
-            DaHUB<br />
+            DaHUB
+            <br />
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
               Internal Audit
             </span>
@@ -190,8 +204,8 @@ export default function AdminLoginPage() {
             transition={{ delay: 0.55 }}
             className="text-sm text-slate-400 leading-relaxed"
           >
-            Зөвхөн админ эрхтэй хэрэглэгчид нэвтрэх боломжтой.
-            Таны мэдээлэл хамгаалагдсан орчинд ажиллана.
+            Зөвхөн админ эрхтэй хэрэглэгчид нэвтрэх боломжтой. Таны мэдээлэл
+            хамгаалагдсан орчинд ажиллана.
           </motion.p>
 
           {/* Feature tags */}
@@ -201,7 +215,12 @@ export default function AdminLoginPage() {
             transition={{ delay: 0.65 }}
             className="flex flex-wrap justify-center gap-2 mt-6"
           >
-            {["Хэрэглэгч удирдлага", "Хэлтэс тохиргоо", "Мэдээ хариуцах", "Тайлан"].map((t) => (
+            {[
+              "Хэрэглэгч удирдлага",
+              "Хэлтэс тохиргоо",
+              "Мэдээ хариуцах",
+              "Тайлан",
+            ].map((t) => (
               <span
                 key={t}
                 className="text-[11px] px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20"
@@ -220,16 +239,25 @@ export default function AdminLoginPage() {
           className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3"
         >
           <div className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center">
-            <Image src="/golomt.jpg" alt="Golomt" width={24} height={24} className="rounded object-contain" />
+            <Image
+              src="/golomt.jpg"
+              alt="Golomt"
+              width={24}
+              height={24}
+              className="rounded object-contain"
+            />
           </div>
-          <span className="text-xs text-slate-500">Голомт Банк — Дотоод аудит</span>
+          <span className="text-xs text-slate-500">
+            Голомт Банк — Дотоод аудит
+          </span>
         </motion.div>
       </div>
 
       {/* ── RIGHT PANEL ── */}
-      <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden
-                      bg-slate-950 px-6 sm:px-12">
-
+      <div
+        className="flex-1 flex flex-col items-center justify-center relative overflow-hidden
+                      bg-slate-950 px-6 sm:px-12"
+      >
         {/* Subtle glow top-right */}
         <div className="absolute top-0 right-0 w-72 h-72 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -255,20 +283,25 @@ export default function AdminLoginPage() {
           <div className="absolute -inset-1 bg-gradient-to-br from-blue-600/15 via-indigo-600/10 to-transparent rounded-3xl blur-xl" />
 
           <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-3xl p-8 shadow-2xl">
-
             {/* Header */}
             <div className="mb-7">
               <p className="text-xs font-semibold tracking-widest text-blue-400/70 uppercase mb-1.5">
                 Admin · Нэвтрэх
               </p>
-              <h1 className="text-2xl font-extrabold text-white">Сайн байна уу 👋</h1>
-              <p className="text-slate-400 text-sm mt-1">Админы мэдээллээ оруулна уу</p>
+              <h1 className="text-2xl font-extrabold text-white">
+                Сайн байна уу 👋
+              </h1>
+              <p className="text-slate-400 text-sm mt-1">
+                Админы мэдээллээ оруулна уу
+              </p>
             </div>
 
             {/* Form */}
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-5"
+              >
                 {/* User ID */}
                 <motion.div
                   initial={{ opacity: 0, x: -16 }}
@@ -298,7 +331,8 @@ export default function AdminLoginPage() {
                                 searchAdminUsers(e.target.value);
                               }}
                               onFocus={() => {
-                                if (userSuggestions.length > 0) setShowSuggestions(true);
+                                if (userSuggestions.length > 0)
+                                  setShowSuggestions(true);
                               }}
                               autoComplete="off"
                             />
@@ -337,20 +371,26 @@ export default function AdminLoginPage() {
                               }}
                               className="w-full px-4 py-3 text-left hover:bg-blue-500/10 transition-colors flex items-center gap-3"
                             >
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600
-                                              flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                              <div
+                                className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600
+                                              flex items-center justify-center text-white text-sm font-semibold shrink-0"
+                              >
                                 {user.name.charAt(0)}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                  <p className="text-sm font-medium text-white truncate">{user.name}</p>
+                                  <p className="text-sm font-medium text-white truncate">
+                                    {user.name}
+                                  </p>
                                   <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                                 </div>
                                 <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                                   <span className="font-mono bg-slate-700/60 px-1.5 py-0.5 rounded text-[10px]">
                                     {user.userId}
                                   </span>
-                                  <span className="truncate">{user.department}</span>
+                                  <span className="truncate">
+                                    {user.department}
+                                  </span>
                                 </div>
                               </div>
                             </button>
@@ -392,7 +432,11 @@ export default function AdminLoginPage() {
                               onClick={() => setShowPassword(!showPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                             >
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              {showPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
                             </button>
                           </div>
                         </FormControl>

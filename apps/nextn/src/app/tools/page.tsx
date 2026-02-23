@@ -15,6 +15,7 @@ import {
   Dice6,
   Table2,
   Sparkles,
+  FileText,
 } from "lucide-react";
 
 interface Tool {
@@ -70,6 +71,17 @@ const allTools: Tool[] = [
     gradient: "from-cyan-500 to-blue-500",
     glow: "shadow-cyan-500/20 group-hover:shadow-cyan-500/40",
     tag: "Analysis",
+  },
+  {
+    id: "report",
+    title: "Аудитын тайлан",
+    description:
+      "Аудитын тайлан бэлтгэж Word (.docx) файлаар татаж авах хэрэгсэл",
+    icon: FileText,
+    href: "/tools/report",
+    gradient: "from-blue-500 to-indigo-500",
+    glow: "shadow-blue-500/20 group-hover:shadow-blue-500/40",
+    tag: "Audit",
   },
 ];
 

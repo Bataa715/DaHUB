@@ -57,10 +57,10 @@ interface News {
 const CATEGORIES = ["Ерөнхий", "Мэдэгдэл", "Үйл явдал", "Танилцуулга"];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "Ерөнхий":      "bg-slate-500/20 text-slate-300 border-slate-500/30",
-  "Мэдэгдэл":     "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  "Үйл явдал":    "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "Танилцуулга":  "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  Ерөнхий: "bg-slate-500/20 text-slate-300 border-slate-500/30",
+  Мэдэгдэл: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  "Үйл явдал": "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  Танилцуулга: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
 };
 
 const empty = {
@@ -84,7 +84,9 @@ export default function AdminNewsPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => { fetchNews(); }, []);
+  useEffect(() => {
+    fetchNews();
+  }, []);
 
   useEffect(() => {
     let f = [...news];
@@ -92,7 +94,9 @@ export default function AdminNewsPage() {
     if (search) {
       const q = search.toLowerCase();
       f = f.filter(
-        (n) => n.title.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
+        (n) =>
+          n.title.toLowerCase().includes(q) ||
+          n.category.toLowerCase().includes(q),
       );
     }
     setFiltered(f);
@@ -104,7 +108,11 @@ export default function AdminNewsPage() {
       const r = await api.get("/news");
       setNews(r.data);
     } catch {
-      toast({ title: "Алдаа", description: "Мэдээ татахад алдаа гарлаа", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Мэдээ татахад алдаа гарлаа",
+        variant: "destructive",
+      });
     } finally {
       setPageLoading(false);
     }
@@ -144,7 +152,11 @@ export default function AdminNewsPage() {
       setSheetOpen(false);
       fetchNews();
     } catch {
-      toast({ title: "Алдаа", description: "Хадгалахад алдаа гарлаа", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хадгалахад алдаа гарлаа",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -157,7 +169,11 @@ export default function AdminNewsPage() {
       toast({ title: "Амжилттай", description: "Мэдээг устгалаа" });
       fetchNews();
     } catch {
-      toast({ title: "Алдаа", description: "Устгахад алдаа гарлаа", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Устгахад алдаа гарлаа",
+        variant: "destructive",
+      });
     }
   };
 
@@ -166,12 +182,20 @@ export default function AdminNewsPage() {
       await api.patch(`/news/${id}/toggle-publish`);
       fetchNews();
     } catch {
-      toast({ title: "Алдаа", description: "Статус өөрчлөхөд алдаа гарлаа", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Статус өөрчлөхөд алдаа гарлаа",
+        variant: "destructive",
+      });
     }
   };
 
   const fmt = (d: string) =>
-    new Date(d).toLocaleDateString("mn-MN", { year: "numeric", month: "short", day: "numeric" });
+    new Date(d).toLocaleDateString("mn-MN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
 
   const published = news.filter((n) => n.isPublished === 1).length;
 
@@ -184,9 +208,12 @@ export default function AdminNewsPage() {
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto px-5 sm:px-8 py-10">
-
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-xl shadow-blue-500/30">
@@ -196,7 +223,9 @@ export default function AdminNewsPage() {
                 <p className="text-xs text-blue-400/80 flex items-center gap-1 mb-0.5">
                   <Sparkles className="w-3 h-3" /> Мэдээ удирдлага
                 </p>
-                <h1 className="text-2xl font-extrabold text-white">Мэдээнүүд</h1>
+                <h1 className="text-2xl font-extrabold text-white">
+                  Мэдээнүүд
+                </h1>
               </div>
             </div>
             <Button
@@ -216,11 +245,29 @@ export default function AdminNewsPage() {
           className="grid grid-cols-3 gap-4 mb-7"
         >
           {[
-            { icon: <FileText className="w-4 h-4 text-blue-400" />, label: "Нийт", value: news.length, color: "text-blue-400" },
-            { icon: <Globe className="w-4 h-4 text-emerald-400" />, label: "Нийтэлсэн", value: published, color: "text-emerald-400" },
-            { icon: <TrendingUp className="w-4 h-4 text-amber-400" />, label: "Нийт үзэлт", value: news.reduce((s, n) => s + (n.views || 0), 0), color: "text-amber-400" },
+            {
+              icon: <FileText className="w-4 h-4 text-blue-400" />,
+              label: "Нийт",
+              value: news.length,
+              color: "text-blue-400",
+            },
+            {
+              icon: <Globe className="w-4 h-4 text-emerald-400" />,
+              label: "Нийтэлсэн",
+              value: published,
+              color: "text-emerald-400",
+            },
+            {
+              icon: <TrendingUp className="w-4 h-4 text-amber-400" />,
+              label: "Нийт үзэлт",
+              value: news.reduce((s, n) => s + (n.views || 0), 0),
+              color: "text-amber-400",
+            },
           ].map((s, i) => (
-            <div key={i} className="rounded-2xl bg-slate-800/50 border border-slate-700/50 px-5 py-4 flex items-center justify-between">
+            <div
+              key={i}
+              className="rounded-2xl bg-slate-800/50 border border-slate-700/50 px-5 py-4 flex items-center justify-between"
+            >
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 {s.icon} {s.label}
               </div>
@@ -251,9 +298,13 @@ export default function AdminNewsPage() {
               <SelectValue placeholder="Ангилал" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white">Бүх ангилал</SelectItem>
+              <SelectItem value="all" className="text-white">
+                Бүх ангилал
+              </SelectItem>
               {CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c} className="text-white">{c}</SelectItem>
+                <SelectItem key={c} value={c} className="text-white">
+                  {c}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -272,7 +323,12 @@ export default function AdminNewsPage() {
           >
             <Newspaper className="w-12 h-12 text-slate-600" />
             <p className="text-sm">Мэдээ олдсонгүй</p>
-            <Button variant="ghost" size="sm" onClick={openCreate} className="text-blue-400 hover:text-blue-300">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={openCreate}
+              className="text-blue-400 hover:text-blue-300"
+            >
               <Plus className="w-3.5 h-3.5 mr-1" /> Шинэ мэдээ нэмэх
             </Button>
           </motion.div>
@@ -292,7 +348,11 @@ export default function AdminNewsPage() {
                   <div className="mt-1 shrink-0">
                     <button
                       onClick={() => togglePublish(item.id)}
-                      title={item.isPublished === 1 ? "Нийтэлсэн  дарж нуух" : "Нуусан  дарж нийтлэх"}
+                      title={
+                        item.isPublished === 1
+                          ? "Нийтэлсэн  дарж нуух"
+                          : "Нуусан  дарж нийтлэх"
+                      }
                       className={`w-3 h-3 rounded-full transition-all ${
                         item.isPublished === 1
                           ? "bg-emerald-400 shadow-lg shadow-emerald-400/40"
@@ -304,7 +364,9 @@ export default function AdminNewsPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-2 flex-wrap mb-1.5">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[item.category] || CATEGORY_COLORS["Ерөнхий"]}`}>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[item.category] || CATEGORY_COLORS["Ерөнхий"]}`}
+                      >
                         {item.category}
                       </span>
                       {item.isPublished !== 1 && (
@@ -336,7 +398,11 @@ export default function AdminNewsPage() {
                           : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
                       }`}
                     >
-                      {item.isPublished === 1 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {item.isPublished === 1 ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                     <button
                       onClick={() => openEdit(item)}
@@ -366,7 +432,11 @@ export default function AdminNewsPage() {
         >
           <SheetHeader className="mb-6">
             <SheetTitle className="text-white text-xl flex items-center gap-2">
-              {isEditing ? <Edit className="w-5 h-5 text-blue-400" /> : <Plus className="w-5 h-5 text-emerald-400" />}
+              {isEditing ? (
+                <Edit className="w-5 h-5 text-blue-400" />
+              ) : (
+                <Plus className="w-5 h-5 text-emerald-400" />
+              )}
               {isEditing ? "Мэдээ засах" : "Шинэ мэдээ үүсгэх"}
             </SheetTitle>
             <SheetDescription className="text-slate-400">
@@ -390,13 +460,18 @@ export default function AdminNewsPage() {
             {/* Category */}
             <div className="space-y-2">
               <Label className="text-slate-300 text-sm">Ангилал</Label>
-              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+              <Select
+                value={form.category}
+                onValueChange={(v) => setForm({ ...form, category: v })}
+              >
                 <SelectTrigger className="bg-slate-800/60 border-slate-700 text-white rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-700">
                   {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c} className="text-white">{c}</SelectItem>
+                    <SelectItem key={c} value={c} className="text-white">
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -424,14 +499,18 @@ export default function AdminNewsPage() {
                 placeholder="Мэдээний агуулга..."
                 className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 rounded-xl font-mono text-sm resize-none focus:border-blue-500"
               />
-              <p className="text-xs text-slate-500">HTML форматаар бичиж болно</p>
+              <p className="text-xs text-slate-500">
+                HTML форматаар бичиж болно
+              </p>
             </div>
 
             {/* Publish toggle */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
               <div>
                 <p className="text-sm font-medium text-white">Шууд нийтлэх</p>
-                <p className="text-xs text-slate-400">Идэвхжүүлбэл хэрэглэгчид харагдана</p>
+                <p className="text-xs text-slate-400">
+                  Идэвхжүүлбэл хэрэглэгчид харагдана
+                </p>
               </div>
               <Switch
                 checked={form.isPublished}
@@ -455,8 +534,15 @@ export default function AdminNewsPage() {
                 className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0 rounded-xl shadow-lg shadow-blue-500/20"
               >
                 {saving ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Хадгалж байна...</>
-                ) : isEditing ? "Засах" : "Үүсгэх"}
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Хадгалж
+                    байна...
+                  </>
+                ) : isEditing ? (
+                  "Засах"
+                ) : (
+                  "Үүсгэх"
+                )}
               </Button>
             </div>
           </form>

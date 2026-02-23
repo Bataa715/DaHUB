@@ -78,10 +78,10 @@ export class UsersService {
 
   async setAdminRole(id: string, isAdmin: boolean, isSuperAdmin: boolean) {
     const users = await this.clickhouse.query<any>(
-      'SELECT id FROM users WHERE id = {id:String} LIMIT 1',
+      "SELECT id FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
-    if (users.length === 0) throw new NotFoundException('Хэрэглэгч олдсонгүй');
+    if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
 
     await this.clickhouse.exec(
       `ALTER TABLE users UPDATE isAdmin = {isAdmin:UInt8}, isSuperAdmin = {isSuperAdmin:UInt8}, updatedAt = {updatedAt:String} WHERE id = {id:String}`,
@@ -89,10 +89,10 @@ export class UsersService {
         id,
         isAdmin: isAdmin ? 1 : 0,
         isSuperAdmin: isSuperAdmin ? 1 : 0,
-        updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        updatedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
       },
     );
-    return { message: 'Амжилттай', id, isAdmin, isSuperAdmin };
+    return { message: "Амжилттай", id, isAdmin, isSuperAdmin };
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {

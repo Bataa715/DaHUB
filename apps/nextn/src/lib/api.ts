@@ -1,7 +1,12 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL environment variable is required. Set it in apps/nextn/.env.local",
+  );
+}
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -190,12 +195,15 @@ export const usersApi = {
   },
 
   getAdmins: async () => {
-    const response = await api.get('/users/admins');
+    const response = await api.get("/users/admins");
     return response.data;
   },
 
   setAdminRole: async (id: string, isAdmin: boolean, isSuperAdmin: boolean) => {
-    const response = await api.patch(`/users/${id}/admin-role`, { isAdmin, isSuperAdmin });
+    const response = await api.patch(`/users/${id}/admin-role`, {
+      isAdmin,
+      isSuperAdmin,
+    });
     return response.data;
   },
 };
@@ -308,5 +316,14 @@ export const fitnessApi = {
   deleteBodyStats: async (id: string) => {
     const response = await api.delete(`/fitness/body-stats/${id}`);
     return response.data;
+  },
+};
+
+export const reportApi = {
+  generate: async (data: object): Promise<Blob> => {
+    const response = await api.post("/report/generate", data, {
+      responseType: "blob",
+    });
+    return response.data as Blob;
   },
 };

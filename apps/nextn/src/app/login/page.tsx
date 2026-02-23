@@ -53,7 +53,7 @@ import {
 import Image from "next/image";
 import { DEPARTMENTS, DEPARTMENT_POSITIONS } from "@/lib/constants";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 export const dynamic = "force-dynamic";
 

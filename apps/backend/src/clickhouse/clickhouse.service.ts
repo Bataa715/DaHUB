@@ -12,7 +12,10 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ClickHouseService.name);
 
   async onModuleInit() {
-    const host = process.env.CLICKHOUSE_HOST || "http://localhost:8123";
+    if (!process.env.CLICKHOUSE_HOST) {
+      throw new Error("CLICKHOUSE_HOST environment variable is required");
+    }
+    const host = process.env.CLICKHOUSE_HOST;
     const username = process.env.CLICKHOUSE_USER || "default";
     const password = process.env.CLICKHOUSE_PASSWORD || "";
     const database = process.env.CLICKHOUSE_DATABASE || "audit_db";

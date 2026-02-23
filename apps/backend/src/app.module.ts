@@ -8,6 +8,7 @@ import { DepartmentsModule } from "./departments/departments.module";
 import { FitnessModule } from "./fitness/fitness.module";
 import { NewsModule } from "./news/news.module";
 import { AuditLogModule } from "./audit/audit-log.module";
+import { ReportModule } from "./report/report.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 
@@ -35,6 +36,7 @@ import configuration from "./config/configuration";
     DepartmentsModule,
     FitnessModule,
     NewsModule,
+    ReportModule,
   ],
   controllers: [HealthController],
 })

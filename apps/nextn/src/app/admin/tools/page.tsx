@@ -45,6 +45,7 @@ import {
   UserX,
   Dice6,
   Table2,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -110,6 +111,14 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: Table2,
     color: "from-cyan-500 to-teal-500",
     gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
+  },
+  {
+    id: "report",
+    name: "Аудитын тайлан",
+    description: "Аудитын тайлан бэлтгэж Word (.docx) файлаар татаж авах",
+    icon: FileText,
+    color: "from-blue-500 to-indigo-500",
+    gradient: "bg-gradient-to-br from-blue-500/20 to-indigo-500/20",
   },
 ];
 

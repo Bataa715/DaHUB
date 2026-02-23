@@ -485,7 +485,6 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </motion.div>
-
         </div>
       </div>
     </div>

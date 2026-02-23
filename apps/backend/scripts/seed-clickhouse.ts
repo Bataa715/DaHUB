@@ -2,7 +2,10 @@ import { createClient } from "@clickhouse/client";
 import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
-const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "http://localhost:8123";
+if (!process.env.CLICKHOUSE_HOST) {
+  throw new Error("CLICKHOUSE_HOST environment variable is required");
+}
+const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST;
 const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || "default";
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "";
 const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || "audit_db";

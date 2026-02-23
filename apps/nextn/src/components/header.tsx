@@ -48,7 +48,9 @@ const Header = () => {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -112,85 +114,86 @@ const Header = () => {
         <div className="mx-3 md:mx-4 mt-3 md:mt-4 grid grid-cols-[1fr_auto_1fr] items-center p-2 px-4 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10">
           <div className="flex justify-self-start items-center gap-2">
             {!isAdminPage && (
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle Menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="pr-0">
-                <SheetHeader>
-                  <SheetTitle>
-                    <SheetClose asChild>
-                      <Link
-                        href={isAdminPage ? "/admin" : "/"}
-                        className="flex items-center space-x-2 text-left pl-4"
-                      >
-                        <Image
-                          src="/golomt.jpg"
-                          alt="Golomt"
-                          width={32}
-                          height={32}
-                          className="rounded-md"
-                        />
-                        <span className="font-bold text-2xl">
-                          {isAdminPage ? "Админ самбар" : appName}
-                        </span>
-                      </Link>
-                    </SheetClose>
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col space-y-2 mt-6 pl-4">
-                  {mainLinks.map((link) => {
-                    const isActive = isAdminPage
-                      ? link.href === "/admin"
-                        ? pathname === "/admin"
-                        : pathname.startsWith(link.href)
-                      : (pathname.startsWith(link.href) && link.href !== "/") ||
-                        pathname === link.href;
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        onClick={() => setIsOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2 text-lg transition-colors hover:text-primary",
-                          isActive
-                            ? "bg-muted text-primary font-semibold"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        <link.icon className="h-5 w-5" />
-                        {link.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </SheetContent>
-            </Sheet>
+              <Sheet open={isOpen} onOpenChange={setIsOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Toggle Menu</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="pr-0">
+                  <SheetHeader>
+                    <SheetTitle>
+                      <SheetClose asChild>
+                        <Link
+                          href={isAdminPage ? "/admin" : "/"}
+                          className="flex items-center space-x-2 text-left pl-4"
+                        >
+                          <Image
+                            src="/golomt.jpg"
+                            alt="Golomt"
+                            width={32}
+                            height={32}
+                            className="rounded-md"
+                          />
+                          <span className="font-bold text-2xl">
+                            {isAdminPage ? "Админ самбар" : appName}
+                          </span>
+                        </Link>
+                      </SheetClose>
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col space-y-2 mt-6 pl-4">
+                    {mainLinks.map((link) => {
+                      const isActive = isAdminPage
+                        ? link.href === "/admin"
+                          ? pathname === "/admin"
+                          : pathname.startsWith(link.href)
+                        : (pathname.startsWith(link.href) &&
+                            link.href !== "/") ||
+                          pathname === link.href;
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          onClick={() => setIsOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-lg transition-colors hover:text-primary",
+                            isActive
+                              ? "bg-muted text-primary font-semibold"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          <link.icon className="h-5 w-5" />
+                          {link.label}
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </SheetContent>
+              </Sheet>
             )}
 
             {!isAdminPage && (
-            <nav className="hidden md:flex items-center gap-4">
-              {mainLinks.map((link) => {
-                const isActive =
-                  (pathname.startsWith(link.href) && link.href !== "/") ||
-                  pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={cn(
-                      "text-sm font-medium transition-colors hover:text-primary",
-                      isActive ? "text-primary" : "text-muted-foreground",
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
+              <nav className="hidden md:flex items-center gap-4">
+                {mainLinks.map((link) => {
+                  const isActive =
+                    (pathname.startsWith(link.href) && link.href !== "/") ||
+                    pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={cn(
+                        "text-sm font-medium transition-colors hover:text-primary",
+                        isActive ? "text-primary" : "text-muted-foreground",
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </nav>
             )}
           </div>
 
