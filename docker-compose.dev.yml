@@ -62,6 +62,8 @@ services:
       - NODE_ENV=development
       # Browser calls backend — must be reachable from the browser
       - NEXT_PUBLIC_API_URL=${BACKEND_URL:-http://localhost:3001}
+      # JWT verify in middleware — must match backend JWT_SECRET
+      - JWT_SECRET=${JWT_SECRET}
       # File watching on Windows/Docker
       - WATCHPACK_POLLING=true
     volumes:
