@@ -11,13 +11,24 @@ export class NewsService {
     const id = uuidv4();
     const now = new Date().toISOString().slice(0, 19).replace("T", " ");
 
+    let imageHex = "";
+    let imageMime = "";
+    if (createNewsDto.imageUrl?.startsWith("data:")) {
+      const matches = createNewsDto.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (matches) {
+        imageMime = matches[1];
+        imageHex = Buffer.from(matches[2], "base64").toString("hex");
+      }
+    }
+
     await this.clickhouse.insert("news", [
       {
         id,
         title: createNewsDto.title,
         content: createNewsDto.content,
         category: createNewsDto.category || "Ерөнхий",
-        imageUrl: createNewsDto.imageUrl || "",
+        imageUrl: imageHex,
+        imageMime,
         authorId,
         isPublished: 1,
         views: 0,
@@ -39,7 +50,10 @@ export class NewsService {
        ORDER BY n.createdAt DESC`,
     );
 
-    return news;
+    return news.map((n) => ({
+      ...n,
+      imageUrl: n.imageUrl ? `/news/${n.id}/image` : "",
+    }));
   }
 
   async findOne(id: string) {
@@ -62,7 +76,8 @@ export class NewsService {
       { id },
     );
 
-    return news[0];
+    const n = news[0];
+    return { ...n, imageUrl: n.imageUrl ? `/news/${n.id}/image` : "" };
   }
 
   async update(id: string, updateNewsDto: UpdateNewsDto) {
@@ -91,8 +106,20 @@ export class NewsService {
       params.category = updateNewsDto.category;
     }
     if (updateNewsDto.imageUrl !== undefined) {
-      updates.push("imageUrl = {imageUrl:String}");
-      params.imageUrl = updateNewsDto.imageUrl;
+      if (updateNewsDto.imageUrl.startsWith("data:")) {
+        const matches = updateNewsDto.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          updates.push("imageUrl = {imageUrl:String}");
+          updates.push("imageMime = {imageMime:String}");
+          params.imageUrl = Buffer.from(matches[2], "base64").toString("hex");
+          params.imageMime = matches[1];
+        }
+      } else {
+        updates.push("imageUrl = {imageUrl:String}");
+        updates.push("imageMime = {imageMime:String}");
+        params.imageUrl = "";
+        params.imageMime = "";
+      }
     }
     if (updateNewsDto.isPublished !== undefined) {
       updates.push("isPublished = {isPublished:UInt8}");
@@ -159,6 +186,17 @@ export class NewsService {
       { category },
     );
 
-    return news;
+    return news.map((n) => ({ ...n, imageUrl: n.imageUrl ? `/news/${n.id}/image` : "" }));
+  }
+
+  async getNewsImage(id: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT imageUrl, imageMime FROM news WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    if (!rows || rows.length === 0 || !rows[0].imageUrl) return null;
+    const mimeType = rows[0].imageMime || "image/jpeg";
+    const buffer = Buffer.from(rows[0].imageUrl, "hex");
+    return { buffer, mimeType };
   }
 }

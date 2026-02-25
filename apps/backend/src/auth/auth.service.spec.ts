@@ -16,7 +16,6 @@ describe("AuthService", () => {
   const mockUser = {
     id: "user-123",
     userId: "DAG-EAH-Bold",
-    email: "bold@example.com",
     password: "$2a$10$epZ8zMek9GMHMgnunuc46Ooc6CkPmHNUkTEnmV7tjUyrRVpXNC9r6", // hashed "Password123!"
     name: "Болд",
     department: "Удирдлага",
@@ -30,7 +29,6 @@ describe("AuthService", () => {
     ...mockUser,
     id: "admin-456",
     userId: "ADM-001-Admin",
-    email: "admin@example.com",
     name: "Admin User",
     isAdmin: true,
   };

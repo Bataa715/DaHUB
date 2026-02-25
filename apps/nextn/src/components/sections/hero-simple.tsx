@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { getImageUrl } from "@/lib/api";
 import {
   Loader2,
   Building2,
@@ -336,14 +337,12 @@ export default function Hero() {
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
                 <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 relative">
-                  {user?.profileImage ? (
-                    <Image
-                      src={user.profileImage}
-                      alt={user.name || "Profile"}
-                      fill
-                      className="object-cover"
-                      sizes="280px"
-                      priority
+                  {getImageUrl(user?.profileImage) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={getImageUrl(user?.profileImage)}
+                      alt={user?.name || "Profile"}
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <div

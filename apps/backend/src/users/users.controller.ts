@@ -6,10 +6,14 @@ import {
   Param,
   Body,
   UseGuards,
+  Res,
+  NotFoundException,
 } from "@nestjs/common";
+import { Response } from "express";
 import { UsersService } from "./users.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { Public } from "../auth/public.decorator";
 
 @Controller("users")
 @UseGuards(JwtAuthGuard)
@@ -60,5 +64,16 @@ export class UsersController {
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.usersService.remove(id);
+  }
+
+  // Serve profile image as binary — no auth required (img tags can't send headers)
+  @Public()
+  @Get(":id/avatar")
+  async getAvatar(@Param("id") id: string, @Res() res: Response) {
+    const result = await this.usersService.getAvatar(id);
+    if (!result) throw new NotFoundException("Avatar not found");
+    res.set("Content-Type", result.mimeType);
+    res.set("Cache-Control", "public, max-age=3600");
+    res.send(result.buffer);
   }
 }

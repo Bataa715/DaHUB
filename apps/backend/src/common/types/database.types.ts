@@ -5,7 +5,6 @@
 export interface UserEntity {
   id: string;
   userId: string;
-  email: string;
   password: string;
   name: string;
   position: string;

@@ -50,7 +50,6 @@ export class AuthService {
   private formatUserResponse(user: any) {
     return {
       id: user.id,
-      email: user.email,
       userId: user.userId,
       name: user.name,
       position: user.position,
@@ -73,7 +72,6 @@ export class AuthService {
       : [];
     return this.jwtService.sign({
       id: user.id,
-      email: user.email,
       userId: user.userId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
@@ -258,10 +256,8 @@ export class AuthService {
   // ─── Public Methods ─────────────────────────────────────────────────────────
 
   async signup(signupDto: SignupDto) {
-    const { email, password, name, department, position } = signupDto;
+    const { password, name, department, position } = signupDto;
     const userId = await this.generateUserId(department, name);
-    const userEmail =
-      email || `${name.toLowerCase().replace(/\s+/g, ".")}@internal.local`;
 
     const existing = await this.clickhouse.query<any>(
       "SELECT id FROM users WHERE userId = {userId:String} LIMIT 1",
@@ -273,16 +269,7 @@ export class AuthService {
       );
     }
 
-    const emailCheck = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE email = {email:String} LIMIT 1",
-      { email: userEmail },
-    );
-    const finalEmail = emailCheck[0]
-      ? `${name.toLowerCase().replace(/\s+/g, ".")}.${Date.now()}@internal.local`
-      : userEmail;
-
     return this.createUser(
-      finalEmail,
       password,
       name,
       department,
@@ -292,7 +279,6 @@ export class AuthService {
   }
 
   private async createUser(
-    email: string,
     password: string,
     name: string,
     department: string,
@@ -308,7 +294,6 @@ export class AuthService {
       {
         id,
         userId: usrId,
-        email,
         password: hashedPassword,
         name,
         position,
@@ -325,7 +310,6 @@ export class AuthService {
 
     const fakeUser = {
       id,
-      email,
       userId: usrId,
       departmentName: department,
       departmentId: dept.id,
@@ -390,7 +374,6 @@ export class AuthService {
 
       await this.auditLogService.log({
         userId: user.id,
-        userEmail: user.email,
         action: "login",
         resource: "auth",
         method: "login",
@@ -440,7 +423,6 @@ export class AuthService {
 
       await this.auditLogService.log({
         userId: user.id,
-        userEmail: user.email,
         action: "login",
         resource: "auth",
         method: "loginById",
@@ -490,7 +472,6 @@ export class AuthService {
 
       await this.auditLogService.log({
         userId: user.id,
-        userEmail: user.email,
         action: "admin_login",
         resource: "auth",
         method: "adminLogin",
@@ -611,7 +592,6 @@ export class AuthService {
       );
     }
 
-    const email = `${name.toLowerCase().replace(/\s+/g, ".")}.${Date.now()}@internal.local`;
     const dept = await this.ensureDepartment(department);
     const id = randomUUID();
     const now = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -620,7 +600,6 @@ export class AuthService {
       {
         id,
         userId,
-        email,
         password: "PENDING_PASSWORD",
         name,
         position,

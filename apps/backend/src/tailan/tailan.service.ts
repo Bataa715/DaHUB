@@ -25,11 +25,34 @@ import { v4 as uuidv4 } from "uuid";
 interface UserPayload {
   id: string;
   name: string;
+  position?: string;
+  department?: string;
   departmentId?: string;
   isAdmin: boolean;
   isSuperAdmin: boolean;
   allowedTools: string[];
 }
+
+/** Returns e.g. "ДАА", "ЕАХ", "ЗАГЧБХ", "МТАХ" from the dept name */
+function deptAbbrev(deptName: string): string {
+  const MAP: Record<string, string> = {
+    "Дата анализын алба": "ДАА",
+    "Дата Анализын Алба": "ДАА",
+    "Ерөнхий аудитын хэлтэс": "ЕАХ",
+    "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ЗАГЧБХ",
+    "Мэдээллийн технологийн аудитын хэлтэс": "МТАХ",
+    Удирдлага: "ДАГ",
+  };
+  if (MAP[deptName]) return MAP[deptName];
+  // fallback: first Mongolian Cyrillic letter of each word, upper-cased
+  return (deptName || "")
+    .split(/\s+/)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .toUpperCase();
+}
+
+const ROMAN_NUMS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 @Injectable()
 export class TailanService {
@@ -70,6 +93,16 @@ export class TailanService {
         dynamicSectionsJson: JSON.stringify(dto.dynamicSections ?? []),
         otherWork: dto.otherWork ?? "",
         teamActivitiesJson: JSON.stringify(dto.teamActivities ?? []),
+        extraDataJson: JSON.stringify({
+          section2Tasks: dto.section2Tasks ?? [],
+          section3AutoTasks: dto.section3AutoTasks ?? [],
+          section3Dashboards: dto.section3Dashboards ?? [],
+          section4Trainings: dto.section4Trainings ?? [],
+          section4KnowledgeText: dto.section4KnowledgeText ?? "",
+          section5Tasks: dto.section5Tasks ?? [],
+          section6Activities: dto.section6Activities ?? [],
+          section7Text: dto.section7Text ?? "",
+        }),
         submittedAt: dto.status === "submitted" ? now : "1970-01-01 00:00:00",
         updatedAt: now,
         createdAt:
@@ -160,11 +193,20 @@ export class TailanService {
 
   // ─── Parse stored report ────────────────────────────────────────────────────
   private parseReport(row: any) {
+    const extra = this.safeJson(row.extraDataJson, {});
     return {
       ...row,
       plannedTasks: this.safeJson(row.plannedTasksJson, []),
       dynamicSections: this.safeJson(row.dynamicSectionsJson, []),
       teamActivities: this.safeJson(row.teamActivitiesJson, []),
+      section2Tasks: extra.section2Tasks ?? [],
+      section3AutoTasks: extra.section3AutoTasks ?? [],
+      section3Dashboards: extra.section3Dashboards ?? [],
+      section4Trainings: extra.section4Trainings ?? [],
+      section4KnowledgeText: extra.section4KnowledgeText ?? "",
+      section5Tasks: extra.section5Tasks ?? [],
+      section6Activities: extra.section6Activities ?? [],
+      section7Text: extra.section7Text ?? "",
     };
   }
 
@@ -292,6 +334,21 @@ export class TailanService {
     if (rows.length === 0) throw new NotFoundException("Тайлан олдсонгүй");
     const report = this.parseReport(rows[0]);
     if (displayName) report.userName = displayName;
+
+    // Fetch user position + department name for the title
+    try {
+      const userRows = await this.clickhouse.query<any>(
+        `SELECT u.position, d.name as departmentName
+         FROM users u LEFT JOIN departments d ON u.departmentId = d.id
+         WHERE u.id = {uid:String} LIMIT 1`,
+        { uid: userId },
+      );
+      if (userRows.length > 0) {
+        report.position = userRows[0].position ?? "";
+        report.departmentName = userRows[0].departmentName ?? "";
+      }
+    } catch {}
+
     return this.buildDocx(report, year, quarter);
   }
 
@@ -366,75 +423,289 @@ export class TailanService {
     year: number,
     quarter: number,
   ): Promise<Buffer> {
-    const quarterNames = ["I", "II", "III", "IV"];
-    const qName = quarterNames[(quarter - 1) % 4];
+    const qName = ROMAN_NUMS[(quarter - 1) % 4] ?? "I";
+
+    // ── Title construction ──────────────────────────────────────────────────
+    // Format: ДАА-НЫ ДАТА АНАЛИСТ Б.БАТМЯГМАР 2025 ОНЫ IV-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН
+    const deptCode = deptAbbrev(report.departmentName ?? "");
+    const positionUpper = (report.position ?? "").toUpperCase();
+    const nameUpper = (report.userName ?? "").toUpperCase();
+    const titleText = `${deptCode ? `${deptCode}-НЫ ` : ""}${positionUpper}${positionUpper && nameUpper ? " " : ""}${nameUpper} ${year} ОНЫ ${qName}-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН`;
 
     const children: any[] = [];
 
-    // Title
+    // ── Cover title ─────────────────────────────────────────────────────────
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 200 },
+        spacing: { before: 0, after: 320 },
         children: [
           new TextRun({
-            text: `${report.userName ?? ""} ${year} ОНЫ ${qName}-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН`,
+            text: titleText,
             bold: true,
             size: 22,
             font: "Times New Roman",
+            allCaps: true,
           }),
         ],
       }),
     );
 
-    // Section 1: Planned work table
-    if (report.plannedTasks?.length > 0) {
-      children.push(
-        this.sectionHeading(
-          `1. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил`,
-        ),
-      );
-      children.push(this.buildPlannedTable(report.plannedTasks));
-      children.push(new Paragraph({ text: "", spacing: { after: 160 } }));
-    }
+    // ── Fixed section I: Data analysis support ───────────────────────────────
+    children.push(this.bigSectionHeading("I. ӨГӨГДӨЛ ШИНЖИЛГЭЭГЭЭР АУДИТЫН ҮЙЛ АЖИЛЛАГААГ ДЭМЖСЭН БАЙДАЛ"));
 
-    // Dynamic sections
-    for (const sec of report.dynamicSections ?? []) {
-      children.push(this.sectionHeading(`${sec.order}. ${sec.title}`));
+    // I.1 – зураг / текст (plannedTasks as numbered list with data-analysis entries)
+    children.push(this.subSectionHeading("I.1 Data шинжилгээний үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал"));
+
+    const analysisItems = (report.plannedTasks ?? []).filter(
+      (t: any) => t.title?.trim(),
+    );
+    if (analysisItems.length === 0) {
+      children.push(this.bodyPara(" "));
+    } else {
+      analysisItems.forEach((t: any, idx: number) => {
+        // Numbered entry
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.JUSTIFIED,
+            spacing: { before: 80, after: 60, line: 276 },
+            indent: { left: 360, hanging: 360 },
+            children: [
+              new TextRun({
+                text: `${idx + 1}. `,
+                bold: true,
+                size: 22,
+                font: "Times New Roman",
+              }),
+              new TextRun({
+                text: t.title ?? "",
+                size: 22,
+                font: "Times New Roman",
+              }),
+            ],
+          }),
+        );
+        if (t.description?.trim()) {
+          children.push(this.bodyPara(t.description));
+        }
+      });
+    }
+    children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+
+    // I.2 – Dashboard хүснэгт
+    children.push(this.subSectionHeading("I.2 Шинээр хөгжүүлсэн dashboard хөгжүүлэлтийн чанар, үр дүн"));
+
+    // Build dashboard table from plannedTasks
+    // Columns: №, Төлөвлөгөөт ажил, Ажлын гүйцэтгэл, Хийгдсэн хугацаа, Гүйцэтгэл
+    const dashColWidths = [5, 30, 20, 20, 25];
+    const dashHeaders = [
+      "№",
+      "Төлөвлөгөөт ажил",
+      "Ажлын гүйцэтгэл",
+      "Хийгдсэн хугацаа",
+      "Гүйцэтгэл",
+    ];
+    const dashHeaderRow = new TableRow({
+      tableHeader: true,
+      children: dashHeaders.map(
+        (lbl, i) =>
+          new TableCell({
+            width: { size: dashColWidths[i], type: WidthType.PERCENTAGE },
+            borders: this.border("888888"),
+            shading: { type: ShadingType.SOLID, color: "1F3864" },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: lbl,
+                    bold: true,
+                    color: "FFFFFF",
+                    size: 22,
+                    font: "Times New Roman",
+                  }),
+                ],
+              }),
+            ],
+          }),
+      ),
+    });
+
+    const allTasks: any[] = report.plannedTasks ?? [];
+    const dashDataRows =
+      allTasks.length > 0
+        ? allTasks.map(
+            (t: any, idx: number) =>
+              new TableRow({
+                children: [
+                  this.tc(`${idx + 1}`, dashColWidths[0], true),
+                  this.tc(t.title ?? "", dashColWidths[1]),
+                  this.tc(`${t.completion ?? 0}%`, dashColWidths[2], true),
+                  this.tc(
+                    `${t.startDate ?? ""}${t.startDate && t.endDate ? " – " : ""}${t.endDate ?? ""}`,
+                    dashColWidths[3],
+                    true,
+                  ),
+                  this.tc(t.description ?? "", dashColWidths[4]),
+                ],
+              }),
+          )
+        : [
+            new TableRow({
+              children: dashColWidths.map((w) =>
+                this.tc(" ", w, true),
+              ),
+            }),
+          ];
+
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [dashHeaderRow, ...dashDataRows],
+      }),
+    );
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Fixed Section II: Өгөгдөл боловсруулах ажил ─────────────────────────
+    children.push(this.bigSectionHeading("II. АУДИТЫН ҮЙЛ АЖИЛЛАГААНД ШААРДЛАГАТАЙ ӨГӨГДӨЛ БОЛОВСРУУЛАХ АЖИЛ"));
+    const s2Tasks: any[] = report.section2Tasks ?? [];
+    const s2Headers = ["№", "Төлөвлөгөөт ажлууд", "Ажлын гүйцэтгэл", "Хийгдсэн хугацаа", "Гүйцэтгэл"];
+    const s2Widths = [5, 30, 20, 20, 25];
+    const s2Rows: string[][] = s2Tasks.map((t, i) => [
+      `${i + 1}`,
+      t.title ?? "",
+      t.result ?? "",
+      t.period ?? "",
+      t.completion ?? "",
+    ]);
+    children.push(this.buildDashedTable(s2Headers, s2Widths, s2Rows));
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Fixed Section III: Тогтмол хийгддэг ажлууд ──────────────────────────
+    children.push(this.bigSectionHeading("III. ТОГТМОЛ ХИЙГДДЭГ АЖЛУУД"));
+
+    // III.1 – Автоматжуулалт
+    children.push(this.subSectionHeading("III.1 Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал"));
+    const s3AutoTasks: any[] = report.section3AutoTasks ?? [];
+    const s3aHeaders = [
+      "№",
+      "Тогтмол хийгддэг өгөгдөл боловсруулалт/автоматжуулалт",
+      "Өгөгдөл боловсруулалтын ажлын ач холбогдол/хэрэглээ",
+      "Хэрэглэгчийн нэгжийн өгсөн үнэлгээ",
+    ];
+    const s3aWidths = [5, 40, 35, 20];
+    const s3aRows: string[][] = s3AutoTasks.map((t, i) => [
+      `${i + 1}`,
+      t.title ?? "",
+      t.value ?? "",
+      t.rating ?? "",
+    ]);
+    children.push(this.buildDashedTable(s3aHeaders, s3aWidths, s3aRows));
+    children.push(new Paragraph({ text: "", spacing: { after: 160 } }));
+
+    // III.2 – Dashboard
+    children.push(this.subSectionHeading("III.2 Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал"));
+    const s3Dashboards: any[] = report.section3Dashboards ?? [];
+    const s3dHeaders = [
+      "№",
+      "Dashboard",
+      "Дашбоардын ач холбогдол/хэрэглээ",
+      "Хэрэглэгч нэгжийн өгсөн үнэлгээ",
+    ];
+    const s3dWidths = [5, 35, 40, 20];
+    const s3dRows: string[][] = s3Dashboards.map((t, i) => [
+      `${i + 1}`,
+      t.dashboard ?? "",
+      t.value ?? "",
+      t.rating ?? "",
+    ]);
+    children.push(this.buildDashedTable(s3dHeaders, s3dWidths, s3dRows));
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Fixed Section IV: Хамрагдсан сургалт ────────────────────────────────
+    children.push(this.bigSectionHeading("IV. ХАМРАГДСАН СУРГАЛТ"));
+    const s4Trainings: any[] = report.section4Trainings ?? [];
+    const s4Headers = [
+      "№",
+      "Хамрагдсан сургалт",
+      "Зохион байгуулагч",
+      "Сургалтын төрөл (Онлайн/Танхим)",
+      "Хэзээ",
+      "Сургалтын хэлбэр",
+      "Цаг",
+      "Аудитын зорилго зорилтод нийцэж буй эсэх",
+      "Мэдлэгээ хуваалцсан эсэх",
+    ];
+    const s4Widths = [4, 16, 12, 10, 8, 10, 5, 18, 17];
+    const s4Rows: string[][] = s4Trainings.map((t, i) => [
+      `${i + 1}`,
+      t.training ?? "",
+      t.organizer ?? "",
+      t.type ?? "",
+      t.date ?? "",
+      t.format ?? "",
+      t.hours ?? "",
+      t.meetsAuditGoal ?? "",
+      t.sharedKnowledge ?? "",
+    ]);
+    children.push(this.buildDashedTable(s4Headers, s4Widths, s4Rows));
+    children.push(new Paragraph({ text: "", spacing: { after: 140 } }));
+
+    // IV sub-section: Мэдлэгээ ашиглаж буй байдал
+    children.push(this.subSectionHeading("IV.1 Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал"));
+    const knowledgeLines = (report.section4KnowledgeText ?? "").split("\n");
+    for (const line of knowledgeLines) {
+      children.push(this.bodyPara(line || " "));
+    }
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Fixed Section V: Үүрэг даалгаварын биелэлт ───────────────────────────
+    children.push(this.bigSectionHeading("V. ҮҮРЭГ ДААЛГАВАРЫН БИЕЛЭЛТ"));
+    const s5Tasks: any[] = report.section5Tasks ?? [];
+    const s5Headers = ["№", "Ажлын төрөл", "Хийгдсэн ажил"];
+    const s5Widths = [5, 30, 65];
+    const s5Rows: string[][] = s5Tasks.map((t, i) => [
+      `${i + 1}`,
+      t.taskType ?? "",
+      t.completedWork ?? "",
+    ]);
+    children.push(this.buildDashedTable(s5Headers, s5Widths, s5Rows));
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Fixed Section VI: Хамт олны ажил ──────────────────────────────────────
+    children.push(this.bigSectionHeading("VI. ХАМТ ОЛНЫ АЖИЛ"));
+    const s6Activities: any[] = report.section6Activities ?? [];
+    const s6Headers = ["№", "Огноо", "Хамт олны ажил", "Санаачилга"];
+    const s6Widths = [5, 15, 50, 30];
+    const s6Rows: string[][] = s6Activities.map((t, i) => [
+      `${i + 1}`,
+      t.date ?? "",
+      t.activity ?? "",
+      t.initiative ?? "",
+    ]);
+    children.push(this.buildDashedTable(s6Headers, s6Widths, s6Rows));
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Fixed Section VII: Шинэ санал санаачилга ──────────────────────────────
+    children.push(this.bigSectionHeading("VII. ШИНЭ САНАЛ САНААЧИЛГА"));
+    const s7Lines = (report.section7Text ?? "").split("\n");
+    for (const line of s7Lines) {
+      children.push(this.bodyPara(line || " "));
+    }
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Dynamic big sections (VIII, IX, …) ───────────────────────────────────
+    const dynamicSecs: any[] = report.dynamicSections ?? [];
+    dynamicSecs.forEach((sec: any, idx: number) => {
+      const romNum = ROMAN_NUMS[idx + 7] ?? `${idx + 8}`;
+      const secTitleUpper = (sec.title ?? "").toUpperCase();
+      children.push(this.bigSectionHeading(`${romNum}. ${secTitleUpper}`));
       const lines = (sec.content ?? "").split("\n");
       for (const line of lines) {
         children.push(this.bodyPara(line || " "));
       }
-      children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
-    }
-
-    const nextNum = (report.dynamicSections?.length ?? 0) + 2;
-
-    // Бусад ажлууд
-    children.push(this.sectionHeading(`${nextNum}. Бусад ажлууд`));
-    const otherLines = (report.otherWork ?? "").split("\n");
-    for (const line of otherLines) {
-      children.push(this.bodyPara(line || " "));
-    }
-    children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
-
-    // Хамт олны ажил
-    children.push(this.sectionHeading(`${nextNum + 1}. Хамт олны ажил`));
-    for (const act of report.teamActivities ?? []) {
-      children.push(
-        new Paragraph({
-          spacing: { before: 60, after: 60, line: 276 },
-          indent: { left: 360 },
-          children: [
-            new TextRun({
-              text: `- ${act.name}${act.date ? ` – ${act.date}` : ""}`,
-              size: 22,
-              font: "Times New Roman",
-            }),
-          ],
-        }),
-      );
-    }
+      children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+    });
 
     const doc = new Document({
       styles: {
@@ -449,7 +720,6 @@ export class TailanService {
         {
           properties: {
             page: {
-              // Top 1.59cm, Bottom 2.22cm, Left 2.54cm, Right 1.9cm (in TWIPs: 1cm≈567)
               margin: { top: 902, bottom: 1259, left: 1440, right: 1077 },
             },
           },
@@ -1142,6 +1412,37 @@ export class TailanService {
     };
   }
 
+  /** Big section heading: Roman numeral prefix, bold, ALL CAPS, 11pt */
+  private bigSectionHeading(text: string) {
+    return new Paragraph({
+      spacing: { before: 340, after: 140 },
+      children: [
+        new TextRun({
+          text: text.toUpperCase(),
+          bold: true,
+          size: 22,
+          font: "Times New Roman",
+          allCaps: true,
+        }),
+      ],
+    });
+  }
+
+  /** Sub-section heading: e.g. I.1 … bold, normal case */
+  private subSectionHeading(text: string) {
+    return new Paragraph({
+      spacing: { before: 200, after: 100 },
+      children: [
+        new TextRun({
+          text,
+          bold: true,
+          size: 22,
+          font: "Times New Roman",
+        }),
+      ],
+    });
+  }
+
   private sectionHeading(text: string) {
     return new Paragraph({
       heading: HeadingLevel.HEADING_2,
@@ -1233,6 +1534,90 @@ export class TailanService {
           children: [new TextRun({ text, size: 22, font: "Times New Roman" })],
         }),
       ],
+    });
+  }
+
+  /** Cell with no explicit borders — inherits from the parent Table-level borders */
+  private tcNoB(text: string, widthPct: number, center = false, shading?: { type: any; color: string; fill?: string }) {
+    const cell: any = {
+      width: { size: widthPct, type: WidthType.PERCENTAGE },
+      children: [
+        new Paragraph({
+          alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
+          spacing: { before: 40, after: 40 },
+          children: [new TextRun({ text, size: 22, font: "Times New Roman" })],
+        }),
+      ],
+    };
+    if (shading) cell.shading = shading;
+    return new TableCell(cell);
+  }
+
+  /** Table outer border: solid; inner (insideH/insideV): dashed */
+  private dashedInnerBorders() {
+    return {
+      top:    { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      left:   { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      right:  { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      insideH: { style: BorderStyle.DASHED, size: 2, color: "444444" },
+      insideV: { style: BorderStyle.DASHED, size: 2, color: "444444" },
+    };
+  }
+
+  /**
+   * Build a table with solid outer border + dashed inner borders.
+   * headers: label array, colWidths: % widths, dataRows: string[][] matrix
+   */
+  private buildDashedTable(
+    headers: string[],
+    colWidths: number[],
+    dataRows: string[][],
+  ) {
+    const blueFill = { type: ShadingType.SOLID, color: "1F3864" };
+    const headerRow = new TableRow({
+      tableHeader: true,
+      children: headers.map((lbl, i) =>
+        new TableCell({
+          width: { size: colWidths[i], type: WidthType.PERCENTAGE },
+          shading: blueFill,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 40, after: 40 },
+              children: [
+                new TextRun({
+                  text: lbl,
+                  bold: true,
+                  color: "FFFFFF",
+                  size: 22,
+                  font: "Times New Roman",
+                }),
+              ],
+            }),
+          ],
+        }),
+      ),
+    });
+    const rows =
+      dataRows.length > 0
+        ? dataRows.map(
+            (row) =>
+              new TableRow({
+                children: row.map((cell, ci) =>
+                  this.tcNoB(cell, colWidths[ci], ci === 0),
+                ),
+              }),
+          )
+        : [
+            new TableRow({
+              children: colWidths.map((w) => this.tcNoB(" ", w, true)),
+            }),
+          ];
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: this.dashedInnerBorders() as any,
+      rows: [headerRow, ...rows],
     });
   }
 }

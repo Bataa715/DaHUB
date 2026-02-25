@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,7 +20,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
-import api from "@/lib/api";
+import api, { getImageUrl } from "@/lib/api";
 
 interface News {
   id: string;
@@ -40,18 +40,18 @@ const CATEGORY_COLORS: Record<
   string,
   { bg: string; text: string; dot: string }
 > = {
-  Мэдэгдэл: { bg: "bg-blue-500/20", text: "text-blue-400", dot: "bg-blue-400" },
-  Ерөнхий: {
+  ????????: { bg: "bg-blue-500/20", text: "text-blue-400", dot: "bg-blue-400" },
+  ???????: {
     bg: "bg-purple-500/20",
     text: "text-purple-400",
     dot: "bg-purple-400",
   },
-  "Үйл явдал": {
+  "??? ?????": {
     bg: "bg-emerald-500/20",
     text: "text-emerald-400",
     dot: "bg-emerald-400",
   },
-  Танилцуулга: {
+  ???????????: {
     bg: "bg-amber-500/20",
     text: "text-amber-400",
     dot: "bg-amber-400",
@@ -81,7 +81,7 @@ function formatDate(d: string) {
   });
 }
 
-// ─── Hero Section ───────────────────────────────────────────────────────────
+// --- Hero Section -----------------------------------------------------------
 function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
   const cat = getCat(item.category);
   return (
@@ -94,9 +94,9 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
       onClick={onClick}
     >
       <div className="absolute inset-0">
-        {item.imageUrl ? (
+        {getImageUrl(item.imageUrl) ? (
           <Image
-            src={item.imageUrl}
+            src={getImageUrl(item.imageUrl)!}
             alt={item.title}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-105"
@@ -121,7 +121,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             >
               {item.category}
             </span>
-            <span className="text-slate-400 text-xs">•</span>
+            <span className="text-slate-400 text-xs">�</span>
             <span className="text-slate-400 text-xs">
               {formatDate(item.createdAt)}
             </span>
@@ -131,7 +131,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             className="text-xs font-bold tracking-[0.3em] uppercase text-slate-300"
             style={{ fontFamily: "monospace" }}
           >
-            ДОТООД АУДИТ — DAHUB
+            ?????? ????? � DAHUB
           </p>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight tracking-tight">
@@ -144,11 +144,11 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             </div>
             <div>
               <p className="text-white text-sm font-semibold">
-                {item.authorName || "Дотоод Аудитын Газар"}
+                {item.authorName || "?????? ??????? ?????"}
               </p>
               <p className="text-slate-400 text-xs">
-                {formatDate(item.createdAt)} &nbsp;•&nbsp;{" "}
-                {calcReadTime(item.content)} мин
+                {formatDate(item.createdAt)} &nbsp;�&nbsp;{" "}
+                {calcReadTime(item.content)} ???
               </p>
             </div>
             <div className="ml-auto flex items-center gap-1.5 text-slate-400 text-sm">
@@ -163,7 +163,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
           animate={{ x: [0, 4, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <span>Дэлгэрэнгүй</span>
+          <span>???????????</span>
           <ArrowRight className="w-4 h-4" />
         </motion.div>
       </div>
@@ -171,7 +171,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
   );
 }
 
-// ─── Carousel Card ──────────────────────────────────────────────────────────
+// --- Carousel Card ----------------------------------------------------------
 function CarouselCard({
   item,
   index,
@@ -191,9 +191,9 @@ function CarouselCard({
       className="relative flex-shrink-0 w-64 md:w-72 h-96 rounded-2xl overflow-hidden cursor-pointer group"
     >
       <div className="absolute inset-0">
-        {item.imageUrl ? (
+        {getImageUrl(item.imageUrl) ? (
           <Image
-            src={item.imageUrl}
+            src={getImageUrl(item.imageUrl)!}
             alt={item.title}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -213,7 +213,7 @@ function CarouselCard({
       </div>
 
       <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full">
-        {calcReadTime(item.content)} мин
+        {calcReadTime(item.content)} ???
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
@@ -235,7 +235,7 @@ function CarouselCard({
   );
 }
 
-// ─── Chat Feed Item ──────────────────────────────────────────────────────────
+// --- Chat Feed Item ----------------------------------------------------------
 function ChatItem({
   item,
   index,
@@ -263,10 +263,10 @@ function ChatItem({
         </div>
         <div className={isRight ? "text-right" : "text-left"}>
           <p className="text-slate-300 text-xs font-semibold whitespace-nowrap">
-            {item.authorName || "Аудитын Газар"}
+            {item.authorName || "??????? ?????"}
           </p>
           <p className="text-slate-500 text-xs whitespace-nowrap">
-            {formatDate(item.createdAt)} • {calcReadTime(item.content)} мин
+            {formatDate(item.createdAt)} � {calcReadTime(item.content)} ???
           </p>
         </div>
       </div>
@@ -301,14 +301,14 @@ function ChatItem({
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                {calcReadTime(item.content)} мин
+                {calcReadTime(item.content)} ???
               </span>
             </div>
           </div>
-          {item.imageUrl && (
+          {getImageUrl(item.imageUrl) && (
             <div className="relative w-24 h-24 flex-shrink-0 self-center m-3 rounded-xl overflow-hidden">
               <Image
-                src={item.imageUrl}
+                src={getImageUrl(item.imageUrl)!}
                 alt={item.title}
                 fill
                 className="object-cover"
@@ -322,7 +322,7 @@ function ChatItem({
   );
 }
 
-// ─── Main Page ──────────────────────────────────────────────────────────────
+// --- Main Page --------------------------------------------------------------
 export default function NewsPage() {
   const [news, setNews] = useState<News[]>([]);
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
@@ -377,7 +377,7 @@ export default function NewsPage() {
             <Loader2 className="h-10 w-10 text-purple-400" />
           </motion.div>
           <p className="text-slate-400 text-sm animate-pulse">
-            Мэдээ ачаалж байна...
+            ????? ?????? ?????...
           </p>
         </div>
       </div>
@@ -393,10 +393,10 @@ export default function NewsPage() {
         className="space-y-1"
       >
         <h1 className="text-3xl font-black text-white tracking-tight">
-          Мэдээ мэдээлэл
+          ????? ????????
         </h1>
         <p className="text-slate-400 text-sm">
-          DaHUB — Дотоод аудитын мэдлэгийн сан
+          DaHUB � ?????? ??????? ????????? ???
         </p>
       </motion.div>
 
@@ -407,7 +407,7 @@ export default function NewsPage() {
       {carousel.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-white font-bold text-xl">Сүүлийн мэдээнүүд</h2>
+            <h2 className="text-white font-bold text-xl">??????? ?????????</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => scroll("left")}
@@ -452,7 +452,7 @@ export default function NewsPage() {
       {/* Chat Feed */}
       {feed.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-white font-bold text-xl">Бусад мэдээнүүд</h2>
+          <h2 className="text-white font-bold text-xl">????? ?????????</h2>
           <div className="space-y-5">
             {feed.map((item, i) => (
               <ChatItem
@@ -468,7 +468,7 @@ export default function NewsPage() {
 
       {!isLoading && news.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-          <p className="text-lg">Мэдээ байхгүй байна</p>
+          <p className="text-lg">????? ??????? ?????</p>
         </div>
       )}
 
@@ -486,10 +486,10 @@ export default function NewsPage() {
                 border: "1px solid rgba(99,102,241,0.2)",
               }}
             >
-              {selectedNews.imageUrl && (
+              {getImageUrl(selectedNews.imageUrl) && (
                 <div className="relative w-full h-56">
                   <Image
-                    src={selectedNews.imageUrl}
+                    src={getImageUrl(selectedNews.imageUrl)!}
                     alt={selectedNews.title}
                     fill
                     className="object-cover"
@@ -527,13 +527,13 @@ export default function NewsPage() {
                     </div>
                     <div>
                       <p className="text-slate-200 text-sm font-semibold">
-                        {selectedNews.authorName || "Дотоод Аудитын Газар"}
+                        {selectedNews.authorName || "?????? ??????? ?????"}
                       </p>
                       <p className="text-slate-500 text-xs flex items-center gap-2">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(selectedNews.createdAt)} &nbsp;•&nbsp;
+                        {formatDate(selectedNews.createdAt)} &nbsp;�&nbsp;
                         <Clock className="w-3 h-3" />
-                        {calcReadTime(selectedNews.content)} минут унших
+                        {calcReadTime(selectedNews.content)} ????? ?????
                       </p>
                     </div>
                   </div>

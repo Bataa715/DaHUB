@@ -144,7 +144,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         CREATE TABLE IF NOT EXISTS users (
           id String,
           userId String,
-          email String,
           password String,
           name String,
           position String,
@@ -309,12 +308,25 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           dynamicSectionsJson String DEFAULT '[]',
           otherWork String DEFAULT '',
           teamActivitiesJson String DEFAULT '[]',
+          extraDataJson String DEFAULT '{}',
           submittedAt DateTime DEFAULT '1970-01-01 00:00:00',
           createdAt DateTime DEFAULT now(),
           updatedAt DateTime DEFAULT now()
         ) ENGINE = ReplacingMergeTree(updatedAt)
         ORDER BY (userId, year, quarter)
       `);
+
+      // Migrate existing tailan_reports: add extraDataJson if missing
+      try {
+        await this.exec(
+          `ALTER TABLE tailan_reports ADD COLUMN IF NOT EXISTS extraDataJson String DEFAULT '{}'`,
+        );
+      } catch {}
+
+      // Migrate users: drop email column if it exists
+      try {
+        await this.exec(`ALTER TABLE users DROP COLUMN IF EXISTS email`);
+      } catch {}
 
       // Create chess_invitations table
       await this.exec(`
@@ -366,6 +378,11 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           uploadedAt DateTime DEFAULT now()
         ) ENGINE = MergeTree() ORDER BY (departmentId, uploadedAt)
       `);
+
+      // Migrate: add blob-related columns
+      await this.exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profileImageMime String DEFAULT ''`).catch(() => {});
+      await this.exec(`ALTER TABLE department_photos ADD COLUMN IF NOT EXISTS mimeType String DEFAULT 'image/jpeg'`).catch(() => {});
+      await this.exec(`ALTER TABLE news ADD COLUMN IF NOT EXISTS imageMime String DEFAULT ''`).catch(() => {});
 
       this.logger.log(
         "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, department_photos)",

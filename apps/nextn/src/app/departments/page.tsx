@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { departmentsApi } from "@/lib/api";
+import { departmentsApi, getImageUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
@@ -154,27 +154,25 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
     }
     e.target.value = "";
     setUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        await departmentsApi.uploadPhoto(
-          deptId,
-          deptName,
-          ev.target!.result as string,
-        );
-        toast({ title: "Амжилттай", description: "Зураг нэмэгдлээ" });
-        await loadPhotos();
-      } catch {
-        toast({
-          title: "Алдаа",
-          description: "Зураг оруулахад алдаа гарлаа",
-          variant: "destructive",
-        });
-      } finally {
-        setUploading(false);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const base64DataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      await departmentsApi.uploadPhoto(deptId, deptName, base64DataUrl);
+      toast({ title: "Амжилттай", description: "Зураг нэмэгдлээ" });
+      await loadPhotos();
+    } catch {
+      toast({
+        title: "Алдаа",
+        description: "Зураг оруулахад алдаа гарлаа",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = async (photoId: string) => {
@@ -214,7 +212,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={photo.imageData}
+            src={getImageUrl(photo.imageData)}
             alt={photo.caption || "Зураг"}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
@@ -405,7 +403,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={photos[lightbox].imageData}
+                src={getImageUrl(photos[lightbox].imageData)}
                 alt={photos[lightbox].caption || "Зураг"}
                 className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
               />
@@ -472,8 +470,9 @@ function EmployeeCard({
       )}
 
       {member.profileImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={member.profileImage}
+          src={getImageUrl(member.profileImage)}
           alt={member.name}
           className="w-20 h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white/5"
         />

@@ -33,22 +33,25 @@ export class DepartmentsService {
   }
 
   async getPhotos(departmentId: string) {
-    return this.clickhouse.query<any>(
-      `SELECT id, departmentId, departmentName, uploadedBy, uploadedByName, caption, imageData, uploadedAt
+    const rows = await this.clickhouse.query<any>(
+      `SELECT id, departmentId, departmentName, uploadedBy, uploadedByName, caption, uploadedAt
        FROM department_photos WHERE departmentId = {deptId:String}
        ORDER BY uploadedAt DESC`,
       { deptId: departmentId },
     );
+    return rows.map((r) => ({ ...r, imageData: `/departments/photos/${r.id}/image` }));
   }
 
-  async getPhotoData(photoId: string) {
+  async getPhotoImage(photoId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
     const rows = await this.clickhouse.query<any>(
-      `SELECT imageData FROM department_photos WHERE id = {id:String} LIMIT 1`,
+      `SELECT imageData, mimeType FROM department_photos WHERE id = {id:String} LIMIT 1`,
       { id: photoId },
     );
-    if (!rows || rows.length === 0)
-      throw new NotFoundException("Зураг олдсонгүй");
-    return rows[0];
+    if (!rows?.[0]?.imageData) return null;
+    return {
+      buffer: Buffer.from(rows[0].imageData, 'hex'),
+      mimeType: rows[0].mimeType || 'image/jpeg',
+    };
   }
 
   async uploadPhoto(
@@ -56,9 +59,12 @@ export class DepartmentsService {
     departmentName: string,
     uploadedBy: string,
     uploadedByName: string,
-    imageData: string,
+    imageDataUrl: string, // base64 data URL: "data:image/jpeg;base64,..."
     caption = "",
   ) {
+    const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    const mimeType = match?.[1] || 'image/jpeg';
+    const hex = Buffer.from(match?.[2] || imageDataUrl, 'base64').toString('hex');
     const id = randomUUID();
     const now = new Date().toISOString().slice(0, 19).replace("T", " ");
     await this.clickhouse.insert("department_photos", [
@@ -68,7 +74,8 @@ export class DepartmentsService {
         departmentName,
         uploadedBy,
         uploadedByName,
-        imageData,
+        imageData: hex,
+        mimeType,
         caption,
         uploadedAt: now,
       },
@@ -122,7 +129,7 @@ export class DepartmentsService {
     const result = [];
     for (const dept of departments) {
       const users = await this.clickhouse.query<any>(
-        "SELECT id, userId, name, position, email, isActive, profileImage FROM users WHERE departmentId = {deptId:String}",
+        "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {deptId:String}",
         { deptId: dept.id },
       );
       result.push({ ...dept, users });
@@ -143,7 +150,7 @@ export class DepartmentsService {
 
     const department = departments[0];
     const users = await this.clickhouse.query<any>(
-      "SELECT id, userId, name, position, email, isActive, profileImage FROM users WHERE departmentId = {id:String}",
+      "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {id:String}",
       { id },
     );
 
@@ -162,7 +169,7 @@ export class DepartmentsService {
 
     const department = departments[0];
     const users = await this.clickhouse.query<any>(
-      "SELECT id, userId, name, position, email, profileImage FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
+      "SELECT id, userId, name, position, profileImage FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
       { deptId: department.id },
     );
 

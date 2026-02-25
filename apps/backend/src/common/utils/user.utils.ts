@@ -9,7 +9,6 @@ export function formatUserResponse(user: any) {
   return {
     id: user.id,
     userId: user.userId,
-    email: user.email,
     name: user.name,
     position: user.position || "",
     department: user.departmentName || user.department || "",

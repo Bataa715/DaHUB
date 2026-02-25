@@ -18,7 +18,7 @@ export class UsersService {
       userId: user.userId,
       name: user.name,
       position: user.position,
-      profileImage: user.profileImage,
+      profileImage: user.profileImage ? `/users/${user.id}/avatar` : "",
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
@@ -48,7 +48,7 @@ export class UsersService {
       userId: user.userId,
       name: user.name,
       position: user.position,
-      profileImage: user.profileImage,
+      profileImage: user.profileImage ? `/users/${user.id}/avatar` : "",
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
@@ -119,8 +119,21 @@ export class UsersService {
       params.departmentId = updateUserDto.departmentId;
     }
     if (updateUserDto.profileImage !== undefined) {
-      fields.push("profileImage = {profileImage:String}");
-      params.profileImage = updateUserDto.profileImage;
+      // Convert base64 data URL → hex, or clear if empty
+      if (updateUserDto.profileImage && updateUserDto.profileImage.startsWith('data:')) {
+        const match = updateUserDto.profileImage.match(/^data:([^;]+);base64,(.+)$/);
+        const mime = match?.[1] || 'image/jpeg';
+        const hex = Buffer.from(match?.[2] || '', 'base64').toString('hex');
+        fields.push('profileImage = {profileImage:String}');
+        fields.push('profileImageMime = {profileImageMime:String}');
+        params.profileImage = hex;
+        params.profileImageMime = mime;
+      } else if (updateUserDto.profileImage === '') {
+        fields.push('profileImage = {profileImage:String}');
+        fields.push('profileImageMime = {profileImageMime:String}');
+        params.profileImage = '';
+        params.profileImageMime = '';
+      }
     }
     if (updateUserDto.isAdmin !== undefined) {
       fields.push("isAdmin = {isAdmin:UInt8}");
@@ -161,11 +174,23 @@ export class UsersService {
       id: user.id,
       name: user.name,
       position: user.position,
-      profileImage: user.profileImage,
+      profileImage: user.profileImage ? `/users/${user.id}/avatar` : "",
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
       allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
+    };
+  }
+
+  async getAvatar(id: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT profileImage, profileImageMime FROM users WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    if (!rows?.[0]?.profileImage) return null;
+    return {
+      buffer: Buffer.from(rows[0].profileImage, 'hex'),
+      mimeType: rows[0].profileImageMime || 'image/jpeg',
     };
   }
 

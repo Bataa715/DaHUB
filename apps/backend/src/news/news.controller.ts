@@ -9,10 +9,14 @@ import {
   UseGuards,
   Request,
   Query,
+  Res,
+  NotFoundException,
 } from "@nestjs/common";
+import { Response } from "express";
 import { NewsService } from "./news.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { Public } from "../auth/public.decorator";
 
 @Controller("news")
 export class NewsController {
@@ -56,6 +60,17 @@ export class NewsController {
   @Patch(":id/toggle-publish")
   async togglePublish(@Param("id") id: string) {
     return this.newsService.togglePublish(id);
+  }
+
+  // Public - Serve news image binary (no auth so <img src=...> works)
+  @Public()
+  @Get(":id/image")
+  async getNewsImage(@Param("id") id: string, @Res() res: Response) {
+    const result = await this.newsService.getNewsImage(id);
+    if (!result) throw new NotFoundException("Зураг олдсонгүй");
+    res.set("Content-Type", result.mimeType);
+    res.set("Cache-Control", "public, max-age=3600");
+    res.send(result.buffer);
   }
 
   // Admin - Delete news

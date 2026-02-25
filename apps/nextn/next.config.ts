@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60,
     remotePatterns: [
       {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3001",
+        pathname: "/**",
+      },
+      {
         protocol: "https",
         hostname: "placehold.co",
         port: "",

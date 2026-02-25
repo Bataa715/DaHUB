@@ -56,6 +56,125 @@ export class TeamActivityDto {
   date?: string;
 }
 
+export class Section2TaskDto {
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  result?: string;
+
+  @IsString()
+  @IsOptional()
+  period?: string;
+
+  @IsString()
+  @IsOptional()
+  completion?: string;
+}
+
+export class Section3AutoTaskDto {
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  value?: string;
+
+  @IsString()
+  @IsOptional()
+  rating?: string;
+}
+
+export class Section3DashboardDto {
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  dashboard: string;
+
+  @IsString()
+  @IsOptional()
+  value?: string;
+
+  @IsString()
+  @IsOptional()
+  rating?: string;
+}
+
+export class Section4TrainingDto {
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  @IsOptional()
+  training?: string; // Хамрагдсан сургалт
+
+  @IsString()
+  @IsOptional()
+  organizer?: string; // Зохион байгуулагч
+
+  @IsString()
+  @IsOptional()
+  type?: string; // Онлайн/Танхим
+
+  @IsString()
+  @IsOptional()
+  date?: string; // Хэзээ
+
+  @IsString()
+  @IsOptional()
+  format?: string; // Сургалтын хэлбэр
+
+  @IsString()
+  @IsOptional()
+  hours?: string; // Цаг
+
+  @IsString()
+  @IsOptional()
+  meetsAuditGoal?: string; // Нийцсэн/Нийцээгүй
+
+  @IsString()
+  @IsOptional()
+  sharedKnowledge?: string; // Хуваалцсан/Хуваалцаагүй
+}
+
+export class Section5TaskDto {
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  @IsOptional()
+  taskType?: string; // Ажлын төрөл
+
+  @IsString()
+  @IsOptional()
+  completedWork?: string; // Хийгдсэн ажил
+}
+
+export class Section6ActivityDto {
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  @IsOptional()
+  date?: string; // Огноо
+
+  @IsString()
+  @IsOptional()
+  activity?: string; // Хамт олны ажил
+
+  @IsString()
+  @IsOptional()
+  initiative?: string; // Санаачлага
+}
+
 export class SaveTailanDto {
   @IsNumber()
   year: number;
@@ -77,12 +196,56 @@ export class SaveTailanDto {
 
   @IsString()
   @IsOptional()
-  otherWork?: string;
+  otherWork?: string; // kept for backward compat (ignored in new UI)
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TeamActivityDto)
-  teamActivities: TeamActivityDto[];
+  teamActivities: TeamActivityDto[]; // kept for backward compat
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Section2TaskDto)
+  @IsOptional()
+  section2Tasks?: Section2TaskDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Section3AutoTaskDto)
+  @IsOptional()
+  section3AutoTasks?: Section3AutoTaskDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Section3DashboardDto)
+  @IsOptional()
+  section3Dashboards?: Section3DashboardDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Section4TrainingDto)
+  @IsOptional()
+  section4Trainings?: Section4TrainingDto[];
+
+  @IsString()
+  @IsOptional()
+  section4KnowledgeText?: string; // Sub-section: мэдлэгээ ашиглаж буй байдал
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Section5TaskDto)
+  @IsOptional()
+  section5Tasks?: Section5TaskDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Section6ActivityDto)
+  @IsOptional()
+  section6Activities?: Section6ActivityDto[];
+
+  @IsString()
+  @IsOptional()
+  section7Text?: string; // Шинэ санал санаачлага текст
 
   @IsEnum(["draft", "submitted"])
   @IsOptional()

@@ -41,7 +41,7 @@ import {
   ImagePlus,
   X,
 } from "lucide-react";
-import api from "@/lib/api";
+import api, { getImageUrl } from "@/lib/api";
 
 interface News {
   id: string;
@@ -83,6 +83,7 @@ export default function AdminNewsPage() {
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...empty });
   const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -193,24 +194,36 @@ export default function AdminNewsPage() {
     }
   };
 
-  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Алдаа",
-        description: "Зургийн хэмжээ 2MB-аас бага байх шаардлагатай",
+        description: "Зургийн хэмжээ 5MB-аас бага байх шаардлагатай",
         variant: "destructive",
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setForm((f) => ({ ...f, imageUrl: ev.target?.result as string }));
-    };
-    reader.readAsDataURL(file);
-    // reset input so the same file can be re-selected
     e.target.value = "";
+    setImageUploading(true);
+    try {
+      const base64DataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setForm((f) => ({ ...f, imageUrl: base64DataUrl }));
+    } catch {
+      toast({
+        title: "Алдаа",
+        description: "Зураг бэлтгэхэд алдаа гарлаа",
+        variant: "destructive",
+      });
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const fmt = (d: string) =>
@@ -514,7 +527,7 @@ export default function AdminNewsPage() {
                 <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-800/50 group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={form.imageUrl}
+                    src={form.imageUrl.startsWith('data:') ? form.imageUrl : getImageUrl(form.imageUrl)}
                     alt="preview"
                     className="w-full h-44 object-cover"
                   />
@@ -538,14 +551,23 @@ export default function AdminNewsPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-32 rounded-xl border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-800/40 hover:bg-slate-800/70 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-400 transition-all"
+                  onClick={() => !imageUploading && fileInputRef.current?.click()}
+                  disabled={imageUploading}
+                  className="w-full h-32 rounded-xl border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-800/40 hover:bg-slate-800/70 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-400 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <ImagePlus className="w-7 h-7" />
-                  <span className="text-xs font-medium">Зураг оруулах</span>
-                  <span className="text-[10px] text-slate-600">
-                    PNG, JPG, WEBP · дээд тал 2MB
+                  {imageUploading ? (
+                    <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
+                  ) : (
+                    <ImagePlus className="w-7 h-7" />
+                  )}
+                  <span className="text-xs font-medium">
+                    {imageUploading ? "Зураг байршуулж байна..." : "Зураг оруулах"}
                   </span>
+                  {!imageUploading && (
+                  <span className="text-[10px] text-slate-600">
+                    PNG, JPG, WEBP · дээд тал 5MB
+                  </span>
+                  )}
                 </button>
               )}
             </div>

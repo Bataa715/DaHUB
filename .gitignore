@@ -14,3 +14,14 @@ build
 **/.env.local
 # Ensure root .env is always ignored
 /.env
+
+# Docker
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+.docker/
+
+# Uploaded files
+uploads/
