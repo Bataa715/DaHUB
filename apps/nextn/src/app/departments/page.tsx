@@ -1,10 +1,10 @@
 ﻿"use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { departmentsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
   Building2,
@@ -14,13 +14,17 @@ import {
   Mail,
   User,
   Lock,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Camera,
-  ImageIcon,
+  ImagePlus,
   Crown,
   Star,
+  X,
+  ZoomIn,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +34,7 @@ interface DepartmentUser {
   email: string;
   position?: string;
   isActive?: boolean;
+  profileImage?: string | null;
 }
 
 interface DepartmentData {
@@ -69,14 +74,7 @@ const getInitials = (name: string) =>
     .toUpperCase()
     .slice(0, 2);
 
-const ALBUM_TILES = [
-  { from: "from-blue-600", to: "to-cyan-400", label: "Хэлтсийн арга хэмжээ" },
-  { from: "from-violet-600", to: "to-fuchsia-400", label: "Сургалт 2025" },
-  { from: "from-emerald-600", to: "to-teal-400", label: "Баг уулзалт" },
-  { from: "from-rose-600", to: "to-pink-400", label: "Тэмдэглэлт өдөр" },
-  { from: "from-amber-600", to: "to-orange-400", label: "Талархлын уулзалт" },
-  { from: "from-indigo-600", to: "to-blue-400", label: "Шинэ жилийн баяр" },
-];
+const ALBUM_PREVIEW = 6;
 
 const PARTICLES = [
   { l: 8, t: 18 },
@@ -92,6 +90,354 @@ const PARTICLES = [
   { l: 68, t: 22 },
   { l: 4, t: 62 },
 ];
+
+/* 
+   DEPT ALBUM
+ */
+type DeptPhoto = {
+  id: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  caption: string;
+  imageData: string;
+  uploadedAt: string;
+};
+
+function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
+  const [photos, setPhotos] = useState<DeptPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [lightbox, setLightbox] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const loadPhotos = useCallback(async () => {
+    try {
+      const data = await departmentsApi.getPhotos(deptId);
+      setPhotos(data);
+    } catch {
+      /* silent */
+    } finally {
+      setLoading(false);
+    }
+  }, [deptId]);
+
+  useEffect(() => {
+    loadPhotos();
+  }, [loadPhotos]);
+
+  // keyboard nav in lightbox
+  useEffect(() => {
+    if (lightbox === null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft")
+        setLightbox((i) => (i !== null && i > 0 ? i - 1 : i));
+      if (e.key === "ArrowRight")
+        setLightbox((i) => (i !== null && i < photos.length - 1 ? i + 1 : i));
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightbox, photos.length]);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      toast({
+        title: "Алдаа",
+        description: "Зургийн хэмжээ 3MB-аас бага байх шаардлагатай",
+        variant: "destructive",
+      });
+      return;
+    }
+    e.target.value = "";
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        await departmentsApi.uploadPhoto(
+          deptId,
+          deptName,
+          ev.target!.result as string,
+        );
+        toast({ title: "Амжилттай", description: "Зураг нэмэгдлээ" });
+        await loadPhotos();
+      } catch {
+        toast({
+          title: "Алдаа",
+          description: "Зураг оруулахад алдаа гарлаа",
+          variant: "destructive",
+        });
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDelete = async (photoId: string) => {
+    if (!confirm("Энэ зурагийг устгах уу?")) return;
+    try {
+      await departmentsApi.deletePhoto(deptId, photoId);
+      if (lightbox !== null) setLightbox(null);
+      await loadPhotos();
+    } catch {
+      toast({
+        title: "Алдаа",
+        description: "Устгахад алдаа гарлаа",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const preview = photos.slice(0, ALBUM_PREVIEW);
+  const remaining = photos.length - ALBUM_PREVIEW;
+
+  const PhotoGrid = ({
+    items,
+    startIdx = 0,
+  }: {
+    items: DeptPhoto[];
+    startIdx?: number;
+  }) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {items.map((photo, i) => (
+        <motion.div
+          key={photo.id}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: i * 0.05 }}
+          className="group relative rounded-2xl overflow-hidden aspect-[4/3] cursor-pointer bg-slate-800"
+          onClick={() => setLightbox(startIdx + i)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photo.imageData}
+            alt={photo.caption || "Зураг"}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          {photo.caption && (
+            <div className="absolute bottom-0 inset-x-0 p-2 translate-y-1 group-hover:translate-y-0 transition-transform">
+              <p className="text-white text-xs font-medium line-clamp-1">
+                {photo.caption}
+              </p>
+            </div>
+          )}
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightbox(startIdx + i);
+              }}
+              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white transition-all"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(photo.id);
+              }}
+              className="p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/80 text-white transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  return (
+    <>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center">
+            <Camera className="w-4 h-4 text-rose-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-white">Альбом</h2>
+          {photos.length > 0 && (
+            <span className="text-xs text-slate-500">
+              {photos.length} зураг
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-medium transition-all disabled:opacity-50"
+        >
+          {uploading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <ImagePlus className="w-3.5 h-3.5" />
+          )}
+          {"Зураг нэмэх"}
+        </button>
+      </div>
+
+      {/* Body */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-rose-400" />
+        </div>
+      ) : photos.length === 0 ? (
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="w-full py-14 rounded-2xl border-2 border-dashed border-slate-700 hover:border-rose-500/50 bg-slate-800/30 hover:bg-slate-800/50 flex flex-col items-center gap-2 text-slate-500 hover:text-rose-400 transition-all"
+        >
+          <Camera className="w-10 h-10" />
+          <p className="text-sm">Хамт олны зураг оруулах</p>
+          <p className="text-xs text-slate-600">
+            PNG, JPG, WEBP · дээд тал 3MB
+          </p>
+        </button>
+      ) : (
+        <>
+          <PhotoGrid items={preview} startIdx={0} />
+
+          {/* See more / collapse */}
+          {photos.length > ALBUM_PREVIEW && (
+            <>
+              <AnimatePresence>
+                {expanded && (
+                  <motion.div
+                    key="extra"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className="overflow-hidden mt-3"
+                  >
+                    <PhotoGrid
+                      items={photos.slice(ALBUM_PREVIEW)}
+                      startIdx={ALBUM_PREVIEW}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="mt-4 w-full py-2 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-400 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
+              >
+                {expanded ? (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5" /> Хураах
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5" /> Цааш харах (
+                    {remaining})
+                  </>
+                )}
+              </button>
+            </>
+          )}
+        </>
+      )}
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox !== null && (
+          <motion.div
+            key="lightbox"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setLightbox(null)}
+          >
+            {/* Close */}
+            <button
+              onClick={() => setLightbox(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Prev */}
+            {lightbox > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightbox((i) => (i as number) - 1);
+                }}
+                className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Next */}
+            {lightbox < photos.length - 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightbox((i) => (i as number) + 1);
+                }}
+                className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Image */}
+            <motion.div
+              key={lightbox}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative max-w-4xl max-h-[85vh] flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photos[lightbox].imageData}
+                alt={photos[lightbox].caption || "Зураг"}
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
+              />
+              <div className="mt-3 text-center">
+                {photos[lightbox].caption && (
+                  <p className="text-white font-medium">
+                    {photos[lightbox].caption}
+                  </p>
+                )}
+                <p className="text-slate-400 text-xs mt-1">
+                  {photos[lightbox].uploadedByName} ·{" "}
+                  {new Date(photos[lightbox].uploadedAt).toLocaleDateString(
+                    "mn-MN",
+                  )}
+                </p>
+                <p className="text-slate-600 text-xs mt-1">
+                  {lightbox + 1} / {photos.length}
+                </p>
+              </div>
+              <button
+                onClick={() => handleDelete(photos[lightbox].id)}
+                className="mt-3 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs flex items-center gap-1.5 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Устгах
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
 
 /* 
    EMPLOYEE CARD
@@ -125,11 +471,19 @@ function EmployeeCard({
         </div>
       )}
 
-      <div
-        className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${getGradient(member.name)} flex items-center justify-center shadow-lg text-white text-xl font-bold ring-4 ring-white/5`}
-      >
-        {getInitials(member.name)}
-      </div>
+      {member.profileImage ? (
+        <img
+          src={member.profileImage}
+          alt={member.name}
+          className="w-20 h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white/5"
+        />
+      ) : (
+        <div
+          className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${getGradient(member.name)} flex items-center justify-center shadow-lg text-white text-xl font-bold ring-4 ring-white/5`}
+        >
+          {getInitials(member.name)}
+        </div>
+      )}
 
       <div className="text-center w-full">
         <p className="font-semibold text-white leading-tight truncate w-full text-center">
@@ -402,7 +756,7 @@ export default function DepartmentsPage() {
                   </div>
                   <div>
                     <p className="text-white/70 text-sm font-medium flex items-center gap-1.5 mb-1">
-                      <Sparkles className="w-3.5 h-3.5" /> Миний хэлтэс
+                      <Star className="w-3.5 h-3.5" /> Миний хэлтэс
                     </p>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow">
                       {department.name}
@@ -491,52 +845,12 @@ export default function DepartmentsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
               >
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center">
-                      <Camera className="w-4 h-4 text-rose-400" />
-                    </div>
-                    <h2 className="text-lg font-semibold text-white">Альбом</h2>
-                  </div>
-                  <span className="text-xs text-slate-500 flex items-center gap-1">
-                    <ImageIcon className="w-3.5 h-3.5" />
-                    {ALBUM_TILES.length} зураг
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {ALBUM_TILES.map((tile, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.65 + i * 0.07 }}
-                      whileHover={{ scale: 1.03 }}
-                      className="group relative rounded-2xl overflow-hidden cursor-pointer aspect-[4/3]"
-                    >
-                      <div
-                        className={`absolute inset-0 bg-gradient-to-br ${tile.from} ${tile.to} opacity-80 group-hover:opacity-100 transition-opacity`}
-                      />
-                      <div
-                        className="absolute inset-0 opacity-20"
-                        style={{
-                          backgroundImage:
-                            "radial-gradient(circle, rgba(255,255,255,.3) 1px, transparent 1px)",
-                          backgroundSize: "20px 20px",
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                      <div className="absolute bottom-0 inset-x-0 p-3 translate-y-1 group-hover:translate-y-0 transition-transform">
-                        <p className="text-white text-xs font-medium line-clamp-1">
-                          {tile.label}
-                        </p>
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                        <ImageIcon className="w-10 h-10 text-white" />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                {department.id && (
+                  <DeptAlbum
+                    deptId={department.id}
+                    deptName={department.name}
+                  />
+                )}
               </motion.section>
 
               {/* Footer ribbon */}

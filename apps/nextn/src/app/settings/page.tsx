@@ -25,7 +25,7 @@ import {
   Loader2,
   Settings as SettingsIcon,
   Shield,
-  Sparkles,
+  Star,
 } from "lucide-react";
 import { usersApi } from "@/lib/api";
 import api from "@/lib/api";
@@ -317,7 +317,7 @@ export default function SettingsPage() {
           <div>
             <h1 className="text-3xl font-bold text-white">Тохиргоо</h1>
             <p className="text-slate-400 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-500" />
+              <Star className="w-4 h-4 text-purple-500" />
               Профайл болон аюулгүй байдлын тохиргоо
             </p>
           </div>

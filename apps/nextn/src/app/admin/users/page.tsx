@@ -44,7 +44,7 @@ import {
   PowerOff,
   Trash2,
   Lock,
-  Sparkles,
+  Star,
   ArrowLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +56,6 @@ import Link from "next/link";
 interface UserData {
   id: string;
   userId?: string;
-  email?: string;
   name: string;
   position?: string;
   department?: string;
@@ -284,7 +283,7 @@ export default function UsersPage() {
             <div>
               <h1 className="text-3xl font-bold text-white">Хэрэглэгчид</h1>
               <p className="text-slate-400 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-500" />
+                <Star className="w-4 h-4 text-blue-500" />
                 Бүх бүртгэлтэй хэрэглэгчдийн удирдлага
               </p>
             </div>

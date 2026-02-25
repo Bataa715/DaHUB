@@ -16,7 +16,7 @@ import {
   Wrench,
   Newspaper,
   ArrowRight,
-  Sparkles,
+  Sun,
   BarChart3,
   Lock,
   Loader2,
@@ -338,7 +338,7 @@ export default function AdminDashboard() {
                 </Badge>
               </h1>
               <p className="text-slate-300 flex items-center gap-2 text-sm sm:text-base">
-                <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                <Sun className="w-4 h-4 text-amber-400 animate-pulse" />
                 Сайн байна уу,{" "}
                 <span className="font-semibold text-white">{user.name}</span>
                 <span className="hidden sm:inline text-slate-500">•</span>

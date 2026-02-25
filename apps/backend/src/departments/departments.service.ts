@@ -9,7 +9,80 @@ import { randomUUID } from "crypto";
 
 @Injectable()
 export class DepartmentsService {
-  constructor(private clickhouse: ClickHouseService) {}
+  constructor(private clickhouse: ClickHouseService) {
+    this.ensurePhotosTable();
+  }
+
+  private async ensurePhotosTable() {
+    try {
+      await this.clickhouse.exec(`
+        CREATE TABLE IF NOT EXISTS department_photos (
+          id String,
+          departmentId String,
+          departmentName String,
+          uploadedBy String,
+          uploadedByName String,
+          imageData String,
+          caption String DEFAULT '',
+          uploadedAt DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (departmentId, uploadedAt)
+      `);
+    } catch (e) {
+      console.error("Failed to ensure department_photos table:", e);
+    }
+  }
+
+  async getPhotos(departmentId: string) {
+    return this.clickhouse.query<any>(
+      `SELECT id, departmentId, departmentName, uploadedBy, uploadedByName, caption, imageData, uploadedAt
+       FROM department_photos WHERE departmentId = {deptId:String}
+       ORDER BY uploadedAt DESC`,
+      { deptId: departmentId },
+    );
+  }
+
+  async getPhotoData(photoId: string) {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT imageData FROM department_photos WHERE id = {id:String} LIMIT 1`,
+      { id: photoId },
+    );
+    if (!rows || rows.length === 0)
+      throw new NotFoundException("Зураг олдсонгүй");
+    return rows[0];
+  }
+
+  async uploadPhoto(
+    departmentId: string,
+    departmentName: string,
+    uploadedBy: string,
+    uploadedByName: string,
+    imageData: string,
+    caption = "",
+  ) {
+    const id = randomUUID();
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    await this.clickhouse.insert("department_photos", [
+      {
+        id,
+        departmentId,
+        departmentName,
+        uploadedBy,
+        uploadedByName,
+        imageData,
+        caption,
+        uploadedAt: now,
+      },
+    ]);
+    return { id, message: "Зураг амжилттай нэмэгдлээ" };
+  }
+
+  async deletePhoto(photoId: string) {
+    await this.clickhouse.exec(
+      `ALTER TABLE department_photos DELETE WHERE id = {id:String}`,
+      { id: photoId },
+    );
+    return { message: "Зураг устгагдлаа" };
+  }
 
   async create(createDepartmentDto: CreateDepartmentDto) {
     const existing = await this.clickhouse.query<any>(
@@ -49,7 +122,7 @@ export class DepartmentsService {
     const result = [];
     for (const dept of departments) {
       const users = await this.clickhouse.query<any>(
-        "SELECT id, userId, name, position, email, isActive FROM users WHERE departmentId = {deptId:String}",
+        "SELECT id, userId, name, position, email, isActive, profileImage FROM users WHERE departmentId = {deptId:String}",
         { deptId: dept.id },
       );
       result.push({ ...dept, users });
@@ -70,7 +143,7 @@ export class DepartmentsService {
 
     const department = departments[0];
     const users = await this.clickhouse.query<any>(
-      "SELECT id, userId, name, position, email, isActive FROM users WHERE departmentId = {id:String}",
+      "SELECT id, userId, name, position, email, isActive, profileImage FROM users WHERE departmentId = {id:String}",
       { id },
     );
 
@@ -89,7 +162,7 @@ export class DepartmentsService {
 
     const department = departments[0];
     const users = await this.clickhouse.query<any>(
-      "SELECT id, userId, name, position, email FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
+      "SELECT id, userId, name, position, email, profileImage FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
       { deptId: department.id },
     );
 

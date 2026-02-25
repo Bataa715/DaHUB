@@ -1,11 +1,6 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-if (!process.env.NEXT_PUBLIC_API_URL) {
-  throw new Error(
-    "NEXT_PUBLIC_API_URL environment variable is required. Set it in apps/nextn/.env.local",
-  );
-}
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const api = axios.create({
@@ -156,7 +151,7 @@ export const authApi = {
 
   searchUsers: async (query: string) => {
     const response = await api.get(
-      `/auth/users/search?q=${encodeURIComponent(query)}`,
+      `/auth/search?q=${encodeURIComponent(query)}`,
     );
     return response.data;
   },
@@ -246,6 +241,42 @@ export const departmentsApi = {
     const response = await api.delete(`/departments/${id}`);
     return response.data;
   },
+
+  // Photo album
+  getPhotos: async (deptId: string) => {
+    const response = await api.get(`/departments/${deptId}/photos`);
+    return response.data as {
+      id: string;
+      departmentId: string;
+      departmentName: string;
+      uploadedBy: string;
+      uploadedByName: string;
+      caption: string;
+      imageData: string;
+      uploadedAt: string;
+    }[];
+  },
+
+  uploadPhoto: async (
+    deptId: string,
+    departmentName: string,
+    imageData: string,
+    caption?: string,
+  ) => {
+    const response = await api.post(`/departments/${deptId}/photos`, {
+      imageData,
+      caption: caption ?? "",
+      departmentName,
+    });
+    return response.data;
+  },
+
+  deletePhoto: async (deptId: string, photoId: string) => {
+    const response = await api.delete(
+      `/departments/${deptId}/photos/${photoId}`,
+    );
+    return response.data;
+  },
 };
 
 // Fitness APIs
@@ -319,11 +350,296 @@ export const fitnessApi = {
   },
 };
 
-export const reportApi = {
-  generate: async (data: object): Promise<Blob> => {
-    const response = await api.post("/report/generate", data, {
+// Tailan (Quarterly Report) APIs
+export const tailanApi = {
+  getRole: async () => {
+    const response = await api.get("/tailan/role");
+    return response.data as { isDeptHead: boolean };
+  },
+
+  saveDraft: async (data: {
+    year: number;
+    quarter: number;
+    plannedTasks: any[];
+    dynamicSections: any[];
+    otherWork?: string;
+    teamActivities: any[];
+    status?: string;
+  }) => {
+    const response = await api.post("/tailan/save", data);
+    return response.data;
+  },
+
+  submitReport: async (year: number, quarter: number) => {
+    const response = await api.post("/tailan/submit", { year, quarter });
+    return response.data;
+  },
+
+  getMyReports: async () => {
+    const response = await api.get("/tailan/my");
+    return response.data;
+  },
+
+  getMyReport: async (year: number, quarter: number) => {
+    const response = await api.get(`/tailan/my/${year}/${quarter}`);
+    return response.data;
+  },
+
+  downloadMyWord: async (
+    year: number,
+    quarter: number,
+    displayName?: string,
+  ): Promise<Blob> => {
+    const params = displayName ? { name: displayName } : {};
+    const response = await api.get(`/tailan/my/${year}/${quarter}/word`, {
+      responseType: "blob",
+      params,
+    });
+    return response.data as Blob;
+  },
+
+  getDeptReports: async (year: number, quarter: number) => {
+    const response = await api.get(`/tailan/dept/${year}/${quarter}`);
+    return response.data;
+  },
+
+  getDeptOverview: async (year: number, quarter: number) => {
+    const response = await api.get(`/tailan/dept/${year}/${quarter}/overview`);
+    return response.data;
+  },
+
+  downloadDeptWord: async (year: number, quarter: number): Promise<Blob> => {
+    const response = await api.get(`/tailan/dept/${year}/${quarter}/word`, {
       responseType: "blob",
     });
     return response.data as Blob;
   },
+
+  generateDeptWord: async (data: {
+    year: number;
+    quarter: number;
+    tasks: any[];
+    sections: any[];
+    otherEntries: any[];
+    activities: any[];
+  }): Promise<Blob> => {
+    const response = await api.post("/tailan/dept/generate-word", data, {
+      responseType: "blob",
+    });
+    return response.data as Blob;
+  },
+
+  // Image methods
+  uploadImage: async (year: number, quarter: number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("year", String(year));
+    formData.append("quarter", String(quarter));
+    const response = await api.post("/tailan/images", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+
+  getImages: async (year: number, quarter: number) => {
+    const response = await api.get(`/tailan/images/my/${year}/${quarter}`);
+    return response.data as {
+      id: string;
+      filename: string;
+      mimeType: string;
+      uploadedAt: string;
+    }[];
+  },
+
+  getDeptImages: async (year: number, quarter: number) => {
+    const response = await api.get(`/tailan/images/dept/${year}/${quarter}`);
+    return response.data as {
+      id: string;
+      userId: string;
+      filename: string;
+      mimeType: string;
+      uploadedAt: string;
+    }[];
+  },
+
+  fetchImageDataUrl: async (id: string): Promise<string> => {
+    const response = await api.get(`/tailan/images/${id}/data`, {
+      responseType: "blob",
+    });
+    return URL.createObjectURL(response.data as Blob);
+  },
+
+  deleteImage: async (id: string) => {
+    await api.delete(`/tailan/images/${id}`);
+  },
 };
+
+// DB Access APIs
+export const dbAccessApi = {
+  // Tables
+  getTables: async () => {
+    const response = await api.get("/db-access/tables");
+    return response.data as { database: string; table: string; full: string }[];
+  },
+
+  getColumns: async (db: string, table: string) => {
+    const response = await api.get(`/db-access/tables/${db}/${table}/columns`);
+    return response.data as { name: string; type: string }[];
+  },
+
+  // Requests
+  createRequest: async (data: {
+    tables: string[];
+    columns?: string[];
+    accessTypes: string[];
+    validUntil: string;
+    reason?: string;
+  }) => {
+    const response = await api.post("/db-access/requests", data);
+    return response.data;
+  },
+
+  getMyRequests: async () => {
+    const response = await api.get("/db-access/requests/my");
+    return response.data;
+  },
+
+  getPendingRequests: async () => {
+    const response = await api.get("/db-access/requests/pending");
+    return response.data;
+  },
+
+  getAllRequests: async () => {
+    const response = await api.get("/db-access/requests");
+    return response.data;
+  },
+
+  reviewRequest: async (
+    id: string,
+    action: "approve" | "reject",
+    reviewNote?: string,
+  ) => {
+    const response = await api.patch(`/db-access/requests/${id}/review`, {
+      action,
+      reviewNote,
+    });
+    return response.data;
+  },
+
+  bulkReview: async (action: "approve" | "reject") => {
+    const response = await api.post("/db-access/requests/bulk-review", {
+      action,
+    });
+    return response.data;
+  },
+
+  // Grants
+  getMyGrants: async () => {
+    const response = await api.get("/db-access/grants/my");
+    return response.data;
+  },
+
+  getAllGrants: async () => {
+    const response = await api.get("/db-access/grants");
+    return response.data;
+  },
+
+  getGrantsByUser: async (userId: string) => {
+    const response = await api.get(`/db-access/grants/user/${userId}`);
+    return response.data;
+  },
+
+  revokeGrant: async (id: string, reason?: string) => {
+    const response = await api.delete(`/db-access/grants/${id}`, {
+      data: { reason },
+    });
+    return response.data;
+  },
+
+  // Grantors
+  getGrantors: async () => {
+    const response = await api.get("/db-access/grantors");
+    return response.data;
+  },
+};
+
+// Chess (Оюуны спорт) APIs
+export const chessApi = {
+  getInvitations: async () => {
+    const response = await api.get("/chess/invitations");
+    return response.data as ChessInvitation[];
+  },
+
+  sendInvite: async (toUserId: string, toUserName: string) => {
+    const response = await api.post("/chess/invite", { toUserId, toUserName });
+    return response.data as { id: string; message: string };
+  },
+
+  acceptInvite: async (id: string) => {
+    const response = await api.post(`/chess/invite/${id}/accept`);
+    return response.data as { gameId: string; message: string };
+  },
+
+  declineInvite: async (id: string) => {
+    const response = await api.post(`/chess/invite/${id}/decline`);
+    return response.data as { message: string };
+  },
+
+  getMyGames: async () => {
+    const response = await api.get("/chess/games");
+    return response.data as ChessGame[];
+  },
+
+  getGame: async (id: string) => {
+    const response = await api.get(`/chess/game/${id}`);
+    return response.data as ChessGame;
+  },
+
+  makeMove: async (gameId: string, move: string) => {
+    const response = await api.post(`/chess/game/${gameId}/move`, { move });
+    return response.data as { success: boolean; moveCount: number };
+  },
+
+  finishGame: async (gameId: string, status: string, resultReason: string) => {
+    const response = await api.post(`/chess/game/${gameId}/finish`, {
+      status,
+      resultReason,
+    });
+    return response.data as { message: string };
+  },
+
+  getHistory: async () => {
+    const response = await api.get("/chess/history");
+    return response.data as {
+      games: { id: string; opponent: string; result: string; resultReason: string; createdAt: string }[];
+      wins: number; losses: number; draws: number; total: number;
+    };
+  },
+
+  getRankings: async () => {
+    const response = await api.get("/chess/rankings");
+    return response.data as { id: string; name: string; wins: number; losses: number; draws: number }[];
+  },
+};
+
+interface ChessInvitation {
+  id: string;
+  fromUserId: string;
+  fromUserName: string;
+  toUserId: string;
+  toUserName: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ChessGame {
+  id: string;
+  whiteUserId: string;
+  whiteUserName: string;
+  blackUserId: string;
+  blackUserName: string;
+  moves: string; // JSON string array
+  status: string; // active | white_won | black_won | draw
+  resultReason: string;
+  createdAt: string;
+}

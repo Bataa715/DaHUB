@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,13 +31,15 @@ import {
   EyeOff,
   Calendar,
   Newspaper,
-  Sparkles,
+  Star,
   Loader2,
   Search,
   Globe,
   FileText,
   TrendingUp,
   Filter,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -82,6 +84,7 @@ export default function AdminNewsPage() {
   const [form, setForm] = useState({ ...empty });
   const [saving, setSaving] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -190,6 +193,26 @@ export default function AdminNewsPage() {
     }
   };
 
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Алдаа",
+        description: "Зургийн хэмжээ 2MB-аас бага байх шаардлагатай",
+        variant: "destructive",
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setForm((f) => ({ ...f, imageUrl: ev.target?.result as string }));
+    };
+    reader.readAsDataURL(file);
+    // reset input so the same file can be re-selected
+    e.target.value = "";
+  };
+
   const fmt = (d: string) =>
     new Date(d).toLocaleDateString("mn-MN", {
       year: "numeric",
@@ -221,7 +244,7 @@ export default function AdminNewsPage() {
               </div>
               <div>
                 <p className="text-xs text-blue-400/80 flex items-center gap-1 mb-0.5">
-                  <Sparkles className="w-3 h-3" /> Мэдээ удирдлага
+                  <Star className="w-3 h-3" /> Мэдээ удридлага
                 </p>
                 <h1 className="text-2xl font-extrabold text-white">
                   Мэдээнүүд
@@ -477,15 +500,54 @@ export default function AdminNewsPage() {
               </Select>
             </div>
 
-            {/* Image URL */}
+            {/* Image upload */}
             <div className="space-y-2">
-              <Label className="text-slate-300 text-sm">Зургийн холбоос</Label>
-              <Input
-                value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                placeholder="https://..."
-                className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:border-blue-500"
+              <Label className="text-slate-300 text-sm">Зураг</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageFile}
               />
+              {form.imageUrl ? (
+                <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-800/50 group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.imageUrl}
+                    alt="preview"
+                    className="w-full h-44 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-medium flex items-center gap-1.5 transition-all"
+                    >
+                      <ImagePlus className="w-3.5 h-3.5" /> Солих
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                      className="px-3 py-1.5 rounded-lg bg-red-500/40 hover:bg-red-500/60 text-white text-xs font-medium flex items-center gap-1.5 transition-all"
+                    >
+                      <X className="w-3.5 h-3.5" /> Устгах
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-32 rounded-xl border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-800/40 hover:bg-slate-800/70 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-400 transition-all"
+                >
+                  <ImagePlus className="w-7 h-7" />
+                  <span className="text-xs font-medium">Зураг оруулах</span>
+                  <span className="text-[10px] text-slate-600">
+                    PNG, JPG, WEBP · дээд тал 2MB
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* Content */}

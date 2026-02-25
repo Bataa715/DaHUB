@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
+import type ExcelJS from "exceljs";
 import BackButton from "@/components/shared/BackButton";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,122 +16,138 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table2,
   Upload,
   FileSpreadsheet,
   Download,
-  BarChart2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
-type AggFunc = "sum" | "count" | "avg" | "min" | "max";
+// ─── Inverse normal CDF (Abramowitz & Stegun) ────────────────────────────────
+function getZ(cl: number): number {
+  const p = 1 - (1 - cl) / 2;
+  if (p >= 1) return 3.5;
+  if (p <= 0) return 0;
+  const a = [2.515517, 0.802853, 0.010328];
+  const b = [1.432788, 0.189269, 0.001308];
+  const t = Math.sqrt(-2 * Math.log(p < 0.5 ? p : 1 - p));
+  const num = a[0] + a[1] * t + a[2] * t * t;
+  const den = 1 + b[0] * t + b[1] * t * t + b[2] * t * t * t;
+  const z = t - num / den;
+  return p < 0.5 ? -z : z;
+}
 
-const AGG_LABELS: Record<AggFunc, string> = {
-  sum: "Нийлбэр (SUM)",
-  count: "Тоо (COUNT)",
-  avg: "Дундаж (AVG)",
-  min: "Хамгийн бага (MIN)",
-  max: "Хамгийн их (MAX)",
-};
+// sample_size(population, confidence, margin_error, p=0.5)
+// n0 = Z² * p * (1-p) / E²
+// n  = n0 / (1 + (n0-1) / population)
+// return math.ceil(n)
+function calcSampleSize(
+  population: number,
+  confidence: number,
+  marginError: number,
+  p = 0.5,
+): number {
+  if (population <= 0) return 0;
+  const Z = getZ(confidence);
+  const n0 = (Z * Z * p * (1 - p)) / (marginError * marginError);
+  const n = n0 / (1 + (n0 - 1) / population);
+  return Math.ceil(n);
+}
 
-function agg(values: number[], fn: AggFunc): number {
-  if (!values.length) return 0;
-  switch (fn) {
-    case "sum":
-      return values.reduce((a, b) => a + b, 0);
-    case "count":
-      return values.length;
-    case "avg":
-      return values.reduce((a, b) => a + b, 0) / values.length;
-    case "min":
-      return Math.min(...values);
-    case "max":
-      return Math.max(...values);
+// Extract prefix: first `len` chars of the value, uppercase. Skips empty values.
+function extractCode(value: unknown, len: number): string {
+  const s =
+    typeof value === "string" ? value.trim() : String(value ?? "").trim();
+  if (!s) return "";
+  return s.slice(0, len).toUpperCase();
+}
+
+// Extract 4-digit year from various date representations
+function toYear(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") {
+    // Excel serial date
+    try {
+      const d = XLSX.SSF.parse_date_code(value);
+      if (d && d.y) return d.y;
+    } catch {
+      // ignore
+    }
   }
+  const str = String(value);
+  const m = str.match(/(\d{4})/);
+  return m ? parseInt(m[1]) : null;
 }
 
-function fmt(v: number, fn: AggFunc) {
-  if (fn === "count") return v.toString();
-  return v.toLocaleString("mn-MN", { maximumFractionDigits: 2 });
+interface PrefixRow {
+  year: number;
+  codeCounts: Record<string, number>;
+  total: number;
+  pct: number;
+  sampleSize: number;
 }
 
-interface PivotData {
-  dataMap: Record<string, Record<string, number[]>>;
-  rowList: string[];
-  colList: string[];
-  aggFn: AggFunc;
-  rowField: string;
-  colField: string;
+interface PrefixGroup {
+  prefix: string;
+  rows: PrefixRow[];
+  codes: string[];
 }
 
-function buildPivot(
-  rows: unknown[][],
+function buildPrefixGroups(
+  data: unknown[][],
   headers: string[],
-  rowField: string,
-  colField: string,
-  valueField: string,
-  aggFn: AggFunc,
-): PivotData {
-  const ri = headers.indexOf(rowField);
-  const ci = headers.indexOf(colField);
-  const vi = headers.indexOf(valueField);
-  const dataMap: Record<string, Record<string, number[]>> = {};
-  const allCols = new Set<string>();
+  dateCol: string,
+  codeCol: string,
+  confidence: number,
+  marginError: number,
+  prefixLen: number,
+): PrefixGroup[] {
+  const dateIdx = headers.indexOf(dateCol);
+  const codeIdx = headers.indexOf(codeCol);
+  if (dateIdx < 0 || codeIdx < 0) return [];
 
-  for (const row of rows) {
-    const r = String((row as unknown[])[ri] ?? "");
-    const c = String((row as unknown[])[ci] ?? "");
-    const v = parseFloat(String((row as unknown[])[vi] ?? "0")) || 0;
-    if (!dataMap[r]) dataMap[r] = {};
-    if (!dataMap[r][c]) dataMap[r][c] = [];
-    dataMap[r][c].push(v);
-    allCols.add(c);
+  // prefix → year → code → count
+  const map: Record<string, Record<number, Record<string, number>>> = {};
+
+  for (const row of data) {
+    const rawCode = (row as unknown[])[codeIdx];
+    const rawDate = (row as unknown[])[dateIdx];
+    const prefix = extractCode(rawCode, prefixLen);
+    if (!prefix) continue;
+    const year = toYear(rawDate);
+    if (year == null) continue;
+    const code =
+      typeof rawCode === "string" ? rawCode.trim() : String(rawCode ?? "");
+    if (!map[prefix]) map[prefix] = {};
+    if (!map[prefix][year]) map[prefix][year] = {};
+    map[prefix][year][code] = (map[prefix][year][code] || 0) + 1;
   }
 
-  return {
-    dataMap,
-    rowList: Object.keys(dataMap).sort(),
-    colList: Array.from(allCols).sort(),
-    aggFn,
-    rowField,
-    colField,
-  };
-}
-
-interface FreqRow {
-  val: string;
-  count: number;
-  pct: string;
-  cumCount: number;
-  cumPct: string;
-}
-
-function buildFrequency(
-  rows: unknown[][],
-  headers: string[],
-  field: string,
-): FreqRow[] {
-  const idx = headers.indexOf(field);
-  const freqMap: Record<string, number> = {};
-  for (const row of rows) {
-    const v = String((row as unknown[])[idx] ?? "");
-    freqMap[v] = (freqMap[v] || 0) + 1;
-  }
-  const total = rows.length;
-  let cum = 0;
-  return Object.entries(freqMap)
-    .sort(([, a], [, b]) => b - a)
-    .map(([val, count]) => {
-      cum += count;
-      return {
-        val,
-        count,
-        pct: ((count / total) * 100).toFixed(2) + "%",
-        cumCount: cum,
-        cumPct: ((cum / total) * 100).toFixed(2) + "%",
-      };
+  return Object.keys(map)
+    .sort()
+    .map((prefix) => {
+      const yearMap = map[prefix];
+      const allCodes = Array.from(
+        new Set(Object.values(yearMap).flatMap((y) => Object.keys(y))),
+      ).sort();
+      const rows: PrefixRow[] = Object.keys(yearMap)
+        .map(Number)
+        .sort()
+        .map((year) => {
+          const codeCounts = yearMap[year];
+          const total = Object.values(codeCounts).reduce((s, v) => s + v, 0);
+          return { year, codeCounts, total, pct: 0, sampleSize: 0 };
+        });
+      const totalAll = rows.reduce((s, r) => s + r.total, 0);
+      rows.forEach((r) => {
+        r.pct =
+          totalAll > 0 ? Math.round((r.total / totalAll) * 10000) / 100 : 0;
+        r.sampleSize = calcSampleSize(r.total, confidence, marginError);
+      });
+      return { prefix, rows, codes: allCodes };
     });
 }
 
@@ -140,20 +157,36 @@ export default function PivotPage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [exportFilename, setExportFilename] = useState("pivot_result.xlsx");
 
-  // Pivot config
-  const [rowField, setRowField] = useState("");
-  const [colField, setColField] = useState("");
-  const [valueField, setValueField] = useState("");
-  const [aggFn, setAggFn] = useState<AggFunc>("sum");
-  const [pivotResult, setPivotResult] = useState<PivotData | null>(null);
+  const [dateCol, setDateCol] = useState("");
+  const [codeCol, setCodeCol] = useState("");
+  const [confidence, setConfidence] = useState(0.9);
+  const [marginError, setMarginError] = useState(0.1);
+  const [prefixLen, setPrefixLen] = useState(3);
 
-  // Frequency config
-  const [freqField, setFreqField] = useState("");
-  const [freqResult, setFreqResult] = useState<FreqRow[] | null>(null);
+  const [prefixGroups, setPrefixGroups] = useState<PrefixGroup[] | null>(null);
+  const [expandedPrefixes, setExpandedPrefixes] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const [selectedPrefix, setSelectedPrefix] = useState("");
+  const [exportFilename, setExportFilename] = useState("sample_result.xlsx");
+  const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Compute unique years from fileData based on dateCol selection
+  const availableYears: number[] = (() => {
+    if (!fileData || !dateCol) return [];
+    const idx = headers.indexOf(dateCol);
+    if (idx < 0) return [];
+    const years = new Set<number>();
+    for (const row of fileData) {
+      const y = toYear((row as unknown[])[idx]);
+      if (y != null) years.add(y);
+    }
+    return Array.from(years).sort();
+  })();
 
   const processFile = useCallback((file: File) => {
     if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
@@ -164,9 +197,12 @@ export default function PivotPage() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array" });
+      const wb = XLSX.read(data, { type: "array", cellDates: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const jsonRows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 });
+      const jsonRows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
+        header: 1,
+        raw: true,
+      });
       if (jsonRows.length < 2) {
         setError("Файлд хангалттай мэдээлэл байхгүй");
         return;
@@ -176,12 +212,11 @@ export default function PivotPage() {
       setHeaders(hdrs);
       setFileData(rows);
       setFileName(file.name);
-      if (hdrs.length >= 1) setRowField(hdrs[0]);
-      if (hdrs.length >= 2) setColField(hdrs[1]);
-      if (hdrs.length >= 3) setValueField(hdrs[2]);
-      setFreqField(hdrs[0]);
-      setPivotResult(null);
-      setFreqResult(null);
+      setDateCol(hdrs[0] ?? "");
+      setCodeCol(hdrs[1] ?? "");
+      setPrefixGroups(null);
+      setExpandedPrefixes(new Set());
+      setSelectedYear("all");
     };
     reader.readAsArrayBuffer(file);
   }, []);
@@ -201,73 +236,240 @@ export default function PivotPage() {
     if (file) processFile(file);
   };
 
-  const handleBuildPivot = () => {
-    if (!fileData || !rowField || !colField || !valueField) return;
-    setPivotResult(
-      buildPivot(fileData, headers, rowField, colField, valueField, aggFn),
+  const handleBuild = () => {
+    if (!fileData || !dateCol || !codeCol) return;
+    const dateIdx = headers.indexOf(dateCol);
+    const filteredData =
+      selectedYear === "all"
+        ? fileData
+        : fileData.filter(
+            (row) => toYear((row as unknown[])[dateIdx]) === selectedYear,
+          );
+    const groups = buildPrefixGroups(
+      filteredData,
+      headers,
+      dateCol,
+      codeCol,
+      confidence,
+      marginError,
+      prefixLen,
     );
+    setPrefixGroups(groups);
+    setExpandedPrefixes(new Set(groups.map((g) => g.prefix)));
+    if (groups.length > 0 && !selectedPrefix)
+      setSelectedPrefix(groups[0].prefix);
   };
 
-  const handleBuildFreq = () => {
-    if (!fileData || !freqField) return;
-    setFreqResult(buildFrequency(fileData, headers, freqField));
+  const toggleExpand = (prefix: string) => {
+    setExpandedPrefixes((prev) => {
+      const next = new Set(prev);
+      if (next.has(prefix)) next.delete(prefix);
+      else next.add(prefix);
+      return next;
+    });
   };
 
-  const handleExport = () => {
-    const wb = XLSX.utils.book_new();
+  const handleExport = async () => {
+    if (!fileData || !selectedPrefix || !prefixGroups) return;
+    const group = prefixGroups.find((g) => g.prefix === selectedPrefix);
+    if (!group) return;
 
-    if (pivotResult) {
-      const { dataMap, colList, rowList, aggFn } = pivotResult;
-      const sheet: unknown[][] = [
-        [
-          pivotResult.rowField + " \\ " + pivotResult.colField,
-          ...colList,
-          "Нийт",
-        ],
-      ];
-      for (const r of rowList) {
-        const total = colList.reduce(
-          (s, c) => s + agg(dataMap[r]?.[c] || [], aggFn),
-          0,
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Internal Audit Tool";
+    wb.created = new Date();
+
+    // ── Colour palette ──────────────────────────────────────────────────────
+    const HDR_FILL: ExcelJS.Fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0F4C75" },
+    };
+    const ROW_ODD: ExcelJS.Fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFF0F7FF" },
+    };
+    const ROW_EVN: ExcelJS.Fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFFFFFFF" },
+    };
+    const TOTAL_FILL: ExcelJS.Fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE8F4FD" },
+    };
+    const BORDER: Partial<ExcelJS.Borders> = {
+      top: { style: "thin", color: { argb: "FFCCD6DD" } },
+      left: { style: "thin", color: { argb: "FFCCD6DD" } },
+      bottom: { style: "thin", color: { argb: "FFCCD6DD" } },
+      right: { style: "thin", color: { argb: "FFCCD6DD" } },
+    };
+    const HDR_FONT: Partial<ExcelJS.Font> = {
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+      size: 10,
+    };
+    const BODY_FONT: Partial<ExcelJS.Font> = { size: 10 };
+
+    const applyHdr = (row: ExcelJS.Row) => {
+      row.eachCell((cell) => {
+        cell.fill = HDR_FILL;
+        cell.font = HDR_FONT;
+        cell.border = BORDER;
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      });
+      row.height = 20;
+    };
+    const applyBody = (row: ExcelJS.Row, fill: ExcelJS.Fill) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = fill;
+        cell.font = BODY_FONT;
+        cell.border = BORDER;
+      });
+      row.height = 18;
+    };
+    const autoWidth = (ws: ExcelJS.Worksheet, cols: string[][]) => {
+      ws.columns.forEach((col, i) => {
+        const max = cols.reduce(
+          (m, r) => Math.max(m, String(r[i] ?? "").length),
+          ((col.header as string) ?? "").length,
         );
-        sheet.push([
-          r,
-          ...colList.map((c) => agg(dataMap[r]?.[c] || [], aggFn)),
-          total,
-        ]);
-      }
-      const totals = colList.map((c) =>
-        rowList.reduce((s, r) => s + agg(dataMap[r]?.[c] || [], aggFn), 0),
-      );
-      const grand = totals.reduce((a, b) => a + b, 0);
-      sheet.push(["Нийт", ...totals, grand]);
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheet), "Pivot");
-    }
+        col.width = Math.min(Math.max(max + 3, 10), 50);
+      });
+    };
 
-    if (freqResult) {
-      const freqSheet = [
-        ["Утга", "Давтамж", "%", "Хуримтлагдсан тоо", "Хуримтлагдсан %"],
-        ...freqResult.map((r) => [r.val, r.count, r.pct, r.cumCount, r.cumPct]),
+    // ── Summary sheet ────────────────────────────────────────────────────────
+    const sumSheet = wb.addWorksheet("Дэгдэлхүүн");
+    sumSheet.mergeCells("A1:G1");
+    const title = sumSheet.getCell("A1");
+    title.value = `Pivot дүн: ${selectedPrefix} — итгэлцэл: ${Math.round(confidence * 100)}%, алдаа: ${Math.round(marginError * 100)}%`;
+    title.font = { bold: true, size: 13, color: { argb: "FF0F4C75" } };
+    title.alignment = { horizontal: "left", vertical: "middle" };
+    sumSheet.getRow(1).height = 26;
+    sumSheet.addRow([]);
+
+    const sumHdrs = [
+      "Жил",
+      ...group.codes,
+      "Нийт",
+      "Хувь (%)",
+      `Түүвэр (${Math.round(confidence * 100)}/${Math.round(marginError * 100)})`,
+    ];
+    const sumHdrRow = sumSheet.addRow(sumHdrs);
+    applyHdr(sumHdrRow);
+
+    const bodyRows: string[][] = [];
+    group.rows.forEach((r, idx) => {
+      const vals = [
+        String(r.year),
+        ...group.codes.map((c) => String(r.codeCounts[c] ?? 0)),
+        String(r.total),
+        r.pct.toFixed(2) + "%",
+        String(r.sampleSize),
       ];
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.aoa_to_sheet(freqSheet),
-        "Давтамж",
+      bodyRows.push(vals);
+      const row = sumSheet.addRow(vals);
+      applyBody(row, idx % 2 === 0 ? ROW_ODD : ROW_EVN);
+      row.getCell(1).font = { bold: true, size: 10 };
+    });
+    const totalVals = [
+      "Нийт",
+      ...group.codes.map((c) =>
+        String(group.rows.reduce((s, r) => s + (r.codeCounts[c] ?? 0), 0)),
+      ),
+      String(group.rows.reduce((s, r) => s + r.total, 0)),
+      "100%",
+      String(group.rows.reduce((s, r) => s + r.sampleSize, 0)),
+    ];
+    const totalRow = sumSheet.addRow(totalVals);
+    totalRow.eachCell((cell) => {
+      cell.fill = TOTAL_FILL;
+      cell.font = { bold: true, size: 10, color: { argb: "FF0F4C75" } };
+      cell.border = BORDER;
+      cell.alignment = { vertical: "middle" };
+    });
+    totalRow.height = 20;
+    autoWidth(sumSheet, bodyRows);
+    sumSheet.views = [{ state: "frozen", xSplit: 0, ySplit: 3 }];
+
+    // ── Per-year sample sheets ───────────────────────────────────────────────
+    const dateIdx = headers.indexOf(dateCol);
+    const codeIdx = headers.indexOf(codeCol);
+    const prefixRows = fileData.filter(
+      (row) =>
+        extractCode((row as unknown[])[codeIdx], prefixLen) === selectedPrefix,
+    );
+
+    const RED_FILL: ExcelJS.Fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFFCE4E4" },
+    };
+
+    for (const pivotRow of group.rows) {
+      const year = pivotRow.year;
+      const n = pivotRow.sampleSize;
+      const yearRows = prefixRows.filter(
+        (row) => toYear((row as unknown[])[dateIdx]) === year,
       );
+      const sampleCount = Math.min(n, yearRows.length);
+      const sampled = [...yearRows]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, sampleCount);
+
+      const ws = wb.addWorksheet(String(year));
+
+      // Info row
+      ws.mergeCells("A1:" + String.fromCharCode(65 + headers.length) + "1");
+      const info = ws.getCell("A1");
+      info.value = `${selectedPrefix} | ${year} он | Түүвэр: ${sampleCount} / ${yearRows.length} (итгэлцэл: ${Math.round(confidence * 100)}%, алдаа: ${Math.round(marginError * 100)}%)`;
+      info.font = { bold: true, size: 11, color: { argb: "FF0F4C75" } };
+      info.alignment = { horizontal: "left", vertical: "middle" };
+      ws.getRow(1).height = 22;
+
+      // Extra cols
+      const allCols = [...headers, "Алдаатай эсэх", "Тайлбар"];
+      ws.columns = allCols.map((h) => ({ header: h, key: h }));
+
+      const hdrRow = ws.getRow(2);
+      hdrRow.values = allCols;
+      applyHdr(hdrRow);
+
+      const dataRows: string[][] = [];
+      sampled.forEach((r, i) => {
+        const vals = [...(r as unknown[])].map((v) => String(v ?? ""));
+        vals.push("Үгүй", "");
+        dataRows.push(vals);
+        const row = ws.addRow(vals);
+        applyBody(row, i % 2 === 0 ? ROW_ODD : ROW_EVN);
+      });
+      autoWidth(ws, dataRows);
+      // Fix header row number vs data row index
+      ws.columns.forEach((col, i) => {
+        const max = dataRows.reduce(
+          (m, r) => Math.max(m, String(r[i] ?? "").length),
+          allCols[i]?.length ?? 0,
+        );
+        col.width = Math.min(Math.max(max + 3, 10), 50);
+      });
+      ws.views = [{ state: "frozen", xSplit: 0, ySplit: 2 }];
     }
 
-    if (fileData && headers.length > 0) {
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.aoa_to_sheet([headers, ...fileData]),
-        "Өгөгдөл",
-      );
-    }
-
-    if (wb.SheetNames.length > 0) {
-      XLSX.writeFile(wb, exportFilename || "pivot_result.xlsx");
-    }
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = exportFilename || `sample_${selectedPrefix}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
+
+  const prefixList = prefixGroups?.map((g) => g.prefix) ?? [];
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -287,7 +489,7 @@ export default function PivotPage() {
 
       <BackButton href="/tools" />
 
-      <div className="relative z-10 container mx-auto px-6 py-8 max-w-5xl">
+      <div className="relative z-10 container mx-auto px-6 py-8 max-w-6xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -299,11 +501,11 @@ export default function PivotPage() {
               <Table2 className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-white">
-              Pivot хийх болон түгвэр тооцох
+              Pivot түүвэр тооцоолох хэрэгсэл
             </h1>
           </div>
           <p className="text-slate-400">
-            Excel файлаас pivot хүснэгт болон давтамжийн хүснэгт үүсгэх хэрэгсэл
+            Кодоор бүлэглэж жилээр pivot хийн, түүвэр тооцоолж Excel татах
           </p>
         </motion.div>
 
@@ -316,31 +518,9 @@ export default function PivotPage() {
         >
           <Card className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl">
             <CardContent className="pt-6 space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
-                <Label className="text-slate-300 text-base">
-                  📎 Excel хэлбэр CSV файл оруулах
-                </Label>
-                {fileData && (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={exportFilename}
-                      onChange={(e) => setExportFilename(e.target.value)}
-                      className="bg-slate-800/50 border-slate-600 text-white w-52 text-sm"
-                      placeholder="pivot_result.xlsx"
-                    />
-                    <Button
-                      onClick={handleExport}
-                      size="sm"
-                      variant="outline"
-                      className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 whitespace-nowrap"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Excel татах
-                    </Button>
-                  </div>
-                )}
-              </div>
-
+              <Label className="text-slate-300 text-base">
+                📎 Excel эсвэл CSV файл оруулах
+              </Label>
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -391,7 +571,7 @@ export default function PivotPage() {
           </Card>
         </motion.div>
 
-        {/* Analysis — only shown after file load */}
+        {/* Config */}
         <AnimatePresence>
           {fileData && headers.length > 0 && (
             <motion.div
@@ -400,449 +580,369 @@ export default function PivotPage() {
               exit={{ opacity: 0 }}
               className="mb-6"
             >
-              <Tabs defaultValue="pivot">
-                <TabsList className="bg-slate-800/50 border border-slate-700/50 mb-6">
-                  <TabsTrigger
-                    value="pivot"
-                    className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white text-slate-400"
+              <Card className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl">
+                <CardHeader>
+                  <CardTitle className="text-white">⚙️ Тохиргоо</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Year filter */}
+                    <div className="space-y-2 col-span-2 md:col-span-4">
+                      <Label className="text-slate-300">
+                        📅 Жилийн шүүлтүүр
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => setSelectedYear("all")}
+                          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                            selectedYear === "all"
+                              ? "bg-cyan-500 border-cyan-400 text-white"
+                              : "bg-slate-800 border-slate-600 text-slate-300 hover:border-cyan-500/60"
+                          }`}
+                        >
+                          Бүх жил
+                        </button>
+                        {availableYears.map((y) => (
+                          <button
+                            key={y}
+                            onClick={() => setSelectedYear(y)}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                              selectedYear === y
+                                ? "bg-cyan-500 border-cyan-400 text-white"
+                                : "bg-slate-800 border-slate-600 text-slate-300 hover:border-cyan-500/60"
+                            }`}
+                          >
+                            {y}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Date column */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">
+                        🗓️ Огноон баганаа сонгоно уу
+                      </Label>
+                      <Select value={dateCol} onValueChange={setDateCol}>
+                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-600">
+                          {headers.map((h) => (
+                            <SelectItem
+                              key={h}
+                              value={h}
+                              className="text-white focus:bg-slate-700"
+                            >
+                              {h}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Code column */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">
+                        Бүлэглэх баганаа сонгоно
+                      </Label>
+                      <Select value={codeCol} onValueChange={setCodeCol}>
+                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-600">
+                          {headers.map((h) => (
+                            <SelectItem
+                              key={h}
+                              value={h}
+                              className="text-white focus:bg-slate-700"
+                            >
+                              {h}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Prefix length */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">
+                        🔤 Prefix урт (тэмдэгт)
+                      </Label>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            onClick={() => setPrefixLen(n)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
+                              prefixLen === n
+                                ? "bg-cyan-500 border-cyan-400 text-white"
+                                : "bg-slate-800 border-slate-600 text-slate-300 hover:border-cyan-500/60"
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      {codeCol && fileData && (
+                        <p className="text-xs text-slate-500 truncate">
+                          Жишээ: &quot;
+                          {String(
+                            (fileData[0] as unknown[])[
+                              headers.indexOf(codeCol)
+                            ] ?? "",
+                          )
+                            .slice(0, prefixLen)
+                            .toUpperCase()}
+                          &quot;,...
+                        </p>
+                      )}
+                    </div>
+                    {/* Confidence */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">
+                        Итгэлцлийн түвшин (%)
+                      </Label>
+                      <Select
+                        value={String(Math.round(confidence * 100))}
+                        onValueChange={(v) => setConfidence(Number(v) / 100)}
+                      >
+                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-600">
+                          {[80, 90, 95, 99].map((v) => (
+                            <SelectItem
+                              key={v}
+                              value={String(v)}
+                              className="text-white focus:bg-slate-700"
+                            >
+                              {v}%
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Margin error */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">
+                        Алдааны маржин (%)
+                      </Label>
+                      <Select
+                        value={String(Math.round(marginError * 100))}
+                        onValueChange={(v) => setMarginError(Number(v) / 100)}
+                      >
+                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-600">
+                          {[5, 10, 15, 20].map((v) => (
+                            <SelectItem
+                              key={v}
+                              value={String(v)}
+                              className="text-white focus:bg-slate-700"
+                            >
+                              {v}%
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleBuild}
+                    className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white"
                   >
                     <Table2 className="w-4 h-4 mr-2" />
-                    Pivot хүснэгт
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="freq"
-                    className="data-[state=active]:bg-teal-600 data-[state=active]:text-white text-slate-400"
+                    Pivot үүсгэх
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Per-prefix Pivot Tables */}
+        <AnimatePresence>
+          {prefixGroups && prefixGroups.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mb-6 space-y-3"
+            >
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h2 className="text-white text-lg font-semibold">
+                  📊 Кодын бүлгээр pivot
+                </h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Select
+                    value={selectedPrefix}
+                    onValueChange={setSelectedPrefix}
                   >
-                    <BarChart2 className="w-4 h-4 mr-2" />
-                    Давтамжийн хүснэгт
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="preview"
-                    className="data-[state=active]:bg-slate-600 data-[state=active]:text-white text-slate-400"
-                  >
-                    Өгөгдөл харах
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* ─── Pivot Tab ─── */}
-                <TabsContent value="pivot">
-                  <Card className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl">
-                    <CardHeader>
-                      <CardTitle className="text-white">
-                        Pivot тохиргоо
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                          {
-                            label: "Мөрийн талбар",
-                            value: rowField,
-                            set: setRowField,
-                          },
-                          {
-                            label: "Баганын талбар",
-                            value: colField,
-                            set: setColField,
-                          },
-                          {
-                            label: "Утгын талбар",
-                            value: valueField,
-                            set: setValueField,
-                          },
-                        ].map(({ label, value, set }) => (
-                          <div key={label} className="space-y-2">
-                            <Label className="text-slate-300">{label}</Label>
-                            <Select value={value} onValueChange={set}>
-                              <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-800 border-slate-600">
-                                {headers.map((h) => (
-                                  <SelectItem
-                                    key={h}
-                                    value={h}
-                                    className="text-white focus:bg-slate-700"
-                                  >
-                                    {h}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ))}
-                        <div className="space-y-2">
-                          <Label className="text-slate-300">Нэгтгэх арга</Label>
-                          <Select
-                            value={aggFn}
-                            onValueChange={(v) => setAggFn(v as AggFunc)}
-                          >
-                            <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-600">
-                              {(
-                                Object.entries(AGG_LABELS) as [
-                                  AggFunc,
-                                  string,
-                                ][]
-                              ).map(([k, v]) => (
-                                <SelectItem
-                                  key={k}
-                                  value={k}
-                                  className="text-white focus:bg-slate-700"
-                                >
-                                  {v}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <Button
-                        onClick={handleBuildPivot}
-                        className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white"
-                      >
-                        <Table2 className="w-4 h-4 mr-2" />
-                        Pivot үүсгэх
-                      </Button>
-
-                      <AnimatePresence>
-                        {pivotResult && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="mt-2"
-                          >
-                            <ScrollArea className="max-h-96">
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm border-collapse">
-                                  <thead>
-                                    <tr className="bg-slate-800">
-                                      <th className="px-3 py-2 text-left text-slate-300 border border-slate-700 font-semibold">
-                                        {pivotResult.rowField} \{" "}
-                                        {pivotResult.colField}
-                                      </th>
-                                      {pivotResult.colList.map((c) => (
-                                        <th
-                                          key={c}
-                                          className="px-3 py-2 text-right text-cyan-400 border border-slate-700 whitespace-nowrap"
-                                        >
-                                          {c}
-                                        </th>
-                                      ))}
-                                      <th className="px-3 py-2 text-right text-white border border-slate-700 font-bold">
-                                        Нийт
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {pivotResult.rowList.map((r, i) => {
-                                      const total = pivotResult.colList.reduce(
-                                        (s, c) =>
-                                          s +
-                                          agg(
-                                            pivotResult.dataMap[r]?.[c] || [],
-                                            pivotResult.aggFn,
-                                          ),
-                                        0,
-                                      );
-                                      return (
-                                        <tr
-                                          key={r}
-                                          className={
-                                            i % 2 === 0
-                                              ? "bg-slate-900"
-                                              : "bg-slate-800/30"
-                                          }
-                                        >
-                                          <td className="px-3 py-2 text-slate-200 border border-slate-700 font-medium whitespace-nowrap">
-                                            {r}
-                                          </td>
-                                          {pivotResult.colList.map((c) => (
-                                            <td
-                                              key={c}
-                                              className="px-3 py-2 text-white text-right border border-slate-700"
-                                            >
-                                              {fmt(
-                                                agg(
-                                                  pivotResult.dataMap[r]?.[c] ||
-                                                    [],
-                                                  pivotResult.aggFn,
-                                                ),
-                                                pivotResult.aggFn,
-                                              )}
-                                            </td>
-                                          ))}
-                                          <td className="px-3 py-2 text-cyan-400 font-bold text-right border border-slate-700">
-                                            {fmt(total, pivotResult.aggFn)}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                    <tr className="bg-slate-700/60 font-bold">
-                                      <td className="px-3 py-2 text-white border border-slate-700">
-                                        Нийт
-                                      </td>
-                                      {pivotResult.colList.map((c) => {
-                                        const cv = pivotResult.rowList.reduce(
-                                          (s, r) =>
-                                            s +
-                                            agg(
-                                              pivotResult.dataMap[r]?.[c] || [],
-                                              pivotResult.aggFn,
-                                            ),
-                                          0,
-                                        );
-                                        return (
-                                          <td
-                                            key={c}
-                                            className="px-3 py-2 text-white text-right border border-slate-700"
-                                          >
-                                            {fmt(cv, pivotResult.aggFn)}
-                                          </td>
-                                        );
-                                      })}
-                                      <td className="px-3 py-2 text-cyan-400 font-bold text-right border border-slate-700">
-                                        {fmt(
-                                          pivotResult.rowList.reduce(
-                                            (s, r) =>
-                                              s +
-                                              pivotResult.colList.reduce(
-                                                (ss, c) =>
-                                                  ss +
-                                                  agg(
-                                                    pivotResult.dataMap[r]?.[
-                                                      c
-                                                    ] || [],
-                                                    pivotResult.aggFn,
-                                                  ),
-                                                0,
-                                              ),
-                                            0,
-                                          ),
-                                          pivotResult.aggFn,
-                                        )}
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </div>
-                            </ScrollArea>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* ─── Frequency Tab ─── */}
-                <TabsContent value="freq">
-                  <Card className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl">
-                    <CardHeader>
-                      <CardTitle className="text-white">
-                        Давтамжийн тооцоо
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-end gap-4 flex-wrap">
-                        <div className="space-y-2">
-                          <Label className="text-slate-300">
-                            Талбар сонгох
-                          </Label>
-                          <Select
-                            value={freqField}
-                            onValueChange={setFreqField}
-                          >
-                            <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white w-52">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-600">
-                              {headers.map((h) => (
-                                <SelectItem
-                                  key={h}
-                                  value={h}
-                                  className="text-white focus:bg-slate-700"
-                                >
-                                  {h}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          onClick={handleBuildFreq}
-                          className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white"
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white w-36">
+                      <SelectValue placeholder="Prefix..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-600">
+                      {prefixList.map((p) => (
+                        <SelectItem
+                          key={p}
+                          value={p}
+                          className="text-white focus:bg-slate-700"
                         >
-                          <BarChart2 className="w-4 h-4 mr-2" />
-                          Тооцоолох
-                        </Button>
-                      </div>
-
-                      <AnimatePresence>
-                        {freqResult && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                          >
-                            <div className="overflow-x-auto rounded-lg border border-slate-700">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="bg-slate-800">
-                                    <th className="px-4 py-2 text-slate-300 text-left">
-                                      {freqField}
-                                    </th>
-                                    <th className="px-4 py-2 text-slate-300 text-right">
-                                      Давтамж
-                                    </th>
-                                    <th className="px-4 py-2 text-slate-300 text-right">
-                                      %
-                                    </th>
-                                    <th className="px-4 py-2 text-slate-300 text-right">
-                                      Хуримт. тоо
-                                    </th>
-                                    <th className="px-4 py-2 text-slate-300 text-right">
-                                      Хуримт. %
-                                    </th>
-                                    <th className="px-4 py-2 text-slate-300 text-left">
-                                      График
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {freqResult.map((row, i) => {
-                                    const pctNum = parseFloat(row.pct);
-                                    return (
-                                      <tr
-                                        key={i}
-                                        className={
-                                          i % 2 === 0
-                                            ? "bg-slate-900"
-                                            : "bg-slate-800/30"
-                                        }
-                                      >
-                                        <td className="px-4 py-2 text-white whitespace-nowrap">
-                                          {row.val}
-                                        </td>
-                                        <td className="px-4 py-2 text-white text-right">
-                                          {row.count}
-                                        </td>
-                                        <td className="px-4 py-2 text-teal-400 text-right">
-                                          {row.pct}
-                                        </td>
-                                        <td className="px-4 py-2 text-slate-300 text-right">
-                                          {row.cumCount}
-                                        </td>
-                                        <td className="px-4 py-2 text-slate-300 text-right">
-                                          {row.cumPct}
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <div className="w-28 bg-slate-700 rounded-full h-2">
-                                            <div
-                                              className="bg-gradient-to-r from-teal-500 to-cyan-500 h-2 rounded-full transition-all"
-                                              style={{
-                                                width: `${Math.min(pctNum, 100)}%`,
-                                              }}
-                                            />
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                                <tfoot>
-                                  <tr className="bg-slate-700/60 font-bold">
-                                    <td className="px-4 py-2 text-white">
-                                      Нийт
-                                    </td>
-                                    <td className="px-4 py-2 text-white text-right">
-                                      {fileData?.length}
-                                    </td>
-                                    <td className="px-4 py-2 text-teal-400 text-right">
-                                      100%
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-300 text-right">
-                                      {fileData?.length}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-300 text-right">
-                                      100%
-                                    </td>
-                                    <td className="px-4 py-2" />
-                                  </tr>
-                                </tfoot>
-                              </table>
-                            </div>
-                          </motion.div>
+                          {p}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={exportFilename}
+                    onChange={(e) => setExportFilename(e.target.value)}
+                    className="bg-slate-800/50 border-slate-600 text-white w-56"
+                    placeholder="sample_result.xlsx"
+                  />
+                  <Button
+                    onClick={handleExport}
+                    disabled={!selectedPrefix}
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white disabled:opacity-40"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Excel татах
+                  </Button>
+                </div>
+              </div>
+              {prefixGroups.map((group) => (
+                <Card
+                  key={group.prefix}
+                  className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl"
+                >
+                  <CardHeader
+                    className="py-3 cursor-pointer"
+                    onClick={() => toggleExpand(group.prefix)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-cyan-400 text-base flex items-center gap-2">
+                        {expandedPrefixes.has(group.prefix) ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
                         )}
-                      </AnimatePresence>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* ─── Preview Tab ─── */}
-                <TabsContent value="preview">
-                  <Card className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl">
-                    <CardHeader>
-                      <CardTitle className="text-white">
-                        Өгөгдлийн урдчилсан харагдац (эхний 20 мөр)
+                        <span className="font-mono bg-cyan-500/20 px-2 py-0.5 rounded text-cyan-300">
+                          {group.prefix}
+                        </span>
+                        <span className="text-slate-400 font-normal text-sm">
+                          бүлэг
+                        </span>
                       </CardTitle>
-                    </CardHeader>
+                      <span className="text-slate-400 text-sm">
+                        {group.rows.length} жил,{" "}
+                        {group.rows.reduce((s, r) => s + r.total, 0)} нийт
+                      </span>
+                    </div>
+                  </CardHeader>
+                  {expandedPrefixes.has(group.prefix) && (
                     <CardContent>
-                      <ScrollArea className="max-h-96">
+                      <ScrollArea className="max-h-80">
                         <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
+                          <table className="w-full text-sm border-collapse">
                             <thead>
                               <tr className="bg-slate-800">
-                                <th className="px-3 py-2 text-slate-400 text-left">
-                                  #
+                                <th className="px-3 py-2 text-left text-slate-300 border border-slate-700">
+                                  Жил
                                 </th>
-                                {headers.map((h) => (
+                                {group.codes.map((c) => (
                                   <th
-                                    key={h}
-                                    className="px-3 py-2 text-slate-400 text-left whitespace-nowrap"
+                                    key={c}
+                                    className="px-3 py-2 text-right text-cyan-400 border border-slate-700 whitespace-nowrap"
                                   >
-                                    {h}
+                                    {c}
                                   </th>
                                 ))}
+                                <th className="px-3 py-2 text-right text-white border border-slate-700 font-bold">
+                                  Нийт
+                                </th>
+                                <th className="px-3 py-2 text-right text-teal-400 border border-slate-700">
+                                  Хувь (%)
+                                </th>
+                                <th className="px-3 py-2 text-right text-yellow-400 border border-slate-700 whitespace-nowrap">
+                                  Түүвэр({Math.round(confidence * 100)},
+                                  {Math.round(marginError * 100)})
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
-                              {fileData?.slice(0, 20).map((row, i) => (
+                              {group.rows.map((row, i) => (
                                 <tr
-                                  key={i}
+                                  key={row.year}
                                   className={
                                     i % 2 === 0
                                       ? "bg-slate-900"
                                       : "bg-slate-800/30"
                                   }
                                 >
-                                  <td className="px-3 py-2 text-slate-500">
-                                    {i + 1}
+                                  <td className="px-3 py-2 text-slate-200 border border-slate-700 font-medium">
+                                    {row.year}
                                   </td>
-                                  {headers.map((_, j) => (
+                                  {group.codes.map((c) => (
                                     <td
-                                      key={j}
-                                      className="px-3 py-2 text-slate-300 whitespace-nowrap"
+                                      key={c}
+                                      className="px-3 py-2 text-white text-right border border-slate-700"
                                     >
-                                      {String((row as unknown[])[j] ?? "")}
+                                      {row.codeCounts[c] ?? 0}
                                     </td>
                                   ))}
+                                  <td className="px-3 py-2 text-white font-bold text-right border border-slate-700">
+                                    {row.total}
+                                  </td>
+                                  <td className="px-3 py-2 text-teal-400 text-right border border-slate-700">
+                                    {row.pct.toFixed(2)}%
+                                  </td>
+                                  <td className="px-3 py-2 text-yellow-400 font-bold text-right border border-slate-700">
+                                    {row.sampleSize}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
+                            <tfoot>
+                              <tr className="bg-slate-700/60 font-bold">
+                                <td className="px-3 py-2 text-white border border-slate-700">
+                                  Нийт
+                                </td>
+                                {group.codes.map((c) => (
+                                  <td
+                                    key={c}
+                                    className="px-3 py-2 text-white text-right border border-slate-700"
+                                  >
+                                    {group.rows.reduce(
+                                      (s, r) => s + (r.codeCounts[c] ?? 0),
+                                      0,
+                                    )}
+                                  </td>
+                                ))}
+                                <td className="px-3 py-2 text-cyan-400 text-right border border-slate-700">
+                                  {group.rows.reduce((s, r) => s + r.total, 0)}
+                                </td>
+                                <td className="px-3 py-2 text-teal-400 text-right border border-slate-700">
+                                  100%
+                                </td>
+                                <td className="px-3 py-2 text-yellow-400 text-right border border-slate-700">
+                                  {group.rows.reduce(
+                                    (s, r) => s + r.sampleSize,
+                                    0,
+                                  )}
+                                </td>
+                              </tr>
+                            </tfoot>
                           </table>
                         </div>
                       </ScrollArea>
                     </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                  )}
+                </Card>
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Тайлбар */}
+        {/* Info */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -854,22 +954,33 @@ export default function PivotPage() {
                 <span>📋</span> Тайлбар:
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-slate-300 space-y-4">
+            <CardContent className="text-slate-300 space-y-3">
               <p>
-                <strong>Pivot хүснэгт</strong> нь олон мөртэй өгөгдлийг хоёр
-                талбарын хоорондын нэгтгэсэн хүснэгт хэлбэрт оруулна. Мөрийн
-                болон баганын талбар сонгоод утгыг нэгтгэх аргаа (нийлбэр,
-                дундаж, тоо гэх мэт) сонгон pivot үүсгэнэ.
+                <strong>Огноон баганаа</strong> сонгоход жилийг автоматаар
+                гаргаж авна.
               </p>
               <p>
-                <strong>Давтамжийн хүснэгт</strong> нь сонгосон багананы утга
-                бүр хэдэн удаа давтагдсаныг, харьцааг болон хуримтлагдсан утгыг
-                харуулна.
+                <strong>Бүлэглэх баганаа</strong> сонгоход{" "}
+                <code className="bg-slate-800 px-1 rounded text-cyan-400">
+                  [A-Z]&#123;2&#125;[0-9]&#123;3&#125;
+                </code>{" "}
+                хэлбэрийн кодуудыг эхний 3 тэмдэгтээр нь бүлэглэнэ (жишэ: CA602
+                → CA6).
+              </p>
+              <p>
+                Pivot хүснэгт бүр <strong>жилээр мөр</strong>,{" "}
+                <strong>код баганаар</strong> тоолно. Түүврийн хэмжээг
+                итгэлцлийн түвшин болон алдааны маржинг ашиглан тооцоолно.
+              </p>
+              <p>
+                <strong>Түүвэр гаргах</strong> хэсэгт prefix сонгоод товчийг
+                дарвал жил тус бүрийн санамсаргүй түүврийг Excel-ийн тусдаа
+                sheet-т хадгалж татна.
               </p>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm">
                 🔵 <strong className="text-blue-400">Ашиглах заавар:</strong>{" "}
-                Excel (.xlsx, .xls) эсвэл CSV файл оруулаад анализ хийх аргаа
-                сонгоно уу. Үр дүнг Excel хэлбэрт татаж авах боломжтой.
+                Excel/CSV файл оруулаад огноон болон кодын багануудыг сонгоод{" "}
+                <strong>Pivot үүсгэх</strong> дарна уу.
               </div>
             </CardContent>
           </Card>

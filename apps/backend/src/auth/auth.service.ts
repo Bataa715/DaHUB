@@ -66,12 +66,18 @@ export class AuthService {
 
   /** Sign a JWT with isAdmin included so middleware can verify it */
   private generateTokenForUser(user: any): string {
+    const tools = user.allowedTools
+      ? Array.isArray(user.allowedTools)
+        ? user.allowedTools
+        : JSON.parse(user.allowedTools)
+      : [];
     return this.jwtService.sign({
       id: user.id,
       email: user.email,
       userId: user.userId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
+      allowedTools: tools,
     });
   }
 

@@ -34,7 +34,10 @@ async function countRows(
 
 const DEPARTMENTS = [
   { name: "Удирдлага", description: "Удирдах албаны хэлтэс" },
-  { name: "Дата анализын алба", description: "Өгөгдлийн шинжилгээ хийх хэлтэс" },
+  {
+    name: "Дата анализын алба",
+    description: "Өгөгдлийн шинжилгээ хийх хэлтэс",
+  },
   { name: "Ерөнхий аудитын хэлтэс", description: "Ерөнхий аудит хийх хэлтэс" },
   {
     name: "Зайны аудит чанарын баталгаажуулалтын хэлтэс",
@@ -156,9 +159,7 @@ async function seedClickHouse() {
     } else {
       const adminPassword = await bcrypt.hash("admin123", 10);
       const managementDeptId =
-        deptIdMap["Удирдлага"] ??
-        Object.values(deptIdMap)[0] ??
-        randomUUID();
+        deptIdMap["Удирдлага"] ?? Object.values(deptIdMap)[0] ?? randomUUID();
 
       adminId = randomUUID();
       await client.insert({
@@ -337,7 +338,8 @@ async function seedClickHouse() {
         },
         {
           id: randomUUID(),
-          title: "Дата аналитикс ашиглан аудитын үр нөлөөг хэрхэн нэмэгдүүлэх вэ",
+          title:
+            "Дата аналитикс ашиглан аудитын үр нөлөөг хэрхэн нэмэгдүүлэх вэ",
           content:
             "<p>Голомт Банкны Дата Анализын Алба болон Дотоод Аудитын Газар хамтран дараах хэрэгслийг нэвтрүүлсэн:</p><ul><li><strong>SQL-д суурилсан гүйлгээний хяналт</strong></li><li><strong>Аномали илрүүлэх загвар</strong> — ML</li><li><strong>ClickHouse дата агуулах</strong></li></ul>",
           category: "Ерөнхий",
@@ -361,6 +363,371 @@ async function seedClickHouse() {
       }
       console.log(`  ✅ ${articles.length} news articles inserted`);
     }
+
+    // ── STEP 5: External DB schemas (FINACLE, ERP, CARDZONE, EBANK) ─────────
+    console.log("\n🗄️  Setting up external database schemas...");
+
+    // FINACLE — гол банкны систем
+    await client.exec({ query: `CREATE DATABASE IF NOT EXISTS FINACLE` });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS FINACLE.customers (
+          customer_id     String,
+          cif_number      String,
+          first_name      String,
+          last_name       String,
+          register_number String,
+          phone           String,
+          email           String,
+          address         String,
+          customer_type   String,
+          status          String DEFAULT 'ACTIVE',
+          opened_date     Date,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY customer_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS FINACLE.accounts (
+          account_id      String,
+          customer_id     String,
+          account_number  String,
+          account_type    String,
+          currency        String DEFAULT 'MNT',
+          balance         Decimal(18, 2) DEFAULT 0,
+          available_balance Decimal(18, 2) DEFAULT 0,
+          status          String DEFAULT 'ACTIVE',
+          open_date       Date,
+          close_date      Nullable(Date),
+          branch_code     String,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY account_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS FINACLE.transactions (
+          txn_id          String,
+          account_id      String,
+          txn_date        DateTime,
+          value_date      Date,
+          txn_type        String,
+          debit_credit    String,
+          amount          Decimal(18, 2),
+          currency        String DEFAULT 'MNT',
+          balance_after   Decimal(18, 2),
+          description     String,
+          channel         String,
+          reference_no    String,
+          teller_id       String,
+          branch_code     String,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (account_id, txn_date)`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS FINACLE.loans (
+          loan_id         String,
+          customer_id     String,
+          account_id      String,
+          loan_type       String,
+          principal       Decimal(18, 2),
+          outstanding     Decimal(18, 2),
+          interest_rate   Decimal(6, 4),
+          term_months     UInt16,
+          disbursement_date Date,
+          maturity_date   Date,
+          status          String DEFAULT 'ACTIVE',
+          classification  String DEFAULT 'NORMAL',
+          branch_code     String,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY loan_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS FINACLE.deposits (
+          deposit_id      String,
+          customer_id     String,
+          account_id      String,
+          deposit_type    String,
+          amount          Decimal(18, 2),
+          currency        String DEFAULT 'MNT',
+          interest_rate   Decimal(6, 4),
+          start_date      Date,
+          maturity_date   Date,
+          status          String DEFAULT 'ACTIVE',
+          auto_renew      UInt8 DEFAULT 0,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY deposit_id`,
+    });
+
+    console.log(
+      "  ✅ FINACLE: customers, accounts, transactions, loans, deposits",
+    );
+
+    // ERP — корпорат удирдлагын систем
+    await client.exec({ query: `CREATE DATABASE IF NOT EXISTS ERP` });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS ERP.employees (
+          emp_id          String,
+          emp_code        String,
+          first_name      String,
+          last_name       String,
+          register_number String,
+          department      String,
+          position        String,
+          manager_id      String,
+          hire_date       Date,
+          status          String DEFAULT 'ACTIVE',
+          employment_type String DEFAULT 'FULL_TIME',
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY emp_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS ERP.payroll (
+          payroll_id      String,
+          emp_id          String,
+          pay_period      String,
+          basic_salary    Decimal(14, 2),
+          overtime        Decimal(14, 2),
+          bonus           Decimal(14, 2),
+          deductions      Decimal(14, 2),
+          net_salary      Decimal(14, 2),
+          payment_date    Date,
+          status          String DEFAULT 'PAID',
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (emp_id, pay_period)`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS ERP.vendors (
+          vendor_id       String,
+          vendor_code     String,
+          company_name    String,
+          register_number String,
+          contact_person  String,
+          phone           String,
+          email           String,
+          category        String,
+          status          String DEFAULT 'ACTIVE',
+          approved_date   Date,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY vendor_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS ERP.purchase_orders (
+          po_id           String,
+          vendor_id       String,
+          po_date         Date,
+          delivery_date   Date,
+          total_amount    Decimal(18, 2),
+          currency        String DEFAULT 'MNT',
+          status          String DEFAULT 'PENDING',
+          approved_by     String,
+          department      String,
+          description     String,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY po_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS ERP.assets (
+          asset_id        String,
+          asset_code      String,
+          asset_name      String,
+          category        String,
+          purchase_date   Date,
+          purchase_price  Decimal(14, 2),
+          current_value   Decimal(14, 2),
+          depreciation_rate Decimal(6, 4),
+          location        String,
+          custodian_id    String,
+          status          String DEFAULT 'IN_USE',
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY asset_id`,
+    });
+
+    console.log(
+      "  ✅ ERP: employees, payroll, vendors, purchase_orders, assets",
+    );
+
+    // CARDZONE — карт менежментийн систем
+    await client.exec({ query: `CREATE DATABASE IF NOT EXISTS CARDZONE` });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS CARDZONE.cards (
+          card_id         String,
+          card_number     String,
+          customer_id     String,
+          account_id      String,
+          card_type       String,
+          card_brand      String,
+          status          String DEFAULT 'ACTIVE',
+          issue_date      Date,
+          expiry_date     Date,
+          credit_limit    Nullable(Decimal(14, 2)),
+          outstanding     Decimal(14, 2) DEFAULT 0,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY card_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS CARDZONE.card_transactions (
+          txn_id          String,
+          card_id         String,
+          txn_datetime    DateTime,
+          merchant_id     String,
+          merchant_name   String,
+          mcc_code        String,
+          amount          Decimal(14, 2),
+          currency        String,
+          mnt_amount      Decimal(14, 2),
+          txn_type        String,
+          auth_code       String,
+          response_code   String,
+          channel         String,
+          country_code    String,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (card_id, txn_datetime)`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS CARDZONE.merchants (
+          merchant_id     String,
+          merchant_name   String,
+          merchant_name_mn String,
+          mcc_code        String,
+          category        String,
+          address         String,
+          terminal_count  UInt16 DEFAULT 0,
+          status          String DEFAULT 'ACTIVE',
+          contract_date   Date,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY merchant_id`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS CARDZONE.disputes (
+          dispute_id      String,
+          card_id         String,
+          txn_id          String,
+          dispute_date    DateTime,
+          dispute_reason  String,
+          amount          Decimal(14, 2),
+          status          String DEFAULT 'OPEN',
+          resolution      String,
+          resolved_date   Nullable(DateTime),
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY dispute_id`,
+    });
+
+    console.log("  ✅ CARDZONE: cards, card_transactions, merchants, disputes");
+
+    // EBANK — цахим банкны систем
+    await client.exec({ query: `CREATE DATABASE IF NOT EXISTS EBANK` });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS EBANK.sessions (
+          session_id      String,
+          customer_id     String,
+          device_id       String,
+          device_type     String,
+          os              String,
+          app_version     String,
+          ip_address      String,
+          login_at        DateTime,
+          logout_at       Nullable(DateTime),
+          duration_sec    UInt32 DEFAULT 0,
+          status          String DEFAULT 'ACTIVE',
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (customer_id, login_at)`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS EBANK.transfers (
+          transfer_id     String,
+          session_id      String,
+          customer_id     String,
+          from_account    String,
+          to_account      String,
+          bank_code       String DEFAULT 'GLMT',
+          amount          Decimal(14, 2),
+          currency        String DEFAULT 'MNT',
+          fee             Decimal(10, 2) DEFAULT 0,
+          description     String,
+          status          String DEFAULT 'SUCCESS',
+          channel         String DEFAULT 'MOBILE',
+          initiated_at    DateTime,
+          completed_at    Nullable(DateTime),
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (customer_id, initiated_at)`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS EBANK.beneficiaries (
+          beneficiary_id  String,
+          customer_id     String,
+          nickname        String,
+          account_number  String,
+          bank_code       String,
+          bank_name       String,
+          is_favorite     UInt8 DEFAULT 0,
+          last_used_at    Nullable(DateTime),
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (customer_id, beneficiary_id)`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS EBANK.notifications (
+          notification_id String,
+          customer_id     String,
+          type            String,
+          title           String,
+          body            String,
+          is_read         UInt8 DEFAULT 0,
+          sent_at         DateTime,
+          read_at         Nullable(DateTime),
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (customer_id, sent_at)`,
+    });
+
+    await client.exec({
+      query: `
+        CREATE TABLE IF NOT EXISTS EBANK.login_attempts (
+          attempt_id      String,
+          customer_id     String,
+          ip_address      String,
+          device_id       String,
+          success         UInt8,
+          fail_reason     String,
+          attempted_at    DateTime,
+          created_at      DateTime DEFAULT now()
+        ) ENGINE = MergeTree() ORDER BY (customer_id, attempted_at)`,
+    });
+
+    console.log(
+      "  ✅ EBANK: sessions, transfers, beneficiaries, notifications, login_attempts",
+    );
 
     // ── Summary ───────────────────────────────────────────────────────────────
     const [totalDepts, totalUsers, totalNews] = await Promise.all([

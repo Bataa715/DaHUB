@@ -43,7 +43,6 @@ import {
   Loader2,
   Eye,
   ArrowLeft,
-  Sparkles,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -480,7 +479,7 @@ export default function AdminDepartmentsPage() {
           transition={{ delay: 0.4, duration: 0.5 }}
         >
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-emerald-400" />
+            <Building2 className="w-5 h-5 text-emerald-400" />
             Бүх хэлтсүүд
           </h2>
 

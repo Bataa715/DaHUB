@@ -39,13 +39,16 @@ import {
   Shield,
   Settings,
   Wrench,
-  Sparkles,
+  LayoutGrid,
+  Crown,
   ArrowLeft,
   UserCheck,
   UserX,
   Dice6,
   Table2,
   FileText,
+  Database,
+  FileStack,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -77,6 +80,7 @@ interface Tool {
   icon: React.ComponentType<any>;
   color: string;
   gradient: string;
+  category: "free" | "work";
 }
 
 const AVAILABLE_TOOLS: Tool[] = [
@@ -87,6 +91,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: CheckSquare,
     color: "from-blue-500 to-cyan-500",
     gradient: "bg-gradient-to-br from-blue-500/20 to-cyan-500/20",
+    category: "free",
   },
   {
     id: "fitness",
@@ -95,6 +100,16 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: Dumbbell,
     color: "from-emerald-500 to-teal-500",
     gradient: "bg-gradient-to-br from-emerald-500/20 to-teal-500/20",
+    category: "free",
+  },
+  {
+    id: "chess",
+    name: "Оюуны спорт",
+    description: "Шатар тоглоомд хамт ажиллагсадтайгаа ID-аар урилга илгээж тоглох",
+    icon: Crown,
+    color: "from-amber-500 to-yellow-500",
+    gradient: "bg-gradient-to-br from-amber-500/20 to-yellow-500/20",
+    category: "free",
   },
   {
     id: "sanamsargui-tuuwer",
@@ -103,22 +118,53 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: Dice6,
     color: "from-violet-500 to-blue-500",
     gradient: "bg-gradient-to-br from-violet-500/20 to-blue-500/20",
+    category: "work",
   },
   {
     id: "pivot",
-    name: "Pivot & Түгвэр",
+    name: "Pivot",
     description: "Excel файлаас pivot хүснэгт болон давтамжийн хүснэгт үүсгэх",
     icon: Table2,
     color: "from-cyan-500 to-teal-500",
     gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
+    category: "work",
   },
   {
-    id: "report",
-    name: "Аудитын тайлан",
-    description: "Аудитын тайлан бэлтгэж Word (.docx) файлаар татаж авах",
+    id: "db_access_requester",
+    name: "Эрх хүсэгч",
+    description: "ClickHouse хүснэгтэд хандах эрх хүсэх боломж олгох",
+    icon: Database,
+    color: "from-cyan-500 to-teal-500",
+    gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
+    category: "work",
+  },
+  {
+    id: "db_access_granter",
+    name: "Эрх олгогч",
+    description:
+      "ClickHouse хүснэгтэд хандах эрхийн хүсэлтийг зөвшөөрөх, татгалзах",
+    icon: Database,
+    color: "from-violet-500 to-indigo-500",
+    gradient: "bg-gradient-to-br from-violet-500/20 to-indigo-500/20",
+    category: "work",
+  },
+  {
+    id: "tailan",
+    name: "Улирлын тайлан (ажилтан)",
+    description: "Улирлын ажлын тайлангаа бэлтгэж хэлтсийн ахлагч руу илгээх",
     icon: FileText,
-    color: "from-blue-500 to-indigo-500",
-    gradient: "bg-gradient-to-br from-blue-500/20 to-indigo-500/20",
+    color: "from-blue-500 to-violet-500",
+    gradient: "bg-gradient-to-br from-blue-500/20 to-violet-500/20",
+    category: "work",
+  },
+  {
+    id: "tailan_dept_head",
+    name: "Улирлын тайлан (хэлтсийн ахлагч)",
+    description: "Хэлтсийн гишүүдийн улирлын ажлын тайланг нэгтгэж, татах эрх",
+    icon: FileStack,
+    color: "from-violet-500 to-purple-500",
+    gradient: "bg-gradient-to-br from-violet-500/20 to-purple-500/20",
+    category: "work",
   },
 ];
 
@@ -221,21 +267,40 @@ export default function AdminToolsPage() {
     if (!selectedTool || selectedUsers.size === 0) return;
 
     setIsSaving(true);
+    let successCount = 0;
+    const errors: string[] = [];
+
     try {
-      const promises = Array.from(selectedUsers).map(async (userId) => {
-        const user = users.find((u) => u.id === userId);
-        if (user) {
-          const newTools = [...(user.allowedTools || []), selectedTool.id];
-          await usersApi.updateTools(userId, newTools);
+      // Sequential execution — concurrent ClickHouse mutations cause race conditions
+      for (const userId of Array.from(selectedUsers)) {
+        const targetUser = users.find((u) => u.id === userId);
+        if (!targetUser) continue;
+        // Re-fetch latest tools for this user to avoid stale state overwrites
+        try {
+          const fresh = await usersApi.getOne(userId);
+          const currentTools: string[] = fresh.allowedTools || [];
+          if (!currentTools.includes(selectedTool.id)) {
+            await usersApi.updateTools(userId, [...currentTools, selectedTool.id]);
+          }
+          successCount++;
+        } catch (err) {
+          console.error(`Error granting access to ${targetUser.name}:`, err);
+          errors.push(targetUser.name);
         }
-      });
+      }
 
-      await Promise.all(promises);
-
-      toast({
-        title: "Амжилттай",
-        description: `${selectedUsers.size} хэрэглэгчид ${selectedTool.name} эрх олголоо`,
-      });
+      if (errors.length === 0) {
+        toast({
+          title: "Амжилттай",
+          description: `${successCount} хэрэглэгчид ${selectedTool.name} эрх олголоо`,
+        });
+      } else {
+        toast({
+          title: "Хэсэгчлэн амжилттай",
+          description: `${successCount} амжилттай, ${errors.length} алдаа: ${errors.join(", ")}`,
+          variant: "destructive",
+        });
+      }
 
       await loadUsers();
       setSelectedUsers(new Set());
@@ -468,96 +533,203 @@ export default function AdminToolsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.5 }}
         >
-          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-400" />
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+            <LayoutGrid className="w-5 h-5 text-purple-400" />
             Хэрэгслүүд
           </h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {AVAILABLE_TOOLS.map((tool, index) => {
-              const usersWithAccess = getUsersWithAccess(tool.id);
-              const Icon = tool.icon;
 
-              return (
-                <motion.div
-                  key={tool.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  className="group cursor-pointer"
-                  onClick={() => handleToolSelect(tool)}
-                >
-                  <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm relative overflow-hidden h-full transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
-                    {/* Gradient overlay on hover */}
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                    />
+          {/* ── Чөлөөт хэрэгслүүд ── */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-base font-semibold text-white">
+                Чөлөөт хэрэгслүүд
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                {AVAILABLE_TOOLS.filter((t) => t.category === "free").length}
+              </span>
+              <div className="flex-1 h-px bg-slate-700/50" />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {AVAILABLE_TOOLS.filter((t) => t.category === "free").map(
+                (tool, index) => {
+                  const usersWithAccess = getUsersWithAccess(tool.id);
+                  const Icon = tool.icon;
+                  return (
+                    <motion.div
+                      key={tool.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 + index * 0.1 }}
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      className="group cursor-pointer"
+                      onClick={() => handleToolSelect(tool)}
+                    >
+                      <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm relative overflow-hidden h-full transition-all duration-300 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10">
+                        <div
+                          className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
+                        />
+                        <CardHeader className="relative p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <motion.div
+                              className={`p-3 rounded-xl bg-gradient-to-br ${tool.color} shadow-lg`}
+                              whileHover={{ rotate: [0, -10, 10, 0] }}
+                              transition={{ duration: 0.5 }}
+                            >
+                              <Icon className="w-6 h-6 text-white" />
+                            </motion.div>
+                            <Badge className="bg-slate-700/80 text-slate-300 border-0">
+                              <UserCheck className="w-3 h-3 mr-1" />
+                              {usersWithAccess.length} хэрэглэгч
+                            </Badge>
+                          </div>
+                          <CardTitle className="text-white text-sm group-hover:text-emerald-300 transition-colors">
+                            {tool.name}
+                          </CardTitle>
+                          <CardDescription className="text-slate-400 text-xs line-clamp-2">
+                            {tool.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="relative px-4 pb-4 pt-0">
+                          <div className="mb-3">
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-slate-400">Эрхтэй</span>
+                              <span className="text-slate-300">
+                                {users.length > 0
+                                  ? Math.round(
+                                      (usersWithAccess.length / users.length) *
+                                        100,
+                                    )
+                                  : 0}
+                                %
+                              </span>
+                            </div>
+                            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                              <motion.div
+                                className={`h-full bg-gradient-to-r ${tool.color}`}
+                                initial={{ width: 0 }}
+                                animate={{
+                                  width:
+                                    users.length > 0
+                                      ? `${(usersWithAccess.length / users.length) * 100}%`
+                                      : "0%",
+                                }}
+                                transition={{
+                                  duration: 1,
+                                  delay: 0.5 + index * 0.1,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            className={`w-full bg-gradient-to-r ${tool.color} hover:opacity-90 text-white border-0 transition-all duration-300 group-hover:shadow-lg`}
+                          >
+                            <Settings className="w-4 h-4 mr-2" />
+                            Эрх удирдах
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                },
+              )}
+            </div>
+          </div>
 
-                    <CardHeader className="relative">
-                      <div className="flex items-center justify-between mb-4">
-                        <motion.div
-                          className={`p-4 rounded-2xl bg-gradient-to-br ${tool.color} shadow-lg`}
-                          whileHover={{ rotate: [0, -10, 10, 0] }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          <Icon className="w-8 h-8 text-white" />
-                        </motion.div>
-                        <Badge className="bg-slate-700/80 text-slate-300 border-0">
-                          <UserCheck className="w-3 h-3 mr-1" />
-                          {usersWithAccess.length} хэрэглэгч
-                        </Badge>
-                      </div>
-                      <CardTitle className="text-white group-hover:text-purple-300 transition-colors">
-                        {tool.name}
-                      </CardTitle>
-                      <CardDescription className="text-slate-400">
-                        {tool.description}
-                      </CardDescription>
-                    </CardHeader>
-
-                    <CardContent className="relative">
-                      {/* Progress bar showing access percentage */}
-                      <div className="mb-4">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-slate-400">Эрхтэй</span>
-                          <span className="text-slate-300">
-                            {users.length > 0
-                              ? Math.round(
-                                  (usersWithAccess.length / users.length) * 100,
-                                )
-                              : 0}
-                            %
-                          </span>
-                        </div>
-                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                          <motion.div
-                            className={`h-full bg-gradient-to-r ${tool.color}`}
-                            initial={{ width: 0 }}
-                            animate={{
-                              width:
-                                users.length > 0
-                                  ? `${(usersWithAccess.length / users.length) * 100}%`
-                                  : "0%",
-                            }}
-                            transition={{
-                              duration: 1,
-                              delay: 0.5 + index * 0.1,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <Button
-                        className={`w-full bg-gradient-to-r ${tool.color} hover:opacity-90 text-white border-0 transition-all duration-300 group-hover:shadow-lg`}
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Эрх удирдах
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
+          {/* ── Ажлын хэрэгслүүд ── */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-base font-semibold text-white">
+                Ажлын хэрэгслүүд
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                {AVAILABLE_TOOLS.filter((t) => t.category === "work").length}
+              </span>
+              <div className="flex-1 h-px bg-slate-700/50" />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {AVAILABLE_TOOLS.filter((t) => t.category === "work").map(
+                (tool, index) => {
+                  const usersWithAccess = getUsersWithAccess(tool.id);
+                  const Icon = tool.icon;
+                  return (
+                    <motion.div
+                      key={tool.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 + index * 0.1 }}
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      className="group cursor-pointer"
+                      onClick={() => handleToolSelect(tool)}
+                    >
+                      <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm relative overflow-hidden h-full transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
+                        <div
+                          className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
+                        />
+                        <CardHeader className="relative p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <motion.div
+                              className={`p-3 rounded-xl bg-gradient-to-br ${tool.color} shadow-lg`}
+                              whileHover={{ rotate: [0, -10, 10, 0] }}
+                              transition={{ duration: 0.5 }}
+                            >
+                              <Icon className="w-6 h-6 text-white" />
+                            </motion.div>
+                            <Badge className="bg-slate-700/80 text-slate-300 border-0">
+                              <UserCheck className="w-3 h-3 mr-1" />
+                              {usersWithAccess.length} хэрэглэгч
+                            </Badge>
+                          </div>
+                          <CardTitle className="text-white text-sm group-hover:text-purple-300 transition-colors">
+                            {tool.name}
+                          </CardTitle>
+                          <CardDescription className="text-slate-400 text-xs line-clamp-2">
+                            {tool.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="relative px-4 pb-4 pt-0">
+                          <div className="mb-3">
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-slate-400">Эрхтэй</span>
+                              <span className="text-slate-300">
+                                {users.length > 0
+                                  ? Math.round(
+                                      (usersWithAccess.length / users.length) *
+                                        100,
+                                    )
+                                  : 0}
+                                %
+                              </span>
+                            </div>
+                            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                              <motion.div
+                                className={`h-full bg-gradient-to-r ${tool.color}`}
+                                initial={{ width: 0 }}
+                                animate={{
+                                  width:
+                                    users.length > 0
+                                      ? `${(usersWithAccess.length / users.length) * 100}%`
+                                      : "0%",
+                                }}
+                                transition={{
+                                  duration: 1,
+                                  delay: 0.5 + index * 0.1,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            className={`w-full bg-gradient-to-r ${tool.color} hover:opacity-90 text-white border-0 transition-all duration-300 group-hover:shadow-lg`}
+                          >
+                            <Settings className="w-4 h-4 mr-2" />
+                            Эрх удирдах
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                },
+              )}
+            </div>
           </div>
         </motion.div>
       </div>

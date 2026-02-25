@@ -16,7 +16,6 @@ export class UsersService {
     return users.map((user) => ({
       id: user.id,
       userId: user.userId,
-      email: user.email,
       name: user.name,
       position: user.position,
       profileImage: user.profileImage,
@@ -47,7 +46,6 @@ export class UsersService {
     return {
       id: user.id,
       userId: user.userId,
-      email: user.email,
       name: user.name,
       position: user.position,
       profileImage: user.profileImage,
@@ -161,7 +159,6 @@ export class UsersService {
     const user = updated[0];
     return {
       id: user.id,
-      email: user.email,
       name: user.name,
       position: user.position,
       profileImage: user.profileImage,
@@ -218,7 +215,6 @@ export class UsersService {
     const user = updated[0];
     return {
       id: user.id,
-      email: user.email,
       name: user.name,
       isActive: !!user.isActive,
       department: user.departmentName,
@@ -254,7 +250,6 @@ export class UsersService {
     const user = updated[0];
     return {
       id: user.id,
-      email: user.email,
       name: user.name,
       allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
     };

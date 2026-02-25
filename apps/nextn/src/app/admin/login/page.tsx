@@ -27,7 +27,6 @@ import {
   Shield,
   Eye,
   EyeOff,
-  Sparkles,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -182,7 +181,7 @@ export default function AdminLoginPage() {
             transition={{ delay: 0.35 }}
             className="text-xs font-semibold tracking-[0.2em] text-blue-400/80 uppercase mb-2 flex items-center justify-center gap-1"
           >
-            <Sparkles className="w-3 h-3" /> Admin Portal
+            <Shield className="w-3 h-3" /> Admin Portal
           </motion.p>
 
           <motion.h2
@@ -194,7 +193,7 @@ export default function AdminLoginPage() {
             DaHUB
             <br />
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              Internal Audit
+              Дотоод аудит
             </span>
           </motion.h2>
 

@@ -4,7 +4,7 @@ node_modules
 *.next/cache
 dist
 build
-
+.venv
 # Environment files — .env.example файлууд commit хийгддэг, .env хийгддэггүй
 .env
 .env.local

@@ -8,7 +8,10 @@ import { DepartmentsModule } from "./departments/departments.module";
 import { FitnessModule } from "./fitness/fitness.module";
 import { NewsModule } from "./news/news.module";
 import { AuditLogModule } from "./audit/audit-log.module";
-import { ReportModule } from "./report/report.module";
+import { DbAccessModule } from "./db-access/db-access.module";
+import { TailanModule } from "./tailan/tailan.module";
+import { TuuwerModule } from "./tuuwer/tuuwer.module";
+import { ChessModule } from "./chess/chess.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 
@@ -36,7 +39,10 @@ import configuration from "./config/configuration";
     DepartmentsModule,
     FitnessModule,
     NewsModule,
-    ReportModule,
+    DbAccessModule,
+    TailanModule,
+    TuuwerModule,
+    ChessModule,
   ],
   controllers: [HealthController],
 })

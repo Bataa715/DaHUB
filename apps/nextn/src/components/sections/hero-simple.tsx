@@ -10,7 +10,6 @@ import {
   Wrench,
   Calendar,
   Clock,
-  Sparkles,
   User,
   ArrowRight,
   Shield,
