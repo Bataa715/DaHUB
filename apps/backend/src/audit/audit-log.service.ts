@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
+﻿import { Injectable, Logger } from "@nestjs/common";
+import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { randomUUID } from "crypto";
 
 export interface AuditLogEntry {
@@ -27,7 +27,7 @@ export class AuditLogService {
    */
   async log(entry: AuditLogEntry): Promise<void> {
     try {
-      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const now = nowCH();
 
       await this.clickhouse.insert("audit_logs", [
         {

@@ -1,16 +1,18 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
+﻿import { Injectable, NotFoundException } from "@nestjs/common";
+import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 
 @Injectable()
 export class UsersService {
   constructor(private clickhouse: ClickHouseService) {}
 
-  async findAll() {
+  async findAll(limit = 200, offset = 0) {
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
-       ORDER BY u.createdAt DESC`,
+       ORDER BY u.createdAt DESC
+       LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
+      { limit, offset },
     );
 
     return users.map((user) => ({
@@ -18,7 +20,7 @@ export class UsersService {
       userId: user.userId,
       name: user.name,
       position: user.position,
-      profileImage: user.profileImage ? `/users/${user.id}/avatar` : "",
+      profileImage: user.profileImage,
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
@@ -48,7 +50,7 @@ export class UsersService {
       userId: user.userId,
       name: user.name,
       position: user.position,
-      profileImage: user.profileImage ? `/users/${user.id}/avatar` : "",
+      profileImage: user.profileImage,
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
@@ -60,13 +62,18 @@ export class UsersService {
 
   async getAdmins() {
     const users = await this.clickhouse.query<any>(
-      `SELECT * FROM users WHERE isAdmin = 1 ORDER BY createdAt ASC`,
+      `SELECT u.id, u.userId, u.name, u.departmentId, u.isAdmin, u.isSuperAdmin, u.isActive, u.createdAt,
+              d.name AS departmentName
+       FROM users u
+       LEFT JOIN departments d ON u.departmentId = d.id
+       WHERE u.isAdmin = 1
+       ORDER BY u.createdAt ASC`,
     );
     return users.map((user) => ({
       id: user.id,
       userId: user.userId,
       name: user.name,
-      department: user.department,
+      department: user.departmentName ?? null,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
       isActive: !!user.isActive,
@@ -87,7 +94,7 @@ export class UsersService {
         id,
         isAdmin: isAdmin ? 1 : 0,
         isSuperAdmin: isSuperAdmin ? 1 : 0,
-        updatedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        updatedAt: nowCH(),
       },
     );
     return { message: "Амжилттай", id, isAdmin, isSuperAdmin };
@@ -119,21 +126,8 @@ export class UsersService {
       params.departmentId = updateUserDto.departmentId;
     }
     if (updateUserDto.profileImage !== undefined) {
-      // Convert base64 data URL → hex, or clear if empty
-      if (updateUserDto.profileImage && updateUserDto.profileImage.startsWith('data:')) {
-        const match = updateUserDto.profileImage.match(/^data:([^;]+);base64,(.+)$/);
-        const mime = match?.[1] || 'image/jpeg';
-        const hex = Buffer.from(match?.[2] || '', 'base64').toString('hex');
-        fields.push('profileImage = {profileImage:String}');
-        fields.push('profileImageMime = {profileImageMime:String}');
-        params.profileImage = hex;
-        params.profileImageMime = mime;
-      } else if (updateUserDto.profileImage === '') {
-        fields.push('profileImage = {profileImage:String}');
-        fields.push('profileImageMime = {profileImageMime:String}');
-        params.profileImage = '';
-        params.profileImageMime = '';
-      }
+      fields.push("profileImage = {profileImage:String}");
+      params.profileImage = updateUserDto.profileImage;
     }
     if (updateUserDto.isAdmin !== undefined) {
       fields.push("isAdmin = {isAdmin:UInt8}");
@@ -146,19 +140,17 @@ export class UsersService {
 
     if (fields.length > 0) {
       fields.push("updatedAt = {updatedAt:String}");
-      params.updatedAt = new Date()
-        .toISOString()
-        .slice(0, 19)
-        .replace("T", " ");
+      params.updatedAt = nowCH();
 
       try {
         await this.clickhouse.exec(
           `ALTER TABLE users UPDATE ${fields.join(", ")} WHERE id = {id:String}`,
           params,
         );
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("ClickHouse update error:", error);
-        throw new Error(`Хэрэглэгч шинэчлэхэд алдаа гарлаа: ${error.message}`);
+        const msg = error instanceof Error ? error.message : String(error);
+        throw new Error(`Хэрэглэгч шинэчлэхэд алдаа гарлаа: ${msg}`);
       }
     }
 
@@ -174,23 +166,11 @@ export class UsersService {
       id: user.id,
       name: user.name,
       position: user.position,
-      profileImage: user.profileImage ? `/users/${user.id}/avatar` : "",
+      profileImage: user.profileImage,
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
       allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
-    };
-  }
-
-  async getAvatar(id: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT profileImage, profileImageMime FROM users WHERE id = {id:String} LIMIT 1`,
-      { id },
-    );
-    if (!rows?.[0]?.profileImage) return null;
-    return {
-      buffer: Buffer.from(rows[0].profileImage, 'hex'),
-      mimeType: rows[0].profileImageMime || 'image/jpeg',
     };
   }
 
@@ -226,7 +206,7 @@ export class UsersService {
       {
         id,
         isActive: isActive ? 1 : 0,
-        updatedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        updatedAt: nowCH(),
       },
     );
 
@@ -261,7 +241,7 @@ export class UsersService {
       {
         id,
         allowedTools: JSON.stringify(allowedTools),
-        updatedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        updatedAt: nowCH(),
       },
     );
 
@@ -278,5 +258,22 @@ export class UsersService {
       name: user.name,
       allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
     };
+  }
+
+  async getAvatar(
+    id: string,
+  ): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    const users = await this.clickhouse.query<any>(
+      "SELECT profileImage FROM users WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    const profileImage: string = users[0]?.profileImage;
+    if (!profileImage) return null;
+
+    // Expect a data URL: "data:<mime>;base64,<data>"
+    const match = profileImage.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+
+    return { buffer: Buffer.from(match[2], "base64"), mimeType: match[1] };
   }
 }

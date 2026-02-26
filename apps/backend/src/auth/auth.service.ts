@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   Logger,
   UnauthorizedException,
@@ -8,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
+import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
@@ -85,7 +85,7 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // Refresh token valid for 30 days
 
-    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const now = nowCH();
     const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace("T", " ");
 
     await this.clickhouse.insert("refresh_tokens", [
@@ -169,7 +169,7 @@ export class AuthService {
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE lastLoginAt = {lastLoginAt:String} WHERE id = {id:String}",
       {
-        lastLoginAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        lastLoginAt: nowCH(),
         id: userId,
       },
     );
@@ -185,7 +185,7 @@ export class AuthService {
 
     if (!dept) {
       const deptId = randomUUID();
-      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const now = nowCH();
       await this.clickhouse.insert("departments", [
         {
           id: deptId,
@@ -269,13 +269,7 @@ export class AuthService {
       );
     }
 
-    return this.createUser(
-      password,
-      name,
-      department,
-      position,
-      userId,
-    );
+    return this.createUser(password, name, department, position, userId);
   }
 
   private async createUser(
@@ -288,7 +282,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
     const dept = await this.ensureDepartment(department);
     const id = randomUUID();
-    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const now = nowCH();
 
     await this.clickhouse.insert("users", [
       {
@@ -580,6 +574,21 @@ export class AuthService {
 
   async registerUser(registerUserDto: RegisterUserDto) {
     const { department, position, name } = registerUserDto;
+
+    // "Удирдлага" хэлтэст зөвхөн нэг хэрэглэгч (Захирал) бүртгэгдэж болно
+    if (department === "Удирдлага") {
+      const directorExists = await this.clickhouse.query<any>(
+        `SELECT u.id FROM users u LEFT JOIN departments d ON u.departmentId = d.id
+         WHERE d.name = {dept:String} LIMIT 1`,
+        { dept: "Удирдлага" },
+      );
+      if (directorExists.length > 0) {
+        throw new ConflictException(
+          "Удирдлага хэлтэст аль хэдийн бүртгэлтэй хэрэглэгч байна. Зөвхөн Захирал бүртгэгдэж болно.",
+        );
+      }
+    }
+
     const userId = await this.generateUserId(department, name);
 
     const existing = await this.clickhouse.query<any>(
@@ -594,7 +603,7 @@ export class AuthService {
 
     const dept = await this.ensureDepartment(department);
     const id = randomUUID();
-    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const now = nowCH();
 
     await this.clickhouse.insert("users", [
       {
@@ -685,7 +694,7 @@ export class AuthService {
       "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
       {
         password: hashedPassword,
-        updatedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        updatedAt: nowCH(),
         id: userId,
       },
     );

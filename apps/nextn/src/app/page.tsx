@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
 // Lazy load heavy components for better performance
-const Hero = dynamic(() => import("@/components/sections/hero-simple"), {
+const Hero = dynamic(() => import("./_components/hero-simple"), {
   loading: () => <div className="w-full min-h-[calc(100vh-120px)]" />,
 });
 

@@ -27,7 +27,7 @@ import {
   Shield,
   Star,
 } from "lucide-react";
-import { usersApi, getImageUrl } from "@/lib/api";
+import { usersApi } from "@/lib/api";
 import api from "@/lib/api";
 import BackButton from "@/components/shared/BackButton";
 import { motion } from "framer-motion";
@@ -43,7 +43,6 @@ export default function SettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -153,25 +152,58 @@ export default function SettingsPage() {
       return;
     }
 
-    // Release previous preview URL
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+
+      // Compress image by resizing
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Max dimensions - smaller for better compression
+        const MAX_WIDTH = 300;
+        const MAX_HEIGHT = 300;
+
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Convert to base64 with higher compression
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
+        setImagePreview(compressedBase64);
+      };
+
+      img.src = base64String;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleImageUpload = async () => {
-    if (!imageFile || !user) return;
+    if (!imagePreview || !user) return;
 
     setIsUploadingImage(true);
 
     try {
-      const base64DataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(imageFile);
-      });
-      await usersApi.uploadAvatar(user.id, base64DataUrl);
+      await usersApi.update(user.id, { profileImage: imagePreview });
 
       toast({
         title: "Амжилттай",
@@ -180,9 +212,7 @@ export default function SettingsPage() {
 
       // Refresh user context to update profile image
       await refreshUser();
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
       setImagePreview(null);
-      setImageFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -314,7 +344,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col items-center gap-4">
                   <Avatar className="w-32 h-32 border-4 border-purple-500/30 shadow-lg shadow-purple-500/20">
                     <AvatarImage
-                      src={imagePreview || getImageUrl(user.profileImage) || undefined}
+                      src={imagePreview || user.profileImage}
                       alt={user.name}
                     />
                     <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-3xl">
@@ -368,9 +398,7 @@ export default function SettingsPage() {
                       </Button>
                       <Button
                         onClick={() => {
-                          if (imagePreview) URL.revokeObjectURL(imagePreview);
                           setImagePreview(null);
-                          setImageFile(null);
                           if (fileInputRef.current) {
                             fileInputRef.current.value = "";
                           }

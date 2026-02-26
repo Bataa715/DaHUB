@@ -1,9 +1,9 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   ConflictException,
 } from "@nestjs/common";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
+import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
 import { randomUUID } from "crypto";
 
@@ -33,25 +33,22 @@ export class DepartmentsService {
   }
 
   async getPhotos(departmentId: string) {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT id, departmentId, departmentName, uploadedBy, uploadedByName, caption, uploadedAt
+    return this.clickhouse.query<any>(
+      `SELECT id, departmentId, departmentName, uploadedBy, uploadedByName, caption, imageData, uploadedAt
        FROM department_photos WHERE departmentId = {deptId:String}
        ORDER BY uploadedAt DESC`,
       { deptId: departmentId },
     );
-    return rows.map((r) => ({ ...r, imageData: `/departments/photos/${r.id}/image` }));
   }
 
-  async getPhotoImage(photoId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  async getPhotoData(photoId: string) {
     const rows = await this.clickhouse.query<any>(
-      `SELECT imageData, mimeType FROM department_photos WHERE id = {id:String} LIMIT 1`,
+      `SELECT imageData FROM department_photos WHERE id = {id:String} LIMIT 1`,
       { id: photoId },
     );
-    if (!rows?.[0]?.imageData) return null;
-    return {
-      buffer: Buffer.from(rows[0].imageData, 'hex'),
-      mimeType: rows[0].mimeType || 'image/jpeg',
-    };
+    if (!rows || rows.length === 0)
+      throw new NotFoundException("Зураг олдсонгүй");
+    return rows[0];
   }
 
   async uploadPhoto(
@@ -59,14 +56,11 @@ export class DepartmentsService {
     departmentName: string,
     uploadedBy: string,
     uploadedByName: string,
-    imageDataUrl: string, // base64 data URL: "data:image/jpeg;base64,..."
+    imageData: string,
     caption = "",
   ) {
-    const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
-    const mimeType = match?.[1] || 'image/jpeg';
-    const hex = Buffer.from(match?.[2] || imageDataUrl, 'base64').toString('hex');
     const id = randomUUID();
-    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const now = nowCH();
     await this.clickhouse.insert("department_photos", [
       {
         id,
@@ -74,8 +68,7 @@ export class DepartmentsService {
         departmentName,
         uploadedBy,
         uploadedByName,
-        imageData: hex,
-        mimeType,
+        imageData,
         caption,
         uploadedAt: now,
       },
@@ -109,8 +102,8 @@ export class DepartmentsService {
         description: createDepartmentDto.description || "",
         manager: createDepartmentDto.manager || "",
         employeeCount: createDepartmentDto.employeeCount || 0,
-        createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
-        updatedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        createdAt: nowCH(),
+        updatedAt: nowCH(),
       },
     ]);
 
@@ -223,10 +216,7 @@ export class DepartmentsService {
 
     if (fields.length > 0) {
       fields.push("updatedAt = {updatedAt:String}");
-      params.updatedAt = new Date()
-        .toISOString()
-        .slice(0, 19)
-        .replace("T", " ");
+      params.updatedAt = nowCH();
       await this.clickhouse.exec(
         `ALTER TABLE departments UPDATE ${fields.join(", ")} WHERE id = {id:String}`,
         params,

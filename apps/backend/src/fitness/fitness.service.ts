@@ -1,9 +1,9 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
+import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import {
   CreateExerciseDto,
   CreateWorkoutLogDto,
@@ -59,7 +59,7 @@ export class FitnessService {
         category: dto.category || "",
         description: dto.description || "",
         userId,
-        createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        createdAt: nowCH(),
       },
     ]);
 
@@ -136,7 +136,7 @@ export class FitnessService {
         repetitions: dto.repetitions || 0,
         weight: dto.weight || 0,
         notes: dto.notes || "",
-        date: new Date().toISOString().slice(0, 19).replace("T", " "),
+        date: nowCH(),
       },
     ]);
 
@@ -187,7 +187,7 @@ export class FitnessService {
         userId,
         weight: dto.weight,
         height: dto.height,
-        date: new Date().toISOString().slice(0, 19).replace("T", " "),
+        date: nowCH(),
       },
     ]);
 

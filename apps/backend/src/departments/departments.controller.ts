@@ -8,14 +8,10 @@ import {
   Body,
   UseGuards,
   Request,
-  Res,
-  NotFoundException,
 } from "@nestjs/common";
-import { Response } from "express";
 import { DepartmentsService } from "./departments.service";
 import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { Public } from "../auth/public.decorator";
 
 @Controller("departments")
 @UseGuards(JwtAuthGuard)
@@ -62,24 +58,16 @@ export class DepartmentsController {
     return this.departmentsService.getPhotos(id);
   }
 
-  // Serve photo binary — public (no auth) so <img src=...> works
-  @Public()
-  @Get(":id/photos/:photoId/image")
-  async getPhotoImage(
-    @Param("photoId") photoId: string,
-    @Res() res: Response,
-  ) {
-    const result = await this.departmentsService.getPhotoImage(photoId);
-    if (!result) throw new NotFoundException("Зураг олдсонгүй");
-    res.set("Content-Type", result.mimeType);
-    res.set("Cache-Control", "public, max-age=3600");
-    res.send(result.buffer);
+  @Get(":id/photos/:photoId/data")
+  getPhotoData(@Param("photoId") photoId: string) {
+    return this.departmentsService.getPhotoData(photoId);
   }
 
   @Post(":id/photos")
   async uploadPhoto(
     @Param("id") id: string,
-    @Body() body: { imageData: string; caption?: string; departmentName?: string },
+    @Body()
+    body: { imageData: string; caption?: string; departmentName?: string },
     @Request() req,
   ) {
     return this.departmentsService.uploadPhoto(

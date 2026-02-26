@@ -20,7 +20,7 @@ import {
   ShadingType,
   HeadingLevel,
 } from "docx";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 
 interface UserPayload {
   id: string;
@@ -52,7 +52,18 @@ function deptAbbrev(deptName: string): string {
     .toUpperCase();
 }
 
-const ROMAN_NUMS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+const ROMAN_NUMS = [
+  "I",
+  "II",
+  "III",
+  "IV",
+  "V",
+  "VI",
+  "VII",
+  "VIII",
+  "IX",
+  "X",
+];
 
 @Injectable()
 export class TailanService {
@@ -77,7 +88,7 @@ export class TailanService {
       { userId: user.id, year: dto.year, quarter: dto.quarter },
     );
 
-    const id = existing.length > 0 ? existing[0].id : uuidv4();
+    const id = existing.length > 0 ? existing[0].id : randomUUID();
     const now = new Date().toISOString().replace("T", " ").substring(0, 19);
 
     await this.clickhouse.insert("tailan_reports", [
@@ -252,7 +263,7 @@ export class TailanService {
     buffer: Buffer,
   ) {
     await this.ensureImagesTable();
-    const id = uuidv4();
+    const id = randomUUID();
     const now = new Date().toISOString().replace("T", " ").substring(0, 19);
     const imageData = buffer.toString("hex");
     await this.clickhouse.insert("tailan_images", [
@@ -452,13 +463,21 @@ export class TailanService {
     );
 
     // ── Fixed section I: Data analysis support ───────────────────────────────
-    children.push(this.bigSectionHeading("I. ӨГӨГДӨЛ ШИНЖИЛГЭЭГЭЭР АУДИТЫН ҮЙЛ АЖИЛЛАГААГ ДЭМЖСЭН БАЙДАЛ"));
+    children.push(
+      this.bigSectionHeading(
+        "I. ӨГӨГДӨЛ ШИНЖИЛГЭЭГЭЭР АУДИТЫН ҮЙЛ АЖИЛЛАГААГ ДЭМЖСЭН БАЙДАЛ",
+      ),
+    );
 
     // I.1 – зураг / текст (plannedTasks as numbered list with data-analysis entries)
-    children.push(this.subSectionHeading("I.1 Data шинжилгээний үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал"));
+    children.push(
+      this.subSectionHeading(
+        "I.1 Data шинжилгээний үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал",
+      ),
+    );
 
-    const analysisItems = (report.plannedTasks ?? []).filter(
-      (t: any) => t.title?.trim(),
+    const analysisItems = (report.plannedTasks ?? []).filter((t: any) =>
+      t.title?.trim(),
     );
     if (analysisItems.length === 0) {
       children.push(this.bodyPara(" "));
@@ -493,7 +512,11 @@ export class TailanService {
     children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
 
     // I.2 – Dashboard хүснэгт
-    children.push(this.subSectionHeading("I.2 Шинээр хөгжүүлсэн dashboard хөгжүүлэлтийн чанар, үр дүн"));
+    children.push(
+      this.subSectionHeading(
+        "I.2 Шинээр хөгжүүлсэн dashboard хөгжүүлэлтийн чанар, үр дүн",
+      ),
+    );
 
     // Build dashboard table from plannedTasks
     // Columns: №, Төлөвлөгөөт ажил, Ажлын гүйцэтгэл, Хийгдсэн хугацаа, Гүйцэтгэл
@@ -552,9 +575,7 @@ export class TailanService {
           )
         : [
             new TableRow({
-              children: dashColWidths.map((w) =>
-                this.tc(" ", w, true),
-              ),
+              children: dashColWidths.map((w) => this.tc(" ", w, true)),
             }),
           ];
 
@@ -567,9 +588,19 @@ export class TailanService {
     children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
 
     // ── Fixed Section II: Өгөгдөл боловсруулах ажил ─────────────────────────
-    children.push(this.bigSectionHeading("II. АУДИТЫН ҮЙЛ АЖИЛЛАГААНД ШААРДЛАГАТАЙ ӨГӨГДӨЛ БОЛОВСРУУЛАХ АЖИЛ"));
+    children.push(
+      this.bigSectionHeading(
+        "II. АУДИТЫН ҮЙЛ АЖИЛЛАГААНД ШААРДЛАГАТАЙ ӨГӨГДӨЛ БОЛОВСРУУЛАХ АЖИЛ",
+      ),
+    );
     const s2Tasks: any[] = report.section2Tasks ?? [];
-    const s2Headers = ["№", "Төлөвлөгөөт ажлууд", "Ажлын гүйцэтгэл", "Хийгдсэн хугацаа", "Гүйцэтгэл"];
+    const s2Headers = [
+      "№",
+      "Төлөвлөгөөт ажлууд",
+      "Ажлын гүйцэтгэл",
+      "Хийгдсэн хугацаа",
+      "Гүйцэтгэл",
+    ];
     const s2Widths = [5, 30, 20, 20, 25];
     const s2Rows: string[][] = s2Tasks.map((t, i) => [
       `${i + 1}`,
@@ -585,7 +616,11 @@ export class TailanService {
     children.push(this.bigSectionHeading("III. ТОГТМОЛ ХИЙГДДЭГ АЖЛУУД"));
 
     // III.1 – Автоматжуулалт
-    children.push(this.subSectionHeading("III.1 Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал"));
+    children.push(
+      this.subSectionHeading(
+        "III.1 Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал",
+      ),
+    );
     const s3AutoTasks: any[] = report.section3AutoTasks ?? [];
     const s3aHeaders = [
       "№",
@@ -604,7 +639,11 @@ export class TailanService {
     children.push(new Paragraph({ text: "", spacing: { after: 160 } }));
 
     // III.2 – Dashboard
-    children.push(this.subSectionHeading("III.2 Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал"));
+    children.push(
+      this.subSectionHeading(
+        "III.2 Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал",
+      ),
+    );
     const s3Dashboards: any[] = report.section3Dashboards ?? [];
     const s3dHeaders = [
       "№",
@@ -652,7 +691,11 @@ export class TailanService {
     children.push(new Paragraph({ text: "", spacing: { after: 140 } }));
 
     // IV sub-section: Мэдлэгээ ашиглаж буй байдал
-    children.push(this.subSectionHeading("IV.1 Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал"));
+    children.push(
+      this.subSectionHeading(
+        "IV.1 Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал",
+      ),
+    );
     const knowledgeLines = (report.section4KnowledgeText ?? "").split("\n");
     for (const line of knowledgeLines) {
       children.push(this.bodyPara(line || " "));
@@ -1538,7 +1581,12 @@ export class TailanService {
   }
 
   /** Cell with no explicit borders — inherits from the parent Table-level borders */
-  private tcNoB(text: string, widthPct: number, center = false, shading?: { type: any; color: string; fill?: string }) {
+  private tcNoB(
+    text: string,
+    widthPct: number,
+    center = false,
+    shading?: { type: any; color: string; fill?: string },
+  ) {
     const cell: any = {
       width: { size: widthPct, type: WidthType.PERCENTAGE },
       children: [
@@ -1556,10 +1604,10 @@ export class TailanService {
   /** Table outer border: solid; inner (insideH/insideV): dashed */
   private dashedInnerBorders() {
     return {
-      top:    { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
       bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-      left:   { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-      right:  { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
       insideH: { style: BorderStyle.DASHED, size: 2, color: "444444" },
       insideV: { style: BorderStyle.DASHED, size: 2, color: "444444" },
     };
@@ -1577,26 +1625,27 @@ export class TailanService {
     const blueFill = { type: ShadingType.SOLID, color: "1F3864" };
     const headerRow = new TableRow({
       tableHeader: true,
-      children: headers.map((lbl, i) =>
-        new TableCell({
-          width: { size: colWidths[i], type: WidthType.PERCENTAGE },
-          shading: blueFill,
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 40, after: 40 },
-              children: [
-                new TextRun({
-                  text: lbl,
-                  bold: true,
-                  color: "FFFFFF",
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
-            }),
-          ],
-        }),
+      children: headers.map(
+        (lbl, i) =>
+          new TableCell({
+            width: { size: colWidths[i], type: WidthType.PERCENTAGE },
+            shading: blueFill,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 40, after: 40 },
+                children: [
+                  new TextRun({
+                    text: lbl,
+                    bold: true,
+                    color: "FFFFFF",
+                    size: 22,
+                    font: "Times New Roman",
+                  }),
+                ],
+              }),
+            ],
+          }),
       ),
     });
     const rows =

@@ -1,23 +1,25 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
+﻿import { Injectable, NotFoundException } from "@nestjs/common";
+import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 
 @Injectable()
 export class NewsService {
   constructor(private clickhouse: ClickHouseService) {}
 
   async create(createNewsDto: CreateNewsDto, authorId: string) {
-    const id = uuidv4();
-    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const id = randomUUID();
+    const now = nowCH();
 
-    let imageHex = "";
+    let imageData = "";
     let imageMime = "";
     if (createNewsDto.imageUrl?.startsWith("data:")) {
-      const matches = createNewsDto.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+      const matches = createNewsDto.imageUrl.match(
+        /^data:([^;]+);base64,(.+)$/,
+      );
       if (matches) {
         imageMime = matches[1];
-        imageHex = Buffer.from(matches[2], "base64").toString("hex");
+        imageData = matches[2];
       }
     }
 
@@ -27,7 +29,7 @@ export class NewsService {
         title: createNewsDto.title,
         content: createNewsDto.content,
         category: createNewsDto.category || "Ерөнхий",
-        imageUrl: imageHex,
+        imageUrl: imageData,
         imageMime,
         authorId,
         isPublished: 1,
@@ -40,14 +42,16 @@ export class NewsService {
     return { id, message: "Мэдээ амжилттай үүслээ" };
   }
 
-  async findAll(published = true) {
+  async findAll(published = true, limit = 100, offset = 0) {
     const filter = published ? "WHERE isPublished = 1" : "";
     const news = await this.clickhouse.query<any>(
       `SELECT n.*, u.name as authorName
        FROM news n 
        LEFT JOIN users u ON n.authorId = u.id
        ${filter}
-       ORDER BY n.createdAt DESC`,
+       ORDER BY n.createdAt DESC
+       LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
+      { limit, offset },
     );
 
     return news.map((n) => ({
@@ -107,11 +111,13 @@ export class NewsService {
     }
     if (updateNewsDto.imageUrl !== undefined) {
       if (updateNewsDto.imageUrl.startsWith("data:")) {
-        const matches = updateNewsDto.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+        const matches = updateNewsDto.imageUrl.match(
+          /^data:([^;]+);base64,(.+)$/,
+        );
         if (matches) {
           updates.push("imageUrl = {imageUrl:String}");
           updates.push("imageMime = {imageMime:String}");
-          params.imageUrl = Buffer.from(matches[2], "base64").toString("hex");
+          params.imageUrl = matches[2];
           params.imageMime = matches[1];
         }
       } else {
@@ -127,11 +133,11 @@ export class NewsService {
     }
 
     updates.push("updatedAt = {updatedAt:String}");
-    params.updatedAt = new Date().toISOString().slice(0, 19).replace("T", " ");
+    params.updatedAt = nowCH();
 
     if (updates.length > 0) {
       await this.clickhouse.exec(
-        `ALTER TABLE news UPDATE ${updates.join(", ")} WHERE id = {id:String}`,
+        `ALTER TABLE news UPDATE ${updates.join(", ")} WHERE id = {id:String} SETTINGS mutations_sync=1`,
         params,
       );
     }
@@ -169,7 +175,7 @@ export class NewsService {
 
     const newStatus = news[0].isPublished ? 0 : 1;
     await this.clickhouse.exec(
-      "ALTER TABLE news UPDATE isPublished = {isPublished:UInt8} WHERE id = {id:String}",
+      "ALTER TABLE news UPDATE isPublished = {isPublished:UInt8} WHERE id = {id:String} SETTINGS mutations_sync=1",
       { id, isPublished: newStatus },
     );
 
@@ -186,17 +192,22 @@ export class NewsService {
       { category },
     );
 
-    return news.map((n) => ({ ...n, imageUrl: n.imageUrl ? `/news/${n.id}/image` : "" }));
+    return news.map((n) => ({
+      ...n,
+      imageUrl: n.imageUrl ? `/news/${n.id}/image` : "",
+    }));
   }
 
-  async getNewsImage(id: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  async getNewsImage(
+    id: string,
+  ): Promise<{ buffer: Buffer; mimeType: string } | null> {
     const rows = await this.clickhouse.query<any>(
       `SELECT imageUrl, imageMime FROM news WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     if (!rows || rows.length === 0 || !rows[0].imageUrl) return null;
     const mimeType = rows[0].imageMime || "image/jpeg";
-    const buffer = Buffer.from(rows[0].imageUrl, "hex");
+    const buffer = Buffer.from(rows[0].imageUrl, "base64");
     return { buffer, mimeType };
   }
 }

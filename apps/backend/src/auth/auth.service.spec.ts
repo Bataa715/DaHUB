@@ -292,6 +292,7 @@ describe("AuthService", () => {
 
     it("should successfully register a new user", async () => {
       clickHouseService.query
+        .mockResolvedValueOnce([] as any) // Удирдлага single-user check (no existing director)
         .mockResolvedValueOnce([] as any) // Check if generated userId exists (.Бат-DAG)
         .mockResolvedValueOnce([mockDepartment] as any); // ensureDepartment
       clickHouseService.insert.mockResolvedValueOnce(undefined); // user insert

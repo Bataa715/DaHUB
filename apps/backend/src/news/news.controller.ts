@@ -16,7 +16,6 @@ import { Response } from "express";
 import { NewsService } from "./news.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { Public } from "../auth/public.decorator";
 
 @Controller("news")
 export class NewsController {
@@ -24,9 +23,15 @@ export class NewsController {
 
   // Public - Get published news
   @Get()
-  async findAll(@Query("published") published?: string) {
+  async findAll(
+    @Query("published") published?: string,
+    @Query("page") page = 1,
+    @Query("limit") limit = 100,
+  ) {
     const isPublished = published === "false" ? false : true;
-    return this.newsService.findAll(isPublished);
+    const take = Math.min(Number(limit), 200);
+    const skip = (Number(page) - 1) * take;
+    return this.newsService.findAll(isPublished, take, skip);
   }
 
   // Public - Get single news (increments view)
@@ -62,8 +67,7 @@ export class NewsController {
     return this.newsService.togglePublish(id);
   }
 
-  // Public - Serve news image binary (no auth so <img src=...> works)
-  @Public()
+  // Serve news image binary
   @Get(":id/image")
   async getNewsImage(@Param("id") id: string, @Res() res: Response) {
     const result = await this.newsService.getNewsImage(id);

@@ -5,6 +5,11 @@ import {
   OnModuleDestroy,
 } from "@nestjs/common";
 import { createClient, ClickHouseClient } from "@clickhouse/client";
+import { randomUUID } from "crypto";
+
+/** Returns current UTC timestamp in ClickHouse DateTime string format (YYYY-MM-DD HH:MM:SS). */
+export const nowCH = (): string =>
+  new Date().toISOString().slice(0, 19).replace("T", " ");
 
 @Injectable()
 export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
@@ -150,6 +155,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           profileImage String,
           departmentId String,
           isAdmin UInt8 DEFAULT 0,
+          isSuperAdmin UInt8 DEFAULT 0,
           isActive UInt8 DEFAULT 1,
           allowedTools String,
           lastLoginAt Nullable(DateTime),
@@ -328,6 +334,13 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         await this.exec(`ALTER TABLE users DROP COLUMN IF EXISTS email`);
       } catch {}
 
+      // Migrate users: add isSuperAdmin if missing
+      try {
+        await this.exec(
+          `ALTER TABLE users ADD COLUMN IF NOT EXISTS isSuperAdmin UInt8 DEFAULT 0`,
+        );
+      } catch {}
+
       // Create chess_invitations table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS chess_invitations (
@@ -361,9 +374,15 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ) ENGINE = MergeTree() ORDER BY (id, seq)
       `);
       // Migrate existing chess_games tables (add timer columns if missing)
-      await this.exec(`ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS whiteTimeMs UInt32 DEFAULT 600000`).catch(() => {});
-      await this.exec(`ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS blackTimeMs UInt32 DEFAULT 600000`).catch(() => {});
-      await this.exec(`ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS lastMoveAt String DEFAULT ''`).catch(() => {});
+      await this.exec(
+        `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS whiteTimeMs UInt32 DEFAULT 600000`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS blackTimeMs UInt32 DEFAULT 600000`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS lastMoveAt String DEFAULT ''`,
+      ).catch(() => {});
 
       // Create department_photos table
       await this.exec(`
@@ -379,11 +398,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ) ENGINE = MergeTree() ORDER BY (departmentId, uploadedAt)
       `);
 
-      // Migrate: add blob-related columns
-      await this.exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profileImageMime String DEFAULT ''`).catch(() => {});
-      await this.exec(`ALTER TABLE department_photos ADD COLUMN IF NOT EXISTS mimeType String DEFAULT 'image/jpeg'`).catch(() => {});
-      await this.exec(`ALTER TABLE news ADD COLUMN IF NOT EXISTS imageMime String DEFAULT ''`).catch(() => {});
-
       this.logger.log(
         "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, department_photos)",
       );
@@ -394,9 +408,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Helper: Generate UUID (ClickHouse compatible)
+   * Helper: Generate UUID (crypto.randomUUID — collision-safe)
    */
   uuid(): string {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return randomUUID();
   }
 }

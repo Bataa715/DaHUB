@@ -85,15 +85,6 @@ api.interceptors.response.use(
 
 export default api;
 
-// Helper: build full URL for an image served from the API (e.g. /users/:id/avatar)
-export const getImageUrl = (
-  src: string | null | undefined,
-): string | undefined => {
-  if (!src) return undefined;
-  if (src.startsWith("/")) return `${API_URL}${src}`;
-  return undefined; // ignore legacy disk paths
-};
-
 // Auth APIs
 export const authApi = {
   createUser: async (data: {
@@ -210,10 +201,6 @@ export const usersApi = {
     });
     return response.data;
   },
-
-  uploadAvatar: async (id: string, base64DataUrl: string): Promise<void> => {
-    await api.patch(`/users/${id}`, { profileImage: base64DataUrl });
-  },
 };
 
 // Departments APIs
@@ -273,13 +260,13 @@ export const departmentsApi = {
   uploadPhoto: async (
     deptId: string,
     departmentName: string,
-    base64DataUrl: string,
+    imageData: string,
     caption?: string,
   ) => {
     const response = await api.post(`/departments/${deptId}/photos`, {
-      imageData: base64DataUrl,
-      departmentName,
+      imageData,
       caption: caption ?? "",
+      departmentName,
     });
     return response.data;
   },
@@ -624,14 +611,29 @@ export const chessApi = {
   getHistory: async () => {
     const response = await api.get("/chess/history");
     return response.data as {
-      games: { id: string; opponent: string; result: string; resultReason: string; createdAt: string }[];
-      wins: number; losses: number; draws: number; total: number;
+      games: {
+        id: string;
+        opponent: string;
+        result: string;
+        resultReason: string;
+        createdAt: string;
+      }[];
+      wins: number;
+      losses: number;
+      draws: number;
+      total: number;
     };
   },
 
   getRankings: async () => {
     const response = await api.get("/chess/rankings");
-    return response.data as { id: string; name: string; wins: number; losses: number; draws: number }[];
+    return response.data as {
+      id: string;
+      name: string;
+      wins: number;
+      losses: number;
+      draws: number;
+    }[];
   },
 };
 

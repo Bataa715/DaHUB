@@ -155,6 +155,8 @@ export class AuthController {
     return this.authService.adminLogin(adminLoginDto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
   @Get("departments/:department/users")
   @ApiOperation({
     summary: "Get users by department",
@@ -170,6 +172,8 @@ export class AuthController {
     return this.authService.getUsersByDepartment(department);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
   @Get("search")
   @ApiOperation({
     summary: "Search users",

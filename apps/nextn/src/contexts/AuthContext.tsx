@@ -99,11 +99,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: string,
     refreshToken: string,
   ) => {
-    Cookies.set("token", accessToken, { expires: 1 / 24, sameSite: "lax" });
-    Cookies.set("refreshToken", refreshToken, { expires: 30, sameSite: "lax" });
+    const secure =
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:";
+    Cookies.set("token", accessToken, {
+      expires: 1 / 24,
+      sameSite: "lax",
+      secure,
+    });
+    Cookies.set("refreshToken", refreshToken, {
+      expires: 30,
+      sameSite: "lax",
+      secure,
+    });
     Cookies.set("user", JSON.stringify(userData), {
       expires: 30,
       sameSite: "lax",
+      secure,
     });
     setUser(userData);
   };
@@ -113,17 +125,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: string,
     refreshToken: string,
   ) => {
+    const secure =
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:";
     Cookies.set("adminToken", accessToken, {
       expires: 1 / 24,
       sameSite: "lax",
+      secure,
     });
     Cookies.set("adminRefreshToken", refreshToken, {
       expires: 30,
       sameSite: "lax",
+      secure,
     });
     Cookies.set("adminUser", JSON.stringify(userData), {
       expires: 30,
       sameSite: "lax",
+      secure,
     });
     setUser(userData);
   };

@@ -1,9 +1,9 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
+import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { SendInviteDto, MakeMoveDto, FinishGameDto } from "./dto/chess.dto";
 import { randomUUID } from "crypto";
 
@@ -70,9 +70,21 @@ export class ChessService {
         ) ENGINE = MergeTree() ORDER BY (id, seq)
       `);
       // Migrate existing tables
-      await this.clickhouse.exec(`ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS whiteTimeMs UInt32 DEFAULT 600000`).catch(() => {});
-      await this.clickhouse.exec(`ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS blackTimeMs UInt32 DEFAULT 600000`).catch(() => {});
-      await this.clickhouse.exec(`ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS lastMoveAt String DEFAULT ''`).catch(() => {});
+      await this.clickhouse
+        .exec(
+          `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS whiteTimeMs UInt32 DEFAULT 600000`,
+        )
+        .catch(() => {});
+      await this.clickhouse
+        .exec(
+          `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS blackTimeMs UInt32 DEFAULT 600000`,
+        )
+        .catch(() => {});
+      await this.clickhouse
+        .exec(
+          `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS lastMoveAt String DEFAULT ''`,
+        )
+        .catch(() => {});
     } catch (e) {
       console.error("Failed to ensure chess tables:", e);
     }
@@ -128,7 +140,7 @@ export class ChessService {
 
     const id = randomUUID();
     const seq = Date.now();
-    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const now = nowCH();
     await this.clickhouse.insert("chess_invitations", [
       {
         id,
@@ -168,7 +180,7 @@ export class ChessService {
       throw new BadRequestException("Урилга аль хэдийн боловсруулагдсан байна");
 
     const seq = Date.now();
-    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const now = nowCH();
 
     // Mark as accepted
     await this.clickhouse.insert("chess_invitations", [
@@ -324,10 +336,7 @@ export class ChessService {
         ? game.lastMoveAt
         : game.createdAt;
     const prevDate = new Date(prevAt.replace(" ", "T") + "+00:00");
-    const elapsedMs = Math.min(
-      nowDate.getTime() - prevDate.getTime(),
-      120000,
-    );
+    const elapsedMs = Math.min(nowDate.getTime() - prevDate.getTime(), 120000);
     let whiteTimeMs =
       typeof game.whiteTimeMs === "number" ? game.whiteTimeMs : 600000;
     let blackTimeMs =
@@ -412,25 +421,36 @@ export class ChessService {
        LIMIT 30`,
       { userId },
     );
-    let wins = 0, losses = 0, draws = 0;
+    let wins = 0,
+      losses = 0,
+      draws = 0;
     for (const g of games) {
-      if (g.status === 'draw') draws++;
+      if (g.status === "draw") draws++;
       else if (
-        (g.status === 'white_won' && g.whiteUserId === userId) ||
-        (g.status === 'black_won' && g.blackUserId === userId)
-      ) wins++;
+        (g.status === "white_won" && g.whiteUserId === userId) ||
+        (g.status === "black_won" && g.blackUserId === userId)
+      )
+        wins++;
       else losses++;
     }
     return {
       games: games.map((g: any) => ({
         id: g.id,
         opponent: g.whiteUserId === userId ? g.blackUserName : g.whiteUserName,
-        result: g.status === 'draw' ? 'draw' :
-          ((g.status === 'white_won' && g.whiteUserId === userId) || (g.status === 'black_won' && g.blackUserId === userId)) ? 'win' : 'loss',
+        result:
+          g.status === "draw"
+            ? "draw"
+            : (g.status === "white_won" && g.whiteUserId === userId) ||
+                (g.status === "black_won" && g.blackUserId === userId)
+              ? "win"
+              : "loss",
         resultReason: g.resultReason,
         createdAt: g.createdAt,
       })),
-      wins, losses, draws, total: games.length,
+      wins,
+      losses,
+      draws,
+      total: games.length,
     };
   }
 
@@ -450,22 +470,30 @@ export class ChessService {
        )
        WHERE status IN ('white_won', 'black_won', 'draw')`,
     );
-    const stats: Record<string, { id: string; name: string; wins: number; losses: number; draws: number }> = {};
+    const stats: Record<
+      string,
+      { id: string; name: string; wins: number; losses: number; draws: number }
+    > = {};
     const ensure = (id: string, name: string) => {
       if (!stats[id]) stats[id] = { id, name, wins: 0, losses: 0, draws: 0 };
     };
     for (const g of games) {
       ensure(g.whiteUserId, g.whiteUserName);
       ensure(g.blackUserId, g.blackUserName);
-      if (g.status === 'white_won') { stats[g.whiteUserId].wins++; stats[g.blackUserId].losses++; }
-      else if (g.status === 'black_won') { stats[g.blackUserId].wins++; stats[g.whiteUserId].losses++; }
-      else { stats[g.whiteUserId].draws++; stats[g.blackUserId].draws++; }
+      if (g.status === "white_won") {
+        stats[g.whiteUserId].wins++;
+        stats[g.blackUserId].losses++;
+      } else if (g.status === "black_won") {
+        stats[g.blackUserId].wins++;
+        stats[g.whiteUserId].losses++;
+      } else {
+        stats[g.whiteUserId].draws++;
+        stats[g.blackUserId].draws++;
+      }
     }
-    return Object.values(stats)
-      .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+    return Object.values(stats).sort(
+      (a, b) => b.wins - a.wins || a.losses - b.losses,
+    );
   }
 }
-
-
-
 

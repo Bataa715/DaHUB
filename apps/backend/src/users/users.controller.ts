@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   Res,
   NotFoundException,
@@ -13,7 +14,6 @@ import { Response } from "express";
 import { UsersService } from "./users.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { Public } from "../auth/public.decorator";
 
 @Controller("users")
 @UseGuards(JwtAuthGuard)
@@ -21,8 +21,13 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(
+    @Query("page") page = 1,
+    @Query("limit") limit = 200,
+  ) {
+    const take = Math.min(Number(limit), 500);
+    const skip = (Number(page) - 1) * take;
+    return this.usersService.findAll(take, skip);
   }
 
   @Get("admins")
@@ -66,8 +71,6 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  // Serve profile image as binary — no auth required (img tags can't send headers)
-  @Public()
   @Get(":id/avatar")
   async getAvatar(@Param("id") id: string, @Res() res: Response) {
     const result = await this.usersService.getAvatar(id);

@@ -20,7 +20,21 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
-import api, { getImageUrl } from "@/lib/api";
+import api from "@/lib/api";
+
+function getImageUrl(path?: string): string | null {
+  if (!path) return null;
+  return `${process.env.NEXT_PUBLIC_API_URL}${path}`;
+}
+
+/** Strip script tags, dangerous event handlers, and javascript: URIs from HTML */
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/\s+on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, "")
+    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi, 'href="#"')
+    .replace(/src\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi, '');
+}
 
 interface News {
   id: string;
@@ -40,18 +54,22 @@ const CATEGORY_COLORS: Record<
   string,
   { bg: string; text: string; dot: string }
 > = {
-  ????????: { bg: "bg-blue-500/20", text: "text-blue-400", dot: "bg-blue-400" },
-  ???????: {
+  Мэдэгдэл: {
+    bg: "bg-blue-500/20",
+    text: "text-blue-400",
+    dot: "bg-blue-400",
+  },
+  Ерөнхий: {
     bg: "bg-purple-500/20",
     text: "text-purple-400",
     dot: "bg-purple-400",
   },
-  "??? ?????": {
+  "Үйл явдал": {
     bg: "bg-emerald-500/20",
     text: "text-emerald-400",
     dot: "bg-emerald-400",
   },
-  ???????????: {
+  Танилцуулга: {
     bg: "bg-amber-500/20",
     text: "text-amber-400",
     dot: "bg-amber-400",
@@ -121,7 +139,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             >
               {item.category}
             </span>
-            <span className="text-slate-400 text-xs">�</span>
+            <span className="text-slate-400 text-xs">·</span>
             <span className="text-slate-400 text-xs">
               {formatDate(item.createdAt)}
             </span>
@@ -131,7 +149,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             className="text-xs font-bold tracking-[0.3em] uppercase text-slate-300"
             style={{ fontFamily: "monospace" }}
           >
-            ?????? ????? � DAHUB
+            Дотоод аудит — DAHUB
           </p>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight tracking-tight">
@@ -144,11 +162,11 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             </div>
             <div>
               <p className="text-white text-sm font-semibold">
-                {item.authorName || "?????? ??????? ?????"}
+                {item.authorName || "Дотоод аудитын алба"}
               </p>
               <p className="text-slate-400 text-xs">
-                {formatDate(item.createdAt)} &nbsp;�&nbsp;{" "}
-                {calcReadTime(item.content)} ???
+                {formatDate(item.createdAt)} &nbsp;·&nbsp;{" "}
+                {calcReadTime(item.content)} мин
               </p>
             </div>
             <div className="ml-auto flex items-center gap-1.5 text-slate-400 text-sm">
@@ -163,7 +181,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
           animate={{ x: [0, 4, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <span>???????????</span>
+          <span>Дэлгэрэнгүй</span>
           <ArrowRight className="w-4 h-4" />
         </motion.div>
       </div>
@@ -213,7 +231,7 @@ function CarouselCard({
       </div>
 
       <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full">
-        {calcReadTime(item.content)} ???
+        {calcReadTime(item.content)} мин
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
@@ -263,10 +281,10 @@ function ChatItem({
         </div>
         <div className={isRight ? "text-right" : "text-left"}>
           <p className="text-slate-300 text-xs font-semibold whitespace-nowrap">
-            {item.authorName || "??????? ?????"}
+            {item.authorName || "Аудитын алба"}
           </p>
           <p className="text-slate-500 text-xs whitespace-nowrap">
-            {formatDate(item.createdAt)} � {calcReadTime(item.content)} ???
+            {formatDate(item.createdAt)} · {calcReadTime(item.content)} мин
           </p>
         </div>
       </div>
@@ -301,7 +319,7 @@ function ChatItem({
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                {calcReadTime(item.content)} ???
+                {calcReadTime(item.content)} мин
               </span>
             </div>
           </div>
@@ -377,7 +395,7 @@ export default function NewsPage() {
             <Loader2 className="h-10 w-10 text-purple-400" />
           </motion.div>
           <p className="text-slate-400 text-sm animate-pulse">
-            ????? ?????? ?????...
+            Мэдээ ачаалж байна...
           </p>
         </div>
       </div>
@@ -393,10 +411,10 @@ export default function NewsPage() {
         className="space-y-1"
       >
         <h1 className="text-3xl font-black text-white tracking-tight">
-          ????? ????????
+          Мэдээ мэдэгдэл
         </h1>
         <p className="text-slate-400 text-sm">
-          DaHUB � ?????? ??????? ????????? ???
+          DaHUB — Дотоод аудитын мэдэгдэлийн систем
         </p>
       </motion.div>
 
@@ -407,7 +425,7 @@ export default function NewsPage() {
       {carousel.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-white font-bold text-xl">??????? ?????????</h2>
+            <h2 className="text-white font-bold text-xl">Сүүлийн мэдээнүүд</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => scroll("left")}
@@ -452,7 +470,7 @@ export default function NewsPage() {
       {/* Chat Feed */}
       {feed.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-white font-bold text-xl">????? ?????????</h2>
+          <h2 className="text-white font-bold text-xl">Бусад мэдээнүүд</h2>
           <div className="space-y-5">
             {feed.map((item, i) => (
               <ChatItem
@@ -468,7 +486,7 @@ export default function NewsPage() {
 
       {!isLoading && news.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-          <p className="text-lg">????? ??????? ?????</p>
+          <p className="text-lg">Мэдээ байхгүй байна</p>
         </div>
       )}
 
@@ -527,13 +545,13 @@ export default function NewsPage() {
                     </div>
                     <div>
                       <p className="text-slate-200 text-sm font-semibold">
-                        {selectedNews.authorName || "?????? ??????? ?????"}
+                        {selectedNews.authorName || "Дотоод аудитын алба"}
                       </p>
                       <p className="text-slate-500 text-xs flex items-center gap-2">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(selectedNews.createdAt)} &nbsp;�&nbsp;
+                        {formatDate(selectedNews.createdAt)} &nbsp;·&nbsp;
                         <Clock className="w-3 h-3" />
-                        {calcReadTime(selectedNews.content)} ????? ?????
+                        {calcReadTime(selectedNews.content)} минут унших
                       </p>
                     </div>
                   </div>
@@ -547,7 +565,9 @@ export default function NewsPage() {
                 <ScrollArea className="max-h-[45vh] pr-2">
                   <div
                     className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: selectedNews.content }}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeHtml(selectedNews.content),
+                    }}
                   />
                 </ScrollArea>
               </div>

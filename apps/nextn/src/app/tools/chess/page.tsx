@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,126 +21,18 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface Invitation {
-  id: string;
-  fromUserId: string;
-  fromUserName: string;
-  toUserId: string;
-  toUserName: string;
-  status: string;
-  createdAt: string;
-}
+import type { Invitation, GameInfo, UserResult, RankEntry, HistoryGame } from "./_components/chess.types";
+import {
+  PIECE_UNICODE,
+  FILES,
+  RESULT_REASON,
+  formatTime,
+  TITLES,
+  getTitle,
+  parseMoves,
+  buildChess,
+} from "./_components/chess.utils";
 
-interface GameInfo {
-  id: string;
-  whiteUserId: string;
-  whiteUserName: string;
-  blackUserId: string;
-  blackUserName: string;
-  moves: string;
-  status: string;
-  resultReason: string;
-  whiteTimeMs?: number;
-  blackTimeMs?: number;
-  createdAt: string;
-}
-
-interface UserResult {
-  id: string;
-  userId?: string;
-  name: string;
-  position?: string;
-}
-
-interface RankEntry {
-  id: string;
-  name: string;
-  wins: number;
-  losses: number;
-  draws: number;
-}
-
-interface HistoryGame {
-  id: string;
-  opponent: string;
-  result: "win" | "loss" | "draw";
-  resultReason: string;
-  createdAt: string;
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-const PIECE_UNICODE: Record<string, string> = {
-  wp: "♙",
-  wn: "♘",
-  wb: "♗",
-  wr: "♖",
-  wq: "♕",
-  wk: "♔",
-  bp: "♟",
-  bn: "♞",
-  bb: "♝",
-  br: "♜",
-  bq: "♛",
-  bk: "♚",
-};
-
-const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
-
-const RESULT_REASON: Record<string, string> = {
-  checkmate: "Мат",
-  stalemate: "Тал",
-  resignation: "Буулт өгсөн",
-  draw_agreement: "Тэнцэл тохиролцсон",
-  insufficient_material: "Материал хүрэлцэхгүй",
-  fifty_move: "50 нүүдлийн дүрэм",
-  threefold_repetition: "Гурван давталт",
-  timeout: "Цаг дууссан",
-};
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatTime(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
-
-const TITLES = [
-  { label: "Лорд",     ratio: 1,    color: "text-amber-400",   bg: "bg-amber-500/15 border-amber-500/30",    icon: "👑" },
-  { label: "Жанжин",   ratio: 0.5,  color: "text-orange-400",  bg: "bg-orange-500/15 border-orange-500/30",  icon: "✨" },
-  { label: "Хурандаа", ratio: 0.25, color: "text-blue-400",    bg: "bg-blue-500/15 border-blue-500/30",      icon: "🏛️" },
-  { label: "Ахлагч",   ratio: 0.1,  color: "text-emerald-400", bg: "bg-emerald-500/15 border-emerald-500/30",icon: "🏅" },
-  { label: "Дайчин",   ratio: 0,    color: "text-slate-400",   bg: "bg-slate-700/40 border-slate-600/30",    icon: "⚔️" },
-] as const;
-
-function getTitle(wins: number, maxWins: number) {
-  if (maxWins === 0) return TITLES[TITLES.length - 1];
-  const ratio = wins / maxWins;
-  return TITLES.find((t) => ratio >= t.ratio) ?? TITLES[TITLES.length - 1];
-}
-function parseMoves(json: string): string[] {
-  try {
-    const r = JSON.parse(json);
-    return Array.isArray(r) ? r : [];
-  } catch {
-    return [];
-  }
-}
-
-function buildChess(moves: string[]): Chess {
-  const c = new Chess();
-  for (const m of moves) {
-    try {
-      c.move(m);
-    } catch {
-      break;
-    }
-  }
-  return c;
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 export default function ChessPage() {
   const { user } = useAuth();
   const myId = user?.id ?? "";
@@ -185,11 +77,17 @@ export default function ChessPage() {
   const [showResignModal, setShowResignModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [myStats, setMyStats] = useState<{ wins: number; losses: number; draws: number; total: number; games: HistoryGame[] } | null>(null);
+  const [myStats, setMyStats] = useState<{
+    wins: number;
+    losses: number;
+    draws: number;
+    total: number;
+    games: HistoryGame[];
+  } | null>(null);
   const [rankings, setRankings] = useState<RankEntry[]>([]);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // ── Lobby polling ─────────────────────────────────────────────────────────
+  // â”€â”€ Lobby polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const fetchLobby = useCallback(async () => {
     try {
       const [invs, games] = await Promise.all([
@@ -210,7 +108,7 @@ export default function ChessPage() {
     };
   }, [view, fetchLobby]);
 
-  // ── Game polling ──────────────────────────────────────────────────────────
+  // â”€â”€ Game polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const applyGame = useCallback((g: GameInfo) => {
     setGame(g);
     const moves = parseMoves(g.moves);
@@ -276,8 +174,12 @@ export default function ChessPage() {
   // Sync timer state from server game data
   useEffect(() => {
     if (!game) return;
-    setWhiteMs(typeof game.whiteTimeMs === "number" ? game.whiteTimeMs : 600000);
-    setBlackMs(typeof game.blackTimeMs === "number" ? game.blackTimeMs : 600000);
+    setWhiteMs(
+      typeof game.whiteTimeMs === "number" ? game.whiteTimeMs : 600000,
+    );
+    setBlackMs(
+      typeof game.blackTimeMs === "number" ? game.blackTimeMs : 600000,
+    );
   }, [game?.whiteTimeMs, game?.blackTimeMs]);
 
   // Local 1-second countdown for active game
@@ -294,7 +196,9 @@ export default function ChessPage() {
           const next = Math.max(0, prev - 1000);
           if (next <= 0 && !finishedRef.current) {
             finishedRef.current = true;
-            chessApi.finishGame(game.id, "black_won", "timeout").catch(() => {});
+            chessApi
+              .finishGame(game.id, "black_won", "timeout")
+              .catch(() => {});
           }
           return next;
         });
@@ -303,7 +207,9 @@ export default function ChessPage() {
           const next = Math.max(0, prev - 1000);
           if (next <= 0 && !finishedRef.current) {
             finishedRef.current = true;
-            chessApi.finishGame(game.id, "white_won", "timeout").catch(() => {});
+            chessApi
+              .finishGame(game.id, "white_won", "timeout")
+              .catch(() => {});
           }
           return next;
         });
@@ -320,14 +226,22 @@ export default function ChessPage() {
     setLoadingStats(true);
     Promise.all([chessApi.getHistory(), chessApi.getRankings()])
       .then(([hist, ranks]) => {
-        setMyStats(hist as { wins: number; losses: number; draws: number; total: number; games: HistoryGame[] });
+        setMyStats(
+          hist as {
+            wins: number;
+            losses: number;
+            draws: number;
+            total: number;
+            games: HistoryGame[];
+          },
+        );
         setRankings(ranks);
       })
       .catch(() => {})
       .finally(() => setLoadingStats(false));
   }, [view, myId]);
 
-  // ── User search ───────────────────────────────────────────────────────────
+  // â”€â”€ User search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSearch = useCallback(
     (q: string) => {
       setSearchQuery(q);
@@ -362,7 +276,10 @@ export default function ChessPage() {
   // Close dropdown on outside click
   useEffect(() => {
     const handle = (e: MouseEvent) => {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+      if (
+        searchBoxRef.current &&
+        !searchBoxRef.current.contains(e.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
@@ -370,7 +287,7 @@ export default function ChessPage() {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  // ── Invite actions ────────────────────────────────────────────────────────
+  // â”€â”€ Invite actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const sendInvite = async (toUserId: string, toUserName: string) => {
     setSendingTo(toUserId);
     try {
@@ -393,7 +310,7 @@ export default function ChessPage() {
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Алдаа гарлаа";
+          ?.message ?? "ÐÐ»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°";
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
       setErrorMsg(msg);
       errorTimerRef.current = setTimeout(() => setErrorMsg(null), 3000);
@@ -410,7 +327,7 @@ export default function ChessPage() {
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Алдаа гарлаа";
+          ?.message ?? "ÐÐ»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°";
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
       setErrorMsg(msg);
       errorTimerRef.current = setTimeout(() => setErrorMsg(null), 3000);
@@ -430,7 +347,7 @@ export default function ChessPage() {
     }
   };
 
-  // ── Navigation ────────────────────────────────────────────────────────────
+  // â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const openGame = (id: string) => {
     if (gameTimerRef.current) clearInterval(gameTimerRef.current);
     setGameId(id);
@@ -452,7 +369,7 @@ export default function ChessPage() {
     setLegalSqs([]);
   };
 
-  // ── Board interaction ─────────────────────────────────────────────────────
+  // â”€â”€ Board interaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSquareClick = useCallback(
     async (sq: string) => {
       if (!game || game.status !== "active" || submitting) return;
@@ -501,7 +418,7 @@ export default function ChessPage() {
           } catch (e: unknown) {
             const msg =
               (e as { response?: { data?: { message?: string } } })?.response
-                ?.data?.message ?? "Нүүд буруу байна";
+                ?.data?.message ?? "ÐÒ¯Ò¯Ð´ Ð±ÑƒÑ€ÑƒÑƒ Ð±Ð°Ð¹Ð½Ð°";
             if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
             setErrorMsg(msg);
             errorTimerRef.current = setTimeout(() => setErrorMsg(null), 3000);
@@ -538,7 +455,7 @@ export default function ChessPage() {
     [chess, game, legalSqs, myColor, selectedSq, submitting],
   );
 
-  // ── Resign ────────────────────────────────────────────────────────────────
+  // â”€â”€ Resign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const resign = () => {
     if (!game || game.status !== "active") return;
     setShowResignModal(true);
@@ -558,7 +475,7 @@ export default function ChessPage() {
     }
   };
 
-  // ── Board render ──────────────────────────────────────────────────────────
+  // â”€â”€ Board render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderBoard = () => {
     const ranks =
       myColor === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
@@ -600,7 +517,7 @@ export default function ChessPage() {
                 className="relative flex items-center justify-center cursor-pointer transition-colors duration-75"
                 style={{ background: bg }}
               >
-                {/* Rank label — left edge */}
+                {/* Rank label â€” left edge */}
                 {file === files[0] && (
                   <span
                     className="absolute top-0.5 left-0.5 text-[min(1.6vw,8px)] font-bold leading-none pointer-events-none select-none"
@@ -609,7 +526,7 @@ export default function ChessPage() {
                     {rank}
                   </span>
                 )}
-                {/* File label — bottom edge */}
+                {/* File label â€” bottom edge */}
                 {rank === ranks[ranks.length - 1] && (
                   <span
                     className="absolute bottom-0.5 right-0.5 text-[min(1.6vw,8px)] font-bold leading-none pointer-events-none select-none"
@@ -653,7 +570,7 @@ export default function ChessPage() {
     );
   };
 
-  // ── Game status banner ────────────────────────────────────────────────────
+  // â”€â”€ Game status banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderBanner = () => {
     if (!game) return null;
     const moves = parseMoves(game.moves);
@@ -663,8 +580,8 @@ export default function ChessPage() {
         (chess.turn() === "b" && myColor === "b"));
 
     const oppName = myColor === "w" ? game.blackUserName : game.whiteUserName;
-    const myLabel = myColor === "w" ? "Цагаан" : "Хар";
-    const oppLabel = myColor === "w" ? "Хар" : "Цагаан";
+    const myLabel = myColor === "w" ? "Ð¦Ð°Ð³Ð°Ð°Ð½" : "Ð¥Ð°Ñ€";
+    const oppLabel = myColor === "w" ? "Ð¥Ð°Ñ€" : "Ð¦Ð°Ð³Ð°Ð°Ð½";
 
     if (game.status !== "active") {
       const isWin =
@@ -682,9 +599,9 @@ export default function ChessPage() {
           }`}
         >
           {isDraw
-            ? `Тэнцэл — ${RESULT_REASON[game.resultReason] ?? game.resultReason}`
+            ? `Ð¢ÑÐ½Ñ†ÑÐ» â€” ${RESULT_REASON[game.resultReason] ?? game.resultReason}`
             : isWin
-              ? `🎉 Та хожлоо! (${RESULT_REASON[game.resultReason] ?? game.resultReason})`
+              ? `ðŸŽ‰ Ð¢Ð° Ñ…Ð¾Ð¶Ð»Ð¾Ð¾! (${RESULT_REASON[game.resultReason] ?? game.resultReason})`
               : `${RESULT_REASON[game.resultReason] ?? game.resultReason}`}
         </div>
       );
@@ -710,25 +627,25 @@ export default function ChessPage() {
         >
           {submitting ? (
             <span className="flex items-center gap-1.5">
-              <Loader2 className="w-3 h-3 animate-spin" /> Нүүж байна...
+              <Loader2 className="w-3 h-3 animate-spin" /> ÐÒ¯Ò¯Ð¶ Ð±Ð°Ð¹Ð½Ð°...
             </span>
           ) : isMyTurn ? (
-            "Таны ээлж"
+            "Ð¢Ð°Ð½Ñ‹ ÑÑÐ»Ð¶"
           ) : (
-            "Харидсан..."
+            "Ð¥Ð°Ñ€Ð¸Ð´ÑÐ°Ð½..."
           )}
         </div>
       </div>
     );
   };
 
-  // ── Move history ──────────────────────────────────────────────────────────
+  // â”€â”€ Move history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderMoveHistory = () => {
     const moves = parseMoves(game?.moves ?? "[]");
     if (!moves.length)
       return (
         <p className="text-slate-500 text-xs italic text-center py-4">
-          Нүүд алга
+          ÐÒ¯Ò¯Ð´ Ð°Ð»Ð³Ð°
         </p>
       );
     const pairs: [string, string | undefined][] = [];
@@ -753,11 +670,11 @@ export default function ChessPage() {
     );
   };
 
-  // ── Derived lobby data ────────────────────────────────────────────────────
+  // â”€â”€ Derived lobby data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const incoming = invitations.filter((i) => i.toUserId === myId);
   const outgoing = invitations.filter((i) => i.fromUserId === myId);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="relative min-h-screen bg-[#0f1117] text-white overflow-hidden">
       {/* Resign confirmation modal */}
@@ -780,17 +697,17 @@ export default function ChessPage() {
                 <div className="w-9 h-9 rounded-xl bg-rose-500/20 flex items-center justify-center">
                   <Flag className="w-4 h-4 text-rose-400" />
                 </div>
-                <h3 className="text-white font-semibold">Буулт өгөх үү?</h3>
+                <h3 className="text-white font-semibold">Ð‘ÑƒÑƒÐ»Ñ‚ Ó©Ð³Ó©Ñ… Ò¯Ò¯?</h3>
               </div>
               <p className="text-slate-400 text-sm mb-5">
-                Тэнцэл хүссэн бол өрсөлдөгчтэйгөө тохиролцоорой.
+                Ð¢ÑÐ½Ñ†ÑÐ» Ñ…Ò¯ÑÑÑÐ½ Ð±Ð¾Ð» Ó©Ñ€ÑÓ©Ð»Ð´Ó©Ð³Ñ‡Ñ‚ÑÐ¹Ð³Ó©Ó© Ñ‚Ð¾Ñ…Ð¸Ñ€Ð¾Ð»Ñ†Ð¾Ð¾Ñ€Ð¾Ð¹.
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowResignModal(false)}
                   className="flex-1 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-600/60 text-slate-300 text-sm transition-all"
                 >
-                  Цуцлах
+                  Ð¦ÑƒÑ†Ð»Ð°Ñ…
                 </button>
                 <button
                   onClick={confirmResign}
@@ -798,7 +715,7 @@ export default function ChessPage() {
                   className="flex-1 py-2.5 rounded-xl bg-rose-500/80 hover:bg-rose-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {resigning && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Буулт өгөх
+                  Ð‘ÑƒÑƒÐ»Ñ‚ Ó©Ð³Ó©Ñ…
                 </button>
               </div>
             </motion.div>
@@ -841,17 +758,17 @@ export default function ChessPage() {
               <Crown className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Оюуны спорт</h1>
+              <h1 className="text-xl font-bold">ÐžÑŽÑƒÐ½Ñ‹ ÑÐ¿Ð¾Ñ€Ñ‚</h1>
               <p className="text-xs text-slate-400">
                 {view === "lobby"
-                  ? "Шатар — урилга илгээж тоглоом эхлүүл"
-                  : `Тоглоом · ${gameId?.slice(0, 8) ?? ""}…`}
+                  ? "Ð¨Ð°Ñ‚Ð°Ñ€ â€” ÑƒÑ€Ð¸Ð»Ð³Ð° Ð¸Ð»Ð³ÑÑÐ¶ Ñ‚Ð¾Ð³Ð»Ð¾Ð¾Ð¼ ÑÑ…Ð»Ò¯Ò¯Ð»"
+                  : `Ð¢Ð¾Ð³Ð»Ð¾Ð¾Ð¼ Â· ${gameId?.slice(0, 8) ?? ""}â€¦`}
               </p>
             </div>
           </div>
         </div>
 
-        {/* ── LOBBY ──────────────────────────────────────────────────────── */}
+        {/* â”€â”€ LOBBY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <AnimatePresence mode="wait">
           {view === "lobby" && (
             <motion.div
@@ -866,7 +783,7 @@ export default function ChessPage() {
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-4">
                 <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <Search className="w-4 h-4 text-amber-400" />
-                  Өрсөлдөгч хайх
+                  Ó¨Ñ€ÑÓ©Ð»Ð´Ó©Ð³Ñ‡ Ñ…Ð°Ð¹Ñ…
                 </h2>
                 <div className="relative" ref={searchBoxRef}>
                   <div className="relative">
@@ -875,8 +792,10 @@ export default function ChessPage() {
                       value={searchQuery}
                       autoComplete="off"
                       onChange={(e) => handleSearch(e.target.value)}
-                      onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-                      placeholder="Нэр эсвэл ID-аар хайх..."
+                      onFocus={() =>
+                        searchResults.length > 0 && setShowDropdown(true)
+                      }
+                      placeholder="ÐÑÑ€ ÑÑÐ²ÑÐ» ID-Ð°Ð°Ñ€ Ñ…Ð°Ð¹Ñ…..."
                       className="w-full h-11 bg-slate-800/60 border border-slate-700 rounded-xl pl-4 pr-11 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 transition-all"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -888,7 +807,7 @@ export default function ChessPage() {
                     </div>
                   </div>
 
-                  {/* Suggestions dropdown — same style as login page */}
+                  {/* Suggestions dropdown â€” same style as login page */}
                   <AnimatePresence>
                     {showDropdown && searchResults.length > 0 && (
                       <motion.div
@@ -927,7 +846,7 @@ export default function ChessPage() {
                                 ) : (
                                   <Send className="w-3 h-3" />
                                 )}
-                                Урих
+                                Ð£Ñ€Ð¸Ñ…
                               </div>
                             </button>
                           ))}
@@ -942,7 +861,7 @@ export default function ChessPage() {
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-4">
                 <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <Swords className="w-4 h-4 text-amber-400" />
-                  Урилгууд
+                  Ð£Ñ€Ð¸Ð»Ð³ÑƒÑƒÐ´
                   {incoming.length > 0 && (
                     <span className="ml-auto px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 text-xs font-bold">
                       +{incoming.length}
@@ -952,7 +871,7 @@ export default function ChessPage() {
 
                 {incoming.length === 0 && outgoing.length === 0 ? (
                   <p className="text-slate-500 text-xs text-center py-6">
-                    Одоогоор урилга байхгүй
+                    ÐžÐ´Ð¾Ð¾Ð³Ð¾Ð¾Ñ€ ÑƒÑ€Ð¸Ð»Ð³Ð° Ð±Ð°Ð¹Ñ…Ð³Ò¯Ð¹
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -966,7 +885,7 @@ export default function ChessPage() {
                             {inv.fromUserName}
                           </p>
                           <p className="text-xs text-rose-400">
-                            Таныг тоглоомд урьж байна
+                            Ð¢Ð°Ð½Ñ‹Ð³ Ñ‚Ð¾Ð³Ð»Ð¾Ð¾Ð¼Ð´ ÑƒÑ€ÑŒÐ¶ Ð±Ð°Ð¹Ð½Ð°
                           </p>
                         </div>
                         <div className="flex gap-2 shrink-0">
@@ -974,7 +893,7 @@ export default function ChessPage() {
                             onClick={() => acceptInvite(inv)}
                             disabled={!!acceptingId}
                             className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 transition-all disabled:opacity-50"
-                            title="Зөвшөөрөх"
+                            title="Ð—Ó©Ð²ÑˆÓ©Ó©Ñ€Ó©Ñ…"
                           >
                             {acceptingId === inv.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -986,7 +905,7 @@ export default function ChessPage() {
                             onClick={() => declineInvite(inv.id)}
                             disabled={decliningId === inv.id}
                             className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 transition-all disabled:opacity-50"
-                            title="Татгалзах"
+                            title="Ð¢Ð°Ñ‚Ð³Ð°Ð»Ð·Ð°Ñ…"
                           >
                             {decliningId === inv.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1008,14 +927,14 @@ export default function ChessPage() {
                           </p>
                           <p className="text-xs text-amber-400/70 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            Хариу хүлээж байна...
+                            Ð¥Ð°Ñ€Ð¸Ñƒ Ñ…Ò¯Ð»ÑÑÐ¶ Ð±Ð°Ð¹Ð½Ð°...
                           </p>
                         </div>
                         <button
                           onClick={() => declineInvite(inv.id)}
                           disabled={decliningId === inv.id}
                           className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-600/60 text-slate-400 transition-all shrink-0"
-                          title="Цуцлах"
+                          title="Ð¦ÑƒÑ†Ð»Ð°Ñ…"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -1030,48 +949,54 @@ export default function ChessPage() {
                 <div className="md:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-3">
                   <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                     <Swords className="w-4 h-4 text-emerald-400" />
-                    Явж байгаа тоглоомууд
+                    Ð¯Ð²Ð¶ Ð±Ð°Ð¹Ð³Ð°Ð° Ñ‚Ð¾Ð³Ð»Ð¾Ð¾Ð¼ÑƒÑƒÐ´
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {activeGames.filter((g) => g.status === "active").map((g) => {
-                      const amWhite = g.whiteUserId === myId;
-                      const moves = parseMoves(g.moves);
-                      const opp = amWhite ? g.blackUserName : g.whiteUserName;
-                      const isMyTurn =
-                        (moves.length % 2 === 0 && amWhite) ||
-                        (moves.length % 2 !== 0 && !amWhite);
-                      return (
-                        <button
-                          key={g.id}
-                          onClick={() => openGame(g.id)}
-                          className="flex items-center justify-between px-4 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/18 border border-emerald-500/20 transition-all text-left w-full"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-white">
-                              vs {opp}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {moves.length} нүүд · {amWhite ? "Цагаан" : "Хар"}
-                            </p>
-                          </div>
-                          {isMyTurn && (
-                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-400 text-xs font-semibold shrink-0">
-                              Ээлж
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                    {activeGames
+                      .filter((g) => g.status === "active")
+                      .map((g) => {
+                        const amWhite = g.whiteUserId === myId;
+                        const moves = parseMoves(g.moves);
+                        const opp = amWhite ? g.blackUserName : g.whiteUserName;
+                        const isMyTurn =
+                          (moves.length % 2 === 0 && amWhite) ||
+                          (moves.length % 2 !== 0 && !amWhite);
+                        return (
+                          <button
+                            key={g.id}
+                            onClick={() => openGame(g.id)}
+                            className="flex items-center justify-between px-4 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/18 border border-emerald-500/20 transition-all text-left w-full"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-white">
+                                vs {opp}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {moves.length} Ð½Ò¯Ò¯Ð´ Â·{" "}
+                                {amWhite ? "Ð¦Ð°Ð³Ð°Ð°Ð½" : "Ð¥Ð°Ñ€"}
+                              </p>
+                            </div>
+                            {isMyTurn && (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-400 text-xs font-semibold shrink-0">
+                                Ð­ÑÐ»Ð¶
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
               )}
 
-              {/* ── Stats & Rankings ── */}
+              {/* â”€â”€ Stats & Rankings â”€â”€ */}
               {(() => {
                 const maxWins = rankings.length > 0 ? rankings[0].wins : 0;
                 const myRankIdx = rankings.findIndex((r) => r.id === myId);
                 const myRankEntry = myRankIdx >= 0 ? rankings[myRankIdx] : null;
-                const myTitle = getTitle(myRankEntry?.wins ?? myStats?.wins ?? 0, maxWins);
+                const myTitle = getTitle(
+                  myRankEntry?.wins ?? myStats?.wins ?? 0,
+                  maxWins,
+                );
                 return (
                   <>
                     {/* My stats card */}
@@ -1079,46 +1004,82 @@ export default function ChessPage() {
                       <div className="md:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-4">
                         <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 text-amber-400" />
-                          Миний тоглоомын мэдээлэл
+                          ÐœÐ¸Ð½Ð¸Ð¹ Ñ‚Ð¾Ð³Ð»Ð¾Ð¾Ð¼Ñ‹Ð½ Ð¼ÑÐ´ÑÑÐ»ÑÐ»
                         </h2>
                         {/* Title badge */}
-                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-semibold ${myTitle.bg} ${myTitle.color}`}>
+                        <div
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-semibold ${myTitle.bg} ${myTitle.color}`}
+                        >
                           <span>{myTitle.icon}</span>
                           <span>{myTitle.label}</span>
                           {myRankIdx >= 0 && (
-                            <span className="text-xs opacity-60">#{myRankIdx + 1} эрэмбэ</span>
+                            <span className="text-xs opacity-60">
+                              #{myRankIdx + 1} ÑÑ€ÑÐ¼Ð±Ñ
+                            </span>
                           )}
                         </div>
                         {/* W / D / L counters */}
                         <div className="grid grid-cols-3 gap-2 text-center">
                           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl py-3">
-                            <p className="text-xl font-bold text-emerald-400">{myStats.wins}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Хожсон</p>
+                            <p className="text-xl font-bold text-emerald-400">
+                              {myStats.wins}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Ð¥Ð¾Ð¶ÑÐ¾Ð½
+                            </p>
                           </div>
                           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl py-3">
-                            <p className="text-xl font-bold text-yellow-400">{myStats.draws}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Тэнцэл</p>
+                            <p className="text-xl font-bold text-yellow-400">
+                              {myStats.draws}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Ð¢ÑÐ½Ñ†ÑÐ»
+                            </p>
                           </div>
                           <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl py-3">
-                            <p className="text-xl font-bold text-rose-400">{myStats.losses}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Хожигдсон</p>
+                            <p className="text-xl font-bold text-rose-400">
+                              {myStats.losses}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Ð¥Ð¾Ð¶Ð¸Ð³Ð´ÑÐ¾Ð½
+                            </p>
                           </div>
                         </div>
                         {/* Recent games list */}
                         {myStats.games.length > 0 && (
                           <div className="space-y-1.5">
-                            <p className="text-xs text-slate-500 font-medium">Сүүлийн тоглоомууд</p>
+                            <p className="text-xs text-slate-500 font-medium">
+                              Ð¡Ò¯Ò¯Ð»Ð¸Ð¹Ð½ Ñ‚Ð¾Ð³Ð»Ð¾Ð¾Ð¼ÑƒÑƒÐ´
+                            </p>
                             <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
                               {myStats.games.slice(0, 8).map((g) => (
-                                <div key={g.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900/50">
-                                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                                    g.result === "win" ? "bg-emerald-400" : g.result === "draw" ? "bg-yellow-400" : "bg-rose-400"
-                                  }`} />
-                                  <span className="text-xs text-slate-300 flex-1 truncate">vs {g.opponent}</span>
-                                  <span className={`text-[10px] font-medium shrink-0 ${
-                                    g.result === "win" ? "text-emerald-400" : g.result === "draw" ? "text-yellow-400" : "text-rose-400"
-                                  }`}>
-                                    {RESULT_REASON[g.resultReason] ?? g.resultReason}
+                                <div
+                                  key={g.id}
+                                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900/50"
+                                >
+                                  <span
+                                    className={`w-2 h-2 rounded-full shrink-0 ${
+                                      g.result === "win"
+                                        ? "bg-emerald-400"
+                                        : g.result === "draw"
+                                          ? "bg-yellow-400"
+                                          : "bg-rose-400"
+                                    }`}
+                                  />
+                                  <span className="text-xs text-slate-300 flex-1 truncate">
+                                    vs {g.opponent}
+                                  </span>
+                                  <span
+                                    className={`text-[10px] font-medium shrink-0 ${
+                                      g.result === "win"
+                                        ? "text-emerald-400"
+                                        : g.result === "draw"
+                                          ? "text-yellow-400"
+                                          : "text-rose-400"
+                                    }`}
+                                  >
+                                    {RESULT_REASON[g.resultReason] ??
+                                      g.resultReason}
                                   </span>
                                 </div>
                               ))}
@@ -1138,7 +1099,7 @@ export default function ChessPage() {
                       <div className="md:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-3">
                         <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                           <Trophy className="w-4 h-4 text-amber-400" />
-                          Рейтинг
+                          Ð ÐµÐ¹Ñ‚Ð¸Ð½Ð³
                         </h2>
                         <div className="space-y-1.5">
                           {rankings.slice(0, 15).map((r, i) => {
@@ -1153,22 +1114,53 @@ export default function ChessPage() {
                                     : "bg-slate-900/40"
                                 }`}
                               >
-                                <span className={`w-6 text-xs font-bold text-center shrink-0 ${
-                                  i === 0 ? "text-amber-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-orange-400" : "text-slate-600"
-                                }`}>
-                                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
+                                <span
+                                  className={`w-6 text-xs font-bold text-center shrink-0 ${
+                                    i === 0
+                                      ? "text-amber-400"
+                                      : i === 1
+                                        ? "text-slate-300"
+                                        : i === 2
+                                          ? "text-orange-400"
+                                          : "text-slate-600"
+                                  }`}
+                                >
+                                  {i === 0
+                                    ? "ðŸ¥‡"
+                                    : i === 1
+                                      ? "ðŸ¥ˆ"
+                                      : i === 2
+                                        ? "ðŸ¥‰"
+                                        : `${i + 1}`}
                                 </span>
-                                <span className="text-sm shrink-0">{t.icon}</span>
+                                <span className="text-sm shrink-0">
+                                  {t.icon}
+                                </span>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-medium truncate ${isMe ? "text-amber-300" : "text-white"}`}>
-                                    {r.name}{isMe && <span className="ml-1 text-xs text-amber-400/60">(Та)</span>}
+                                  <p
+                                    className={`text-sm font-medium truncate ${isMe ? "text-amber-300" : "text-white"}`}
+                                  >
+                                    {r.name}
+                                    {isMe && (
+                                      <span className="ml-1 text-xs text-amber-400/60">
+                                        (Ð¢Ð°)
+                                      </span>
+                                    )}
                                   </p>
-                                  <p className={`text-[10px] font-medium ${t.color}`}>{t.label}</p>
+                                  <p
+                                    className={`text-[10px] font-medium ${t.color}`}
+                                  >
+                                    {t.label}
+                                  </p>
                                 </div>
                                 <div className="flex gap-2 text-xs shrink-0">
-                                  <span className="text-emerald-400 font-semibold">{r.wins}Х</span>
+                                  <span className="text-emerald-400 font-semibold">
+                                    {r.wins}Ð¥
+                                  </span>
                                   <span className="text-slate-600">/</span>
-                                  <span className="text-rose-400">{r.losses}Т</span>
+                                  <span className="text-rose-400">
+                                    {r.losses}Ð¢
+                                  </span>
                                 </div>
                               </div>
                             );
@@ -1182,7 +1174,7 @@ export default function ChessPage() {
             </motion.div>
           )}
 
-          {/* ── GAME ─────────────────────────────────────────────────────── */}
+          {/* â”€â”€ GAME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {view === "game" && (
             <motion.div
               key="game"
@@ -1214,7 +1206,7 @@ export default function ChessPage() {
                           ) : (
                             <Flag className="w-4 h-4" />
                           )}
-                          Буулт өгөх
+                          Ð‘ÑƒÑƒÐ»Ñ‚ Ó©Ð³Ó©Ñ…
                         </button>
                       )}
                       {game.status !== "active" && (
@@ -1223,7 +1215,7 @@ export default function ChessPage() {
                           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/20 text-amber-400 text-sm font-medium transition-all"
                         >
                           <ChevronLeft className="w-4 h-4" />
-                          Лобби руу буцах
+                          Ð›Ð¾Ð±Ð±Ð¸ Ñ€ÑƒÑƒ Ð±ÑƒÑ†Ð°Ñ…
                         </button>
                       )}
                     </div>
@@ -1238,15 +1230,15 @@ export default function ChessPage() {
                           userId: game.blackUserId,
                           name: game.blackUserName,
                           color: "b",
-                          label: "Хар",
-                          symbol: "♚",
+                          label: "Ð¥Ð°Ñ€",
+                          symbol: "â™š",
                         },
                         {
                           userId: game.whiteUserId,
                           name: game.whiteUserName,
                           color: "w",
-                          label: "Цагаан",
-                          symbol: "♔",
+                          label: "Ð¦Ð°Ð³Ð°Ð°Ð½",
+                          symbol: "â™”",
                         },
                       ].map(({ userId, name, color, label, symbol }) => {
                         const isActiveTurn =
@@ -1280,7 +1272,7 @@ export default function ChessPage() {
                                 {name}
                                 {isMe && (
                                   <span className="ml-1.5 text-xs text-amber-400/70">
-                                    (Та)
+                                    (Ð¢Ð°)
                                   </span>
                                 )}
                               </p>
@@ -1292,12 +1284,15 @@ export default function ChessPage() {
                                   className={`text-sm font-mono font-bold tabular-nums ${
                                     (color === "w" ? whiteMs : blackMs) < 30000
                                       ? "text-rose-400 animate-pulse"
-                                      : (color === "w" ? whiteMs : blackMs) < 60000
+                                      : (color === "w" ? whiteMs : blackMs) <
+                                          60000
                                         ? "text-amber-400"
                                         : "text-slate-300"
                                   }`}
                                 >
-                                  {formatTime(color === "w" ? whiteMs : blackMs)}
+                                  {formatTime(
+                                    color === "w" ? whiteMs : blackMs,
+                                  )}
                                 </span>
                               )}
                               {isActiveTurn && (
@@ -1312,14 +1307,14 @@ export default function ChessPage() {
                     {/* Check warning */}
                     {chess.inCheck() && game.status === "active" && (
                       <div className="rounded-xl px-3 py-2.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 text-sm font-semibold text-center animate-pulse">
-                        ⚠️ Шах!
+                        âš ï¸ Ð¨Ð°Ñ…!
                       </div>
                     )}
 
                     {/* Move history */}
                     <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 space-y-2">
                       <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Нүүдлийн жагсаалт
+                        ÐÒ¯Ò¯Ð´Ð»Ð¸Ð¹Ð½ Ð¶Ð°Ð³ÑÐ°Ð°Ð»Ñ‚
                       </h3>
                       {renderMoveHistory()}
                     </div>

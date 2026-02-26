@@ -105,7 +105,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "chess",
     name: "Оюуны спорт",
-    description: "Шатар тоглоомд хамт ажиллагсадтайгаа ID-аар урилга илгээж тоглох",
+    description:
+      "Шатар тоглоомд хамт ажиллагсадтайгаа ID-аар урилга илгээж тоглох",
     icon: Crown,
     color: "from-amber-500 to-yellow-500",
     gradient: "bg-gradient-to-br from-amber-500/20 to-yellow-500/20",
@@ -280,7 +281,10 @@ export default function AdminToolsPage() {
           const fresh = await usersApi.getOne(userId);
           const currentTools: string[] = fresh.allowedTools || [];
           if (!currentTools.includes(selectedTool.id)) {
-            await usersApi.updateTools(userId, [...currentTools, selectedTool.id]);
+            await usersApi.updateTools(userId, [
+              ...currentTools,
+              selectedTool.id,
+            ]);
           }
           successCount++;
         } catch (err) {
