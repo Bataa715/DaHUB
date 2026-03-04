@@ -197,7 +197,7 @@ export function LoginFlow({
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -10 }}
-                                        className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden"
+                                        className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto"
                                       >
                                         {userSuggestions.map((user, index) => (
                                           <motion.button
@@ -486,28 +486,20 @@ export function LoginFlow({
               <Lock className="w-5 h-5 text-purple-400" />
               Нууц үг мартсан
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-300 space-y-3">
+                        <AlertDialogDescription asChild className="text-slate-300 space-y-3">
               <div>
-                Дотоод аудитын хэлтсийн{" "}
-                <span className="text-purple-400 font-semibold">IT admin</span>
-                -д хандана уу.
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-4 space-y-2 border border-slate-700">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="w-4 h-4 text-purple-400" />
-                  <span className="text-slate-400">IT Admin:</span>
-                  <span className="text-white font-medium">
-                    Болдбаатар (ИТ-ын аудитын хэлтэс)
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                  <span className="block text-slate-300 text-sm leading-relaxed">
+                    Нууц үгээ мартсан бол{" "}
+                    <span className="text-purple-400 font-semibold">Skype</span>
+                    {" "}гаар{" "}
+                    <span className="text-white font-semibold">DAA – Батмягмар</span>
+                    {" "}руу бичиж сэргээлгэнэ үү.
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Building2 className="w-4 h-4 text-purple-400" />
-                  <span className="text-slate-400">Байршил:</span>
-                  <span className="text-white">ИТ-ын аудитын хэлтэс</span>
+                <div className="text-xs text-slate-500 italic">
+                  💡 Админ таны нууц үгийг шинэчилж өгөх болно.
                 </div>
-              </div>
-              <div className="text-sm text-amber-400/80 italic">
-                💡 Админ таны нууц үгийг шинэчилж өгөх болно.
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

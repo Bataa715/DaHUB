@@ -23,6 +23,7 @@ interface User {
   isSuperAdmin?: boolean;
   isActive?: boolean;
   allowedTools: string[];
+  grantableTools?: string[];
 }
 
 interface AuthContextType {
@@ -79,15 +80,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(profile);
       })
       .catch((error) => {
-        console.error("Profile fetch failed:", error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Profile fetch failed:", error);
+        }
         if (adminPath) {
           Cookies.remove("adminToken");
+          Cookies.remove("adminRefreshToken");
           Cookies.remove("adminUser");
         } else {
           Cookies.remove("token");
+          Cookies.remove("refreshToken");
           Cookies.remove("user");
         }
         setUser(null);
+        // Redirect to the correct login page
+        const loginPath = adminPath ? "/admin/login" : "/login";
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.startsWith(loginPath)
+        ) {
+          window.location.replace(loginPath);
+        }
       })
       .finally(() => {
         setLoading(false);
@@ -100,8 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshToken: string,
   ) => {
     const secure =
-      typeof window !== "undefined" &&
-      window.location.protocol === "https:";
+      typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("token", accessToken, {
       expires: 1 / 24,
       sameSite: "lax",
@@ -126,8 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshToken: string,
   ) => {
     const secure =
-      typeof window !== "undefined" &&
-      window.location.protocol === "https:";
+      typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("adminToken", accessToken, {
       expires: 1 / 24,
       sameSite: "lax",
@@ -214,7 +225,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profile = await authApi.getProfile();
       setUser(profile);
     } catch (error) {
-      console.error("Failed to refresh user profile:", error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to refresh user profile:", error);
+      }
     }
   };
 

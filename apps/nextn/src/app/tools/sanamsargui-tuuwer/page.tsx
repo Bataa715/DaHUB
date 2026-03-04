@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
-import type ExcelJS from "exceljs";
 import BackButton from "@/components/shared/BackButton";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -23,6 +22,7 @@ import {
   Download,
   Calculator,
   Shuffle,
+  Loader2,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -123,6 +123,7 @@ export default function SanamsarguiTuuwerPage() {
   const [margin, setMargin] = useState(5.0);
   const [stdDev, setStdDev] = useState(0.5);
   const [exportFilename, setExportFilename] = useState("sample_result.xlsx");
+  const [exporting, setExporting] = useState(false);
 
   // SRSWR / SRSWOR
   const [isDragging, setIsDragging] = useState(false);
@@ -131,12 +132,13 @@ export default function SanamsarguiTuuwerPage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [yearCol, setYearCol] = useState<string>("");
+  const [useYearFilter, setUseYearFilter] = useState(false);
   const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Compute unique years from fileData based on yearCol selection
   const availableYears: number[] = (() => {
-    if (!fileData || !yearCol) return [];
+    if (!useYearFilter || !fileData || !yearCol) return [];
     const idx = fileHeaders.indexOf(yearCol);
     if (idx < 0) return [];
     const years = new Set<number>();
@@ -154,23 +156,6 @@ export default function SanamsarguiTuuwerPage() {
 
   // Result
   const [result, setResult] = useState<SamplingResult | null>(null);
-
-  // Annotations: keyed by "groupIdx-rowIdx" → { hasError, note }
-  const [annotations, setAnnotations] = useState<
-    Record<string, { hasError: boolean; note: string }>
-  >({});
-
-  const setAnnotation = (
-    gi: number,
-    i: number,
-    patch: Partial<{ hasError: boolean; note: string }>,
-  ) => {
-    const key = `${gi}-${i}`;
-    setAnnotations((prev) => {
-      const existing = prev[key] ?? { hasError: false, note: "" };
-      return { ...prev, [key]: { ...existing, ...patch } };
-    });
-  };
 
   const isStratified = design === "prop" || design === "nonprop";
 
@@ -196,7 +181,8 @@ export default function SanamsarguiTuuwerPage() {
       setFileData(rows.slice(1) as unknown[][]);
       setFileName(file.name);
       setResult(null);
-      setYearCol(hdrs[0] ?? "");
+      setYearCol("");
+      setUseYearFilter(false);
       setSelectedYear("all");
     };
     reader.readAsArrayBuffer(file);
@@ -269,7 +255,6 @@ export default function SanamsarguiTuuwerPage() {
           });
         }
       }
-      setAnnotations({});
       setResult({
         n: sampleSize,
         N,
@@ -298,7 +283,6 @@ export default function SanamsarguiTuuwerPage() {
           ? sampleWithReplacement(N, n)
           : sampleWithoutReplacement(N, n);
       const rows = indices.map((idx) => filteredData[idx - 1] ?? []);
-      setAnnotations({});
       setResult({
         n,
         N,
@@ -322,218 +306,45 @@ export default function SanamsarguiTuuwerPage() {
   // ── Export ───────────────────────────────────────────────────────────────
   const handleExport = async () => {
     if (!result) return;
-    const ExcelJS = (await import("exceljs")).default;
-    const wb = new ExcelJS.Workbook();
-    wb.creator = "Internal Audit Tool";
-    wb.created = new Date();
-
-    // ── Colour palette ────────────────────────────────────────────────────
-    const HDR_FILL: ExcelJS.Fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF3B1F7A" },
-    };
-    const ROW_ODD: ExcelJS.Fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFF5F0FF" },
-    };
-    const ROW_EVN: ExcelJS.Fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFFFFFFF" },
-    };
-    const ERR_FILL: ExcelJS.Fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFFCE4E4" },
-    };
-    const INFO_FILL: ExcelJS.Fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFEDE5FF" },
-    };
-    const BORDER: Partial<ExcelJS.Borders> = {
-      top: { style: "thin", color: { argb: "FFCCC2E0" } },
-      left: { style: "thin", color: { argb: "FFCCC2E0" } },
-      bottom: { style: "thin", color: { argb: "FFCCC2E0" } },
-      right: { style: "thin", color: { argb: "FFCCC2E0" } },
-    };
-    const HDR_FONT: Partial<ExcelJS.Font> = {
-      bold: true,
-      color: { argb: "FFFFFFFF" },
-      size: 10,
-    };
-    const BODY_FONT: Partial<ExcelJS.Font> = { size: 10 };
-
-    const applyHdr = (row: ExcelJS.Row) => {
-      row.eachCell((cell) => {
-        cell.fill = HDR_FILL;
-        cell.font = HDR_FONT;
-        cell.border = BORDER;
-        cell.alignment = { vertical: "middle", wrapText: false };
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export-sample", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          result,
+          isStratified,
+          filename: exportFilename || "sample_result.xlsx",
+        }),
       });
-      row.height = 20;
-    };
-    const applyBody = (row: ExcelJS.Row, fill: ExcelJS.Fill) => {
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        cell.fill = fill;
-        cell.font = BODY_FONT;
-        cell.border = BORDER;
-        cell.alignment = { vertical: "middle" };
-      });
-      row.height = 18;
-    };
-
-    for (const [gi, g] of result.groups.entries()) {
-      const ws = wb.addWorksheet(g.label.slice(0, 31));
-
-      if (isStratified) {
-        // Info row
-        ws.mergeCells("A1:D1");
-        const info = ws.getCell("A1");
-        info.value = `${g.label} — N=${result.N}, n=${g.indices.length}, Z=${result.Z}, итгэлцэл: ${(result.confidence * 100).toFixed(0)}%`;
-        info.font = { bold: true, size: 11, color: { argb: "FF3B1F7A" } };
-        info.fill = INFO_FILL;
-        info.alignment = { horizontal: "left", vertical: "middle" };
-        ws.getRow(1).height = 22;
-
-        const hdrRow = ws.addRow(["№", "Дугаар", "Алдаатай эсэх", "Тайлбар"]);
-        applyHdr(hdrRow);
-        ws.columns = [
-          { key: "n", width: 8 },
-          { key: "d", width: 14 },
-          { key: "e", width: 18 },
-          { key: "t", width: 40 },
-        ];
-        g.indices.forEach((idx, i) => {
-          const ann = annotations[`${gi}-${i}`];
-          const hasErr = ann?.hasError ?? false;
-          const row = ws.addRow([
-            i + 1,
-            idx,
-            hasErr ? "Тийм" : "Үгүй",
-            ann?.note ?? "",
-          ]);
-          applyBody(row, hasErr ? ERR_FILL : i % 2 === 0 ? ROW_ODD : ROW_EVN);
-          if (hasErr)
-            row.eachCell((c) => {
-              c.font = { ...BODY_FONT, color: { argb: "FFB91C1C" } };
-            });
-        });
-        ws.views = [{ state: "frozen", xSplit: 0, ySplit: 2 }];
-      } else {
-        // Info row
-        const infoCols = result.headers.length + 3;
-        ws.mergeCells(`A1:${String.fromCharCode(64 + infoCols)}1`);
-        const errCount = g.indices.filter(
-          (_, i) => annotations[`${gi}-${i}`]?.hasError,
-        ).length;
-        const info = ws.getCell("A1");
-        info.value = `${g.label} — N=${result.N}, n=${g.indices.length}, Z=${result.Z}, итгэлцэл: ${(result.confidence * 100).toFixed(0)}%, алдаа: ${errCount}/${g.indices.length} (${g.indices.length > 0 ? ((errCount / g.indices.length) * 100).toFixed(1) : 0}%)`;
-        info.font = { bold: true, size: 11, color: { argb: "FF3B1F7A" } };
-        info.fill = INFO_FILL;
-        info.alignment = { horizontal: "left", vertical: "middle" };
-        ws.getRow(1).height = 22;
-
-        const allCols = [
-          "Мөрийн дугаар",
-          ...result.headers,
-          "Алдаатай эсэх",
-          "Тайлбар",
-        ];
-        const hdrRow = ws.addRow(allCols);
-        applyHdr(hdrRow);
-
-        const dataRows: string[][] = [];
-        g.indices.forEach((idx, i) => {
-          const rowData = g.rows[i] ?? [];
-          const ann = annotations[`${gi}-${i}`];
-          const hasErr = ann?.hasError ?? false;
-          const vals = [
-            String(idx),
-            ...result.headers.map((_, ci) => String(rowData[ci] ?? "")),
-            hasErr ? "Тийм" : "Үгүй",
-            ann?.note ?? "",
-          ];
-          dataRows.push(vals);
-          const row = ws.addRow(vals);
-          applyBody(row, hasErr ? ERR_FILL : i % 2 === 0 ? ROW_ODD : ROW_EVN);
-          if (hasErr)
-            row.eachCell((c) => {
-              c.font = { ...BODY_FONT, color: { argb: "FFB91C1C" } };
-            });
-        });
-
-        // Auto column widths
-        ws.columns = allCols.map((h, i) => ({
-          width: Math.min(
-            Math.max(
-              dataRows.reduce(
-                (m, r) => Math.max(m, String(r[i] ?? "").length),
-                h.length,
-              ) + 3,
-              10,
-            ),
-            50,
-          ),
-        }));
-        ws.views = [{ state: "frozen", xSplit: 0, ySplit: 2 }];
-      }
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = exportFilename || "sample_result.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
     }
-
-    // Summary sheet if multi-group stratified
-    if (isStratified && result.groups.length > 1) {
-      const sumWs = wb.addWorksheet("Дэгдэлхүүн");
-      const hdr = sumWs.addRow([
-        "Бүлэг",
-        "N бүлэг",
-        "n түүвэр",
-        "Алдаатай",
-        "Хувь (%)",
-      ]);
-      applyHdr(hdr);
-      result.groups.forEach((g, gi) => {
-        const errCount = g.indices.filter(
-          (_, i) => annotations[`${gi}-${i}`]?.hasError,
-        ).length;
-        const row = sumWs.addRow([
-          g.label,
-          g.size ?? "—",
-          g.indices.length,
-          errCount,
-          g.indices.length > 0
-            ? ((errCount / g.indices.length) * 100).toFixed(1) + "%"
-            : "0%",
-        ]);
-        applyBody(row, gi % 2 === 0 ? ROW_ODD : ROW_EVN);
-      });
-      sumWs.columns = [
-        { width: 16 },
-        { width: 12 },
-        { width: 14 },
-        { width: 14 },
-        { width: 12 },
-      ];
-      sumWs.views = [{ state: "frozen", xSplit: 0, ySplit: 1 }];
-    }
-
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = exportFilename || "sample_result.xlsx";
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const confLabel = (confidence * 100).toFixed(0) + "%";
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {exporting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-800 border border-slate-600 rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-2xl">
+            <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
+            <p className="text-white font-semibold text-lg">
+              Excel бэлтгэж байна...
+            </p>
+            <p className="text-slate-400 text-sm">Түр хүлээнэ үү</p>
+          </div>
+        </div>
+      )}
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <motion.div
@@ -558,7 +369,6 @@ export default function SanamsarguiTuuwerPage() {
           className="mb-8 pt-4"
         >
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">🎲</span>
             <h1 className="text-3xl font-bold text-white">
               Санамсаргүй түүвэр
             </h1>
@@ -715,9 +525,7 @@ export default function SanamsarguiTuuwerPage() {
 
                 {/* Filename */}
                 <div className="space-y-2">
-                  <Label className="text-slate-300">
-                    🗂 Хадгалах файлын нэр
-                  </Label>
+                  <Label className="text-slate-300">Хадгалах файлын нэр</Label>
                   <Input
                     value={exportFilename}
                     onChange={(e) => setExportFilename(e.target.value)}
@@ -783,67 +591,106 @@ export default function SanamsarguiTuuwerPage() {
                     <p className="text-red-400 text-sm">{fileError}</p>
                   )}
 
-                  {/* Year column + year filter (shown when file loaded) */}
+                  {/* Year column + year filter */}
                   {fileData && fileHeaders.length > 0 && (
                     <div className="space-y-3 bg-slate-800/40 rounded-xl p-4 border border-slate-700/50">
-                      <div className="space-y-2">
-                        <Label className="text-slate-300">
-                          📅 Огнооны багана
-                        </Label>
-                        <Select
-                          value={yearCol}
-                          onValueChange={(v) => {
-                            setYearCol(v);
-                            setSelectedYear("all");
+                      <label className="flex items-center gap-3 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={useYearFilter}
+                          onChange={(e) => {
+                            setUseYearFilter(e.target.checked);
+                            if (!e.target.checked) {
+                              setYearCol("");
+                              setSelectedYear("all");
+                            }
                           }}
-                        >
-                          <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
-                            <SelectValue placeholder="Багана сонгоно уу" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-600">
-                            {fileHeaders.map((h) => (
-                              <SelectItem
-                                key={h}
-                                value={h}
-                                className="text-white focus:bg-slate-700"
-                              >
-                                {h}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {availableYears.length > 0 && (
-                        <div className="space-y-2">
-                          <Label className="text-slate-300">
-                            🗓️ Жилийн шүүлтүүр
-                          </Label>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              onClick={() => setSelectedYear("all")}
-                              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                selectedYear === "all"
-                                  ? "bg-violet-500 border-violet-400 text-white"
-                                  : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
-                              }`}
+                          className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
+                        />
+                        <span className="text-slate-200 text-sm font-medium">
+                          📅 Огноон баганаар жил шүүх
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          — онгоцгүй бол бүх мәдээллээр ашиглана
+                        </span>
+                      </label>
+                      {useYearFilter && (
+                        <>
+                          <div className="space-y-2">
+                            <Label className="text-slate-300">
+                              Огноон багана
+                              <span className="ml-1 text-xs text-slate-500 font-normal">
+                                (жил агуулсан баганаа сонгоно уу)
+                              </span>
+                            </Label>
+                            <Select
+                              value={yearCol || "__none__"}
+                              onValueChange={(v) => {
+                                setYearCol(v === "__none__" ? "" : v);
+                                setSelectedYear("all");
+                              }}
                             >
-                              Бүх жил
-                            </button>
-                            {availableYears.map((y) => (
-                              <button
-                                key={y}
-                                onClick={() => setSelectedYear(y)}
-                                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                  selectedYear === y
-                                    ? "bg-violet-500 border-violet-400 text-white"
-                                    : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
-                                }`}
-                              >
-                                {y}
-                              </button>
-                            ))}
+                              <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
+                                <SelectValue placeholder="— Багана сонгоно —" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-slate-800 border-slate-600">
+                                <SelectItem
+                                  value="__none__"
+                                  className="text-slate-400 focus:bg-slate-700"
+                                >
+                                  — Багана сонгоно —
+                                </SelectItem>
+                                {fileHeaders.map((h) => (
+                                  <SelectItem
+                                    key={h}
+                                    value={h}
+                                    className="text-white focus:bg-slate-700"
+                                  >
+                                    {h}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                        </div>
+                          {availableYears.length > 0 && (
+                            <div className="space-y-2">
+                              <Label className="text-slate-300">
+                                Жилийн шүүлтүүр
+                              </Label>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => setSelectedYear("all")}
+                                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                                    selectedYear === "all"
+                                      ? "bg-violet-500 border-violet-400 text-white"
+                                      : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
+                                  }`}
+                                >
+                                  Бүх жил
+                                </button>
+                                {availableYears.map((y) => (
+                                  <button
+                                    key={y}
+                                    onClick={() => setSelectedYear(y)}
+                                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                                      selectedYear === y
+                                        ? "bg-violet-500 border-violet-400 text-white"
+                                        : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
+                                    }`}
+                                  >
+                                    {y}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {yearCol && availableYears.length === 0 && (
+                            <p className="text-xs text-amber-400">
+                              ⚠️ Сонгосон баганаас огноо илэрсэнгүй. Зөв огноон
+                              баганаа сонгоно уу.
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -942,9 +789,7 @@ export default function SanamsarguiTuuwerPage() {
                 className="w-full bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white font-semibold py-6 text-lg disabled:opacity-40"
               >
                 <Shuffle className="w-5 h-5 mr-2" />
-                {isStratified
-                  ? "🎲 Стратифик түүвэр сонгох"
-                  : "🎲 Түүвэр сонгох"}
+                {isStratified ? "Стратифик түүвэр сонгох" : "Түүвэр сонгох"}
               </Button>
             </CardContent>
           </Card>
@@ -1022,25 +867,6 @@ export default function SanamsarguiTuuwerPage() {
                         {g.indices.length} мөр сонгогдлоо
                         {g.indices.length > 50 && " (эхний 50 харагдаж байна)"}
                       </p>
-                      {/* Error summary for this group */}
-                      {(() => {
-                        const errCount = g.indices.filter(
-                          (_, i) => annotations[`${gi}-${i}`]?.hasError,
-                        ).length;
-                        if (errCount === 0) return null;
-                        return (
-                          <div className="mb-2 flex items-center gap-3 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm">
-                            <span className="text-red-400 font-semibold">
-                              🔴 Алдаатай мөр: {errCount} / {g.indices.length}
-                            </span>
-                            <span className="text-red-300/70">
-                              (
-                              {((errCount / g.indices.length) * 100).toFixed(1)}
-                              %)
-                            </span>
-                          </div>
-                        );
-                      })()}
                       <div className="overflow-x-auto rounded-lg border border-slate-700">
                         <table className="text-xs min-w-full">
                           <thead>
@@ -1062,22 +888,15 @@ export default function SanamsarguiTuuwerPage() {
                                   </th>
                                 ))
                               )}
-                              <th className="px-3 py-2 text-red-400 text-center whitespace-nowrap border-r border-slate-700/50 w-24">
-                                Алдаатай
-                              </th>
-                              <th className="px-3 py-2 text-amber-400 text-left whitespace-nowrap min-w-[200px]">
-                                Тайлбар
-                              </th>
+
                             </tr>
                           </thead>
                           <tbody>
                             {g.indices.slice(0, 50).map((idx, i) => {
-                              const ann = annotations[`${gi}-${i}`];
-                              const hasError = ann?.hasError ?? false;
                               return (
                                 <tr
                                   key={i}
-                                  className={`${hasError ? "bg-red-950/40 border-l-2 border-l-red-500" : i % 2 === 0 ? "bg-slate-900" : "bg-slate-800/40"}`}
+                                  className={i % 2 === 0 ? "bg-slate-900" : "bg-slate-800/40"}
                                 >
                                   <td className="px-3 py-1.5 text-violet-400 font-mono font-bold text-center border-r border-slate-700">
                                     {idx}
@@ -1098,42 +917,7 @@ export default function SanamsarguiTuuwerPage() {
                                       </td>
                                     ))
                                   )}
-                                  {/* Алдаатай эсэх toggle */}
-                                  <td className="px-2 py-1 text-center border-r border-slate-700/50">
-                                    <button
-                                      onClick={() =>
-                                        setAnnotation(gi, i, {
-                                          hasError: !hasError,
-                                        })
-                                      }
-                                      className={`w-8 h-8 rounded-lg font-bold text-sm transition-all ${
-                                        hasError
-                                          ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                                          : "bg-slate-700 text-slate-400 hover:bg-slate-600"
-                                      }`}
-                                      title={
-                                        hasError
-                                          ? "Алдаатай — дарж болиулна"
-                                          : "Алдаагүй — дарж тэмдэглэнэ"
-                                      }
-                                    >
-                                      {hasError ? "✗" : "✓"}
-                                    </button>
-                                  </td>
-                                  {/* Тайлбар input */}
-                                  <td className="px-2 py-1">
-                                    <input
-                                      type="text"
-                                      value={ann?.note ?? ""}
-                                      onChange={(e) =>
-                                        setAnnotation(gi, i, {
-                                          note: e.target.value,
-                                        })
-                                      }
-                                      placeholder="Тайлбар оруулах..."
-                                      className="w-full bg-transparent border border-slate-700/0 hover:border-slate-600 focus:border-violet-500 focus:bg-slate-800/60 rounded px-2 py-1 text-slate-200 placeholder-slate-600 outline-none transition-all text-xs min-w-[180px]"
-                                    />
-                                  </td>
+
                                 </tr>
                               );
                             })}
@@ -1163,12 +947,12 @@ export default function SanamsarguiTuuwerPage() {
           <Card className="bg-slate-900/60 border-slate-700/30 backdrop-blur-xl">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <span>📋</span> Тайлбар:
+                <span></span> Тайлбар:
               </CardTitle>
             </CardHeader>
             <CardContent className="text-slate-300 space-y-4">
               <p>
-                <strong>Стандарт хазайлт</strong> нь өгөгдлийн хэлбэлзлийг
+                <strong>Стандарт хазайлт</strong> нь өгөгдлийн хэлбэлзэлийг
                 илэрхийлнэ. Хэрэв түүврийн стандарт хазайлтыг мэдэхгүй бол{" "}
                 <strong>0.5</strong> гэж үндэсний утга болгон ашиглаж болно.
               </p>
@@ -1198,15 +982,15 @@ export default function SanamsarguiTuuwerPage() {
               </ul>
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm">
                 🔴 <strong className="text-red-400">Алдааны марж</strong> бага
-                байх тусам түүврээс гарах үр дүм эх олонлогоос илүү сайн
-                төлөөлнэ.
+                байх тусам түүврээс гарах үр дүн эх олонлогоос илүү сайн
+                төлөөлнө.
               </div>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm">
                 🔵 <strong className="text-blue-400">Санамж:</strong> Аудитын
-                ажил илүүтэй 95%-ийн итгэлцлийн түвшний тушинг ашиглагч ба
+                ажил илүүтэй 95%-ийн итгэлцлийн түвшний түвшинг ашиглах ба
                 алдааны маржийг &quot;Аудитын түүврийн хэм хэмжээ&quot;-ийн
-                3.2.4 хэсгээр тооцоогүй тохиолдолд 5%-иас өгүй байхаар сонгох нь
-                зүйтэй.
+                3.2.4 хэсгээр тооцоогүй тохиолдолд 5%-иас ихгүй байхаар сонгох
+                нь зүйтэй.
               </div>
             </CardContent>
           </Card>

@@ -88,7 +88,7 @@ async function seedClickHouse() {
     await client.exec({
       query: `
         CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.users (
-          id String, userId String, email String, password String,
+          id String, userId String, password String,
           name String, position String, profileImage String, departmentId String,
           isAdmin UInt8 DEFAULT 0, isActive UInt8 DEFAULT 1,
           allowedTools String, lastLoginAt Nullable(DateTime),
@@ -158,9 +158,6 @@ async function seedClickHouse() {
       adminId = rows.data[0]?.id ?? randomUUID();
     } else {
       const adminPassword = await bcrypt.hash("admin123", 10);
-      const managementDeptId =
-        deptIdMap["Удирдлага"] ?? Object.values(deptIdMap)[0] ?? randomUUID();
-
       adminId = randomUUID();
       await client.insert({
         table: `${CLICKHOUSE_DATABASE}.users`,
@@ -168,15 +165,16 @@ async function seedClickHouse() {
           {
             id: adminId,
             userId: ".Admin-DAG",
-            email: "admin@internal.local",
             password: adminPassword,
             name: "Admin",
             position: "System Administrator",
             profileImage: "",
-            departmentId: managementDeptId,
+            departmentId: "",
             isAdmin: 1,
+            isSuperAdmin: 0,
             isActive: 1,
             allowedTools: JSON.stringify([]),
+            grantableTools: JSON.stringify([]),
             createdAt: now(),
             updatedAt: now(),
           },
@@ -187,6 +185,48 @@ async function seedClickHouse() {
       console.log("  ✓ Admin user created");
       console.log("    User ID  : .Admin-DAG");
       console.log("    Password : admin123");
+      console.log("    ⚠️  Change the password after first login!");
+    }
+
+    // ── STEP 2.5: Super admin user ──────────────────────────────────────────
+    console.log("\n👑 Checking super admin user...");
+    const superAdminCount = await countRows(
+      client,
+      "users",
+      `userId = '.SuperAdmin-DAG'`,
+    );
+
+    if (superAdminCount > 0) {
+      console.log("  ℹ️  Super admin user already exists — skipping");
+    } else {
+      const superAdminPassword = await bcrypt.hash("superadmin123", 10);
+
+      await client.insert({
+        table: `${CLICKHOUSE_DATABASE}.users`,
+        values: [
+          {
+            id: randomUUID(),
+            userId: ".SuperAdmin-DAG",
+            password: superAdminPassword,
+            name: "Super Admin",
+            position: "Super Administrator",
+            profileImage: "",
+            departmentId: "",
+            isAdmin: 1,
+            isSuperAdmin: 1,
+            isActive: 1,
+            allowedTools: JSON.stringify([]),
+            grantableTools: JSON.stringify([]),
+            createdAt: now(),
+            updatedAt: now(),
+          },
+        ],
+        format: "JSONEachRow",
+      });
+
+      console.log("  ✓ Super admin user created");
+      console.log("    User ID  : .SuperAdmin-DAG");
+      console.log("    Password : superadmin123");
       console.log("    ⚠️  Change the password after first login!");
     }
 
@@ -213,7 +253,6 @@ async function seedClickHouse() {
           {
             id: randomUUID(),
             userId: "DAA-TestUser",
-            email: "testuser@internal.local",
             password: userPassword,
             name: "Test User",
             position: "Data Analyst",
@@ -249,120 +288,138 @@ async function seedClickHouse() {
     const newsCount = await countRows(client, "news");
 
     if (newsCount > 0) {
-      console.log(`  ℹ️  ${newsCount} news articles exist — skipping`);
-    } else {
-      const articles = [
-        {
-          id: randomUUID(),
-          title: "Дотоод аудитын газрын 2025 оны үйл ажиллагааны тайлан",
-          content:
-            "<p>Голомт Банкны Дотоод Аудитын Газар нь 2025 оны жилийн эцсийн үйл ажиллагааны тайланг дуусгаж, удирдлагын зөвлөлд танилцуулсан байна.</p><ul><li>Нийт <strong>48 аудитын ажил</strong> хийгдэж, 312 зөвлөмж өгөгдсөн</li><li>Зөвлөмжийн хэрэгжилт <strong>87%</strong>-д хүрсэн</li></ul>",
-          category: "Мэдэгдэл",
-          imageUrl:
-            "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80",
-          authorId: adminId,
-          isPublished: 1,
-          views: 342,
-          createdAt: daysAgo(1),
-          updatedAt: daysAgo(1),
-        },
-        {
-          id: randomUUID(),
-          title: "Хиймэл оюун ухаан ба аудит: 2026 оны тулгамдсан асуудлууд",
-          content:
-            "<p>Дэлхий даяар банк санхүүгийн байгууллагуудын дотоод аудиторууд хиймэл оюун ухааны эрсдэлийг удирдахад тулгамдсан шинэ сорилтуудтай нүүр тулж байна.</p><ul><li><strong>Генератив AI-ийн эрсдэл</strong></li><li><strong>Кибер аюулгүй байдал</strong></li><li><strong>ESG тайлагнал</strong></li></ul>",
-          category: "Ерөнхий",
-          imageUrl:
-            "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80",
-          authorId: adminId,
-          isPublished: 1,
-          views: 518,
-          createdAt: daysAgo(2),
-          updatedAt: daysAgo(2),
-        },
-        {
-          id: randomUUID(),
-          title: "Мэдээллийн технологийн аудитын шинэ журам батлагдлаа",
-          content:
-            "<p>Дотоод Аудитын Газрын дарга нар МТ аудитын шинэчлэгдсэн журмыг баталж, даруй хэрэгжүүлж эхэллээ.</p><ol><li>Кибер аюулгүй байдлын аудитыг жилд 2 удаа хийх</li><li>Системийн нэвтрэх эрхийн хяналтыг улирал бүр шалгах</li></ol>",
-          category: "Мэдэгдэл",
-          imageUrl:
-            "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=80",
-          authorId: adminId,
-          isPublished: 1,
-          views: 287,
-          createdAt: daysAgo(5),
-          updatedAt: daysAgo(5),
-        },
-        {
-          id: randomUUID(),
-          title: "Аудиторуудын мэргэжлийн хөгжлийн сургалт амжилттай явагдлаа",
-          content:
-            "<p>Дотоод Аудитын Газрын нийт 24 аудитор мэргэжлийн хөгжлийн сургалтад хамрагдлаа.</p><ul><li>Data analytics ашиглан аудит хийх арга зүй</li><li>Эрсдэлд суурилсан аудитын шинэ стандарт (IIA 2024)</li><li>SQL болон Python ашиглан аудитын өгөгдөл шинжлэх</li></ul>",
-          category: "Үйл явдал",
-          imageUrl:
-            "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=80",
-          authorId: adminId,
-          isPublished: 1,
-          views: 196,
-          createdAt: daysAgo(8),
-          updatedAt: daysAgo(8),
-        },
-        {
-          id: randomUUID(),
-          title: "Цахим банкны дижитал аюулгүй байдлын аудит дуусгавар болов",
-          content:
-            "<p>Мэдээллийн Технологийн Аудитын Хэлтэс нь цахим банкны бүх системийн иж бүрэн аудитыг 2026 оны 1 дүгээр сард дуусгав.</p><ul><li>Mbank mobile application</li><li>Internet banking платформ</li><li>API gateway болон middleware</li></ul>",
-          category: "Үйл явдал",
-          imageUrl:
-            "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1200&q=80",
-          authorId: adminId,
-          isPublished: 1,
-          views: 631,
-          createdAt: daysAgo(15),
-          updatedAt: daysAgo(15),
-        },
-        {
-          id: randomUUID(),
-          title: "Аудитын хорооны хурал: 2026 оны аудитын төлөвлөгөө батлагдав",
-          content:
-            "<p>Голомт Банкны Аудитын Хороо 2026 оны 1 сарын 30-нд хуралдаж, жилийн аудитын цогц төлөвлөгөөг баталлаа.</p><ul><li><strong>Санхүүгийн аудит</strong> — 12 нэгжид</li><li><strong>ИТ аудит</strong> — 8 систем</li><li><strong>AML/CFT дагаж мөрдөх аудит</strong></li></ul>",
-          category: "Ерөнхий",
-          imageUrl:
-            "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=80",
-          authorId: adminId,
-          isPublished: 1,
-          views: 489,
-          createdAt: daysAgo(20),
-          updatedAt: daysAgo(20),
-        },
-        {
-          id: randomUUID(),
-          title:
-            "Дата аналитикс ашиглан аудитын үр нөлөөг хэрхэн нэмэгдүүлэх вэ",
-          content:
-            "<p>Голомт Банкны Дата Анализын Алба болон Дотоод Аудитын Газар хамтран дараах хэрэгслийг нэвтрүүлсэн:</p><ul><li><strong>SQL-д суурилсан гүйлгээний хяналт</strong></li><li><strong>Аномали илрүүлэх загвар</strong> — ML</li><li><strong>ClickHouse дата агуулах</strong></li></ul>",
-          category: "Ерөнхий",
-          imageUrl:
-            "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80",
-          authorId: adminId,
-          isPublished: 1,
-          views: 754,
-          createdAt: daysAgo(25),
-          updatedAt: daysAgo(25),
-        },
-      ];
-
-      for (const article of articles) {
-        await client.insert({
-          table: `${CLICKHOUSE_DATABASE}.news`,
-          values: [article],
-          format: "JSONEachRow",
-        });
-        console.log(`  ✓ ${article.title.substring(0, 55)}...`);
-      }
-      console.log(`  ✅ ${articles.length} news articles inserted`);
+      console.log(`  🗑️  ${newsCount} news articles found — truncating for re-seed...`);
+      await client.exec({
+        query: `TRUNCATE TABLE ${CLICKHOUSE_DATABASE}.news`,
+      });
+      console.log("  ✓ news table cleared");
     }
+
+    const articles = [
+      {
+        id: randomUUID(),
+        title: "Дотоод аудитын газрын 2025 оны үйл ажиллагааны тайлан",
+        content:
+          "<p>Голомт Банкны Дотоод Аудитын Газар нь 2025 оны жилийн эцсийн үйл ажиллагааны тайланг дуусгаж, удирдлагын зөвлөлд танилцуулсан байна.</p><ul><li>Нийт <strong>48 аудитын ажил</strong> хийгдэж, 312 зөвлөмж өгөгдсөн</li><li>Зөвлөмжийн хэрэгжилт <strong>87%</strong>-д хүрсэн</li></ul>",
+        category: "Мэдэгдэл",
+        imageUrl:
+          "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 342,
+        createdAt: daysAgo(1),
+        updatedAt: daysAgo(1),
+      },
+      {
+        id: randomUUID(),
+        title: "Хиймэл оюун ухаан ба аудит: 2026 оны тулгамдсан асуудлууд",
+        content:
+          "<p>Дэлхий даяар банк санхүүгийн байгууллагуудын дотоод аудиторууд хиймэл оюун ухааны эрсдэлийг удирдахад тулгамдсан шинэ сорилтуудтай нүүр тулж байна.</p><ul><li><strong>Генератив AI-ийн эрсдэл</strong></li><li><strong>Кибер аюулгүй байдал</strong></li><li><strong>ESG тайлагнал</strong></li></ul>",
+        category: "Ерөнхий",
+        imageUrl:
+          "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 518,
+        createdAt: daysAgo(2),
+        updatedAt: daysAgo(2),
+      },
+      {
+        id: randomUUID(),
+        title: "Мэдээллийн технологийн аудитын шинэ журам батлагдлаа",
+        content:
+          "<p>Дотоод Аудитын Газрын дарга нар МТ аудитын шинэчлэгдсэн журмыг баталж, даруй хэрэгжүүлж эхэллээ.</p><ol><li>Кибер аюулгүй байдлын аудитыг жилд 2 удаа хийх</li><li>Системийн нэвтрэх эрхийн хяналтыг улирал бүр шалгах</li></ol>",
+        category: "Мэдэгдэл",
+        imageUrl:
+          "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 287,
+        createdAt: daysAgo(5),
+        updatedAt: daysAgo(5),
+      },
+      {
+        id: randomUUID(),
+        title: "Аудиторуудын мэргэжлийн хөгжлийн сургалт амжилттай явагдлаа",
+        content:
+          "<p>Дотоод Аудитын Газрын нийт 24 аудитор мэргэжлийн хөгжлийн сургалтад хамрагдлаа.</p><ul><li>Data analytics ашиглан аудит хийх арга зүй</li><li>Эрсдэлд суурилсан аудитын шинэ стандарт (IIA 2024)</li><li>SQL болон Python ашиглан аудитын өгөгдөл шинжлэх</li></ul>",
+        category: "Үйл явдал",
+        imageUrl:
+          "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 196,
+        createdAt: daysAgo(8),
+        updatedAt: daysAgo(8),
+      },
+      {
+        id: randomUUID(),
+        title: "Цахим банкны дижитал аюулгүй байдлын аудит дуусгавар болов",
+        content:
+          "<p>Мэдээллийн Технологийн Аудитын Хэлтэс нь цахим банкны бүх системийн иж бүрэн аудитыг 2026 оны 1 дүгээр сард дуусгав.</p><ul><li>Mbank mobile application</li><li>Internet banking платформ</li><li>API gateway болон middleware</li></ul>",
+        category: "Үйл явдал",
+        imageUrl:
+          "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 631,
+        createdAt: daysAgo(15),
+        updatedAt: daysAgo(15),
+      },
+      {
+        id: randomUUID(),
+        title: "Аудитын хорооны хурал: 2026 оны аудитын төлөвлөгөө батлагдав",
+        content:
+          "<p>Голомт Банкны Аудитын Хороо 2026 оны 1 сарын 30-нд хуралдаж, жилийн аудитын цогц төлөвлөгөөг баталлаа.</p><ul><li><strong>Санхүүгийн аудит</strong> — 12 нэгжид</li><li><strong>ИТ аудит</strong> — 8 систем</li><li><strong>AML/CFT дагаж мөрдөх аудит</strong></li></ul>",
+        category: "Ерөнхий",
+        imageUrl:
+          "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 489,
+        createdAt: daysAgo(20),
+        updatedAt: daysAgo(20),
+      },
+      {
+        id: randomUUID(),
+        title:
+          "Дата аналитикс ашиглан аудитын үр нөлөөг хэрхэн нэмэгдүүлэх вэ",
+        content:
+          "<p>Голомт Банкны Дата Анализын Алба болон Дотоод Аудитын Газар хамтран дараах хэрэгслийг нэвтрүүлсэн:</p><ul><li><strong>SQL-д суурилсан гүйлгээний хяналт</strong></li><li><strong>Аномали илрүүлэх загвар</strong> — ML</li><li><strong>ClickHouse дата агуулах</strong></li></ul>",
+        category: "Ерөнхий",
+        imageUrl:
+          "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 754,
+        createdAt: daysAgo(25),
+        updatedAt: daysAgo(25),
+      },
+      {
+        id: randomUUID(),
+        title: "Эрсдэлийн удирдлагын шинэ арга зүй нэвтрүүлэв",
+        content:
+          "<p>Дотоод Аудитын Газар нь байгууллагын эрсдэлийн удирдлагын процессыг шинэчлэн боловсруулж, 2026 оноос эхлэн хэрэгжүүлж байна.</p><ul><li><strong>Эрсдэлийн үнэлгээний матриц</strong> шинэчлэгдлээ</li><li><strong>Хяналтын орчны тогтолцоо</strong> бэхжлээ</li><li>Аудитын 3 шугамын загварыг нэвтрүүлэв</li></ul>",
+        category: "Мэдэгдэл",
+        imageUrl:
+          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&q=80",
+        authorId: adminId,
+        isPublished: 1,
+        views: 423,
+        createdAt: daysAgo(30),
+        updatedAt: daysAgo(30),
+      },
+    ];
+
+    for (const article of articles) {
+      await client.insert({
+        table: `${CLICKHOUSE_DATABASE}.news`,
+        values: [article],
+        format: "JSONEachRow",
+      });
+      console.log(`  ✓ ${article.title.substring(0, 55)}...`);
+    }
+    console.log(`  ✅ ${articles.length} news articles inserted`);
 
     // ── STEP 5: External DB schemas (FINACLE, ERP, CARDZONE, EBANK) ─────────
     console.log("\n🗄️  Setting up external database schemas...");

@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 // ─── Inline markdown renderer ─────────────────────────────────────────────────
 export function renderInline(text: string): React.ReactNode[] {
@@ -13,10 +13,7 @@ export function renderInline(text: string): React.ReactNode[] {
 }
 
 // ─── Markdown-like content parser (supports tables, bullet/numbered lists) ────
-export function parseContent(
-  text: string,
-  tc: { n: number },
-): React.ReactNode {
+export function parseContent(text: string, tc: { n: number }): React.ReactNode {
   const lines = text.split("\n");
   const nodes: React.ReactNode[] = [];
   let i = 0;
@@ -140,6 +137,47 @@ export function parseContent(
   return <>{nodes}</>;
 }
 
+// ─── Table grid picker ────────────────────────────────────────────────────────
+const GRID_ROWS = 8;
+const GRID_COLS = 8;
+
+function TableGridPicker({ onPick }: { onPick: (rows: number, cols: number) => void }) {
+  const [hover, setHover] = useState<{ r: number; c: number } | null>(null);
+
+  return (
+    <div
+      className="absolute z-50 top-full left-0 mt-1 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl"
+      onMouseLeave={() => setHover(null)}
+    >
+      <div
+        className="text-xs text-slate-400 mb-1.5 text-center"
+        style={{ minWidth: 120 }}
+      >
+        {hover ? `${hover.r} мөр × ${hover.c} багана` : "Мөр × Багана сонгоно уу"}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${GRID_COLS}, 18px)`, gap: 2 }}>
+        {Array.from({ length: GRID_ROWS * GRID_COLS }, (_, idx) => {
+          const r = Math.floor(idx / GRID_COLS) + 1;
+          const c = (idx % GRID_COLS) + 1;
+          const active = hover && r <= hover.r && c <= hover.c;
+          return (
+            <div
+              key={idx}
+              style={{ width: 18, height: 18, cursor: "pointer" }}
+              className={`border rounded-sm transition ${active ? "bg-blue-500 border-blue-400" : "bg-slate-700 border-slate-500"}`}
+              onMouseEnter={() => setHover({ r, c })}
+              onMouseDown={(ev) => {
+                ev.preventDefault();
+                onPick(r, c);
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Rich text toolbar + textarea ─────────────────────────────────────────────
 export function RichToolbar({
   value,
@@ -155,6 +193,15 @@ export function RichToolbar({
   className?: string;
 }) {
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const [showGrid, setShowGrid] = useState(false);
+
+  // Auto-resize: expand to full content height, no scroll
+  useEffect(() => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [value]);
 
   const apply = (before: string, after = "") => {
     const el = taRef.current;
@@ -171,12 +218,22 @@ export function RichToolbar({
     });
   };
 
+  const insertTable = (numRows: number, numCols: number) => {
+    const header = "|" + Array.from({ length: numCols }, (_, i) => `Гарчиг ${i + 1}`).join("|") + "|";
+    const separator = "|" + Array.from({ length: numCols }, () => "---").join("|") + "|";
+    const dataRow = "|" + Array.from({ length: numCols }, () => "Утга").join("|") + "|";
+    const dataRows = Array.from({ length: Math.max(1, numRows - 1) }, () => dataRow).join("\n");
+    const table = "\n" + header + "\n" + separator + "\n" + dataRows + "\n";
+    apply(table);
+    setShowGrid(false);
+  };
+
   const btnCls =
     "px-1.5 py-0.5 rounded text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition select-none";
 
   return (
     <div>
-      <div className="flex gap-1 mb-1 flex-wrap">
+      <div className="flex gap-1 mb-1 flex-wrap items-center">
         <button
           type="button"
           className={btnCls}
@@ -197,7 +254,7 @@ export function RichToolbar({
             apply("\n- ");
           }}
         >
-          •
+          •&nbsp;Жагсаалт
         </button>
         <button
           type="button"
@@ -208,19 +265,30 @@ export function RichToolbar({
             apply("\n1. ");
           }}
         >
-          1.
+          1.&nbsp;Дугаарлалт
         </button>
-        <button
-          type="button"
-          className={btnCls}
-          title="Хүснэгт оруулах"
-          onMouseDown={(ev) => {
-            ev.preventDefault();
-            apply("\n|Гарчиг 1|Гарчиг 2|\n|---|---|\n|Утга|Утга|\n");
-          }}
-        >
-          ⊞
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            className={btnCls + (showGrid ? " bg-slate-600" : "")}
+            title="Хүснэгт оруулах"
+            onMouseDown={(ev) => {
+              ev.preventDefault();
+              setShowGrid((v) => !v);
+            }}
+          >
+            ⊞&nbsp;Хүснэгт
+          </button>
+          {showGrid && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onMouseDown={() => setShowGrid(false)}
+              />
+              <TableGridPicker onPick={insertTable} />
+            </>
+          )}
+        </div>
       </div>
       <textarea
         ref={taRef}
@@ -229,6 +297,7 @@ export function RichToolbar({
         rows={rows}
         placeholder={placeholder}
         className={className}
+        style={{ overflow: "hidden", resize: "none" }}
       />
     </div>
   );

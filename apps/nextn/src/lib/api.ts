@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 import Cookies from "js-cookie";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -53,14 +53,19 @@ api.interceptors.response.use(
             refreshToken,
           });
           const { accessToken, refreshToken: newRefreshToken } = response.data;
+          const secure =
+            typeof window !== "undefined" &&
+            window.location.protocol === "https:";
 
           Cookies.set(tokenKey, accessToken, {
             expires: 1 / 24,
             sameSite: "lax",
+            secure,
           });
           Cookies.set(refreshKey, newRefreshToken, {
             expires: 30,
             sameSite: "lax",
+            secure,
           });
 
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -77,6 +82,19 @@ api.interceptors.response.use(
       Cookies.remove(tokenKey);
       Cookies.remove(refreshKey);
       Cookies.remove(userKey);
+    }
+
+    // Network error (backend unreachable) → clear session and go to login
+    if (!error.response && error.code !== "ERR_CANCELED") {
+      Cookies.remove(tokenKey);
+      Cookies.remove(refreshKey);
+      Cookies.remove(userKey);
+      if (typeof window !== "undefined") {
+        const loginPath = isAdmin ? "/admin/login" : "/login";
+        if (!window.location.pathname.startsWith(loginPath)) {
+          window.location.replace(loginPath);
+        }
+      }
     }
 
     return Promise.reject(error);
@@ -194,11 +212,22 @@ export const usersApi = {
     return response.data;
   },
 
-  setAdminRole: async (id: string, isAdmin: boolean, isSuperAdmin: boolean) => {
+  setAdminRole: async (
+    id: string,
+    isAdmin: boolean,
+    isSuperAdmin: boolean,
+    grantableTools?: string[],
+  ) => {
     const response = await api.patch(`/users/${id}/admin-role`, {
       isAdmin,
       isSuperAdmin,
+      grantableTools,
     });
+    return response.data;
+  },
+
+  resetPassword: async (id: string, newPassword: string) => {
+    const response = await api.patch(`/users/${id}/reset-password`, { newPassword });
     return response.data;
   },
 };
@@ -364,6 +393,15 @@ export const tailanApi = {
     dynamicSections: any[];
     otherWork?: string;
     teamActivities: any[];
+    section2Tasks?: any[];
+    section1Dashboards?: any[];
+    section3AutoTasks?: any[];
+    section3Dashboards?: any[];
+    section4Trainings?: any[];
+    section4KnowledgeText?: string;
+    section5Tasks?: any[];
+    section6Activities?: any[];
+    section7Text?: string;
     status?: string;
   }) => {
     const response = await api.post("/tailan/save", data);
@@ -472,6 +510,17 @@ export const tailanApi = {
   deleteImage: async (id: string) => {
     await api.delete(`/tailan/images/${id}`);
   },
+
+  // ─── Department BSC (ТҮЗ) report ────────────────────────────────────────
+  saveDeptBsc: async (year: number, quarter: number, sections: Record<string, unknown>) => {
+    const response = await api.post("/tailan/dept-bsc", { year, quarter, sections });
+    return response.data as { ok: boolean; message: string };
+  },
+
+  getDeptBsc: async (year: number, quarter: number) => {
+    const response = await api.get(`/tailan/dept-bsc/${year}/${quarter}`);
+    return response.data as { sections: Record<string, unknown>; savedByName: string; updatedAt: string } | null;
+  },
 };
 
 // DB Access APIs
@@ -556,6 +605,11 @@ export const dbAccessApi = {
     return response.data;
   },
 
+  cancelMyGrant: async (id: string) => {
+    const response = await api.delete(`/db-access/grants/${id}/cancel`);
+    return response.data;
+  },
+
   // Grantors
   getGrantors: async () => {
     const response = await api.get("/db-access/grantors");
@@ -637,7 +691,56 @@ export const chessApi = {
   },
 };
 
-interface ChessInvitation {
+export const englishApi = {
+  getWords: async () => {
+    const response = await api.get("/english/words");
+    return response.data;
+  },
+
+  getStats: async () => {
+    const response = await api.get("/english/stats");
+    return response.data;
+  },
+
+  createWord: async (data: {
+    word: string;
+    translation: string;
+    definition?: string;
+    example?: string;
+    partOfSpeech?: string;
+    difficulty?: number;
+  }) => {
+    const response = await api.post("/english/words", data);
+    return response.data as { id: string };
+  },
+
+  updateWord: async (
+    id: string,
+    data: {
+      word?: string;
+      translation?: string;
+      definition?: string;
+      example?: string;
+      partOfSpeech?: string;
+      difficulty?: number;
+    },
+  ) => {
+    const response = await api.put(`/english/words/${id}`, data);
+    return response.data as { success: boolean };
+  },
+
+  deleteWord: async (id: string) => {
+    const response = await api.delete(`/english/words/${id}`);
+    return response.data as { success: boolean };
+  },
+
+  recordReview: async (id: string, correct: boolean) => {
+    const response = await api.post(`/english/words/${id}/review`, { correct });
+    return response.data as { success: boolean };
+  },
+};
+
+export interface ChessInvitation {
   id: string;
   fromUserId: string;
   fromUserName: string;

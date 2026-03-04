@@ -122,7 +122,7 @@ export class DepartmentsService {
     const result = [];
     for (const dept of departments) {
       const users = await this.clickhouse.query<any>(
-        "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {deptId:String}",
+        "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
         { deptId: dept.id },
       );
       result.push({ ...dept, users });
@@ -143,7 +143,7 @@ export class DepartmentsService {
 
     const department = departments[0];
     const users = await this.clickhouse.query<any>(
-      "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {id:String}",
+      "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {id:String} AND isAdmin = 0",
       { id },
     );
 

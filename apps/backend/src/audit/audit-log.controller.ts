@@ -8,10 +8,11 @@ import {
 } from "@nestjs/swagger";
 import { AuditLogService } from "./audit-log.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
 
 @ApiTags("audit")
 @Controller("audit")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminGuard)
 @ApiBearerAuth("JWT-auth")
 export class AuditLogController {
   constructor(private auditLogService: AuditLogService) {}

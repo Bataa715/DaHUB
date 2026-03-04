@@ -55,6 +55,7 @@ export function FlowSelector({ onSelect }: FlowSelectorProps) {
               alt="Golomt Logo"
               width={96}
               height={96}
+              priority
               className="object-contain"
             />
           </motion.div>

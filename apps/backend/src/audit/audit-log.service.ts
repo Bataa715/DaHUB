@@ -103,7 +103,8 @@ export class AuditLogService {
         .replace("T", " ");
     }
 
-    const limit = filters.limit || 100;
+    // Clamp limit: minimum 1, maximum 1000, default 100 (prevents NaN / unbounded queries)
+    const limit = Math.min(Math.max(Number.isFinite(filters.limit ?? 100) ? (filters.limit ?? 100) : 100, 1), 1000);
     const query = `
       SELECT * FROM audit_logs 
       WHERE ${conditions.join(" AND ")} 

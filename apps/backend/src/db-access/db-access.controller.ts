@@ -105,7 +105,13 @@ export class DbAccessController {
     return this.dbAccessService.getGrantsByUser(userId, req.user);
   }
 
-  /** DELETE /db-access/grants/:id - revoke a grant */
+  /** GET /db-access/grants/:id/credentials - get ClickHouse credentials for a grant */
+  @Get("grants/:id/credentials")
+  getGrantCredentials(@Param("id") id: string, @Request() req: any) {
+    return this.dbAccessService.getGrantCredentials(id, req.user);
+  }
+
+  /** DELETE /db-access/grants/:id - revoke a grant (admin/granter only) */
   @Delete("grants/:id")
   revokeGrant(
     @Param("id") id: string,
@@ -113,6 +119,12 @@ export class DbAccessController {
     @Body() dto: RevokeGrantDto,
   ) {
     return this.dbAccessService.revokeGrant(id, req.user, dto);
+  }
+
+  /** DELETE /db-access/grants/:id/cancel - user self-cancels their own grant */
+  @Delete("grants/:id/cancel")
+  selfRevokeGrant(@Param("id") id: string, @Request() req: any) {
+    return this.dbAccessService.selfRevokeGrant(id, req.user);
   }
 
   // ─── Grantors ────────────────────────────────────────────────────────────────

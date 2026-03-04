@@ -18,6 +18,7 @@ import {
   FileText,
   Database,
   Crown,
+  BookOpen,
 } from "lucide-react";
 
 interface Tool {
@@ -73,7 +74,7 @@ const allTools: Tool[] = [
     id: "sanamsargui-tuuwer",
     title: "Санамсаргүй түүвэр",
     description:
-      "Аудитын түүврийн хэмжээ тооцоолох, Excel файлаас санамсаргүй сонгон авах",
+      "Аудитын санамсаргүй түүвэр гаргах хэрэгсэл",
     icon: Dice6,
     href: "/tools/sanamsargui-tuuwer",
     gradient: "from-violet-500 to-indigo-500",
@@ -84,7 +85,7 @@ const allTools: Tool[] = [
   {
     id: "pivot",
     title: "Pivot",
-    description: "Excel файлаас pivot хүснэгт болон давтамжийн хүснэгт үүсгэх",
+    description: "Excel файлаас pivot хүснэгт үүсгэх",
     icon: Table2,
     href: "/tools/pivot",
     gradient: "from-cyan-500 to-blue-500",
@@ -97,7 +98,7 @@ const allTools: Tool[] = [
     matchIds: ["tailan", "tailan_dept_head"],
     title: "Улирлын тайлан",
     description:
-      "Улирлын ажлын тайлан бэлтгэх, хэлтсийн ахлагч руу илгээх, нэгтгэл татах",
+      "Улирлын ажлын тайлан бэлтгэх",
     icon: FileText,
     href: "/tools/tailan",
     gradient: "from-violet-500 to-purple-500",
@@ -121,13 +122,25 @@ const allTools: Tool[] = [
     id: "db_access_granter",
     title: "Эрх Олгох",
     description:
-      "ClickHouse хандалтын хүсэлтүүдийг хянаж зөвшөөрөх, татгалзах, эрхийг удирдах",
+      "ClickHouse хандалтын хүсэлтүүдийг хянаж удирдах",
     icon: Database,
     href: "/tools/db-access/manage",
     gradient: "from-violet-500 to-indigo-500",
     glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
     tag: "Security",
     category: "work",
+  },
+  {
+    id: "english",
+    title: "Англи үгс",
+    description:
+      "Англи үгийн санг бүрдүүлж, flash card болон тест горимоор цээжлэх",
+    icon: BookOpen,
+    href: "/tools/english/vocabulary",
+    gradient: "from-sky-500 to-blue-500",
+    glow: "shadow-sky-500/20 group-hover:shadow-sky-500/40",
+    tag: "Learning",
+    category: "free",
   },
 ];
 

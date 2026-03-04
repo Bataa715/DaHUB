@@ -16,58 +16,69 @@ import { Response } from "express";
 import { NewsService } from "./news.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
 
 @Controller("news")
 export class NewsController {
   constructor(private newsService: NewsService) {}
 
-  // Public - Get published news
+  // Public – published news only (drafts are never exposed here)
   @Get()
   async findAll(
-    @Query("published") published?: string,
     @Query("page") page = 1,
     @Query("limit") limit = 100,
   ) {
-    const isPublished = published === "false" ? false : true;
     const take = Math.min(Number(limit), 200);
     const skip = (Number(page) - 1) * take;
-    return this.newsService.findAll(isPublished, take, skip);
+    return this.newsService.findAll(true, take, skip); // always published=true
   }
 
-  // Public - Get single news (increments view)
+  // Public – single published news item (increments view)
   @Get(":id")
   async findOne(@Param("id") id: string) {
     return this.newsService.findOne(id);
   }
 
-  // Public - Get news by category
+  // Public – news by category (published only)
   @Get("category/:category")
   async getByCategory(@Param("category") category: string) {
     return this.newsService.getByCategory(category);
   }
 
-  // Admin - Create news
-  @UseGuards(JwtAuthGuard)
+  // Admin – all news including drafts
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get("admin/all")
+  async findAllAdmin(
+    @Query("page") page = 1,
+    @Query("limit") limit = 100,
+  ) {
+    const take = Math.min(Number(limit), 200);
+    const skip = (Number(page) - 1) * take;
+    return this.newsService.findAll(false, take, skip); // false = include unpublished drafts
+  }
+
+  // Admin – create news
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Post()
   async create(@Body() createNewsDto: CreateNewsDto, @Request() req) {
     return this.newsService.create(createNewsDto, req.user.id);
   }
 
-  // Admin - Update news
-  @UseGuards(JwtAuthGuard)
+  // Admin – update news
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(":id")
   async update(@Param("id") id: string, @Body() updateNewsDto: UpdateNewsDto) {
     return this.newsService.update(id, updateNewsDto);
   }
 
-  // Admin - Toggle publish status
-  @UseGuards(JwtAuthGuard)
+  // Admin – toggle publish status
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(":id/toggle-publish")
   async togglePublish(@Param("id") id: string) {
     return this.newsService.togglePublish(id);
   }
 
-  // Serve news image binary
+  // Public – serve news image binary
   @Get(":id/image")
   async getNewsImage(@Param("id") id: string, @Res() res: Response) {
     const result = await this.newsService.getNewsImage(id);
@@ -77,8 +88,8 @@ export class NewsController {
     res.send(result.buffer);
   }
 
-  // Admin - Delete news
-  @UseGuards(JwtAuthGuard)
+  // Admin – delete news
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Delete(":id")
   async remove(@Param("id") id: string) {
     return this.newsService.remove(id);

@@ -65,7 +65,7 @@ export class NewsService {
       `SELECT n.*, u.name as authorName
        FROM news n 
        LEFT JOIN users u ON n.authorId = u.id
-       WHERE n.id = {id:String}
+       WHERE n.id = {id:String} AND n.isPublished = 1
        LIMIT 1`,
       { id },
     );
@@ -74,11 +74,10 @@ export class NewsService {
       throw new NotFoundException("Мэдээ олдсонгүй");
     }
 
-    // Increment view count
-    await this.clickhouse.exec(
-      "ALTER TABLE news UPDATE views = views + 1 WHERE id = {id:String}",
-      { id },
-    );
+    // Increment view count (fire-and-forget – don't block the response)
+    this.clickhouse
+      .exec("ALTER TABLE news UPDATE views = views + 1 WHERE id = {id:String}", { id })
+      .catch(() => {/* non-critical */});
 
     const n = news[0];
     return { ...n, imageUrl: n.imageUrl ? `/news/${n.id}/image` : "" };
@@ -137,7 +136,7 @@ export class NewsService {
 
     if (updates.length > 0) {
       await this.clickhouse.exec(
-        `ALTER TABLE news UPDATE ${updates.join(", ")} WHERE id = {id:String} SETTINGS mutations_sync=1`,
+        `ALTER TABLE news UPDATE ${updates.join(", ")} WHERE id = {id:String}`,
         params,
       );
     }
@@ -175,7 +174,7 @@ export class NewsService {
 
     const newStatus = news[0].isPublished ? 0 : 1;
     await this.clickhouse.exec(
-      "ALTER TABLE news UPDATE isPublished = {isPublished:UInt8} WHERE id = {id:String} SETTINGS mutations_sync=1",
+      "ALTER TABLE news UPDATE isPublished = {isPublished:UInt8} WHERE id = {id:String}",
       { id, isPublished: newStatus },
     );
 

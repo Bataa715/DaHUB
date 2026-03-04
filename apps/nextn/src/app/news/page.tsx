@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -32,8 +31,11 @@ function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/\s+on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, "")
-    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi, 'href="#"')
-    .replace(/src\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi, '');
+    .replace(
+      /href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi,
+      'href="#"',
+    )
+    .replace(/src\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi, "");
 }
 
 interface News {
@@ -117,6 +119,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             src={getImageUrl(item.imageUrl)!}
             alt={item.title}
             fill
+            unoptimized
             className="object-cover transition-transform duration-700 group-hover:scale-105"
             sizes="100vw"
             priority
@@ -214,6 +217,7 @@ function CarouselCard({
             src={getImageUrl(item.imageUrl)!}
             alt={item.title}
             fill
+            unoptimized
             className="object-cover transition-transform duration-500 group-hover:scale-110"
             sizes="300px"
           />
@@ -329,6 +333,7 @@ function ChatItem({
                 src={getImageUrl(item.imageUrl)!}
                 alt={item.title}
                 fill
+                unoptimized
                 className="object-cover"
                 sizes="96px"
               />
@@ -498,27 +503,34 @@ export default function NewsPage() {
             onOpenChange={() => setSelectedNews(null)}
           >
             <DialogContent
-              className="max-w-3xl max-h-[90vh] p-0 overflow-hidden rounded-2xl"
+              className="max-w-3xl w-full p-0 rounded-2xl flex flex-col overflow-hidden"
               style={{
                 background: "rgba(10,15,26,0.98)",
                 border: "1px solid rgba(99,102,241,0.2)",
+                maxHeight: "90vh",
               }}
             >
+              {/* Cover image — fixed, never scrolls */}
               {getImageUrl(selectedNews.imageUrl) && (
-                <div className="relative w-full h-56">
+                <div className="relative w-full h-56 flex-shrink-0">
                   <Image
                     src={getImageUrl(selectedNews.imageUrl)!}
                     alt={selectedNews.title}
                     fill
+                    unoptimized
                     className="object-cover"
                     sizes="900px"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[rgba(10,15,26,0.98)] to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[rgba(10,15,26,0.98)] via-transparent to-black/30" />
                 </div>
               )}
 
-              <div className="px-6 pb-6 -mt-8 relative">
-                <DialogHeader>
+              {/* Scrollable body */}
+              <div className="flex-1 overflow-y-auto overscroll-contain">
+                <div
+                  className={`px-6 pb-8 ${getImageUrl(selectedNews.imageUrl) ? "-mt-8 relative" : "pt-6"}`}
+                >
+                  {/* Category + views */}
                   <div className="flex items-center gap-2 mb-3">
                     {(() => {
                       const cat = getCat(selectedNews.category);
@@ -535,12 +547,16 @@ export default function NewsPage() {
                     </span>
                   </div>
 
-                  <DialogTitle className="text-white text-2xl font-black leading-tight">
-                    {selectedNews.title}
-                  </DialogTitle>
+                  {/* Title */}
+                  <DialogHeader>
+                    <DialogTitle className="text-white text-2xl font-black leading-tight">
+                      {selectedNews.title}
+                    </DialogTitle>
+                  </DialogHeader>
 
-                  <div className="flex items-center gap-3 pt-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  {/* Author / meta */}
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                       <User className="w-3.5 h-3.5 text-white" />
                     </div>
                     <div>
@@ -555,21 +571,28 @@ export default function NewsPage() {
                       </p>
                     </div>
                   </div>
-                </DialogHeader>
 
-                <div
-                  className="my-4 h-px"
-                  style={{ background: "rgba(99,102,241,0.15)" }}
-                />
-
-                <ScrollArea className="max-h-[45vh] pr-2">
                   <div
-                    className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed"
+                    className="my-5 h-px"
+                    style={{ background: "rgba(99,102,241,0.15)" }}
+                  />
+
+                  {/* Full content — no max-height restriction */}
+                  <div
+                    className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed
+                      prose-headings:text-white prose-headings:font-bold
+                      prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+                      prose-strong:text-slate-100
+                      prose-code:text-purple-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
+                      prose-pre:bg-white/5 prose-pre:border prose-pre:border-white/10
+                      prose-blockquote:border-l-purple-500 prose-blockquote:text-slate-400
+                      prose-img:rounded-xl prose-img:mx-auto
+                      prose-table:text-sm prose-th:text-slate-200 prose-td:text-slate-400"
                     dangerouslySetInnerHTML={{
                       __html: sanitizeHtml(selectedNews.content),
                     }}
                   />
-                </ScrollArea>
+                </div>
               </div>
             </DialogContent>
           </Dialog>

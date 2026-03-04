@@ -33,6 +33,10 @@ export class PlannedTaskDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsArray()
+  @IsOptional()
+  images?: any[];
 }
 
 export class DynamicSectionDto {
@@ -74,6 +78,10 @@ export class Section2TaskDto {
   @IsString()
   @IsOptional()
   completion?: string;
+
+  @IsArray()
+  @IsOptional()
+  images?: any[];
 }
 
 export class Section3AutoTaskDto {
@@ -106,6 +114,31 @@ export class Section3DashboardDto {
   @IsString()
   @IsOptional()
   rating?: string;
+}
+
+export class Section1DashboardDto {
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  completion?: string;
+
+  @IsString()
+  @IsOptional()
+  period?: string;
+
+  @IsString()
+  @IsOptional()
+  summary?: string;
+
+  @IsArray()
+  @IsOptional()
+  images?: any[];
 }
 
 export class Section4TrainingDto {
@@ -208,6 +241,12 @@ export class SaveTailanDto {
   @Type(() => Section2TaskDto)
   @IsOptional()
   section2Tasks?: Section2TaskDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Section1DashboardDto)
+  @IsOptional()
+  section1Dashboards?: Section1DashboardDto[];
 
   @IsArray()
   @ValidateNested({ each: true })

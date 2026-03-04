@@ -1,9 +1,12 @@
-﻿import { Injectable, NotFoundException } from "@nestjs/common";
+﻿import { Injectable, Logger, NotFoundException, BadRequestException } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import * as bcrypt from "bcryptjs";
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(private clickhouse: ClickHouseService) {}
 
   async findAll(limit = 200, offset = 0) {
@@ -62,8 +65,8 @@ export class UsersService {
 
   async getAdmins() {
     const users = await this.clickhouse.query<any>(
-      `SELECT u.id, u.userId, u.name, u.departmentId, u.isAdmin, u.isSuperAdmin, u.isActive, u.createdAt,
-              d.name AS departmentName
+      `SELECT u.id, u.userId, u.name, u.departmentId, u.isAdmin, u.isSuperAdmin, u.isActive,
+              u.grantableTools, u.createdAt, d.name AS departmentName
        FROM users u
        LEFT JOIN departments d ON u.departmentId = d.id
        WHERE u.isAdmin = 1
@@ -77,27 +80,38 @@ export class UsersService {
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
       isActive: !!user.isActive,
+      grantableTools: user.grantableTools
+        ? JSON.parse(user.grantableTools)
+        : [],
       createdAt: user.createdAt,
     }));
   }
 
-  async setAdminRole(id: string, isAdmin: boolean, isSuperAdmin: boolean) {
+  async setAdminRole(
+    id: string,
+    isAdmin: boolean,
+    isSuperAdmin: boolean,
+    grantableTools?: string[],
+  ) {
     const users = await this.clickhouse.query<any>(
       "SELECT id FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
 
+    const toolsJson = JSON.stringify(grantableTools ?? []);
+
     await this.clickhouse.exec(
-      `ALTER TABLE users UPDATE isAdmin = {isAdmin:UInt8}, isSuperAdmin = {isSuperAdmin:UInt8}, updatedAt = {updatedAt:String} WHERE id = {id:String}`,
+      `ALTER TABLE users UPDATE isAdmin = {isAdmin:UInt8}, isSuperAdmin = {isSuperAdmin:UInt8}, grantableTools = {grantableTools:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}`,
       {
         id,
         isAdmin: isAdmin ? 1 : 0,
         isSuperAdmin: isSuperAdmin ? 1 : 0,
+        grantableTools: toolsJson,
         updatedAt: nowCH(),
       },
     );
-    return { message: "Амжилттай", id, isAdmin, isSuperAdmin };
+    return { message: "Амжилттай", id, isAdmin, isSuperAdmin, grantableTools: grantableTools ?? [] };
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
@@ -129,10 +143,6 @@ export class UsersService {
       fields.push("profileImage = {profileImage:String}");
       params.profileImage = updateUserDto.profileImage;
     }
-    if (updateUserDto.isAdmin !== undefined) {
-      fields.push("isAdmin = {isAdmin:UInt8}");
-      params.isAdmin = updateUserDto.isAdmin ? 1 : 0;
-    }
     if (updateUserDto.allowedTools !== undefined) {
       fields.push("allowedTools = {allowedTools:String}");
       params.allowedTools = JSON.stringify(updateUserDto.allowedTools);
@@ -148,7 +158,7 @@ export class UsersService {
           params,
         );
       } catch (error: unknown) {
-        console.error("ClickHouse update error:", error);
+        this.logger.error(`ClickHouse update error: ${error instanceof Error ? error.message : String(error)}`);
         const msg = error instanceof Error ? error.message : String(error);
         throw new Error(`Хэрэглэгч шинэчлэхэд алдаа гарлаа: ${msg}`);
       }
@@ -258,6 +268,24 @@ export class UsersService {
       name: user.name,
       allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
     };
+  }
+
+  async resetPassword(id: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new BadRequestException("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой");
+    }
+    const users = await this.clickhouse.query<any>(
+      "SELECT id, name, userId, isAdmin FROM users WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.clickhouse.exec(
+      "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
+      { id, password: hashed, updatedAt: nowCH() },
+    );
+    this.logger.warn(`Password reset by superadmin for user: ${users[0].userId} (${users[0].name})`);
+    return { message: "Нууц үг амжилттай сэргээлээ", userId: users[0].userId, name: users[0].name };
   }
 
   async getAvatar(

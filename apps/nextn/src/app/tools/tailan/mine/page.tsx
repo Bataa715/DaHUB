@@ -10,6 +10,7 @@ import {
   Send,
   Save,
   ChevronLeft,
+  ChevronDown,
   Loader2,
   Check,
   Upload,
@@ -25,6 +26,7 @@ import {
 import type {
   PlannedTask,
   DynSection,
+  Section1Dashboard,
   Section2Task,
   Section3AutoTask,
   Section3Dashboard,
@@ -36,12 +38,119 @@ import type {
 import { RichToolbar } from "./_components/RichEditor";
 import { WordPreview, ROMAN_NUMS } from "./_components/WordPreview";
 
-// â”€â”€â”€ Shared style helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Shared style helpers -----------------------------------------------------
 const inputCls =
   "w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition";
+const selectCls =
+  "w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition";
 const labelCls = "block text-xs font-medium text-slate-400 mb-1";
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Inline Row Image Upload -------------------------------------------------
+interface RowInlineImg {
+  id: string;
+  dataUrl: string;
+  width: number;
+}
+
+function RowImageUpload({
+  images,
+  onChange,
+  inputId,
+}: {
+  images: RowInlineImg[];
+  onChange: (imgs: RowInlineImg[]) => void;
+  inputId?: string;
+}) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    let pending = files.length;
+    const newImgs: RowInlineImg[] = [];
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        newImgs.push({
+          id: uid(),
+          dataUrl: ev.target?.result as string,
+          width: 80,
+        });
+        pending--;
+        if (pending === 0) onChange([...images, ...newImgs]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+  const remove = (id: string) =>
+    onChange(images.filter((img) => img.id !== id));
+  const setWidth = (id: string, w: number) =>
+    onChange(images.map((img) => (img.id === id ? { ...img, width: w } : img)));
+  return (
+    <div className={inputId ? "mt-1" : "mt-2"}>
+      {!inputId && (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-1 text-xs text-slate-400 hover:text-blue-400 transition"
+        >
+          <ImageIcon className="h-3.5 w-3.5" />
+          <span>Зураг нэмэх</span>
+        </button>
+      )}
+      <input
+        ref={fileRef}
+        id={inputId}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFiles}
+        suppressHydrationWarning
+      />
+      {images.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {images.map((img) => (
+            <div
+              key={img.id}
+              className="bg-slate-900/50 rounded-lg p-2 space-y-1.5"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">
+                  {img.width}% өргөн
+                </span>
+                <button
+                  type="button"
+                  onClick={() => remove(img.id)}
+                  className="text-red-400/60 hover:text-red-400 transition"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <img
+                src={img.dataUrl}
+                alt=""
+                style={{ width: `${img.width}%` }}
+                className="rounded max-w-full"
+              />
+              <input
+                type="range"
+                min={10}
+                max={100}
+                step={5}
+                value={img.width}
+                onChange={(e) => setWidth(img.id, Number(e.target.value))}
+                className="w-full accent-blue-500"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Main Page ---------------------------------------------------------------
 export default function TailanMinePage() {
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -61,13 +170,38 @@ export default function TailanMinePage() {
       startDate: "",
       endDate: "",
       description: "",
+      images: [],
     },
   ]);
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
+  const toggleTaskExpand = (id: string) =>
+    setExpandedTaskIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const toggleSection = (key: string) =>
+    setCollapsedSections((prev) => {
+      const n = new Set(prev);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
   const [dynamicSections, setDynamicSections] = useState<DynSection[]>([
-    { _id: uid(), order: 2, title: "ÐÐ¶Ð»Ñ‹Ð½ Ð°Ð³ÑƒÑƒÐ»Ð³Ð°", content: "" },
+    { _id: uid(), order: 2, title: "Нэмэлт хэсэг", content: "" },
   ]);
   const [section2Tasks, setSection2Tasks] = useState<Section2Task[]>([
-    { _id: uid(), order: 1, title: "", result: "", period: "", completion: "" },
+    {
+      _id: uid(),
+      order: 1,
+      title: "",
+      result: "",
+      period: "",
+      completion: "",
+      images: [],
+    },
   ]);
   const [section3AutoTasks, setSection3AutoTasks] = useState<
     Section3AutoTask[]
@@ -75,6 +209,19 @@ export default function TailanMinePage() {
   const [section3Dashboards, setSection3Dashboards] = useState<
     Section3Dashboard[]
   >([{ _id: uid(), order: 1, dashboard: "", value: "", rating: "" }]);
+  const [section1Dashboards, setSection1Dashboards] = useState<
+    Section1Dashboard[]
+  >([
+    {
+      _id: uid(),
+      order: 1,
+      title: "",
+      completion: "",
+      period: "",
+      summary: "",
+      images: [],
+    },
+  ]);
   const [section4Trainings, setSection4Trainings] = useState<
     Section4Training[]
   >([
@@ -137,6 +284,10 @@ export default function TailanMinePage() {
         if (r.section3Dashboards?.length)
           setSection3Dashboards(
             r.section3Dashboards.map((t: any) => ({ ...t, _id: uid() })),
+          );
+        if (r.section1Dashboards?.length)
+          setSection1Dashboards(
+            r.section1Dashboards.map((t: any) => ({ ...t, _id: uid() })),
           );
         if (r.section4Trainings?.length)
           setSection4Trainings(
@@ -231,6 +382,7 @@ export default function TailanMinePage() {
     section2Tasks: section2Tasks.map(({ _id, ...t }) => t),
     section3AutoTasks: section3AutoTasks.map(({ _id, ...t }) => t),
     section3Dashboards: section3Dashboards.map(({ _id, ...t }) => t),
+    section1Dashboards: section1Dashboards.map(({ _id, ...t }) => t),
     section4Trainings: section4Trainings.map(({ _id, ...t }) => t),
     section4KnowledgeText,
     section5Tasks: section5Tasks.map(({ _id, ...t }) => t),
@@ -244,21 +396,35 @@ export default function TailanMinePage() {
     setSaving(true);
     try {
       await tailanApi.saveDraft({ ...toDto(), status: "draft" });
-      setSavedMsg("Ð¥Ð°Ð´Ð³Ð°Ð»Ð»Ð°Ð° âœ“");
+      setSavedMsg("Хадгалагдлаа");
       setTimeout(() => setSavedMsg(""), 2500);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Хадгалахад алдаа гарлаа";
+      setSavedMsg(`❌ ${msg}`);
+      setTimeout(() => setSavedMsg(""), 5000);
     } finally {
       setSaving(false);
     }
   };
 
   const handleSubmit = async () => {
-    if (!confirm("Ð¢Ð°Ð¹Ð»Ð°Ð½Ð³ Ñ…ÑÐ»Ñ‚ÑÐ¸Ð¹Ð½ Ð°Ñ…Ð»Ð°Ð³Ñ‡ Ñ€ÑƒÑƒ Ð¸Ð»Ð³ÑÑÑ… Ò¯Ò¯?")) return;
+    if (!confirm("Тайланг илгээх үү? Буцааж болохгүй.")) return;
     setSubmitting(true);
     try {
       await tailanApi.saveDraft({ ...toDto(), status: "submitted" });
       await tailanApi.submitReport(year, quarter);
-      setSavedMsg("Ð˜Ð»Ð³ÑÑÐ³Ð´Ð»ÑÑ âœ“");
+      setSavedMsg("Илгээгдлээ");
       setTimeout(() => setSavedMsg(""), 3000);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Илгээхэд алдаа гарлаа";
+      setSavedMsg(`❌ ${msg}`);
+      setTimeout(() => setSavedMsg(""), 5000);
     } finally {
       setSubmitting(false);
     }
@@ -275,7 +441,7 @@ export default function TailanMinePage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Ð¢Ð°Ð¹Ð»Ð°Ð½-${cyrillicName.trim() || (user?.name ?? "mine")}-${year}-Q${quarter}.docx`;
+      a.download = `тайлан-${cyrillicName.trim() || "mine"}-${year}-Q${quarter}.docx`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -283,32 +449,46 @@ export default function TailanMinePage() {
     }
   };
 
-  // â”€â”€â”€ Planned tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const addTask = () =>
+  // --- Planned tasks ------------------------------------------------------
+  const addTask = () => {
+    const newId = uid();
     setPlannedTasks((prev) => [
       ...prev,
       {
-        _id: uid(),
+        _id: newId,
         order: prev.length + 1,
         title: "",
         completion: 100,
         startDate: "",
         endDate: "",
         description: "",
+        images: [],
       },
     ]);
+    setExpandedTaskIds((prev) => {
+      const n = new Set(prev);
+      n.add(newId);
+      return n;
+    });
+  };
 
-  const removeTask = (id: string) =>
+  const removeTask = (id: string) => {
     setPlannedTasks((prev) =>
       prev.filter((t) => t._id !== id).map((t, i) => ({ ...t, order: i + 1 })),
     );
+    setExpandedTaskIds((prev) => {
+      const n = new Set(prev);
+      n.delete(id);
+      return n;
+    });
+  };
 
   const updateTask = (id: string, field: keyof PlannedTask, value: any) =>
     setPlannedTasks((prev) =>
       prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
     );
 
-  // â”€â”€â”€ Section 2 tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Section 2 tasks ---------------------------------------------------
   const addSection2Task = () =>
     setSection2Tasks((prev) => [
       ...prev,
@@ -319,6 +499,7 @@ export default function TailanMinePage() {
         result: "",
         period: "",
         completion: "",
+        images: [],
       },
     ]);
   const removeSection2Task = (id: string) =>
@@ -334,7 +515,7 @@ export default function TailanMinePage() {
       prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
     );
 
-  // â”€â”€â”€ Section 3 auto tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Section 3 auto tasks ----------------------------------------------
   const addSection3AutoTask = () =>
     setSection3AutoTasks((prev) => [
       ...prev,
@@ -353,7 +534,34 @@ export default function TailanMinePage() {
       prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
     );
 
-  // â”€â”€â”€ Section 3 dashboards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Section 1 dashboards (I.2) ----------------------------------------
+  const addSection1Dashboard = () =>
+    setSection1Dashboards((prev) => [
+      ...prev,
+      {
+        _id: uid(),
+        order: prev.length + 1,
+        title: "",
+        completion: "",
+        period: "",
+        summary: "",
+        images: [],
+      },
+    ]);
+  const removeSection1Dashboard = (id: string) =>
+    setSection1Dashboards((prev) =>
+      prev.filter((t) => t._id !== id).map((t, i) => ({ ...t, order: i + 1 })),
+    );
+  const updateSection1Dashboard = (
+    id: string,
+    field: keyof Section1Dashboard,
+    value: any,
+  ) =>
+    setSection1Dashboards((prev) =>
+      prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
+    );
+
+  // --- Section 3 dashboards ----------------------------------------------
   const addSection3Dashboard = () =>
     setSection3Dashboards((prev) => [
       ...prev,
@@ -378,7 +586,7 @@ export default function TailanMinePage() {
       prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
     );
 
-  // â”€â”€â”€ Section 4 trainings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Section 4 trainings -----------------------------------------------
   const addSection4Training = () =>
     setSection4Trainings((prev) => [
       ...prev,
@@ -408,7 +616,7 @@ export default function TailanMinePage() {
       prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
     );
 
-  // â”€â”€â”€ Section 5 tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Section 5 tasks ---------------------------------------------------
   const addSection5Task = () =>
     setSection5Tasks((prev) => [
       ...prev,
@@ -427,7 +635,7 @@ export default function TailanMinePage() {
       prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
     );
 
-  // â”€â”€â”€ Section 6 activities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Section 6 activities ----------------------------------------------
   const addSection6Activity = () =>
     setSection6Activities((prev) => [
       ...prev,
@@ -452,11 +660,11 @@ export default function TailanMinePage() {
       prev.map((t) => (t._id === id ? { ...t, [field]: value } : t)),
     );
 
-  // â”€â”€â”€ Dynamic sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Dynamic sections ---------------------------------------------------
   const addSection = () =>
     setDynamicSections((prev) => [
       ...prev,
-      { _id: uid(), order: prev.length + 2, title: "Ð¨Ð¸Ð½Ñ Ñ…ÑÑÑÐ³", content: "" },
+      { _id: uid(), order: prev.length + 2, title: "Шинэ хэсэг", content: "" },
     ]);
 
   const removeSection = (id: string) =>
@@ -475,7 +683,7 @@ export default function TailanMinePage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-900">
-      {/* â”€â”€â”€ LEFT: Editor â”€â”€â”€ */}
+      {/* --- LEFT: Editor --- */}
       <div className="flex flex-col w-1/2 border-r border-slate-700/50 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur flex-shrink-0">
@@ -487,14 +695,21 @@ export default function TailanMinePage() {
               <ChevronLeft className="h-5 w-5" />
             </Link>
             <span className="font-semibold text-white text-sm">
-              Ó¨Ó©Ñ€Ð¸Ð¹Ð½ Ñ‚Ð°Ð¹Ð»Ð°Ð½
+              Миний тайлан
             </span>
           </div>
 
           <div className="flex items-center gap-2">
             {savedMsg && (
-              <span className="text-emerald-400 text-xs flex items-center gap-1">
-                <Check className="h-3 w-3" /> {savedMsg}
+              <span
+                className={`text-xs flex items-center gap-1 ${savedMsg.startsWith("❌") ? "text-red-400" : "text-emerald-400"}`}
+              >
+                {savedMsg.startsWith("❌") ? (
+                  <X className="h-3 w-3" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                {savedMsg.replace(/^❌ /, "")}
               </span>
             )}
             <button
@@ -507,7 +722,7 @@ export default function TailanMinePage() {
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
-              Ð¥Ð°Ð´Ð³Ð°Ð»Ð°Ñ…
+              Хадгалах
             </button>
             <button
               onClick={handleDownload}
@@ -519,7 +734,7 @@ export default function TailanMinePage() {
               ) : (
                 <Download className="h-3.5 w-3.5" />
               )}
-              Word Ñ‚Ð°Ñ‚Ð°Ñ…
+              Word татах
             </button>
             <button
               onClick={handleSubmit}
@@ -531,7 +746,7 @@ export default function TailanMinePage() {
               ) : (
                 <Send className="h-3.5 w-3.5" />
               )}
-              Ð˜Ð»Ð³ÑÑÑ…
+              Илгээх
             </button>
           </div>
         </div>
@@ -541,16 +756,16 @@ export default function TailanMinePage() {
           {/* Year & Quarter & Name */}
           <div className="flex gap-3 flex-wrap">
             <div className="flex-1 min-w-[120px]">
-              <label className={labelCls}>ÐÑÑ€ (ÐºÐ¸Ñ€Ð¸Ð»Ð»Ð¸Ñ†ÑÑÑ€)</label>
+              <label className={labelCls}>Нэр (кириллээр)</label>
               <input
                 value={cyrillicName}
                 onChange={(e) => setCyrillicName(e.target.value)}
-                placeholder="Ð–ÑˆÑÑ Ð¾Ð²Ð¾Ð³Ñ‚Ð¾Ð¹Ð³Ð¾Ð¾ Ð±Ð¸Ñ‡Ð½Ñ"
+                placeholder="Тайланд бичигдэх нэрээ оруулна уу"
                 className={inputCls}
               />
             </div>
             <div className="flex-1 min-w-[100px]">
-              <label className={labelCls}>ÐžÐ½</label>
+              <label className={labelCls}>Он</label>
               <select
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
@@ -564,7 +779,7 @@ export default function TailanMinePage() {
               </select>
             </div>
             <div className="flex-1">
-              <label className={labelCls}>Ð£Ð»Ð¸Ñ€Ð°Ð»</label>
+              <label className={labelCls}>Улирал</label>
               <select
                 value={quarter}
                 onChange={(e) => setQuarter(Number(e.target.value))}
@@ -572,30 +787,124 @@ export default function TailanMinePage() {
               >
                 {[1, 2, 3, 4].map((q) => (
                   <option key={q} value={q}>
-                    {q}-Ñ€ ÑƒÐ»Ð¸Ñ€Ð°Ð»
+                    {q}-р улирал
                   </option>
                 ))}
               </select>
             </div>
           </div>
-
           {/* Section 1: Planned tasks */}
           <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s1")}
+            >
               <h3 className="text-sm font-semibold text-white">
-                1. ÐÑƒÐ´Ð¸Ñ‚Ñ‹Ð½ Ò¯Ð¹Ð» Ð°Ð¶Ð¸Ð»Ð»Ð°Ð³Ð°Ð°Ð½Ð´ ÑˆÐ°Ð°Ñ€Ð´Ð»Ð°Ð³Ð°Ñ‚Ð°Ð¹ Ó©Ð³Ó©Ð³Ð´Ó©Ð» Ð±Ð¾Ð»Ð¾Ð²ÑÑ€ÑƒÑƒÐ»Ð°Ð»Ñ‚Ñ‹Ð½
-                Ð°Ð¶Ð¸Ð»
+                I. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн
+                байдал
               </h3>
-              <button
-                onClick={addTask}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> ÐœÓ©Ñ€ Ð½ÑÐ¼ÑÑ…
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); addTask(); }}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                </button>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s1") ? "-rotate-90" : ""}`} />
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {plannedTasks.map((t, idx) => (
+            <div className={`space-y-2 mt-3 ${collapsedSections.has("s1") ? "hidden" : ""}`}>
+              {plannedTasks.map((t) => {
+                const isOpen = expandedTaskIds.has(t._id);
+                return (
+                  <div key={t._id} className="bg-slate-700/30 rounded-lg overflow-hidden">
+                    {/* Collapsed header — always visible */}
+                    <div
+                      className="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-slate-700/60 transition select-none"
+                      onClick={() => toggleTaskExpand(t._id)}
+                    >
+                      <span className="text-xs text-slate-500 w-5 shrink-0 text-center">{t.order}</span>
+                      <span className="flex-1 text-sm font-bold text-white">
+                        {t.title ? t.title : <span className="font-normal text-slate-500">Ажлын нэр...</span>}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <label
+                          htmlFor={t._id + "-img"}
+                          className="cursor-pointer text-slate-400 hover:text-blue-400 transition"
+                          onClick={(e) => e.stopPropagation()}
+                          suppressHydrationWarning
+                        >
+                          <ImageIcon className="h-3.5 w-3.5" />
+                        </label>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeTask(t._id); }}
+                          className="text-red-400/70 hover:text-red-400 transition"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </div>
+                    </div>
+                    {/* Expanded form */}
+                    {isOpen && (
+                      <div className="px-3 pb-3 space-y-2 border-t border-slate-700/50">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <div className="col-span-2">
+                            <label className={labelCls}>Ажлын нэр</label>
+                            <input
+                              value={t.title}
+                              onChange={(e) => updateTask(t._id, "title", e.target.value)}
+                              placeholder="Ажлын нэр..."
+                              className={inputCls + " font-bold"}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className={labelCls}>Гүйцэтгэл /тайлбар/</label>
+                            <RichToolbar
+                              value={t.description}
+                              onChange={(v) => updateTask(t._id, "description", v)}
+                              placeholder="Дэлгэрэнгүй тайлбар бичнэ үү..."
+                              rows={2}
+                              className={inputCls + " resize-none"}
+                            />
+                          </div>
+                        </div>
+                        <RowImageUpload
+                          inputId={t._id + "-img"}
+                          images={t.images ?? []}
+                          onChange={(imgs) => updateTask(t._id, "images", imgs)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+          {/* Section I.2: Шинээр хөгжүүлсэн dashboard */}
+          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s12")}
+            >
+              <h3 className="text-sm font-semibold text-white">
+                I.2 Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн
+              </h3>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); addSection1Dashboard(); }}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Нэмэх
+                </button>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s12") ? "-rotate-90" : ""}`} />
+              </div>
+            </div>
+            <div className={`space-y-3 mt-3 ${collapsedSections.has("s12") ? "hidden" : ""}`}>
+              {section1Dashboards.map((t) => (
                 <div
                   key={t._id}
                   className="bg-slate-700/30 rounded-lg p-3 space-y-2"
@@ -604,97 +913,137 @@ export default function TailanMinePage() {
                     <span className="text-xs text-slate-400 font-medium">
                       #{t.order}
                     </span>
-                    <button
-                      onClick={() => removeTask(t._id)}
-                      className="text-red-400/70 hover:text-red-400 transition"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor={t._id + "-img"}
+                        className="cursor-pointer text-slate-400 hover:text-blue-400 transition"
+                        suppressHydrationWarning
+                      >
+                        <ImageIcon className="h-3.5 w-3.5" />
+                      </label>
+                      <button
+                        onClick={() => removeSection1Dashboard(t._id)}
+                        className="text-red-400/70 hover:text-red-400 transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="col-span-2">
-                      <label className={labelCls}>ÐÐ¶Ð»Ñ‹Ð½ Ð½ÑÑ€</label>
+                      <label className={labelCls}>Төлөвлөгөөт ажил</label>
                       <input
                         value={t.title}
                         onChange={(e) =>
-                          updateTask(t._id, "title", e.target.value)
+                          updateSection1Dashboard(
+                            t._id,
+                            "title",
+                            e.target.value,
+                          )
                         }
-                        placeholder="ÐÐ¶Ð»Ñ‹Ð½ Ð½ÑÑ€..."
+                        placeholder="Ажлын нэр..."
                         className={inputCls}
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>Ð“Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ» %</label>
+                      <label className={labelCls}>Ажлын гүйцэтгэл (%)</label>
                       <input
                         type="number"
                         min={0}
                         max={100}
                         value={t.completion}
                         onChange={(e) =>
-                          updateTask(
+                          updateSection1Dashboard(
                             t._id,
                             "completion",
-                            Number(e.target.value),
+                            e.target.value,
                           )
                         }
+                        placeholder="100"
                         className={inputCls}
                       />
                     </div>
-                    <div>
-                      <label className={labelCls}>Ð­Ñ…Ð»ÑÑ… Ð¾Ð³Ð½Ð¾Ð¾</label>
-                      <input
-                        value={t.startDate}
-                        onChange={(e) =>
-                          updateTask(t._id, "startDate", e.target.value)
-                        }
-                        placeholder="2025.10.01"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Ð”ÑƒÑƒÑÐ°Ñ… Ð¾Ð³Ð½Ð¾Ð¾</label>
-                      <input
-                        value={t.endDate}
-                        onChange={(e) =>
-                          updateTask(t._id, "endDate", e.target.value)
-                        }
-                        placeholder="2025.12.31"
-                        className={inputCls}
-                      />
+                    <div />
+                    <div className="col-span-2">
+                      <label className={labelCls}>Хийгдсэн хугацаа</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className={labelCls}>Эхлэх огноо</label>
+                          <input
+                            type="date"
+                            value={t.period.split(" – ")[0] ?? ""}
+                            onChange={(e) => {
+                              const end = t.period.split(" – ")[1] ?? "";
+                              updateSection1Dashboard(
+                                t._id,
+                                "period",
+                                e.target.value + (end ? ` – ${end}` : ""),
+                              );
+                            }}
+                            className={inputCls}
+                          />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Дуусах огноо</label>
+                          <input
+                            type="date"
+                            value={t.period.split(" – ")[1] ?? ""}
+                            onChange={(e) => {
+                              const start = t.period.split(" – ")[0] ?? "";
+                              updateSection1Dashboard(
+                                t._id,
+                                "period",
+                                (start ? `${start} – ` : "") + e.target.value,
+                              );
+                            }}
+                            className={inputCls}
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div className="col-span-2">
-                      <label className={labelCls}>Ð“Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ» /Ñ‚Ð¾Ð²Ñ‡/</label>
-                      <textarea
-                        value={t.description}
-                        onChange={(e) =>
-                          updateTask(t._id, "description", e.target.value)
-                        }
-                        placeholder="Ð“Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ»Ð¸Ð¹Ð½ Ñ‚Ð¾Ð²Ñ‡ Ñ‚Ð°Ð¹Ð»Ð±Ð°Ñ€..."
+                      <label className={labelCls}>Гүйцэтгэл /товч/</label>
+                      <RichToolbar
+                        value={t.summary}
+                        onChange={(v) => updateSection1Dashboard(t._id, "summary", v)}
+                        placeholder="Товч тайлбар..."
                         rows={2}
                         className={inputCls + " resize-none"}
                       />
                     </div>
                   </div>
+                  <RowImageUpload
+                    inputId={t._id + "-img"}
+                    images={t.images ?? []}
+                    onChange={(imgs) =>
+                      updateSection1Dashboard(t._id, "images", imgs)
+                    }
+                  />
                 </div>
               ))}
             </div>
           </section>
-
-          {/* Section II: Ó¨Ð³Ó©Ð³Ð´Ó©Ð» Ð±Ð¾Ð»Ð¾Ð²ÑÑ€ÑƒÑƒÐ»Ð°Ñ… Ð°Ð¶Ð¸Ð» */}
+          {/* Section II: Өгөгдөл боловсруулах ажил */}
           <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s2")}
+            >
               <h3 className="text-sm font-semibold text-white">
-                II. ÐÑƒÐ´Ð¸Ñ‚Ñ‹Ð½ Ò¯Ð¹Ð» Ð°Ð¶Ð¸Ð»Ð»Ð°Ð³Ð°Ð°Ð½Ð´ ÑˆÐ°Ð°Ñ€Ð´Ð»Ð°Ð³Ð°Ñ‚Ð°Ð¹ Ó©Ð³Ó©Ð³Ð´Ó©Ð» Ð±Ð¾Ð»Ð¾Ð²ÑÑ€ÑƒÑƒÐ»Ð°Ñ…
-                Ð°Ð¶Ð¸Ð»
+                II. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулах
+                ажил
               </h3>
-              <button
-                onClick={addSection2Task}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> ÐœÓ©Ñ€ Ð½ÑÐ¼ÑÑ…
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); addSection2Task(); }}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                </button>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s2") ? "-rotate-90" : ""}`} />
+              </div>
             </div>
-            <div className="space-y-2">
+            <div className={`space-y-2 mt-3 ${collapsedSections.has("s2") ? "hidden" : ""}`}>
               {section2Tasks.map((t) => (
                 <div
                   key={t._id}
@@ -709,9 +1058,16 @@ export default function TailanMinePage() {
                       onChange={(e) =>
                         updateSection2Task(t._id, "title", e.target.value)
                       }
-                      placeholder="Ð¢Ó©Ð»Ó©Ð²Ð»Ó©Ð³Ó©Ó©Ñ‚ Ð°Ð¶Ð»Ñ‹Ð½ Ð½ÑÑ€..."
+                      placeholder="Төлөвлөгөөт ажлын нэр..."
                       className={inputCls + " flex-1"}
                     />
+                    <label
+                      htmlFor={t._id + "-img"}
+                      className="cursor-pointer text-slate-400 hover:text-blue-400 transition shrink-0"
+                      suppressHydrationWarning
+                    >
+                      <ImageIcon className="h-3.5 w-3.5" />
+                    </label>
                     <button
                       onClick={() => removeSection2Task(t._id)}
                       className="text-red-400/70 hover:text-red-400 transition shrink-0"
@@ -719,55 +1075,103 @@ export default function TailanMinePage() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-1.5 pl-6">
-                    <input
-                      value={t.result}
-                      onChange={(e) =>
-                        updateSection2Task(t._id, "result", e.target.value)
-                      }
-                      placeholder="ÐÐ¶Ð»Ñ‹Ð½ Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ»..."
-                      className={inputCls}
-                    />
-                    <input
-                      value={t.period}
-                      onChange={(e) =>
-                        updateSection2Task(t._id, "period", e.target.value)
-                      }
-                      placeholder="Ð¥Ð¸Ð¹Ð³Ð´ÑÑÐ½ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°..."
-                      className={inputCls}
-                    />
-                    <input
-                      value={t.completion}
-                      onChange={(e) =>
-                        updateSection2Task(t._id, "completion", e.target.value)
-                      }
-                      placeholder="Ð“Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ»..."
-                      className={inputCls}
-                    />
+                  <div className="space-y-1.5 pl-6">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={t.result}
+                        onChange={(e) =>
+                          updateSection2Task(t._id, "result", e.target.value)
+                        }
+                        placeholder="Ажлын гүйцэтгэл (%)"
+                        className={inputCls}
+                      />
+                      <input
+                        value={t.completion}
+                        onChange={(e) =>
+                          updateSection2Task(
+                            t._id,
+                            "completion",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="Гүйцэтгэл /товч/"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <label className={labelCls}>Эхлэх огноо</label>
+                        <input
+                          type="date"
+                          value={t.period.split(" – ")[0] ?? ""}
+                          onChange={(e) => {
+                            const end = t.period.split(" – ")[1] ?? "";
+                            updateSection2Task(
+                              t._id,
+                              "period",
+                              e.target.value + (end ? ` – ${end}` : ""),
+                            );
+                          }}
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Дуусах огноо</label>
+                        <input
+                          type="date"
+                          value={t.period.split(" – ")[1] ?? ""}
+                          onChange={(e) => {
+                            const start = t.period.split(" – ")[0] ?? "";
+                            updateSection2Task(
+                              t._id,
+                              "period",
+                              (start ? `${start} – ` : "") + e.target.value,
+                            );
+                          }}
+                          className={inputCls}
+                        />
+                      </div>
+                    </div>
                   </div>
+                  <RowImageUpload
+                    inputId={t._id + "-img"}
+                    images={t.images ?? []}
+                    onChange={(imgs) =>
+                      updateSection2Task(t._id, "images", imgs)
+                    }
+                  />
                 </div>
               ))}
             </div>
           </section>
-
-          {/* Section III: Ð¢Ð¾Ð³Ñ‚Ð¼Ð¾Ð» Ñ…Ð¸Ð¹Ð³Ð´Ð´ÑÐ³ Ð°Ð¶Ð»ÑƒÑƒÐ´ */}
+          {/* Section III: Тогтмол хийгддэг ажлууд */}
           <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <h3 className="text-sm font-semibold text-white mb-3">
-              III. Ð¢Ð¾Ð³Ñ‚Ð¼Ð¾Ð» Ñ…Ð¸Ð¹Ð³Ð´Ð´ÑÐ³ Ð°Ð¶Ð»ÑƒÑƒÐ´
-            </h3>
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s3")}
+            >
+              <h3 className="text-sm font-semibold text-white">
+                III. Тогтмол хийгддэг ажлууд
+              </h3>
+              <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s3") ? "-rotate-90" : ""}`} />
+            </div>
 
-            {/* III.1 â€“ ÐÐ²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¶ÑƒÑƒÐ»Ð°Ð»Ñ‚ */}
+            <div className={`mt-3 ${collapsedSections.has("s3") ? "hidden" : ""}`}>
+            {/* III.1 Автоматжуулалт */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-medium text-slate-300">
-                  III.1 Ó¨Ð³Ó©Ð³Ð´Ó©Ð» Ð±Ð¾Ð»Ð¾Ð²ÑÑ€ÑƒÑƒÐ»Ð°Ð»Ñ‚ Ð°Ð²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¶ÑƒÑƒÐ»Ð°Ð»Ñ‚Ñ‹Ð³ Ñ†Ð°Ð³ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ð´ Ð½ÑŒ
-                  Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÑÑÐ½ Ð±Ð°Ð¹Ð´Ð°Ð»
+                  III.1 Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь
+                  гүйцэтгэсэн байдал
                 </p>
                 <button
                   onClick={addSection3AutoTask}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition shrink-0"
                 >
-                  <Plus className="h-3.5 w-3.5" /> ÐœÓ©Ñ€
+                  <Plus className="h-3.5 w-3.5" /> Нэмэх
                 </button>
               </div>
               <div className="space-y-2">
@@ -785,7 +1189,7 @@ export default function TailanMinePage() {
                         onChange={(e) =>
                           updateSection3AutoTask(t._id, "title", e.target.value)
                         }
-                        placeholder="Ð¢Ð¾Ð³Ñ‚Ð¼Ð¾Ð» Ñ…Ð¸Ð¹Ð³Ð´Ð´ÑÐ³ Ð°Ð²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¶ÑƒÑƒÐ»Ð°Ð»Ñ‚..."
+                        placeholder="Тогтмол хийгддэг автоматжуулалт..."
                         className={inputCls + " flex-1"}
                       />
                       <button
@@ -801,10 +1205,13 @@ export default function TailanMinePage() {
                         onChange={(e) =>
                           updateSection3AutoTask(t._id, "value", e.target.value)
                         }
-                        placeholder="ÐÑ‡ Ñ…Ð¾Ð»Ð±Ð¾Ð³Ð´Ð¾Ð»/Ñ…ÑÑ€ÑÐ³Ð»ÑÑ..."
+                        placeholder="Ач холбогдол/хэрэглээ..."
                         className={inputCls}
                       />
                       <input
+                        type="number"
+                        min={0}
+                        max={100}
                         value={t.rating}
                         onChange={(e) =>
                           updateSection3AutoTask(
@@ -813,7 +1220,7 @@ export default function TailanMinePage() {
                             e.target.value,
                           )
                         }
-                        placeholder="Ð¥ÑÑ€ÑÐ³Ð»ÑÐ³Ñ‡Ð¸Ð¹Ð½ Ò¯Ð½ÑÐ»Ð³ÑÑ..."
+                        placeholder="Хэрэглэгчийн үнэлгээ (0-100)"
                         className={inputCls}
                       />
                     </div>
@@ -822,17 +1229,17 @@ export default function TailanMinePage() {
               </div>
             </div>
 
-            {/* III.2 â€“ Dashboard */}
+            {/* III.2 Dashboard */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-medium text-slate-300">
-                  III.2 Ð”Ð°ÑˆÐ±Ð¾Ð°Ñ€Ð´Ñ‹Ð½ Ñ…ÑÐ²Ð¸Ð¹Ð½ Ð°Ð¶Ð¸Ð»Ð»Ð°Ð³Ð°Ð°Ð³ Ñ…Ð°Ð½Ð³Ð°Ð¶ Ð°Ð¶Ð¸Ð»Ð»Ð°ÑÐ°Ð½ Ð±Ð°Ð¹Ð´Ð°Ð»
+                  III.2 Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал
                 </p>
                 <button
                   onClick={addSection3Dashboard}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition shrink-0"
                 >
-                  <Plus className="h-3.5 w-3.5" /> ÐœÓ©Ñ€
+                  <Plus className="h-3.5 w-3.5" /> Нэмэх
                 </button>
               </div>
               <div className="space-y-2">
@@ -854,7 +1261,7 @@ export default function TailanMinePage() {
                             e.target.value,
                           )
                         }
-                        placeholder="Dashboard Ð½ÑÑ€..."
+                        placeholder="Dashboard нэр..."
                         className={inputCls + " flex-1"}
                       />
                       <button
@@ -874,10 +1281,13 @@ export default function TailanMinePage() {
                             e.target.value,
                           )
                         }
-                        placeholder="ÐÑ‡ Ñ…Ð¾Ð»Ð±Ð¾Ð³Ð´Ð¾Ð»/Ñ…ÑÑ€ÑÐ³Ð»ÑÑ..."
+                        placeholder="Ач холбогдол/хэрэглээ..."
                         className={inputCls}
                       />
                       <input
+                        type="number"
+                        min={0}
+                        max={100}
                         value={t.rating}
                         onChange={(e) =>
                           updateSection3Dashboard(
@@ -886,7 +1296,7 @@ export default function TailanMinePage() {
                             e.target.value,
                           )
                         }
-                        placeholder="Ð¥ÑÑ€ÑÐ³Ð»ÑÐ³Ñ‡ Ð½ÑÐ³Ð¶Ð¸Ð¹Ð½ Ò¯Ð½ÑÐ»Ð³ÑÑ..."
+                        placeholder="Хэрэглэгч нэгжийн үнэлгээ (0-100)"
                         className={inputCls}
                       />
                     </div>
@@ -894,71 +1304,28 @@ export default function TailanMinePage() {
                 ))}
               </div>
             </div>
-          </section>
-
-          {/* Dynamic sections */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white">
-                Ð¢Ð¾Ð¼ Ñ…ÑÑÐ³Ò¯Ò¯Ð´ (VIII, IX, â€¦)
-              </h3>
-              <button
-                onClick={addSection}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> Ð¢Ð¾Ð¼ Ñ…ÑÑÑÐ³ Ð½ÑÐ¼ÑÑ…
-              </button>
             </div>
-            <div className="space-y-3">
-              {dynamicSections.map((sec, idx) => (
-                <div
-                  key={sec._id}
-                  className="bg-slate-700/30 rounded-lg p-3 space-y-2"
+          </section>
+          {/* Section IV: Хамрагдсан сургалт */}
+          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s4")}
+            >
+              <h3 className="text-sm font-semibold text-white">
+                IV. Хамрагдсан сургалт
+              </h3>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); addSection4Training(); }}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 font-medium w-8 shrink-0">
-                      {ROMAN_NUMS[idx + 7] ?? `${idx + 8}`}.
-                    </span>
-                    <input
-                      value={sec.title}
-                      onChange={(e) =>
-                        updateSection(sec._id, "title", e.target.value)
-                      }
-                      className={inputCls + " flex-1"}
-                      placeholder="Ð¥ÑÑÐ³Ð¸Ð¹Ð½ Ð³Ð°Ñ€Ñ‡Ð¸Ð³..."
-                    />
-                    <button
-                      onClick={() => removeSection(sec._id)}
-                      className="text-red-400/70 hover:text-red-400 transition flex-shrink-0"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <RichToolbar
-                    value={sec.content}
-                    onChange={(v) => updateSection(sec._id, "content", v)}
-                    rows={4}
-                    placeholder="Ð¥ÑÑÐ³Ð¸Ð¹Ð½ Ð°Ð³ÑƒÑƒÐ»Ð³Ð°..."
-                    className={inputCls + " resize-y"}
-                  />
-                </div>
-              ))}
+                  <Plus className="h-3.5 w-3.5" /> Сургалт нэмэх
+                </button>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s4") ? "-rotate-90" : ""}`} />
+              </div>
             </div>
-          </section>
-
-          {/* Section IV: Ð¥Ð°Ð¼Ñ€Ð°Ð³Ð´ÑÐ°Ð½ ÑÑƒÑ€Ð³Ð°Ð»Ñ‚ */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white">
-                IV. Ð¥Ð°Ð¼Ñ€Ð°Ð³Ð´ÑÐ°Ð½ ÑÑƒÑ€Ð³Ð°Ð»Ñ‚
-              </h3>
-              <button
-                onClick={addSection4Training}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> ÐœÓ©Ñ€ Ð½ÑÐ¼ÑÑ…
-              </button>
-            </div>
+            <div className={`mt-3 ${collapsedSections.has("s4") ? "hidden" : ""}`}>
             <div className="space-y-2">
               {section4Trainings.map((t) => (
                 <div
@@ -978,7 +1345,7 @@ export default function TailanMinePage() {
                           e.target.value,
                         )
                       }
-                      placeholder="Ð¡ÑƒÑ€Ð³Ð°Ð»Ñ‚Ñ‹Ð½ Ð½ÑÑ€..."
+                      placeholder="Сургалтын нэр..."
                       className={inputCls + " flex-1"}
                     />
                     <button
@@ -998,97 +1365,130 @@ export default function TailanMinePage() {
                           e.target.value,
                         )
                       }
-                      placeholder="Ð—Ð¾Ñ…Ð¸Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð³Ñ‡"
+                      placeholder="Зохион байгуулагч"
                       className={inputCls}
                     />
-                    <input
-                      value={t.type}
-                      onChange={(e) =>
-                        updateSection4Training(t._id, "type", e.target.value)
-                      }
-                      placeholder="ÐžÐ½Ð»Ð°Ð¹Ð½ / Ð¢Ð°Ð½Ñ…Ð¸Ð¼"
-                      className={inputCls}
-                    />
-                    <input
-                      value={t.date}
-                      onChange={(e) =>
-                        updateSection4Training(t._id, "date", e.target.value)
-                      }
-                      placeholder="Ð¥ÑÐ·ÑÑ (Ð¾Ð³Ð½Ð¾Ð¾)"
-                      className={inputCls}
-                    />
-                    <input
-                      value={t.format}
-                      onChange={(e) =>
-                        updateSection4Training(t._id, "format", e.target.value)
-                      }
-                      placeholder="Ð¡ÑƒÑ€Ð³Ð°Ð»Ñ‚Ñ‹Ð½ Ñ…ÑÐ»Ð±ÑÑ€"
-                      className={inputCls}
-                    />
+                    <div>
+                      <label className={labelCls}>Сургалтын төрөл</label>
+                      <select
+                        value={t.type}
+                        onChange={(e) =>
+                          updateSection4Training(t._id, "type", e.target.value)
+                        }
+                        className={selectCls}
+                      >
+                        <option value="">-- Сонгох --</option>
+                        <option value="Гадаад">Гадаад</option>
+                        <option value="Дотоод">Дотоод</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Огноо</label>
+                      <input
+                        type="date"
+                        value={t.date}
+                        onChange={(e) =>
+                          updateSection4Training(t._id, "date", e.target.value)
+                        }
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Сургалтын хэлбэр</label>
+                      <select
+                        value={t.format}
+                        onChange={(e) =>
+                          updateSection4Training(t._id, "format", e.target.value)
+                        }
+                        className={selectCls}
+                      >
+                        <option value="">-- Сонгох --</option>
+                        <option value="Онлайн">Онлайн</option>
+                        <option value="Танхим">Танхим</option>
+                      </select>
+                    </div>
                     <input
                       value={t.hours}
                       onChange={(e) =>
                         updateSection4Training(t._id, "hours", e.target.value)
                       }
-                      placeholder="Ð¦Ð°Ð³"
+                      placeholder="Цаг"
                       className={inputCls}
                     />
-                    <input
-                      value={t.meetsAuditGoal}
-                      onChange={(e) =>
-                        updateSection4Training(
-                          t._id,
-                          "meetsAuditGoal",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="ÐÐ¸Ð¹Ñ†ÑÑÐ½ / ÐÐ¸Ð¹Ñ†ÑÑÐ³Ò¯Ð¹"
-                      className={inputCls}
-                    />
-                    <input
-                      value={t.sharedKnowledge}
-                      onChange={(e) =>
-                        updateSection4Training(
-                          t._id,
-                          "sharedKnowledge",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Ð¥ÑƒÐ²Ð°Ð°Ð»Ñ†ÑÐ°Ð½ / Ð¥ÑƒÐ²Ð°Ð°Ð»Ñ†Ð°Ð°Ð³Ò¯Ð¹"
-                      className={inputCls + " col-span-2"}
-                    />
+                    <div>
+                      <label className={labelCls}>Аудитын зорилгод нийцсэн эсэх</label>
+                      <select
+                        value={t.meetsAuditGoal}
+                        onChange={(e) =>
+                          updateSection4Training(
+                            t._id,
+                            "meetsAuditGoal",
+                            e.target.value,
+                          )
+                        }
+                        className={selectCls}
+                      >
+                        <option value="">-- Сонгох --</option>
+                        <option value="Нийцсэн">Нийцсэн</option>
+                        <option value="Нийцээгүй">Нийцээгүй</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Мэдлэгээ хуваалцсан эсэх</label>
+                      <select
+                        value={t.sharedKnowledge}
+                        onChange={(e) =>
+                          updateSection4Training(
+                            t._id,
+                            "sharedKnowledge",
+                            e.target.value,
+                          )
+                        }
+                        className={selectCls}
+                      >
+                        <option value="">-- Сонгох --</option>
+                        <option value="Хуваалцсан">Хуваалцсан</option>
+                        <option value="Хуваалцаагүй">Хуваалцаагүй</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-3">
               <p className="text-xs font-medium text-slate-300 mb-1">
-                IV.1 Ð¡ÑƒÑ€Ð³Ð°Ð»Ñ‚Ð°Ð°Ñ Ð¾Ð»Ð¶ Ð°Ð²ÑÐ°Ð½ Ð¼ÑÐ´Ð»ÑÐ³ÑÑ Ð°ÑˆÐ¸Ð³Ð»Ð°Ð¶ Ð±ÑƒÐ¹ Ð±Ð°Ð¹Ð´Ð°Ð»
+                IV.1 Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал
               </p>
               <RichToolbar
                 value={section4KnowledgeText}
                 onChange={setSection4KnowledgeText}
                 rows={3}
-                placeholder="ÐœÑÐ´Ð»ÑÐ³ÑÑ Ð°ÑˆÐ¸Ð³Ð»Ð°Ð¶ Ð±ÑƒÐ¹ Ð±Ð°Ð¹Ð´Ð»Ð°Ð° Ñ‚Ð°Ð¹Ð»Ð±Ð°Ñ€Ð»Ð°Ð½Ð° ÑƒÑƒ..."
+                placeholder="Сургалтаас авсан мэдлэгийг хэрхэн ашиглаж байгаа тухай..."
                 className={inputCls + " resize-y"}
               />
             </div>
-          </section>
-
-          {/* Section V: Ò®Ò¯Ñ€ÑÐ³ Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€Ñ‹Ð½ Ð±Ð¸ÐµÐ»ÑÐ»Ñ‚ */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white">
-                V. Ò®Ò¯Ñ€ÑÐ³ Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€Ñ‹Ð½ Ð±Ð¸ÐµÐ»ÑÐ»Ñ‚
-              </h3>
-              <button
-                onClick={addSection5Task}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> ÐœÓ©Ñ€ Ð½ÑÐ¼ÑÑ…
-              </button>
             </div>
-            <div className="space-y-2">
+          </section>
+          {/* Section V: Үүрэг даалгаварын биелэлт */}
+          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s5")}
+            >
+              <h3 className="text-sm font-semibold text-white">
+                V. Үүрэг даалгаварын биелэлт
+              </h3>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); addSection5Task(); }}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                </button>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s5") ? "-rotate-90" : ""}`} />
+              </div>
+            </div>
+            <div className={`space-y-2 mt-3 ${collapsedSections.has("s5") ? "hidden" : ""}`}>
               {section5Tasks.map((t) => (
                 <div
                   key={t._id}
@@ -1103,7 +1503,7 @@ export default function TailanMinePage() {
                       onChange={(e) =>
                         updateSection5Task(t._id, "taskType", e.target.value)
                       }
-                      placeholder="ÐÐ¶Ð»Ñ‹Ð½ Ñ‚Ó©Ñ€Ó©Ð»..."
+                      placeholder="Ажлын төрөл..."
                       className={inputCls + " flex-1"}
                     />
                     <button
@@ -1114,16 +1514,10 @@ export default function TailanMinePage() {
                     </button>
                   </div>
                   <div className="pl-6">
-                    <textarea
+                    <RichToolbar
                       value={t.completedWork}
-                      onChange={(e) =>
-                        updateSection5Task(
-                          t._id,
-                          "completedWork",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Ð¥Ð¸Ð¹Ð³Ð´ÑÑÐ½ Ð°Ð¶Ð¸Ð»..."
+                      onChange={(v) => updateSection5Task(t._id, "completedWork", v)}
+                      placeholder="Хийгдсэн ажил..."
                       rows={2}
                       className={inputCls + " resize-none"}
                     />
@@ -1132,21 +1526,26 @@ export default function TailanMinePage() {
               ))}
             </div>
           </section>
-
-          {/* Section VI: Ð¥Ð°Ð¼Ñ‚ Ð¾Ð»Ð½Ñ‹ Ð°Ð¶Ð¸Ð» */}
+          {/* Section VI: Хамт олны ажил */}
           <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s6")}
+            >
               <h3 className="text-sm font-semibold text-white">
-                VI. Ð¥Ð°Ð¼Ñ‚ Ð¾Ð»Ð½Ñ‹ Ð°Ð¶Ð¸Ð»
+                VI. Хамт олны ажил
               </h3>
-              <button
-                onClick={addSection6Activity}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> ÐœÓ©Ñ€ Ð½ÑÐ¼ÑÑ…
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); addSection6Activity(); }}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                </button>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s6") ? "-rotate-90" : ""}`} />
+              </div>
             </div>
-            <div className="space-y-2">
+            <div className={`space-y-2 mt-3 ${collapsedSections.has("s6") ? "hidden" : ""}`}>
               {section6Activities.map((t) => (
                 <div
                   key={t._id}
@@ -1165,7 +1564,7 @@ export default function TailanMinePage() {
                           e.target.value,
                         )
                       }
-                      placeholder="Ð¥Ð°Ð¼Ñ‚ Ð¾Ð»Ð½Ñ‹ Ð°Ð¶Ð¸Ð»..."
+                      placeholder="Хамт олны ажил..."
                       className={inputCls + " flex-1"}
                     />
                     <button
@@ -1177,11 +1576,11 @@ export default function TailanMinePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 pl-6">
                     <input
+                      type="date"
                       value={t.date}
                       onChange={(e) =>
                         updateSection6Activity(t._id, "date", e.target.value)
                       }
-                      placeholder="ÐžÐ³Ð½Ð¾Ð¾"
                       className={inputCls}
                     />
                     <input
@@ -1193,7 +1592,7 @@ export default function TailanMinePage() {
                           e.target.value,
                         )
                       }
-                      placeholder="Ð¡Ð°Ð½Ð°Ð°Ñ‡Ð¸Ð»Ð³Ð°"
+                      placeholder="Санаачилга"
                       className={inputCls}
                     />
                   </div>
@@ -1201,99 +1600,94 @@ export default function TailanMinePage() {
               ))}
             </div>
           </section>
-
-          {/* Section VII: Ð¨Ð¸Ð½Ñ ÑÐ°Ð½Ð°Ð» ÑÐ°Ð½Ð°Ð°Ñ‡Ð¸Ð»Ð³Ð° */}
+          {/* Section VII: Шинэ санал санаачилга */}
           <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <h3 className="text-sm font-semibold text-white mb-3">
-              VII. Ð¨Ð¸Ð½Ñ ÑÐ°Ð½Ð°Ð» ÑÐ°Ð½Ð°Ð°Ñ‡Ð¸Ð»Ð³Ð°
-            </h3>
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("s7")}
+            >
+              <h3 className="text-sm font-semibold text-white">
+                VII. Шинэ санал санаачилга
+              </h3>
+              <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s7") ? "-rotate-90" : ""}`} />
+            </div>
+            <div className={`mt-3 ${collapsedSections.has("s7") ? "hidden" : ""}`}>
             <RichToolbar
               value={section7Text}
               onChange={setSection7Text}
               rows={4}
-              placeholder="Ð¡Ð°Ð½Ð°Ð» ÑÐ°Ð½Ð°Ð°Ñ‡Ð¸Ð»Ð³Ð°Ð° ÑÐ½Ð´ Ð±Ð¸Ñ‡Ð½Ñ Ò¯Ò¯..."
+              placeholder="Шинэ санал санаачилга, дэвшүүлсэн санааг бичнэ үү..."
               className={inputCls + " resize-y"}
             />
-          </section>
-
-          {/* Ð—ÑƒÑ€Ð°Ð³Ð½ÑƒÑƒÐ´aa */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-slate-400" />
-                Ð—ÑƒÑ€Ð°Ð³Ð½ÑƒÑƒÐ´aa
-              </h3>
-              <button
-                onClick={() => imgFileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 transition"
-              >
-                {uploading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Upload className="h-3.5 w-3.5" />
-                )}
-                Ð—ÑƒÑ€Ð°Ð³ Ð½ÑÐ¼ÑÑ…
-              </button>
-              <input
-                ref={imgFileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
             </div>
-            {images.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-4">
-                Ð—ÑƒÑ€Ð°Ð³ Ð±Ð°Ð¹Ñ…Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð°
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {images.map((img) => (
-                  <div
-                    key={img.id}
-                    className="relative group rounded-lg overflow-hidden bg-slate-700/40 aspect-square"
-                  >
-                    {img.blobUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={img.blobUrl}
-                        alt={img.filename}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-slate-600" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                      <button
-                        onClick={() => handleDeleteImage(img.id)}
-                        className="p-1.5 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <p className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-white truncate px-1.5 py-0.5">
-                      {img.filename}
-                    </p>
-                  </div>
-                ))}
+          </section>{" "}
+          {/* Dynamic sections */}
+          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => toggleSection("sdyn")}
+            >
+              <h3 className="text-sm font-semibold text-white">
+                Нэмэлт хэсгүүд (VIII, IX, …)
+              </h3>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); addSection(); }}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Нэмэлт хэсэг нэмэх
+                </button>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("sdyn") ? "-rotate-90" : ""}`} />
               </div>
-            )}
+            </div>
+            <div className={`space-y-3 mt-3 ${collapsedSections.has("sdyn") ? "hidden" : ""}`}>
+              {dynamicSections.map((sec, idx) => (
+                <div
+                  key={sec._id}
+                  className="bg-slate-700/30 rounded-lg p-3 space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 font-medium w-8 shrink-0">
+                      {ROMAN_NUMS[idx + 7] ?? `${idx + 8}`}.
+                    </span>
+                    <input
+                      value={sec.title}
+                      onChange={(e) =>
+                        updateSection(sec._id, "title", e.target.value)
+                      }
+                      className={inputCls + " flex-1"}
+                      placeholder="Хэсгийн гарчиг..."
+                    />
+                    <button
+                      onClick={() => removeSection(sec._id)}
+                      className="text-red-400/70 hover:text-red-400 transition flex-shrink-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <RichToolbar
+                    value={sec.content}
+                    onChange={(v) => updateSection(sec._id, "content", v)}
+                    rows={4}
+                    placeholder="Хэсгийн агуулга..."
+                    className={inputCls + " resize-y"}
+                  />
+                </div>
+              ))}
+            </div>
           </section>
         </div>
       </div>
 
-      {/* â”€â”€â”€ RIGHT: Live Word Preview â”€â”€â”€ */}
+      {/* --- RIGHT: Live Word Preview --- */}
       <div className="flex flex-col w-1/2 bg-slate-600 overflow-hidden">
         <div className="px-4 py-2.5 border-b border-slate-500/50 text-xs font-medium text-slate-300 flex items-center gap-2 flex-shrink-0 bg-slate-700/50">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Realtime preview â€” Word Ð±Ð°Ñ€Ð¸Ð¼Ñ‚
+          Realtime preview — Word баримт
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+        <div className="flex-1 overflow-y-auto overflow-x-auto p-4">
           <WordPreview
-            userName={mounted ? cyrillicName.trim() || (user?.name ?? "") : ""}
+            userName={mounted ? cyrillicName.trim() : ""}
             userPosition={user?.position}
             userDepartment={user?.department}
             year={year}
@@ -1302,6 +1696,7 @@ export default function TailanMinePage() {
             section2Tasks={section2Tasks}
             section3AutoTasks={section3AutoTasks}
             section3Dashboards={section3Dashboards}
+            section1Dashboards={section1Dashboards}
             dynamicSections={dynamicSections}
             section4Trainings={section4Trainings}
             section4KnowledgeText={section4KnowledgeText}

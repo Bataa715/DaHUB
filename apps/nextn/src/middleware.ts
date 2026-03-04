@@ -17,6 +17,8 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/sanamsargui-tuuwer": ["sanamsargui-tuuwer"],
   "/tools/pivot": ["pivot"],
   "/tools/report": ["report"],
+  "/tools/chess": ["chess"],
+  "/tools/english": ["english"],
 };
 
 async function getTokenPayload(token: string | undefined) {

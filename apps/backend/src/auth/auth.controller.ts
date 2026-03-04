@@ -30,14 +30,15 @@ import {
   RefreshTokenDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
+import { AdminGuard } from "./guards/admin.guard";
 
 @ApiTags("auth")
 @Controller("auth")
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  // Keep signup for admin to create users (protected)
-  @UseGuards(JwtAuthGuard)
+  // Create a new user — Admin only
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth("JWT-auth")
   @Post("signup")
   @ApiOperation({
@@ -51,7 +52,8 @@ export class AuthController {
     return this.authService.signup(signupDto);
   }
 
-  // Check if user exists (public)
+  // Check if user exists
+  @UseGuards(ThrottlerGuard)
   @Post("check-user")
   @ApiOperation({
     summary: "Check if user exists",
@@ -63,7 +65,8 @@ export class AuthController {
     return this.authService.checkUser(checkUserDto);
   }
 
-  // Register new user without password (public)
+  // Register new user — public self-registration (employee registers, then sets own password)
+  @UseGuards(ThrottlerGuard)
   @Post("register")
   @ApiOperation({
     summary: "Register new user",
@@ -75,7 +78,8 @@ export class AuthController {
     return this.authService.registerUser(registerUserDto);
   }
 
-  // Set password for first-time user (public)
+  // Set password for first-time user (throttled)
+  @UseGuards(ThrottlerGuard)
   @Post("set-password")
   @ApiOperation({
     summary: "Set password for new user",
@@ -88,7 +92,8 @@ export class AuthController {
     return this.authService.setPassword(setPasswordDto);
   }
 
-  // Get userId prefix for department (public)
+  // Get userId prefix for department (requires login)
+  @UseGuards(JwtAuthGuard)
   @Get("user-id-prefix/:department")
   @ApiOperation({
     summary: "Get user ID prefix",
@@ -172,12 +177,11 @@ export class AuthController {
     return this.authService.getUsersByDepartment(department);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth("JWT-auth")
+  @UseGuards(ThrottlerGuard)
   @Get("search")
   @ApiOperation({
     summary: "Search users",
-    description: "Search users by user ID or name",
+    description: "Search users by user ID or name (public - used by login suggestion dropdown)",
   })
   @ApiQuery({ name: "q", description: "Search query", example: "Bold" })
   @ApiQuery({
@@ -207,6 +211,7 @@ export class AuthController {
     return req.user;
   }
 
+  @UseGuards(ThrottlerGuard)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
   @Post("change-password")
@@ -226,6 +231,7 @@ export class AuthController {
     return this.authService.changePassword(req.user.id, changePasswordDto);
   }
 
+  @UseGuards(ThrottlerGuard)
   @Post("refresh")
   @ApiOperation({
     summary: "Refresh access token",

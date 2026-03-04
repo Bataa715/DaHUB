@@ -1,1341 +1,490 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { tailanApi } from "@/lib/api";
+import React, { useState, useEffect } from "react";
 import {
-  ChevronLeft,
-  Download,
-  Users,
-  Loader2,
-  Check,
-  Clock,
-  Trash2,
-  Eye,
-  Upload,
-  X,
-  ImageIcon,
+  ChevronLeft, Download, Save,
+  BarChart3, Users2, Settings, BookOpen, Award,
 } from "lucide-react";
 import Link from "next/link";
+import { tailanApi } from "@/lib/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface ReportRow {
-  id: string;
-  userId: string;
-  userName: string;
-  status: string;
-  updatedAt: string;
-}
-interface MergedTask {
-  _id: string;
-  memberName: string;
-  order: number;
-  title: string;
-  completion: number;
-  startDate: string;
-  endDate: string;
-  description: string;
-}
-interface MergedSection {
-  _id: string;
-  title: string;
-  entries: { _id: string; memberName: string; content: string }[];
-}
-interface OtherEntry {
-  _id: string;
-  memberName: string;
-  content: string;
-}
-interface Activity {
-  _id: string;
-  memberName: string;
-  name: string;
-  date: string;
+import {
+  SECTION_DEFS, Q_NAMES, SectionReport,
+  getCurrentYear, getCurrentQuarter,
+  DEFAULT_S1_KPI, DEFAULT_S2_KPI,
+  emptySection, scoreLabel,
+  DashboardRow, Section2TaskRow, Section14Row,
+} from "./_types";
+import { SectionEditor } from "./_SectionEditor";
+import { WordPreview } from "./_WordPreview";
+
+// ─── Tab style maps ───────────────────────────────────────────────────────────
+
+const COLOR_TAB_ACTIVE: Record<string, string> = {
+  blue:    "bg-blue-500/20 border border-blue-500/40 text-blue-300",
+  emerald: "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300",
+  amber:   "bg-amber-500/20 border border-amber-500/40 text-amber-300",
+  purple:  "bg-purple-500/20 border border-purple-500/40 text-purple-300",
+};
+const COLOR_ICON: Record<string, string> = {
+  blue: "text-blue-400", emerald: "text-emerald-400",
+  amber: "text-amber-400", purple: "text-purple-400",
+};
+
+function SectionIcon({ icon, cls }: { icon: string; cls: string }) {
+  if (icon === "bar")      return <BarChart3  className={cls} />;
+  if (icon === "users")    return <Users2     className={cls} />;
+  if (icon === "settings") return <Settings   className={cls} />;
+  if (icon === "book")     return <BookOpen   className={cls} />;
+  return null;
 }
 
-const uid = () => Math.random().toString(36).slice(2);
-const getCurrentYear = () => new Date().getFullYear();
-const getCurrentQuarter = () => Math.ceil((new Date().getMonth() + 1) / 3);
-const qNames = ["I", "II", "III", "IV"];
+// ─── Word export ──────────────────────────────────────────────────────────────
 
-interface DeptImage {
-  id: string;
-  userId: string;
-  filename: string;
-  mimeType: string;
-  uploadedAt: string;
-  blobUrl?: string;
-}
+function buildWordHtml(year: number, quarter: number, sections: Record<string, SectionReport>): string {
+  const qName = Q_NAMES[(quarter - 1) % 4];
+  const today = new Date();
+  const dateStr = `${today.getFullYear()} оны ${today.getMonth() + 1} сарын ${today.getDate()}-ны өдөр`;
+  const td0 = "border:0.5px solid #000;padding:4px 6px;font-size:11pt";
 
-function renderInline(text: string): React.ReactNode[] {
-  const parts = text.split(/(\*\*[^*]*\*\*)/g);
-  return parts.map((p, i) =>
-    p.startsWith("**") && p.endsWith("**") ? (
-      <strong key={i}>{p.slice(2, -2)}</strong>
-    ) : (
-      <span key={i}>{p}</span>
-    ),
-  );
-}
+  const sectionHtml = SECTION_DEFS.map((def) => {
+    const sec = sections[def.id] ?? emptySection();
+    const hasContent = sec.content.trim() || sec.achievements.trim() || sec.issues.trim();
+    const subtitle = "subtitle" in def ? (def as { subtitle?: string }).subtitle : undefined;
 
-function parseContent(text: string, tc: { n: number }): React.ReactNode {
-  const lines = text.split("\n");
-  const nodes: React.ReactNode[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (line.trim().startsWith("|")) {
-      const tLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith("|")) {
-        tLines.push(lines[i]);
-        i++;
-      }
-      const dataRows = tLines
-        .filter((l) => !/^\s*\|[\s\-|]+\|\s*$/.test(l))
-        .map((l) =>
-          l
-            .split("|")
-            .filter(Boolean)
-            .map((c) => c.trim()),
-        );
-      if (dataRows.length > 0) {
-        tc.n++;
-        const n = tc.n;
-        nodes.push(
-          <div key={`tbl-${i}`} style={{ marginBottom: "8pt" }}>
-            <div
-              style={{
-                fontSize: "9pt",
-                fontStyle: "italic",
-                marginBottom: "2pt",
-              }}
-            >
-              Хүснэгт {n}.
-            </div>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "9.5pt",
-              }}
-            >
+    if (def.id === "s1") {
+      const kpiData = sec.kpiTable && sec.kpiTable.length > 0 ? sec.kpiTable : DEFAULT_S1_KPI;
+      const tablesHtml = kpiData.map((sub) => {
+        if (sub.type === "section14table") {
+          const all14 = sub.section14Rows ?? [];
+          const newRows = all14.filter(r => r.group === "new");
+          const usedRows = all14.filter(r => r.group === "used");
+          const newTotal = newRows.reduce((s, r) => s + (parseFloat(r.savedDays) || 0), 0);
+          const usedTotal = usedRows.reduce((s, r) => s + (parseFloat(r.savedDays) || 0), 0);
+          const thS14 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f59e0b;font-size:11pt;color:#fff;text-align:center`;
+          const renderGroup14Html = (rows: Section14Row[], label: string, total: number) => {
+            const rowsHtml = rows.map((row, ri) => `<tr>
+              <td style="${td0};text-align:center;width:5%">${ri + 1}</td>
+              <td style="${td0};width:55%">${row.title}</td>
+              <td style="${td0};width:25%">${row.productType}</td>
+              <td style="${td0};text-align:center;font-weight:bold;color:${row.savedDays ? "#1d4ed8" : "#aaa"};width:15%">${row.savedDays || "–"}</td>
+            </tr>`).join("");
+            return `<tr><td colspan="4" style="${td0};font-weight:bold;text-align:center;background:#f0f4f8">${label}</td></tr>
+              ${rows.length === 0 ? `<tr><td colspan="4" style="${td0};color:#bbb;font-style:italic;text-align:center">— Мэдээлэл байхгүй —</td></tr>` : rowsHtml}
+              <tr><td colspan="3" style="${td0};font-weight:bold;text-align:center;background:#e8eef6">НИЙТ</td>
+                <td style="${td0};font-weight:bold;text-align:center;background:#e8eef6">${total > 0 ? total : "–"}</td></tr>`;
+          };
+          return `<div style="margin-bottom:8pt;padding-left:6pt">
+            <div style="font-weight:bold;font-size:11pt;margin-bottom:5pt;color:#1e3a5f">${sub.id}. ${sub.groupLabel}</div>
+            ${sub.section14Text ? `<div style="font-size:11pt;line-height:1.7;white-space:pre-wrap;margin-bottom:8pt">${sub.section14Text}</div>` : ""}
+            <table style="width:100%;border-collapse:collapse;font-size:11pt">
+              <thead><tr>
+                <th style="${thS14};width:5%">№</th>
+                <th style="${thS14};width:55%">ДАТА БҮТЭЭГДЭХҮҮН</th>
+                <th style="${thS14};width:25%">БҮТЭЭГДЭХҮҮНИЙ ТӨРӨЛ</th>
+                <th style="${thS14};width:15%">ХЭМНЭСЭН ХҮН/ӨДӨР</th>
+              </tr></thead>
               <tbody>
-                {dataRows.map((row, ri) => (
-                  <tr
-                    key={ri}
-                    style={
-                      ri === 0 ? { background: "#1F3864", color: "#fff" } : {}
-                    }
-                  >
-                    {row.map((cell, ci) => (
-                      <td
-                        key={ci}
-                        style={{ border: "1px solid #888", padding: "3px 5px" }}
-                      >
-                        {cell}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                ${renderGroup14Html(newRows, "Тайлант хугацаанд шинээр нэвтрүүлсэн дата бүтээгдэхүүн", newTotal)}
+                ${renderGroup14Html(usedRows, "Тайлант хугацаанд аудитын үйл ажиллагаанд ашигласан дата бүтээгдэхүүн", usedTotal)}
               </tbody>
             </table>
-          </div>,
-        );
-      }
-      continue;
+          </div>`;
+        }
+        if (sub.type === "section2table") {
+          const s2Rows = sub.section2Rows ?? [];
+          const thS2 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f59e0b;font-size:11pt;color:#fff;text-align:center`;
+          const rowsHtml = s2Rows.map((row, ri) => `<tr>
+            <td style="${td0};text-align:center;width:5%">${ri + 1}</td>
+            <td style="${td0};width:35%">${row.title}</td>
+            <td style="${td0};text-align:center;font-weight:bold;color:${row.result ? "#1d4ed8" : "#aaa"};width:10%">${row.result || ""}</td>
+            <td style="${td0};width:20%">${row.completion}</td>
+            <td style="${td0};width:15%">${row.period}</td>
+            <td style="${td0};width:15%">${row.employeeName ?? ""}</td>
+          </tr>`).join("");
+          return `<div style="margin-bottom:8pt;padding-left:6pt">
+            <div style="font-weight:bold;font-size:11pt;margin-bottom:5pt;color:#1e3a5f">${sub.id}. ${sub.groupLabel}</div>
+            ${s2Rows.length === 0 ? "<div style=\"font-size:11pt;color:#bbb;font-style:italic\">— Ажил байхгүй —</div>" :
+              `<table style="width:100%;border-collapse:collapse;font-size:11pt">
+                <thead><tr>
+                  <th style="${thS2};width:5%">№</th><th style="${thS2};width:35%">АЖЛЫН НЭР</th>
+                  <th style="${thS2};width:10%">ГҮЙЦЭТГЭЛ %</th><th style="${thS2};width:20%">ГҮЙЦЭТГЭЛ /ТОВЧ/</th>
+                  <th style="${thS2};width:15%">ХУГАЦАА</th><th style="${thS2};width:15%">АЖИЛТАН</th>
+                </tr></thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>`}
+          </div>`;
+        }
+        if (sub.type === "dashboard") {
+          const dashRows = sub.dashboardRows ?? [];
+          const tasksHtml = dashRows.map((row, ri) => {
+            const imgsHtml = (row.images ?? []).map(img =>
+              `<div style="text-align:center;margin:6pt 0"><img src="${img.dataUrl}" alt="" style="width:${img.width}%;max-width:100%;display:inline-block" /></div>`
+            ).join("");
+            return `<div style="margin-bottom:8pt">
+              <div style="font-weight:bold;font-size:11pt;margin-bottom:2pt">${ri + 1}. ${row.title}</div>
+              ${row.description ? `<div style="font-size:11pt;line-height:1.7;white-space:pre-wrap;padding-left:12pt">${row.description}</div>` : ""}
+              ${imgsHtml}
+            </div>`;
+          }).join("");
+          return `<div style="margin-bottom:8pt;padding-left:6pt">
+            <div style="font-weight:bold;font-size:11pt;margin-bottom:5pt;color:#1e3a5f">${sub.id}. ${sub.groupLabel}</div>
+            ${dashRows.length === 0 ? "<div style=\"font-size:11pt;color:#bbb;font-style:italic\">— Ажил байхгүй —</div>" : tasksHtml}
+          </div>`;
+        }
+        const totalW = sub.rows.reduce((s, r) => s + (Number(r.weight) || 0), 0);
+        const thK = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f59e0b;font-size:11pt;color:#fff;text-align:center`;
+        const rowsHtml = sub.rows.map((row, ri) => `<tr>
+          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#dbeafe;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
+          <td style="${td0};width:40%">${row.indicator}</td>
+          <td style="${td0};text-align:center;width:8%">${row.weight}</td>
+          <td style="${td0};text-align:center;font-weight:bold;color:${row.score ? "#1d4ed8" : "#aaa"};width:10%">${row.score || ""}</td>
+          <td style="${td0};color:#555;width:28%">${row.evaluatedBy}</td>
+        </tr>`).join("");
+        return `<table style="width:100%;border-collapse:collapse;margin-bottom:8pt">
+          <thead><tr>
+            <th style="${thK}"></th><th style="${thK}">ТҮЛХҮҮР ҮЗҮҮЛЭЛТ</th>
+            <th style="${thK}">ХУВЬ</th><th style="${thK}">ҮНЭЛГЭЭ</th><th style="${thK}">ҮНЭЛСЭН ТАЙЛБАР</th>
+          </tr></thead>
+          <tbody>${rowsHtml}
+            <tr style="background:#dbeafe">
+              <td style="${td0}"></td>
+              <td style="${td0};text-align:center;font-weight:bold">Нийт</td>
+              <td style="${td0};text-align:center;font-weight:bold">${totalW}</td>
+              <td style="${td0}" colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>`;
+      }).join("");
+      return `<div style="margin-bottom:10pt">
+        <div style="font-weight:bold;font-size:11pt;margin-top:14pt;margin-bottom:3pt;text-align:center;letter-spacing:0.5px">${def.num}. ${def.heading}</div>
+        ${subtitle ? `<div style="font-weight:bold;font-size:11pt;margin-bottom:8pt;color:#333;text-align:center">(${subtitle})</div>` : ""}
+        ${tablesHtml}
+      </div>`;
     }
-    if (line.startsWith("- ")) {
-      const items: string[] = [];
-      while (i < lines.length && lines[i].startsWith("- ")) {
-        items.push(lines[i].slice(2));
-        i++;
-      }
-      nodes.push(
-        <ul
-          key={`ul-${i}`}
-          style={{
-            marginLeft: "20pt",
-            marginBottom: "4pt",
-            listStyleType: "disc",
-          }}
-        >
-          {items.map((item, j) => (
-            <li key={j} style={{ marginBottom: "2pt" }}>
-              {renderInline(item)}
-            </li>
-          ))}
-        </ul>,
-      );
-      continue;
+
+    if (def.id === "s2") {
+      const s2kpiData = sec.s2kpiTable && sec.s2kpiTable.length > 0 ? sec.s2kpiTable : DEFAULT_S2_KPI;
+      const thK2 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f59e0b;font-size:11pt;color:#fff;text-align:center`;
+      const s2TablesHtml = s2kpiData.map((sub) => {
+        const totalW = sub.rows.reduce((s, r) => s + (Number(r.weight) || 0), 0);
+        const rowsHtml = sub.rows.map((row, ri) => `<tr>
+          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#dbeafe;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
+          <td style="${td0};width:40%">${row.indicator}</td>
+          <td style="${td0};text-align:center;width:8%">${row.weight}</td>
+          <td style="${td0};text-align:center;font-weight:bold;color:${row.score ? "#1d4ed8" : "#aaa"};width:10%">${row.score || ""}</td>
+          <td style="${td0};color:#555;width:28%">${row.evaluatedBy}</td>
+        </tr>`).join("");
+        return `<table style="width:100%;border-collapse:collapse;margin-bottom:8pt">
+          <thead><tr>
+            <th style="${thK2}"></th><th style="${thK2}">ТҮЛХҮҮР ҮЗҮҮЛЭЛТ</th>
+            <th style="${thK2}">ХУВЬ</th><th style="${thK2}">ҮНЭЛГЭЭ</th><th style="${thK2}">ҮНЭЛСЭН ТАЙЛБАР</th>
+          </tr></thead>
+          <tbody>${rowsHtml}
+            <tr style="background:#dbeafe">
+              <td style="${td0}"></td>
+              <td style="${td0};text-align:center;font-weight:bold">Нийт</td>
+              <td style="${td0};text-align:center;font-weight:bold">${totalW}</td>
+              <td style="${td0}" colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>`;
+      }).join("");
+      const contentHtml = sec.content.trim()
+        ? `<div style="font-weight:bold;font-size:11pt;color:#1e3a5f;margin-top:8pt;margin-bottom:4pt">Ахисан түвшний дата анализын ажлын чанар, үр дүн:</div><div style="font-size:11pt;line-height:1.7;white-space:pre-wrap">${sec.content}</div>`
+        : "";
+      return `<div style="margin-bottom:10pt">
+        <div style="font-weight:bold;font-size:11pt;margin-top:14pt;margin-bottom:3pt;text-align:center;letter-spacing:0.5px">${def.num}. ${def.heading}</div>
+        ${s2TablesHtml}${contentHtml}
+      </div>`;
     }
-    if (/^\d+\. /.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\d+\. /.test(lines[i])) {
-        items.push(lines[i].replace(/^\d+\. /, ""));
-        i++;
-      }
-      nodes.push(
-        <ol key={`ol-${i}`} style={{ marginLeft: "20pt", marginBottom: "4pt" }}>
-          {items.map((item, j) => (
-            <li key={j} style={{ marginBottom: "2pt" }}>
-              {renderInline(item)}
-            </li>
-          ))}
-        </ol>,
-      );
-      continue;
-    }
-    nodes.push(
-      <div
-        key={i}
-        style={{ textAlign: "justify" as const, marginBottom: "4pt" }}
-      >
-        {line ? renderInline(line) : "\u00A0"}
-      </div>,
-    );
-    i++;
-  }
-  return <>{nodes}</>;
-}
 
-function RichToolbar({
-  value,
-  onChange,
-  rows = 3,
-  placeholder = "",
-  className = "",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  rows?: number;
-  placeholder?: string;
-  className?: string;
-}) {
-  const taRef = useRef<HTMLTextAreaElement>(null);
-  const apply = (before: string, after = "") => {
-    const el = taRef.current;
-    if (!el) return;
-    const s = el.selectionStart;
-    const e = el.selectionEnd;
-    const sel = value.slice(s, e);
-    const newVal = value.slice(0, s) + before + sel + after + value.slice(e);
-    onChange(newVal);
-    const cursor = s + before.length + sel.length + after.length;
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(cursor, cursor);
-    });
-  };
-  const btnCls =
-    "px-1.5 py-0.5 rounded text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition select-none";
-  return (
-    <div>
-      <div className="flex gap-1 mb-1 flex-wrap">
-        <button
-          type="button"
-          className={btnCls}
-          onMouseDown={(ev) => {
-            ev.preventDefault();
-            apply("**", "**");
-          }}
-        >
-          <strong>B</strong>
-        </button>
-        <button
-          type="button"
-          className={btnCls}
-          onMouseDown={(ev) => {
-            ev.preventDefault();
-            apply("\n- ");
-          }}
-        >
-          •
-        </button>
-        <button
-          type="button"
-          className={btnCls}
-          onMouseDown={(ev) => {
-            ev.preventDefault();
-            apply("\n1. ");
-          }}
-        >
-          1.
-        </button>
-        <button
-          type="button"
-          className={btnCls}
-          onMouseDown={(ev) => {
-            ev.preventDefault();
-            apply("\n|Гарчиг 1|Гарчиг 2|\n|---|---|\n|Утга|Утга|\n");
-          }}
-        >
-          ⊞
-        </button>
-      </div>
-      <textarea
-        ref={taRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={rows}
-        placeholder={placeholder}
-        className={className}
-      />
-    </div>
-  );
-}
+    return `<div style="margin-bottom:10pt">
+      <div style="font-weight:bold;font-size:11pt;margin-top:14pt;margin-bottom:3pt;text-align:center;letter-spacing:0.5px">${def.num}. ${def.heading}</div>
+      ${subtitle ? `<div style="font-weight:bold;font-size:11pt;margin-bottom:5pt;color:#333;text-align:center">(${subtitle})</div>` : ""}
+      ${!hasContent
+        ? `<div style="font-size:11pt;color:#bbb;font-style:italic;padding-left:9pt">— Тайлан оруулаагүй —</div>`
+        : `<div style="padding-left:9pt">
+            ${sec.content.trim() ? `<div style="font-weight:bold;font-size:11pt;color:#374151;margin-top:7pt">Тайлбар:</div><div style="font-size:11pt;line-height:1.7;white-space:pre-wrap">${sec.content}</div>` : ""}
+            ${sec.achievements.trim() ? `<div style="font-weight:bold;font-size:11pt;color:#374151;margin-top:7pt">Амжилт, давуу тал:</div><div style="font-size:11pt;line-height:1.7;white-space:pre-wrap">${sec.achievements}</div>` : ""}
+            ${sec.issues.trim() ? `<div style="font-weight:bold;font-size:11pt;color:#374151;margin-top:7pt">Бэрхшээл, сорилт:</div><div style="font-size:11pt;line-height:1.7;white-space:pre-wrap">${sec.issues}</div>` : ""}
+          </div>`}
+    </div>`;
+  }).join("");
 
-// ─── Word-style Preview ───────────────────────────────────────────────────────
-function DeptWordPreview({
-  year,
-  quarter,
-  tasks,
-  sections,
-  otherEntries,
-  activities,
-  images,
-}: {
-  year: number;
-  quarter: number;
-  tasks: MergedTask[];
-  sections: MergedSection[];
-  otherEntries: OtherEntry[];
-  activities: Activity[];
-  images: DeptImage[];
-}) {
-  const qName = qNames[(quarter - 1) % 4];
-  let secNum = 2;
-  const validOther = otherEntries.filter((e) => e.content.trim());
-  const tableCounter = { n: 1 };
-  return (
-    <div
-      className="bg-white shadow-2xl mx-auto"
-      style={{
-        width: "100%",
-        maxWidth: "210mm",
-        minHeight: "297mm",
-        padding: "15.9mm 19mm 22.2mm 25.4mm",
-        fontFamily: "'Times New Roman', serif",
-        fontSize: "11pt",
-        lineHeight: "1.5",
-        color: "#000",
-      }}
-    >
-      <div
-        style={{
-          textAlign: "center",
-          fontWeight: "bold",
-          fontSize: "13pt",
-          marginBottom: "18pt",
-        }}
-      >
-        ХЭЛТСИЙН НЭГТГЭЛ: {year} ОНЫ {qName}-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН
-      </div>
-      {tasks.length > 0 && (
-        <>
-          <div
-            style={{
-              fontWeight: "bold",
-              fontSize: "12pt",
-              marginTop: "14pt",
-              marginBottom: "6pt",
-            }}
-          >
-            1. Ажлын гүйцэтгэлийн хүснэгт
-          </div>
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              marginBottom: "2pt",
-            }}
-          >
-            Хүснэгт 1.
-          </div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9pt",
-              marginBottom: "10pt",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#1F3864", color: "#fff" }}>
-                {[
-                  "№",
-                  "Нэр",
-                  "Төлөвлөгөөт ажил",
-                  "Гүйц %",
-                  "Эхлэх",
-                  "Дуусах",
-                  "Гүйцэтгэл /товч/",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      border: "1px solid #888",
-                      padding: "4px 5px",
-                      textAlign: "center",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((t, i) => (
-                <tr key={t._id}>
-                  <td
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "3px 4px",
-                      textAlign: "center",
-                      width: "4%",
-                    }}
-                  >
-                    {i + 1}
-                  </td>
-                  <td
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "3px 4px",
-                      width: "11%",
-                    }}
-                  >
-                    {t.memberName}
-                  </td>
-                  <td
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "3px 4px",
-                      width: "23%",
-                    }}
-                  >
-                    {t.title}
-                  </td>
-                  <td
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "3px 4px",
-                      textAlign: "center",
-                      width: "8%",
-                    }}
-                  >
-                    {t.completion}%
-                  </td>
-                  <td
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "3px 4px",
-                      textAlign: "center",
-                      width: "11%",
-                    }}
-                  >
-                    {t.startDate}
-                  </td>
-                  <td
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "3px 4px",
-                      textAlign: "center",
-                      width: "11%",
-                    }}
-                  >
-                    {t.endDate}
-                  </td>
-                  <td
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "3px 4px",
-                      width: "32%",
-                    }}
-                  >
-                    {t.description}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-      {sections.map((sec) => {
-        const n = secNum++;
-        return (
-          <div key={sec._id}>
-            <div
-              style={{
-                fontWeight: "bold",
-                fontSize: "12pt",
-                marginTop: "14pt",
-                marginBottom: "6pt",
-              }}
-            >
-              {n}. {sec.title}
-            </div>
-            {sec.entries.map((e) => (
-              <div key={e._id} style={{ marginBottom: "8pt" }}>
-                <div
-                  style={{
-                    fontWeight: "bold",
-                    fontSize: "10.5pt",
-                    color: "#000",
-                    marginBottom: "2pt",
-                  }}
-                >
-                  {e.memberName}
-                </div>
-                {parseContent(e.content, tableCounter)}
-              </div>
-            ))}
-          </div>
-        );
-      })}
-      {validOther.length > 0 && (
-        <div>
-          <div
-            style={{
-              fontWeight: "bold",
-              fontSize: "12pt",
-              marginTop: "14pt",
-              marginBottom: "6pt",
-            }}
-          >
-            {secNum++}. Бусад ажлууд
-          </div>
-          {validOther.map((e) => (
-            <div key={e._id} style={{ marginBottom: "8pt" }}>
-              <div
-                style={{
-                  fontWeight: "bold",
-                  fontSize: "10.5pt",
-                  color: "#000",
-                  marginBottom: "2pt",
-                }}
-              >
-                {e.memberName}
-              </div>
-              {e.content.split("\n").map((l, i) => (
-                <div
-                  key={i}
-                  style={{ textAlign: "justify", marginBottom: "3pt" }}
-                >
-                  {l || "\u00A0"}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-      {activities.length > 0 && (
-        <div>
-          <div
-            style={{
-              fontWeight: "bold",
-              fontSize: "12pt",
-              marginTop: "14pt",
-              marginBottom: "6pt",
-            }}
-          >
-            {secNum}. Хамт олны ажил
-          </div>
-          {activities.map((a) => (
-            <div
-              key={a._id}
-              style={{ marginLeft: "18pt", marginBottom: "3pt" }}
-            >
-              <span style={{ fontWeight: "bold" }}>{a.memberName}:</span>{" "}
-              {a.name}
-              {a.date ? ` – ${a.date}` : ""}
-            </div>
-          ))}
-        </div>
-      )}
+  const tw = SECTION_DEFS.reduce((sum, d) => {
+    const sc = parseFloat(sections[d.id]?.score ?? "");
+    return sum + (!isNaN(sc) ? (sc * d.weight) / 100 : 0);
+  }, 0);
+  const summaryRows = SECTION_DEFS.map((def, idx) => {
+    const sec = sections[def.id] ?? emptySection();
+    const sc = parseFloat(sec.score);
+    const ws = !isNaN(sc) ? (sc * def.weight) / 100 : null;
+    return `<tr>
+      <td style="border:0.5px solid #bbb;padding:3px 5px;text-align:center">${idx + 1}</td>
+      <td style="border:0.5px solid #bbb;padding:3px 5px">${def.heading}</td>
+      <td style="border:0.5px solid #bbb;padding:3px 5px;text-align:center">${def.weight}%</td>
+      <td style="border:0.5px solid #bbb;padding:3px 5px;text-align:center;font-weight:bold;color:#1d4ed8">${sec.score || "–"}</td>
+      <td style="border:0.5px solid #bbb;padding:3px 5px;text-align:center;font-weight:bold;color:#1d4ed8">${ws !== null ? ws.toFixed(3) : "–"}</td>
+      <td style="border:0.5px solid #bbb;padding:3px 5px;font-style:italic">${!isNaN(sc) ? scoreLabel(sc) : "–"}</td>
+    </tr>`;
+  }).join("");
 
-      {/* Зургийн хавсралт */}
-      {images.length > 0 && (
-        <>
-          <div
-            style={{
-              fontWeight: "bold",
-              fontSize: "12pt",
-              marginTop: "14pt",
-              marginBottom: "6pt",
-            }}
-          >
-            {secNum + 1}. Зургийн хавсралт
-          </div>
-          {images.map((img, idx) => (
-            <div
-              key={img.id}
-              style={{
-                marginBottom: "14pt",
-                textAlign: "center",
-                pageBreakInside: "avoid",
-              }}
-            >
-              {img.blobUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={img.blobUrl}
-                  alt={img.filename}
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "200pt",
-                    objectFit: "contain",
-                  }}
-                />
-              )}
-              <div
-                style={{
-                  fontSize: "9pt",
-                  fontStyle: "italic",
-                  marginTop: "4pt",
-                }}
-              >
-                Зураг {idx + 1}. {img.filename}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>body{font-family:'Times New Roman',serif;font-size:11pt;color:#000;margin:0}@page{size:A4;margin:16mm 18mm 14mm}</style>
+</head><body>
+  <div style="text-align:center;font-weight:bold;font-size:11pt;letter-spacing:1px;margin-bottom:3pt">ДАТА АНАЛИЗЫН АЛБАНЫ ${year} ОНЫ ${qName} УЛИРЛЫН</div>
+  <div style="text-align:center;font-weight:bold;font-size:11pt;letter-spacing:1px;margin-bottom:12pt">БҮХ-НЫ ТАЙЛАН, ҮНЭЛГЭЭ</div>
+  <div style="font-size:11pt;color:#333;margin-bottom:16pt">${dateStr}</div>
+  ${sectionHtml}
+  <div style="page-break-before:always"></div>
+  <div style="text-align:center;font-weight:bold;font-size:11pt;margin-bottom:3pt">ДАТА АНАЛИЗИЙН АЛБА</div>
+  <div style="text-align:center;font-weight:bold;font-size:11pt;margin-bottom:12pt">${year} ОНЫ ${qName} УЛИРЛЫН БҮХ НИЙТИЙН НЭГТГЭЛ</div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14pt;font-size:11pt">
+    <thead><tr style="background:#f0f4f8">
+      ${["№","Тэлэв байдал","Жин %","Оноо","Жинлэсэн оноо","Үнэлгээ"].map(h =>
+        `<th style="border:0.5px solid #bbb;padding:3px 5px;text-align:center;font-weight:bold">${h}</th>`).join("")}
+    </tr></thead>
+    <tbody>${summaryRows}
+      <tr style="background:#e8eef6">
+        <td colspan="2" style="border:0.5px solid #bbb;padding:3px 5px;text-align:right;font-weight:bold">НИЙТ ТҮЗ ОНОО:</td>
+        <td style="border:0.5px solid #bbb;padding:3px 5px;text-align:center;font-weight:bold">100%</td>
+        <td style="border:0.5px solid #bbb;padding:3px 5px"></td>
+        <td style="border:0.5px solid #bbb;padding:3px 5px;text-align:center;font-weight:bold;color:#1d4ed8;font-size:11pt">${tw > 0 ? tw.toFixed(3) : "–"}</td>
+        <td style="border:0.5px solid #bbb;padding:3px 5px;font-weight:bold">${tw > 0 ? scoreLabel(tw) : "–"}</td>
+      </tr>
+    </tbody>
+  </table>
+  ${tw > 0 ? `<p style="font-size:11pt;line-height:1.7">Дата анализийн алба ${year} оны ${qName} улирлын тэнцвэртэй үнэлгээний зургалалын нийт оноо <strong>${tw.toFixed(3)}</strong> байгаа нь <strong>«${scoreLabel(tw)}»</strong> үнэлгээтэй тохирч байна.</p>` : ""}
+</body></html>`;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function TailanDepartmentPage() {
-  const { user } = useAuth();
-  const router = useRouter();
 
+export default function TailanBscPage() {
   const [year, setYear] = useState(getCurrentYear);
   const [quarter, setQuarter] = useState(getCurrentQuarter);
-  const [overview, setOverview] = useState<ReportRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [savedMsg, setSavedMsg] = useState("");
-  const [tasks, setTasks] = useState<MergedTask[]>([]);
-  const [sections, setSections] = useState<MergedSection[]>([]);
-  const [otherEntries, setOtherEntries] = useState<OtherEntry[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("s1");
+  const [sections, setSections] = useState<Record<string, SectionReport>>({});
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
 
-  // Images
-  const [deptImages, setDeptImages] = useState<DeptImage[]>([]);
-  const [deptUploading, setDeptUploading] = useState(false);
-  const deptImgFileRef = useRef<HTMLInputElement>(null);
+  const updateSection = (id: string, updated: SectionReport) =>
+    setSections((p) => ({ ...p, [id]: updated }));
 
-  const mergeReports = (sub: any[]) => {
-    setTasks(
-      sub.flatMap((r) =>
-        (r.plannedTasks ?? []).map((t: any) => ({
-          _id: uid(),
-          memberName: r.userName,
-          order: t.order ?? 1,
-          title: t.title ?? "",
-          completion: t.completion ?? 0,
-          startDate: t.startDate ?? "",
-          endDate: t.endDate ?? "",
-          description: t.description ?? "",
-        })),
-      ),
-    );
-    const secMap = new Map<string, MergedSection>();
-    for (const r of sub) {
-      for (const s of r.dynamicSections ?? []) {
-        if (!secMap.has(s.title))
-          secMap.set(s.title, { _id: uid(), title: s.title, entries: [] });
-        secMap.get(s.title)!.entries.push({
-          _id: uid(),
-          memberName: r.userName,
-          content: s.content ?? "",
-        });
-      }
-    }
-    setSections(Array.from(secMap.values()));
-    setOtherEntries(
-      sub
-        .filter((r) => r.otherWork?.trim())
-        .map((r) => ({
-          _id: uid(),
-          memberName: r.userName,
-          content: r.otherWork,
-        })),
-    );
-    setActivities(
-      sub.flatMap((r) =>
-        (r.teamActivities ?? []).map((a: any) => ({
-          _id: uid(),
-          memberName: r.userName,
-          name: a.name ?? "",
-          date: a.date ?? "",
-        })),
-      ),
-    );
+  const handleS1ApiLoad = async (_si: number): Promise<DashboardRow[]> => {
+    try {
+      const reports = await tailanApi.getDeptReports(year, quarter);
+      return (reports as any[]).flatMap((r: any) => (r.plannedTasks ?? []).map((t: any) => ({
+        title: t.title ?? "", description: t.description ?? "",
+        images: (t.images ?? []).map((img: any) => ({ id: img.id ?? "", dataUrl: img.dataUrl ?? "", width: img.width ?? 80 })),
+      })));
+    } catch { alert("API-аас татахад алдаа гарлаа."); return []; }
   };
 
-  const load = async () => {
-    setLoading(true);
+  const handleS1_13ApiLoad = async (_si: number): Promise<Section2TaskRow[]> => {
     try {
-      const [ov, sub] = await Promise.all([
-        tailanApi.getDeptOverview(year, quarter),
-        tailanApi.getDeptReports(year, quarter),
-      ]);
-      setOverview(ov);
-      mergeReports(sub);
-    } catch (e: any) {
-      if (e?.response?.status === 403) router.push("/tools/tailan");
-    } finally {
-      setLoading(false);
-    }
+      const reports = await tailanApi.getDeptReports(year, quarter);
+      return (reports as any[]).flatMap((r: any) =>
+        (r.section2Tasks ?? []).map((t: any, idx: number) => ({
+          order: t.order ?? idx + 1, title: t.title ?? "", result: t.result ?? "",
+          period: t.period ?? "", completion: t.completion ?? "",
+          employeeName: r.cyrillicName ?? r.employeeName ?? "",
+          images: (t.images ?? []).map((img: any) => ({ id: img.id ?? "", dataUrl: img.dataUrl ?? "", width: img.width ?? 80 })),
+        }))
+      );
+    } catch { alert("API-аас татахад алдаа гарлаа."); return []; }
+  };
+
+  const handleS1_14ApiLoad = async (_si: number): Promise<Section14Row[]> => {
+    try {
+      const reports = await tailanApi.getDeptReports(year, quarter);
+      const newRows: Section14Row[] = [];
+      const usedRows: Section14Row[] = [];
+      for (const r of reports as any[]) {
+        const emp = r.cyrillicName ?? r.employeeName ?? "";
+        for (const t of (r.section2Tasks ?? []))
+          newRows.push({ title: t.title ?? "", productType: "Өгөгдөл боловсруулалт", savedDays: t.result ?? "", group: "new", employeeName: emp });
+        for (const t of (r.section1Dashboards ?? []))
+          newRows.push({ title: t.title ?? "", productType: "Дашбоард", savedDays: "", group: "new", employeeName: emp });
+        for (const t of (r.plannedTasks ?? []))
+          usedRows.push({ title: t.title ?? "", productType: "Өгөгдөл боловсруулалт", savedDays: "", group: "used", employeeName: emp });
+      }
+      return [...newRows, ...usedRows];
+    } catch { alert("API-аас татахад алдаа гарлаа."); return []; }
   };
 
   useEffect(() => {
-    load();
-    loadDeptImages();
+    tailanApi.getDeptBsc(year, quarter).then((data) => {
+      if (data?.sections) {
+        setSections(data.sections as Record<string, SectionReport>);
+        setLastSaved(data.updatedAt ?? null);
+      } else { setSections({}); setLastSaved(null); }
+    }).catch(() => {});
   }, [year, quarter]);
 
-  // Revoke blob URLs on unmount
-  useEffect(() => {
-    return () => {
-      setDeptImages((prev) => {
-        prev.forEach((img) => {
-          if (img.blobUrl) URL.revokeObjectURL(img.blobUrl);
-        });
-        return prev;
-      });
-    };
-  }, []);
-
-  const loadDeptImages = async () => {
+  const handleDbSave = async () => {
+    setSaving(true);
     try {
-      const list = await tailanApi.getDeptImages(year, quarter);
-      const withUrls: DeptImage[] = await Promise.all(
-        list.map(async (img) => {
-          try {
-            const blobUrl = await tailanApi.fetchImageDataUrl(img.id);
-            return { ...img, blobUrl };
-          } catch {
-            return img;
-          }
-        }),
-      );
-      setDeptImages(withUrls);
-    } catch {}
+      await tailanApi.saveDeptBsc(year, quarter, sections as Record<string, unknown>);
+      setLastSaved(new Date().toISOString().replace("T", " ").substring(0, 19));
+    } catch { alert("Хадгалахад алдаа гарлала."); }
+    finally { setSaving(false); }
   };
 
-  const handleDeptImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setDeptUploading(true);
-    try {
-      const saved = await tailanApi.uploadImage(year, quarter, file);
-      const blobUrl = URL.createObjectURL(file);
-      setDeptImages((prev) => [
-        ...prev,
-        {
-          id: saved.id,
-          userId: "",
-          filename: file.name,
-          mimeType: file.type,
-          uploadedAt: new Date().toISOString(),
-          blobUrl,
-        },
-      ]);
-    } catch {
-    } finally {
-      setDeptUploading(false);
-      if (deptImgFileRef.current) deptImgFileRef.current.value = "";
-    }
+  const handleWordExport = () => {
+    const html = buildWordHtml(year, quarter, sections);
+    const blob = new Blob([html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `tailan_${year}_Q${quarter}.doc`; a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handleDeleteDeptImage = async (id: string) => {
-    try {
-      await tailanApi.deleteImage(id);
-      setDeptImages((prev) => {
-        const img = prev.find((i) => i.id === id);
-        if (img?.blobUrl) URL.revokeObjectURL(img.blobUrl);
-        return prev.filter((i) => i.id !== id);
-      });
-    } catch {}
-  };
+  const totalWS = SECTION_DEFS.reduce((sum, d) => {
+    const sc = parseFloat(sections[d.id]?.score ?? "");
+    return sum + (!isNaN(sc) ? (sc * d.weight) / 100 : 0);
+  }, 0);
 
-  const toPayload = () => ({
-    year,
-    quarter,
-    tasks: tasks.map(({ _id, ...t }) => t),
-    sections: sections.map(({ _id, ...s }) => ({
-      ...s,
-      entries: s.entries.map(({ _id: _, ...e }) => e),
-    })),
-    otherEntries: otherEntries.map(({ _id, ...e }) => e),
-    activities: activities.map(({ _id, ...a }) => a),
-  });
-
-  const handleDownload = async () => {
-    setDownloading(true);
-    try {
-      const blob = await tailanApi.generateDeptWord(toPayload());
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Хэлтсийн-тайлан-${year}-Q${quarter}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setSavedMsg("Татагдлаа ✓");
-      setTimeout(() => setSavedMsg(""), 2500);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const updateTask = (id: string, f: keyof MergedTask, v: any) =>
-    setTasks((p) => p.map((t) => (t._id === id ? { ...t, [f]: v } : t)));
-  const removeTask = (id: string) =>
-    setTasks((p) => p.filter((t) => t._id !== id));
-  const updateSectionTitle = (id: string, v: string) =>
-    setSections((p) => p.map((s) => (s._id === id ? { ...s, title: v } : s)));
-  const updateEntry = (sid: string, eid: string, v: string) =>
-    setSections((p) =>
-      p.map((s) =>
-        s._id === sid
-          ? {
-              ...s,
-              entries: s.entries.map((e) =>
-                e._id === eid ? { ...e, content: v } : e,
-              ),
-            }
-          : s,
-      ),
-    );
-  const removeSection = (id: string) =>
-    setSections((p) => p.filter((s) => s._id !== id));
-  const updateOther = (id: string, v: string) =>
-    setOtherEntries((p) =>
-      p.map((e) => (e._id === id ? { ...e, content: v } : e)),
-    );
-  const updateActivity = (id: string, f: keyof Activity, v: string) =>
-    setActivities((p) => p.map((a) => (a._id === id ? { ...a, [f]: v } : a)));
-  const removeActivity = (id: string) =>
-    setActivities((p) => p.filter((a) => a._id !== id));
-
-  const inputCls =
-    "w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition";
-  const labelCls = "block text-xs font-medium text-slate-400 mb-1";
-  const submittedCount = overview.filter(
-    (r) => r.status === "submitted",
-  ).length;
+  const isEval = activeTab === "eval";
+  const activeDef = SECTION_DEFS.find((d) => d.id === activeTab);
+  const qName = Q_NAMES[(quarter - 1) % 4];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-900">
-      {/* ─── LEFT: Editor ─────────────────────────────────────────── */}
-      <div className="flex flex-col w-1/2 border-r border-slate-700/50 overflow-hidden">
-        {/* Header */}
-        <div className="flex-shrink-0 bg-slate-900/90 backdrop-blur border-b border-slate-700/50 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/tools/tailan"
-              className="text-slate-400 hover:text-white transition"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Link>
-            <div>
-              <h1 className="font-semibold text-white text-sm">
-                Хэлтсийн тайлан
-              </h1>
-              <p className="text-xs text-slate-400">
-                Нэгтгэсэн тайлан засварлагч
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {[2024, 2025, 2026, 2027].map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <select
-              value={quarter}
-              onChange={(e) => setQuarter(Number(e.target.value))}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {[1, 2, 3, 4].map((q) => (
-                <option key={q} value={q}>
-                  {q}-р улирал
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleDownload}
-              disabled={downloading || tasks.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition disabled:opacity-50"
-            >
-              {downloading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Download className="h-3.5 w-3.5" />
-              )}
-              Татах
-            </button>
-            {savedMsg && (
-              <span className="text-xs text-emerald-400">{savedMsg}</span>
-            )}
-          </div>
-        </div>
-
-        {/* Scrollable editor body */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 text-center">
-              <div className="text-xl font-bold text-white">
-                {overview.length}
-              </div>
-              <div className="text-xs text-slate-400 mt-0.5">Нийт ажилтан</div>
-            </div>
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-center">
-              <div className="text-xl font-bold text-emerald-400">
-                {submittedCount}
-              </div>
-              <div className="text-xs text-slate-400 mt-0.5">Илгээсэн</div>
-            </div>
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
-              <div className="text-xl font-bold text-amber-400">
-                {overview.length - submittedCount}
-              </div>
-              <div className="text-xs text-slate-400 mt-0.5">Хүлээгдэж буй</div>
-            </div>
-          </div>
-
-          {/* Member status list */}
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-            </div>
-          ) : (
-            overview.length > 0 && (
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-slate-700/50 flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-xs font-medium text-white">
-                    {year} он — {qNames[quarter - 1]}-р улирлын ажилтнууд
-                  </span>
-                </div>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-700/50">
-                      <th className="text-left px-4 py-2 text-slate-400 font-medium">
-                        Ажилтан
-                      </th>
-                      <th className="text-left px-4 py-2 text-slate-400 font-medium">
-                        Статус
-                      </th>
-                      <th className="px-4 py-2 text-slate-400 font-medium text-right">
-                        Шинэчлэгдсэн
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {overview.map((row) => (
-                      <tr
-                        key={row.id}
-                        className="border-b border-slate-700/30 hover:bg-slate-700/20 transition"
-                      >
-                        <td className="px-4 py-2 text-white font-medium">
-                          {row.userName}
-                        </td>
-                        <td className="px-4 py-2">
-                          {row.status === "submitted" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              <Check className="h-2.5 w-2.5" /> Илгээсэн
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                              <Clock className="h-2.5 w-2.5" /> Хүлээгдэж буй
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-slate-400 text-right">
-                          {row.updatedAt
-                            ? new Date(row.updatedAt).toLocaleDateString(
-                                "mn-MN",
-                              )
-                            : "–"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          )}
-
-          {/* ── Section 1: Planned Tasks ── */}
-          <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-slate-700/50 flex items-center justify-between">
-              <span className="text-xs font-semibold text-white">
-                1. Аудитын үйл ажиллагааны ажлууд
-              </span>
-              <button
-                onClick={() =>
-                  setTasks((p) => [
-                    ...p,
-                    {
-                      _id: uid(),
-                      memberName: "",
-                      order: p.length + 1,
-                      title: "",
-                      completion: 0,
-                      startDate: "",
-                      endDate: "",
-                      description: "",
-                    },
-                  ])
-                }
-                className="text-xs text-blue-400 hover:text-blue-300 transition flex items-center gap-1"
-              >
-                + Нэмэх
-              </button>
-            </div>
-            {tasks.length === 0 ? (
-              <div className="px-4 py-6 text-center text-xs text-slate-500">
-                Тайлан байхгүй
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-700/30">
-                {tasks.map((t) => (
-                  <div
-                    key={t._id}
-                    className="px-4 py-3 grid grid-cols-12 gap-2 items-start"
-                  >
-                    <div className="col-span-1">
-                      <label className={labelCls}>№</label>
-                      <input
-                        type="number"
-                        value={t.order}
-                        onChange={(e) =>
-                          updateTask(t._id, "order", Number(e.target.value))
-                        }
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      <label className={labelCls}>Нэр</label>
-                      <input
-                        type="text"
-                        value={t.memberName}
-                        onChange={(e) =>
-                          updateTask(t._id, "memberName", e.target.value)
-                        }
-                        placeholder="Ажилтны нэр"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-4">
-                      <label className={labelCls}>Ажил</label>
-                      <input
-                        type="text"
-                        value={t.title}
-                        onChange={(e) =>
-                          updateTask(t._id, "title", e.target.value)
-                        }
-                        placeholder="Ажлын нэр"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className={labelCls}>%</label>
-                      <input
-                        type="number"
-                        value={t.completion}
-                        onChange={(e) =>
-                          updateTask(
-                            t._id,
-                            "completion",
-                            Number(e.target.value),
-                          )
-                        }
-                        className={inputCls}
-                        min={0}
-                        max={100}
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className={labelCls}>Эхлэх</label>
-                      <input
-                        type="text"
-                        value={t.startDate}
-                        onChange={(e) =>
-                          updateTask(t._id, "startDate", e.target.value)
-                        }
-                        placeholder="MM/DD"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className={labelCls}>Дуусах</label>
-                      <input
-                        type="text"
-                        value={t.endDate}
-                        onChange={(e) =>
-                          updateTask(t._id, "endDate", e.target.value)
-                        }
-                        placeholder="MM/DD"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-1 flex items-end justify-end pb-0.5">
-                      <button
-                        onClick={() => removeTask(t._id)}
-                        className="text-rose-500 hover:text-rose-400 transition p-1"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Dynamic Sections ── */}
-          {sections.map((sec) => (
-            <div
-              key={sec._id}
-              className="bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden"
-            >
-              <div className="px-4 py-2.5 border-b border-slate-700/50 flex items-center justify-between gap-2">
-                <input
-                  type="text"
-                  value={sec.title}
-                  onChange={(e) => updateSectionTitle(sec._id, e.target.value)}
-                  className="flex-1 bg-transparent text-xs font-semibold text-white outline-none placeholder-slate-500"
-                  placeholder="Хэсгийн нэр"
-                />
-                <button
-                  onClick={() => removeSection(sec._id)}
-                  className="text-rose-500 hover:text-rose-400 transition"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="divide-y divide-slate-700/30">
-                {sec.entries.map((e) => (
-                  <div key={e._id} className="px-4 py-3 space-y-1">
-                    <label className={labelCls}>{e.memberName}</label>
-                    <RichToolbar
-                      value={e.content}
-                      onChange={(v) => updateEntry(sec._id, e._id, v)}
-                      rows={3}
-                      placeholder="Агуулга..."
-                      className={inputCls + " resize-y"}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* ── Бусад ажлууд ── */}
-          {otherEntries.length > 0 && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-slate-700/50">
-                <span className="text-xs font-semibold text-white">
-                  Бусад ажлууд
-                </span>
-              </div>
-              <div className="divide-y divide-slate-700/30">
-                {otherEntries.map((e) => (
-                  <div key={e._id} className="px-4 py-3 space-y-1">
-                    <label className={labelCls}>{e.memberName}</label>
-                    <RichToolbar
-                      value={e.content}
-                      onChange={(v) => updateOther(e._id, v)}
-                      rows={2}
-                      className={inputCls + " resize-y"}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Хамт олны ажил ── */}
-          {activities.length > 0 && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-slate-700/50 flex items-center justify-between">
-                <span className="text-xs font-semibold text-white">
-                  Хамт олны ажил
-                </span>
-                <button
-                  onClick={() =>
-                    setActivities((p) => [
-                      ...p,
-                      { _id: uid(), memberName: "", name: "", date: "" },
-                    ])
-                  }
-                  className="text-xs text-blue-400 hover:text-blue-300 transition"
-                >
-                  + Нэмэх
-                </button>
-              </div>
-              <div className="divide-y divide-slate-700/30">
-                {activities.map((a) => (
-                  <div
-                    key={a._id}
-                    className="px-4 py-3 grid grid-cols-12 gap-2 items-end"
-                  >
-                    <div className="col-span-3">
-                      <label className={labelCls}>Нэр</label>
-                      <input
-                        type="text"
-                        value={a.memberName}
-                        onChange={(e) =>
-                          updateActivity(a._id, "memberName", e.target.value)
-                        }
-                        placeholder="Ажилтны нэр"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-6">
-                      <label className={labelCls}>Үйл ажиллагаа</label>
-                      <input
-                        type="text"
-                        value={a.name}
-                        onChange={(e) =>
-                          updateActivity(a._id, "name", e.target.value)
-                        }
-                        placeholder="Үйл ажиллагааны нэр"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className={labelCls}>Огноо</label>
-                      <input
-                        type="text"
-                        value={a.date}
-                        onChange={(e) =>
-                          updateActivity(a._id, "date", e.target.value)
-                        }
-                        placeholder="MM/DD"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="col-span-1 flex justify-end">
-                      <button
-                        onClick={() => removeActivity(a._id)}
-                        className="text-rose-500 hover:text-rose-400 transition p-1"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        {/* ── Зурагнуудаа — pinned at bottom ── */}
-        <div
-          className="flex-shrink-0 border-t border-slate-700/50 bg-slate-900/80"
-          style={{ height: "210px" }}
-        >
-          <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700/50">
-            <div className="flex items-center gap-1.5">
-              <ImageIcon className="h-3.5 w-3.5 text-slate-400" />
-              <span className="text-xs font-semibold text-white">
-                Зурагнуудаа (Альбом)
-              </span>
-            </div>
-            <button
-              onClick={() => deptImgFileRef.current?.click()}
-              disabled={deptUploading}
-              className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 transition"
-            >
-              {deptUploading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Upload className="h-3.5 w-3.5" />
-              )}
-              Зураг нэмэх
-            </button>
-            <input
-              ref={deptImgFileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleDeptImageUpload}
-            />
-          </div>
-          <div className="overflow-y-auto" style={{ height: "162px" }}>
-            {deptImages.length === 0 ? (
-              <div className="px-4 py-6 text-center text-xs text-slate-500">
-                Зураг байхгүй байна
-              </div>
-            ) : (
-              <div className="p-3 grid grid-cols-4 gap-2">
-                {deptImages.map((img) => (
-                  <div
-                    key={img.id}
-                    className="relative group rounded-lg overflow-hidden bg-slate-700/40 aspect-square"
-                  >
-                    {img.blobUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={img.blobUrl}
-                        alt={img.filename}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-slate-600" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                      <button
-                        onClick={() => handleDeleteDeptImage(img.id)}
-                        className="p-1.5 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <p className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-white truncate px-1.5 py-0.5">
-                      {img.filename}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-700/50 bg-slate-900/60 backdrop-blur-sm shrink-0">
+        <Link href="/tools/tailan" className="flex items-center gap-1 text-slate-400 hover:text-white text-sm transition-colors">
+          <ChevronLeft className="h-4 w-4" />
+        </Link>
+        <span className="text-slate-600 text-sm">|</span>
+        <span className="text-slate-200 text-sm font-medium">Хэлтсийн улирлийн тайлан</span>
+        {totalWS > 0 && (
+          <span className={`ml-1 text-xs font-semibold px-2 py-0.5 rounded-full ${totalWS >= 4 ? "bg-emerald-500/20 text-emerald-300" : totalWS >= 3 ? "bg-amber-500/20 text-amber-300" : "bg-rose-500/20 text-rose-300"}`}>
+            {totalWS.toFixed(3)} — {scoreLabel(totalWS)}
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <select value={year} onChange={(e) => setYear(+e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none">
+            {Array.from({ length: getCurrentYear() + 100 - 2020 + 1 }, (_, i) => 2020 + i).map((y) => <option key={y} value={y}>{y} он</option>)}
+          </select>
+          <select value={quarter} onChange={(e) => setQuarter(+e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none">
+            {[1, 2, 3, 4].map((q) => <option key={q} value={q}>{q}-р улирал</option>)}
+          </select>
+          {lastSaved && <span className="text-[10px] text-slate-500 whitespace-nowrap">Сүүлд: {lastSaved.slice(11, 16)}</span>}
+          <button onClick={handleDbSave} disabled={saving} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">
+            <Save className="h-3.5 w-3.5" />{saving ? "Хадгалаж байна..." : "Хадгалах"}
+          </button>
+          <button onClick={handleWordExport} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">
+            <Download className="h-3.5 w-3.5" />Word татах
+          </button>
         </div>
       </div>
 
-      {/* ─── RIGHT: Live Preview ───────────────────────────────────── */}
-      <div className="flex flex-col w-1/2 bg-slate-800 overflow-hidden">
-        <div className="flex-shrink-0 px-4 py-3 border-b border-slate-700/50 flex items-center gap-2 bg-slate-800/90">
-          <Eye className="h-4 w-4 text-slate-400" />
-          <span className="text-xs font-medium text-slate-300">
-            Урьдчилан харах — {year} он {qNames[quarter - 1]}-р улирал
-          </span>
+      <div className="flex flex-1 overflow-hidden">
+        <div className="w-60 shrink-0 border-r border-slate-700/50 bg-slate-900/50 p-3 flex flex-col gap-1.5 overflow-y-auto">
+          {SECTION_DEFS.map((def) => {
+            const active = activeTab === def.id;
+            return (
+              <button key={def.id} onClick={() => setActiveTab(def.id)}
+                className={`flex items-start gap-2.5 w-full text-left px-3 py-2.5 rounded-xl transition-all duration-150 text-xs ${active ? COLOR_TAB_ACTIVE[def.color] : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}
+              >
+                <SectionIcon icon={def.icon} cls={`h-4 w-4 shrink-0 mt-0.5 ${active ? COLOR_ICON[def.color] : "text-slate-500"}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold leading-tight truncate">{def.num}. {def.label}</div>
+                  {sections[def.id]?.score && (
+                    <span className={`text-[10px] font-bold ${active ? "" : "text-amber-400"}`}>{sections[def.id]!.score} оноо</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+          <div className="border-t border-slate-700/50 pt-1.5 mt-1">
+            <button onClick={() => setActiveTab("eval")}
+              className={`flex items-start gap-2.5 w-full text-left px-3 py-2.5 rounded-xl transition-all duration-150 text-xs ${isEval ? "bg-rose-500/20 border border-rose-500/40 text-rose-300" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}
+            >
+              <Award className={`h-4 w-4 shrink-0 mt-0.5 ${isEval ? "text-rose-400" : "text-slate-500"}`} />
+              <div>
+                <div className="font-semibold leading-tight">Нэгтгэл / Дүгнэлт</div>
+                <div className="text-[10px] opacity-70 mt-0.5">{totalWS > 0 ? `Нийт оноо: ${totalWS.toFixed(3)}` : "Бүх тэлэвийн нэгтгэл"}</div>
+              </div>
+            </button>
+          </div>
+          {totalWS > 0 && (
+            <div className="mt-2 p-3 bg-slate-800/60 rounded-xl border border-slate-700/40">
+              <div className={`text-lg font-bold ${totalWS >= 4 ? "text-emerald-400" : totalWS >= 3 ? "text-amber-400" : "text-rose-400"}`}>{totalWS.toFixed(3)}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">{scoreLabel(totalWS)}</div>
+            </div>
+          )}
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          <DeptWordPreview
-            year={year}
-            quarter={quarter}
-            tasks={tasks}
-            sections={sections}
-            otherEntries={otherEntries}
-            activities={activities}
-            images={deptImages}
-          />
+
+        {!isEval ? (
+          <div className="flex-1 overflow-y-auto p-5">
+            {activeDef && (
+              <SectionEditor
+                def={activeDef}
+                report={sections[activeDef.id] ?? emptySection()}
+                onChange={(updated) => updateSection(activeDef.id, updated)}
+                onApiLoad={activeDef.id === "s1" ? handleS1ApiLoad : undefined}
+                onS2TableApiLoad={activeDef.id === "s1" ? handleS1_13ApiLoad : undefined}
+                onS14TableApiLoad={activeDef.id === "s1" ? handleS1_14ApiLoad : undefined}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="text-sm font-bold text-white mb-4">Нэгтгэл — Дата Анализийн Алба {year} оны {qName} улирал</div>
+            <div className="rounded-xl border border-slate-700/50 overflow-hidden mb-5">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-800/80 text-slate-300">
+                    {["Тэлэв байдал","Жин %","Оноо","Жинлэсэн оноо","Үнэлгээ"].map((h) => (
+                      <th key={h} className="border border-slate-700/50 px-2 py-2 text-center font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {SECTION_DEFS.map((def) => {
+                    const sec = sections[def.id] ?? emptySection();
+                    const sc = parseFloat(sec.score);
+                    const ws = !isNaN(sc) ? (sc * def.weight) / 100 : null;
+                    return (
+                      <tr key={def.id} className="hover:bg-white/[0.02]">
+                        <td className="border border-slate-700/50 px-3 py-2">{def.num}. {def.heading}</td>
+                        <td className="border border-slate-700/50 px-2 py-2 text-center">{def.weight}%</td>
+                        <td className="border border-slate-700/50 px-2 py-2 text-center font-bold text-amber-400">{sec.score || "–"}</td>
+                        <td className="border border-slate-700/50 px-2 py-2 text-center font-bold text-blue-400">{ws !== null ? ws.toFixed(3) : "–"}</td>
+                        <td className="border border-slate-700/50 px-2 py-2 text-center text-slate-300">{!isNaN(sc) ? scoreLabel(sc) : "–"}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="bg-slate-800/60 font-bold">
+                    <td className="border border-slate-700/50 px-3 py-2 text-white">НИЙТ</td>
+                    <td className="border border-slate-700/50 px-2 py-2 text-center text-white">100%</td>
+                    <td className="border border-slate-700/50 px-2 py-2"></td>
+                    <td className="border border-slate-700/50 px-2 py-2 text-center text-blue-300 text-sm">{totalWS > 0 ? totalWS.toFixed(3) : "–"}</td>
+                    <td className={`border border-slate-700/50 px-2 py-2 text-center font-bold ${totalWS >= 4 ? "text-emerald-400" : totalWS >= 3 ? "text-amber-400" : totalWS > 0 ? "text-rose-400" : "text-slate-500"}`}>
+                      {totalWS > 0 ? scoreLabel(totalWS) : "–"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wide">Оноогоор дүгнэх шалгуур</div>
+            <div className="rounded-xl border border-slate-700/50 overflow-hidden w-fit">
+              {[["5","≥ 100%","Маш сайн","text-green-400"],["4","90 – 99%","Сайн","text-emerald-400"],["3","75 – 89%","Хангалттай","text-amber-400"],["2","60 – 74%","Дунд","text-orange-400"],["1","< 60%","Хангалтгүй","text-rose-400"]].map(([sc, pct, lbl, cls]) => (
+                <div key={sc} className="flex items-center gap-4 px-4 py-1.5 border-b border-slate-700/30 last:border-0 text-xs">
+                  <span className={`font-bold w-4 text-center ${cls}`}>{sc}</span>
+                  <span className="text-slate-400 w-20">{pct}</span>
+                  <span className={cls}>{lbl}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 min-w-[300px] border-l border-slate-700/50 overflow-y-auto bg-slate-950/40">
+          <div className="px-3 py-2 border-b border-slate-700/30 text-[11px] text-slate-400 font-semibold tracking-wide uppercase">Урьдчилан харах</div>
+          <WordPreview year={year} quarter={quarter} sections={sections} />
         </div>
       </div>
     </div>

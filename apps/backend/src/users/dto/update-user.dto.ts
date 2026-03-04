@@ -17,10 +17,6 @@ export class UpdateUserDto {
   @IsOptional()
   profileImage?: string;
 
-  @IsBoolean()
-  @IsOptional()
-  isAdmin?: boolean;
-
   @IsArray()
   @IsOptional()
   allowedTools?: string[];

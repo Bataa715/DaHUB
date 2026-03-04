@@ -13,10 +13,17 @@ import {
   RefreshCw,
   Database,
   Clock,
+  Copy,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  XCircle,
 } from "lucide-react";
 
 interface ActiveGrant {
   id: string;
+  requestId: string;
+  userUserId: string;
   tableName: string;
   columns: string[];
   accessTypes: string[];
@@ -24,6 +31,45 @@ interface ActiveGrant {
   grantedByName: string;
   grantedAt: string;
   isActive: boolean;
+  chPassword: string;
+}
+
+interface GrantGroup {
+  requestId: string;
+  grantIds: string[];
+  userUserId: string;
+  tables: string[];
+  columns: string[];
+  accessTypes: string[];
+  validUntil: string;
+  grantedByName: string;
+  grantedAt: string;
+  chPassword: string;
+}
+
+function groupGrants(grants: ActiveGrant[]): GrantGroup[] {
+  const map = new Map<string, GrantGroup>();
+  for (const g of grants) {
+    const key = g.requestId || g.id;
+    if (!map.has(key)) {
+      map.set(key, {
+        requestId: key,
+        grantIds: [],
+        userUserId: g.userUserId,
+        tables: [],
+        columns: g.columns,
+        accessTypes: g.accessTypes,
+        validUntil: g.validUntil,
+        grantedByName: g.grantedByName,
+        grantedAt: g.grantedAt,
+        chPassword: g.chPassword,
+      });
+    }
+    const grp = map.get(key)!;
+    grp.grantIds.push(g.id);
+    if (!grp.tables.includes(g.tableName)) grp.tables.push(g.tableName);
+  }
+  return Array.from(map.values());
 }
 
 function daysLeft(dateStr: string): number {
@@ -31,11 +77,45 @@ function daysLeft(dateStr: string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+/** Format DateTime as "YYYY.MM.DD HH:mm" (24h) */
+function fmt24(dateStr: string): string {
+  const d = new Date(dateStr);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function MyGrantsPage() {
   const { toast } = useToast();
 
   const [grants, setGrants] = useState<ActiveGrant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPwd, setShowPwd] = useState<Record<string, boolean>>({});
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: `${label} хуулагдлаа`, duration: 1500 });
+  };
+
+  const handleCancel = async (group: GrantGroup) => {
+    const tblList = group.tables.join(", ");
+    if (!confirm(`"${tblList}" хандалтын эрхийг хаах уу? Та ClickHouse-руу нэвтрэх боломжгүй болно.`)) return;
+    try {
+      setCancelingId(group.requestId);
+      // Cancel every grant row belonging to this request
+      await Promise.all(group.grantIds.map((id) => dbAccessApi.cancelMyGrant(id)));
+      toast({ title: "✅ Эрх хаагдлаа", description: "ClickHouse хандалт цуцлагдлаа" });
+      await load();
+    } catch (err: any) {
+      toast({
+        title: "Алдаа",
+        description: err?.response?.data?.message ?? "Хаахад алдаа гарлаа",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelingId(null);
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -106,14 +186,14 @@ export default function MyGrantsPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {grants.map((g) => {
-              const days = daysLeft(g.validUntil);
+            {groupGrants(grants).map((grp) => {
+              const days = daysLeft(grp.validUntil);
               const expiringSoon = days <= 3;
               const expired = days <= 0;
 
               return (
                 <div
-                  key={g.id}
+                  key={grp.requestId}
                   className={`rounded-xl border bg-card p-5 space-y-3 ${
                     expired
                       ? "border-red-500/30 opacity-60"
@@ -122,77 +202,130 @@ export default function MyGrantsPage() {
                         : ""
                   }`}
                 >
+                  {/* Header row */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0">
                         <Database className="h-4 w-4 text-cyan-400" />
                       </div>
                       <div>
-                        <p className="font-semibold font-mono text-sm">
-                          {g.tableName}
-                        </p>
                         <p className="text-xs text-muted-foreground">
-                          Олгосон: {g.grantedByName}
+                          Олгосон: {grp.grantedByName}
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-1.5 flex-wrap justify-end">
-                      {g.accessTypes.map((a) => (
-                        <Badge
-                          key={a}
-                          className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
-                          variant="outline"
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <div className="flex gap-1.5 flex-wrap">
+                        {grp.accessTypes.map((a) => (
+                          <Badge
+                            key={a}
+                            className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                            variant="outline"
+                          >
+                            {a}
+                          </Badge>
+                        ))}
+                      </div>
+                      {!expired && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 gap-1 h-7 px-2"
+                          disabled={cancelingId === grp.requestId}
+                          onClick={() => handleCancel(grp)}
+                          title="Эрхийг хугацаанаас өмнө хаах"
                         >
-                          {a}
-                        </Badge>
-                      ))}
+                          {cancelingId === grp.requestId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <XCircle className="h-3.5 w-3.5" />
+                          )}
+                          <span className="text-xs">Хаах</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  {/* Table list */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {grp.tables.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded-md"
+                      >
+                        <Database className="h-3 w-3" />
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Time info */}
+                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground" suppressHydrationWarning>
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5" />
-                      <span>
+                      <span suppressHydrationWarning>
                         {expired ? (
                           <span className="text-red-400">Хугацаа дууссан</span>
                         ) : expiringSoon ? (
-                          <span className="text-amber-400">
-                            {days} өдөр үлдсэн
-                          </span>
+                          <span className="text-amber-400">{days} өдөр үлдсэн</span>
                         ) : (
                           `${days} өдөр үлдсэн`
                         )}
                       </span>
                     </div>
-                    <span>
-                      Хүчинтэй:{" "}
-                      {new Date(g.validUntil).toLocaleDateString("mn-MN", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                    <span suppressHydrationWarning>
+                      Хаагдах: <strong>{fmt24(grp.validUntil)}</strong>
                     </span>
-                    <span>
-                      Олгосон:{" "}
-                      {new Date(g.grantedAt).toLocaleDateString("mn-MN")}
+                    <span suppressHydrationWarning>
+                      Олгосон: {fmt24(grp.grantedAt)}
                     </span>
                   </div>
 
-                  {g.columns && g.columns.length > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1.5">
-                        Баганууд ({g.columns.length}):
+                  {/* ClickHouse credentials */}
+                  {grp.chPassword && (
+                    <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                        ClickHouse Нэвтрэх мэдээлэл
                       </p>
-                      <div className="flex flex-wrap gap-1">
-                        {g.columns.map((c) => (
-                          <span
-                            key={c}
-                            className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded"
-                          >
-                            {c}
-                          </span>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-20 shrink-0">Хэрэглэгч:</span>
+                        <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1">
+                          {grp.userUserId}
+                        </code>
+                        <Button
+                          variant="ghost" size="icon" className="h-6 w-6"
+                          onClick={() => copyText(grp.userUserId, "Хэрэглэгч нэр")}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-20 shrink-0">Нууц үг:</span>
+                        <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1 tracking-widest">
+                          {showPwd[grp.requestId] ? grp.chPassword : "••••••••••••••••"}
+                        </code>
+                        <Button
+                          variant="ghost" size="icon" className="h-6 w-6"
+                          onClick={() => setShowPwd((p) => ({ ...p, [grp.requestId]: !p[grp.requestId] }))}
+                        >
+                          {showPwd[grp.requestId] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon" className="h-6 w-6"
+                          onClick={() => copyText(grp.chPassword, "Нууц үг")}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <a
+                        href={process.env.NEXT_PUBLIC_CLICKHOUSE_PLAY_URL ?? "http://localhost:8123/play"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 mt-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        ClickHouse Play дээр нээх
+                      </a>
                     </div>
                   )}
                 </div>

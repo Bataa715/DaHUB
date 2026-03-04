@@ -6,7 +6,8 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
-import { randomUUID } from "crypto";
+import { ClickHouseAccessService } from "./clickhouse-access.service";
+import { randomUUID, randomBytes } from "crypto";
 import {
   CreateAccessRequestDto,
   ReviewRequestDto,
@@ -28,7 +29,10 @@ const EXCLUDED_TABLES = [
 export class DbAccessService {
   private readonly logger = new Logger(DbAccessService.name);
 
-  constructor(private clickhouse: ClickHouseService) {}
+  constructor(
+    private clickhouse: ClickHouseService,
+    private chAccess: ClickHouseAccessService,
+  ) {}
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -102,6 +106,63 @@ export class DbAccessService {
     }
 
     const now = this.formatDateTime(new Date());
+
+    // ── Pre-revoke any still-active grants so approval won't collide ─────────
+    const activeGrants = await this.clickhouse.query<any>(
+      `SELECT * FROM access_grants FINAL
+       WHERE userId = {uid:String} AND isActive = 1 AND validUntil > now()`,
+      { uid: user.id },
+    );
+
+    if (activeGrants.length > 0) {
+      // Group by requestId: one ClickHouse role per request → one full revoke per role
+      const byRequest = new Map<string, { grants: any[]; requesterUserId: string }>();
+      for (const g of activeGrants) {
+        if (!byRequest.has(g.requestId)) {
+          byRequest.set(g.requestId, { grants: [], requesterUserId: g.userUserId });
+        }
+        byRequest.get(g.requestId)!.grants.push(g);
+      }
+
+      for (const [requestId, { grants, requesterUserId }] of byRequest) {
+        // Full revoke: drop the role (and user if no other roles remain)
+        try {
+          await this.chAccess.revokeAccess({ requestId, requesterUserId });
+          this.logger.log(
+            `[CH ACL] Pre-revoked old grants for requestId=${requestId} user=${requesterUserId}`,
+          );
+        } catch (err: any) {
+          this.logger.warn(
+            `[CH ACL] Pre-revoke failed for requestId=${requestId}: ${err?.message}`,
+          );
+        }
+
+        // Mark every grant row inactive in the DB
+        for (const grant of grants) {
+          await this.clickhouse.insert("access_grants", [
+            {
+              ...grant,
+              columns: Array.isArray(grant.columns)
+                ? grant.columns
+                : JSON.parse(grant.columns ?? "[]"),
+              accessTypes: Array.isArray(grant.accessTypes)
+                ? grant.accessTypes
+                : JSON.parse(grant.accessTypes ?? "[]"),
+              isActive: 0,
+              revokedAt: now,
+              revokeReason: "Шинэ хүсэлт гаргасны улмаас автоматаар цуцлагдсан",
+              grantedAt: now,
+            },
+          ]);
+        }
+      }
+
+      this.logger.log(
+        `[createRequest] Pre-revoked ${activeGrants.length} active grant(s) for user ${user.userId}`,
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const id = randomUUID();
 
     await this.clickhouse.insert("access_requests", [
@@ -259,10 +320,51 @@ export class DbAccessService {
 
     // If approved, create grants for each table
     if (dto.action === "approve") {
-      const tables: string[] = req.tables;
-      const columns: string[] = req.columns;
-      const accessTypes: string[] = req.accessTypes;
+      const tables: string[] = Array.isArray(req.tables)
+        ? req.tables
+        : JSON.parse(req.tables ?? "[]");
+      const columns: string[] = Array.isArray(req.columns)
+        ? req.columns
+        : JSON.parse(req.columns ?? "[]");
+      const accessTypes: string[] = Array.isArray(req.accessTypes)
+        ? req.accessTypes
+        : JSON.parse(req.accessTypes ?? "[]");
 
+      // ── Apply ClickHouse SQL access control (fast parallel flow) ─────────────
+      //
+      // 1. Generate ONE shared password for this entire request.
+      // 2. Setup the CH user + role ONCE (always syncs password → fixes auth).
+      // 3. Grant every table in PARALLEL → avoids N sequential round-trips.
+      const sharedPassword = randomBytes(12).toString("hex");
+
+      // Step 1: user + role setup (sequential, must finish before parallel grants)
+      try {
+        await this.chAccess.setupUserAndRole({
+          requestId,
+          requesterUserId: req.requesterUserId,
+          password: sharedPassword,
+        });
+      } catch (err: any) {
+        this.logger.warn(`[CH ACL] setupUserAndRole failed: ${err?.message}`);
+        // Non-fatal: grants table is still written below
+      }
+
+      // Step 2: grant all tables in parallel
+      await Promise.all(
+        tables.map((table) =>
+          this.chAccess.grantTableToRole(requestId, table).catch((err: any) => {
+            this.logger.warn(
+              `[CH ACL] Failed to grant ${table}: ${err?.message}`,
+            );
+          }),
+        ),
+      );
+
+      this.logger.log(
+        `[CH ACL] Approved ${tables.length} table(s) for user=${req.requesterUserId}`,
+      );
+
+      // ── Insert audit grant rows (all share the same chPassword) ───────────────
       const grants = tables.map((table) => ({
         id: randomUUID(),
         userId: req.requesterId,
@@ -279,6 +381,7 @@ export class DbAccessService {
         isActive: 1,
         revokedAt: "1970-01-01 00:00:00",
         revokeReason: "",
+        chPassword: sharedPassword, // same for every table in this request
       }));
 
       await this.clickhouse.insert("access_grants", grants);
@@ -357,8 +460,101 @@ export class DbAccessService {
       },
     ]);
 
+    // ── Revoke ClickHouse SQL access control ──────────────────────────────
+    try {
+      const result = await this.chAccess.revokeAccess({
+        requestId: grant.requestId,
+        requesterUserId: grant.userUserId,
+        tableName: grant.tableName, // selective: only revoke this table's SELECT
+      });
+      this.logger.log(
+        `[CH ACL] Revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
+          `table=${grant.tableName} userDropped=${result.userDropped}`,
+      );
+    } catch (err: any) {
+      this.logger.warn(
+        `[CH ACL] Skipping CH SQL revoke for grant=${grantId}: ${err?.message}`,
+      );
+      // Non-fatal: audit trail is already written.
+    }
+
     this.logger.log(`Grant ${grantId} revoked by ${revoker.userId}`);
     return { success: true };
+  }
+
+  /** User self-cancels their own active grant before expiry */
+  async selfRevokeGrant(grantId: string, requester: any) {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT * FROM access_grants FINAL WHERE id = {id:String} LIMIT 1`,
+      { id: grantId },
+    );
+    const grant = rows[0];
+    if (!grant) throw new NotFoundException("Зөвшөөрөл олдсонгүй");
+    if (grant.userId !== requester.id && !this.canGrantAccess(requester))
+      throw new ForbiddenException("Зөвхөн өөрийн эрхийг хаах боломжтой");
+    if (!grant.isActive)
+      throw new BadRequestException("Эрх аль хэдийн хаагдсан байна");
+
+    const now = this.formatDateTime(new Date());
+    await this.clickhouse.insert("access_grants", [
+      {
+        ...grant,
+        columns: Array.isArray(grant.columns)
+          ? grant.columns
+          : JSON.parse(grant.columns ?? "[]"),
+        accessTypes: Array.isArray(grant.accessTypes)
+          ? grant.accessTypes
+          : JSON.parse(grant.accessTypes ?? "[]"),
+        isActive: 0,
+        revokedAt: now,
+        revokeReason: "Хэрэглэгч өөрөө хаасан",
+        grantedAt: now,
+      },
+    ]);
+
+    try {
+      const result = await this.chAccess.revokeAccess({
+        requestId: grant.requestId,
+        requesterUserId: grant.userUserId,
+        tableName: grant.tableName, // selective: only revoke this table's SELECT
+      });
+      this.logger.log(
+        `[CH ACL] Self-revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
+          `table=${grant.tableName} userDropped=${result.userDropped}`,
+      );
+    } catch (err: any) {
+      this.logger.warn(
+        `[CH ACL] CH SQL self-revoke failed for grant=${grantId}: ${err?.message}`,
+      );
+    }
+
+    this.logger.log(`Grant ${grantId} self-cancelled by user ${requester.userId}`);
+    return { success: true };
+  }
+
+  /** Get ClickHouse credentials for a specific grant (owner or admin only) */
+  async getGrantCredentials(grantId: string, requester: any) {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT * FROM access_grants FINAL WHERE id = {id:String} LIMIT 1`,
+      { id: grantId },
+    );
+    const grant = rows[0];
+    if (!grant) throw new NotFoundException("Grant олдсонгүй");
+
+    // Only the grant owner or an admin/granter can view credentials
+    const isOwner = grant.userId === requester.id;
+    if (!isOwner && !this.canGrantAccess(requester)) {
+      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
+    }
+
+    return {
+      username: grant.userUserId,
+      chPassword: grant.chPassword ?? "",
+      tableName: grant.tableName,
+      host: process.env.CLICKHOUSE_EXTERNAL_HOST ?? "localhost",
+      port: parseInt(process.env.CLICKHOUSE_EXTERNAL_PORT ?? "8123", 10),
+      playUrl: process.env.CLICKHOUSE_PLAY_URL ?? "http://localhost:8123/play",
+    };
   }
 
   /** List users who can grant access */
@@ -366,7 +562,7 @@ export class DbAccessService {
     const rows = await this.clickhouse.query<any>(
       `SELECT id, userId, name, position, allowedTools
        FROM users
-       WHERE isAdmin = 1 OR allowedTools LIKE '%db_access_granter%'
+       WHERE (isAdmin = 1 OR allowedTools LIKE '%db_access_granter%')
          AND isActive = 1`,
     );
     return rows.map((u) => ({
@@ -436,6 +632,7 @@ export class DbAccessService {
       grantedByName: g.grantedByName,
       grantedAt: g.grantedAt,
       isActive: !!g.isActive,
+      // chPassword intentionally omitted — use GET /grants/:id/credentials instead
     };
   }
 }

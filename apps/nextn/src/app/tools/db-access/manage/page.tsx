@@ -58,6 +58,46 @@ interface ActiveGrant {
   isActive: boolean;
 }
 
+interface GrantGroup {
+  requestId: string;
+  grantIds: string[];
+  userId: string;
+  userName: string;
+  userUserId: string;
+  tables: string[];
+  columns: string[];
+  accessTypes: string[];
+  validUntil: string;
+  grantedByName: string;
+  grantedAt: string;
+}
+
+function groupByRequest(grants: ActiveGrant[]): GrantGroup[] {
+  const map = new Map<string, GrantGroup>();
+  for (const g of grants) {
+    const key = g.requestId || g.id;
+    if (!map.has(key)) {
+      map.set(key, {
+        requestId: key,
+        grantIds: [],
+        userId: g.userId,
+        userName: g.userName,
+        userUserId: g.userUserId,
+        tables: [],
+        columns: g.columns,
+        accessTypes: g.accessTypes,
+        validUntil: g.validUntil,
+        grantedByName: g.grantedByName,
+        grantedAt: g.grantedAt,
+      });
+    }
+    const grp = map.get(key)!;
+    grp.grantIds.push(g.id);
+    if (!grp.tables.includes(g.tableName)) grp.tables.push(g.tableName);
+  }
+  return Array.from(map.values());
+}
+
 const STATUS_CONFIG = {
   pending: {
     label: "Хүлээгдэж байна",
@@ -76,10 +116,19 @@ const STATUS_CONFIG = {
   },
 };
 
+/** Format DateTime as "YYYY.MM.DD HH:mm" (24h) */
+function fmt24(dateStr: string): string {
+  const d = new Date(dateStr);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function DbAccessManagePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Permission guard
   useEffect(() => {
@@ -107,9 +156,6 @@ export default function DbAccessManagePage() {
     null,
   );
 
-  const [selectedUserId, setSelectedUserId] = useState<string>("");
-  const [userGrants, setUserGrants] = useState<ActiveGrant[]>([]);
-  const [userGrantsLoading, setUserGrantsLoading] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const loadRequests = useCallback(
@@ -140,33 +186,17 @@ export default function DbAccessManagePage() {
       setLoading(true);
       const data = await dbAccessApi.getAllGrants();
       setAllGrants(data);
-      if (data.length > 0 && !selectedUserId) {
-        setSelectedUserId(data[0].userId);
-      }
     } catch {
     } finally {
       setLoading(false);
     }
-  }, [selectedUserId]);
+  }, []);
 
   useEffect(() => {
     if (tab === "pending") loadRequests(false);
     else if (tab === "all") loadRequests(true);
     else loadAllGrants();
   }, [tab, loadRequests, loadAllGrants]);
-
-  useEffect(() => {
-    if (!selectedUserId) {
-      setUserGrants([]);
-      return;
-    }
-    setUserGrantsLoading(true);
-    dbAccessApi
-      .getGrantsByUser(selectedUserId)
-      .then(setUserGrants)
-      .catch(() => setUserGrants([]))
-      .finally(() => setUserGrantsLoading(false));
-  }, [selectedUserId]);
 
   const uniqueUsers = useMemo(() => {
     const seen = new Set<string>();
@@ -224,13 +254,13 @@ export default function DbAccessManagePage() {
     }
   };
 
-  const handleRevoke = async (grantId: string) => {
+  const handleRevoke = async (group: GrantGroup) => {
+    const tblList = group.tables.join(", ");
+    if (!confirm(`"${tblList}" эрхийг цуцлах уу?`)) return;
     try {
-      setRevokingId(grantId);
-      await dbAccessApi.revokeGrant(grantId);
-      toast({ title: " Устгагдлаа", description: "Эрх цуцлагдлаа" });
-      const updated = await dbAccessApi.getGrantsByUser(selectedUserId);
-      setUserGrants(updated);
+      setRevokingId(group.requestId);
+      await Promise.all(group.grantIds.map((id) => dbAccessApi.revokeGrant(id)));
+      toast({ title: "✅ Устгагдлаа", description: "Эрх цуцлагдлаа" });
       const all = await dbAccessApi.getAllGrants();
       setAllGrants(all);
     } catch (err: any) {
@@ -266,7 +296,7 @@ export default function DbAccessManagePage() {
             <div>
               <h1 className="text-2xl font-bold">Эрхийн Хүсэлт Шийдвэрлэх</h1>
               <p className="text-sm text-muted-foreground">
-                {user?.name} ClickHouse хандалтын хүсэлтүүдийг хянах
+                {mounted ? (user?.name ?? "") : ""} ClickHouse хандалтын хүсэлтүүдийг хянах
               </p>
             </div>
           </div>
@@ -318,7 +348,7 @@ export default function DbAccessManagePage() {
         {(tab === "pending" || tab === "all") && (
           <>
             {/* Bulk buttons */}
-            {tab === "pending" && requests.length > 0 && (
+            {requests.some((r) => r.status === "pending") && (
               <div className="flex gap-3 p-4 rounded-xl border bg-card items-center">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
                 <p className="text-sm flex-1">
@@ -576,150 +606,112 @@ export default function DbAccessManagePage() {
 
         {/*  GRANTS tab  */}
         {tab === "grants" && (
-          <div className="space-y-5">
+          <div className="space-y-4">
+            {/* Summary bar */}
+            {!loading && allGrants.length > 0 && (
+              <div className="flex items-center gap-3 p-3 rounded-xl border bg-card text-sm">
+                <Users className="h-4 w-4 text-violet-400 shrink-0" />
+                <span className="flex-1 text-muted-foreground">
+                  Нийт{" "}
+                  <span className="font-semibold text-foreground">
+                    {allGrants.length}
+                  </span>{" "}
+                  идэвхтэй эрх,{" "}
+                  <span className="font-semibold text-foreground">
+                    {uniqueUsers.length}
+                  </span>{" "}
+                  хэрэглэгч
+                </span>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
+            ) : allGrants.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground rounded-xl border bg-card">
+                <Database className="h-10 w-10 opacity-20" />
+                <p className="font-medium">Идэвхтэй эрх байхгүй</p>
+              </div>
             ) : (
-              <>
-                {/* User picker */}
-                <div className="rounded-xl border bg-card p-5 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-violet-400" />
-                    <h2 className="font-semibold text-sm">Хэрэглэгч сонгох</h2>
-                  </div>
-                  {uniqueUsers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Идэвхтэй эрхтэй хэрэглэгч байхгүй
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {uniqueUsers.map((u) => (
-                        <button
-                          key={u.id}
-                          onClick={() => setSelectedUserId(u.id)}
-                          className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${
-                            selectedUserId === u.id
-                              ? "border-violet-500 bg-violet-500/10 text-violet-300"
-                              : "border-border hover:border-violet-500/50 hover:bg-violet-500/5 text-muted-foreground"
-                          }`}
-                        >
-                          <span className="font-medium">{u.name}</span>
-                          <span className="ml-1.5 text-xs opacity-70">
-                            {u.code}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected user grants */}
-                {selectedUserId && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold flex items-center gap-2 text-sm">
-                        <Database className="h-4 w-4 text-cyan-400" />
-                        <span className="text-violet-300">
-                          {
-                            uniqueUsers.find((u) => u.id === selectedUserId)
-                              ?.name
-                          }
-                        </span>
-                        <span className="text-muted-foreground font-normal">
-                          эрхийн жагсаалт
-                        </span>
-                      </h3>
-                      {userGrantsLoading && (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      )}
-                    </div>
-
-                    {!userGrantsLoading && userGrants.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground rounded-xl border bg-card">
-                        <Database className="h-8 w-8 opacity-20" />
-                        <p className="text-sm">Идэвхтэй эрх байхгүй</p>
+              uniqueUsers.map((u) => {
+                const uGrants = allGrants.filter((g) => g.userId === u.id);
+                if (uGrants.length === 0) return null;
+                return (
+                  <div key={u.id} className="space-y-2">
+                    {/* User header */}
+                    <div className="flex items-center gap-2 px-1">
+                      <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-300 shrink-0">
+                        {u.name[0]}
                       </div>
-                    ) : (
-                      userGrants.map((g) => (
-                        <div
-                          key={g.id}
-                          className="rounded-xl border bg-card p-4 flex items-start gap-3"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                            <Database className="h-4 w-4 text-cyan-400" />
-                          </div>
-                          <div className="flex-1 min-w-0 space-y-1.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-sm font-semibold text-cyan-300">
-                                {g.tableName}
-                              </span>
-                              {g.accessTypes.map((a) => (
-                                <Badge
-                                  key={a}
-                                  variant="secondary"
-                                  className="text-xs"
-                                >
-                                  {a}
-                                </Badge>
-                              ))}
-                            </div>
-                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                              <span>
-                                Олгосон:{" "}
-                                <span className="text-foreground">
-                                  {g.grantedByName}
-                                </span>
-                              </span>
-                              <span>
-                                {new Date(g.grantedAt).toLocaleDateString(
-                                  "mn-MN",
-                                )}
-                              </span>
-                              <span>
-                                Хүчинтэй:{" "}
-                                <span className="text-foreground">
-                                  {new Date(g.validUntil).toLocaleDateString(
-                                    "mn-MN",
-                                  )}
-                                </span>
-                              </span>
-                            </div>
-                            {g.columns && g.columns.length > 0 && (
-                              <div className="flex flex-wrap gap-1 pt-0.5">
-                                {g.columns.map((c) => (
-                                  <span
-                                    key={c}
-                                    className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded"
-                                  >
-                                    {c}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
-                            disabled={revokingId === g.id}
-                            onClick={() => handleRevoke(g.id)}
-                            title="Энэ эрхийг устгах"
-                          >
-                            {revokingId === g.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
-                            )}
-                            <span className="text-xs">Устгах</span>
-                          </Button>
+                      <span className="font-semibold text-sm">{u.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({u.code})
+                      </span>
+                      <Badge variant="secondary" className="text-xs ml-1">
+                        {groupByRequest(uGrants).length} хүсэлт
+                      </Badge>
+                    </div>
+
+                    {/* Grants for this user — grouped by request */}
+                    {groupByRequest(uGrants).map((grp) => (
+                      <div
+                        key={grp.requestId}
+                        className="rounded-xl border bg-card p-4 flex items-start gap-3 ml-9"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <Database className="h-4 w-4 text-cyan-400" />
                         </div>
-                      ))
-                    )}
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          {/* Table badges */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {grp.tables.map((t) => (
+                              <span
+                                key={t}
+                                className="inline-flex items-center gap-1 text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded-md"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                            {grp.accessTypes.map((a) => (
+                              <Badge key={a} variant="secondary" className="text-xs">
+                                {a}
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <span>
+                              Олгосон:{" "}
+                              <span className="text-foreground">{grp.grantedByName}</span>
+                            </span>
+                            <span suppressHydrationWarning>{fmt24(grp.grantedAt)}</span>
+                            <span suppressHydrationWarning>
+                              Хаагдах:{" "}
+                              <span className="text-foreground">{fmt24(grp.validUntil)}</span>
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
+                          disabled={revokingId === grp.requestId}
+                          onClick={() => handleRevoke(grp)}
+                          title="Энэ эрхийг устгах"
+                        >
+                          {revokingId === grp.requestId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                          <span className="text-xs">Устгах</span>
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </>
+                );
+              })
             )}
           </div>
         )}

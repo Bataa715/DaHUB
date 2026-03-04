@@ -49,6 +49,7 @@ import {
   FileText,
   Database,
   FileStack,
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -167,6 +168,15 @@ const AVAILABLE_TOOLS: Tool[] = [
     gradient: "bg-gradient-to-br from-violet-500/20 to-purple-500/20",
     category: "work",
   },
+  {
+    id: "english",
+    name: "Англи үгс",
+    description: "Англи үгсийн сан хүн, флэшкард хэлбээрийн суралцах хэрэгсэл",
+    icon: BookOpen,
+    color: "from-sky-500 to-blue-500",
+    gradient: "bg-gradient-to-br from-sky-500/20 to-blue-500/20",
+    category: "free",
+  },
 ];
 
 interface User {
@@ -184,6 +194,16 @@ export default function AdminToolsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
+
+  // Sub-admin: restrict visible tools to their grantableTools list
+  const isSuperAdmin = (user as any)?.isSuperAdmin;
+  const subAdminTools: string[] | null =
+    user?.isAdmin && !isSuperAdmin
+      ? ((user as any)?.grantableTools ?? [])
+      : null;
+  const visibleTools = subAdminTools !== null
+    ? AVAILABLE_TOOLS.filter((t) => subAdminTools.includes(t.id))
+    : AVAILABLE_TOOLS;
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -492,7 +512,7 @@ export default function AdminToolsPage() {
             },
             {
               label: "Хэрэгсэл",
-              value: AVAILABLE_TOOLS.length,
+              value: visibleTools.length,
               icon: Wrench,
               color: "from-amber-500 to-orange-500",
             },
@@ -549,12 +569,12 @@ export default function AdminToolsPage() {
                 Чөлөөт хэрэгслүүд
               </span>
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                {AVAILABLE_TOOLS.filter((t) => t.category === "free").length}
+                {visibleTools.filter((t) => t.category === "free").length}
               </span>
               <div className="flex-1 h-px bg-slate-700/50" />
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {AVAILABLE_TOOLS.filter((t) => t.category === "free").map(
+              {visibleTools.filter((t) => t.category === "free").map(
                 (tool, index) => {
                   const usersWithAccess = getUsersWithAccess(tool.id);
                   const Icon = tool.icon;
@@ -646,12 +666,12 @@ export default function AdminToolsPage() {
                 Ажлын хэрэгслүүд
               </span>
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                {AVAILABLE_TOOLS.filter((t) => t.category === "work").length}
+                {visibleTools.filter((t) => t.category === "work").length}
               </span>
               <div className="flex-1 h-px bg-slate-700/50" />
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {AVAILABLE_TOOLS.filter((t) => t.category === "work").map(
+              {visibleTools.filter((t) => t.category === "work").map(
                 (tool, index) => {
                   const usersWithAccess = getUsersWithAccess(tool.id);
                   const Icon = tool.icon;

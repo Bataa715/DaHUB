@@ -1,4 +1,10 @@
 // ─── Types ───────────────────────────────────────────────────────────────────
+export interface RowInlineImage {
+  id: string;
+  dataUrl: string;
+  width: number; // percentage 10–100
+}
+
 export interface PlannedTask {
   _id: string;
   order: number;
@@ -7,6 +13,7 @@ export interface PlannedTask {
   startDate: string;
   endDate: string;
   description: string;
+  images: RowInlineImage[];
 }
 
 export interface DynSection {
@@ -29,6 +36,7 @@ export interface Section2Task {
   result: string;
   period: string;
   completion: string;
+  images: RowInlineImage[];
 }
 
 export interface Section3AutoTask {
@@ -45,6 +53,17 @@ export interface Section3Dashboard {
   dashboard: string;
   value: string;
   rating: string;
+}
+
+// I.2 Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн
+export interface Section1Dashboard {
+  _id: string;
+  order: number;
+  title: string; // Төлөвлөгөөт ажил
+  completion: string; // Ажлын гүйцэтгэл e.g. "100%"
+  period: string; // Хийгдсэн хугацаа
+  summary: string; // Гүйцэтгэл /товч/
+  images: RowInlineImage[];
 }
 
 export interface Section4Training {

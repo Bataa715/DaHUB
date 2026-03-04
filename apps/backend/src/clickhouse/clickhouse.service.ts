@@ -86,7 +86,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       const data: any = await result.json();
       return data.data as T[];
     } catch (error: any) {
-      this.logger.error(`ClickHouse query error: ${error.message}`);
+      const msg = error?.message || error?.type || String(error);
+      this.logger.error(`ClickHouse query error: ${msg}`);
       throw error;
     }
   }
@@ -102,21 +103,35 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         format: "JSONEachRow",
       });
     } catch (error: any) {
-      this.logger.error(`ClickHouse insert error (${table}): ${error.message}`);
+      const msg = error?.message || error?.type || String(error);
+      this.logger.error(`ClickHouse insert error (${table}): ${msg}`);
       throw error;
     }
   }
 
   /**
-   * Execute a DDL / mutating statement (ALTER TABLE, CREATE TABLE, etc.)
-   * Supports optional query_params for parameterized mutations.
+   * Execute DDL / mutation SQL (ALTER TABLE, CREATE, DROP, etc.)
+   * Uses client.command() which automatically drains the response stream.
    */
-  async exec(sql: string, params?: Record<string, any>) {
-    try {
-      await this.client.exec({ query: sql, query_params: params });
-    } catch (error: any) {
-      this.logger.error(`ClickHouse exec error: ${error.message}`);
-      throw error;
+  async exec(sql: string, params?: Record<string, any>, retries = 1) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await this.client.command({ query: sql, query_params: params });
+        return;
+      } catch (error: any) {
+        const msg = error?.message || error?.type || String(error);
+        const isRetriable =
+          msg.includes('ECONNRESET') ||
+          msg.includes('socket hang up') ||
+          error?.code === 'ECONNRESET';
+        if (isRetriable && attempt < retries) {
+          this.logger.warn(`ClickHouse command retrying after: ${msg}`);
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+        this.logger.error(`ClickHouse command error: ${msg}`, error?.stack);
+        throw error;
+      }
     }
   }
 
@@ -295,7 +310,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           grantedAt DateTime DEFAULT now(),
           isActive UInt8 DEFAULT 1,
           revokedAt DateTime DEFAULT '1970-01-01 00:00:00',
-          revokeReason String DEFAULT ''
+          revokeReason String DEFAULT '',
+          chPassword String DEFAULT ''
         ) ENGINE = ReplacingMergeTree(grantedAt)
         ORDER BY id
       `);
@@ -338,6 +354,13 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.exec(
           `ALTER TABLE users ADD COLUMN IF NOT EXISTS isSuperAdmin UInt8 DEFAULT 0`,
+        );
+      } catch {}
+
+      // Migrate users: add grantableTools if missing
+      try {
+        await this.exec(
+          `ALTER TABLE users ADD COLUMN IF NOT EXISTS grantableTools String DEFAULT '[]'`,
         );
       } catch {}
 
@@ -384,6 +407,40 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS lastMoveAt String DEFAULT ''`,
       ).catch(() => {});
 
+      // Create english_words table
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS english_words (
+          id String,
+          word String,
+          translation String,
+          definition String DEFAULT '',
+          example String DEFAULT '',
+          partOfSpeech String DEFAULT '',
+          difficulty UInt8 DEFAULT 1,
+          userId String,
+          totalReviews UInt32 DEFAULT 0,
+          correctReviews UInt32 DEFAULT 0,
+          lastReviewedAt DateTime DEFAULT '1970-01-01 00:00:00',
+          createdAt DateTime DEFAULT now(),
+          updatedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY id
+      `);
+
+      // Create dept_bsc_reports table (department BSC/ТҮЗ quarterly reports)
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS dept_bsc_reports (
+          departmentId String,
+          year UInt16,
+          quarter UInt8,
+          sectionsJson String DEFAULT '{}',
+          savedBy String DEFAULT '',
+          savedByName String DEFAULT '',
+          updatedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY (departmentId, year, quarter)
+      `);
+
       // Create department_photos table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS department_photos (
@@ -398,8 +455,13 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ) ENGINE = MergeTree() ORDER BY (departmentId, uploadedAt)
       `);
 
+      // ── Column migrations (idempotent) ─────────────────────────────────
+      await this.exec(
+        `ALTER TABLE access_grants ADD COLUMN IF NOT EXISTS chPassword String DEFAULT ''`,
+      );
+
       this.logger.log(
-        "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, department_photos)",
+        "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);

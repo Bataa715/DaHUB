@@ -12,6 +12,7 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import {
   SignupDto,
   LoginDto,
@@ -29,13 +30,48 @@ const DEPARTMENT_CODES: Record<string, string> = {
   Удирдлага: "DAG",
   "Дата анализын алба": "DAA",
   "Ерөнхий аудитын хэлтэс": "EAH",
-  "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ZAGCHBH",
+  "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ZACHBH",
   "Мэдээллийн технологийн аудитын хэлтэс": "MTAH",
 };
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+
+  // In-memory brute-force lockout (15 min window, lock after 5 failures, 15 min lockout)
+  private readonly loginAttempts = new Map<string, { count: number; firstAttempt: number; lockedUntil?: number }>();
+  private readonly MAX_ATTEMPTS = 5;
+  private readonly ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+  private readonly LOCKOUT_MS = 15 * 60 * 1000;
+
+  private guardLogin(key: string): void {
+    const record = this.loginAttempts.get(key);
+    if (record?.lockedUntil && Date.now() < record.lockedUntil) {
+      const remaining = Math.ceil((record.lockedUntil - Date.now()) / 60000);
+      throw new UnauthorizedException(
+        `Хэт олон амжилтгүй оролдлого. ${remaining} минутын дараа дахин оролдоно уу.`,
+      );
+    }
+  }
+
+  private recordFailedLogin(key: string): void {
+    const now = Date.now();
+    const record = this.loginAttempts.get(key);
+    const existing =
+      record && now - record.firstAttempt < this.ATTEMPT_WINDOW_MS
+        ? record
+        : { count: 0, firstAttempt: now };
+    existing.count += 1;
+    if (existing.count >= this.MAX_ATTEMPTS) {
+      existing.lockedUntil = now + this.LOCKOUT_MS;
+      this.logger.warn(`Login locked after ${existing.count} failed attempts: ${key}`);
+    }
+    this.loginAttempts.set(key, existing);
+  }
+
+  private clearFailedLogins(key: string): void {
+    this.loginAttempts.delete(key);
+  }
 
   constructor(
     private clickhouse: ClickHouseService,
@@ -58,6 +94,7 @@ export class AuthService {
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
       allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
+      grantableTools: user.grantableTools ? JSON.parse(user.grantableTools) : [],
       profileImage: user.profileImage || null,
       isActive: !!user.isActive,
     };
@@ -70,12 +107,18 @@ export class AuthService {
         ? user.allowedTools
         : JSON.parse(user.allowedTools)
       : [];
+    const grantableTools = user.grantableTools
+      ? Array.isArray(user.grantableTools)
+        ? user.grantableTools
+        : JSON.parse(user.grantableTools)
+      : [];
     return this.jwtService.sign({
       id: user.id,
       userId: user.userId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
       allowedTools: tools,
+      grantableTools,
     });
   }
 
@@ -323,8 +366,11 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const { department, username, password } = loginDto;
+    const lockKey = `login:${department}:${username}`;
 
     try {
+      this.guardLogin(lockKey);
+
       const dept = (
         await this.clickhouse.query<any>(
           "SELECT * FROM departments WHERE name = {name:String} LIMIT 1",
@@ -354,6 +400,7 @@ export class AuthService {
       )[0];
 
       await this.validateCredentials(user, password, `dept-login:${username}`);
+      this.clearFailedLogins(lockKey);
 
       if (user.isAdmin) {
         throw new UnauthorizedException(
@@ -382,6 +429,7 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
+        this.recordFailedLogin(lockKey);
         throw error;
       }
       this.logger.error(`Login error: ${error}`);
@@ -391,6 +439,10 @@ export class AuthService {
 
   async loginById(loginByIdDto: LoginByIdDto) {
     const { userId, password } = loginByIdDto;
+    const lockKey = `login:${userId}`;
+
+    // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
+    this.guardLogin(lockKey);
 
     try {
       const user = (
@@ -403,6 +455,7 @@ export class AuthService {
       )[0];
 
       await this.validateCredentials(user, password, `id-login:${userId}`);
+      this.clearFailedLogins(lockKey);
 
       if (user.isAdmin) {
         throw new UnauthorizedException(
@@ -430,6 +483,9 @@ export class AuthService {
         refreshToken,
       };
     } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        this.recordFailedLogin(lockKey);
+      }
       await this.auditLogService.log({
         userId: "unknown",
         action: "login",
@@ -445,7 +501,11 @@ export class AuthService {
 
   async adminLogin(adminLoginDto: AdminLoginDto) {
     const { username, password } = adminLoginDto;
+    const lockKey = `admin-login:${username}`;
     this.logger.debug(`Admin login attempt for userId: ${username}`);
+
+    // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
+    this.guardLogin(lockKey);
 
     try {
       const user = (
@@ -458,6 +518,7 @@ export class AuthService {
       )[0];
 
       await this.validateCredentials(user, password, `admin-login:${username}`);
+      this.clearFailedLogins(lockKey);
       this.logger.log(`Admin login successful: ${username}`);
       await this.updateLastLogin(user.id);
 
@@ -479,6 +540,9 @@ export class AuthService {
         refreshToken,
       };
     } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        this.recordFailedLogin(lockKey);
+      }
       await this.auditLogService.log({
         userId: "unknown",
         action: "admin_login",
@@ -574,20 +638,6 @@ export class AuthService {
 
   async registerUser(registerUserDto: RegisterUserDto) {
     const { department, position, name } = registerUserDto;
-
-    // "Удирдлага" хэлтэст зөвхөн нэг хэрэглэгч (Захирал) бүртгэгдэж болно
-    if (department === "Удирдлага") {
-      const directorExists = await this.clickhouse.query<any>(
-        `SELECT u.id FROM users u LEFT JOIN departments d ON u.departmentId = d.id
-         WHERE d.name = {dept:String} LIMIT 1`,
-        { dept: "Удирдлага" },
-      );
-      if (directorExists.length > 0) {
-        throw new ConflictException(
-          "Удирдлага хэлтэст аль хэдийн бүртгэлтэй хэрэглэгч байна. Зөвхөн Захирал бүртгэгдэж болно.",
-        );
-      }
-    }
 
     const userId = await this.generateUserId(department, name);
 
@@ -700,5 +750,21 @@ export class AuthService {
     );
 
     return { success: true, message: "Нууц үг амжилттай солигдлоо" };
+  }
+
+  /**
+   * Nightly cleanup of expired and already-revoked refresh tokens (M-3).
+   * Prevents unbounded table growth — ScheduleModule is registered in AppModule.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async cleanupExpiredRefreshTokens(): Promise<void> {
+    try {
+      await this.clickhouse.exec(
+        "ALTER TABLE refresh_tokens DELETE WHERE expiresAt < now() OR isRevoked = 1",
+      );
+      this.logger.log("Expired/revoked refresh tokens cleaned up");
+    } catch (err) {
+      this.logger.error(`Failed to clean up refresh tokens: ${err}`);
+    }
   }
 }

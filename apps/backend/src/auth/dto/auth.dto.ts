@@ -55,14 +55,7 @@ export class LoginDto {
     minLength: 8,
   })
   @IsString()
-  @MinLength(8, { message: "Nuуц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
-    {
-      message:
-        "Nuуц үг нь том үсэг, жижиг үсэг, тоо, тусгай тэмдэгт агуулсан байх ёстой",
-    },
-  )
+  @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   password: string;
 }
 
@@ -74,10 +67,10 @@ export class LoginByIdDto {
 
   @ApiProperty({
     example: "user123",
-    description: "Password",
+    description: "Password (min 8 characters)",
   })
   @IsString()
-  @IsNotEmpty()
+  @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   password: string;
 }
 
@@ -93,7 +86,7 @@ export class AdminLoginDto {
     minLength: 1,
   })
   @IsString()
-  @MinLength(1)
+  @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   password: string;
 }
 

@@ -32,6 +32,27 @@ export class TailanController {
     return this.tailanService.saveDraft(req.user, dto);
   }
 
+  // ─── Department BSC (ТҮЗ) report save ─────────────────────────────────────
+  @Post("dept-bsc")
+  async saveDeptBsc(
+    @Req() req: any,
+    @Body("year", ParseIntPipe) year: number,
+    @Body("quarter", ParseIntPipe) quarter: number,
+    @Body("sections") sections: Record<string, unknown>,
+  ) {
+    return this.tailanService.saveDeptBsc(req.user, year, quarter, sections);
+  }
+
+  // ─── Department BSC (ТҮЗ) report load ─────────────────────────────────────
+  @Get("dept-bsc/:year/:quarter")
+  async getDeptBsc(
+    @Req() req: any,
+    @Param("year", ParseIntPipe) year: number,
+    @Param("quarter", ParseIntPipe) quarter: number,
+  ) {
+    return this.tailanService.getDeptBsc(req.user, year, quarter);
+  }
+
   // ─── Submit report to department head ─────────────────────────────────────
   @Post("submit")
   async submit(

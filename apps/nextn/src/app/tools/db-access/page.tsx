@@ -23,6 +23,7 @@ import {
   Send,
   Calendar,
   Table2,
+  Check,
 } from "lucide-react";
 
 interface TableInfo {
@@ -142,6 +143,27 @@ export default function DbAccessRequestPage() {
     setSelectedTables((prev) =>
       prev.includes(full) ? prev.filter((t) => t !== full) : [...prev, full],
     );
+  };
+
+  /** Toggle all tables in a given database group */
+  const toggleDb = (dbTables: TableInfo[]) => {
+    const allFulls = dbTables.map((t) => t.full);
+    const allSelected = allFulls.every((f) => selectedTables.includes(f));
+    if (allSelected) {
+      setSelectedTables((prev) => prev.filter((t) => !allFulls.includes(t)));
+    } else {
+      setSelectedTables((prev) => [
+        ...prev,
+        ...allFulls.filter((f) => !prev.includes(f)),
+      ]);
+    }
+  };
+
+  /** Toggle ALL tables across all databases */
+  const toggleAll = () => {
+    const allFulls = tables.map((t) => t.full);
+    const allSelected = allFulls.every((f) => selectedTables.includes(f));
+    setSelectedTables(allSelected ? [] : allFulls);
   };
 
   const handleSubmit = async () => {
@@ -280,42 +302,126 @@ export default function DbAccessRequestPage() {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
-                  {Object.entries(grouped).map(([db, dbTables]) => (
-                    <div key={db}>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                        {db}
-                      </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {dbTables.map((t) => {
-                          const selected = selectedTables.includes(t.full);
-                          return (
-                            <button
-                              key={t.full}
-                              onClick={() => toggleTable(t.full)}
-                              className={`text-left px-3 py-2 rounded-lg border text-sm transition-all ${
-                                selected
-                                  ? "border-cyan-500 bg-cyan-500/10 text-cyan-300"
-                                  : "border-border hover:border-cyan-500/50 hover:bg-cyan-500/5"
+                <div className="space-y-3">
+                  {/* Global select-all row */}
+                  {!tableFilter && tables.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={toggleAll}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        tables.every((t) => selectedTables.includes(t.full))
+                          ? "border-cyan-500 bg-cyan-500/10 text-cyan-300"
+                          : "border-dashed border-border hover:border-cyan-500/50 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border ${
+                          tables.every((t) => selectedTables.includes(t.full))
+                            ? "bg-cyan-500 border-cyan-500"
+                            : tables.some((t) => selectedTables.includes(t.full))
+                              ? "border-cyan-500 bg-cyan-500/30"
+                              : "border-border"
+                        }`}
+                      >
+                        {tables.every((t) => selectedTables.includes(t.full)) && (
+                          <Check className="h-2.5 w-2.5 text-black" />
+                        )}
+                        {!tables.every((t) =>
+                          selectedTables.includes(t.full),
+                        ) &&
+                          tables.some((t) =>
+                            selectedTables.includes(t.full),
+                          ) && (
+                            <div className="w-2 h-0.5 bg-cyan-400 rounded" />
+                          )}
+                      </div>
+                      Бүгдийг сонгох ({tables.length} хүснэгт)
+                    </button>
+                  )}
+
+                  {/* Per-database groups */}
+                  <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+                    {Object.entries(grouped).map(([db, dbTables]) => {
+                      const allDbSelected = dbTables.every((t) =>
+                        selectedTables.includes(t.full),
+                      );
+                      const someDbSelected = dbTables.some((t) =>
+                        selectedTables.includes(t.full),
+                      );
+                      return (
+                        <div key={db}>
+                          {/* DB header with select-all for this db */}
+                          <button
+                            type="button"
+                            onClick={() => toggleDb(dbTables)}
+                            className="flex items-center gap-2 mb-2 px-1 group w-full text-left"
+                          >
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                                allDbSelected
+                                  ? "bg-cyan-500 border-cyan-500"
+                                  : someDbSelected
+                                    ? "border-cyan-500 bg-cyan-500/30"
+                                    : "border-muted-foreground/40 group-hover:border-cyan-500/60"
                               }`}
                             >
-                              <span className="font-mono truncate block">
-                                {t.table}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {t.database}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                  {Object.keys(grouped).length === 0 && (
-                    <p className="text-center text-muted-foreground py-4 text-sm">
-                      Хүснэгт олдсонгүй
-                    </p>
-                  )}
+                              {allDbSelected && (
+                                <Check className="h-2.5 w-2.5 text-black" />
+                              )}
+                              {!allDbSelected && someDbSelected && (
+                                <div className="w-2 h-0.5 bg-cyan-400 rounded" />
+                              )}
+                            </div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider group-hover:text-cyan-400 transition-colors">
+                              {db}
+                            </p>
+                            <span className="text-xs text-muted-foreground/60">
+                              ({dbTables.length})
+                            </span>
+                          </button>
+
+                          {/* Individual table checkboxes */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pl-1">
+                            {dbTables.map((t) => {
+                              const selected = selectedTables.includes(t.full);
+                              return (
+                                <button
+                                  key={t.full}
+                                  type="button"
+                                  onClick={() => toggleTable(t.full)}
+                                  className={`flex items-center gap-2 text-left px-3 py-2 rounded-lg border text-sm transition-all ${
+                                    selected
+                                      ? "border-cyan-500 bg-cyan-500/10 text-cyan-300"
+                                      : "border-border hover:border-cyan-500/50 hover:bg-cyan-500/5"
+                                  }`}
+                                >
+                                  <div
+                                    className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                                      selected
+                                        ? "bg-cyan-500 border-cyan-500"
+                                        : "border-muted-foreground/40"
+                                    }`}
+                                  >
+                                    {selected && (
+                                      <Check className="h-2.5 w-2.5 text-black" />
+                                    )}
+                                  </div>
+                                  <span className="font-mono truncate text-xs">
+                                    {t.table}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {Object.keys(grouped).length === 0 && (
+                      <p className="text-center text-muted-foreground py-4 text-sm">
+                        Хүснэгт олдсонгүй
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -90,7 +90,7 @@ export class ChessService {
     }
   }
 
-  // ── Invitations ──────────────────────────────────────────────────────────
+  // -- Invitations ----------------------------------------------------------
 
   async getMyInvitations(userId: string) {
     const rows = await this.clickhouse.query<ChessInvitation>(
@@ -121,7 +121,7 @@ export class ChessService {
     dto: SendInviteDto,
   ) {
     if (fromUserId === dto.toUserId) {
-      throw new BadRequestException("Өөрөөрөө тоглох боломжгүй");
+      throw new BadRequestException("???????? ?????? ?????????");
     }
     // Check for existing pending invite between these two users
     const existing = await this.clickhouse.query<{ id: string }>(
@@ -135,7 +135,7 @@ export class ChessService {
       { a: fromUserId, b: dto.toUserId },
     );
     if (existing && existing.length > 0) {
-      throw new BadRequestException("Аль хэдийн хүлээгдэж буй урилга байна");
+      throw new BadRequestException("??? ?????? ????????? ??? ?????? ?????");
     }
 
     const id = randomUUID();
@@ -153,7 +153,7 @@ export class ChessService {
         createdAt: now,
       },
     ]);
-    return { id, message: "Урилга амжилттай илгээгдлээ" };
+    return { id, message: "?????? ????????? ??????????" };
   }
 
   async acceptInvite(inviteId: string, userId: string) {
@@ -172,12 +172,12 @@ export class ChessService {
       { id: inviteId },
     );
     if (!rows || rows.length === 0)
-      throw new NotFoundException("Урилга олдсонгүй");
+      throw new NotFoundException("?????? ?????????");
     const invite = rows[0];
     if (invite.toUserId !== userId)
-      throw new BadRequestException("Зөвшөөрөх эрхгүй");
+      throw new BadRequestException("????????? ??????");
     if (invite.status !== "pending")
-      throw new BadRequestException("Урилга аль хэдийн боловсруулагдсан байна");
+      throw new BadRequestException("?????? ??? ?????? ???????????????? ?????");
 
     const seq = Date.now();
     const now = nowCH();
@@ -217,7 +217,7 @@ export class ChessService {
       },
     ]);
 
-    return { gameId, message: "Тоглоом эхэллээ" };
+    return { gameId, message: "??????? ???????" };
   }
 
   async declineInvite(inviteId: string, userId: string) {
@@ -236,10 +236,10 @@ export class ChessService {
       { id: inviteId },
     );
     if (!rows || rows.length === 0)
-      throw new NotFoundException("Урилга олдсонгүй");
+      throw new NotFoundException("?????? ?????????");
     const invite = rows[0];
     if (invite.toUserId !== userId && invite.fromUserId !== userId)
-      throw new BadRequestException("Эрхгүй");
+      throw new BadRequestException("??????");
 
     const seq = Date.now();
     await this.clickhouse.insert("chess_invitations", [
@@ -254,10 +254,10 @@ export class ChessService {
         createdAt: invite.createdAt,
       },
     ]);
-    return { message: "Урилга татгалзагдлаа" };
+    return { message: "?????? ?????????????" };
   }
 
-  // ── Games ─────────────────────────────────────────────────────────────────
+  // -- Games -----------------------------------------------------------------
 
   private async getGameState(gameId: string): Promise<ChessGame> {
     const rows = await this.clickhouse.query<ChessGame>(
@@ -280,7 +280,7 @@ export class ChessService {
       { id: gameId },
     );
     if (!rows || rows.length === 0)
-      throw new NotFoundException("Тоглоом олдсонгүй");
+      throw new NotFoundException("??????? ?????????");
     return rows[0];
   }
 
@@ -319,14 +319,14 @@ export class ChessService {
   async makeMove(gameId: string, userId: string, dto: MakeMoveDto) {
     const game = await this.getGameState(gameId);
     if (game.status !== "active")
-      throw new BadRequestException("Тоглоом дууссан байна");
+      throw new BadRequestException("??????? ??????? ?????");
 
     const moves: string[] = JSON.parse(game.moves || "[]");
     const isWhiteTurn = moves.length % 2 === 0;
     if (isWhiteTurn && userId !== game.whiteUserId)
-      throw new BadRequestException("Энэ таны ээлж биш");
+      throw new BadRequestException("??? ???? ???? ???");
     if (!isWhiteTurn && userId !== game.blackUserId)
-      throw new BadRequestException("Энэ таны ээлж биш");
+      throw new BadRequestException("??? ???? ???? ???");
 
     // Deduct elapsed time from the player who just moved
     const nowDate = new Date();
@@ -374,9 +374,9 @@ export class ChessService {
   async finishGame(gameId: string, userId: string, dto: FinishGameDto) {
     const game = await this.getGameState(gameId);
     if (game.status !== "active")
-      throw new BadRequestException("Тоглоом аль хэдийн дуусчхсан байна");
+      throw new BadRequestException("??????? ??? ?????? ????????? ?????");
     if (userId !== game.whiteUserId && userId !== game.blackUserId)
-      throw new BadRequestException("Эрхгүй");
+      throw new BadRequestException("??????");
 
     const seq = Date.now();
     await this.clickhouse.insert("chess_games", [
@@ -396,7 +396,7 @@ export class ChessService {
         createdAt: game.createdAt,
       },
     ]);
-    return { message: "Тоглоом дуусгагдлаа" };
+    return { message: "??????? ???????????" };
   }
 
   async getHistory(userId: string) {
@@ -496,4 +496,3 @@ export class ChessService {
     );
   }
 }
-

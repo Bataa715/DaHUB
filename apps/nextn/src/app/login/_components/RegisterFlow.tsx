@@ -173,21 +173,6 @@ export function RegisterFlow({
                         )}
                       />
 
-                      {selectedDepartment === "Удирдлага" && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex items-start gap-2 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10"
-                        >
-                          <ShieldCheck className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                          <p className="text-xs text-amber-300 leading-relaxed">
-                            <span className="font-semibold">Анхаар:</span>{" "}
-                            Удирдлагад зөвхөн нэг хэрэглэгч — Захирал бүртгэгдэж
-                            болно.
-                          </p>
-                        </motion.div>
-                      )}
-
                       <FormField
                         control={registerForm.control}
                         name="position"

@@ -7,6 +7,7 @@ import { tailanApi } from "@/lib/api";
 import {
   FileText,
   Users,
+  BarChart3,
   ChevronRight,
   ChevronLeft,
   Loader2,

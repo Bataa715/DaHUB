@@ -159,7 +159,8 @@ export class FitnessService {
     if (logs.length === 0) throw new NotFoundException("Бүртгэл олдсонгүй");
 
     await this.clickhouse.exec(
-      `ALTER TABLE workout_logs DELETE WHERE id = '${logId}'`,
+      `ALTER TABLE workout_logs DELETE WHERE id = {id:String}`,
+      { id: logId },
     );
     return logs[0];
   }
@@ -210,7 +211,8 @@ export class FitnessService {
     if (stats.length === 0) throw new NotFoundException("Бүртгэл олдсонгүй");
 
     await this.clickhouse.exec(
-      `ALTER TABLE body_stats DELETE WHERE id = '${statsId}'`,
+      `ALTER TABLE body_stats DELETE WHERE id = {id:String}`,
+      { id: statsId },
     );
     return stats[0];
   }

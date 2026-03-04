@@ -38,7 +38,6 @@ import {
   Briefcase,
   TrendingUp,
   Edit,
-  Plus,
   Trash2,
   Loader2,
   Eye,
@@ -120,7 +119,7 @@ const cardGradients = [
 ];
 
 export default function AdminDepartmentsPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
   const [selectedDepartment, setSelectedDepartment] =
@@ -128,7 +127,6 @@ export default function AdminDepartmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -176,15 +174,6 @@ export default function AdminDepartmentsPage() {
     setIsEditOpen(true);
   };
 
-  const handleAddDepartment = () => {
-    setFormData({
-      name: "",
-      description: "",
-      employeeCount: 0,
-    });
-    setIsAddOpen(true);
-  };
-
   const handleSaveEdit = async () => {
     if (!selectedDepartment) return;
 
@@ -202,38 +191,6 @@ export default function AdminDepartmentsPage() {
       toast({
         title: "Алдаа",
         description: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveAdd = async () => {
-    if (!formData.name.trim()) {
-      toast({
-        title: "Алдаа",
-        description: "Хэлтсийн нэрийг оруулна уу.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await departmentsApi.create(formData);
-      toast({
-        title: "Амжилттай",
-        description: "Шинэ хэлтэс нэмэгдлээ.",
-      });
-      setIsAddOpen(false);
-      loadDepartments();
-    } catch (error: any) {
-      console.error("Error creating department:", error);
-      toast({
-        title: "Алдаа",
-        description:
-          error.response?.data?.message || "Хэлтэс нэмэхэд алдаа гарлаа.",
         variant: "destructive",
       });
     } finally {
@@ -278,6 +235,19 @@ export default function AdminDepartmentsPage() {
     0,
   );
 
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
+          <Loader2 className="h-12 w-12 text-emerald-400" />
+        </motion.div>
+      </div>
+    );
+  }
+
   if (!user?.isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -287,19 +257,6 @@ export default function AdminDepartmentsPage() {
             <p className="text-slate-300">Та энэ хуудсыг үзэх эрхгүй байна.</p>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        >
-          <Loader2 className="h-12 w-12 text-emerald-400" />
-        </motion.div>
       </div>
     );
   }
@@ -387,20 +344,7 @@ export default function AdminDepartmentsPage() {
               Байгууллагын бүх хэлтсийн мэдээлэл, тохиргоо удирдах
             </p>
           </div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Button
-              onClick={handleAddDepartment}
-              size="lg"
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-emerald-500/25"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Хэлтэс нэмэх
-            </Button>
-          </motion.div>
+
         </motion.div>
 
         {/* Stats Overview */}
@@ -488,13 +432,6 @@ export default function AdminDepartmentsPage() {
               <CardContent className="py-12 text-center">
                 <Building2 className="w-16 h-16 mx-auto text-slate-600 mb-4" />
                 <p className="text-slate-400 mb-4">Хэлтэс байхгүй байна</p>
-                <Button
-                  onClick={handleAddDepartment}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Эхний хэлтсээ нэмэх
-                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -819,68 +756,6 @@ export default function AdminDepartmentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Department Dialog */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="bg-slate-900 border-slate-700">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Plus className="w-5 h-5 text-emerald-400" />
-              Шинэ хэлтэс нэмэх
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Шинэ хэлтсийн мэдээллийг оруулна уу
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="add-name" className="text-slate-300">
-                Хэлтсийн нэр *
-              </Label>
-              <Input
-                id="add-name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Жишээ: Санхүүгийн хэлтэс"
-                className="bg-slate-800 border-slate-600 text-white focus:border-emerald-500 placeholder:text-slate-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-description" className="text-slate-300">
-                Тайлбар / Чиг үүрэг
-              </Label>
-              <Textarea
-                id="add-description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                rows={4}
-                placeholder="Хэлтсийн үндсэн чиг үүрэг, зорилгыг бичнэ үү..."
-                className="bg-slate-800 border-slate-600 text-white focus:border-emerald-500 placeholder:text-slate-500"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddOpen(false)}
-              className="border-slate-600 text-slate-300 hover:bg-slate-800"
-            >
-              Цуцлах
-            </Button>
-            <Button
-              onClick={handleSaveAdd}
-              disabled={isSaving}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
-            >
-              {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Нэмэх
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

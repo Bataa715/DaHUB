@@ -11,7 +11,6 @@ import {
   Users,
   Briefcase,
   Target,
-  Mail,
   User,
   Lock,
   ChevronLeft,
@@ -495,10 +494,7 @@ function EmployeeCard({
             <span className="truncate max-w-[140px]">{member.position}</span>
           </p>
         )}
-        <p className="mt-1 text-xs text-slate-500 flex items-center justify-center gap-1">
-          <Mail className="w-3 h-3 shrink-0" />
-          <span className="truncate max-w-[140px]">{member.email}</span>
-        </p>
+
       </div>
 
       {member.isActive !== false && (
@@ -587,6 +583,170 @@ function MemberCarousel({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/*
+   OTHER DEPARTMENTS VIEWER
+ */
+function OtherDeptViewer({
+  currentDeptId,
+}: {
+  currentDeptId: string;
+}) {
+  const { toast } = useToast();
+  const [list, setList] = useState<DepartmentData[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [selected, setSelected] = useState<DepartmentData | null>(null);
+  const [loadingSelected, setLoadingSelected] = useState(false);
+
+  useEffect(() => {
+    departmentsApi
+      .getAll()
+      .then((data: DepartmentData[]) =>
+        setList(data.filter((d) => d.id !== currentDeptId)),
+      )
+      .catch(() =>
+        toast({
+          title: "Алдаа",
+          description: "Хэлтсүүдийн жагсаалт ачаалахад алдаа гарлаа.",
+          variant: "destructive",
+        }),
+      )
+      .finally(() => setLoadingList(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDeptId]);
+
+  const selectDept = async (dept: DepartmentData) => {
+    if (selected?.id === dept.id) {
+      setSelected(null);
+      return;
+    }
+    setLoadingSelected(true);
+    try {
+      const full = await departmentsApi.getOne(dept.id);
+      setSelected(full);
+    } catch {
+      toast({
+        title: "Алдаа",
+        description: "Хэлтсийн дэлгэрэнгүй мэдээлэл ачаалахад алдаа гарлаа.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSelected(false);
+    }
+  };
+
+  if (loadingList) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+      </div>
+    );
+  }
+
+  if (list.length === 0) {
+    return (
+      <p className="text-slate-500 text-sm text-center py-6">
+        Бусад хэлтэс олдсонгүй.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Dept grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {list.map((dept) => {
+          const isActive = selected?.id === dept.id;
+          return (
+            <button
+              key={dept.id}
+              onClick={() => selectDept(dept)}
+              className={`rounded-2xl border p-4 text-left transition-all hover:scale-105 ${
+                isActive
+                  ? "bg-blue-500/20 border-blue-500/60 shadow-blue-500/20 shadow-lg"
+                  : "bg-slate-800/50 border-slate-700/50 hover:border-blue-500/40"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/30 to-cyan-500/30 flex items-center justify-center mb-2">
+                <Building2 className="w-5 h-5 text-cyan-400" />
+              </div>
+              <p className="text-sm font-semibold text-white leading-tight line-clamp-2">
+                {dept.name}
+              </p>
+              {dept.employeeCount !== undefined && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {dept.employeeCount} ажилтан
+                </p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected dept detail */}
+      <AnimatePresence>
+        {(loadingSelected || selected) && (
+          <motion.div
+            key={selected?.id ?? "loading"}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.35 }}
+            className="overflow-hidden"
+          >
+            {loadingSelected ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
+              </div>
+            ) : selected ? (
+              <div className="rounded-2xl border border-slate-700/60 bg-slate-800/40 backdrop-blur p-5 space-y-6">
+                {/* Dept header */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow">
+                    <Building2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{selected.name}</h3>
+                    {selected.manager && (
+                      <p className="text-xs text-amber-400 flex items-center gap-1">
+                        <Crown className="w-3 h-3" /> {selected.manager}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Members */}
+                {selected.users && selected.users.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                        <Users className="w-3.5 h-3.5 text-cyan-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-white">Хамт олон</span>
+                      <Badge className="bg-blue-500/15 text-blue-300 border-blue-500/30 text-xs ml-auto">
+                        {selected.users.length} ажилтан
+                      </Badge>
+                    </div>
+                    <MemberCarousel
+                      members={selected.users}
+                      currentUserId=""
+                      managerName={selected.manager}
+                    />
+                  </div>
+                )}
+
+                {/* Album */}
+                {selected.id && (
+                  <DeptAlbum deptId={selected.id} deptName={selected.name} />
+                )}
+              </div>
+            ) : null}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -850,6 +1010,27 @@ export default function DepartmentsPage() {
                     deptId={department.id}
                     deptName={department.name}
                   />
+                )}
+              </motion.section>
+
+              <div className="border-t border-slate-700/50" />
+
+              {/* Other Departments */}
+              <motion.section
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+              >
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">
+                    Бусад хэлтсүүд
+                  </h2>
+                </div>
+                {department.id && (
+                  <OtherDeptViewer currentDeptId={department.id} />
                 )}
               </motion.section>
 

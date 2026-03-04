@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { usersApi } from "@/lib/api";
+import { usersApi, departmentsApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +46,13 @@ import {
   Lock,
   Star,
   ArrowLeft,
+  Pencil,
+  Check,
+  X,
+  KeyRound,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -59,6 +65,7 @@ interface UserData {
   name: string;
   position?: string;
   department?: string;
+  departmentId?: string;
   isAdmin: boolean;
   isActive?: boolean;
   allowedTools?: string[];
@@ -83,7 +90,7 @@ const PARTICLE_POSITIONS = [
 ];
 
 export default function UsersPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserData[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
@@ -92,11 +99,22 @@ export default function UsersPage() {
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
 
   const [deleteUser, setDeleteUser] = useState<UserData | null>(null);
-
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Department change
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [changingDeptUserId, setChangingDeptUserId] = useState<string | null>(null);
+  const [selectedDeptId, setSelectedDeptId] = useState<string>("");
+  const [isSavingDept, setIsSavingDept] = useState(false);
+
+  // Password reset
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     loadUsers();
+    loadDepartments();
   }, []);
 
   useEffect(() => {
@@ -117,6 +135,34 @@ export default function UsersPage() {
       setUsers([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadDepartments = async () => {
+    try {
+      const data = await departmentsApi.getAll();
+      setDepartments((data || []).map((d: any) => ({ id: d.id, name: d.name })));
+    } catch {}
+  };
+
+  const handleChangeDept = (userData: UserData) => {
+    const current = departments.find((d) => d.name === userData.department);
+    setSelectedDeptId(current?.id ?? "");
+    setChangingDeptUserId(userData.id);
+  };
+
+  const handleSaveDept = async (userId: string) => {
+    if (!selectedDeptId) return;
+    setIsSavingDept(true);
+    try {
+      await usersApi.update(userId, { departmentId: selectedDeptId });
+      toast({ title: "Амжилттай", description: "Хэлтэс өөрчлөгдлөө." });
+      setChangingDeptUserId(null);
+      loadUsers();
+    } catch {
+      toast({ title: "Алдаа", description: "Хэлтэс өөрчлөхөд алдаа гарлаа.", variant: "destructive" });
+    } finally {
+      setIsSavingDept(false);
     }
   };
 
@@ -185,6 +231,43 @@ export default function UsersPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser || !newPassword || newPassword.length < 6) return;
+    setIsResetting(true);
+    try {
+      await usersApi.resetPassword(resetPasswordUser.id, newPassword);
+      toast({
+        title: "Нууц үг сэргээлээ",
+        description: `${resetPasswordUser.name} (${resetPasswordUser.userId}) — шинэ нууц үг тохируулагдлаа.`,
+      });
+      setResetPasswordUser(null);
+      setNewPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Алдаа",
+        description: error?.response?.data?.message || "Нууц үг сэргээхэд алдаа гарлаа.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
+          <p className="text-slate-400">Ачаалж байна...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (!user?.isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -200,21 +283,6 @@ export default function UsersPage() {
           <p className="text-slate-400">
             Зөвхөн админ хэрэглэгч үзэх боломжтой.
           </p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
-          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-slate-400">Ачаалж байна...</p>
         </motion.div>
       </div>
     );
@@ -429,15 +497,60 @@ export default function UsersPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {userData.department ? (
-                              <div className="flex items-center gap-2 text-slate-300">
-                                <Building2 className="w-4 h-4 text-slate-500" />
-                                <span className="text-sm">
-                                  {userData.department}
-                                </span>
+                            {changingDeptUserId === userData.id ? (
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={selectedDeptId}
+                                  onValueChange={setSelectedDeptId}
+                                >
+                                  <SelectTrigger className="h-8 w-48 bg-slate-700/80 border-slate-600 text-white text-xs">
+                                    <SelectValue placeholder="Хэлтэс сонгох" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-slate-800 border-slate-700">
+                                    {departments.map((dept) => (
+                                      <SelectItem
+                                        key={dept.id}
+                                        value={dept.id}
+                                        className="text-white hover:bg-slate-700 text-xs"
+                                      >
+                                        {dept.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                  disabled={isSavingDept || !selectedDeptId}
+                                  onClick={() => handleSaveDept(userData.id)}
+                                >
+                                  {isSavingDept ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3 h-3" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700"
+                                  onClick={() => setChangingDeptUserId(null)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
                               </div>
                             ) : (
-                              <span className="text-slate-500">-</span>
+                              <button
+                                className="flex items-center gap-2 text-slate-300 hover:text-white group"
+                                onClick={() => handleChangeDept(userData)}
+                              >
+                                <Building2 className="w-4 h-4 text-slate-500 group-hover:text-blue-400" />
+                                <span className="text-sm">
+                                  {userData.department ?? <span className="text-slate-500">—</span>}
+                                </span>
+                                <Pencil className="w-3 h-3 text-slate-600 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
                             )}
                           </TableCell>
                           <TableCell>
@@ -467,14 +580,30 @@ export default function UsersPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                              onClick={() => setDeleteUser(userData)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              {user?.isSuperAdmin && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                                  title="Нууц үг сэргээх"
+                                  onClick={() => {
+                                    setResetPasswordUser(userData);
+                                    setNewPassword("");
+                                  }}
+                                >
+                                  <KeyRound className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                onClick={() => setDeleteUser(userData)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </motion.tr>
                       ))
@@ -486,6 +615,59 @@ export default function UsersPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Reset Password Dialog */}
+      <Dialog
+        open={!!resetPasswordUser}
+        onOpenChange={(open) => {
+          if (!open) { setResetPasswordUser(null); setNewPassword(""); }
+        }}
+      >
+        <DialogContent className="bg-slate-800 border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <KeyRound className="w-5 h-5 text-amber-400" />
+              Нууц үг сэргээх
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              <span className="font-medium text-white">{resetPasswordUser?.name}</span>{" "}
+              ({resetPasswordUser?.userId}) хэрэглэгчийн нууц үгийг шинэчлэх.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Label className="text-slate-300 text-sm mb-2 block">Шинэ нууц үг</Label>
+            <Input
+              type="text"
+              placeholder="Хамгийн багадаа 6 тэмдэгт"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
+              autoComplete="off"
+            />
+            {newPassword.length > 0 && newPassword.length < 6 && (
+              <p className="text-red-400 text-xs mt-1">Хамгийн багадаа 6 тэмдэгт байх ёстой</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              onClick={() => { setResetPasswordUser(null); setNewPassword(""); }}
+              disabled={isResetting}
+            >
+              Болих
+            </Button>
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={handleResetPassword}
+              disabled={isResetting || newPassword.length < 6}
+            >
+              {isResetting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Сэргээх
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>

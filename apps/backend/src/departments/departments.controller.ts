@@ -12,12 +12,14 @@ import {
 import { DepartmentsService } from "./departments.service";
 import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
 
 @Controller("departments")
 @UseGuards(JwtAuthGuard)
 export class DepartmentsController {
   constructor(private departmentsService: DepartmentsService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(@Body() createDepartmentDto: CreateDepartmentDto) {
     return this.departmentsService.create(createDepartmentDto);
@@ -38,6 +40,7 @@ export class DepartmentsController {
     return this.departmentsService.findOne(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(":id")
   update(
     @Param("id") id: string,
@@ -46,6 +49,7 @@ export class DepartmentsController {
     return this.departmentsService.update(id, updateDepartmentDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.departmentsService.remove(id);
@@ -63,6 +67,7 @@ export class DepartmentsController {
     return this.departmentsService.getPhotoData(photoId);
   }
 
+  @UseGuards(AdminGuard)
   @Post(":id/photos")
   async uploadPhoto(
     @Param("id") id: string,
@@ -80,6 +85,7 @@ export class DepartmentsController {
     );
   }
 
+  @UseGuards(AdminGuard)
   @Delete(":id/photos/:photoId")
   deletePhoto(@Param("photoId") photoId: string) {
     return this.departmentsService.deletePhoto(photoId);

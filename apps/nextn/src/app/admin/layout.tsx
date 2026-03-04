@@ -13,6 +13,8 @@ import {
   Shield,
   ShieldCheck,
   ChevronRight,
+  Lock,
+  Crown,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -23,21 +25,32 @@ const BASE_NAV = [
     icon: LayoutDashboard,
     exact: true,
     superOnly: false,
+    section: "main",
   },
-  { href: "/admin/users", label: "Хэрэглэгчид", icon: Users, superOnly: false },
+  { href: "/admin/users", label: "Хэрэглэгчид", icon: Users, superOnly: false, section: "main" },
   {
     href: "/admin/departments",
     label: "Хэлтсүүд",
     icon: Building2,
     superOnly: false,
+    section: "main",
   },
-  { href: "/admin/news", label: "Мэдээ", icon: Newspaper, superOnly: false },
-  { href: "/admin/tools", label: "Хэрэгслүүд", icon: Wrench, superOnly: false },
+  { href: "/admin/news", label: "Мэдээ", icon: Newspaper, superOnly: false, section: "main" },
+  { href: "/admin/tools", label: "Хэрэгслүүд", icon: Wrench, superOnly: false, section: "main" },
+  // ── Удирдлага section ──
+  {
+    href: "/admin/change-password",
+    label: "Нууц үг солих",
+    icon: Lock,
+    superOnly: false,
+    section: "mgmt",
+  },
   {
     href: "/admin/admins",
     label: "Админ удирдлага",
     icon: ShieldCheck,
     superOnly: true,
+    section: "mgmt",
   },
 ];
 
@@ -49,6 +62,41 @@ function AdminSidebar({
   isSuperAdmin: boolean;
 }) {
   const nav = BASE_NAV.filter((item) => !item.superOnly || isSuperAdmin);
+  const mainNav = nav.filter((i) => i.section === "main");
+  const mgmtNav = nav.filter((i) => i.section === "mgmt");
+
+  const NavItem = ({ item }: { item: (typeof BASE_NAV)[0] }) => {
+    const active = (item as any).exact
+      ? pathname === item.href
+      : pathname.startsWith(item.href);
+    const Icon = item.icon;
+    return (
+      <Link key={item.href} href={item.href}>
+        <motion.div
+          whileHover={{ x: 2 }}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+            active
+              ? "bg-gradient-to-r from-blue-500/20 to-purple-500/10 text-white border border-blue-500/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+          } ${item.superOnly ? "border border-amber-500/10" : ""}`}
+        >
+          <Icon
+            className={`w-4 h-4 shrink-0 ${active ? "text-blue-400" : item.superOnly ? "text-amber-400" : ""}`}
+          />
+          <span className="flex-1">{item.label}</span>
+          {item.superOnly && !active && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/20">
+              SA
+            </span>
+          )}
+          {active && (
+            <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+          )}
+        </motion.div>
+      </Link>
+    );
+  };
+
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-slate-900/80 backdrop-blur-xl border-r border-slate-700/50 min-h-screen sticky top-0 z-30">
       {/* Logo */}
@@ -65,38 +113,23 @@ function AdminSidebar({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {nav.map((item) => {
-          const active = item.exact
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link key={item.href} href={item.href}>
-              <motion.div
-                whileHover={{ x: 2 }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                  active
-                    ? "bg-gradient-to-r from-blue-500/20 to-purple-500/10 text-white border border-blue-500/20"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                } ${item.superOnly ? "border border-amber-500/10" : ""}`}
-              >
-                <Icon
-                  className={`w-4 h-4 shrink-0 ${active ? "text-blue-400" : item.superOnly ? "text-amber-400" : ""}`}
-                />
-                <span className="flex-1">{item.label}</span>
-                {item.superOnly && !active && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/20">
-                    SA
-                  </span>
-                )}
-                {active && (
-                  <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                )}
-              </motion.div>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {mainNav.map((item) => (
+          <NavItem key={item.href} item={item} />
+        ))}
+
+        {/* Удирдлага section */}
+        <div className="pt-3 pb-1">
+          <div className="flex items-center gap-2 px-3 mb-1">
+            <Crown className="w-3 h-3 text-amber-500/60" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              Удирдлага
+            </span>
+          </div>
+        </div>
+        {mgmtNav.map((item) => (
+          <NavItem key={item.href} item={item} />
+        ))}
       </nav>
 
       {/* Footer */}
