@@ -96,8 +96,7 @@ const Header = () => {
     try {
       const isAdmin = user?.isAdmin;
       logout();
-      toast({ title: "Амжилттай гарлаа." });
-      router.push(isAdmin ? "/admin/login" : "/login");
+      window.location.replace(isAdmin ? "/admin/login" : "/login");
     } catch (error) {
       console.error("Logout error:", error);
       toast({ title: "Гарахад алдаа гарлаа.", variant: "destructive" });

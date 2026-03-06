@@ -73,8 +73,7 @@ const allTools: Tool[] = [
   {
     id: "sanamsargui-tuuwer",
     title: "Санамсаргүй түүвэр",
-    description:
-      "Аудитын санамсаргүй түүвэр гаргах хэрэгсэл",
+    description: "Аудитын санамсаргүй түүвэр гаргах хэрэгсэл",
     icon: Dice6,
     href: "/tools/sanamsargui-tuuwer",
     gradient: "from-violet-500 to-indigo-500",
@@ -97,8 +96,7 @@ const allTools: Tool[] = [
     id: "tailan",
     matchIds: ["tailan", "tailan_dept_head"],
     title: "Улирлын тайлан",
-    description:
-      "Улирлын ажлын тайлан бэлтгэх",
+    description: "Улирлын ажлын тайлан бэлтгэх",
     icon: FileText,
     href: "/tools/tailan",
     gradient: "from-violet-500 to-purple-500",
@@ -121,8 +119,7 @@ const allTools: Tool[] = [
   {
     id: "db_access_granter",
     title: "Эрх Олгох",
-    description:
-      "ClickHouse хандалтын хүсэлтүүдийг хянаж удирдах",
+    description: "ClickHouse хандалтын хүсэлтүүдийг хянаж удирдах",
     icon: Database,
     href: "/tools/db-access/manage",
     gradient: "from-violet-500 to-indigo-500",

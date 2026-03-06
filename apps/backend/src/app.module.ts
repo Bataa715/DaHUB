@@ -30,13 +30,13 @@ import configuration from "./config/configuration";
     ThrottlerModule.forRoot([
       {
         name: "short",
-        ttl: 1000,    // 1 секунд
-        limit: 20,   // Ерөнхий throttle
+        ttl: 1000, // 1 секунд
+        limit: 20, // Ерөнхий throttle
       },
       {
         name: "login",
         ttl: 300000, // 5 минут
-        limit: 5,   // Дээд тал нь 5 оролдлого / 5 минут
+        limit: 5, // Дээд тал нь 5 оролдлого / 5 минут
       },
     ]),
     ScheduleModule.forRoot(),

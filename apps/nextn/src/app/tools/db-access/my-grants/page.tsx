@@ -99,12 +99,22 @@ export default function MyGrantsPage() {
 
   const handleCancel = async (group: GrantGroup) => {
     const tblList = group.tables.join(", ");
-    if (!confirm(`"${tblList}" хандалтын эрхийг хаах уу? Та ClickHouse-руу нэвтрэх боломжгүй болно.`)) return;
+    if (
+      !confirm(
+        `"${tblList}" хандалтын эрхийг хаах уу? Та ClickHouse-руу нэвтрэх боломжгүй болно.`,
+      )
+    )
+      return;
     try {
       setCancelingId(group.requestId);
       // Cancel every grant row belonging to this request
-      await Promise.all(group.grantIds.map((id) => dbAccessApi.cancelMyGrant(id)));
-      toast({ title: "✅ Эрх хаагдлаа", description: "ClickHouse хандалт цуцлагдлаа" });
+      await Promise.all(
+        group.grantIds.map((id) => dbAccessApi.cancelMyGrant(id)),
+      );
+      toast({
+        title: "✅ Эрх хаагдлаа",
+        description: "ClickHouse хандалт цуцлагдлаа",
+      });
       await load();
     } catch (err: any) {
       toast({
@@ -260,14 +270,19 @@ export default function MyGrantsPage() {
                   </div>
 
                   {/* Time info */}
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground" suppressHydrationWarning>
+                  <div
+                    className="flex flex-wrap gap-4 text-sm text-muted-foreground"
+                    suppressHydrationWarning
+                  >
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5" />
                       <span suppressHydrationWarning>
                         {expired ? (
                           <span className="text-red-400">Хугацаа дууссан</span>
                         ) : expiringSoon ? (
-                          <span className="text-amber-400">{days} өдөр үлдсэн</span>
+                          <span className="text-amber-400">
+                            {days} өдөр үлдсэн
+                          </span>
                         ) : (
                           `${days} өдөр үлдсэн`
                         )}
@@ -288,37 +303,63 @@ export default function MyGrantsPage() {
                         ClickHouse Нэвтрэх мэдээлэл
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-20 shrink-0">Хэрэглэгч:</span>
+                        <span className="text-xs text-muted-foreground w-20 shrink-0">
+                          Хэрэглэгч:
+                        </span>
                         <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1">
                           {grp.userUserId}
                         </code>
                         <Button
-                          variant="ghost" size="icon" className="h-6 w-6"
-                          onClick={() => copyText(grp.userUserId, "Хэрэглэгч нэр")}
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() =>
+                            copyText(grp.userUserId, "Хэрэглэгч нэр")
+                          }
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-20 shrink-0">Нууц үг:</span>
+                        <span className="text-xs text-muted-foreground w-20 shrink-0">
+                          Нууц үг:
+                        </span>
                         <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1 tracking-widest">
-                          {showPwd[grp.requestId] ? grp.chPassword : "••••••••••••••••"}
+                          {showPwd[grp.requestId]
+                            ? grp.chPassword
+                            : "••••••••••••••••"}
                         </code>
                         <Button
-                          variant="ghost" size="icon" className="h-6 w-6"
-                          onClick={() => setShowPwd((p) => ({ ...p, [grp.requestId]: !p[grp.requestId] }))}
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() =>
+                            setShowPwd((p) => ({
+                              ...p,
+                              [grp.requestId]: !p[grp.requestId],
+                            }))
+                          }
                         >
-                          {showPwd[grp.requestId] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          {showPwd[grp.requestId] ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
                         </Button>
                         <Button
-                          variant="ghost" size="icon" className="h-6 w-6"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
                           onClick={() => copyText(grp.chPassword, "Нууц үг")}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
                       <a
-                        href={process.env.NEXT_PUBLIC_CLICKHOUSE_PLAY_URL ?? "http://localhost:8123/play"}
+                        href={
+                          process.env.NEXT_PUBLIC_CLICKHOUSE_PLAY_URL ??
+                          "http://localhost:8123/play"
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 mt-1"

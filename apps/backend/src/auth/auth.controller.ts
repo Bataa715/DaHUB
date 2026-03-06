@@ -181,7 +181,8 @@ export class AuthController {
   @Get("search")
   @ApiOperation({
     summary: "Search users",
-    description: "Search users by user ID or name (public - used by login suggestion dropdown)",
+    description:
+      "Search users by user ID or name (public - used by login suggestion dropdown)",
   })
   @ApiQuery({ name: "q", description: "Search query", example: "Bold" })
   @ApiQuery({

@@ -486,15 +486,20 @@ export function LoginFlow({
               <Lock className="w-5 h-5 text-purple-400" />
               Нууц үг мартсан
             </AlertDialogTitle>
-                        <AlertDialogDescription asChild className="text-slate-300 space-y-3">
+            <AlertDialogDescription
+              asChild
+              className="text-slate-300 space-y-3"
+            >
               <div>
                 <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
                   <span className="block text-slate-300 text-sm leading-relaxed">
                     Нууц үгээ мартсан бол{" "}
-                    <span className="text-purple-400 font-semibold">Skype</span>
-                    {" "}гаар{" "}
-                    <span className="text-white font-semibold">DAA – Батмягмар</span>
-                    {" "}руу бичиж сэргээлгэнэ үү.
+                    <span className="text-purple-400 font-semibold">Skype</span>{" "}
+                    гаар{" "}
+                    <span className="text-white font-semibold">
+                      DAA – Батмягмар
+                    </span>{" "}
+                    руу бичиж сэргээлгэнэ үү.
                   </span>
                 </div>
                 <div className="text-xs text-slate-500 italic">

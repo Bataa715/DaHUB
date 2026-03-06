@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -125,32 +125,37 @@ export default function LoginPage() {
     return `DAG-${deptCode}-`;
   };
 
-  const searchUsers = async (query: string) => {
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchUsers = useCallback(async (query: string) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     if (!query || query.length < 2) {
       setUserSuggestions([]);
       setShowSuggestions(false);
       return;
     }
     setIsSearching(true);
-    try {
-      const response = await fetch(
-        `${API_URL}/auth/search?q=${encodeURIComponent(query)}`,
-      );
-      const data = await response.json();
-      if (data.users && data.users.length > 0) {
-        setUserSuggestions(data.users);
-        setShowSuggestions(true);
-      } else {
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/auth/search?q=${encodeURIComponent(query)}`,
+        );
+        const data = await response.json();
+        if (data.users && data.users.length > 0) {
+          setUserSuggestions(data.users);
+          setShowSuggestions(true);
+        } else {
+          setUserSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch {
         setUserSuggestions([]);
         setShowSuggestions(false);
+      } finally {
+        setIsSearching(false);
       }
-    } catch {
-      setUserSuggestions([]);
-      setShowSuggestions(false);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+    }, 400);
+  }, []);
 
   const handleSelectSuggestion = (userId: string) => {
     loginForm.setValue("userId", userId);
@@ -222,9 +227,7 @@ export default function LoginPage() {
         title: "Амжилттай",
         description: "Нууц үг амжилттай тохирууллаа",
       });
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 300);
+      window.location.replace("/");
     } catch (error: unknown) {
       toast({
         title: "Алдаа",
@@ -309,9 +312,7 @@ export default function LoginPage() {
         title: "Амжилттай нэвтэрлээ",
         description: "Нүүр хуудас руу шилжүүлж байна...",
       });
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 300);
+      window.location.replace("/");
     } catch (error: unknown) {
       toast({
         title: "Алдаа",

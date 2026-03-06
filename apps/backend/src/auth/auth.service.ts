@@ -39,7 +39,10 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   // In-memory brute-force lockout (15 min window, lock after 5 failures, 15 min lockout)
-  private readonly loginAttempts = new Map<string, { count: number; firstAttempt: number; lockedUntil?: number }>();
+  private readonly loginAttempts = new Map<
+    string,
+    { count: number; firstAttempt: number; lockedUntil?: number }
+  >();
   private readonly MAX_ATTEMPTS = 5;
   private readonly ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
   private readonly LOCKOUT_MS = 15 * 60 * 1000;
@@ -64,7 +67,9 @@ export class AuthService {
     existing.count += 1;
     if (existing.count >= this.MAX_ATTEMPTS) {
       existing.lockedUntil = now + this.LOCKOUT_MS;
-      this.logger.warn(`Login locked after ${existing.count} failed attempts: ${key}`);
+      this.logger.warn(
+        `Login locked after ${existing.count} failed attempts: ${key}`,
+      );
     }
     this.loginAttempts.set(key, existing);
   }
@@ -94,7 +99,9 @@ export class AuthService {
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
       allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
-      grantableTools: user.grantableTools ? JSON.parse(user.grantableTools) : [],
+      grantableTools: user.grantableTools
+        ? JSON.parse(user.grantableTools)
+        : [],
       profileImage: user.profileImage || null,
       isActive: !!user.isActive,
     };

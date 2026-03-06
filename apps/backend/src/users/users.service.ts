@@ -1,4 +1,9 @@
-﻿import { Injectable, Logger, NotFoundException, BadRequestException } from "@nestjs/common";
+﻿import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
@@ -111,7 +116,13 @@ export class UsersService {
         updatedAt: nowCH(),
       },
     );
-    return { message: "Амжилттай", id, isAdmin, isSuperAdmin, grantableTools: grantableTools ?? [] };
+    return {
+      message: "Амжилттай",
+      id,
+      isAdmin,
+      isSuperAdmin,
+      grantableTools: grantableTools ?? [],
+    };
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
@@ -158,7 +169,9 @@ export class UsersService {
           params,
         );
       } catch (error: unknown) {
-        this.logger.error(`ClickHouse update error: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(
+          `ClickHouse update error: ${error instanceof Error ? error.message : String(error)}`,
+        );
         const msg = error instanceof Error ? error.message : String(error);
         throw new Error(`Хэрэглэгч шинэчлэхэд алдаа гарлаа: ${msg}`);
       }
@@ -272,7 +285,9 @@ export class UsersService {
 
   async resetPassword(id: string, newPassword: string) {
     if (!newPassword || newPassword.length < 6) {
-      throw new BadRequestException("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой");
+      throw new BadRequestException(
+        "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой",
+      );
     }
     const users = await this.clickhouse.query<any>(
       "SELECT id, name, userId, isAdmin FROM users WHERE id = {id:String} LIMIT 1",
@@ -284,8 +299,14 @@ export class UsersService {
       "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
       { id, password: hashed, updatedAt: nowCH() },
     );
-    this.logger.warn(`Password reset by superadmin for user: ${users[0].userId} (${users[0].name})`);
-    return { message: "Нууц үг амжилттай сэргээлээ", userId: users[0].userId, name: users[0].name };
+    this.logger.warn(
+      `Password reset by superadmin for user: ${users[0].userId} (${users[0].name})`,
+    );
+    return {
+      message: "Нууц үг амжилттай сэргээлээ",
+      userId: users[0].userId,
+      name: users[0].name,
+    };
   }
 
   async getAvatar(

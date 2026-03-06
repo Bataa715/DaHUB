@@ -27,7 +27,13 @@ const BASE_NAV = [
     superOnly: false,
     section: "main",
   },
-  { href: "/admin/users", label: "Хэрэглэгчид", icon: Users, superOnly: false, section: "main" },
+  {
+    href: "/admin/users",
+    label: "Хэрэглэгчид",
+    icon: Users,
+    superOnly: false,
+    section: "main",
+  },
   {
     href: "/admin/departments",
     label: "Хэлтсүүд",
@@ -35,8 +41,20 @@ const BASE_NAV = [
     superOnly: false,
     section: "main",
   },
-  { href: "/admin/news", label: "Мэдээ", icon: Newspaper, superOnly: false, section: "main" },
-  { href: "/admin/tools", label: "Хэрэгслүүд", icon: Wrench, superOnly: false, section: "main" },
+  {
+    href: "/admin/news",
+    label: "Мэдээ",
+    icon: Newspaper,
+    superOnly: false,
+    section: "main",
+  },
+  {
+    href: "/admin/tools",
+    label: "Хэрэгслүүд",
+    icon: Wrench,
+    superOnly: false,
+    section: "main",
+  },
   // ── Удирдлага section ──
   {
     href: "/admin/change-password",

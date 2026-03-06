@@ -980,150 +980,576 @@ const SCHEMAS: Array<{
 // ─── Test row factory ─────────────────────────────────────────────────────────
 // table тус бүрт 1 test мөр үүсгэнэ
 
-function buildTestRow(db: string, table: string): { idCol: string; row: Record<string, any> } {
+function buildTestRow(
+  db: string,
+  table: string,
+): { idCol: string; row: Record<string, any> } {
   const t = nowDt();
   const d = TODAY;
 
   const map: Record<string, { idCol: string; row: Record<string, any> }> = {
     "audit_db.departments": {
       idCol: "id",
-      row: { id: tid("DEPT"), name: "Test Department", description: "seed-test", manager: "", employeeCount: 0, createdAt: t, updatedAt: t },
+      row: {
+        id: tid("DEPT"),
+        name: "Test Department",
+        description: "seed-test",
+        manager: "",
+        employeeCount: 0,
+        createdAt: t,
+        updatedAt: t,
+      },
     },
     "audit_db.users": {
       idCol: "id",
-      row: { id: tid("USR"), userId: tid("USERID"), password: "hashed", name: "Seed Test User", position: "Tester", profileImage: "", departmentId: tid("DEPT"), isAdmin: 0, isSuperAdmin: 0, isActive: 1, allowedTools: "[]", grantableTools: "[]", lastLoginAt: null, createdAt: t, updatedAt: t },
+      row: {
+        id: tid("USR"),
+        userId: tid("USERID"),
+        password: "hashed",
+        name: "Seed Test User",
+        position: "Tester",
+        profileImage: "",
+        departmentId: tid("DEPT"),
+        isAdmin: 0,
+        isSuperAdmin: 0,
+        isActive: 1,
+        allowedTools: "[]",
+        grantableTools: "[]",
+        lastLoginAt: null,
+        createdAt: t,
+        updatedAt: t,
+      },
     },
     "audit_db.news": {
       idCol: "id",
-      row: { id: tid("NEWS"), title: "Seed Test Article", content: "<p>test</p>", category: "Ерөнхий", imageUrl: "", authorId: tid("USR"), isPublished: 0, views: 0, createdAt: t, updatedAt: t },
+      row: {
+        id: tid("NEWS"),
+        title: "Seed Test Article",
+        content: "<p>test</p>",
+        category: "Ерөнхий",
+        imageUrl: "",
+        authorId: tid("USR"),
+        isPublished: 0,
+        views: 0,
+        createdAt: t,
+        updatedAt: t,
+      },
     },
     "audit_db.exercises": {
       idCol: "id",
-      row: { id: tid("EX"), name: "Seed Exercise", category: "strength", description: "seed test", userId: tid("USR"), createdAt: t },
+      row: {
+        id: tid("EX"),
+        name: "Seed Exercise",
+        category: "strength",
+        description: "seed test",
+        userId: tid("USR"),
+        createdAt: t,
+      },
     },
     "audit_db.workout_logs": {
       idCol: "id",
-      row: { id: tid("WL"), exerciseId: tid("EX"), userId: tid("USR"), sets: 3, repetitions: 10, weight: 10.0, notes: "seed test", date: t },
+      row: {
+        id: tid("WL"),
+        exerciseId: tid("EX"),
+        userId: tid("USR"),
+        sets: 3,
+        repetitions: 10,
+        weight: 10.0,
+        notes: "seed test",
+        date: t,
+      },
     },
     "audit_db.body_stats": {
       idCol: "id",
-      row: { id: tid("BS"), userId: tid("USR"), weight: 70.0, height: 170.0, date: t },
+      row: {
+        id: tid("BS"),
+        userId: tid("USR"),
+        weight: 70.0,
+        height: 170.0,
+        date: t,
+      },
     },
     "audit_db.refresh_tokens": {
       idCol: "id",
-      row: { id: tid("RT"), userId: tid("USR"), token: tid("TOKEN"), expiresAt: t, isRevoked: 0, createdAt: t },
+      row: {
+        id: tid("RT"),
+        userId: tid("USR"),
+        token: tid("TOKEN"),
+        expiresAt: t,
+        isRevoked: 0,
+        createdAt: t,
+      },
     },
     "audit_db.audit_logs": {
       idCol: "id",
-      row: { id: tid("AL"), userId: tid("USR"), userEmail: "seed@test.mn", action: "TEST", resource: "seed", resourceId: tid("USR"), method: "GET", ipAddress: "127.0.0.1", userAgent: "seed-test", status: "200", errorMessage: "", metadata: "{}", createdAt: t },
+      row: {
+        id: tid("AL"),
+        userId: tid("USR"),
+        userEmail: "seed@test.mn",
+        action: "TEST",
+        resource: "seed",
+        resourceId: tid("USR"),
+        method: "GET",
+        ipAddress: "127.0.0.1",
+        userAgent: "seed-test",
+        status: "200",
+        errorMessage: "",
+        metadata: "{}",
+        createdAt: t,
+      },
     },
     "audit_db.access_requests": {
       idCol: "id",
-      row: { id: tid("AR"), requesterId: tid("USR"), requesterName: "Seed User", requesterUserId: tid("USERID"), tables: ["FINACLE.accounts"], columns: ["balance"], accessTypes: ["SELECT"], validUntil: t, reason: "seed test", status: "pending", reviewedBy: "", reviewedByName: "", reviewNote: "", requestTime: t, reviewedAt: "1970-01-01 00:00:00", updatedAt: t },
+      row: {
+        id: tid("AR"),
+        requesterId: tid("USR"),
+        requesterName: "Seed User",
+        requesterUserId: tid("USERID"),
+        tables: ["FINACLE.accounts"],
+        columns: ["balance"],
+        accessTypes: ["SELECT"],
+        validUntil: t,
+        reason: "seed test",
+        status: "pending",
+        reviewedBy: "",
+        reviewedByName: "",
+        reviewNote: "",
+        requestTime: t,
+        reviewedAt: "1970-01-01 00:00:00",
+        updatedAt: t,
+      },
     },
     "audit_db.access_grants": {
       idCol: "id",
-      row: { id: tid("AG"), userId: tid("USR"), userName: "Seed User", userUserId: tid("USERID"), requestId: tid("AR"), tableName: "FINACLE.accounts", columns: ["balance"], accessTypes: ["SELECT"], validUntil: t, grantedBy: tid("USR"), grantedByName: "Admin", grantedAt: t, isActive: 1, revokedAt: "1970-01-01 00:00:00", revokeReason: "", chPassword: "" },
+      row: {
+        id: tid("AG"),
+        userId: tid("USR"),
+        userName: "Seed User",
+        userUserId: tid("USERID"),
+        requestId: tid("AR"),
+        tableName: "FINACLE.accounts",
+        columns: ["balance"],
+        accessTypes: ["SELECT"],
+        validUntil: t,
+        grantedBy: tid("USR"),
+        grantedByName: "Admin",
+        grantedAt: t,
+        isActive: 1,
+        revokedAt: "1970-01-01 00:00:00",
+        revokeReason: "",
+        chPassword: "",
+      },
     },
     "audit_db.tailan_reports": {
       idCol: "id",
-      row: { id: tid("TR"), userId: tid("USR"), userName: "Seed User", departmentId: tid("DEPT"), year: 2026, quarter: 1, status: "draft", plannedTasksJson: "[]", dynamicSectionsJson: "[]", otherWork: "", teamActivitiesJson: "[]", extraDataJson: "{}", submittedAt: "1970-01-01 00:00:00", createdAt: t, updatedAt: t },
+      row: {
+        id: tid("TR"),
+        userId: tid("USR"),
+        userName: "Seed User",
+        departmentId: tid("DEPT"),
+        year: 2026,
+        quarter: 1,
+        status: "draft",
+        plannedTasksJson: "[]",
+        dynamicSectionsJson: "[]",
+        otherWork: "",
+        teamActivitiesJson: "[]",
+        extraDataJson: "{}",
+        submittedAt: "1970-01-01 00:00:00",
+        createdAt: t,
+        updatedAt: t,
+      },
     },
     "audit_db.chess_invitations": {
       idCol: "id",
-      row: { id: tid("CI"), fromUserId: tid("USR"), fromUserName: "Seed User", toUserId: tid("USR2"), toUserName: "Seed User 2", status: "pending", seq: 1, createdAt: t },
+      row: {
+        id: tid("CI"),
+        fromUserId: tid("USR"),
+        fromUserName: "Seed User",
+        toUserId: tid("USR2"),
+        toUserName: "Seed User 2",
+        status: "pending",
+        seq: 1,
+        createdAt: t,
+      },
     },
     "audit_db.chess_games": {
       idCol: "id",
-      row: { id: tid("CG"), whiteUserId: tid("USR"), whiteUserName: "Seed White", blackUserId: tid("USR2"), blackUserName: "Seed Black", moves: "[]", status: "active", resultReason: "", whiteTimeMs: 600000, blackTimeMs: 600000, lastMoveAt: "", seq: 1, createdAt: t },
+      row: {
+        id: tid("CG"),
+        whiteUserId: tid("USR"),
+        whiteUserName: "Seed White",
+        blackUserId: tid("USR2"),
+        blackUserName: "Seed Black",
+        moves: "[]",
+        status: "active",
+        resultReason: "",
+        whiteTimeMs: 600000,
+        blackTimeMs: 600000,
+        lastMoveAt: "",
+        seq: 1,
+        createdAt: t,
+      },
     },
     "audit_db.english_words": {
       idCol: "id",
-      row: { id: tid("EW"), word: "seedtest", translation: "тест", definition: "", example: "", partOfSpeech: "noun", difficulty: 1, userId: tid("USR"), totalReviews: 0, correctReviews: 0, lastReviewedAt: "1970-01-01 00:00:00", createdAt: t, updatedAt: t },
+      row: {
+        id: tid("EW"),
+        word: "seedtest",
+        translation: "тест",
+        definition: "",
+        example: "",
+        partOfSpeech: "noun",
+        difficulty: 1,
+        userId: tid("USR"),
+        totalReviews: 0,
+        correctReviews: 0,
+        lastReviewedAt: "1970-01-01 00:00:00",
+        createdAt: t,
+        updatedAt: t,
+      },
     },
     "audit_db.dept_bsc_reports": {
       idCol: "departmentId",
-      row: { departmentId: tid("DEPT"), year: 2026, quarter: 1, sectionsJson: "{}", savedBy: tid("USR"), savedByName: "Seed User", updatedAt: t },
+      row: {
+        departmentId: tid("DEPT"),
+        year: 2026,
+        quarter: 1,
+        sectionsJson: "{}",
+        savedBy: tid("USR"),
+        savedByName: "Seed User",
+        updatedAt: t,
+      },
     },
     "audit_db.department_photos": {
       idCol: "id",
-      row: { id: tid("DP"), departmentId: tid("DEPT"), departmentName: "Test Dept", uploadedBy: tid("USR"), uploadedByName: "Seed User", imageData: "data:image/png;base64,Zg==", caption: "seed test", uploadedAt: t },
+      row: {
+        id: tid("DP"),
+        departmentId: tid("DEPT"),
+        departmentName: "Test Dept",
+        uploadedBy: tid("USR"),
+        uploadedByName: "Seed User",
+        imageData: "data:image/png;base64,Zg==",
+        caption: "seed test",
+        uploadedAt: t,
+      },
     },
     "FINACLE.customers": {
       idCol: "customer_id",
-      row: { customer_id: tid("CUST"), cif_number: tid("CIF"), first_name: "Seed", last_name: "Test", register_number: tid("REG"), phone: "99999999", email: "seed@test.mn", address: "Test address", customer_type: "INDIVIDUAL", status: "ACTIVE", opened_date: d, created_at: t },
+      row: {
+        customer_id: tid("CUST"),
+        cif_number: tid("CIF"),
+        first_name: "Seed",
+        last_name: "Test",
+        register_number: tid("REG"),
+        phone: "99999999",
+        email: "seed@test.mn",
+        address: "Test address",
+        customer_type: "INDIVIDUAL",
+        status: "ACTIVE",
+        opened_date: d,
+        created_at: t,
+      },
     },
     "FINACLE.accounts": {
       idCol: "account_id",
-      row: { account_id: tid("ACC"), customer_id: tid("CUST"), account_number: tid("ACCNO"), account_type: "CURRENT", currency: "MNT", balance: 0, available_balance: 0, status: "ACTIVE", open_date: d, close_date: null, branch_code: "001", created_at: t },
+      row: {
+        account_id: tid("ACC"),
+        customer_id: tid("CUST"),
+        account_number: tid("ACCNO"),
+        account_type: "CURRENT",
+        currency: "MNT",
+        balance: 0,
+        available_balance: 0,
+        status: "ACTIVE",
+        open_date: d,
+        close_date: null,
+        branch_code: "001",
+        created_at: t,
+      },
     },
     "FINACLE.transactions": {
       idCol: "txn_id",
-      row: { txn_id: tid("TXN"), account_id: tid("ACC"), txn_date: t, value_date: d, txn_type: "TRANSFER", debit_credit: "D", amount: 1.00, currency: "MNT", balance_after: 0, description: "seed test", channel: "TEST", reference_no: tid("REF"), teller_id: "T001", branch_code: "001", created_at: t },
+      row: {
+        txn_id: tid("TXN"),
+        account_id: tid("ACC"),
+        txn_date: t,
+        value_date: d,
+        txn_type: "TRANSFER",
+        debit_credit: "D",
+        amount: 1.0,
+        currency: "MNT",
+        balance_after: 0,
+        description: "seed test",
+        channel: "TEST",
+        reference_no: tid("REF"),
+        teller_id: "T001",
+        branch_code: "001",
+        created_at: t,
+      },
     },
     "FINACLE.loans": {
       idCol: "loan_id",
-      row: { loan_id: tid("LOAN"), customer_id: tid("CUST"), account_id: tid("ACC"), loan_type: "CONSUMER", principal: 1000000, outstanding: 1000000, interest_rate: 0.1200, term_months: 12, disbursement_date: d, maturity_date: d, status: "ACTIVE", classification: "NORMAL", branch_code: "001", created_at: t },
+      row: {
+        loan_id: tid("LOAN"),
+        customer_id: tid("CUST"),
+        account_id: tid("ACC"),
+        loan_type: "CONSUMER",
+        principal: 1000000,
+        outstanding: 1000000,
+        interest_rate: 0.12,
+        term_months: 12,
+        disbursement_date: d,
+        maturity_date: d,
+        status: "ACTIVE",
+        classification: "NORMAL",
+        branch_code: "001",
+        created_at: t,
+      },
     },
     "FINACLE.deposits": {
       idCol: "deposit_id",
-      row: { deposit_id: tid("DEP"), customer_id: tid("CUST"), account_id: tid("ACC"), deposit_type: "TERM", amount: 100000, currency: "MNT", interest_rate: 0.0850, start_date: d, maturity_date: d, status: "ACTIVE", auto_renew: 0, created_at: t },
+      row: {
+        deposit_id: tid("DEP"),
+        customer_id: tid("CUST"),
+        account_id: tid("ACC"),
+        deposit_type: "TERM",
+        amount: 100000,
+        currency: "MNT",
+        interest_rate: 0.085,
+        start_date: d,
+        maturity_date: d,
+        status: "ACTIVE",
+        auto_renew: 0,
+        created_at: t,
+      },
     },
     "ERP.employees": {
       idCol: "emp_id",
-      row: { emp_id: tid("EMP"), emp_code: tid("EMPCODE"), first_name: "Seed", last_name: "Employee", register_number: tid("EREG"), department: "IT", position: "Tester", manager_id: "", hire_date: d, status: "ACTIVE", employment_type: "FULL_TIME", created_at: t },
+      row: {
+        emp_id: tid("EMP"),
+        emp_code: tid("EMPCODE"),
+        first_name: "Seed",
+        last_name: "Employee",
+        register_number: tid("EREG"),
+        department: "IT",
+        position: "Tester",
+        manager_id: "",
+        hire_date: d,
+        status: "ACTIVE",
+        employment_type: "FULL_TIME",
+        created_at: t,
+      },
     },
     "ERP.payroll": {
       idCol: "payroll_id",
-      row: { payroll_id: tid("PAY"), emp_id: tid("EMP"), pay_period: "2026-03", basic_salary: 1000000, overtime: 0, bonus: 0, deductions: 0, net_salary: 1000000, payment_date: d, status: "PAID", created_at: t },
+      row: {
+        payroll_id: tid("PAY"),
+        emp_id: tid("EMP"),
+        pay_period: "2026-03",
+        basic_salary: 1000000,
+        overtime: 0,
+        bonus: 0,
+        deductions: 0,
+        net_salary: 1000000,
+        payment_date: d,
+        status: "PAID",
+        created_at: t,
+      },
     },
     "ERP.vendors": {
       idCol: "vendor_id",
-      row: { vendor_id: tid("VEN"), vendor_code: tid("VENCODE"), company_name: "Seed Vendor LLC", register_number: tid("VENREG"), contact_person: "Seed", phone: "99999999", email: "vendor@seed.mn", category: "IT", status: "ACTIVE", approved_date: d, created_at: t },
+      row: {
+        vendor_id: tid("VEN"),
+        vendor_code: tid("VENCODE"),
+        company_name: "Seed Vendor LLC",
+        register_number: tid("VENREG"),
+        contact_person: "Seed",
+        phone: "99999999",
+        email: "vendor@seed.mn",
+        category: "IT",
+        status: "ACTIVE",
+        approved_date: d,
+        created_at: t,
+      },
     },
     "ERP.purchase_orders": {
       idCol: "po_id",
-      row: { po_id: tid("PO"), vendor_id: tid("VEN"), po_date: d, delivery_date: d, total_amount: 1000000, currency: "MNT", status: "PENDING", approved_by: "", department: "IT", description: "seed test po", created_at: t },
+      row: {
+        po_id: tid("PO"),
+        vendor_id: tid("VEN"),
+        po_date: d,
+        delivery_date: d,
+        total_amount: 1000000,
+        currency: "MNT",
+        status: "PENDING",
+        approved_by: "",
+        department: "IT",
+        description: "seed test po",
+        created_at: t,
+      },
     },
     "ERP.assets": {
       idCol: "asset_id",
-      row: { asset_id: tid("ASSET"), asset_code: tid("ASCODE"), asset_name: "Seed Test Asset", category: "IT", purchase_date: d, purchase_price: 500000, current_value: 500000, depreciation_rate: 0.2000, location: "HQ", custodian_id: tid("EMP"), status: "IN_USE", created_at: t },
+      row: {
+        asset_id: tid("ASSET"),
+        asset_code: tid("ASCODE"),
+        asset_name: "Seed Test Asset",
+        category: "IT",
+        purchase_date: d,
+        purchase_price: 500000,
+        current_value: 500000,
+        depreciation_rate: 0.2,
+        location: "HQ",
+        custodian_id: tid("EMP"),
+        status: "IN_USE",
+        created_at: t,
+      },
     },
     "CARDZONE.cards": {
       idCol: "card_id",
-      row: { card_id: tid("CARD"), card_number: "4111111111111111", customer_id: tid("CUST"), account_id: tid("ACC"), card_type: "DEBIT", card_brand: "VISA", status: "ACTIVE", issue_date: d, expiry_date: d, credit_limit: null, outstanding: 0, created_at: t },
+      row: {
+        card_id: tid("CARD"),
+        card_number: "4111111111111111",
+        customer_id: tid("CUST"),
+        account_id: tid("ACC"),
+        card_type: "DEBIT",
+        card_brand: "VISA",
+        status: "ACTIVE",
+        issue_date: d,
+        expiry_date: d,
+        credit_limit: null,
+        outstanding: 0,
+        created_at: t,
+      },
     },
     "CARDZONE.card_transactions": {
       idCol: "txn_id",
-      row: { txn_id: tid("CTXN"), card_id: tid("CARD"), txn_datetime: t, merchant_id: tid("MERCH"), merchant_name: "Seed Merchant", mcc_code: "5411", amount: 1.00, currency: "MNT", mnt_amount: 1.00, txn_type: "PURCHASE", auth_code: "AUTH01", response_code: "00", channel: "POS", country_code: "MN", created_at: t },
+      row: {
+        txn_id: tid("CTXN"),
+        card_id: tid("CARD"),
+        txn_datetime: t,
+        merchant_id: tid("MERCH"),
+        merchant_name: "Seed Merchant",
+        mcc_code: "5411",
+        amount: 1.0,
+        currency: "MNT",
+        mnt_amount: 1.0,
+        txn_type: "PURCHASE",
+        auth_code: "AUTH01",
+        response_code: "00",
+        channel: "POS",
+        country_code: "MN",
+        created_at: t,
+      },
     },
     "CARDZONE.merchants": {
       idCol: "merchant_id",
-      row: { merchant_id: tid("MERCH"), merchant_name: "Seed Merchant", merchant_name_mn: "Тест Дэлгүүр", mcc_code: "5999", category: "RETAIL", address: "Test address", terminal_count: 1, status: "ACTIVE", contract_date: d, created_at: t },
+      row: {
+        merchant_id: tid("MERCH"),
+        merchant_name: "Seed Merchant",
+        merchant_name_mn: "Тест Дэлгүүр",
+        mcc_code: "5999",
+        category: "RETAIL",
+        address: "Test address",
+        terminal_count: 1,
+        status: "ACTIVE",
+        contract_date: d,
+        created_at: t,
+      },
     },
     "CARDZONE.disputes": {
       idCol: "dispute_id",
-      row: { dispute_id: tid("DISP"), card_id: tid("CARD"), txn_id: tid("CTXN"), dispute_date: t, dispute_reason: "seed test", amount: 1.00, status: "OPEN", resolution: "", resolved_date: null, created_at: t },
+      row: {
+        dispute_id: tid("DISP"),
+        card_id: tid("CARD"),
+        txn_id: tid("CTXN"),
+        dispute_date: t,
+        dispute_reason: "seed test",
+        amount: 1.0,
+        status: "OPEN",
+        resolution: "",
+        resolved_date: null,
+        created_at: t,
+      },
     },
     "EBANK.sessions": {
       idCol: "session_id",
-      row: { session_id: tid("SESS"), customer_id: tid("CUST"), device_id: tid("DEV"), device_type: "MOBILE", os: "Android", app_version: "1.0.0", ip_address: "127.0.0.1", login_at: t, logout_at: null, duration_sec: 0, status: "ACTIVE", created_at: t },
+      row: {
+        session_id: tid("SESS"),
+        customer_id: tid("CUST"),
+        device_id: tid("DEV"),
+        device_type: "MOBILE",
+        os: "Android",
+        app_version: "1.0.0",
+        ip_address: "127.0.0.1",
+        login_at: t,
+        logout_at: null,
+        duration_sec: 0,
+        status: "ACTIVE",
+        created_at: t,
+      },
     },
     "EBANK.transfers": {
       idCol: "transfer_id",
-      row: { transfer_id: tid("XFER"), session_id: tid("SESS"), customer_id: tid("CUST"), from_account: tid("ACC"), to_account: "ACC999", bank_code: "GLMT", amount: 1.00, currency: "MNT", fee: 0, description: "seed test", status: "SUCCESS", channel: "MOBILE", initiated_at: t, completed_at: t, created_at: t },
+      row: {
+        transfer_id: tid("XFER"),
+        session_id: tid("SESS"),
+        customer_id: tid("CUST"),
+        from_account: tid("ACC"),
+        to_account: "ACC999",
+        bank_code: "GLMT",
+        amount: 1.0,
+        currency: "MNT",
+        fee: 0,
+        description: "seed test",
+        status: "SUCCESS",
+        channel: "MOBILE",
+        initiated_at: t,
+        completed_at: t,
+        created_at: t,
+      },
     },
     "EBANK.beneficiaries": {
       idCol: "beneficiary_id",
-      row: { beneficiary_id: tid("BENE"), customer_id: tid("CUST"), nickname: "Seed Bene", account_number: "ACC999TEST", bank_code: "GLMT", bank_name: "Голомт банк", is_favorite: 0, last_used_at: null, created_at: t },
+      row: {
+        beneficiary_id: tid("BENE"),
+        customer_id: tid("CUST"),
+        nickname: "Seed Bene",
+        account_number: "ACC999TEST",
+        bank_code: "GLMT",
+        bank_name: "Голомт банк",
+        is_favorite: 0,
+        last_used_at: null,
+        created_at: t,
+      },
     },
     "EBANK.notifications": {
       idCol: "notification_id",
-      row: { notification_id: tid("NOTIF"), customer_id: tid("CUST"), type: "INFO", title: "Seed test", body: "seed test notification", is_read: 0, sent_at: t, read_at: null, created_at: t },
+      row: {
+        notification_id: tid("NOTIF"),
+        customer_id: tid("CUST"),
+        type: "INFO",
+        title: "Seed test",
+        body: "seed test notification",
+        is_read: 0,
+        sent_at: t,
+        read_at: null,
+        created_at: t,
+      },
     },
     "EBANK.login_attempts": {
       idCol: "attempt_id",
-      row: { attempt_id: tid("ATT"), customer_id: tid("CUST"), ip_address: "127.0.0.1", device_id: tid("DEV"), success: 1, fail_reason: "", attempted_at: t, created_at: t },
+      row: {
+        attempt_id: tid("ATT"),
+        customer_id: tid("CUST"),
+        ip_address: "127.0.0.1",
+        device_id: tid("DEV"),
+        success: 1,
+        fail_reason: "",
+        attempted_at: t,
+        created_at: t,
+      },
     },
   };
 
@@ -1139,7 +1565,11 @@ async function runSeedTest() {
   console.log(`📍 Холбогдох хост: ${CH_HOST}`);
   console.log(`🔖 Test prefix  : ${SEED_PREFIX}\n`);
 
-  const client = createClient({ url: CH_HOST, username: CH_USER, password: CH_PASS });
+  const client = createClient({
+    url: CH_HOST,
+    username: CH_USER,
+    password: CH_PASS,
+  });
 
   const failed: string[] = [];
   const seeded: Array<{ db: string; table: string; idCol: string }> = [];
@@ -1184,13 +1614,20 @@ async function runSeedTest() {
     // Өмнөх тасарсан run-аас үлдсэн test мөрүүдийг урьдчилж цэвэрлэх
     let leftovers = 0;
     for (const schema of SCHEMAS) {
-      const cnt = await countWhere(client, schema.db, schema.table, schema.idCol);
+      const cnt = await countWhere(
+        client,
+        schema.db,
+        schema.table,
+        schema.idCol,
+      );
       if (cnt > 0) {
         await client.exec({
           query: `ALTER TABLE ${schema.db}.${schema.table} DELETE WHERE ${schema.idCol} LIKE '${SEED_PREFIX}%'`,
         });
         await waitMutation(client, schema.db, schema.table);
-        console.log(`  🧹 ${schema.db}.${schema.table} — өмнөх ${cnt} test мөр цэвэрлэгдлээ`);
+        console.log(
+          `  🧹 ${schema.db}.${schema.table} — өмнөх ${cnt} test мөр цэвэрлэгдлээ`,
+        );
         leftovers += cnt;
       }
     }
@@ -1211,13 +1648,17 @@ async function runSeedTest() {
         seeded.push({ db: schema.db, table: schema.table, idCol });
         console.log(`  ✓ ${schema.db}.${schema.table} — нэг мөр оруулсан`);
       } catch (err: any) {
-        console.error(`  ✗ ${schema.db}.${schema.table} — INSERT алдаа: ${err.message}`);
+        console.error(
+          `  ✗ ${schema.db}.${schema.table} — INSERT алдаа: ${err.message}`,
+        );
         failed.push(`INSERT ${schema.db}.${schema.table}: ${err.message}`);
       }
     }
 
     if (failed.length > 0) {
-      console.log(`\n⚠️  ${failed.length} table-д INSERT алдаа гарсан тул seed зогссон`);
+      console.log(
+        `\n⚠️  ${failed.length} table-д INSERT алдаа гарсан тул seed зогссон`,
+      );
       throw new Error("INSERT phase failed:\n" + failed.join("\n"));
     }
     console.log(`\n✅ ${seeded.length} table-д test мөр нэмэгдлээ\n`);
@@ -1235,9 +1676,13 @@ async function runSeedTest() {
       }
     }
     if (verifyFailed > 0) {
-      throw new Error(`Verify алдаа: ${verifyFailed} table-д test өгөгдөл байхгүй`);
+      throw new Error(
+        `Verify алдаа: ${verifyFailed} table-д test өгөгдөл байхгүй`,
+      );
     }
-    console.log(`\n✅ Бүх ${seeded.length} table-ийн баталгаажуулалт амжилттай\n`);
+    console.log(
+      `\n✅ Бүх ${seeded.length} table-ийн баталгаажуулалт амжилттай\n`,
+    );
 
     // ── PHASE 5: Test өгөгдлийг устгах ─────────────────────────────────────
     console.log("═══ PHASE 5: Test өгөгдлийг устгах ═══");
@@ -1272,7 +1717,9 @@ async function runSeedTest() {
       if (cnt === 0) {
         console.log(`  ✓ ${db}.${table} — test мөр бүгд устгагдсан`);
       } else {
-        console.warn(`  ⚠️  ${db}.${table} — ${cnt} test мөр үлдсэн хэвээр байна`);
+        console.warn(
+          `  ⚠️  ${db}.${table} — ${cnt} test мөр үлдсэн хэвээр байна`,
+        );
         cleanFailed++;
       }
     }
@@ -1288,18 +1735,23 @@ async function runSeedTest() {
       console.log("⚠️  seed-test дууслаа ГЭХДЭЭ дараах асуудлууд байна:");
       failed.forEach((f) => console.log(`   ✗ ${f}`));
       if (cleanFailed > 0) {
-        console.log(`   ⚠️  ${cleanFailed} table-д test мөр үлдсэн — гараар устгах шаардлагатай`);
-        console.log(`      SQL: ALTER TABLE <db>.<table> DELETE WHERE <idCol> LIKE '${SEED_PREFIX}%'`);
+        console.log(
+          `   ⚠️  ${cleanFailed} table-д test мөр үлдсэн — гараар устгах шаардлагатай`,
+        );
+        console.log(
+          `      SQL: ALTER TABLE <db>.<table> DELETE WHERE <idCol> LIKE '${SEED_PREFIX}%'`,
+        );
       }
     }
     console.log("══════════════════════════════════════════\n");
-
   } catch (error: any) {
     console.error("\n❌ seed-test АМЖИЛТГҮЙ:", error.message);
     if (seeded.length > 0) {
       console.log("\n🧹 Гараар цэвэрлэх SQL:");
       for (const { db, table, idCol } of seeded) {
-        console.log(`   ALTER TABLE ${db}.${table} DELETE WHERE ${idCol} LIKE '${SEED_PREFIX}%';`);
+        console.log(
+          `   ALTER TABLE ${db}.${table} DELETE WHERE ${idCol} LIKE '${SEED_PREFIX}%';`,
+        );
       }
     }
     throw error;

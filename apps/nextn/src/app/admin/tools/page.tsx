@@ -201,9 +201,10 @@ export default function AdminToolsPage() {
     user?.isAdmin && !isSuperAdmin
       ? ((user as any)?.grantableTools ?? [])
       : null;
-  const visibleTools = subAdminTools !== null
-    ? AVAILABLE_TOOLS.filter((t) => subAdminTools.includes(t.id))
-    : AVAILABLE_TOOLS;
+  const visibleTools =
+    subAdminTools !== null
+      ? AVAILABLE_TOOLS.filter((t) => subAdminTools.includes(t.id))
+      : AVAILABLE_TOOLS;
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -574,8 +575,9 @@ export default function AdminToolsPage() {
               <div className="flex-1 h-px bg-slate-700/50" />
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {visibleTools.filter((t) => t.category === "free").map(
-                (tool, index) => {
+              {visibleTools
+                .filter((t) => t.category === "free")
+                .map((tool, index) => {
                   const usersWithAccess = getUsersWithAccess(tool.id);
                   const Icon = tool.icon;
                   return (
@@ -654,8 +656,7 @@ export default function AdminToolsPage() {
                       </Card>
                     </motion.div>
                   );
-                },
-              )}
+                })}
             </div>
           </div>
 
@@ -671,8 +672,9 @@ export default function AdminToolsPage() {
               <div className="flex-1 h-px bg-slate-700/50" />
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {visibleTools.filter((t) => t.category === "work").map(
-                (tool, index) => {
+              {visibleTools
+                .filter((t) => t.category === "work")
+                .map((tool, index) => {
                   const usersWithAccess = getUsersWithAccess(tool.id);
                   const Icon = tool.icon;
                   return (
@@ -751,8 +753,7 @@ export default function AdminToolsPage() {
                       </Card>
                     </motion.div>
                   );
-                },
-              )}
+                })}
             </div>
           </div>
         </motion.div>

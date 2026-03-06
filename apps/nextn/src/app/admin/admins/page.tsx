@@ -80,7 +80,12 @@ export default function AdminsPage() {
     setError("");
     try {
       const data = await usersApi.getAdmins();
-      setAdmins(data.map((a: any) => ({ ...a, grantableTools: a.grantableTools ?? [] })));
+      setAdmins(
+        data.map((a: any) => ({
+          ...a,
+          grantableTools: a.grantableTools ?? [],
+        })),
+      );
     } catch {
       setError("Админуудыг ачааллахад алдаа гарлаа.");
     } finally {
@@ -100,16 +105,29 @@ export default function AdminsPage() {
     fetchAllUsers();
   }, [fetchAdmins, fetchAllUsers]);
 
-  const toggleTool = (tools: string[], setTools: (v: string[]) => void, id: string) => {
-    setTools(tools.includes(id) ? tools.filter((t) => t !== id) : [...tools, id]);
+  const toggleTool = (
+    tools: string[],
+    setTools: (v: string[]) => void,
+    id: string,
+  ) => {
+    setTools(
+      tools.includes(id) ? tools.filter((t) => t !== id) : [...tools, id],
+    );
   };
 
   const handleToggleSuperAdmin = async (admin: AdminUser) => {
     if (!isSuperAdmin || admin.id === user?.id) return;
     try {
-      await usersApi.setAdminRole(admin.id, true, !admin.isSuperAdmin, admin.grantableTools);
+      await usersApi.setAdminRole(
+        admin.id,
+        true,
+        !admin.isSuperAdmin,
+        admin.grantableTools,
+      );
       setAdmins((prev) =>
-        prev.map((a) => (a.id === admin.id ? { ...a, isSuperAdmin: !admin.isSuperAdmin } : a)),
+        prev.map((a) =>
+          a.id === admin.id ? { ...a, isSuperAdmin: !admin.isSuperAdmin } : a,
+        ),
       );
     } catch {
       setError("Эрх шинэчлэхэд алдаа гарлаа.");
@@ -159,9 +177,16 @@ export default function AdminsPage() {
     if (!editTarget || !isSuperAdmin) return;
     setEditLoading(true);
     try {
-      await usersApi.setAdminRole(editTarget.id, true, editTarget.isSuperAdmin, editTools);
+      await usersApi.setAdminRole(
+        editTarget.id,
+        true,
+        editTarget.isSuperAdmin,
+        editTools,
+      );
       setAdmins((prev) =>
-        prev.map((a) => (a.id === editTarget.id ? { ...a, grantableTools: editTools } : a)),
+        prev.map((a) =>
+          a.id === editTarget.id ? { ...a, grantableTools: editTools } : a,
+        ),
       );
       setEditTarget(null);
     } catch {
@@ -204,12 +229,24 @@ export default function AdminsPage() {
               }`}
             >
               {checked && (
-                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12">
-                  <path d="M1 7l3.5 3.5L11 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <svg
+                  className="w-2.5 h-2.5 text-white"
+                  fill="none"
+                  viewBox="0 0 12 12"
+                >
+                  <path
+                    d="M1 7l3.5 3.5L11 2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               )}
             </span>
-            <span className={`text-sm select-none transition-colors ${checked ? "text-white" : "text-slate-400 group-hover:text-slate-300"}`}>
+            <span
+              className={`text-sm select-none transition-colors ${checked ? "text-white" : "text-slate-400 group-hover:text-slate-300"}`}
+            >
               {tool.name}
             </span>
           </label>
@@ -226,7 +263,9 @@ export default function AdminsPage() {
             <ShieldCheck className="w-7 h-7 text-amber-400" />
             Админ удирдлага
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Системийн администраторуудыг удирдах</p>
+          <p className="text-slate-400 text-sm mt-1">
+            Системийн администраторуудыг удирдах
+          </p>
         </div>
         {isSuperAdmin && (
           <motion.button
@@ -244,9 +283,27 @@ export default function AdminsPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
-          { label: "Нийт админ", value: admins.length, icon: Shield, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
-          { label: "Супер админ", value: superAdminCount, icon: Crown, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
-          { label: "Саб админ", value: subAdminCount, icon: Wrench, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+          {
+            label: "Нийт админ",
+            value: admins.length,
+            icon: Shield,
+            color: "text-blue-400",
+            bg: "bg-blue-500/10 border-blue-500/20",
+          },
+          {
+            label: "Супер админ",
+            value: superAdminCount,
+            icon: Crown,
+            color: "text-amber-400",
+            bg: "bg-amber-500/10 border-amber-500/20",
+          },
+          {
+            label: "Саб админ",
+            value: subAdminCount,
+            icon: Wrench,
+            color: "text-emerald-400",
+            bg: "bg-emerald-500/10 border-emerald-500/20",
+          },
         ].map((stat) => (
           <motion.div
             key={stat.label}
@@ -256,7 +313,9 @@ export default function AdminsPage() {
           >
             <stat.icon className={`w-8 h-8 ${stat.color}`} />
             <div>
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className={`text-2xl font-bold ${stat.color}`}>
+                {stat.value}
+              </div>
               <div className="text-slate-400 text-sm">{stat.label}</div>
             </div>
           </motion.div>
@@ -281,8 +340,9 @@ export default function AdminsPage() {
             {admins.map((admin, i) => {
               const isSelf = admin.id === user?.id;
               const isExpanded = expandedAdmin === admin.id;
-              const toolNames = (admin.grantableTools ?? [])
-                .map((tid) => ALL_TOOLS.find((t) => t.id === tid)?.name ?? tid);
+              const toolNames = (admin.grantableTools ?? []).map(
+                (tid) => ALL_TOOLS.find((t) => t.id === tid)?.name ?? tid,
+              );
 
               return (
                 <motion.div
@@ -301,11 +361,15 @@ export default function AdminsPage() {
                           : "bg-emerald-500/20 text-emerald-400"
                       }`}
                     >
-                      {(admin.name ?? admin.userId ?? "?").slice(0, 2).toUpperCase()}
+                      {(admin.name ?? admin.userId ?? "?")
+                        .slice(0, 2)
+                        .toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-white font-medium">{admin.name || admin.userId}</span>
+                        <span className="text-white font-medium">
+                          {admin.name || admin.userId}
+                        </span>
                         {admin.isSuperAdmin ? (
                           <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-xs px-2 py-0.5 rounded-full border border-amber-500/30">
                             <Crown className="w-3 h-3" /> Супер админ
@@ -316,20 +380,30 @@ export default function AdminsPage() {
                           </span>
                         )}
                         {isSelf && (
-                          <span className="bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">Та</span>
+                          <span className="bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">
+                            Та
+                          </span>
                         )}
                       </div>
-                      <p className="text-slate-400 text-sm truncate">{admin.userId}</p>
+                      <p className="text-slate-400 text-sm truncate">
+                        {admin.userId}
+                      </p>
                       {!admin.isSuperAdmin && (
                         <button
-                          onClick={() => setExpandedAdmin(isExpanded ? null : admin.id)}
+                          onClick={() =>
+                            setExpandedAdmin(isExpanded ? null : admin.id)
+                          }
                           className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 mt-0.5 transition-colors"
                         >
                           <Wrench className="w-3 h-3" />
                           {toolNames.length > 0
                             ? `${toolNames.length} хэрэгсэл олгох эрхтэй`
                             : "Хэрэгсэл тохируулаагүй"}
-                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          {isExpanded ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
                         </button>
                       )}
                     </div>
@@ -339,7 +413,10 @@ export default function AdminsPage() {
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => { setEditTarget(admin); setEditTools(admin.grantableTools ?? []); }}
+                            onClick={() => {
+                              setEditTarget(admin);
+                              setEditTools(admin.grantableTools ?? []);
+                            }}
                             title="Хэрэгсэл эрх тохируулах"
                             className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                           >
@@ -350,7 +427,9 @@ export default function AdminsPage() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleToggleSuperAdmin(admin)}
-                          title={admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
+                          title={
+                            admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"
+                          }
                           className={`p-2 rounded-lg transition-colors ${admin.isSuperAdmin ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30" : "bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"}`}
                         >
                           <Crown className="w-4 h-4" />
@@ -378,13 +457,18 @@ export default function AdminsPage() {
                         {toolNames.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 pt-3">
                             {toolNames.map((name) => (
-                              <span key={name} className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                              <span
+                                key={name}
+                                className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full"
+                              >
                                 {name}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-slate-600 text-xs pt-3">Ямар ч хэрэгсэл тохируулаагүй байна.</p>
+                          <p className="text-slate-600 text-xs pt-3">
+                            Ямар ч хэрэгсэл тохируулаагүй байна.
+                          </p>
                         )}
                       </motion.div>
                     )}
@@ -446,7 +530,9 @@ export default function AdminsPage() {
 
                 <div className="space-y-1 max-h-48 overflow-y-auto mb-5 rounded-xl border border-slate-800">
                   {filteredUsers.length === 0 ? (
-                    <p className="text-slate-500 text-sm p-4 text-center">Хэрэглэгч олдсонгүй</p>
+                    <p className="text-slate-500 text-sm p-4 text-center">
+                      Хэрэглэгч олдсонгүй
+                    </p>
                   ) : (
                     filteredUsers.map((u) => (
                       <button
@@ -459,11 +545,17 @@ export default function AdminsPage() {
                         }`}
                       >
                         <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-medium">
-                          {(u.name || u.userId || "?").slice(0, 2).toUpperCase()}
+                          {(u.name || u.userId || "?")
+                            .slice(0, 2)
+                            .toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{u.name || u.userId}</div>
-                          <div className="text-xs text-slate-500">{u.userId}</div>
+                          <div className="text-sm font-medium truncate">
+                            {u.name || u.userId}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {u.userId}
+                          </div>
                         </div>
                         {selectedUserId === u.id && (
                           <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
@@ -474,7 +566,9 @@ export default function AdminsPage() {
                 </div>
 
                 <div className="mb-5">
-                  <p className="text-slate-400 text-xs mb-2 font-medium uppercase tracking-wider">Роль</p>
+                  <p className="text-slate-400 text-xs mb-2 font-medium uppercase tracking-wider">
+                    Роль
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     {(["sub", "super"] as const).map((role) => (
                       <button
@@ -488,7 +582,11 @@ export default function AdminsPage() {
                             : "border-slate-700 text-slate-400 hover:border-slate-600"
                         }`}
                       >
-                        {role === "super" ? <Crown className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
+                        {role === "super" ? (
+                          <Crown className="w-4 h-4" />
+                        ) : (
+                          <Wrench className="w-4 h-4" />
+                        )}
                         {role === "super" ? "Супер админ" : "Саб админ"}
                       </button>
                     ))}
@@ -500,7 +598,10 @@ export default function AdminsPage() {
                     <p className="text-slate-400 text-xs mb-2 font-medium uppercase tracking-wider">
                       Олгох эрхийн хэрэгслүүд
                     </p>
-                    <ToolCheckList tools={grantableTools} setTools={setGrantableTools} />
+                    <ToolCheckList
+                      tools={grantableTools}
+                      setTools={setGrantableTools}
+                    />
                   </div>
                 )}
 
@@ -511,7 +612,11 @@ export default function AdminsPage() {
                   disabled={!selectedUserId || addLoading}
                   className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-semibold py-3 rounded-xl transition-colors"
                 >
-                  {addLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                  {addLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
                   Нэмэх
                 </motion.button>
               </div>
@@ -552,7 +657,9 @@ export default function AdminsPage() {
                   </button>
                 </div>
                 <p className="text-slate-400 text-sm mb-4">
-                  <span className="text-white font-medium">{editTarget.name || editTarget.userId}</span>
+                  <span className="text-white font-medium">
+                    {editTarget.name || editTarget.userId}
+                  </span>
                   -д олгох хэрэгслийн эрхийг сонгоно уу.
                 </p>
                 <div className="mb-6">
@@ -568,7 +675,11 @@ export default function AdminsPage() {
                   disabled={editLoading}
                   className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-colors"
                 >
-                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
+                  {editLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wrench className="w-4 h-4" />
+                  )}
                   Хадгалах
                 </motion.button>
               </div>
@@ -600,12 +711,18 @@ export default function AdminsPage() {
                     <AlertTriangle className="w-5 h-5 text-red-400" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">Админ эрх хасах</h3>
-                    <p className="text-slate-400 text-sm">Энэ үйлдлийг буцааж болохгүй</p>
+                    <h3 className="text-white font-semibold">
+                      Админ эрх хасах
+                    </h3>
+                    <p className="text-slate-400 text-sm">
+                      Энэ үйлдлийг буцааж болохгүй
+                    </p>
                   </div>
                 </div>
                 <p className="text-slate-300 text-sm mb-6">
-                  <span className="text-white font-medium">{removeTarget.name || removeTarget.userId}</span>
+                  <span className="text-white font-medium">
+                    {removeTarget.name || removeTarget.userId}
+                  </span>
                   -н админ эрхийг хасах уу?
                 </p>
                 <div className="flex gap-3">
@@ -622,7 +739,11 @@ export default function AdminsPage() {
                     disabled={removeLoading}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-slate-700 text-white text-sm font-medium transition-colors"
                   >
-                    {removeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    {removeLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                     Хасах
                   </motion.button>
                 </div>

@@ -33,7 +33,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `Unhandled error on ${request.method} ${request.url}`,
         exception instanceof Error ? exception.stack : exception,
       );
-    } else if (status === HttpStatus.UNAUTHORIZED || status === HttpStatus.FORBIDDEN) {
+    } else if (
+      status === HttpStatus.UNAUTHORIZED ||
+      status === HttpStatus.FORBIDDEN
+    ) {
       // Always log security events (401/403) regardless of environment
       this.logger.warn(
         `${status} error on ${request.method} ${request.url}: ${message}`,

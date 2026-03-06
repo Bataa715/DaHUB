@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -70,32 +70,37 @@ export default function AdminLoginPage() {
     defaultValues: { userId: "", password: "" },
   });
 
-  const searchAdminUsers = async (query: string) => {
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchAdminUsers = useCallback(async (query: string) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     if (!query || query.length < 2) {
       setUserSuggestions([]);
       setShowSuggestions(false);
       return;
     }
     setIsSearching(true);
-    try {
-      const response = await fetch(
-        `${API_URL}/auth/search?q=${encodeURIComponent(query)}&adminOnly=true`,
-      );
-      const data = await response.json();
-      if (data.users && data.users.length > 0) {
-        setUserSuggestions(data.users);
-        setShowSuggestions(true);
-      } else {
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/auth/search?q=${encodeURIComponent(query)}&adminOnly=true`,
+        );
+        const data = await response.json();
+        if (data.users && data.users.length > 0) {
+          setUserSuggestions(data.users);
+          setShowSuggestions(true);
+        } else {
+          setUserSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch {
         setUserSuggestions([]);
         setShowSuggestions(false);
+      } finally {
+        setIsSearching(false);
       }
-    } catch {
-      setUserSuggestions([]);
-      setShowSuggestions(false);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+    }, 400);
+  }, []);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -106,7 +111,7 @@ export default function AdminLoginPage() {
         description: "Админ хуудас руу шилжүүлж байна...",
         duration: 3000,
       });
-      window.location.href = "/admin";
+      window.location.replace("/admin");
     } catch (error: any) {
       toast({
         title: "Нэвтрэхэд алдаа гарлаа",

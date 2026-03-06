@@ -141,7 +141,11 @@ export function parseContent(text: string, tc: { n: number }): React.ReactNode {
 const GRID_ROWS = 8;
 const GRID_COLS = 8;
 
-function TableGridPicker({ onPick }: { onPick: (rows: number, cols: number) => void }) {
+function TableGridPicker({
+  onPick,
+}: {
+  onPick: (rows: number, cols: number) => void;
+}) {
   const [hover, setHover] = useState<{ r: number; c: number } | null>(null);
 
   return (
@@ -153,9 +157,17 @@ function TableGridPicker({ onPick }: { onPick: (rows: number, cols: number) => v
         className="text-xs text-slate-400 mb-1.5 text-center"
         style={{ minWidth: 120 }}
       >
-        {hover ? `${hover.r} мөр × ${hover.c} багана` : "Мөр × Багана сонгоно уу"}
+        {hover
+          ? `${hover.r} мөр × ${hover.c} багана`
+          : "Мөр × Багана сонгоно уу"}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${GRID_COLS}, 18px)`, gap: 2 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${GRID_COLS}, 18px)`,
+          gap: 2,
+        }}
+      >
         {Array.from({ length: GRID_ROWS * GRID_COLS }, (_, idx) => {
           const r = Math.floor(idx / GRID_COLS) + 1;
           const c = (idx % GRID_COLS) + 1;
@@ -219,10 +231,18 @@ export function RichToolbar({
   };
 
   const insertTable = (numRows: number, numCols: number) => {
-    const header = "|" + Array.from({ length: numCols }, (_, i) => `Гарчиг ${i + 1}`).join("|") + "|";
-    const separator = "|" + Array.from({ length: numCols }, () => "---").join("|") + "|";
-    const dataRow = "|" + Array.from({ length: numCols }, () => "Утга").join("|") + "|";
-    const dataRows = Array.from({ length: Math.max(1, numRows - 1) }, () => dataRow).join("\n");
+    const header =
+      "|" +
+      Array.from({ length: numCols }, (_, i) => `Гарчиг ${i + 1}`).join("|") +
+      "|";
+    const separator =
+      "|" + Array.from({ length: numCols }, () => "---").join("|") + "|";
+    const dataRow =
+      "|" + Array.from({ length: numCols }, () => "Утга").join("|") + "|";
+    const dataRows = Array.from(
+      { length: Math.max(1, numRows - 1) },
+      () => dataRow,
+    ).join("\n");
     const table = "\n" + header + "\n" + separator + "\n" + dataRows + "\n";
     apply(table);
     setShowGrid(false);

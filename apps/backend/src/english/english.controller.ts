@@ -10,7 +10,11 @@ import {
   Request,
 } from "@nestjs/common";
 import { EnglishService } from "./english.service";
-import { CreateWordDto, UpdateWordDto, RecordReviewDto } from "./dto/english.dto";
+import {
+  CreateWordDto,
+  UpdateWordDto,
+  RecordReviewDto,
+} from "./dto/english.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("english")

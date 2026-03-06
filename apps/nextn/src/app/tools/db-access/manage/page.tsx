@@ -259,7 +259,9 @@ export default function DbAccessManagePage() {
     if (!confirm(`"${tblList}" эрхийг цуцлах уу?`)) return;
     try {
       setRevokingId(group.requestId);
-      await Promise.all(group.grantIds.map((id) => dbAccessApi.revokeGrant(id)));
+      await Promise.all(
+        group.grantIds.map((id) => dbAccessApi.revokeGrant(id)),
+      );
       toast({ title: "✅ Устгагдлаа", description: "Эрх цуцлагдлаа" });
       const all = await dbAccessApi.getAllGrants();
       setAllGrants(all);
@@ -296,7 +298,8 @@ export default function DbAccessManagePage() {
             <div>
               <h1 className="text-2xl font-bold">Эрхийн Хүсэлт Шийдвэрлэх</h1>
               <p className="text-sm text-muted-foreground">
-                {mounted ? (user?.name ?? "") : ""} ClickHouse хандалтын хүсэлтүүдийг хянах
+                {mounted ? (user?.name ?? "") : ""} ClickHouse хандалтын
+                хүсэлтүүдийг хянах
               </p>
             </div>
           </div>
@@ -675,7 +678,11 @@ export default function DbAccessManagePage() {
                               </span>
                             ))}
                             {grp.accessTypes.map((a) => (
-                              <Badge key={a} variant="secondary" className="text-xs">
+                              <Badge
+                                key={a}
+                                variant="secondary"
+                                className="text-xs"
+                              >
                                 {a}
                               </Badge>
                             ))}
@@ -683,12 +690,18 @@ export default function DbAccessManagePage() {
                           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                             <span>
                               Олгосон:{" "}
-                              <span className="text-foreground">{grp.grantedByName}</span>
+                              <span className="text-foreground">
+                                {grp.grantedByName}
+                              </span>
                             </span>
-                            <span suppressHydrationWarning>{fmt24(grp.grantedAt)}</span>
+                            <span suppressHydrationWarning>
+                              {fmt24(grp.grantedAt)}
+                            </span>
                             <span suppressHydrationWarning>
                               Хаагдах:{" "}
-                              <span className="text-foreground">{fmt24(grp.validUntil)}</span>
+                              <span className="text-foreground">
+                                {fmt24(grp.validUntil)}
+                              </span>
                             </span>
                           </div>
                         </div>

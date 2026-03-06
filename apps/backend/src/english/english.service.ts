@@ -6,7 +6,11 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
-import { CreateWordDto, UpdateWordDto, RecordReviewDto } from "./dto/english.dto";
+import {
+  CreateWordDto,
+  UpdateWordDto,
+  RecordReviewDto,
+} from "./dto/english.dto";
 
 const fmt = (d: Date) => d.toISOString().slice(0, 19).replace("T", " ");
 

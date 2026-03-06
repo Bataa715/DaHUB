@@ -74,7 +74,11 @@ export class UsersController {
   setAdminRole(
     @Param("id") id: string,
     @Body()
-    body: { isAdmin: boolean; isSuperAdmin: boolean; grantableTools?: string[] },
+    body: {
+      isAdmin: boolean;
+      isSuperAdmin: boolean;
+      grantableTools?: string[];
+    },
   ) {
     return this.usersService.setAdminRole(
       id,

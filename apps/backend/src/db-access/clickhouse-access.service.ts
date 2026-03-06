@@ -170,7 +170,8 @@ export class ClickHouseAccessService {
     );
 
     // Always set the password so the stored value always matches CH
-    const generatedPassword: string = password ?? randomBytes(12).toString("hex");
+    const generatedPassword: string =
+      password ?? randomBytes(12).toString("hex");
     const userExists = await this.clickhouseUserExists(username);
     if (!userExists) {
       await this.execSafe(
@@ -184,16 +185,27 @@ export class ClickHouseAccessService {
       );
     }
 
-    await this.execSafe(`CREATE ROLE IF NOT EXISTS ${this.q(role)}`, `create role ${role}`);
+    await this.execSafe(
+      `CREATE ROLE IF NOT EXISTS ${this.q(role)}`,
+      `create role ${role}`,
+    );
     await this.execSafe(
       `GRANT SELECT ON ${this.q(db)}.${this.q(table)} TO ${this.q(role)}`,
       `grant select on ${tableName}`,
     );
-    await this.execSafe(`GRANT ${this.q(role)} TO ${this.q(username)}`, `grant role to user`);
-    await this.execSafe(`ALTER USER ${this.q(username)} DEFAULT ROLE ALL`, `default role all`);
+    await this.execSafe(
+      `GRANT ${this.q(role)} TO ${this.q(username)}`,
+      `grant role to user`,
+    );
+    await this.execSafe(
+      `ALTER USER ${this.q(username)} DEFAULT ROLE ALL`,
+      `default role all`,
+    );
 
     const verification = await this.verifyGrants(username, role, tableName);
-    this.logger.log(`[approve] ✓ user=${username} hasSelect=${verification.hasSelectOnTable}`);
+    this.logger.log(
+      `[approve] ✓ user=${username} hasSelect=${verification.hasSelectOnTable}`,
+    );
     return { ...verification, generatedPassword };
   }
 
@@ -204,7 +216,9 @@ export class ClickHouseAccessService {
    *   If no privileges remain on the role → DROP ROLE → possibly DROP USER.
    * - If `tableName` omitted: DROP ROLE directly → possibly DROP USER.
    */
-  async revokeAccess(opts: RevokeAccessOptions): Promise<{ userDropped: boolean }> {
+  async revokeAccess(
+    opts: RevokeAccessOptions,
+  ): Promise<{ userDropped: boolean }> {
     const { requestId, requesterUserId, tableName } = opts;
 
     const username = this.sanitizeIdentifier(requesterUserId);
@@ -223,7 +237,9 @@ export class ClickHouseAccessService {
         await this.clickhouse.exec(
           `REVOKE SELECT ON ${this.q(db)}.${this.q(tbl)} FROM ${this.q(role)}`,
         );
-        this.logger.debug(`[exec] ✓ revoke select on ${tableName} from role ${role}`);
+        this.logger.debug(
+          `[exec] ✓ revoke select on ${tableName} from role ${role}`,
+        );
       } catch (err: any) {
         this.logger.warn(
           `[revoke] Could not revoke select on ${tableName} from ${role}: ${err?.message}`,
@@ -239,13 +255,17 @@ export class ClickHouseAccessService {
         return { userDropped: false };
       }
       // No privileges remain → fall through to drop the role
-      this.logger.log(`[revoke] Role ${role} has no remaining privileges — dropping`);
+      this.logger.log(
+        `[revoke] Role ${role} has no remaining privileges — dropping`,
+      );
     }
 
     // ── Drop the role entirely ───────────────────────────────────────────────
     // First revoke it from the user (ClickHouse requires explicit REVOKE before DROP)
     try {
-      await this.clickhouse.exec(`REVOKE ${this.q(role)} FROM ${this.q(username)}`);
+      await this.clickhouse.exec(
+        `REVOKE ${this.q(role)} FROM ${this.q(username)}`,
+      );
       this.logger.debug(`[exec] ✓ revoke role ${role} from ${username}`);
     } catch (err: any) {
       this.logger.warn(
@@ -253,16 +273,24 @@ export class ClickHouseAccessService {
       );
     }
 
-    await this.execSafe(`DROP ROLE IF EXISTS ${this.q(role)}`, `drop role ${role}`);
+    await this.execSafe(
+      `DROP ROLE IF EXISTS ${this.q(role)}`,
+      `drop role ${role}`,
+    );
 
     // ── Drop user if no other roles remain ──────────────────────────────────
     const remainingRoles = await this.getActiveRolesForUser(username);
     let userDropped = false;
 
     if (remainingRoles.length === 0) {
-      await this.execSafe(`DROP USER IF EXISTS ${this.q(username)}`, `drop user ${username}`);
+      await this.execSafe(
+        `DROP USER IF EXISTS ${this.q(username)}`,
+        `drop user ${username}`,
+      );
       userDropped = true;
-      this.logger.log(`[revoke] ✓ user ${username} dropped (no remaining roles)`);
+      this.logger.log(
+        `[revoke] ✓ user ${username} dropped (no remaining roles)`,
+      );
     } else {
       this.logger.log(
         `[revoke] ✓ role dropped; user ${username} retains ${remainingRoles.length} role(s)`,
@@ -295,7 +323,9 @@ export class ClickHouseAccessService {
     const dot = tableName.indexOf(".");
     const db = dot !== -1 ? tableName.slice(0, dot).toUpperCase() : "";
     if (!db || !ALLOWED_DATABASES.has(db)) {
-      this.logger.warn(`[security] Blocked table from disallowed database: "${tableName}"`);
+      this.logger.warn(
+        `[security] Blocked table from disallowed database: "${tableName}"`,
+      );
       throw new BadRequestException(
         `Table "${tableName}" is not in an allowed database`,
       );

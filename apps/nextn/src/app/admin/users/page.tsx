@@ -51,7 +51,14 @@ import {
   X,
   KeyRound,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -102,13 +109,19 @@ export default function UsersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Department change
-  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
-  const [changingDeptUserId, setChangingDeptUserId] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [changingDeptUserId, setChangingDeptUserId] = useState<string | null>(
+    null,
+  );
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [isSavingDept, setIsSavingDept] = useState(false);
 
   // Password reset
-  const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(
+    null,
+  );
   const [newPassword, setNewPassword] = useState("");
   const [isResetting, setIsResetting] = useState(false);
 
@@ -141,7 +154,9 @@ export default function UsersPage() {
   const loadDepartments = async () => {
     try {
       const data = await departmentsApi.getAll();
-      setDepartments((data || []).map((d: any) => ({ id: d.id, name: d.name })));
+      setDepartments(
+        (data || []).map((d: any) => ({ id: d.id, name: d.name })),
+      );
     } catch {}
   };
 
@@ -160,7 +175,11 @@ export default function UsersPage() {
       setChangingDeptUserId(null);
       loadUsers();
     } catch {
-      toast({ title: "Алдаа", description: "Хэлтэс өөрчлөхөд алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэлтэс өөрчлөхөд алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsSavingDept(false);
     }
@@ -245,7 +264,8 @@ export default function UsersPage() {
     } catch (error: any) {
       toast({
         title: "Алдаа",
-        description: error?.response?.data?.message || "Нууц үг сэргээхэд алдаа гарлаа.",
+        description:
+          error?.response?.data?.message || "Нууц үг сэргээхэд алдаа гарлаа.",
         variant: "destructive",
       });
     } finally {
@@ -547,7 +567,9 @@ export default function UsersPage() {
                               >
                                 <Building2 className="w-4 h-4 text-slate-500 group-hover:text-blue-400" />
                                 <span className="text-sm">
-                                  {userData.department ?? <span className="text-slate-500">—</span>}
+                                  {userData.department ?? (
+                                    <span className="text-slate-500">—</span>
+                                  )}
                                 </span>
                                 <Pencil className="w-3 h-3 text-slate-600 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                               </button>
@@ -620,7 +642,10 @@ export default function UsersPage() {
       <Dialog
         open={!!resetPasswordUser}
         onOpenChange={(open) => {
-          if (!open) { setResetPasswordUser(null); setNewPassword(""); }
+          if (!open) {
+            setResetPasswordUser(null);
+            setNewPassword("");
+          }
         }}
       >
         <DialogContent className="bg-slate-800 border-slate-700 text-white">
@@ -630,12 +655,16 @@ export default function UsersPage() {
               Нууц үг сэргээх
             </DialogTitle>
             <DialogDescription className="text-slate-400">
-              <span className="font-medium text-white">{resetPasswordUser?.name}</span>{" "}
+              <span className="font-medium text-white">
+                {resetPasswordUser?.name}
+              </span>{" "}
               ({resetPasswordUser?.userId}) хэрэглэгчийн нууц үгийг шинэчлэх.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <Label className="text-slate-300 text-sm mb-2 block">Шинэ нууц үг</Label>
+            <Label className="text-slate-300 text-sm mb-2 block">
+              Шинэ нууц үг
+            </Label>
             <Input
               type="text"
               placeholder="Хамгийн багадаа 6 тэмдэгт"
@@ -645,14 +674,19 @@ export default function UsersPage() {
               autoComplete="off"
             />
             {newPassword.length > 0 && newPassword.length < 6 && (
-              <p className="text-red-400 text-xs mt-1">Хамгийн багадаа 6 тэмдэгт байх ёстой</p>
+              <p className="text-red-400 text-xs mt-1">
+                Хамгийн багадаа 6 тэмдэгт байх ёстой
+              </p>
             )}
           </div>
           <DialogFooter className="gap-2">
             <Button
               variant="ghost"
               className="border-slate-600 text-slate-300 hover:bg-slate-700"
-              onClick={() => { setResetPasswordUser(null); setNewPassword(""); }}
+              onClick={() => {
+                setResetPasswordUser(null);
+                setNewPassword("");
+              }}
               disabled={isResetting}
             >
               Болих

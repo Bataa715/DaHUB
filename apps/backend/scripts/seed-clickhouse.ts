@@ -288,7 +288,9 @@ async function seedClickHouse() {
     const newsCount = await countRows(client, "news");
 
     if (newsCount > 0) {
-      console.log(`  🗑️  ${newsCount} news articles found — truncating for re-seed...`);
+      console.log(
+        `  🗑️  ${newsCount} news articles found — truncating for re-seed...`,
+      );
       await client.exec({
         query: `TRUNCATE TABLE ${CLICKHOUSE_DATABASE}.news`,
       });
@@ -382,8 +384,7 @@ async function seedClickHouse() {
       },
       {
         id: randomUUID(),
-        title:
-          "Дата аналитикс ашиглан аудитын үр нөлөөг хэрхэн нэмэгдүүлэх вэ",
+        title: "Дата аналитикс ашиглан аудитын үр нөлөөг хэрхэн нэмэгдүүлэх вэ",
         content:
           "<p>Голомт Банкны Дата Анализын Алба болон Дотоод Аудитын Газар хамтран дараах хэрэгслийг нэвтрүүлсэн:</p><ul><li><strong>SQL-д суурилсан гүйлгээний хяналт</strong></li><li><strong>Аномали илрүүлэх загвар</strong> — ML</li><li><strong>ClickHouse дата агуулах</strong></li></ul>",
         category: "Ерөнхий",

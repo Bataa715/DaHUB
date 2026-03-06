@@ -121,12 +121,12 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       } catch (error: any) {
         const msg = error?.message || error?.type || String(error);
         const isRetriable =
-          msg.includes('ECONNRESET') ||
-          msg.includes('socket hang up') ||
-          error?.code === 'ECONNRESET';
+          msg.includes("ECONNRESET") ||
+          msg.includes("socket hang up") ||
+          error?.code === "ECONNRESET";
         if (isRetriable && attempt < retries) {
           this.logger.warn(`ClickHouse command retrying after: ${msg}`);
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 500));
           continue;
         }
         this.logger.error(`ClickHouse command error: ${msg}`, error?.stack);

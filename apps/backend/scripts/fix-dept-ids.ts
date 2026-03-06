@@ -73,7 +73,7 @@ async function main() {
     console.log("✅ Verification passed — no ZAGCHBH user IDs remain.");
   } else {
     console.warn(
-      `⚠️  ${verifyData.data.length} user(s) still have ZAGCHBH — mutation may still be processing.`
+      `⚠️  ${verifyData.data.length} user(s) still have ZAGCHBH — mutation may still be processing.`,
     );
     console.warn("   Re-run this script in a few seconds to verify.");
   }

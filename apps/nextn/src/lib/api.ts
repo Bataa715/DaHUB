@@ -227,7 +227,9 @@ export const usersApi = {
   },
 
   resetPassword: async (id: string, newPassword: string) => {
-    const response = await api.patch(`/users/${id}/reset-password`, { newPassword });
+    const response = await api.patch(`/users/${id}/reset-password`, {
+      newPassword,
+    });
     return response.data;
   },
 };
@@ -512,14 +514,26 @@ export const tailanApi = {
   },
 
   // ─── Department BSC (ТҮЗ) report ────────────────────────────────────────
-  saveDeptBsc: async (year: number, quarter: number, sections: Record<string, unknown>) => {
-    const response = await api.post("/tailan/dept-bsc", { year, quarter, sections });
+  saveDeptBsc: async (
+    year: number,
+    quarter: number,
+    sections: Record<string, unknown>,
+  ) => {
+    const response = await api.post("/tailan/dept-bsc", {
+      year,
+      quarter,
+      sections,
+    });
     return response.data as { ok: boolean; message: string };
   },
 
   getDeptBsc: async (year: number, quarter: number) => {
     const response = await api.get(`/tailan/dept-bsc/${year}/${quarter}`);
-    return response.data as { sections: Record<string, unknown>; savedByName: string; updatedAt: string } | null;
+    return response.data as {
+      sections: Record<string, unknown>;
+      savedByName: string;
+      updatedAt: string;
+    } | null;
   },
 };
 

@@ -36,7 +36,9 @@ export class GrantExpiryService {
 
     if (expired.length === 0) return;
 
-    this.logger.log(`[expiry] Found ${expired.length} expired grant(s) to revoke`);
+    this.logger.log(
+      `[expiry] Found ${expired.length} expired grant(s) to revoke`,
+    );
 
     for (const grant of expired) {
       try {

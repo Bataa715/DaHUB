@@ -116,10 +116,16 @@ export class DbAccessService {
 
     if (activeGrants.length > 0) {
       // Group by requestId: one ClickHouse role per request → one full revoke per role
-      const byRequest = new Map<string, { grants: any[]; requesterUserId: string }>();
+      const byRequest = new Map<
+        string,
+        { grants: any[]; requesterUserId: string }
+      >();
       for (const g of activeGrants) {
         if (!byRequest.has(g.requestId)) {
-          byRequest.set(g.requestId, { grants: [], requesterUserId: g.userUserId });
+          byRequest.set(g.requestId, {
+            grants: [],
+            requesterUserId: g.userUserId,
+          });
         }
         byRequest.get(g.requestId)!.grants.push(g);
       }
@@ -528,7 +534,9 @@ export class DbAccessService {
       );
     }
 
-    this.logger.log(`Grant ${grantId} self-cancelled by user ${requester.userId}`);
+    this.logger.log(
+      `Grant ${grantId} self-cancelled by user ${requester.userId}`,
+    );
     return { success: true };
   }
 

@@ -318,14 +318,16 @@ export default function DbAccessRequestPage() {
                         className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border ${
                           tables.every((t) => selectedTables.includes(t.full))
                             ? "bg-cyan-500 border-cyan-500"
-                            : tables.some((t) => selectedTables.includes(t.full))
+                            : tables.some((t) =>
+                                  selectedTables.includes(t.full),
+                                )
                               ? "border-cyan-500 bg-cyan-500/30"
                               : "border-border"
                         }`}
                       >
-                        {tables.every((t) => selectedTables.includes(t.full)) && (
-                          <Check className="h-2.5 w-2.5 text-black" />
-                        )}
+                        {tables.every((t) =>
+                          selectedTables.includes(t.full),
+                        ) && <Check className="h-2.5 w-2.5 text-black" />}
                         {!tables.every((t) =>
                           selectedTables.includes(t.full),
                         ) &&

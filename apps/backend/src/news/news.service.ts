@@ -76,8 +76,13 @@ export class NewsService {
 
     // Increment view count (fire-and-forget – don't block the response)
     this.clickhouse
-      .exec("ALTER TABLE news UPDATE views = views + 1 WHERE id = {id:String}", { id })
-      .catch(() => {/* non-critical */});
+      .exec(
+        "ALTER TABLE news UPDATE views = views + 1 WHERE id = {id:String}",
+        { id },
+      )
+      .catch(() => {
+        /* non-critical */
+      });
 
     const n = news[0];
     return { ...n, imageUrl: n.imageUrl ? `/news/${n.id}/image` : "" };

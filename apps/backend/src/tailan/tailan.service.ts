@@ -56,11 +56,13 @@ function deptAbbrev(deptName: string): string {
 /** Returns the genitive (possessive) form of a department name in Mongolian */
 function deptGenitive(name: string): string {
   const MAP: Record<string, string> = {
-    "Дата анализын алба":            "ДАТА АНАЛИЗЫН АЛБАНЫ",
-    "Дата Анализын Алба":            "ДАТА АНАЛИЗЫН АЛБАНЫ",
-    "Ерөнхий аудитын хэлтэс":       "ЕРӨНХИЙ АУДИТЫН ХЭЛТСИЙН",
-    "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ЗАЙНЫ АУДИТ ЧАНАРЫН БАТАЛГААЖУУЛАЛТЫН ХЭЛТСИЙН",
-    "Мэдээллийн технологийн аудитын хэлтэс": "МЭДЭЭЛЛИЙН ТЕХНОЛОГИЙН АУДИТЫН ХЭЛТСИЙН",
+    "Дата анализын алба": "ДАТА АНАЛИЗЫН АЛБАНЫ",
+    "Дата Анализын Алба": "ДАТА АНАЛИЗЫН АЛБАНЫ",
+    "Ерөнхий аудитын хэлтэс": "ЕРӨНХИЙ АУДИТЫН ХЭЛТСИЙН",
+    "Зайны аудит чанарын баталгаажуулалтын хэлтэс":
+      "ЗАЙНЫ АУДИТ ЧАНАРЫН БАТАЛГААЖУУЛАЛТЫН ХЭЛТСИЙН",
+    "Мэдээллийн технологийн аудитын хэлтэс":
+      "МЭДЭЭЛЛИЙН ТЕХНОЛОГИЙН АУДИТЫН ХЭЛТСИЙН",
     Удирдлага: "УДИРДЛАГЫН",
   };
   if (MAP[name]) return MAP[name];
@@ -178,11 +180,7 @@ export class TailanService {
   }
 
   // ─── Department BSC (ТҮЗ) report load ─────────────────────────────────────
-  async getDeptBsc(
-    user: UserPayload,
-    year: number,
-    quarter: number,
-  ) {
+  async getDeptBsc(user: UserPayload, year: number, quarter: number) {
     const deptId = user.departmentId || user.id;
     const rows = await this.clickhouse.query<{
       sectionsJson: string;
@@ -439,7 +437,10 @@ export class TailanService {
     if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
     const reports = await this.getDeptReports(user, year, quarter);
     const data = this.reportsToMergedData(reports, year, quarter);
-    return this.buildDeptDocxFromData({ ...data, departmentName: user.department ?? "" });
+    return this.buildDeptDocxFromData({
+      ...data,
+      departmentName: user.department ?? "",
+    });
   }
 
   // ─── Generate Word from editor-submitted merged data ───────────────────────
@@ -564,7 +565,9 @@ export class TailanService {
           children.push(this.bodyPara(t.description));
         }
         for (const img of t.images ?? []) {
-          children.push(...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter));
+          children.push(
+            ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter),
+          );
         }
       });
     }
@@ -716,7 +719,9 @@ export class TailanService {
     // Images from section1Dashboards rows
     for (const t of s1Dashboards) {
       for (const img of t.images ?? []) {
-        children.push(...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter));
+        children.push(
+          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter),
+        );
       }
     }
     children.push(
@@ -760,7 +765,9 @@ export class TailanService {
     // Images from section2Tasks rows
     for (const t of s2Tasks) {
       for (const img of t.images ?? []) {
-        children.push(...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter));
+        children.push(
+          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter),
+        );
       }
     }
     children.push(
@@ -801,28 +808,67 @@ export class TailanService {
       t.value ?? "",
       t.rating ?? "",
     ]);
-    const s3aAvgNums = s3AutoTasks.map((t: any) => parseFloat(t.rating)).filter((n: number) => !isNaN(n));
-    const s3aAvg = s3aAvgNums.length > 0 ? Math.round(s3aAvgNums.reduce((a: number, b: number) => a + b, 0) / s3aAvgNums.length) : null;
+    const s3aAvgNums = s3AutoTasks
+      .map((t: any) => parseFloat(t.rating))
+      .filter((n: number) => !isNaN(n));
+    const s3aAvg =
+      s3aAvgNums.length > 0
+        ? Math.round(
+            s3aAvgNums.reduce((a: number, b: number) => a + b, 0) /
+              s3aAvgNums.length,
+          )
+        : null;
     const s3aAvgRow = new TableRow({
       children: [
         new TableCell({
           columnSpan: 3,
           width: { size: 80, type: WidthType.PERCENTAGE },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Дундаж үнэлгээ", bold: true, size: 22, font: "Times New Roman" })] })],
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: "Дундаж үнэлгээ",
+                  bold: true,
+                  size: 22,
+                  font: "Times New Roman",
+                }),
+              ],
+            }),
+          ],
         }),
         new TableCell({
           width: { size: 20, type: WidthType.PERCENTAGE },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: s3aAvg !== null ? `${s3aAvg}%` : "", bold: true, size: 22, font: "Times New Roman" })] })],
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: s3aAvg !== null ? `${s3aAvg}%` : "",
+                  bold: true,
+                  size: 22,
+                  font: "Times New Roman",
+                }),
+              ],
+            }),
+          ],
         }),
       ],
     });
-    children.push(this.buildDashedTable(s3aHeaders, s3aWidths, s3aRows, [s3aAvgRow]));
+    children.push(
+      this.buildDashedTable(s3aHeaders, s3aWidths, s3aRows, [s3aAvgRow]),
+    );
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 100 },
         children: [
-          new TextRun({ text: "Хүснэгт 3.", italics: true, size: 18, font: "Times New Roman" }),
+          new TextRun({
+            text: "Хүснэгт 3.",
+            italics: true,
+            size: 18,
+            font: "Times New Roman",
+          }),
         ],
       }),
     );
@@ -847,28 +893,67 @@ export class TailanService {
       t.value ?? "",
       t.rating ?? "",
     ]);
-    const s3dAvgNums = s3Dashboards.map((t: any) => parseFloat(t.rating)).filter((n: number) => !isNaN(n));
-    const s3dAvg = s3dAvgNums.length > 0 ? Math.round(s3dAvgNums.reduce((a: number, b: number) => a + b, 0) / s3dAvgNums.length) : null;
+    const s3dAvgNums = s3Dashboards
+      .map((t: any) => parseFloat(t.rating))
+      .filter((n: number) => !isNaN(n));
+    const s3dAvg =
+      s3dAvgNums.length > 0
+        ? Math.round(
+            s3dAvgNums.reduce((a: number, b: number) => a + b, 0) /
+              s3dAvgNums.length,
+          )
+        : null;
     const s3dAvgRow = new TableRow({
       children: [
         new TableCell({
           columnSpan: 3,
           width: { size: 80, type: WidthType.PERCENTAGE },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Дундаж үнэлгээ", bold: true, size: 22, font: "Times New Roman" })] })],
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: "Дундаж үнэлгээ",
+                  bold: true,
+                  size: 22,
+                  font: "Times New Roman",
+                }),
+              ],
+            }),
+          ],
         }),
         new TableCell({
           width: { size: 20, type: WidthType.PERCENTAGE },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: s3dAvg !== null ? `${s3dAvg}%` : "", bold: true, size: 22, font: "Times New Roman" })] })],
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: s3dAvg !== null ? `${s3dAvg}%` : "",
+                  bold: true,
+                  size: 22,
+                  font: "Times New Roman",
+                }),
+              ],
+            }),
+          ],
         }),
       ],
     });
-    children.push(this.buildDashedTable(s3dHeaders, s3dWidths, s3dRows, [s3dAvgRow]));
+    children.push(
+      this.buildDashedTable(s3dHeaders, s3dWidths, s3dRows, [s3dAvgRow]),
+    );
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 160 },
         children: [
-          new TextRun({ text: "Хүснэгт 4.", italics: true, size: 18, font: "Times New Roman" }),
+          new TextRun({
+            text: "Хүснэгт 4.",
+            italics: true,
+            size: 18,
+            font: "Times New Roman",
+          }),
         ],
       }),
     );
@@ -905,7 +990,12 @@ export class TailanService {
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 100 },
         children: [
-          new TextRun({ text: "Хүснэгт 5.", italics: true, size: 18, font: "Times New Roman" }),
+          new TextRun({
+            text: "Хүснэгт 5.",
+            italics: true,
+            size: 18,
+            font: "Times New Roman",
+          }),
         ],
       }),
     );
@@ -938,7 +1028,12 @@ export class TailanService {
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 160 },
         children: [
-          new TextRun({ text: "Хүснэгт 6.", italics: true, size: 18, font: "Times New Roman" }),
+          new TextRun({
+            text: "Хүснэгт 6.",
+            italics: true,
+            size: 18,
+            font: "Times New Roman",
+          }),
         ],
       }),
     );
@@ -960,7 +1055,12 @@ export class TailanService {
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 160 },
         children: [
-          new TextRun({ text: "Хүснэгт 7.", italics: true, size: 18, font: "Times New Roman" }),
+          new TextRun({
+            text: "Хүснэгт 7.",
+            italics: true,
+            size: 18,
+            font: "Times New Roman",
+          }),
         ],
       }),
     );
@@ -1949,9 +2049,10 @@ export class TailanService {
       else if (mimeType.includes("gif")) type = "gif";
       else if (mimeType.includes("bmp")) type = "bmp";
 
-      // Printable line width on A4 (210 - 25.4 left - 19 right = 165.6 mm) at 96 dpi
-      const maxWidthPx = 625;
-      const targetW = Math.round(maxWidthPx * Math.min(widthPct, 100) / 100);
+      // Printable line width on A4: 210mm - 25.4mm left - 19mm right = 165.6mm
+      // Preview renders A4 at 834px wide → 834 × (165.6/210) ≈ 658px usable
+      const maxWidthPx = 658;
+      const targetW = Math.round((maxWidthPx * Math.min(widthPct, 100)) / 100);
 
       // Parse native dimensions for correct aspect ratio
       let nativeW = 0;

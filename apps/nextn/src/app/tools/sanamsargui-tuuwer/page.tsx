@@ -888,7 +888,6 @@ export default function SanamsarguiTuuwerPage() {
                                   </th>
                                 ))
                               )}
-
                             </tr>
                           </thead>
                           <tbody>
@@ -896,7 +895,11 @@ export default function SanamsarguiTuuwerPage() {
                               return (
                                 <tr
                                   key={i}
-                                  className={i % 2 === 0 ? "bg-slate-900" : "bg-slate-800/40"}
+                                  className={
+                                    i % 2 === 0
+                                      ? "bg-slate-900"
+                                      : "bg-slate-800/40"
+                                  }
                                 >
                                   <td className="px-3 py-1.5 text-violet-400 font-mono font-bold text-center border-r border-slate-700">
                                     {idx}
@@ -917,7 +920,6 @@ export default function SanamsarguiTuuwerPage() {
                                       </td>
                                     ))
                                   )}
-
                                 </tr>
                               );
                             })}

@@ -494,7 +494,6 @@ function EmployeeCard({
             <span className="truncate max-w-[140px]">{member.position}</span>
           </p>
         )}
-
       </div>
 
       {member.isActive !== false && (
@@ -590,11 +589,7 @@ function MemberCarousel({
 /*
    OTHER DEPARTMENTS VIEWER
  */
-function OtherDeptViewer({
-  currentDeptId,
-}: {
-  currentDeptId: string;
-}) {
+function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   const { toast } = useToast();
   const [list, setList] = useState<DepartmentData[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -615,7 +610,7 @@ function OtherDeptViewer({
         }),
       )
       .finally(() => setLoadingList(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDeptId]);
 
   const selectDept = async (dept: DepartmentData) => {
@@ -709,7 +704,9 @@ function OtherDeptViewer({
                     <Building2 className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">{selected.name}</h3>
+                    <h3 className="text-lg font-bold text-white">
+                      {selected.name}
+                    </h3>
                     {selected.manager && (
                       <p className="text-xs text-amber-400 flex items-center gap-1">
                         <Crown className="w-3 h-3" /> {selected.manager}
@@ -725,7 +722,9 @@ function OtherDeptViewer({
                       <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
                         <Users className="w-3.5 h-3.5 text-cyan-400" />
                       </div>
-                      <span className="text-sm font-semibold text-white">Хамт олон</span>
+                      <span className="text-sm font-semibold text-white">
+                        Хамт олон
+                      </span>
                       <Badge className="bg-blue-500/15 text-blue-300 border-blue-500/30 text-xs ml-auto">
                         {selected.users.length} ажилтан
                       </Badge>

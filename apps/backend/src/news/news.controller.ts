@@ -24,10 +24,7 @@ export class NewsController {
 
   // Public – published news only (drafts are never exposed here)
   @Get()
-  async findAll(
-    @Query("page") page = 1,
-    @Query("limit") limit = 100,
-  ) {
+  async findAll(@Query("page") page = 1, @Query("limit") limit = 100) {
     const take = Math.min(Number(limit), 200);
     const skip = (Number(page) - 1) * take;
     return this.newsService.findAll(true, take, skip); // always published=true
@@ -48,10 +45,7 @@ export class NewsController {
   // Admin – all news including drafts
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Get("admin/all")
-  async findAllAdmin(
-    @Query("page") page = 1,
-    @Query("limit") limit = 100,
-  ) {
+  async findAllAdmin(@Query("page") page = 1, @Query("limit") limit = 100) {
     const take = Math.min(Number(limit), 200);
     const skip = (Number(page) - 1) * take;
     return this.newsService.findAll(false, take, skip); // false = include unpublished drafts

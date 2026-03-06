@@ -344,7 +344,6 @@ export default function AdminDepartmentsPage() {
               Байгууллагын бүх хэлтсийн мэдээлэл, тохиргоо удирдах
             </p>
           </div>
-
         </motion.div>
 
         {/* Stats Overview */}
@@ -755,7 +754,6 @@ export default function AdminDepartmentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
