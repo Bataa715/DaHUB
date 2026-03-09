@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { departmentsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -450,58 +449,87 @@ function EmployeeCard({
   isSelf: boolean;
   isManager: boolean;
 }) {
+  const gradient = getGradient(member.name);
   return (
     <motion.div
-      whileHover={{ y: -6, scale: 1.02 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="relative flex-shrink-0 w-52 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-xl hover:border-blue-500/40 hover:shadow-blue-500/10 transition-colors"
+      whileHover={{ y: -7, scale: 1.03 }}
+      transition={{ type: "spring", stiffness: 350, damping: 22 }}
+      className="relative flex-shrink-0 w-52"
     >
-      {(isSelf || isManager) && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-          {isSelf ? (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/90 text-white shadow whitespace-nowrap">
-              <User className="w-2.5 h-2.5" /> Та
-            </span>
+      <div
+        className={`rounded-3xl overflow-hidden border transition-all duration-300 bg-slate-900/90 backdrop-blur-xl shadow-lg
+          ${
+            isSelf
+              ? "border-blue-500/50 shadow-blue-900/20"
+              : isManager
+                ? "border-amber-500/50 shadow-amber-900/20"
+                : "border-white/5 hover:border-white/10"
+          }`}
+      >
+        {/* Colored top stripe */}
+        <div className={`h-1 bg-gradient-to-r ${gradient}`} />
+        <div className="p-5 flex flex-col items-center gap-3">
+          {/* Self / Manager badge */}
+          {(isSelf || isManager) && (
+            <div className="absolute top-4 left-4 z-10">
+              {isSelf ? (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white shadow-lg">
+                  <User className="w-2.5 h-2.5" /> Та
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-black shadow-lg">
+                  <Crown className="w-2.5 h-2.5" /> Дарга
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Avatar with gradient ring */}
+          <div className={`p-[2px] rounded-[18px] bg-gradient-to-br ${gradient} shadow-md`}>
+            {member.profileImage ? (
+              <img
+                src={member.profileImage}
+                alt={member.name}
+                className="block rounded-2xl object-cover bg-slate-800"
+                style={{ width: 70, height: 70 }}
+              />
+            ) : (
+              <div
+                className="rounded-2xl bg-slate-800 flex items-center justify-center text-white text-xl font-extrabold"
+                style={{ width: 70, height: 70 }}
+              >
+                {getInitials(member.name)}
+              </div>
+            )}
+          </div>
+
+          {/* Name & position */}
+          <div className="text-center w-full">
+            <p className="font-bold text-white text-sm leading-snug truncate">
+              {member.name}
+            </p>
+            {member.position && (
+              <p className="mt-0.5 text-xs text-slate-400 flex items-center justify-center gap-1">
+                <Briefcase className="w-2.5 h-2.5 shrink-0 text-slate-500" />
+                <span className="truncate max-w-[140px]">{member.position}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Status pill */}
+          {member.isActive !== false ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-semibold text-emerald-400">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+              Идэвхтэй
+            </div>
           ) : (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/90 text-white shadow whitespace-nowrap">
-              <Crown className="w-2.5 h-2.5" /> Менежер
-            </span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-700/50 border border-slate-600/20 text-[11px] font-semibold text-slate-500">
+              <span className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
+              Идэвхгүй
+            </div>
           )}
         </div>
-      )}
-
-      {member.profileImage ? (
-        <img
-          src={member.profileImage}
-          alt={member.name}
-          className="w-20 h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white/5"
-        />
-      ) : (
-        <div
-          className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${getGradient(member.name)} flex items-center justify-center shadow-lg text-white text-xl font-bold ring-4 ring-white/5`}
-        >
-          {getInitials(member.name)}
-        </div>
-      )}
-
-      <div className="text-center w-full">
-        <p className="font-semibold text-white leading-tight truncate w-full text-center">
-          {member.name}
-        </p>
-        {member.position && (
-          <p className="mt-0.5 text-xs text-slate-400 flex items-center justify-center gap-1">
-            <Briefcase className="w-3 h-3 shrink-0" />
-            <span className="truncate max-w-[140px]">{member.position}</span>
-          </p>
-        )}
       </div>
-
-      {member.isActive !== false && (
-        <div className="flex items-center gap-1.5 text-xs text-emerald-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Идэвхтэй
-        </div>
-      )}
     </motion.div>
   );
 }
@@ -650,31 +678,49 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Dept grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {list.map((dept) => {
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {list.map((dept, i) => {
           const isActive = selected?.id === dept.id;
+          const ACCENT = [
+            { icon: "text-blue-400", iconBg: "bg-blue-500/15", activeBg: "from-blue-600/25 to-cyan-600/15", activeBorder: "border-blue-500/40" },
+            { icon: "text-violet-400", iconBg: "bg-violet-500/15", activeBg: "from-violet-600/25 to-purple-600/15", activeBorder: "border-violet-500/40" },
+            { icon: "text-emerald-400", iconBg: "bg-emerald-500/15", activeBg: "from-emerald-600/25 to-teal-600/15", activeBorder: "border-emerald-500/40" },
+            { icon: "text-amber-400", iconBg: "bg-amber-500/15", activeBg: "from-amber-600/25 to-orange-600/15", activeBorder: "border-amber-500/40" },
+            { icon: "text-rose-400", iconBg: "bg-rose-500/15", activeBg: "from-rose-600/25 to-pink-600/15", activeBorder: "border-rose-500/40" },
+            { icon: "text-cyan-400", iconBg: "bg-cyan-500/15", activeBg: "from-cyan-600/25 to-blue-600/15", activeBorder: "border-cyan-500/40" },
+          ];
+          const ac = ACCENT[i % ACCENT.length];
           return (
             <button
               key={dept.id}
               onClick={() => selectDept(dept)}
-              className={`rounded-2xl border p-4 text-left transition-all hover:scale-105 ${
-                isActive
-                  ? "bg-blue-500/20 border-blue-500/60 shadow-blue-500/20 shadow-lg"
-                  : "bg-slate-800/50 border-slate-700/50 hover:border-blue-500/40"
-              }`}
+              className={`rounded-2xl border p-4 text-left transition-all duration-200 group
+                ${
+                  isActive
+                    ? `bg-gradient-to-br ${ac.activeBg} ${ac.activeBorder} shadow-lg`
+                    : "bg-slate-800/50 border-white/5 hover:border-white/10 hover:bg-slate-800/70 hover:scale-[1.03]"
+                }`}
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/30 to-cyan-500/30 flex items-center justify-center mb-2">
-                <Building2 className="w-5 h-5 text-cyan-400" />
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 transition-all
+                  ${
+                    isActive
+                      ? `${ac.iconBg} ${ac.icon}`
+                      : "bg-slate-700/60 text-slate-400 group-hover:bg-slate-700/80"
+                  }`}
+              >
+                <Building2 className="w-4 h-4" />
               </div>
-              <p className="text-sm font-semibold text-white leading-tight line-clamp-2">
+              <p className="text-sm font-semibold text-white leading-snug line-clamp-2 mb-2">
                 {dept.name}
               </p>
               {dept.employeeCount !== undefined && (
-                <p className="mt-1 text-xs text-slate-500">
+                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <Users className="w-3 h-3" />
                   {dept.employeeCount} ажилтан
-                </p>
+                </div>
               )}
             </button>
           );
@@ -689,26 +735,28 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
             {loadingSelected ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
+                <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />
               </div>
             ) : selected ? (
-              <div className="rounded-2xl border border-slate-700/60 bg-slate-800/40 backdrop-blur p-5 space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-white/5 bg-slate-800/50 backdrop-blur p-5 space-y-6"
+              >
                 {/* Dept header */}
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg">
                     <Building2 className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">
-                      {selected.name}
-                    </h3>
+                    <h3 className="text-base font-bold text-white">{selected.name}</h3>
                     {selected.manager && (
-                      <p className="text-xs text-amber-400 flex items-center gap-1">
+                      <p className="text-xs text-amber-400 flex items-center gap-1 mt-0.5">
                         <Crown className="w-3 h-3" /> {selected.manager}
                       </p>
                     )}
@@ -719,15 +767,15 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
                 {selected.users && selected.users.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/15 flex items-center justify-center">
                         <Users className="w-3.5 h-3.5 text-cyan-400" />
                       </div>
-                      <span className="text-sm font-semibold text-white">
-                        Хамт олон
-                      </span>
-                      <Badge className="bg-blue-500/15 text-blue-300 border-blue-500/30 text-xs ml-auto">
-                        {selected.users.length} ажилтан
-                      </Badge>
+                      <span className="text-sm font-semibold text-white">Хамт олон</span>
+                      <div className="ml-auto px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+                        <span className="text-[11px] font-bold text-cyan-300">
+                          {selected.users.length} ажилтан
+                        </span>
+                      </div>
                     </div>
                     <MemberCarousel
                       members={selected.users}
@@ -741,7 +789,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
                 {selected.id && (
                   <DeptAlbum deptId={selected.id} deptName={selected.name} />
                 )}
-              </div>
+              </motion.div>
             ) : null}
           </motion.div>
         )}
@@ -878,170 +926,230 @@ export default function DepartmentsPage() {
   const totalCount = members.length || department.employeeCount || 0;
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden bg-slate-950">
       {BG}
 
-      <div className="relative z-10 py-10 px-4 sm:px-6">
+      <div className="relative z-10 py-8 px-4 sm:px-6">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-5xl mx-auto"
+          className="max-w-5xl mx-auto space-y-4"
         >
-          {/* Outer frame container */}
-          <div className="rounded-3xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-2xl shadow-2xl shadow-black/40 overflow-hidden">
-            {/*  HERO BANNER  */}
-            <div className="relative h-52 bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 overflow-hidden">
-              <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-white/5" />
-              <div className="absolute -bottom-16 -left-8 w-56 h-56 rounded-full bg-white/5" />
-              <div className="absolute top-6 right-24 w-20 h-20 rounded-full bg-white/5" />
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(rgba(255,255,255,.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.15) 1px, transparent 1px)",
-                  backgroundSize: "40px 40px",
-                }}
-              />
-              <div className="absolute inset-0 flex flex-col justify-end p-8">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex items-end gap-4"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-xl ring-4 ring-white/10 mb-1">
-                    <Building2 className="w-9 h-9 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-white/70 text-sm font-medium flex items-center gap-1.5 mb-1">
-                      <Star className="w-3.5 h-3.5" /> Миний хэлтэс
-                    </p>
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow">
-                      {department.name}
-                    </h1>
-                  </div>
-                </motion.div>
-              </div>
+          {/* ── HERO ─────────────────────────────────────────────────── */}
+          <div className="relative rounded-3xl overflow-hidden">
+            {/* Layered background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_85%_-10%,rgba(99,102,241,0.22),transparent)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_5%_100%,rgba(6,182,212,0.07),transparent)]" />
+            {/* Grid overlay */}
+            <div
+              className="absolute inset-0 opacity-[0.03]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+                backgroundSize: "50px 50px",
+              }}
+            />
+            {/* Decorative rings */}
+            <div className="absolute -top-10 -right-10 w-72 h-72 rounded-full border border-indigo-500/10" />
+            <div className="absolute -top-20 -right-20 w-[420px] h-[420px] rounded-full border border-indigo-500/5" />
+            {/* Ghost icon */}
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.04] pointer-events-none">
+              <Building2 className="w-52 h-52 text-indigo-300" />
             </div>
 
-            {/*  INNER CONTENT  */}
-            <div className="p-6 md:p-8 space-y-8">
-              {/* Description */}
-              <motion.section
-                initial={{ opacity: 0, y: 16 }}
+            <div className="relative px-8 py-10">
+              {/* Label badge */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-5">
+                  <Star className="w-3 h-3" />
+                  Миний хэлтэс
+                </div>
+              </motion.div>
+
+              {/* Department name */}
+              <motion.h1
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight max-w-lg"
+              >
+                {department.name}
+              </motion.h1>
+
+              {/* Description preview */}
+              {department.description && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-2 text-slate-400 text-sm leading-relaxed max-w-md line-clamp-2"
+                >
+                  {department.description}
+                </motion.p>
+              )}
+
+              {/* Stats chips */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
+                className="flex flex-wrap items-center gap-3 mt-7"
               >
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                    <Target className="w-4 h-4 text-blue-400" />
+                {/* Employee count */}
+                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-cyan-400" />
                   </div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Чиг үүрэг
-                  </h2>
+                  <div>
+                    <p className="text-base font-extrabold text-white leading-none">{totalCount}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Ажилтан</p>
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 p-5">
-                  {department.description ? (
-                    <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">
-                      {department.description}
-                    </p>
-                  ) : (
-                    <div className="flex items-center gap-3 text-slate-500 italic">
-                      <Target className="w-5 h-5 text-slate-600 shrink-0" />
-                      <span>
-                        Тайлбар оруулаагүй байна. Админ энэ мэдээллийг нэмж
-                        болно.
-                      </span>
+
+                {/* Manager */}
+                {department.manager && (
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                      <Crown className="w-4 h-4 text-amber-400" />
                     </div>
-                  )}
-                </div>
-              </motion.section>
-
-              <div className="border-t border-slate-700/50" />
-
-              {/* Employee Carousel */}
-              <motion.section
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                      <Users className="w-4 h-4 text-cyan-400" />
+                    <div>
+                      <p className="text-sm font-bold text-white leading-none">{department.manager}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Менежер</p>
                     </div>
-                    <h2 className="text-lg font-semibold text-white">
-                      Хамт олон
-                    </h2>
                   </div>
-                  <Badge className="bg-blue-500/15 text-blue-300 border-blue-500/30 text-xs">
-                    {totalCount} ажилтан
-                  </Badge>
+                )}
+
+                {/* Active badge */}
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-semibold text-emerald-300">Идэвхтэй</span>
                 </div>
-
-                {members.length > 0 ? (
-                  <MemberCarousel
-                    members={members}
-                    currentUserId={
-                      user.id ?? (user as { userId?: string }).userId ?? ""
-                    }
-                    managerName={department.manager}
-                  />
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-800/30 py-14 flex flex-col items-center gap-3 text-slate-500">
-                    <Users className="w-10 h-10 text-slate-600" />
-                    <p className="text-sm">Ажилтан бүртгэгдээгүй байна</p>
-                  </div>
-                )}
-              </motion.section>
-
-              <div className="border-t border-slate-700/50" />
-
-              {/* Photo Album */}
-              <motion.section
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                {department.id && (
-                  <DeptAlbum
-                    deptId={department.id}
-                    deptName={department.name}
-                  />
-                )}
-              </motion.section>
-
-              <div className="border-t border-slate-700/50" />
-
-              {/* Other Departments */}
-              <motion.section
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-              >
-                <div className="flex items-center gap-2 mb-5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                    <Building2 className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Бусад хэлтсүүд
-                  </h2>
-                </div>
-                {department.id && (
-                  <OtherDeptViewer currentDeptId={department.id} />
-                )}
-              </motion.section>
-
-              {/* Footer ribbon */}
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <Star className="w-3.5 h-3.5 text-blue-500/50" />
-                <p className="text-xs text-slate-600">
-                  {department.name} DaHUB Internal Audit
-                </p>
-                <Star className="w-3.5 h-3.5 text-blue-500/50" />
-              </div>
+              </motion.div>
             </div>
+          </div>
+
+          {/* ── DESCRIPTION ─────────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+          >
+            <div className="h-px bg-gradient-to-r from-blue-500/70 via-cyan-400/40 to-transparent" />
+            <div className="p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center ring-1 ring-blue-500/20">
+                  <Target className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white">Чиг үүрэг</h2>
+                  <p className="text-[11px] text-slate-500">Хэлтсийн үндсэн зорилго</p>
+                </div>
+              </div>
+              {department.description ? (
+                <p className="text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">
+                  {department.description}
+                </p>
+              ) : (
+                <div className="flex items-center gap-3 py-6 text-slate-500 italic text-sm">
+                  <Target className="w-5 h-5 text-slate-600 shrink-0" />
+                  Тайлбар оруулаагүй байна. Админ энэ мэдээллийг нэмж болно.
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* ── MEMBERS ─────────────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+          >
+            <div className="h-px bg-gradient-to-r from-cyan-500/70 via-blue-400/40 to-transparent" />
+            <div className="p-6 md:p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/15 flex items-center justify-center ring-1 ring-cyan-500/20">
+                    <Users className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-white">Хамт олон</h2>
+                    <p className="text-[11px] text-slate-500">Хэлтсийн бүрэлдэхүүн</p>
+                  </div>
+                </div>
+                <div className="px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+                  <span className="text-xs font-bold text-cyan-300">{totalCount} ажилтан</span>
+                </div>
+              </div>
+
+              {members.length > 0 ? (
+                <MemberCarousel
+                  members={members}
+                  currentUserId={
+                    user.id ?? (user as { userId?: string }).userId ?? ""
+                  }
+                  managerName={department.manager}
+                />
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-800/30 py-14 flex flex-col items-center gap-3 text-slate-500">
+                  <Users className="w-10 h-10 text-slate-600" />
+                  <p className="text-sm">Ажилтан бүртгэгдээгүй байна</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* ── ALBUM ───────────────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+          >
+            <div className="h-px bg-gradient-to-r from-rose-500/70 via-pink-400/40 to-transparent" />
+            <div className="p-6 md:p-8">
+              {department.id && (
+                <DeptAlbum deptId={department.id} deptName={department.name} />
+              )}
+            </div>
+          </motion.div>
+
+          {/* ── OTHER DEPARTMENTS ───────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
+            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+          >
+            <div className="h-px bg-gradient-to-r from-violet-500/70 via-indigo-400/40 to-transparent" />
+            <div className="p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center ring-1 ring-violet-500/20">
+                  <Building2 className="w-4 h-4 text-violet-400" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white">Бусад хэлтсүүд</h2>
+                  <p className="text-[11px] text-slate-500">Байгууллагын бүтэц</p>
+                </div>
+              </div>
+              {department.id && (
+                <OtherDeptViewer currentDeptId={department.id} />
+              )}
+            </div>
+          </motion.div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-center gap-3 py-2">
+            <div className="h-px flex-1 max-w-20 bg-gradient-to-r from-transparent to-slate-800" />
+            <p className="text-[11px] text-slate-600">DaHUB Internal Audit © 2026</p>
+            <div className="h-px flex-1 max-w-20 bg-gradient-to-l from-transparent to-slate-800" />
           </div>
         </motion.div>
       </div>

@@ -107,35 +107,47 @@ export class DbAccessService {
 
     const now = this.formatDateTime(new Date());
 
-    // ── Pre-revoke any still-active grants so approval won't collide ─────────
+    // ── Pre-revoke only grants whose tables overlap with the new request ──────
+    // This way unrelated active grants are NOT touched; only duplicate-table
+    // grants are revoked so approval won't create a conflicting ClickHouse role.
+    const newTables = new Set(dto.tables);
+
     const activeGrants = await this.clickhouse.query<any>(
       `SELECT * FROM access_grants FINAL
        WHERE userId = {uid:String} AND isActive = 1 AND validUntil > now()`,
       { uid: user.id },
     );
 
-    if (activeGrants.length > 0) {
+    // Filter to only grants that share at least one table with the new request
+    const overlappingGrants = activeGrants.filter((g: any) => {
+      const grantedTables: string[] = Array.isArray(g.tables)
+        ? g.tables
+        : JSON.parse(g.tables ?? "[]");
+      return grantedTables.some((t) => newTables.has(t));
+    });
+
+    if (overlappingGrants.length > 0) {
       // Group by requestId: one ClickHouse role per request → one full revoke per role
       const byRequest = new Map<
         string,
         { grants: any[]; requesterUserId: string }
       >();
-      for (const g of activeGrants) {
+      for (const g of overlappingGrants) {
         if (!byRequest.has(g.requestId)) {
           byRequest.set(g.requestId, {
             grants: [],
-            requesterUserId: g.userUserId,
+            requesterUserId: g.requesterUserId ?? g.userUserId,
           });
         }
         byRequest.get(g.requestId)!.grants.push(g);
       }
 
       for (const [requestId, { grants, requesterUserId }] of byRequest) {
-        // Full revoke: drop the role (and user if no other roles remain)
+        // Full revoke: drop the ClickHouse role for this requestId
         try {
           await this.chAccess.revokeAccess({ requestId, requesterUserId });
           this.logger.log(
-            `[CH ACL] Pre-revoked old grants for requestId=${requestId} user=${requesterUserId}`,
+            `[CH ACL] Pre-revoked overlapping grants for requestId=${requestId} user=${requesterUserId}`,
           );
         } catch (err: any) {
           this.logger.warn(
@@ -143,7 +155,7 @@ export class DbAccessService {
           );
         }
 
-        // Mark every grant row inactive in the DB
+        // Mark every overlapping grant row inactive in the DB
         for (const grant of grants) {
           await this.clickhouse.insert("access_grants", [
             {
@@ -156,7 +168,7 @@ export class DbAccessService {
                 : JSON.parse(grant.accessTypes ?? "[]"),
               isActive: 0,
               revokedAt: now,
-              revokeReason: "Шинэ хүсэлт гаргасны улмаас автоматаар цуцлагдсан",
+              revokeReason: "Давхардсан хүсэлтийн улмаас автоматаар цуцлагдсан",
               grantedAt: now,
             },
           ]);
@@ -164,7 +176,7 @@ export class DbAccessService {
       }
 
       this.logger.log(
-        `[createRequest] Pre-revoked ${activeGrants.length} active grant(s) for user ${user.userId}`,
+        `[createRequest] Pre-revoked ${overlappingGrants.length} overlapping grant(s) for user ${user.userId}`,
       );
     }
     // ─────────────────────────────────────────────────────────────────────────

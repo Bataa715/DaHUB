@@ -162,8 +162,8 @@ export class EnglishService {
          count() AS total,
          countIf(totalReviews > 0) AS reviewed,
          countIf(totalReviews > 0 AND correctReviews / totalReviews >= 0.8) AS mastered,
-         sum(totalReviews) AS totalReviews,
-         sum(correctReviews) AS totalCorrect
+         sum(totalReviews) AS sumReviews,
+         sum(correctReviews) AS sumCorrect
        FROM english_words FINAL
        WHERE userId = {userId:String}`,
       { userId },
@@ -173,8 +173,8 @@ export class EnglishService {
       total: Number(r.total ?? 0),
       reviewed: Number(r.reviewed ?? 0),
       mastered: Number(r.mastered ?? 0),
-      totalReviews: Number(r.totalReviews ?? 0),
-      totalCorrect: Number(r.totalCorrect ?? 0),
+      totalReviews: Number(r.sumReviews ?? 0),
+      totalCorrect: Number(r.sumCorrect ?? 0),
     };
   }
 }

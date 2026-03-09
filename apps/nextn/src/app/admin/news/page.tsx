@@ -135,7 +135,10 @@ export default function AdminNewsPage() {
       title: item.title,
       content: item.content,
       category: item.category,
-      imageUrl: item.imageUrl || "",
+      // Convert server path → full URL so <img src> resolves to the backend, not frontend
+      imageUrl: item.imageUrl
+        ? `${process.env.NEXT_PUBLIC_API_URL}${item.imageUrl}`
+        : "",
       isPublished: item.isPublished === 1,
     });
     setSheetOpen(true);
@@ -146,7 +149,17 @@ export default function AdminNewsPage() {
     setSaving(true);
     try {
       if (isEditing && currentId) {
-        await api.patch(`/news/${currentId}`, form);
+        // Only send imageUrl if a new file was chosen (data: URL).
+        // If it's still the full API URL (http…), omit it so the backend
+        // doesn't interpret it as "clear the image".
+        const payload: typeof form = { ...form };
+        if (payload.imageUrl && !payload.imageUrl.startsWith("data:")) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { imageUrl: _drop, ...rest } = payload;
+          await api.patch(`/news/${currentId}`, rest);
+        } else {
+          await api.patch(`/news/${currentId}`, payload);
+        }
         toast({ title: "Амжилттай", description: "Мэдээг шинэчиллээ" });
       } else {
         await api.post("/news", form);

@@ -228,6 +228,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           content String,
           category String DEFAULT 'Ерөнхий',
           imageUrl String,
+          imageMime String DEFAULT '',
           authorId String,
           isPublished UInt8 DEFAULT 1,
           views UInt32 DEFAULT 0,
@@ -459,6 +460,10 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       await this.exec(
         `ALTER TABLE access_grants ADD COLUMN IF NOT EXISTS chPassword String DEFAULT ''`,
       );
+      // Migrate news: add imageMime if missing
+      await this.exec(
+        `ALTER TABLE news ADD COLUMN IF NOT EXISTS imageMime String DEFAULT ''`,
+      ).catch(() => {});
 
       this.logger.log(
         "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words)",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -250,9 +250,10 @@ function FlashcardMode({
   words: EnglishWord[];
   onReview: (id: string, correct: boolean) => void;
 }) {
-  const deck = shuffle(words);
+  const [deck, setDeck] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [animating, setAnimating] = useState(false);
   const [done, setDone] = useState<{ correct: number; wrong: number }>({
     correct: 0,
     wrong: 0,
@@ -262,21 +263,73 @@ function FlashcardMode({
   const card = deck[idx];
   const total = deck.length;
 
-  const handleMark = (correct: boolean) => {
-    onReview(card.id, correct);
-    setDone((d) => ({
-      ...d,
-      [correct ? "correct" : "wrong"]: d[correct ? "correct" : "wrong"] + 1,
-    }));
+  const goTo = useCallback(
+    (newIdx: number) => {
+      if (animating) return;
+      if (newIdx < 0 || newIdx >= total) return;
+      setAnimating(true);
+      setFlipped(false);
+      setTimeout(() => {
+        setIdx(newIdx);
+        setAnimating(false);
+      }, 180);
+    },
+    [animating, total],
+  );
+
+  const handleSkip = useCallback(() => {
     if (idx + 1 >= total) {
       setFinished(true);
       return;
     }
-    setFlipped(false);
-    setTimeout(() => setIdx((i) => i + 1), 150);
-  };
+    goTo(idx + 1);
+  }, [idx, total, goTo]);
+
+  const handleMark = useCallback(
+    (correct: boolean) => {
+      onReview(card.id, correct);
+      setDone((d) => ({
+        ...d,
+        [correct ? "correct" : "wrong"]: d[correct ? "correct" : "wrong"] + 1,
+      }));
+      if (idx + 1 >= total) {
+        setFinished(true);
+        return;
+      }
+      goTo(idx + 1);
+    },
+    [card, idx, total, goTo, onReview],
+  );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (finished) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === " " || e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setFlipped((f) => !f);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (idx > 0) goTo(idx - 1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleSkip();
+      } else if (e.key === "Enter" && flipped) {
+        e.preventDefault();
+        handleMark(true);
+      } else if (e.key === "Backspace" && flipped) {
+        e.preventDefault();
+        handleMark(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [finished, idx, flipped, goTo, handleSkip, handleMark]);
 
   const restart = () => {
+    setDeck(shuffle(words));
     setIdx(0);
     setFlipped(false);
     setDone({ correct: 0, wrong: 0 });
@@ -318,7 +371,7 @@ function FlashcardMode({
   if (!card) return null;
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-5">
       {/* Progress */}
       <div className="w-full max-w-lg space-y-1">
         <div className="flex justify-between text-sm text-muted-foreground">
@@ -337,20 +390,20 @@ function FlashcardMode({
 
       {/* Flip card */}
       <div
-        className="w-full max-w-lg cursor-pointer"
+        className="w-full max-w-lg cursor-pointer select-none"
         style={{ perspective: "1200px" }}
         onClick={() => setFlipped((f) => !f)}
       >
         <div
           style={{
             transformStyle: "preserve-3d",
-            transition: "transform 0.5s cubic-bezier(.4,0,.2,1)",
+            transition: "transform 0.45s cubic-bezier(.4,0,.2,1)",
             transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
             position: "relative",
-            height: "260px",
+            height: "280px",
           }}
         >
-          {/* FRONT */}
+          {/* FRONT — English */}
           <div
             style={{
               backfaceVisibility: "hidden",
@@ -359,32 +412,39 @@ function FlashcardMode({
             className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-8 flex flex-col justify-between shadow-2xl text-white"
           >
             <div className="flex justify-between items-start">
-              <Badge className="bg-white/20 text-white border-0 text-xs">
-                {card.partOfSpeech || "Үг"}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-white/20 text-white border-0 text-xs font-semibold">
+                  EN
+                </Badge>
+                {card.partOfSpeech && (
+                  <Badge className="bg-white/15 text-white/80 border-0 text-xs">
+                    {card.partOfSpeech}
+                  </Badge>
+                )}
+              </div>
               <Badge
                 className={`${DIFF_COLOR[card.difficulty]} border-0 text-xs`}
               >
                 {DIFF_LABEL[card.difficulty]}
               </Badge>
             </div>
-            <div className="text-center space-y-1">
-              <div className="text-4xl font-bold tracking-tight">
+            <div className="text-center space-y-2">
+              <div className="text-5xl font-bold tracking-tight leading-tight">
                 {card.word}
               </div>
               {card.example && (
-                <div className="text-sm text-white/70 italic line-clamp-2 mt-2">
+                <div className="text-sm text-white/65 italic line-clamp-2 mt-3">
                   "{card.example}"
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-center gap-2 text-white/60 text-sm">
+            <div className="flex items-center justify-center gap-2 text-white/55 text-sm">
               <Eye className="w-4 h-4" />
-              <span>Дарж харах</span>
+              <span>Дарж монгол орчуулга харах</span>
             </div>
           </div>
 
-          {/* BACK */}
+          {/* BACK — Mongolian */}
           <div
             style={{
               backfaceVisibility: "hidden",
@@ -393,11 +453,20 @@ function FlashcardMode({
             }}
             className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-8 flex flex-col justify-between shadow-2xl text-white"
           >
-            <div className="text-sm text-white/70 font-medium">{card.word}</div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-white/20 text-white border-0 text-xs font-semibold">
+                MN
+              </Badge>
+              <span className="text-sm text-white/65 font-medium">
+                {card.word}
+              </span>
+            </div>
             <div className="text-center space-y-2">
-              <div className="text-3xl font-bold">{card.translation}</div>
+              <div className="text-4xl font-bold leading-snug">
+                {card.translation}
+              </div>
               {card.definition && (
-                <div className="text-sm text-white/80">{card.definition}</div>
+                <div className="text-sm text-white/80 mt-1">{card.definition}</div>
               )}
             </div>
             <div className="flex items-center justify-center gap-1 text-white/50 text-xs">
@@ -409,41 +478,87 @@ function FlashcardMode({
         </div>
       </div>
 
-      {/* Controls */}
-      {flipped ? (
-        <div className="flex gap-4">
-          <Button
-            size="lg"
-            variant="outline"
-            className="gap-2 border-rose-300 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950"
-            onClick={() => handleMark(false)}
-          >
-            <X className="w-5 h-5" />
-            Мэдэхгүй
-          </Button>
-          <Button
-            size="lg"
-            className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
-            onClick={() => handleMark(true)}
-          >
-            <Check className="w-5 h-5" />
-            Мэдсэн
-          </Button>
-        </div>
-      ) : (
+      {/* Navigation + Action row */}
+      <div className="flex items-center gap-2 w-full max-w-lg">
+        {/* ← Өмнөх */}
         <Button
-          size="lg"
+          size="icon"
           variant="outline"
-          onClick={() => setFlipped(true)}
-          className="gap-2"
+          onClick={() => goTo(idx - 1)}
+          disabled={idx === 0 || animating}
+          title="Өмнөх (←)"
+          className="shrink-0"
         >
-          <Eye className="w-5 h-5" />
-          Хариулт харах
+          <ChevronLeft className="w-5 h-5" />
         </Button>
-      )}
 
-      <div className="text-xs text-muted-foreground">
-        Картыг дарж эргүүлэх эсвэл товчлуур ашиглах
+        {/* Center actions */}
+        <div className="flex gap-2 flex-1">
+          {flipped ? (
+            <>
+              <Button
+                size="lg"
+                variant="outline"
+                className="flex-1 gap-2 border-rose-300 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950"
+                onClick={() => handleMark(false)}
+              >
+                <X className="w-5 h-5" />
+                Мэдэхгүй
+              </Button>
+              <Button
+                size="lg"
+                className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
+                onClick={() => handleMark(true)}
+              >
+                <Check className="w-5 h-5" />
+                Мэдсэн
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => setFlipped(true)}
+                className="flex-1 gap-2"
+              >
+                <Eye className="w-5 h-5" />
+                Харах
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={handleSkip}
+                disabled={animating}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                title="Алгасах (→)"
+              >
+                Алгасах
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* → Дараагийнх */}
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => goTo(idx + 1)}
+          disabled={idx + 1 >= total || animating}
+          title="Дараагийнх (→)"
+          className="shrink-0"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </Button>
+      </div>
+
+      <div className="text-xs text-muted-foreground text-center leading-relaxed">
+        <span>Space — эргүүлэх</span>
+        <span className="mx-2 opacity-40">·</span>
+        <span>← → — шилжих / алгасах</span>
+        <span className="mx-2 opacity-40">·</span>
+        <span>Эргүүлсний дараа Enter = Зөв, Backspace = Буруу</span>
       </div>
     </div>
   );
@@ -458,7 +573,8 @@ function MultipleChoiceMode({
   words: EnglishWord[];
   onReview: (id: string, correct: boolean) => void;
 }) {
-  const deck = shuffle(words);
+  // deck & options must be in state so they don't reshuffle on each render
+  const [deck] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState({ correct: 0, wrong: 0 });
@@ -467,30 +583,48 @@ function MultipleChoiceMode({
   const card = deck[idx];
   const total = deck.length;
 
-  // Build 4 options: 1 correct + 3 wrong
-  const options = (() => {
+  // Build stable 4-option list per card — only changes when idx changes
+  const options = useMemo(() => {
+    if (!card) return [];
     const others = shuffle(deck.filter((_, i) => i !== idx)).slice(0, 3);
     return shuffle([card, ...others]);
-  })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, deck]);
 
-  const handle = (i: number) => {
-    if (selected !== null) return;
-    setSelected(i);
-    const correct = options[i].id === card.id;
-    onReview(card.id, correct);
-    setScore((s) => ({
-      ...s,
-      [correct ? "correct" : "wrong"]: s[correct ? "correct" : "wrong"] + 1,
-    }));
-    setTimeout(() => {
-      if (idx + 1 >= total) {
-        setFinished(true);
-        return;
-      }
-      setSelected(null);
-      setIdx((i) => i + 1);
-    }, 1000);
-  };
+  const handle = useCallback(
+    (i: number) => {
+      if (selected !== null || !options[i]) return;
+      setSelected(i);
+      const correct = options[i].id === card.id;
+      onReview(card.id, correct);
+      setScore((s) => ({
+        ...s,
+        [correct ? "correct" : "wrong"]: s[correct ? "correct" : "wrong"] + 1,
+      }));
+      setTimeout(() => {
+        if (idx + 1 >= total) {
+          setFinished(true);
+          return;
+        }
+        setSelected(null);
+        setIdx((prev) => prev + 1);
+      }, 900);
+    },
+    [selected, options, card, onReview, idx, total],
+  );
+
+  // Keyboard: 1-4 to pick option
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (finished || selected !== null) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= 4) handle(n - 1);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [finished, selected, handle]);
 
   const restart = () => {
     setIdx(0);
@@ -604,7 +738,7 @@ function MultipleChoiceMode({
             >
               <div className="flex items-center gap-3">
                 <span className="w-7 h-7 rounded-full border-2 border-current flex items-center justify-center text-xs font-bold flex-shrink-0">
-                  {["А", "Б", "В", "Г"][i]}
+                  {i + 1}
                 </span>
                 <span>{opt.translation}</span>
                 {revealed && isCorrect && (
@@ -618,11 +752,13 @@ function MultipleChoiceMode({
           );
         })}
       </div>
+
+      <div className="text-xs text-muted-foreground text-center">
+        Гарын тоогоор 1–4 дарж сонгох боломжтой
+      </div>
     </div>
   );
 }
-
-// ── Type Answer Mode ───────────────────────────────────────────────────────────
 
 function TypeAnswerMode({
   words,
@@ -631,7 +767,7 @@ function TypeAnswerMode({
   words: EnglishWord[];
   onReview: (id: string, correct: boolean) => void;
 }) {
-  const deck = shuffle(words);
+  const [deck] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
   const [input, setInput] = useState("");
   const [result, setResult] = useState<"correct" | "wrong" | null>(null);
@@ -1223,37 +1359,19 @@ export default function EnglishVocabularyPage() {
             <BookOpen className="w-4 h-4 hidden sm:block" />
             Үгийн сан
           </TabsTrigger>
-          <TabsTrigger
-            value="flashcard"
-            className="gap-1.5 text-sm"
-            disabled={!studyReady}
-          >
+          <TabsTrigger value="flashcard" className="gap-1.5 text-sm">
             <Layers className="w-4 h-4 hidden sm:block" />
             Флэшкарт
           </TabsTrigger>
-          <TabsTrigger
-            value="choice"
-            className="gap-1.5 text-sm"
-            disabled={!studyReady}
-          >
+          <TabsTrigger value="choice" className="gap-1.5 text-sm">
             <Target className="w-4 h-4 hidden sm:block" />
             Сонголт
           </TabsTrigger>
-          <TabsTrigger
-            value="type"
-            className="gap-1.5 text-sm"
-            disabled={!studyReady}
-          >
+          <TabsTrigger value="type" className="gap-1.5 text-sm">
             <PenLine className="w-4 h-4 hidden sm:block" />
             Бичих
           </TabsTrigger>
         </TabsList>
-
-        {!studyReady && tab !== "table" && (
-          <div className="mt-3 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-2.5">
-            Дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
-          </div>
-        )}
 
         <TabsContent value="table" className="mt-4">
           <WordTable
@@ -1272,32 +1390,44 @@ export default function EnglishVocabularyPage() {
         </TabsContent>
 
         <TabsContent value="flashcard" className="mt-4">
-          {studyReady && (
+          {studyReady ? (
             <FlashcardMode
               key={tab + words.length}
               words={studyWords}
               onReview={handleReview}
             />
+          ) : (
+            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
+              Флэшкарт эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+            </div>
           )}
         </TabsContent>
 
         <TabsContent value="choice" className="mt-4">
-          {studyReady && (
+          {studyReady ? (
             <MultipleChoiceMode
               key={tab + words.length}
               words={studyWords}
               onReview={handleReview}
             />
+          ) : (
+            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
+              Сонголтын дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+            </div>
           )}
         </TabsContent>
 
         <TabsContent value="type" className="mt-4">
-          {studyReady && (
+          {studyReady ? (
             <TypeAnswerMode
               key={tab + words.length}
               words={studyWords}
               onReview={handleReview}
             />
+          ) : (
+            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
+              Бичих дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+            </div>
           )}
         </TabsContent>
       </Tabs>

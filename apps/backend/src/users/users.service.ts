@@ -8,6 +8,27 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
 
+// Mirrors auth.service.ts DEPARTMENT_CODES — keep in sync
+const DEPARTMENT_CODES: Record<string, string> = {
+  Удирдлага: "DAG",
+  "Дата анализын алба": "DAA",
+  "Ерөнхий аудитын хэлтэс": "EAH",
+  "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ZACHBH",
+  "Мэдээллийн технологийн аудитын хэлтэс": "MTAH",
+};
+
+function buildUserId(department: string, name: string): string {
+  const deptCode = DEPARTMENT_CODES[department] || "USR";
+  const namePart = name
+    .split("-")
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join("-")
+    .replace(/\s+/g, "");
+  if (department === "Удирдлага") return `.${namePart}-${deptCode}`;
+  if (department === "Дата анализын алба") return `${deptCode}-${namePart}`;
+  return `DAG-${deptCode}-${namePart}`;
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -149,6 +170,19 @@ export class UsersService {
     if (updateUserDto.departmentId !== undefined) {
       fields.push("departmentId = {departmentId:String}");
       params.departmentId = updateUserDto.departmentId;
+
+      // Шинэ хэлтсийн нэр олж userId-г дахин үүсгэх
+      const depts = await this.clickhouse.query<any>(
+        "SELECT name FROM departments WHERE id = {deptId:String} LIMIT 1",
+        { deptId: updateUserDto.departmentId },
+      );
+      if (depts.length > 0) {
+        const newDeptName = depts[0].name as string;
+        const userName = (updateUserDto.name ?? users[0].name) as string;
+        const newUserId = buildUserId(newDeptName, userName);
+        fields.push("userId = {userId:String}");
+        params.userId = newUserId;
+      }
     }
     if (updateUserDto.profileImage !== undefined) {
       fields.push("profileImage = {profileImage:String}");

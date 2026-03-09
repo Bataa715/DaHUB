@@ -90,8 +90,8 @@ async function seedClickHouse() {
         CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.users (
           id String, userId String, password String,
           name String, position String, profileImage String, departmentId String,
-          isAdmin UInt8 DEFAULT 0, isActive UInt8 DEFAULT 1,
-          allowedTools String, lastLoginAt Nullable(DateTime),
+          isAdmin UInt8 DEFAULT 0, isSuperAdmin UInt8 DEFAULT 0, isActive UInt8 DEFAULT 1,
+          allowedTools String, grantableTools String DEFAULT '[]', lastLoginAt Nullable(DateTime),
           createdAt DateTime DEFAULT now(), updatedAt DateTime DEFAULT now()
         ) ENGINE = MergeTree() ORDER BY id`,
     });
@@ -259,8 +259,10 @@ async function seedClickHouse() {
             profileImage: "",
             departmentId: dataDeptId,
             isAdmin: 0,
+            isSuperAdmin: 0,
             isActive: 1,
             allowedTools: JSON.stringify(["todo", "fitness", "report"]),
+            grantableTools: JSON.stringify([]),
             createdAt: now(),
             updatedAt: now(),
           },
@@ -279,7 +281,8 @@ async function seedClickHouse() {
       query: `
         CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.news (
           id String, title String, content String,
-          category String DEFAULT 'Ерөнхий', imageUrl String,
+          category String DEFAULT 'Ерөнхий', imageUrl String DEFAULT '',
+          imageMime String DEFAULT '',
           authorId String, isPublished UInt8 DEFAULT 1, views UInt32 DEFAULT 0,
           createdAt DateTime DEFAULT now(), updatedAt DateTime DEFAULT now()
         ) ENGINE = MergeTree() ORDER BY createdAt`,
@@ -304,8 +307,8 @@ async function seedClickHouse() {
         content:
           "<p>Голомт Банкны Дотоод Аудитын Газар нь 2025 оны жилийн эцсийн үйл ажиллагааны тайланг дуусгаж, удирдлагын зөвлөлд танилцуулсан байна.</p><ul><li>Нийт <strong>48 аудитын ажил</strong> хийгдэж, 312 зөвлөмж өгөгдсөн</li><li>Зөвлөмжийн хэрэгжилт <strong>87%</strong>-д хүрсэн</li></ul>",
         category: "Мэдэгдэл",
-        imageUrl:
-          "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 342,
@@ -318,8 +321,8 @@ async function seedClickHouse() {
         content:
           "<p>Дэлхий даяар банк санхүүгийн байгууллагуудын дотоод аудиторууд хиймэл оюун ухааны эрсдэлийг удирдахад тулгамдсан шинэ сорилтуудтай нүүр тулж байна.</p><ul><li><strong>Генератив AI-ийн эрсдэл</strong></li><li><strong>Кибер аюулгүй байдал</strong></li><li><strong>ESG тайлагнал</strong></li></ul>",
         category: "Ерөнхий",
-        imageUrl:
-          "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 518,
@@ -332,8 +335,8 @@ async function seedClickHouse() {
         content:
           "<p>Дотоод Аудитын Газрын дарга нар МТ аудитын шинэчлэгдсэн журмыг баталж, даруй хэрэгжүүлж эхэллээ.</p><ol><li>Кибер аюулгүй байдлын аудитыг жилд 2 удаа хийх</li><li>Системийн нэвтрэх эрхийн хяналтыг улирал бүр шалгах</li></ol>",
         category: "Мэдэгдэл",
-        imageUrl:
-          "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 287,
@@ -346,8 +349,8 @@ async function seedClickHouse() {
         content:
           "<p>Дотоод Аудитын Газрын нийт 24 аудитор мэргэжлийн хөгжлийн сургалтад хамрагдлаа.</p><ul><li>Data analytics ашиглан аудит хийх арга зүй</li><li>Эрсдэлд суурилсан аудитын шинэ стандарт (IIA 2024)</li><li>SQL болон Python ашиглан аудитын өгөгдөл шинжлэх</li></ul>",
         category: "Үйл явдал",
-        imageUrl:
-          "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 196,
@@ -360,8 +363,8 @@ async function seedClickHouse() {
         content:
           "<p>Мэдээллийн Технологийн Аудитын Хэлтэс нь цахим банкны бүх системийн иж бүрэн аудитыг 2026 оны 1 дүгээр сард дуусгав.</p><ul><li>Mbank mobile application</li><li>Internet banking платформ</li><li>API gateway болон middleware</li></ul>",
         category: "Үйл явдал",
-        imageUrl:
-          "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 631,
@@ -374,8 +377,8 @@ async function seedClickHouse() {
         content:
           "<p>Голомт Банкны Аудитын Хороо 2026 оны 1 сарын 30-нд хуралдаж, жилийн аудитын цогц төлөвлөгөөг баталлаа.</p><ul><li><strong>Санхүүгийн аудит</strong> — 12 нэгжид</li><li><strong>ИТ аудит</strong> — 8 систем</li><li><strong>AML/CFT дагаж мөрдөх аудит</strong></li></ul>",
         category: "Ерөнхий",
-        imageUrl:
-          "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 489,
@@ -388,8 +391,8 @@ async function seedClickHouse() {
         content:
           "<p>Голомт Банкны Дата Анализын Алба болон Дотоод Аудитын Газар хамтран дараах хэрэгслийг нэвтрүүлсэн:</p><ul><li><strong>SQL-д суурилсан гүйлгээний хяналт</strong></li><li><strong>Аномали илрүүлэх загвар</strong> — ML</li><li><strong>ClickHouse дата агуулах</strong></li></ul>",
         category: "Ерөнхий",
-        imageUrl:
-          "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 754,
@@ -402,8 +405,8 @@ async function seedClickHouse() {
         content:
           "<p>Дотоод Аудитын Газар нь байгууллагын эрсдэлийн удирдлагын процессыг шинэчлэн боловсруулж, 2026 оноос эхлэн хэрэгжүүлж байна.</p><ul><li><strong>Эрсдэлийн үнэлгээний матриц</strong> шинэчлэгдлээ</li><li><strong>Хяналтын орчны тогтолцоо</strong> бэхжлээ</li><li>Аудитын 3 шугамын загварыг нэвтрүүлэв</li></ul>",
         category: "Мэдэгдэл",
-        imageUrl:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&q=80",
+        imageUrl: "",
+        imageMime: "",
         authorId: adminId,
         isPublished: 1,
         views: 423,

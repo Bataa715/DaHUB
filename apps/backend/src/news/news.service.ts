@@ -45,8 +45,11 @@ export class NewsService {
   async findAll(published = true, limit = 100, offset = 0) {
     const filter = published ? "WHERE isPublished = 1" : "";
     const news = await this.clickhouse.query<any>(
-      `SELECT n.*, u.name as authorName
-       FROM news n 
+      `SELECT n.id, n.title, n.content, n.category,
+              notEmpty(n.imageUrl) AS hasImage,
+              n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
+              u.name as authorName
+       FROM news AS n
        LEFT JOIN users u ON n.authorId = u.id
        ${filter}
        ORDER BY n.createdAt DESC
@@ -56,14 +59,17 @@ export class NewsService {
 
     return news.map((n) => ({
       ...n,
-      imageUrl: n.imageUrl ? `/news/${n.id}/image` : "",
+      imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "",
     }));
   }
 
   async findOne(id: string) {
     const news = await this.clickhouse.query<any>(
-      `SELECT n.*, u.name as authorName
-       FROM news n 
+      `SELECT n.id, n.title, n.content, n.category,
+              notEmpty(n.imageUrl) AS hasImage,
+              n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
+              u.name as authorName
+       FROM news AS n
        LEFT JOIN users u ON n.authorId = u.id
        WHERE n.id = {id:String} AND n.isPublished = 1
        LIMIT 1`,
@@ -85,7 +91,7 @@ export class NewsService {
       });
 
     const n = news[0];
-    return { ...n, imageUrl: n.imageUrl ? `/news/${n.id}/image` : "" };
+    return { ...n, imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "" };
   }
 
   async update(id: string, updateNewsDto: UpdateNewsDto) {
@@ -98,6 +104,37 @@ export class NewsService {
       throw new NotFoundException("Мэдээ олдсонгүй");
     }
 
+    // Image update: base64 data is too large for ClickHouse HTTP bound params.
+    // Base64 chars are [A-Za-z0-9+/=] only — safe to embed directly in SQL.
+    if (updateNewsDto.imageUrl !== undefined) {
+      if (updateNewsDto.imageUrl.startsWith("data:")) {
+        const matches = updateNewsDto.imageUrl.match(
+          /^data:([^;]+);base64,(.+)$/,
+        );
+        if (matches) {
+          const imageData = matches[2];
+          const imageMime = matches[1];
+          // Validate: base64 chars only, mime type safe chars only
+          if (
+            /^[A-Za-z0-9+/=]+$/.test(imageData) &&
+            /^[a-zA-Z0-9.+/-]+$/.test(imageMime)
+          ) {
+            await this.clickhouse.exec(
+              `ALTER TABLE news UPDATE imageUrl = '${imageData}', imageMime = '${imageMime}' WHERE id = {id:String}`,
+              { id },
+            );
+          }
+        }
+      } else {
+        // Clear image
+        await this.clickhouse.exec(
+          `ALTER TABLE news UPDATE imageUrl = '', imageMime = '' WHERE id = {id:String}`,
+          { id },
+        );
+      }
+    }
+
+    // Non-image field updates — small values, safe as bound params
     const updates: string[] = [];
     const params: Record<string, any> = { id };
 
@@ -113,24 +150,6 @@ export class NewsService {
       updates.push("category = {category:String}");
       params.category = updateNewsDto.category;
     }
-    if (updateNewsDto.imageUrl !== undefined) {
-      if (updateNewsDto.imageUrl.startsWith("data:")) {
-        const matches = updateNewsDto.imageUrl.match(
-          /^data:([^;]+);base64,(.+)$/,
-        );
-        if (matches) {
-          updates.push("imageUrl = {imageUrl:String}");
-          updates.push("imageMime = {imageMime:String}");
-          params.imageUrl = matches[2];
-          params.imageMime = matches[1];
-        }
-      } else {
-        updates.push("imageUrl = {imageUrl:String}");
-        updates.push("imageMime = {imageMime:String}");
-        params.imageUrl = "";
-        params.imageMime = "";
-      }
-    }
     if (updateNewsDto.isPublished !== undefined) {
       updates.push("isPublished = {isPublished:UInt8}");
       params.isPublished = updateNewsDto.isPublished ? 1 : 0;
@@ -139,12 +158,10 @@ export class NewsService {
     updates.push("updatedAt = {updatedAt:String}");
     params.updatedAt = nowCH();
 
-    if (updates.length > 0) {
-      await this.clickhouse.exec(
-        `ALTER TABLE news UPDATE ${updates.join(", ")} WHERE id = {id:String}`,
-        params,
-      );
-    }
+    await this.clickhouse.exec(
+      `ALTER TABLE news UPDATE ${updates.join(", ")} WHERE id = {id:String}`,
+      params,
+    );
 
     return { message: "Мэдээ амжилттай шинэчлэгдлээ" };
   }
@@ -188,8 +205,11 @@ export class NewsService {
 
   async getByCategory(category: string) {
     const news = await this.clickhouse.query<any>(
-      `SELECT n.*, u.name as authorName
-       FROM news n 
+      `SELECT n.id, n.title, n.content, n.category,
+              notEmpty(n.imageUrl) AS hasImage,
+              n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
+              u.name as authorName
+       FROM news AS n
        LEFT JOIN users u ON n.authorId = u.id
        WHERE n.category = {category:String} AND n.isPublished = 1
        ORDER BY n.createdAt DESC`,
@@ -198,7 +218,7 @@ export class NewsService {
 
     return news.map((n) => ({
       ...n,
-      imageUrl: n.imageUrl ? `/news/${n.id}/image` : "",
+      imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "",
     }));
   }
 
