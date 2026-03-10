@@ -672,14 +672,20 @@ export function WordPreview({
                               .map((img) => (
                                 <div
                                   key={img.id}
-                                  style={{ textAlign: "center", margin: "6pt 0" }}
+                                  style={{
+                                    textAlign: "center",
+                                    margin: "6pt 0",
+                                  }}
                                 >
                                   <img
                                     src={img.dataUrl}
                                     alt=""
                                     style={{
                                       width: `${img.width ?? 80}%`,
-                                      height: img.height && img.height > 0 ? `${img.height}px` : "auto",
+                                      height:
+                                        img.height && img.height > 0
+                                          ? `${img.height}px`
+                                          : "auto",
                                       maxWidth: "100%",
                                       display: "inline-block",
                                     }}
@@ -757,7 +763,10 @@ export function WordPreview({
                                         alt=""
                                         style={{
                                           width: `${img.width}%`,
-                                          height: img.height && img.height > 0 ? `${img.height}px` : "auto",
+                                          height:
+                                            img.height && img.height > 0
+                                              ? `${img.height}px`
+                                              : "auto",
                                           maxWidth: "100%",
                                           display: "inline-block",
                                         }}
@@ -1025,7 +1034,10 @@ export function WordPreview({
                                             alt=""
                                             style={{
                                               width: `${c.width ?? 80}%`,
-                                              height: c.height && c.height > 0 ? `${c.height}px` : "auto",
+                                              height:
+                                                c.height && c.height > 0
+                                                  ? `${c.height}px`
+                                                  : "auto",
                                               maxWidth: "100%",
                                               display: "inline-block",
                                             }}
@@ -1442,14 +1454,20 @@ export function WordPreview({
                               .map((img) => (
                                 <div
                                   key={img.id}
-                                  style={{ textAlign: "center", margin: "6pt 0" }}
+                                  style={{
+                                    textAlign: "center",
+                                    margin: "6pt 0",
+                                  }}
                                 >
                                   <img
                                     src={img.dataUrl}
                                     alt=""
                                     style={{
                                       width: `${img.width ?? 80}%`,
-                                      height: img.height && img.height > 0 ? `${img.height}px` : "auto",
+                                      height:
+                                        img.height && img.height > 0
+                                          ? `${img.height}px`
+                                          : "auto",
                                       maxWidth: "100%",
                                       display: "inline-block",
                                     }}
@@ -1710,7 +1728,10 @@ export function WordPreview({
                                         alt=""
                                         style={{
                                           width: `${c.width ?? 80}%`,
-                                          height: c.height && c.height > 0 ? `${c.height}px` : "auto",
+                                          height:
+                                            c.height && c.height > 0
+                                              ? `${c.height}px`
+                                              : "auto",
                                           maxWidth: "100%",
                                           display: "inline-block",
                                         }}
@@ -2427,7 +2448,10 @@ export function WordPreview({
                                           alt=""
                                           style={{
                                             width: `${c.width ?? 80}%`,
-                                            height: c.height && c.height > 0 ? `${c.height}px` : "auto",
+                                            height:
+                                              c.height && c.height > 0
+                                                ? `${c.height}px`
+                                                : "auto",
                                             maxWidth: "100%",
                                             display: "inline-block",
                                           }}

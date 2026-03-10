@@ -92,9 +92,12 @@ export function DashTaskCard({
     if (!files.length) return;
     const current = row.images ?? [];
     let loaded = 0;
-    const newImgs: { id: string; dataUrl: string; width: number; height?: number }[] = [
-      ...current,
-    ];
+    const newImgs: {
+      id: string;
+      dataUrl: string;
+      width: number;
+      height?: number;
+    }[] = [...current];
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -118,13 +121,17 @@ export function DashTaskCard({
 
   const handleWidthChange = (id: string, w: number) => {
     onChangeImages?.(
-      (row.images ?? []).map((img) => (img.id === id ? { ...img, width: w } : img)),
+      (row.images ?? []).map((img) =>
+        img.id === id ? { ...img, width: w } : img,
+      ),
     );
   };
 
   const handleHeightChange = (id: string, h: number) => {
     onChangeImages?.(
-      (row.images ?? []).map((img) => (img.id === id ? { ...img, height: h } : img)),
+      (row.images ?? []).map((img) =>
+        img.id === id ? { ...img, height: h } : img,
+      ),
     );
   };
   return (
@@ -219,7 +226,9 @@ export function DashTaskCard({
                   />
                   <div className="flex flex-col gap-1 flex-1">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-slate-400 w-10 shrink-0">Өргөн:</span>
+                      <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                        Өргөн:
+                      </span>
                       <input
                         type="range"
                         min={20}
@@ -235,7 +244,9 @@ export function DashTaskCard({
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-slate-400 w-10 shrink-0">Өндөр:</span>
+                      <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                        Өндөр:
+                      </span>
                       <input
                         type="range"
                         min={0}
@@ -248,7 +259,9 @@ export function DashTaskCard({
                         className="w-20 accent-purple-400"
                       />
                       <span className="text-[10px] text-slate-300 w-12">
-                        {img.height && img.height > 0 ? `${img.height}px` : "авто"}
+                        {img.height && img.height > 0
+                          ? `${img.height}px`
+                          : "авто"}
                       </span>
                     </div>
                   </div>
@@ -1424,7 +1437,9 @@ export function KpiTableEditor({
                               />
                               <div className="flex flex-col gap-0.5 flex-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">Өргөн:</span>
+                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                    Өргөн:
+                                  </span>
                                   <input
                                     type="range"
                                     min={20}
@@ -1433,7 +1448,10 @@ export function KpiTableEditor({
                                     onChange={(e) => {
                                       const newImgs = row.images!.map((x) =>
                                         x.id === img.id
-                                          ? { ...x, width: Number(e.target.value) }
+                                          ? {
+                                              ...x,
+                                              width: Number(e.target.value),
+                                            }
                                           : x,
                                       );
                                       updateSection2RowImages(si, ri, newImgs);
@@ -1445,7 +1463,9 @@ export function KpiTableEditor({
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">Өндөр:</span>
+                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                    Өндөр:
+                                  </span>
                                   <input
                                     type="range"
                                     min={0}
@@ -1455,7 +1475,10 @@ export function KpiTableEditor({
                                     onChange={(e) => {
                                       const newImgs = row.images!.map((x) =>
                                         x.id === img.id
-                                          ? { ...x, height: Number(e.target.value) }
+                                          ? {
+                                              ...x,
+                                              height: Number(e.target.value),
+                                            }
                                           : x,
                                       );
                                       updateSection2RowImages(si, ri, newImgs);
@@ -1463,7 +1486,9 @@ export function KpiTableEditor({
                                     className="w-20 accent-purple-400"
                                   />
                                   <span className="text-[10px] text-slate-300 w-12">
-                                    {img.height && img.height > 0 ? `${img.height}px` : "авто"}
+                                    {img.height && img.height > 0
+                                      ? `${img.height}px`
+                                      : "авто"}
                                   </span>
                                 </div>
                               </div>
@@ -1824,7 +1849,9 @@ export function KpiTableEditor({
                               />
                               <div className="flex flex-col gap-0.5 flex-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">Өргөн:</span>
+                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                    Өргөн:
+                                  </span>
                                   <input
                                     type="range"
                                     min={20}
@@ -1833,7 +1860,10 @@ export function KpiTableEditor({
                                     onChange={(e) => {
                                       const newImgs = row.images!.map((x) =>
                                         x.id === img.id
-                                          ? { ...x, width: Number(e.target.value) }
+                                          ? {
+                                              ...x,
+                                              width: Number(e.target.value),
+                                            }
                                           : x,
                                       );
                                       updateSection24RowImages(si, ri, newImgs);
@@ -1845,7 +1875,9 @@ export function KpiTableEditor({
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">Өндөр:</span>
+                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                    Өндөр:
+                                  </span>
                                   <input
                                     type="range"
                                     min={0}
@@ -1855,7 +1887,10 @@ export function KpiTableEditor({
                                     onChange={(e) => {
                                       const newImgs = row.images!.map((x) =>
                                         x.id === img.id
-                                          ? { ...x, height: Number(e.target.value) }
+                                          ? {
+                                              ...x,
+                                              height: Number(e.target.value),
+                                            }
                                           : x,
                                       );
                                       updateSection24RowImages(si, ri, newImgs);
@@ -1863,7 +1898,9 @@ export function KpiTableEditor({
                                     className="w-20 accent-purple-400"
                                   />
                                   <span className="text-[10px] text-slate-300 w-12">
-                                    {img.height && img.height > 0 ? `${img.height}px` : "авто"}
+                                    {img.height && img.height > 0
+                                      ? `${img.height}px`
+                                      : "авто"}
                                   </span>
                                 </div>
                               </div>
@@ -2351,7 +2388,7 @@ export function KpiTableEditor({
                                     updateContents(si, ii, nc);
                                   }}
                                   className="w-16 mt-1 accent-purple-400 self-end"
-                                  title={`Өндөр: ${c.height && c.height > 0 ? c.height + 'px' : 'авто'}`}
+                                  title={`Өндөр: ${c.height && c.height > 0 ? c.height + "px" : "авто"}`}
                                 />
                               </div>
                             </div>

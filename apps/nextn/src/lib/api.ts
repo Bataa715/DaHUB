@@ -775,3 +775,86 @@ interface ChessGame {
   resultReason: string;
   createdAt: string;
 }
+
+// ── Excel Report API ──────────────────────────────────────────────────────────
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  dateMode: "none" | "single" | "range";
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportTemplateAdmin extends ReportTemplate {
+  pythonCode: string;
+  isActive: number;
+}
+
+export const excelReportApi = {
+  // User
+  getTemplates: async (): Promise<ReportTemplate[]> => {
+    const res = await api.get("/excel-report/templates");
+    return res.data;
+  },
+
+  runReport: async (
+    templateId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<Blob> => {
+    const res = await api.post(
+      "/excel-report/run",
+      { templateId, startDate, endDate },
+      { responseType: "blob" },
+    );
+    return res.data as Blob;
+  },
+
+  // Admin
+  adminGetAll: async (): Promise<ReportTemplateAdmin[]> => {
+    const res = await api.get("/excel-report/admin/templates");
+    return res.data;
+  },
+
+  adminCreate: async (data: {
+    name: string;
+    description?: string;
+    pythonCode: string;
+    dateMode: "none" | "single" | "range";
+    color?: string;
+  }): Promise<ReportTemplateAdmin> => {
+    const res = await api.post("/excel-report/admin/templates", data);
+    return res.data;
+  },
+
+  adminUpdate: async (
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      pythonCode: string;
+      dateMode: "none" | "single" | "range";
+      color: string;
+    }>,
+  ): Promise<ReportTemplateAdmin> => {
+    const res = await api.patch(`/excel-report/admin/templates/${id}`, data);
+    return res.data;
+  },
+
+  adminToggle: async (
+    id: string,
+    isActive: boolean,
+  ): Promise<ReportTemplateAdmin> => {
+    const res = await api.patch(`/excel-report/admin/templates/${id}/toggle`, {
+      isActive,
+    });
+    return res.data;
+  },
+
+  adminDelete: async (id: string): Promise<void> => {
+    await api.delete(`/excel-report/admin/templates/${id}`);
+  },
+};

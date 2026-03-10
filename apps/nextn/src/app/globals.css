@@ -294,6 +294,28 @@
     --input: 220 17% 25%;
     --ring: 160 84% 39%;
   }
+
+  html[class="sakura"] {
+    --background: 330 18% 11%;
+    --foreground: 330 20% 95%;
+    --card: 330 18% 15%;
+    --card-foreground: 330 20% 95%;
+    --popover: 330 18% 11%;
+    --popover-foreground: 330 20% 95%;
+    --primary: 335 80% 75%;
+    --primary-foreground: 330 18% 8%;
+    --secondary: 330 15% 22%;
+    --secondary-foreground: 330 20% 95%;
+    --muted: 330 15% 22%;
+    --muted-foreground: 330 10% 62%;
+    --accent: 355 90% 80%;
+    --accent-foreground: 330 18% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 330 20% 95%;
+    --border: 330 15% 28%;
+    --input: 330 15% 28%;
+    --ring: 335 80% 75%;
+  }
 }
 
 @layer base {

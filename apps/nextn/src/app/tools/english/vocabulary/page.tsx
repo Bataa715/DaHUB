@@ -466,7 +466,9 @@ function FlashcardMode({
                 {card.translation}
               </div>
               {card.definition && (
-                <div className="text-sm text-white/80 mt-1">{card.definition}</div>
+                <div className="text-sm text-white/80 mt-1">
+                  {card.definition}
+                </div>
               )}
             </div>
             <div className="flex items-center justify-center gap-1 text-white/50 text-xs">

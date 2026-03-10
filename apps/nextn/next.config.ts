@@ -17,6 +17,16 @@ const nextConfig: NextConfig = {
   },
   // Skip trailing slash redirect for cleaner URLs
   skipTrailingSlashRedirect: true,
+  // Allow webpack to transpile pdfjs-dist (ESM-only package)
+  transpilePackages: ["pdfjs-dist"],
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      canvas: false,
+      encoding: false,
+    };
+    return config;
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

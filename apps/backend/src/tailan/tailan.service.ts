@@ -761,7 +761,9 @@ export class TailanService {
       fmtPeriodDoc(t.period ?? ""),
       t.completion ?? "",
     ]);
-    children.push(this.buildDashedTable(s2Headers, s2Widths, s2Rows));
+    children.push(
+      this.buildDashedTable(s2Headers, s2Widths, s2Rows, [], [0, 2, 3]),
+    );
     // Images from section2Tasks rows
     for (const t of s2Tasks) {
       for (const img of t.images ?? []) {
@@ -856,7 +858,13 @@ export class TailanService {
       ],
     });
     children.push(
-      this.buildDashedTable(s3aHeaders, s3aWidths, s3aRows, [s3aAvgRow]),
+      this.buildDashedTable(
+        s3aHeaders,
+        s3aWidths,
+        s3aRows,
+        [s3aAvgRow],
+        [0, 3],
+      ),
     );
     children.push(
       new Paragraph({
@@ -941,7 +949,13 @@ export class TailanService {
       ],
     });
     children.push(
-      this.buildDashedTable(s3dHeaders, s3dWidths, s3dRows, [s3dAvgRow]),
+      this.buildDashedTable(
+        s3dHeaders,
+        s3dWidths,
+        s3dRows,
+        [s3dAvgRow],
+        [0, 3],
+      ),
     );
     children.push(
       new Paragraph({
@@ -984,7 +998,15 @@ export class TailanService {
       t.meetsAuditGoal ?? "",
       t.sharedKnowledge ?? "",
     ]);
-    children.push(this.buildDashedTable(s4Headers, s4Widths, s4Rows));
+    children.push(
+      this.buildDashedTable(
+        s4Headers,
+        s4Widths,
+        s4Rows,
+        [],
+        [0, 4, 5, 6, 7, 8],
+      ),
+    );
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -1022,7 +1044,7 @@ export class TailanService {
       t.taskType ?? "",
       t.completedWork ?? "",
     ]);
-    children.push(this.buildDashedTable(s5Headers, s5Widths, s5Rows));
+    children.push(this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]));
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -1049,7 +1071,9 @@ export class TailanService {
       t.activity ?? "",
       t.initiative ?? "",
     ]);
-    children.push(this.buildDashedTable(s6Headers, s6Widths, s6Rows));
+    children.push(
+      this.buildDashedTable(s6Headers, s6Widths, s6Rows, [], [0, 1]),
+    );
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -1975,14 +1999,17 @@ export class TailanService {
 
   /**
    * Build a table with solid outer border + dashed inner borders.
-   * headers: label array, colWidths: % widths, dataRows: string[][] matrix
+   * headers: label array, colWidths: % widths, dataRows: string[][] matrix,
+   * centerCols: column indices to center in data rows (defaults to [0])
    */
   private buildDashedTable(
     headers: string[],
     colWidths: number[],
     dataRows: string[][],
     extraRows: TableRow[] = [],
+    centerCols?: number[],
   ) {
+    const centerSet = new Set(centerCols ?? [0]);
     const headerRow = new TableRow({
       tableHeader: true,
       children: headers.map(
@@ -2014,7 +2041,7 @@ export class TailanService {
             (row) =>
               new TableRow({
                 children: row.map((cell, ci) =>
-                  this.tcNoB(cell, colWidths[ci], ci === 0),
+                  this.tcNoB(cell, colWidths[ci], centerSet.has(ci)),
                 ),
               }),
           )

@@ -455,6 +455,11 @@ export class ChessService {
   }
 
   async getRankings() {
+    const registeredUsers = await this.clickhouse.query<{ id: string }>(
+      `SELECT id FROM users WHERE isActive = 1`,
+    );
+    const registeredIds = new Set((registeredUsers || []).map((u) => u.id));
+
     const games = await this.clickhouse.query<any>(
       `SELECT *
        FROM (
@@ -475,6 +480,7 @@ export class ChessService {
       { id: string; name: string; wins: number; losses: number; draws: number }
     > = {};
     const ensure = (id: string, name: string) => {
+      if (!registeredIds.has(id)) return;
       if (!stats[id]) stats[id] = { id, name, wins: 0, losses: 0, draws: 0 };
     };
     for (const g of games) {

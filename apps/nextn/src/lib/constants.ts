@@ -21,7 +21,7 @@ export const DEPARTMENT_CODES: Record<string, string> = {
 
 // Position mapping for each department
 export const DEPARTMENT_POSITIONS: Record<string, string[]> = {
-  Удирдлага: ["Захирал", "Газрын дарга"],
+  Удирдлага: ["Захирал", "Газрын захирал"],
   "Дата анализын алба": ["Дата сайнтист", "Дата инженер", "Дата аналист"],
   "Ерөнхий аудитын хэлтэс": ["Хэлтсийн захирал", "Ахлах аудитор", "Аудитор"],
   "Зайны аудит чанарын баталгаажуулалтын хэлтэс": [

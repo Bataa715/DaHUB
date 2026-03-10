@@ -50,6 +50,8 @@ import {
   Database,
   FileStack,
   BookOpen,
+  FileSpreadsheet,
+  FileSearch,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -175,6 +177,25 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: BookOpen,
     color: "from-sky-500 to-blue-500",
     gradient: "bg-gradient-to-br from-sky-500/20 to-blue-500/20",
+    category: "free",
+  },
+  {
+    id: "excel_report",
+    name: "Excel тайлан",
+    description:
+      "Системийн мэдээллээс динамик Python кодоор Excel тайлан үүсгэж татах",
+    icon: FileSpreadsheet,
+    color: "from-green-500 to-emerald-500",
+    gradient: "bg-gradient-to-br from-green-500/20 to-emerald-500/20",
+    category: "work",
+  },
+  {
+    id: "pdf_to_text",
+    name: "PDF → Текст",
+    description: "PDF файлыг текст болгон хөрвүүлж, хуулж авах боломжтой хэрэгсэл",
+    icon: FileSearch,
+    color: "from-pink-500 to-rose-500",
+    gradient: "bg-gradient-to-br from-pink-500/20 to-rose-500/20",
     category: "free",
   },
 ];
