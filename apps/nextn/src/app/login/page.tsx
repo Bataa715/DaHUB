@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -210,17 +210,17 @@ export default function LoginPage() {
         throw new Error(data.message || "Нууц үг тохируулахад алдаа гарлаа");
       Cookies.set("token", data.accessToken || data.token, {
         expires: 1 / 24,
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
       });
       Cookies.set("refreshToken", data.refreshToken, {
         expires: 30,
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
       });
       Cookies.set("user", JSON.stringify(data.user), {
         expires: 1 / 24,
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
       });
       toast({
@@ -295,17 +295,17 @@ export default function LoginPage() {
         throw new Error(data.message || "Нэвтрэхэд алдаа гарлаа");
       Cookies.set("token", data.accessToken || data.token, {
         expires: 1 / 24,
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
       });
       Cookies.set("refreshToken", data.refreshToken, {
         expires: 30,
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
       });
       Cookies.set("user", JSON.stringify(data.user), {
         expires: 1 / 24,
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
       });
       toast({

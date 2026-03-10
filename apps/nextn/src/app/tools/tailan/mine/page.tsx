@@ -16,6 +16,8 @@ import {
   Upload,
   X,
   ImageIcon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -36,7 +38,7 @@ import type {
   TailanImage,
 } from "./_components/tailan.types";
 import { RichToolbar } from "./_components/RichEditor";
-import { WordPreview, ROMAN_NUMS } from "./_components/WordPreview";
+import { WordPreview, ROMAN_NUMS, buildWordHtml } from "./_components/WordPreview";
 
 // --- Shared style helpers -----------------------------------------------------
 const inputCls =
@@ -50,6 +52,7 @@ interface RowInlineImg {
   id: string;
   dataUrl: string;
   width: number;
+  height?: number; // pixels, undefined = auto
 }
 
 function RowImageUpload({
@@ -86,6 +89,8 @@ function RowImageUpload({
     onChange(images.filter((img) => img.id !== id));
   const setWidth = (id: string, w: number) =>
     onChange(images.map((img) => (img.id === id ? { ...img, width: w } : img)));
+  const setHeight = (id: string, h: number | undefined) =>
+    onChange(images.map((img) => (img.id === id ? { ...img, height: h } : img)));
   return (
     <div className={inputId ? "mt-1" : "mt-2"}>
       {!inputId && (
@@ -117,7 +122,7 @@ function RowImageUpload({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500">
-                  {img.width}% өргөн
+                  {img.width}% өргөн{img.height ? ` · ${img.height}px өндөр` : ""}
                 </span>
                 <button
                   type="button"
@@ -130,18 +135,42 @@ function RowImageUpload({
               <img
                 src={img.dataUrl}
                 alt=""
-                style={{ width: `${img.width}%` }}
+                style={{
+                  width: `${img.width}%`,
+                  height: img.height ? `${img.height}px` : undefined,
+                  objectFit: img.height ? "fill" : undefined,
+                }}
                 className="rounded max-w-full"
               />
-              <input
-                type="range"
-                min={10}
-                max={100}
-                step={5}
-                value={img.width}
-                onChange={(e) => setWidth(img.id, Number(e.target.value))}
-                className="w-full accent-blue-500"
-              />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-600 w-10 shrink-0">Өргөн</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  step={5}
+                  value={img.width}
+                  onChange={(e) => setWidth(img.id, Number(e.target.value))}
+                  className="flex-1 accent-blue-500"
+                />
+                <span className="text-xs text-slate-500 w-9 text-right shrink-0">{img.width}%</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-600 w-10 shrink-0">Өндөр</span>
+                <input
+                  type="number"
+                  min={50}
+                  max={2000}
+                  step={10}
+                  placeholder="auto"
+                  value={img.height ?? ""}
+                  onChange={(e) =>
+                    setHeight(img.id, e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-slate-300 placeholder-slate-600"
+                />
+                <span className="text-xs text-slate-500 w-9 shrink-0">px</span>
+              </div>
             </div>
           ))}
         </div>
@@ -188,6 +217,16 @@ export default function TailanMinePage() {
   );
   const toggleSection = (key: string) =>
     setCollapsedSections((prev) => {
+      const n = new Set(prev);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
+  const [hiddenSections, setHiddenSections] = useState<Set<string>>(
+    new Set(),
+  );
+  const toggleHideSection = (key: string) =>
+    setHiddenSections((prev) => {
       const n = new Set(prev);
       if (n.has(key)) n.delete(key);
       else n.add(key);
@@ -432,18 +471,34 @@ export default function TailanMinePage() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     setDownloading(true);
     try {
-      const blob = await tailanApi.downloadMyWord(
+      const html = buildWordHtml({
+        userName: cyrillicName.trim() || user?.name || "",
+        userPosition: user?.position,
+        userDepartment: user?.department,
         year,
         quarter,
-        cyrillicName.trim() || undefined,
-      );
+        plannedTasks,
+        section2Tasks,
+        section3AutoTasks,
+        section3Dashboards,
+        section1Dashboards,
+        dynamicSections,
+        section4Trainings,
+        section4KnowledgeText,
+        section5Tasks,
+        section6Activities,
+        section7Text,
+        images,
+        hiddenSections,
+      });
+      const blob = new Blob([html], { type: "application/msword" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `тайлан-${cyrillicName.trim() || "mine"}-${year}-Q${quarter}.docx`;
+      a.download = `тайлан-${cyrillicName.trim() || user?.name || "mine"}-${year}-Q${quarter}.doc`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -796,7 +851,7 @@ export default function TailanMinePage() {
             </div>
           </div>
           {/* Section 1: Planned tasks */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s1") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s1")}
@@ -806,6 +861,16 @@ export default function TailanMinePage() {
                 байдал
               </h3>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s1");
+                  }}
+                  title={hiddenSections.has("s1") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s1") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s1") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -914,7 +979,7 @@ export default function TailanMinePage() {
             </div>
           </section>
           {/* Section I.2: Шинээр хөгжүүлсэн dashboard */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s12") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s12")}
@@ -923,6 +988,16 @@ export default function TailanMinePage() {
                 I.2 Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн
               </h3>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s12");
+                  }}
+                  title={hiddenSections.has("s12") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s12") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s12") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1062,7 +1137,7 @@ export default function TailanMinePage() {
             </div>
           </section>
           {/* Section II: Өгөгдөл боловсруулах ажил */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s2") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s2")}
@@ -1072,6 +1147,16 @@ export default function TailanMinePage() {
                 ажил
               </h3>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s2");
+                  }}
+                  title={hiddenSections.has("s2") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s2") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s2") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1121,31 +1206,30 @@ export default function TailanMinePage() {
                     </button>
                   </div>
                   <div className="space-y-1.5 pl-6">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={t.result}
-                        onChange={(e) =>
-                          updateSection2Task(t._id, "result", e.target.value)
-                        }
-                        placeholder="Ажлын гүйцэтгэл (%)"
-                        className={inputCls}
-                      />
-                      <input
-                        value={t.completion}
-                        onChange={(e) =>
-                          updateSection2Task(
-                            t._id,
-                            "completion",
-                            e.target.value,
-                          )
-                        }
-                        placeholder="Гүйцэтгэл /товч/"
-                        className={inputCls}
-                      />
-                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={t.result}
+                      onChange={(e) =>
+                        updateSection2Task(t._id, "result", e.target.value)
+                      }
+                      placeholder="Ажлын гүйцэтгэл (%)"
+                      className={inputCls}
+                    />
+                    <textarea
+                      rows={2}
+                      value={t.completion}
+                      onChange={(e) =>
+                        updateSection2Task(
+                          t._id,
+                          "completion",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Гүйцэтгэл /товч/"
+                      className={inputCls + " resize-none"}
+                    />
                     <div className="grid grid-cols-2 gap-1.5">
                       <div>
                         <label className={labelCls}>Эхлэх огноо</label>
@@ -1193,7 +1277,7 @@ export default function TailanMinePage() {
             </div>
           </section>
           {/* Section III: Тогтмол хийгддэг ажлууд */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s3") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s3")}
@@ -1201,9 +1285,21 @@ export default function TailanMinePage() {
               <h3 className="text-sm font-semibold text-white">
                 III. Тогтмол хийгддэг ажлууд
               </h3>
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s3") ? "-rotate-90" : ""}`}
-              />
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s3");
+                  }}
+                  title={hiddenSections.has("s3") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s3") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s3") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s3") ? "-rotate-90" : ""}`}
+                />
+              </div>
             </div>
 
             <div
@@ -1252,8 +1348,9 @@ export default function TailanMinePage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-1.5 pl-6">
-                        <input
+                      <div className="space-y-1.5 pl-6">
+                        <textarea
+                          rows={2}
                           value={t.value}
                           onChange={(e) =>
                             updateSection3AutoTask(
@@ -1263,7 +1360,7 @@ export default function TailanMinePage() {
                             )
                           }
                           placeholder="Ач холбогдол/хэрэглээ..."
-                          className={inputCls}
+                          className={inputCls + " resize-none"}
                         />
                         <input
                           type="number"
@@ -1328,8 +1425,9 @@ export default function TailanMinePage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-1.5 pl-6">
-                        <input
+                      <div className="space-y-1.5 pl-6">
+                        <textarea
+                          rows={2}
                           value={t.value}
                           onChange={(e) =>
                             updateSection3Dashboard(
@@ -1339,7 +1437,7 @@ export default function TailanMinePage() {
                             )
                           }
                           placeholder="Ач холбогдол/хэрэглээ..."
-                          className={inputCls}
+                          className={inputCls + " resize-none"}
                         />
                         <input
                           type="number"
@@ -1364,7 +1462,7 @@ export default function TailanMinePage() {
             </div>
           </section>
           {/* Section IV: Хамрагдсан сургалт */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s4") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s4")}
@@ -1373,6 +1471,16 @@ export default function TailanMinePage() {
                 IV. Хамрагдсан сургалт
               </h3>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s4");
+                  }}
+                  title={hiddenSections.has("s4") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s4") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s4") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1550,7 +1658,7 @@ export default function TailanMinePage() {
             </div>
           </section>
           {/* Section V: Үүрэг даалгаварын биелэлт */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s5") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s5")}
@@ -1559,6 +1667,16 @@ export default function TailanMinePage() {
                 V. Үүрэг даалгаварын биелэлт
               </h3>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s5");
+                  }}
+                  title={hiddenSections.has("s5") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s5") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s5") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1616,7 +1734,7 @@ export default function TailanMinePage() {
             </div>
           </section>
           {/* Section VI: Хамт олны ажил */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s6") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s6")}
@@ -1625,6 +1743,16 @@ export default function TailanMinePage() {
                 VI. Хамт олны ажил
               </h3>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s6");
+                  }}
+                  title={hiddenSections.has("s6") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s6") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s6") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1670,7 +1798,7 @@ export default function TailanMinePage() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 pl-6">
+                  <div className="space-y-1.5 pl-6">
                     <input
                       type="date"
                       value={t.date}
@@ -1679,7 +1807,8 @@ export default function TailanMinePage() {
                       }
                       className={inputCls}
                     />
-                    <input
+                    <textarea
+                      rows={2}
                       value={t.initiative}
                       onChange={(e) =>
                         updateSection6Activity(
@@ -1689,7 +1818,7 @@ export default function TailanMinePage() {
                         )
                       }
                       placeholder="Санаачилга"
-                      className={inputCls}
+                      className={inputCls + " resize-none"}
                     />
                   </div>
                 </div>
@@ -1697,7 +1826,7 @@ export default function TailanMinePage() {
             </div>
           </section>
           {/* Section VII: Шинэ санал санаачилга */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s7") ? "opacity-50" : ""}`}>
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s7")}
@@ -1705,9 +1834,21 @@ export default function TailanMinePage() {
               <h3 className="text-sm font-semibold text-white">
                 VII. Шинэ санал санаачилга
               </h3>
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s7") ? "-rotate-90" : ""}`}
-              />
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHideSection("s7");
+                  }}
+                  title={hiddenSections.has("s7") ? "Тайланд харуулах" : "Тайлангаас нуух"}
+                  className={`transition ${hiddenSections.has("s7") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                >
+                  {hiddenSections.has("s7") ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s7") ? "-rotate-90" : ""}`}
+                />
+              </div>
             </div>
             <div
               className={`mt-3 ${collapsedSections.has("s7") ? "hidden" : ""}`}
@@ -1811,6 +1952,7 @@ export default function TailanMinePage() {
             section6Activities={section6Activities}
             section7Text={section7Text}
             images={images}
+            hiddenSections={hiddenSections}
           />
         </div>
       </div>

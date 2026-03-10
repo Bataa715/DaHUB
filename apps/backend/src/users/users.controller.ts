@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   Res,
+  Request,
   NotFoundException,
 } from "@nestjs/common";
 import { Response } from "express";
@@ -16,10 +17,14 @@ import { UpdateUserDto } from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
+import { AuditLogService } from "../audit/audit-log.service";
 
 @Controller("users")
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private auditLogService: AuditLogService,
+  ) {}
 
   /** Admin: full user list with details */
   @UseGuards(JwtAuthGuard, AdminGuard)
@@ -71,7 +76,7 @@ export class UsersController {
   /** SuperAdmin only: promote or demote admin role */
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch(":id/admin-role")
-  setAdminRole(
+  async setAdminRole(
     @Param("id") id: string,
     @Body()
     body: {
@@ -79,13 +84,28 @@ export class UsersController {
       isSuperAdmin: boolean;
       grantableTools?: string[];
     },
+    @Request() req: any,
   ) {
-    return this.usersService.setAdminRole(
+    const result = await this.usersService.setAdminRole(
       id,
       body.isAdmin,
       body.isSuperAdmin,
       body.grantableTools,
     );
+    await this.auditLogService.log({
+      userId: req.user?.id,
+      action: "admin_role_change",
+      resource: "users",
+      method: "setAdminRole",
+      status: "success",
+      metadata: {
+        targetUserId: id,
+        isAdmin: body.isAdmin,
+        isSuperAdmin: body.isSuperAdmin,
+        grantableTools: body.grantableTools,
+      },
+    });
+    return result;
   }
 
   /** SuperAdmin only: reset a user's password */

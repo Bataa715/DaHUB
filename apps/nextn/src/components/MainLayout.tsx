@@ -15,7 +15,7 @@ export default function MainLayout({
   const isPublicPath =
     pathname === "/login" ||
     pathname === "/signup" ||
-    pathname === "/admin/login";
+    pathname.startsWith("/admin");
 
   // Middleware handles all redirects, so no useEffect needed here
 

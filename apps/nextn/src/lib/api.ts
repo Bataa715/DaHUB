@@ -1,4 +1,4 @@
-﻿import axios from "axios";
+import axios from "axios";
 import Cookies from "js-cookie";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -59,12 +59,12 @@ api.interceptors.response.use(
 
           Cookies.set(tokenKey, accessToken, {
             expires: 1 / 24,
-            sameSite: "lax",
+            sameSite: "strict",
             secure,
           });
           Cookies.set(refreshKey, newRefreshToken, {
             expires: 30,
-            sameSite: "lax",
+            sameSite: "strict",
             secure,
           });
 
@@ -75,6 +75,13 @@ api.interceptors.response.use(
         Cookies.remove(tokenKey);
         Cookies.remove(refreshKey);
         Cookies.remove(userKey);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("auth:session-expired"));
+          const loginPath = isAdmin ? "/admin/login" : "/login";
+          if (!window.location.pathname.startsWith(loginPath)) {
+            window.location.replace(loginPath);
+          }
+        }
       }
     }
 
@@ -82,6 +89,13 @@ api.interceptors.response.use(
       Cookies.remove(tokenKey);
       Cookies.remove(refreshKey);
       Cookies.remove(userKey);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:session-expired"));
+        const loginPath = isAdmin ? "/admin/login" : "/login";
+        if (!window.location.pathname.startsWith(loginPath)) {
+          window.location.replace(loginPath);
+        }
+      }
     }
 
     // Network error (backend unreachable) → clear session and go to login
@@ -448,6 +462,13 @@ export const tailanApi = {
     return response.data;
   },
 
+  getDeptMemberReport: async (userId: string, year: number, quarter: number) => {
+    const response = await api.get(
+      `/tailan/dept/member/${encodeURIComponent(userId)}/${year}/${quarter}`,
+    );
+    return response.data;
+  },
+
   downloadDeptWord: async (year: number, quarter: number): Promise<Blob> => {
     const response = await api.get(`/tailan/dept/${year}/${quarter}/word`, {
       responseType: "blob",
@@ -621,6 +642,23 @@ export const dbAccessApi = {
 
   cancelMyGrant: async (id: string) => {
     const response = await api.delete(`/db-access/grants/${id}/cancel`);
+    return response.data;
+  },
+
+  deleteRequest: async (id: string) => {
+    const response = await api.delete(`/db-access/requests/${encodeURIComponent(id)}`);
+    return response.data;
+  },
+
+  deleteRequestHistory: async () => {
+    const response = await api.delete("/db-access/requests/history");
+    return response.data;
+  },
+
+  cleanupChUser: async (requesterUserId: string) => {
+    const response = await api.post(
+      `/db-access/grants/cleanup-ch/${encodeURIComponent(requesterUserId)}`,
+    );
     return response.data;
   },
 

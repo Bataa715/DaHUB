@@ -128,6 +128,17 @@ export class TailanController {
     return this.tailanService.getAllDeptReports(req.user, year, quarter);
   }
 
+  // ─── Dept head: get one member's full report ───────────────────────────────
+  @Get("dept/member/:userId/:year/:quarter")
+  async getDeptMemberReport(
+    @Req() req: any,
+    @Param("userId") userId: string,
+    @Param("year", ParseIntPipe) year: number,
+    @Param("quarter", ParseIntPipe) quarter: number,
+  ) {
+    return this.tailanService.getDeptMemberReport(req.user, userId, year, quarter);
+  }
+
   // ─── Dept head: download merged Word ──────────────────────────────────────
   @Get("dept/:year/:quarter/word")
   async downloadDeptWord(

@@ -167,24 +167,34 @@ export class UsersService {
       fields.push("position = {position:String}");
       params.position = updateUserDto.position;
     }
+    if (updateUserDto.userId !== undefined) {
+      fields.push("userId = {userId:String}");
+      params.userId = updateUserDto.userId;
+    }
     if (updateUserDto.departmentId !== undefined) {
       fields.push("departmentId = {departmentId:String}");
       params.departmentId = updateUserDto.departmentId;
 
-      // Шинэ хэлтсийн нэр олж userId-г дахин үүсгэх
-      const depts = await this.clickhouse.query<any>(
-        "SELECT name FROM departments WHERE id = {deptId:String} LIMIT 1",
-        { deptId: updateUserDto.departmentId },
-      );
-      if (depts.length > 0) {
-        const newDeptName = depts[0].name as string;
-        const userName = (updateUserDto.name ?? users[0].name) as string;
-        const newUserId = buildUserId(newDeptName, userName);
-        fields.push("userId = {userId:String}");
-        params.userId = newUserId;
+      // Auto-generate userId only when not explicitly provided
+      if (updateUserDto.userId === undefined) {
+        const depts = await this.clickhouse.query<any>(
+          "SELECT name FROM departments WHERE id = {deptId:String} LIMIT 1",
+          { deptId: updateUserDto.departmentId },
+        );
+        if (depts.length > 0) {
+          const newDeptName = depts[0].name as string;
+          const userName = (updateUserDto.name ?? users[0].name) as string;
+          const newUserId = buildUserId(newDeptName, userName);
+          fields.push("userId = {userId:String}");
+          params.userId = newUserId;
+        }
       }
     }
     if (updateUserDto.profileImage !== undefined) {
+      // Guard against oversized base64 images (~5 MB limit)
+      if (updateUserDto.profileImage.length > 7_000_000) {
+        throw new BadRequestException("Профайл зургийн хэмжээ хэт их байна (дээд тал нь 5MB)");
+      }
       fields.push("profileImage = {profileImage:String}");
       params.profileImage = updateUserDto.profileImage;
     }
@@ -241,6 +251,13 @@ export class UsersService {
       throw new NotFoundException("Хэрэглэгч олдсонгүй");
     }
 
+    // Soft-delete first so concurrent signup checks (AND isActive = 1) immediately
+    // see this user as gone, even before the async hard-delete mutation completes.
+    await this.clickhouse.exec(
+      "ALTER TABLE users UPDATE isActive = 0 WHERE id = {id:String}",
+      { id },
+    );
+    // Hard-delete (async mutation — physically removes the row eventually)
     await this.clickhouse.exec(
       "ALTER TABLE users DELETE WHERE id = {id:String}",
       { id },
@@ -318,9 +335,16 @@ export class UsersService {
   }
 
   async resetPassword(id: string, newPassword: string) {
-    if (!newPassword || newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 8) {
       throw new BadRequestException(
-        "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой",
+        "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой",
+      );
+    }
+    const complexityRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`])[A-Za-z\d@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`]+$/;
+    if (!complexityRegex.test(newPassword)) {
+      throw new BadRequestException(
+        "Нууц үг нь том үсэг, жижиг үсэг, тоо, тусгай тэмдэгт агуулсан байх ёстой",
       );
     }
     const users = await this.clickhouse.query<any>(

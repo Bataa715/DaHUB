@@ -5,6 +5,9 @@ import { jwtVerify } from "jose";
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = ["/login", "/admin/login"];
 
+// Admin routes that additionally require isSuperAdmin
+const SUPERADMIN_ROUTES = ["/admin/secret"];
+
 // Tool routes → required allowedTools id (any one is enough). isAdmin always passes.
 const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/db-access/manage": ["db_access_granter"],
@@ -60,6 +63,13 @@ export async function middleware(request: NextRequest) {
       response.cookies.delete("adminToken");
       response.cookies.delete("adminUser");
       return response;
+    }
+    // Certain admin sub-routes are superadmin-only
+    const requiresSuperAdmin = SUPERADMIN_ROUTES.some((r) =>
+      pathname.startsWith(r),
+    );
+    if (requiresSuperAdmin && adminPayload?.["isSuperAdmin"] !== true) {
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
   }
 

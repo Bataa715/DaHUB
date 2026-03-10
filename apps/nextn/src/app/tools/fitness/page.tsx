@@ -356,7 +356,7 @@ const AddExerciseDialog = ({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Тайлбар (заавал биш)</Label>
+            <Label>Тайлбар (заавал)</Label>
             <Textarea
               placeholder="Дасгалын тухай товч тайлбар..."
               value={description}

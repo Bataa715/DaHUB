@@ -34,6 +34,74 @@ export interface ReportTemplate {
 export class ExcelReportService implements OnModuleInit {
   private readonly logger = new Logger(ExcelReportService.name);
 
+  // ── Security preamble injected before every Python execution ──────────────
+  // Wraps urllib.request.urlopen so that every ClickHouse HTTP call is
+  // validated: only SELECT queries are permitted. Any INSERT/UPDATE/DELETE/
+  // ALTER/DROP/CREATE/TRUNCATE attempt raises PermissionError at runtime.
+  private static readonly PYTHON_SECURITY_PREAMBLE =
+    "# === SECURITY PREAMBLE (auto-injected) ===\n" +
+    "import urllib.request as _urllib_req\n" +
+    "import re as _re\n" +
+    "from urllib.parse import urlparse as _urlparse, parse_qs as _parse_qs, unquote_plus as _unquote_plus\n" +
+    "\n" +
+    "_orig_urlopen = _urllib_req.urlopen\n" +
+    "\n" +
+    "def _check_select_only(sql, source):\n" +
+    "    cleaned = _re.sub(r'/\\*.*?\\*/', '', sql, flags=_re.DOTALL)\n" +
+    "    cleaned = _re.sub(r'--[^\\n]*', '', cleaned).strip()\n" +
+    "    if not _re.match(r'(?i)^\\s*SELECT\\b', cleaned):\n" +
+    "        raise PermissionError('[SECURITY] Зөвхөн SELECT query зөвшөөрөгдөнө (' + source + '). Олдсон: ' + sql[:120])\n" +
+    "\n" +
+    "def _safe_urlopen(url, data=None, **kwargs):\n" +
+    "    url_str = url.full_url if hasattr(url, 'full_url') else str(url)\n" +
+    "    body = (url.data if hasattr(url, 'data') else None) or data\n" +
+    "    parsed = _urlparse(url_str)\n" +
+    "    params = _parse_qs(parsed.query)\n" +
+    "    if 'query' in params:\n" +
+    "        _check_select_only(_unquote_plus(params['query'][0]), 'URL param')\n" +
+    "    if body is not None:\n" +
+    "        try:\n" +
+    "            raw = body.decode('utf-8') if isinstance(body, (bytes, bytearray)) else str(body)\n" +
+    "        except Exception:\n" +
+    "            raw = repr(body)\n" +
+    "        sql = _unquote_plus(raw[6:].split('&')[0]) if raw.startswith('query=') else raw\n" +
+    "        _check_select_only(sql, 'POST body')\n" +
+    "    return _orig_urlopen(url, data=data, **kwargs)\n" +
+    "\n" +
+    "_urllib_req.urlopen = _safe_urlopen\n" +
+    "# === END SECURITY PREAMBLE ===\n\n";
+
+  // ── Forbidden patterns for static analysis at save time ───────────────────
+  private static readonly FORBIDDEN_PATTERNS: Array<{ re: RegExp; label: string }> = [
+    { re: /\bimport\s+subprocess\b|\bfrom\s+subprocess\b/, label: "subprocess" },
+    { re: /\bimport\s+socket\b|\bfrom\s+socket\b/, label: "socket" },
+    { re: /\bimport\s+ctypes\b|\bfrom\s+ctypes\b/, label: "ctypes" },
+    { re: /\bimport\s+multiprocessing\b|\bfrom\s+multiprocessing\b/, label: "multiprocessing" },
+    { re: /\bimport\s+pickle\b|\bfrom\s+pickle\b/, label: "pickle" },
+    { re: /\bimport\s+shutil\b|\bfrom\s+shutil\b/, label: "shutil" },
+    { re: /\beval\s*\(/, label: "eval()" },
+    { re: /\bexec\s*\(/, label: "exec()" },
+    { re: /\bcompile\s*\(/, label: "compile()" },
+    { re: /\b__import__\s*\(/, label: "__import__()" },
+    { re: /\bos\.system\s*\(/, label: "os.system()" },
+    { re: /\bos\.popen\s*\(/, label: "os.popen()" },
+    { re: /\bos\.exec[a-z]+\s*\(/, label: "os.exec*()" },
+    { re: /\bos\.fork\s*\(/, label: "os.fork()" },
+    { re: /\bos\.spawn[a-z]+\s*\(/, label: "os.spawn*()" },
+    { re: /\bos\.remove\s*\(|\bos\.unlink\s*\(|\bos\.rmdir\s*\(/, label: "os file deletion" },
+    { re: /open\s*\([^)]*['"]\s*(?:w|a|wb|ab|w\+|a\+)\s*['"]/, label: "open() in write mode" },
+  ];
+
+  private validatePythonCode(code: string): void {
+    for (const { re, label } of ExcelReportService.FORBIDDEN_PATTERNS) {
+      if (re.test(code)) {
+        throw new BadRequestException(
+          `Python код аюултай үйлдэл агуулж байна: "${label}". Зөвхөн SELECT query-тэй ClickHouse уншилт зөвшөөрөгдөнө.`,
+        );
+      }
+    }
+  }
+
   constructor(private clickhouse: ClickHouseService) {}
 
   async onModuleInit() {
@@ -119,6 +187,7 @@ export class ExcelReportService implements OnModuleInit {
   }
 
   async createTemplate(dto: CreateReportTemplateDto): Promise<ReportTemplate> {
+    this.validatePythonCode(dto.pythonCode);
     const id = randomUUID();
     const seq = Date.now();
     const now = nowCH();
@@ -143,6 +212,9 @@ export class ExcelReportService implements OnModuleInit {
     id: string,
     dto: UpdateReportTemplateDto,
   ): Promise<ReportTemplate> {
+    if (dto.pythonCode !== undefined) {
+      this.validatePythonCode(dto.pythonCode);
+    }
     const existing = await this.getTemplateById(id);
     const seq = Date.now();
     const now = nowCH();
@@ -187,7 +259,8 @@ export class ExcelReportService implements OnModuleInit {
   async deleteTemplate(id: string): Promise<void> {
     await this.getTemplateById(id);
     await this.clickhouse.exec(
-      `ALTER TABLE excel_report_templates DELETE WHERE id = '${id}'`,
+      `ALTER TABLE excel_report_templates DELETE WHERE id = {id:String}`,
+      { id },
     );
   }
 
@@ -226,7 +299,8 @@ export class ExcelReportService implements OnModuleInit {
     const outputPath = path.join(tmpDir, `excel_report_${randomUUID()}.xlsx`);
 
     try {
-      fs.writeFileSync(scriptPath, template.pythonCode, "utf8");
+      const securedCode = ExcelReportService.PYTHON_SECURITY_PREAMBLE + template.pythonCode;
+      fs.writeFileSync(scriptPath, securedCode, "utf8");
 
       // Build env — pass ClickHouse connection + date params
       const env: Record<string, string> = {

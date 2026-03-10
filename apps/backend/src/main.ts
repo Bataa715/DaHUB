@@ -13,7 +13,13 @@ async function bootstrap() {
   // Security headers
   app.use(
     helmet({
-      contentSecurityPolicy: false, // disabled — frontend is served separately
+      // API server: block all content types — responses are JSON only
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+        },
+      },
       crossOriginEmbedderPolicy: false,
       // Allow cross-origin image/resource loading (frontend & backend on different ports)
       crossOriginResourcePolicy: false,
@@ -52,8 +58,8 @@ async function bootstrap() {
         return;
       }
 
-      // Check if origin is in whitelist
-      if (corsOrigins.some((allowed) => origin.startsWith(allowed))) {
+      // Check if origin is in whitelist — exact match only to prevent subdomain spoofing
+      if (corsOrigins.includes(origin)) {
         callback(null, true);
       } else {
         logger.warn(`CORS blocked request from: ${origin}`);

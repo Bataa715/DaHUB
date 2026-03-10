@@ -20,6 +20,8 @@ import {
   Packer,
   ShadingType,
   HeadingLevel,
+  PageOrientation,
+  SectionType,
 } from "docx";
 import { randomUUID } from "crypto";
 
@@ -264,6 +266,35 @@ export class TailanService {
     );
 
     return rows;
+  }
+
+  // ─── Dept head: get one member's full report ──────────────────────────────
+  async getDeptMemberReport(
+    user: UserPayload,
+    targetUserId: string,
+    year: number,
+    quarter: number,
+  ) {
+    if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
+
+    const rows = await this.clickhouse.query(
+      `SELECT * FROM tailan_reports FINAL
+       WHERE userId = {userId:String}
+         AND year = {year:UInt16}
+         AND quarter = {quarter:UInt8}
+         AND departmentId = {deptId:String}
+       ORDER BY updatedAt DESC
+       LIMIT 1`,
+      {
+        userId: targetUserId,
+        year,
+        quarter,
+        deptId: user.departmentId ?? "",
+      },
+    );
+
+    if (rows.length === 0) return null;
+    return this.parseReport(rows[0]);
   }
 
   // ─── Parse stored report ────────────────────────────────────────────────────
@@ -604,6 +635,7 @@ export class TailanService {
             width: { size: dashColWidths[i], type: WidthType.PERCENTAGE },
             borders: this.border("888888"),
             shading: { type: ShadingType.SOLID, color: "FFFFFF" },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -666,6 +698,7 @@ export class TailanService {
           columnSpan: 2,
           width: { size: 35, type: WidthType.PERCENTAGE },
           borders: this.border("888888"),
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -683,6 +716,7 @@ export class TailanService {
         new TableCell({
           width: { size: 15, type: WidthType.PERCENTAGE },
           borders: this.border("888888"),
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -700,11 +734,13 @@ export class TailanService {
         new TableCell({
           width: { size: 20, type: WidthType.PERCENTAGE },
           borders: this.border("888888"),
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [new Paragraph({ text: " " })],
         }),
         new TableCell({
           width: { size: 30, type: WidthType.PERCENTAGE },
           borders: this.border("888888"),
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [new Paragraph({ text: " " })],
         }),
       ],
@@ -825,6 +861,7 @@ export class TailanService {
         new TableCell({
           columnSpan: 3,
           width: { size: 80, type: WidthType.PERCENTAGE },
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -841,6 +878,7 @@ export class TailanService {
         }),
         new TableCell({
           width: { size: 20, type: WidthType.PERCENTAGE },
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -916,6 +954,7 @@ export class TailanService {
         new TableCell({
           columnSpan: 3,
           width: { size: 80, type: WidthType.PERCENTAGE },
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -932,6 +971,7 @@ export class TailanService {
         }),
         new TableCell({
           width: { size: 20, type: WidthType.PERCENTAGE },
+          margins: { top: 40, bottom: 40, left: 80, right: 80 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -972,8 +1012,9 @@ export class TailanService {
       }),
     );
 
-    // ── Fixed Section IV: Хамрагдсан сургалт ────────────────────────────────
-    children.push(this.bigSectionHeading("IV. Хамрагдсан сургалт"));
+    // ── Fixed Section IV: Хамрагдсан сургалт (landscape section) ────────────
+    const s4Children: any[] = [];
+    s4Children.push(this.bigSectionHeading("IV. Хамрагдсан сургалт"));
     const s4Trainings: any[] = report.section4Trainings ?? [];
     const s4Headers = [
       "№",
@@ -986,7 +1027,7 @@ export class TailanService {
       "Аудитын зорилгод нийцсэн эсэх",
       "Мэдлэгээ хуваалцсан эсэх",
     ];
-    const s4Widths = [5, 25, 15, 12, 10, 10, 7, 8, 8];
+    const s4Widths = [5, 22, 13, 11, 9, 9, 6, 13, 12];
     const s4Rows: string[][] = s4Trainings.map((t, i) => [
       `${i + 1}`,
       t.training ?? "",
@@ -998,7 +1039,7 @@ export class TailanService {
       t.meetsAuditGoal ?? "",
       t.sharedKnowledge ?? "",
     ]);
-    children.push(
+    s4Children.push(
       this.buildDashedTable(
         s4Headers,
         s4Widths,
@@ -1007,7 +1048,7 @@ export class TailanService {
         [0, 4, 5, 6, 7, 8],
       ),
     );
-    children.push(
+    s4Children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 100 },
@@ -1023,19 +1064,22 @@ export class TailanService {
     );
 
     // IV sub-section: Мэдлэгээ ашиглаж буй байдал
-    children.push(
+    s4Children.push(
       this.subSectionHeading(
         "Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:",
       ),
     );
     const knowledgeLines = (report.section4KnowledgeText ?? "").split("\n");
     for (const line of knowledgeLines) {
-      children.push(this.bodyPara(line || " "));
+      s4Children.push(this.bodyPara(line || " "));
     }
-    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+    s4Children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    // ── Sections V onwards (portrait) ─────────────────────────────────────────
+    const postChildren: any[] = [];
 
     // ── Fixed Section V: Үүрэг даалгаварын биелэлт ───────────────────────────
-    children.push(this.bigSectionHeading("V. Үүрэг даалгаварын биелэлт"));
+    postChildren.push(this.bigSectionHeading("V. Үүрэг даалгаварын биелэлт"));
     const s5Tasks: any[] = report.section5Tasks ?? [];
     const s5Headers = ["№", "Ажлын төрөл", "Хийгдсэн ажил"];
     const s5Widths = [5, 35, 60];
@@ -1044,8 +1088,8 @@ export class TailanService {
       t.taskType ?? "",
       t.completedWork ?? "",
     ]);
-    children.push(this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]));
-    children.push(
+    postChildren.push(this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]));
+    postChildren.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 160 },
@@ -1061,7 +1105,7 @@ export class TailanService {
     );
 
     // ── Fixed Section VI: Хамт олны ажил ──────────────────────────────────────
-    children.push(this.bigSectionHeading("VI. Хамт олны ажил"));
+    postChildren.push(this.bigSectionHeading("VI. Хамт олны ажил"));
     const s6Activities: any[] = report.section6Activities ?? [];
     const s6Headers = ["№", "Огноо", "Хамт олны ажил", "Санаачилга"];
     const s6Widths = [5, 20, 50, 25];
@@ -1071,10 +1115,10 @@ export class TailanService {
       t.activity ?? "",
       t.initiative ?? "",
     ]);
-    children.push(
+    postChildren.push(
       this.buildDashedTable(s6Headers, s6Widths, s6Rows, [], [0, 1]),
     );
-    children.push(
+    postChildren.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 40, after: 160 },
@@ -1090,24 +1134,24 @@ export class TailanService {
     );
 
     // ── Fixed Section VII: Шинэ санал санаачилга ──────────────────────────────
-    children.push(this.bigSectionHeading("VII. Шинэ санал санаачилга"));
+    postChildren.push(this.bigSectionHeading("VII. Шинэ санал санаачилга"));
     const s7Lines = (report.section7Text ?? "").split("\n");
     for (const line of s7Lines) {
-      children.push(this.bodyPara(line || " "));
+      postChildren.push(this.bodyPara(line || " "));
     }
-    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+    postChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
 
     // ── Dynamic big sections (VIII, IX, …) ───────────────────────────────────
     const dynamicSecs: any[] = report.dynamicSections ?? [];
     dynamicSecs.forEach((sec: any, idx: number) => {
       const romNum = ROMAN_NUMS[idx + 7] ?? `${idx + 8}`;
       const secTitle = sec.title ?? "";
-      children.push(this.bigSectionHeading(`${romNum}. ${secTitle}`));
+      postChildren.push(this.bigSectionHeading(`${romNum}. ${secTitle}`));
       const lines = (sec.content ?? "").split("\n");
       for (const line of lines) {
-        children.push(this.bodyPara(line || " "));
+        postChildren.push(this.bodyPara(line || " "));
       }
-      children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+      postChildren.push(new Paragraph({ text: "", spacing: { after: 120 } }));
     });
 
     const doc = new Document({
@@ -1121,12 +1165,43 @@ export class TailanService {
       },
       sections: [
         {
+          // Portrait: sections I – III
           properties: {
             page: {
               margin: { top: 902, bottom: 1259, left: 1440, right: 1077 },
             },
           },
           children,
+        },
+        {
+          // Landscape: section IV (9-column training table)
+          properties: {
+            type: SectionType.NEXT_PAGE,
+            page: {
+              size: {
+                width: 16838,
+                height: 11906,
+                orientation: PageOrientation.LANDSCAPE,
+              },
+              margin: { top: 902, bottom: 902, left: 1077, right: 1077 },
+            },
+          },
+          children: s4Children,
+        },
+        {
+          // Portrait: sections V onwards
+          properties: {
+            type: SectionType.NEXT_PAGE,
+            page: {
+              size: {
+                width: 11906,
+                height: 16838,
+                orientation: PageOrientation.PORTRAIT,
+              },
+              margin: { top: 902, bottom: 1259, left: 1440, right: 1077 },
+            },
+          },
+          children: postChildren,
         },
       ],
     });
@@ -1954,6 +2029,7 @@ export class TailanService {
     return new TableCell({
       width: { size: widthPct, type: WidthType.PERCENTAGE },
       borders: this.border(),
+      margins: { top: 40, bottom: 40, left: 80, right: 80 },
       children: [
         new Paragraph({
           alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
@@ -1973,6 +2049,7 @@ export class TailanService {
   ) {
     const cell: any = {
       width: { size: widthPct, type: WidthType.PERCENTAGE },
+      margins: { top: 40, bottom: 40, left: 80, right: 80 },
       children: [
         new Paragraph({
           alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
@@ -2017,6 +2094,7 @@ export class TailanService {
           new TableCell({
             width: { size: colWidths[i], type: WidthType.PERCENTAGE },
             shading: { type: ShadingType.SOLID, color: "FFFFFF" },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,

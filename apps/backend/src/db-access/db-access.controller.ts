@@ -85,6 +85,31 @@ export class DbAccessController {
     return this.dbAccessService.bulkReviewPending(req.user, body.action);
   }
 
+  /** DELETE /db-access/requests/history - clear all approved/rejected requests */
+  @Delete("requests/history")
+  deleteRequestHistory(@Request() req: any) {
+    return this.dbAccessService.deleteRequestHistory(req.user);
+  }
+
+  /** DELETE /db-access/requests/:id - hard-delete a single request (not approved) */
+  @Delete("requests/:id")
+  deleteRequest(@Param("id") id: string, @Request() req: any) {
+    return this.dbAccessService.deleteRequest(id, req.user);
+  }
+
+  /**
+   * POST /db-access/grants/cleanup-ch/:requesterUserId
+   * Force-drop all ClickHouse roles and the CH user for the given userId string.
+   * Use when a user's CH access state is stuck/orphaned after a failed revoke.
+   */
+  @Post("grants/cleanup-ch/:requesterUserId")
+  cleanupChUser(
+    @Param("requesterUserId") requesterUserId: string,
+    @Request() req: any,
+  ) {
+    return this.dbAccessService.cleanupUserChAccess(requesterUserId, req.user);
+  }
+
   // ─── Grants ──────────────────────────────────────────────────────────────────
 
   /** GET /db-access/grants/my - my active grants */

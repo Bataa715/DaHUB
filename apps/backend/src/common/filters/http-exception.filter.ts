@@ -41,7 +41,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn(
         `${status} error on ${request.method} ${request.url}: ${message}`,
       );
-    } else if (process.env.NODE_ENV === "development") {
+    } else {
+      // Always log all other client errors (4xx) for security monitoring
       this.logger.warn(
         `${status} error on ${request.method} ${request.url}: ${message}`,
       );

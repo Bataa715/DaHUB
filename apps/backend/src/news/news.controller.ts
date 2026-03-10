@@ -12,6 +12,7 @@ import {
   Res,
   NotFoundException,
 } from "@nestjs/common";
+import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
 import { Response } from "express";
 import { NewsService } from "./news.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
@@ -52,14 +53,16 @@ export class NewsController {
   }
 
   // Admin – create news
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post()
   async create(@Body() createNewsDto: CreateNewsDto, @Request() req) {
     return this.newsService.create(createNewsDto, req.user.id);
   }
 
   // Admin – update news
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Patch(":id")
   async update(@Param("id") id: string, @Body() updateNewsDto: UpdateNewsDto) {
     return this.newsService.update(id, updateNewsDto);

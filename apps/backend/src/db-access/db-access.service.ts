@@ -118,13 +118,11 @@ export class DbAccessService {
       { uid: user.id },
     );
 
-    // Filter to only grants that share at least one table with the new request
-    const overlappingGrants = activeGrants.filter((g: any) => {
-      const grantedTables: string[] = Array.isArray(g.tables)
-        ? g.tables
-        : JSON.parse(g.tables ?? "[]");
-      return grantedTables.some((t) => newTables.has(t));
-    });
+    // Filter to only grants that share at least one table with the new request.
+    // access_grants rows have a single `tableName` field (one row per table).
+    const overlappingGrants = activeGrants.filter((g: any) =>
+      newTables.has(g.tableName),
+    );
 
     if (overlappingGrants.length > 0) {
       // Group by requestId: one ClickHouse role per request → one full revoke per role
@@ -280,6 +278,41 @@ export class DbAccessService {
     return { affected };
   }
 
+  /** Hard-delete a single pending request (granter / admin only) */
+  async deleteRequest(id: string, user: any) {
+    if (!this.canGrantAccess(user)) {
+      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
+    }
+    const rows = await this.clickhouse.query<any>(
+      `SELECT id, status FROM access_requests WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    if (rows.length === 0) throw new NotFoundException("Хүсэлт олдсонгүй");
+    if (rows[0].status === "approved") {
+      throw new BadRequestException("Батлагдаж хүсэлтийг устгах боломжтой");
+    }
+    await this.clickhouse.exec(
+      `ALTER TABLE access_requests DELETE WHERE id = {id:String}`,
+      { id },
+    );
+    this.logger.log(`[DBAccess] Request ${id} (${rows[0].status}) deleted by ${user.userId}`);
+    return { success: true };
+  }
+
+  /** Delete all approved/rejected request history (keeps pending rows) */
+  async deleteRequestHistory(user: any) {
+    if (!this.canGrantAccess(user)) {
+      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
+    }
+    await this.clickhouse.exec(
+      `ALTER TABLE access_requests DELETE WHERE status IN ('approved', 'rejected')`,
+    );
+    this.logger.log(
+      `[DBAccess] Request history deleted by ${user.userId}`,
+    );
+    return { success: true, message: "Түүх устгагдлаа" };
+  }
+
   /** Get grants filtered by userId */
   async getGrantsByUser(targetUserId: string, requester: any) {
     if (!this.canGrantAccess(requester)) {
@@ -294,6 +327,28 @@ export class DbAccessService {
       { userId: targetUserId },
     );
     return rows.map(this.formatGrant);
+  }
+
+  /**
+   * Force-clean a user's ClickHouse access state (drop all orphaned roles + CH user).
+   * Use this when a user is stuck after a failed revoke/approve cycle.
+   * After cleanup, the next approval will recreate everything cleanly.
+   */
+  async cleanupUserChAccess(requesterUserId: string, admin: any) {
+    if (!this.canGrantAccess(admin)) {
+      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
+    }
+    const result = await this.chAccess.cleanupUserChAccess(requesterUserId);
+    this.logger.log(
+      `[DBAccess] CH cleanup for userId=${requesterUserId} by ${admin.userId}: ` +
+        `rolesDropped=${result.rolesDropped.length} userDropped=${result.userDropped}`,
+    );
+    return {
+      success: true,
+      rolesDropped: result.rolesDropped,
+      userDropped: result.userDropped,
+      message: `ClickHouse хандалт цэвэрлэгдлээ (${result.rolesDropped.length} role, user: ${result.userDropped ? "устгагдсан" : "байгаагүй"})`,
+    };
   }
 
   /** Approve or reject a request */
@@ -313,6 +368,7 @@ export class DbAccessService {
       throw new BadRequestException("Хүсэлт аль хэдийн шийдвэрлэгдсэн байна");
 
     const now = this.formatDateTime(new Date());
+    let chSetupFailed = false;
 
     // Upsert via re-insert (ReplacingMergeTree deduplicates by updatedAt version)
     await this.clickhouse.insert("access_requests", [
@@ -363,14 +419,19 @@ export class DbAccessService {
           password: sharedPassword,
         });
       } catch (err: any) {
-        this.logger.warn(`[CH ACL] setupUserAndRole failed: ${err?.message}`);
-        // Non-fatal: grants table is still written below
+        chSetupFailed = true;
+        this.logger.error(
+          `[CH ACL] setupUserAndRole FAILED for user=${req.requesterUserId}: ${err?.message}. ` +
+            `Grant DB rows will be written but CH access may be broken. ` +
+            `Admin should use the CH cleanup endpoint to reset.`,
+        );
       }
 
-      // Step 2: grant all tables in parallel
+      // Step 2: grant all tables in parallel (even if setup failed — role may have been partially created)
       await Promise.all(
         tables.map((table) =>
           this.chAccess.grantTableToRole(requestId, table).catch((err: any) => {
+            chSetupFailed = true;
             this.logger.warn(
               `[CH ACL] Failed to grant ${table}: ${err?.message}`,
             );
@@ -379,7 +440,7 @@ export class DbAccessService {
       );
 
       this.logger.log(
-        `[CH ACL] Approved ${tables.length} table(s) for user=${req.requesterUserId}`,
+        `[CH ACL] Approved ${tables.length} table(s) for user=${req.requesterUserId}${chSetupFailed ? " (⚠ CH setup had errors)" : ""}`,
       );
 
       // ── Insert audit grant rows (all share the same chPassword) ───────────────
@@ -409,7 +470,11 @@ export class DbAccessService {
       `Request ${requestId} ${dto.action}d by ${reviewer.userId}`,
     );
 
-    return { success: true, action: dto.action };
+    return {
+      success: true,
+      action: dto.action,
+      chSetupFailed: dto.action === "approve" ? (chSetupFailed ?? false) : false,
+    };
   }
 
   // ─── Access Grants ───────────────────────────────────────────────────────────
@@ -652,7 +717,7 @@ export class DbAccessService {
       grantedByName: g.grantedByName,
       grantedAt: g.grantedAt,
       isActive: !!g.isActive,
-      // chPassword intentionally omitted — use GET /grants/:id/credentials instead
+      chPassword: g.chPassword ?? "",
     };
   }
 }

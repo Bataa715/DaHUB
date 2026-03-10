@@ -3,6 +3,7 @@ export interface RowInlineImage {
   id: string;
   dataUrl: string;
   width: number; // percentage 10–100
+  height?: number; // pixels, undefined = auto
 }
 
 export interface PlannedTask {

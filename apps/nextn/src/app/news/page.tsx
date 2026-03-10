@@ -26,16 +26,15 @@ function getImageUrl(path?: string): string | null {
   return `${process.env.NEXT_PUBLIC_API_URL}${path}`;
 }
 
-/** Strip script tags, dangerous event handlers, and javascript: URIs from HTML */
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/\s+on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, "")
-    .replace(
-      /href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi,
-      'href="#"',
-    )
-    .replace(/src\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi, "");
+  if (typeof window === "undefined") return "";
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const DOMPurify = (require("dompurify") as typeof import("dompurify")).default;
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
+    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+  });
 }
 
 interface News {

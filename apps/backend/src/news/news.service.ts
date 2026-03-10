@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException } from "@nestjs/common";
+﻿import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
 import { randomUUID } from "crypto";
@@ -108,8 +108,12 @@ export class NewsService {
     // Base64 chars are [A-Za-z0-9+/=] only — safe to embed directly in SQL.
     if (updateNewsDto.imageUrl !== undefined) {
       if (updateNewsDto.imageUrl.startsWith("data:")) {
+        // Guard against huge payloads before running regex (ReDoS / memory protection)
+        if (updateNewsDto.imageUrl.length > 5_000_000) {
+          throw new BadRequestException("Зурагны хэмжээ хэт их байна (дээд тал нь 5MB)");
+        }
         const matches = updateNewsDto.imageUrl.match(
-          /^data:([^;]+);base64,(.+)$/,
+          /^data:([^;]{1,100});base64,([A-Za-z0-9+/=]+)$/,
         );
         if (matches) {
           const imageData = matches[2];
@@ -120,8 +124,8 @@ export class NewsService {
             /^[a-zA-Z0-9.+/-]+$/.test(imageMime)
           ) {
             await this.clickhouse.exec(
-              `ALTER TABLE news UPDATE imageUrl = '${imageData}', imageMime = '${imageMime}' WHERE id = {id:String}`,
-              { id },
+              `ALTER TABLE news UPDATE imageUrl = {imageUrl:String}, imageMime = {imageMime:String} WHERE id = {id:String}`,
+              { imageUrl: imageData, imageMime, id },
             );
           }
         }

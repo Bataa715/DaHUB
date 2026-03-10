@@ -308,6 +308,74 @@ export class ClickHouseAccessService {
     return this.fetchGrants(username);
   }
 
+  /**
+   * Force-clean all ClickHouse access state for a user:
+   *   - Drop every role whose name matches `role_req_*` that is assigned to the user
+   *   - Drop the ClickHouse user itself
+   *
+   * Use this when a user is stuck (orphaned roles, broken DEFAULT ROLE state, etc.)
+   * so that the next approval can start from a clean slate.
+   */
+  async cleanupUserChAccess(
+    requesterUserId: string,
+  ): Promise<{ rolesDropped: string[]; userDropped: boolean }> {
+    const username = this.sanitizeIdentifier(requesterUserId);
+    const rolesDropped: string[] = [];
+
+    // 1. Collect all role_req_* roles currently assigned to this user
+    const assignedRoles = await this.getActiveRolesForUser(username);
+    const reqRoles = assignedRoles.filter((r) =>
+      r.startsWith("role_req_"),
+    );
+
+    // 2. Also scan system.roles for orphaned role_req_* roles that reference this user
+    //    (catches roles that ClickHouse may still know about even if not in role_grants)
+    try {
+      const systemRoles = await this.clickhouse.query<{ name: string }>(
+        `SELECT name FROM system.roles WHERE name LIKE 'role_req_%'`,
+      );
+      for (const { name } of systemRoles) {
+        if (!reqRoles.includes(name)) {
+          // Orphaned role — add to list for cleanup
+          reqRoles.push(name);
+        }
+      }
+    } catch {
+      // system.roles unavailable — proceed with what we have
+    }
+
+    // 3. Drop each role (revoke from user first, then drop)
+    for (const role of reqRoles) {
+      try {
+        await this.clickhouse.exec(
+          `REVOKE IF EXISTS ${this.q(role)} FROM ${this.q(username)}`,
+        );
+      } catch { /* ignore */ }
+      try {
+        await this.clickhouse.exec(`DROP ROLE IF EXISTS ${this.q(role)}`);
+        rolesDropped.push(role);
+        this.logger.log(`[cleanup] Dropped orphaned role ${role} for user ${username}`);
+      } catch (err: any) {
+        this.logger.warn(`[cleanup] Could not drop role ${role}: ${err?.message}`);
+      }
+    }
+
+    // 4. Drop the ClickHouse user
+    let userDropped = false;
+    const userExists = await this.clickhouseUserExists(username);
+    if (userExists) {
+      try {
+        await this.clickhouse.exec(`DROP USER IF EXISTS ${this.q(username)}`);
+        userDropped = true;
+        this.logger.log(`[cleanup] Dropped CH user ${username}`);
+      } catch (err: any) {
+        this.logger.warn(`[cleanup] Could not drop CH user ${username}: ${err?.message}`);
+      }
+    }
+
+    return { rolesDropped, userDropped };
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   //  PRIVATE HELPERS
   // ═══════════════════════════════════════════════════════════════════════════

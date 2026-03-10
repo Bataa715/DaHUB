@@ -14,11 +14,8 @@ import Link from "next/link";
 import {
   Database,
   ArrowLeft,
-  Clock,
   CheckCircle2,
-  XCircle,
   Loader2,
-  Plus,
   RefreshCw,
   Send,
   Calendar,
@@ -32,37 +29,6 @@ interface TableInfo {
   full: string;
 }
 
-interface AccessRequest {
-  id: string;
-  tables: string[];
-  columns: string[];
-  accessTypes: string[];
-  validUntil: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
-  reviewedByName: string;
-  reviewNote: string;
-  requestTime: string;
-  reviewedAt: string | null;
-}
-
-const STATUS_CONFIG = {
-  pending: {
-    label: "Хүлээгдэж байна",
-    icon: Clock,
-    color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  },
-  approved: {
-    label: "Зөвшөөрөгдсөн",
-    icon: CheckCircle2,
-    color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  },
-  rejected: {
-    label: "Татгалзсан",
-    icon: XCircle,
-    color: "bg-red-500/20 text-red-400 border-red-500/30",
-  },
-};
 
 export default function DbAccessRequestPage() {
   const { user } = useAuth();
@@ -91,10 +57,6 @@ export default function DbAccessRequestPage() {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // My requests
-  const [myRequests, setMyRequests] = useState<AccessRequest[]>([]);
-  const [requestsLoading, setRequestsLoading] = useState(true);
-
   // Table search filter
   const [tableFilter, setTableFilter] = useState("");
 
@@ -122,22 +84,9 @@ export default function DbAccessRequestPage() {
     }
   }, [toast]);
 
-  const loadMyRequests = useCallback(async () => {
-    try {
-      setRequestsLoading(true);
-      const data = await dbAccessApi.getMyRequests();
-      setMyRequests(data);
-    } catch {
-      // silent
-    } finally {
-      setRequestsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     loadTables();
-    loadMyRequests();
-  }, [loadTables, loadMyRequests]);
+  }, [loadTables]);
 
   const toggleTable = (full: string) => {
     setSelectedTables((prev) =>
@@ -212,7 +161,6 @@ export default function DbAccessRequestPage() {
       // Reset form
       setSelectedTables([]);
       setReason("");
-      loadMyRequests();
     } catch (err: any) {
       toast({
         title: "Алдаа",
@@ -258,20 +206,26 @@ export default function DbAccessRequestPage() {
               </p>
             </div>
           </div>
-          {(user?.isAdmin ||
-            user?.allowedTools?.includes("db_access_granter")) && (
-            <Link href="/tools/db-access/manage" className="ml-auto">
+          <div className="flex items-center gap-2 ml-auto">
+            <Link href="/tools/db-access/my-grants">
               <Button variant="outline" size="sm">
-                <Table2 className="h-4 w-4 mr-2" />
-                Хүсэлт шийдвэрлэх
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Идэвхтэй эрхүүд
               </Button>
             </Link>
-          )}
+            {(user?.isAdmin ||
+              user?.allowedTools?.includes("db_access_granter")) && (
+              <Link href="/tools/db-access/manage">
+                <Button variant="outline" size="sm">
+                  <Table2 className="h-4 w-4 mr-2" />
+                  Хүсэлт шийдвэрлэх
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Table picker */}
-          <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4">
             <div className="rounded-xl border bg-card p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold flex items-center gap-2">
@@ -476,7 +430,7 @@ export default function DbAccessRequestPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Шалтгаан (заавал биш)</Label>
+                <Label>Шалтгаан (заавал)</Label>
                 <Textarea
                   placeholder="Яагаад энэ эрх хэрэгтэй байгаагаа бичнэ үү..."
                   value={reason}
@@ -499,98 +453,6 @@ export default function DbAccessRequestPage() {
                 Хүсэлт илгээх
               </Button>
             </div>
-          </div>
-
-          {/* Right: My requests */}
-          <div className="rounded-xl border bg-card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-sm">Миний хүсэлтүүд</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={loadMyRequests}
-                disabled={requestsLoading}
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${requestsLoading ? "animate-spin" : ""}`}
-                />
-              </Button>
-            </div>
-
-            {requestsLoading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : myRequests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
-                <Plus className="h-8 w-8 opacity-30" />
-                <p className="text-sm">Хүсэлт байхгүй</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-                {myRequests.map((req) => {
-                  const cfg = STATUS_CONFIG[req.status];
-                  const StatusIcon = cfg.icon;
-                  return (
-                    <div
-                      key={req.id}
-                      className="rounded-lg border bg-background/50 p-3 space-y-2"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-wrap gap-1">
-                          {req.tables.map((t) => (
-                            <span
-                              key={t}
-                              className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded"
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={`shrink-0 text-xs ${cfg.color}`}
-                        >
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {cfg.label}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        <p>
-                          Хүчинтэй:{" "}
-                          {new Date(req.validUntil).toLocaleDateString("mn-MN")}
-                        </p>
-                        <p>
-                          Илгээсэн:{" "}
-                          {new Date(req.requestTime).toLocaleDateString(
-                            "mn-MN",
-                          )}
-                        </p>
-                        {req.reviewedByName && (
-                          <p>Шийдвэрлэсэн: {req.reviewedByName}</p>
-                        )}
-                        {req.reviewNote && (
-                          <p className="italic">"{req.reviewNote}"</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* My active grants link */}
-            <Link href="/tools/db-access/my-grants">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 text-xs"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                Идэвхтэй эрхүүд харах
-              </Button>
-            </Link>
-          </div>
         </div>
       </div>
     </div>

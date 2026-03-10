@@ -13,6 +13,7 @@ import type {
   Section5Task,
   Section6Activity,
   TailanImage,
+  RowInlineImage,
 } from "./tailan.types";
 
 // Format stored "YYYY-MM-DD – YYYY-MM-DD" → "YYYY.MM.DD-YYYY.MM.DD"
@@ -78,6 +79,7 @@ interface WordPreviewProps {
   section6Activities: Section6Activity[];
   section7Text: string;
   images: TailanImage[];
+  hiddenSections?: Set<string>;
 }
 
 export function WordPreview({
@@ -98,9 +100,11 @@ export function WordPreview({
   section6Activities,
   section7Text,
   images,
+  hiddenSections,
 }: WordPreviewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(1);
+  const hidden = hiddenSections ?? new Set<string>();
 
   React.useEffect(() => {
     const el = containerRef.current;
@@ -197,6 +201,8 @@ export function WordPreview({
           </div>
 
           {/* ── Section I ── */}
+          {!hidden.has("s1") && (
+          <>
           <div style={headingStyle}>
             I. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:
           </div>
@@ -238,6 +244,8 @@ export function WordPreview({
                               alt=""
                               style={{
                                 width: `${img.width}%`,
+                                height: img.height ? `${img.height}px` : undefined,
+                                objectFit: img.height ? "fill" : undefined,
                                 maxWidth: "100%",
                                 display: "inline-block",
                               }}
@@ -259,7 +267,11 @@ export function WordPreview({
                 ))}
             </div>
           )}
+          </>
+          )}
 
+          {!hidden.has("s12") && (
+          <>
           <div style={subHeadingStyle}>
             Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:
           </div>
@@ -419,7 +431,11 @@ export function WordPreview({
           >
             Хүснэгт {tableCounter.n++}.
           </div>
+          </>
+          )}
           {/* ── Section II ── */}
+          {!hidden.has("s2") && (
+          <>
           <div style={headingStyle}>
             II. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын
             ажил:
@@ -520,6 +536,8 @@ export function WordPreview({
                         alt=""
                         style={{
                           width: `${img.width}%`,
+                          height: img.height ? `${img.height}px` : undefined,
+                          objectFit: img.height ? "fill" : undefined,
                           maxWidth: "100%",
                           display: "inline-block",
                         }}
@@ -548,8 +566,12 @@ export function WordPreview({
           >
             Хүснэгт {tableCounter.n++}.
           </div>
+          </>
+          )}
 
           {/* ── Section III ── */}
+          {!hidden.has("s3") && (
+          <>
           <div style={headingStyle}>III. Тогтмол хийгддэг ажлууд</div>
           <div style={subHeadingStyle}>
             Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн
@@ -742,7 +764,11 @@ export function WordPreview({
           >
             Хүснэгт {tableCounter.n++}.
           </div>
+          </>
+          )}
           {/* ── Section IV ── */}
+          {!hidden.has("s4") && (
+          <>
           <div style={headingStyle}>IV. Хамрагдсан сургалт</div>
           <table
             style={{
@@ -835,8 +861,12 @@ export function WordPreview({
           ) : (
             <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
           )}
+          </>
+          )}
 
           {/* ── Section V ── */}
+          {!hidden.has("s5") && (
+          <>
           <div style={headingStyle}>V. Үүрэг даалгаварын биелэлт</div>
           <table
             style={{
@@ -894,7 +924,11 @@ export function WordPreview({
           >
             Хүснэгт {tableCounter.n++}.
           </div>
+          </>
+          )}
           {/* ── Section VI ── */}
+          {!hidden.has("s6") && (
+          <>
           <div style={headingStyle}>VI. Хамт олны ажил</div>
           <table
             style={{
@@ -951,7 +985,11 @@ export function WordPreview({
           >
             Хүснэгт {tableCounter.n++}.
           </div>
+          </>
+          )}
           {/* ── Section VII ── */}
+          {!hidden.has("s7") && (
+          <>
           <div style={headingStyle}>VII. Шинэ санал санаачилга</div>
           {section7Text?.trim() ? (
             <div style={{ marginBottom: "8pt", whiteSpace: "pre-wrap" }}>
@@ -959,6 +997,8 @@ export function WordPreview({
             </div>
           ) : (
             <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
+          )}
+          </>
           )}
 
           {/* ── Dynamic sections VIII, IX, … ── */}
@@ -976,4 +1016,394 @@ export function WordPreview({
       </div>
     </div>
   );
+}
+
+// ─── HTML string export (identical to the preview above) ─────────────────────
+function esc(s: string): string {
+  return (s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderInlineHtml(text: string): string {
+  return text
+    .split(/(\*\*[^*]*\*\*)/g)
+    .map((p) =>
+      p.startsWith("**") && p.endsWith("**")
+        ? `<strong>${esc(p.slice(2, -2))}</strong>`
+        : esc(p),
+    )
+    .join("");
+}
+
+function parseContentHtml(text: string, tc: { n: number }): string {
+  const lines = (text ?? "").split("\n");
+  let html = "";
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trim().startsWith("|")) {
+      const tLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tLines.push(lines[i]);
+        i++;
+      }
+      const dataRows = tLines
+        .filter((l) => !/^\s*\|[\s\-|]+\|\s*$/.test(l))
+        .map((l) =>
+          l
+            .split("|")
+            .filter(Boolean)
+            .map((c) => c.trim()),
+        );
+      if (dataRows.length > 0) {
+        tc.n++;
+        html += `<div style="margin-bottom:8pt"><div style="font-size:9pt;font-style:italic;margin-bottom:2pt">Хүснэгт ${tc.n}.</div>`;
+        html += `<table style="width:100%;border-collapse:collapse;font-size:9.5pt"><tbody>`;
+        dataRows.forEach((row, ri) => {
+          const bg = ri === 0 ? "background:#1F3864;color:#fff" : "";
+          html += `<tr style="${bg}">`;
+          row.forEach((cell) => {
+            html += `<td style="border:1px solid #888;padding:3px 5px">${esc(cell)}</td>`;
+          });
+          html += `</tr>`;
+        });
+        html += `</tbody></table></div>`;
+      }
+      continue;
+    }
+    if (line.startsWith("- ")) {
+      html += `<ul style="margin-left:20pt;margin-bottom:4pt;list-style-type:disc">`;
+      while (i < lines.length && lines[i].startsWith("- ")) {
+        html += `<li style="margin-bottom:2pt">${renderInlineHtml(lines[i].slice(2))}</li>`;
+        i++;
+      }
+      html += `</ul>`;
+      continue;
+    }
+    if (/^\d+\. /.test(line)) {
+      html += `<ol style="margin-left:20pt;margin-bottom:4pt">`;
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        html += `<li style="margin-bottom:2pt">${renderInlineHtml(lines[i].replace(/^\d+\. /, ""))}</li>`;
+        i++;
+      }
+      html += `</ol>`;
+      continue;
+    }
+    html += `<div style="text-align:justify;margin-bottom:4pt">${line ? renderInlineHtml(line) : "&nbsp;"}</div>`;
+    i++;
+  }
+  return html;
+}
+
+export interface BuildWordHtmlProps {
+  userName: string;
+  userPosition?: string;
+  userDepartment?: string;
+  year: number;
+  quarter: number;
+  plannedTasks: PlannedTask[];
+  section2Tasks: Section2Task[];
+  section3AutoTasks: Section3AutoTask[];
+  section3Dashboards: Section3Dashboard[];
+  section1Dashboards: Section1Dashboard[];
+  dynamicSections: DynSection[];
+  section4Trainings: Section4Training[];
+  section4KnowledgeText: string;
+  section5Tasks: Section5Task[];
+  section6Activities: Section6Activity[];
+  section7Text: string;
+  images: TailanImage[];
+  hiddenSections?: Set<string>;
+}
+
+export function buildWordHtml(p: BuildWordHtmlProps): string {
+  const tc = { n: 1 };
+  const ic = { n: 1 };
+  const hidden = p.hiddenSections ?? new Set<string>();
+
+  const ROMAN = ROMAN_NUMS;
+  const qName = ROMAN[(p.quarter - 1) % 4] ?? "I";
+  const deptCode = deptAbbrevMn(p.userDepartment ?? "");
+  const posUpper = (p.userPosition ?? "").toUpperCase();
+  const nameUpper = (p.userName ?? "").toUpperCase();
+  const titleText = `${deptCode ? `${deptCode}-НЫ ` : ""}${posUpper}${posUpper && nameUpper ? " " : ""}${nameUpper} ${p.year} ОНЫ ${qName}-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН`;
+
+  const H = `font-family:'Times New Roman',Times,serif;font-size:11pt`;
+  const heading = (t: string) =>
+    `<div style="${H};font-weight:bold;margin-top:14pt;margin-bottom:6pt">${esc(t)}</div>`;
+  const subHeading = (t: string) =>
+    `<div style="${H};font-weight:bold;margin-top:10pt;margin-bottom:5pt">${esc(t)}</div>`;
+  const th = (t: string, w?: string) =>
+    `<th style="border:0.5px dotted #bbb;padding:4px 6px;text-align:center;font-weight:bold${w ? `;width:${w}` : ""}">${esc(t)}</th>`;
+  const tdC = (t: string, w?: string) =>
+    `<td style="border:0.5px dotted #ccc;padding:3px 5px;text-align:center${w ? `;width:${w}` : ""}">${esc(t)}</td>`;
+  const tdL = (t: string, w?: string) =>
+    `<td style="border:0.5px dotted #ccc;padding:3px 5px${w ? `;width:${w}` : ""}">${esc(t)}</td>`;
+  const tdLH = (inner: string, w?: string) =>
+    `<td style="border:0.5px dotted #ccc;padding:3px 5px${w ? `;width:${w}` : ""}">${inner}</td>`;
+  const tblStart = `<table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-bottom:10pt;font-family:'Times New Roman',serif;border:1px solid #000"><thead>`;
+  const tblMid = `</thead><tbody>`;
+  const tblEnd = `</tbody></table>`;
+  const caption = () =>
+    `<div style="font-size:9pt;font-style:italic;text-align:center;margin-bottom:2pt">Хүснэгт ${tc.n++}.</div>`;
+
+  const fmtPeriodHtml = (period: string): string => {
+    const [s, e] = (period ?? "").split(" – ");
+    const fmt = (d?: string) => (d ? d.replace(/-/g, ".") : "");
+    if (!s && !e) return "";
+    if (!e) return fmt(s);
+    return `${fmt(s)}-<br>${fmt(e)}`;
+  };
+
+  // A4 content width = 210mm - 25.4mm (left) - 19mm (right) = 165.6mm
+  // Word ignores CSS percentage widths on <img>, so convert % → absolute mm.
+  const CONTENT_WIDTH_MM = 165.6;
+  const inlineImgHtml = (img: RowInlineImage): string => {
+    if (!img.dataUrl) return "";
+    const pct = img.width ?? 80;
+    const wMm = Math.round(CONTENT_WIDTH_MM * pct / 100);
+    // Word ignores mm in the width/height attributes (only pixels accepted); convert at 96 DPI
+    const wPx = Math.round(wMm * 96 / 25.4);
+    const captureN = ic.n++;
+    const hPx = img.height ?? undefined;
+    const hMm = hPx ? Math.round(hPx * 25.4 / 96) : undefined;
+    const sizeStyle = hMm
+      ? `width:${wMm}mm;height:${hMm}mm;object-fit:fill;display:block;margin:0 auto`
+      : `width:${wMm}mm;max-width:100%;display:block;margin:0 auto`;
+    const sizeAttr = hPx ? `width="${wPx}" height="${hPx}"` : `width="${wPx}"`;
+    return (
+      `<div style="text-align:center;margin-bottom:8pt;page-break-inside:avoid">` +
+      `<img src="${img.dataUrl}" ${sizeAttr} style="${sizeStyle}" />` +
+      `<div style="font-size:9pt;font-style:italic;margin-top:3pt">Зураг ${captureN}.</div></div>`
+    );
+  };
+
+  let body = "";
+
+  // Title
+  body += `<div style="text-align:center;margin-bottom:20pt;font-weight:bold;font-size:11pt;text-transform:uppercase;font-family:'Times New Roman',serif">${esc(titleText)}</div>`;
+
+  // ── Section I ──
+  if (!hidden.has("s1")) {
+  body += heading("I. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:");
+  const filteredTasks = p.plannedTasks.filter((t) => t.title?.trim());
+  if (filteredTasks.length === 0) {
+    body += `<div style="margin-bottom:8pt">&nbsp;</div>`;
+  } else {
+    body += `<div style="margin-bottom:8pt">`;
+    filteredTasks.forEach((t, idx) => {
+      body += `<div style="margin-bottom:6pt"><span style="font-weight:bold">${idx + 1}. ${esc(t.title)}</span>`;
+      if (t.description?.trim()) {
+        body += `<div style="margin-left:16pt;margin-top:2pt;color:#080808">${parseContentHtml(t.description, tc)}</div>`;
+      }
+      if (t.images?.length > 0) {
+        body += `<div style="margin-top:6pt">`;
+        t.images.forEach((img) => { body += inlineImgHtml(img); });
+        body += `</div>`;
+      }
+      body += `</div>`;
+    });
+    body += `</div>`;
+  }
+  }
+
+  // I.2 dashboard table
+  if (!hidden.has("s12")) {
+  body += subHeading("Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:");
+  body += tblStart;
+  body += `<tr style="background:#fff;color:#000">${["№","Төлөвлөгөөт ажил","Ажлын гүйцэтгэл","Хийгдсэн хугацаа","Гүйцэтгэл /товч/"].map((h) => th(h)).join("")}</tr>`;
+  body += tblMid;
+  if (p.section1Dashboards.length === 0) {
+    body += `<tr>${[5,30,15,20,30].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+  } else {
+    p.section1Dashboards.forEach((t, idx) => {
+      const nums1 = p.section1Dashboards.map((x) => parseFloat(x.completion)).filter((n) => !isNaN(n));
+      body += `<tr>` +
+        tdC(`${idx + 1}`, "5%") +
+        tdL(esc(t.title), "30%") +
+        tdC(t.completion !== "" ? `${esc(t.completion)}%` : "", "15%") +
+        `<td style="border:0.5px dotted #ccc;padding:3px 5px;text-align:center;width:20%;font-size:8.5pt">${fmtPeriodHtml(t.period ?? "")}</td>` +
+        tdLH(parseContentHtml(t.summary ?? "", tc), "30%") +
+        `</tr>`;
+    });
+    const nums1 = p.section1Dashboards.map((x) => parseFloat(x.completion)).filter((n) => !isNaN(n));
+    const avg1 = nums1.length > 0 ? Math.round(nums1.reduce((a, b) => a + b, 0) / nums1.length) : null;
+    body += `<tr>` +
+      `<td colspan="2" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:35%">Дундаж гүйцэтгэл</td>` +
+      `<td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:15%">${avg1 !== null ? `${avg1}%` : ""}</td>` +
+      tdL("&nbsp;","20%") + tdL("&nbsp;","30%") +
+      `</tr>`;
+  }
+  body += tblEnd;
+  if (p.section1Dashboards.some((t) => t.images?.length > 0)) {
+    body += `<div style="margin-bottom:8pt">`;
+    p.section1Dashboards.filter((t) => t.images?.length > 0).forEach((t) => {
+      t.images.forEach((img) => { body += inlineImgHtml(img); });
+    });
+    body += `</div>`;
+  }
+  body += caption();
+  }
+
+  // ── Section II ──
+  if (!hidden.has("s2")) {
+  body += heading("II. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил:");
+  body += tblStart;
+  body += `<tr style="background:#fff;color:#000">${["№","Төлөвлөгөөт ажлууд<br>(Дууссан ажлууд)","Ажлын гүйцэтгэл","Хийгдсэн хугацаа","Гүйцэтгэл/товч/"].map((h) => `<th style="border:0.5px dotted #bbb;padding:4px 6px;text-align:center;font-weight:bold">${h}</th>`).join("")}</tr>`;
+  body += tblMid;
+  if (p.section2Tasks.length === 0) {
+    body += `<tr>${[5,30,20,20,25].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+  } else {
+    p.section2Tasks.forEach((t, idx) => {
+      body += `<tr>` +
+        tdC(`${idx + 1}`, "5%") +
+        tdL(esc(t.title), "30%") +
+        tdC(t.result !== "" ? `${esc(t.result)}%` : "", "20%") +
+        `<td style="border:0.5px dotted #ccc;padding:3px 5px;text-align:center;width:20%;font-size:8.5pt">${fmtPeriodHtml(t.period ?? "")}</td>` +
+        tdL(esc(t.completion), "25%") +
+        `</tr>`;
+    });
+  }
+  body += tblEnd;
+  if (p.section2Tasks.some((t) => t.images?.length > 0)) {
+    body += `<div style="margin-bottom:8pt">`;
+    p.section2Tasks.filter((t) => t.images?.length > 0).forEach((t) => {
+      t.images.forEach((img) => { body += inlineImgHtml(img); });
+    });
+    body += `</div>`;
+  }
+  body += caption();
+  }
+
+  // ── Section III ──
+  if (!hidden.has("s3")) {
+  body += heading("III. Тогтмол хийгддэг ажлууд");
+  body += subHeading("Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал:");
+  body += tblStart;
+  body += `<tr style="background:#fff;color:#000">${["№","Тогтмол хийгддэг өгөгдөл боловсруулалт","Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ","Хэрэглэгчийн нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
+  body += tblMid;
+  if (p.section3AutoTasks.length === 0) {
+    body += `<tr>${[5,40,35,20].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+  } else {
+    p.section3AutoTasks.forEach((t, idx) => {
+      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdL(esc(t.title),"40%") + tdL(esc(t.value),"35%") + tdC(esc(t.rating),"20%") + `</tr>`;
+    });
+    const nums3a = p.section3AutoTasks.map((t) => parseFloat(t.rating)).filter((n) => !isNaN(n));
+    const avg3a = nums3a.length > 0 ? Math.round(nums3a.reduce((a,b)=>a+b,0)/nums3a.length) : null;
+    body += `<tr><td colspan="3" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:80%">Дундаж үнэлгээ</td><td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:20%">${avg3a !== null ? `${avg3a}%` : ""}</td></tr>`;
+  }
+  body += tblEnd + caption();
+
+  body += subHeading("Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:");
+  body += tblStart;
+  body += `<tr style="background:#fff;color:#000">${["№","Дашбоард","Дашбоардын ач холбогдол,хэрэглээ","Хэрэглэгч нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
+  body += tblMid;
+  if (p.section3Dashboards.length === 0) {
+    body += `<tr>${[5,35,40,20].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+  } else {
+    p.section3Dashboards.forEach((t, idx) => {
+      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdL(esc(t.dashboard),"35%") + tdL(esc(t.value),"40%") + tdC(esc(t.rating),"20%") + `</tr>`;
+    });
+    const nums3d = p.section3Dashboards.map((t) => parseFloat(t.rating)).filter((n) => !isNaN(n));
+    const avg3d = nums3d.length > 0 ? Math.round(nums3d.reduce((a,b)=>a+b,0)/nums3d.length) : null;
+    body += `<tr><td colspan="3" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:80%">Дундаж үнэлгээ</td><td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:20%">${avg3d !== null ? `${avg3d}%` : ""}</td></tr>`;
+  }
+  body += tblEnd + caption();
+  }
+
+  // ── Section IV ──
+  if (!hidden.has("s4")) {
+  body += heading("IV. Хамрагдсан сургалт");
+  body += tblStart;
+  body += `<tr style="background:#fff;color:#000">${["№","Хамрагдсан сургалт","Зохион байгуулагч","Сургалтын төрөл","Хэзээ","Сургалтын хэлбэр","Цаг","Аудитын зорилгод нийцсэн эсэх","Мэдлэгээ хуваалцсан эсэх"].map((h) => th(h)).join("")}</tr>`;
+  body += tblMid;
+  if (p.section4Trainings.length === 0) {
+    body += `<tr>${[5,25,15,12,10,10,7,8,8].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+  } else {
+    p.section4Trainings.forEach((t, idx) => {
+      body += `<tr>` +
+        tdC(`${idx+1}`,"5%") + tdL(esc(t.training),"25%") + tdC(esc(t.organizer),"15%") +
+        tdC(esc(t.type),"12%") + tdC(t.date ? t.date.replace(/-/g,".") : "","10%") +
+        tdC(esc(t.format),"10%") + tdC(t.hours ? `${esc(t.hours)} цаг` : "","7%") +
+        tdC(esc(t.meetsAuditGoal),"8%") + tdC(esc(t.sharedKnowledge),"8%") +
+        `</tr>`;
+    });
+  }
+  body += tblEnd + caption();
+  body += subHeading("Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:");
+  body += p.section4KnowledgeText?.trim()
+    ? `<div style="margin-bottom:8pt;white-space:pre-wrap">${esc(p.section4KnowledgeText)}</div>`
+    : `<div style="margin-bottom:8pt">&nbsp;</div>`;
+  }
+
+  // ── Section V ──
+  if (!hidden.has("s5")) {
+  body += heading("V. Үүрэг даалгаварын биелэлт");
+  body += tblStart;
+  body += `<tr style="background:#fff;color:#000">${["№","Ажлын төрөл","Хийгдсэн ажил"].map((h) => th(h)).join("")}</tr>`;
+  body += tblMid;
+  if (p.section5Tasks.length === 0) {
+    body += `<tr>${[5,35,60].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+  } else {
+    p.section5Tasks.forEach((t, idx) => {
+      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdL(esc(t.taskType),"35%") + tdLH(parseContentHtml(t.completedWork ?? "", tc),"60%") + `</tr>`;
+    });
+  }
+  body += tblEnd + caption();
+  }
+
+  // ── Section VI ──
+  if (!hidden.has("s6")) {
+  body += heading("VI. Хамт олны ажил");
+  body += tblStart;
+  body += `<tr style="background:#fff;color:#000">${["№","Огноо","Хамт олны ажил","Санаачилга"].map((h) => th(h)).join("")}</tr>`;
+  body += tblMid;
+  if (p.section6Activities.length === 0) {
+    body += `<tr>${[5,20,50,25].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+  } else {
+    p.section6Activities.forEach((t, idx) => {
+      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdC(t.date ? t.date.replace(/-/g,".") : "","20%") + tdL(esc(t.activity),"50%") + tdL(esc(t.initiative),"25%") + `</tr>`;
+    });
+  }
+  body += tblEnd + caption();
+  }
+
+  // ── Section VII ──
+  if (!hidden.has("s7")) {
+  body += heading("VII. Шинэ санал санаачилга");
+  body += p.section7Text?.trim()
+    ? `<div style="margin-bottom:8pt;white-space:pre-wrap">${esc(p.section7Text)}</div>`
+    : `<div style="margin-bottom:8pt">&nbsp;</div>`;
+  }
+
+  // ── Dynamic sections VIII, IX, … ──
+  p.dynamicSections.forEach((sec, idx) => {
+    const rom = ROMAN[7 + idx] ?? `${8 + idx}`;
+    body += heading(`${rom}. ${sec.title ?? ""}`);
+    body += parseContentHtml(sec.content ?? "", tc);
+  });
+
+  return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="Microsoft Word 15">
+<!--[if gte mso 9]><xml>
+<w:WordDocument>
+  <w:View>Normal</w:View><w:Zoom>100</w:Zoom>
+  <w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml><![endif]-->
+<style>
+  @page { size:A4 portrait; margin:15.9mm 19mm 22.2mm 25.4mm }
+  body { font-family:'Times New Roman',Times,serif; font-size:11pt; line-height:1.5; color:#000 }
+  table { border-collapse:collapse; width:100% }
+</style>
+</head>
+<body>${body}</body></html>`;
 }

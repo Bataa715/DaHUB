@@ -84,6 +84,7 @@ interface Tool {
   color: string;
   gradient: string;
   category: "free" | "work";
+  adminPath?: string;
 }
 
 const AVAILABLE_TOOLS: Tool[] = [
@@ -188,6 +189,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     color: "from-green-500 to-emerald-500",
     gradient: "bg-gradient-to-br from-green-500/20 to-emerald-500/20",
     category: "work",
+    adminPath: "/admin/excel-reports",
   },
   {
     id: "pdf_to_text",
@@ -764,12 +766,40 @@ export default function AdminToolsPage() {
                               />
                             </div>
                           </div>
-                          <Button
-                            className={`w-full bg-gradient-to-r ${tool.color} hover:opacity-90 text-white border-0 transition-all duration-300 group-hover:shadow-lg`}
-                          >
-                            <Settings className="w-4 h-4 mr-2" />
-                            Эрх удирдах
-                          </Button>
+                          {tool.adminPath ? (
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                size="sm"
+                                className="w-full bg-slate-700 hover:bg-slate-600 text-white border-0 transition-all duration-300"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToolSelect(tool);
+                                }}
+                              >
+                                <Settings className="w-4 h-4 mr-2" />
+                                Эрх удирдах
+                              </Button>
+                              <Link
+                                href={tool.adminPath}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  size="sm"
+                                  className={`w-full bg-gradient-to-r ${tool.color} hover:opacity-90 text-white border-0 transition-all duration-300`}
+                                >
+                                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                                  Тайлан удирдах
+                                </Button>
+                              </Link>
+                            </div>
+                          ) : (
+                            <Button
+                              className={`w-full bg-gradient-to-r ${tool.color} hover:opacity-90 text-white border-0 transition-all duration-300 group-hover:shadow-lg`}
+                            >
+                              <Settings className="w-4 h-4 mr-2" />
+                              Эрх удирдах
+                            </Button>
+                          )}
                         </CardContent>
                       </Card>
                     </motion.div>

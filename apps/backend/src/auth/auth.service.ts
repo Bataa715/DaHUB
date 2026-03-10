@@ -309,8 +309,10 @@ export class AuthService {
     const { password, name, department, position } = signupDto;
     const userId = await this.generateUserId(department, name);
 
+    // Only conflict if an active user exists — handles the case where a deleted
+    // user's row is still physically present due to async ClickHouse mutation.
     const existing = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE userId = {userId:String} LIMIT 1",
+      "SELECT id FROM users WHERE userId = {userId:String} AND isActive = 1 LIMIT 1",
       { userId },
     );
     if (existing[0]) {
@@ -639,7 +641,6 @@ export class AuthService {
       userId: user.userId,
       name: user.name,
       department: user.departmentName || null,
-      isActive: !!user.isActive,
     };
   }
 

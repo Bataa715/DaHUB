@@ -118,6 +118,11 @@ export default function UsersPage() {
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [isSavingDept, setIsSavingDept] = useState(false);
 
+  // userId change
+  const [changingUserIdId, setChangingUserIdId] = useState<string | null>(null);
+  const [editUserId, setEditUserId] = useState("");
+  const [isSavingUserId, setIsSavingUserId] = useState(false);
+
   // Password reset
   const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(
     null,
@@ -247,6 +252,25 @@ export default function UsersPage() {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleChangeUserId = async () => {
+    if (!editUserId.trim() || !changingUserIdId) return;
+    setIsSavingUserId(true);
+    try {
+      await usersApi.update(changingUserIdId, { userId: editUserId.trim() });
+      toast({ title: "Амжилттай", description: "Хэрэглэгчийн ID өөрчлөгдлөө." });
+      setChangingUserIdId(null);
+      loadUsers();
+    } catch (error: any) {
+      toast({
+        title: "Алдаа",
+        description: error?.response?.data?.message ?? "ID өөрчлөхөд алдаа гарлаа.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingUserId(false);
     }
   };
 
@@ -504,9 +528,54 @@ export default function UsersPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <code className="text-xs bg-slate-700/50 px-2 py-1 rounded text-blue-400">
-                              {userData.userId || "-"}
-                            </code>
+                            {changingUserIdId === userData.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={editUserId}
+                                  onChange={(e) => setEditUserId(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleChangeUserId();
+                                    if (e.key === "Escape") setChangingUserIdId(null);
+                                  }}
+                                  className="h-7 w-40 bg-slate-700/80 border-slate-600 text-white text-xs font-mono"
+                                  autoFocus
+                                />
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                  disabled={isSavingUserId || !editUserId.trim()}
+                                  onClick={handleChangeUserId}
+                                >
+                                  {isSavingUserId ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3 h-3" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700"
+                                  onClick={() => setChangingUserIdId(null)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <button
+                                className="flex items-center gap-1.5 group"
+                                onClick={() => {
+                                  setEditUserId(userData.userId ?? "");
+                                  setChangingUserIdId(userData.id);
+                                }}
+                              >
+                                <code className="text-xs bg-slate-700/50 px-2 py-1 rounded text-blue-400 group-hover:bg-slate-600/60">
+                                  {userData.userId || "-"}
+                                </code>
+                                <Pencil className="w-3 h-3 text-slate-600 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            )}
                           </TableCell>
                           <TableCell className="font-medium text-white">
                             <div className="flex items-center gap-2">

@@ -750,12 +750,10 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
               <p className="text-sm font-semibold text-white leading-snug line-clamp-2 mb-2">
                 {dept.name}
               </p>
-              {dept.employeeCount !== undefined && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+              <div className="flex items-center gap-1 text-[11px] text-slate-500">
                   <Users className="w-3 h-3" />
-                  {dept.employeeCount} ажилтан
+                  {dept.users?.length ?? dept.employeeCount ?? 0} ажилтан
                 </div>
-              )}
             </button>
           );
         })}

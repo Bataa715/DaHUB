@@ -2936,11 +2936,11 @@ export function WordPreview({
             DEFAULT_NEGTGEL_KPI-аас эхлэн state-д хадгалагдана.
 
             ДИЗАЙН ТАЙЛБАР:
-            Header ӨНГ: #f97316 (тод оранж) — 1-р хуудаснаас ялгаатай
+            Header ӨНГ: #e9965b (тод оранж) — 1-р хуудаснаас ялгаатай
             Мөрийн ӨНГ: #fef3c7 (цайвар шар)
             Нийт мөр: цагаан фон
 
-            ⚠️  Header өнгийг өөрчлөхөд: background: "#f97316"
+            ⚠️  Header өнгийг өөрчлөхөд: background: "#e6823b"
             ⚠️  Мөрийн өнгийг өөрчлөхөд: background: "#fef3c7"
         ══════════════════════════════════════════════════ */}
         <div style={page}>
@@ -2973,7 +2973,7 @@ export function WordPreview({
           >
             <thead>
               <tr>
-                {/* ⚠️  2-р хуудас header өнгө: "#f97316" → энд солих */}
+                {/* ⚠️  2-р хуудас header өнгө: "#f29451" → энд солих */}
                 {[
                   "",
                   "ТҮЛХҮҮР ҮЗҮҮЛЭЛТ",
@@ -2985,7 +2985,7 @@ export function WordPreview({
                     key={h}
                     style={{
                       ...thKpi,
-                      background: "#f97316", // ← 2-р хуудас header тод оранж
+                      background: "#f29451", // ← 2-р хуудас header тод оранж
                       color: "#000",
                     }}
                   >

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   createContext,
@@ -116,17 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("token", accessToken, {
       expires: 1 / 24,
-      sameSite: "lax",
+      sameSite: "strict",
       secure,
     });
     Cookies.set("refreshToken", refreshToken, {
       expires: 30,
-      sameSite: "lax",
+      sameSite: "strict",
       secure,
     });
     Cookies.set("user", JSON.stringify(userData), {
       expires: 30,
-      sameSite: "lax",
+      sameSite: "strict",
       secure,
     });
     setUser(userData);
@@ -141,17 +141,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("adminToken", accessToken, {
       expires: 1 / 24,
-      sameSite: "lax",
+      sameSite: "strict",
       secure,
     });
     Cookies.set("adminRefreshToken", refreshToken, {
       expires: 30,
-      sameSite: "lax",
+      sameSite: "strict",
       secure,
     });
     Cookies.set("adminUser", JSON.stringify(userData), {
       expires: 30,
-      sameSite: "lax",
+      sameSite: "strict",
       secure,
     });
     setUser(userData);

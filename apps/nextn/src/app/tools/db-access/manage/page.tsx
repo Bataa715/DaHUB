@@ -152,11 +152,10 @@ export default function DbAccessManagePage() {
   const [reviewNote, setReviewNote] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
 
-  const [bulkLoading, setBulkLoading] = useState<"approve" | "reject" | null>(
-    null,
-  );
-
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [deletingHistory, setDeletingHistory] = useState(false);
+  const [cleaningChUser, setCleaningChUser] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadRequests = useCallback(
     async (all = false) => {
@@ -228,29 +227,46 @@ export default function DbAccessManagePage() {
     }
   };
 
-  const handleBulk = async (action: "approve" | "reject") => {
-    const pending = requests.filter((r) => r.status === "pending");
-    if (pending.length === 0) return;
-    const label = action === "approve" ? "зөвшөөрөх" : "татгалзах";
-    if (!confirm(`Нийт ${pending.length} хүсэлтийг бүгдийг ${label} уу?`))
-      return;
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm("Энэ хүсэлтийг бүрмөсөн устгах уу?")) return;
     try {
-      setBulkLoading(action);
-      const res = await dbAccessApi.bulkReview(action);
-      toast({
-        title:
-          action === "approve" ? " Бүгдийг зөвшөөрлөө" : " Бүгдийг татгалзлаа",
-        description: `${res.affected} хүсэлт шийдвэрлэгдлээ`,
-      });
+      setDeletingId(id);
+      await dbAccessApi.deleteRequest(id);
+      toast({ title: "✅ Устгагдлаа" });
+      setExpandedId(null);
+      setReviewingId(null);
       loadRequests(tab === "all");
     } catch (err: any) {
       toast({
         title: "Алдаа",
-        description: err?.response?.data?.message,
+        description: err?.response?.data?.message ?? "Устгахад алдаа гарлаа",
         variant: "destructive",
       });
     } finally {
-      setBulkLoading(null);
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteHistory = async () => {
+    if (
+      !confirm(
+        "Бүх шийдвэрлэгдсэн хүсэлтийн түүхийг устгах уу? (Хүлээгдэж байгаа хүсэлтүүд хэвээр үлдэна)",
+      )
+    )
+      return;
+    try {
+      setDeletingHistory(true);
+      await dbAccessApi.deleteRequestHistory();
+      toast({ title: "✅ Түүх устгагдлаа" });
+      loadRequests(tab === "all");
+    } catch (err: any) {
+      toast({
+        title: "Алдаа",
+        description: err?.response?.data?.message ?? "Устгахад алдаа гарлаа",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingHistory(false);
     }
   };
 
@@ -273,6 +289,34 @@ export default function DbAccessManagePage() {
       });
     } finally {
       setRevokingId(null);
+    }
+  };
+
+  const handleCleanupCh = async (group: GrantGroup) => {
+    if (
+      !confirm(
+        `"${group.userName}" (${group.userUserId}) хэрэглэгчийн ClickHouse хандалтын өгөгдлийг бүхэлд нь цэвэрлэх үү?\n\n` +
+          `Энэ үйлдэл нь ClickHouse-ын хэрэглэгч болон бүх role-ийг устгана. ` +
+          `Дараа нь шинэ эрх зөвшөөрөхөд хэрэглэгч дахин бүртгэгдэнэ.`,
+      )
+    )
+      return;
+    try {
+      setCleaningChUser(group.userUserId);
+      const result = await dbAccessApi.cleanupChUser(group.userUserId);
+      toast({
+        title: "✅ CH хандалт цэвэрлэгдлээ",
+        description: result.message,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Алдаа",
+        description:
+          err?.response?.data?.message ?? "CH цэвэрлэхэд алдаа гарлаа",
+        variant: "destructive",
+      });
+    } finally {
+      setCleaningChUser(null);
     }
   };
 
@@ -303,17 +347,34 @@ export default function DbAccessManagePage() {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() =>
-              tab === "grants" ? loadAllGrants() : loadRequests(tab === "all")
-            }
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+          <div className="ml-auto flex items-center gap-1">
+            {(tab === "pending" || tab === "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={handleDeleteHistory}
+                disabled={deletingHistory || loading}
+                title="Шийдвэрлэгдсэн хүсэлтийн түүх устгах"
+              >
+                {deletingHistory ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                tab === "grants" ? loadAllGrants() : loadRequests(tab === "all")
+              }
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -350,42 +411,16 @@ export default function DbAccessManagePage() {
         {/*  PENDING / ALL tab  */}
         {(tab === "pending" || tab === "all") && (
           <>
-            {/* Bulk buttons */}
+            {/* Pending count banner */}
             {requests.some((r) => r.status === "pending") && (
               <div className="flex gap-3 p-4 rounded-xl border bg-card items-center">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-                <p className="text-sm flex-1">
+                <p className="text-sm">
                   <span className="font-semibold text-amber-400">
                     {pendingCount}
                   </span>{" "}
                   хүсэлт хүлээгдэж байна
                 </p>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                  size="sm"
-                  onClick={() => handleBulk("approve")}
-                  disabled={!!bulkLoading || pendingCount === 0}
-                >
-                  {bulkLoading === "approve" ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                  )}
-                  Бүгдийг зөвшөөрөх
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleBulk("reject")}
-                  disabled={!!bulkLoading || pendingCount === 0}
-                >
-                  {bulkLoading === "reject" ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                  ) : (
-                    <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                  )}
-                  Бүгдийг татгалзах
-                </Button>
               </div>
             )}
 
@@ -521,12 +556,27 @@ export default function DbAccessManagePage() {
                           </div>
 
                           {/* Review panel */}
-                          {req.status === "pending" && (
+                          {(req.status === "pending" || req.status === "rejected") && (
                             <div className="pt-1">
-                              {reviewingId === req.id ? (
+                              {req.status === "rejected" ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:bg-destructive/10 gap-1.5"
+                                  disabled={deletingId === req.id}
+                                  onClick={() => handleDeleteRequest(req.id)}
+                                >
+                                  {deletingId === req.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  )}
+                                  Устгах
+                                </Button>
+                              ) : reviewingId === req.id ? (
                                 <div className="space-y-2">
                                   <Label className="text-xs">
-                                    Тайлбар (заавал биш)
+                                    Тайлбар (заавал)
                                   </Label>
                                   <Textarea
                                     placeholder="Шийдвэрийн тайлбар..."
@@ -579,21 +629,53 @@ export default function DbAccessManagePage() {
                                     >
                                       Болих
                                     </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:bg-destructive/10 ml-auto"
+                                      disabled={deletingId === req.id}
+                                      onClick={() => handleDeleteRequest(req.id)}
+                                    >
+                                      {deletingId === req.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      )}
+                                    </Button>
                                   </div>
                                 </div>
                               ) : (
-                                <Button
-                                  className="bg-violet-600 hover:bg-violet-500 text-white"
-                                  size="sm"
-                                  onClick={() => {
-                                    setReviewingId(req.id);
-                                    setReviewNote("");
-                                    setExpandedId(req.id);
-                                  }}
-                                >
-                                  <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
-                                  Шийдвэрлэх
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    className="bg-violet-600 hover:bg-violet-500 text-white"
+                                    size="sm"
+                                    onClick={() => {
+                                      setReviewingId(req.id);
+                                      setReviewNote("");
+                                      setExpandedId(req.id);
+                                    }}
+                                  >
+                                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                                    Шийдвэрлэх
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:bg-destructive/10"
+                                    disabled={deletingId === req.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteRequest(req.id);
+                                    }}
+                                    title="Хүсэлтийг устгах"
+                                  >
+                                    {deletingId === req.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           )}
@@ -705,6 +787,21 @@ export default function DbAccessManagePage() {
                             </span>
                           </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-amber-500 hover:bg-amber-500/10 shrink-0 gap-1.5"
+                          disabled={cleaningChUser === grp.userUserId}
+                          onClick={() => handleCleanupCh(grp)}
+                          title="ClickHouse хандалтын өгөгдлийг цэвэрлэх (гэмтсэн/зогссон эрхүүдэд хэрэглэнэ)"
+                        >
+                          {cleaningChUser === grp.userUserId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                          )}
+                          <span className="text-xs">CH Reset</span>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
