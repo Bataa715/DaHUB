@@ -78,8 +78,7 @@ export class NewsController {
     return this.newsService.togglePublish(id);
   }
 
-  // Authenticated users only
-  @UseGuards(JwtAuthGuard)
+  // Public — image tags cannot send auth headers
   @Get(":id/image")
   async getNewsImage(@Param("id") id: string, @Res() res: Response) {
     const result = await this.newsService.getNewsImage(id);

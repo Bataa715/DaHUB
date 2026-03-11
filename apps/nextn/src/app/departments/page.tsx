@@ -24,6 +24,7 @@ import {
   ZoomIn,
   Trash2,
 } from "lucide-react";
+import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 
 interface DepartmentUser {
@@ -631,9 +632,17 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   useEffect(() => {
     departmentsApi
       .getAll()
-      .then((data: DepartmentData[]) =>
-        setList(data.filter((d) => d.id !== currentDeptId)),
-      )
+      .then((data: DepartmentData[]) => {
+        const filtered = data.filter((d) => d.id !== currentDeptId);
+        filtered.sort((a, b) => {
+          const aIsLeader = a.name.trim().toLowerCase().includes("удирдлага");
+          const bIsLeader = b.name.trim().toLowerCase().includes("удирдлага");
+          if (aIsLeader && !bIsLeader) return -1;
+          if (!aIsLeader && bIsLeader) return 1;
+          return 0;
+        });
+        setList(filtered);
+      })
       .catch(() =>
         toast({
           title: "Алдаа",
@@ -684,7 +693,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   return (
     <div className="space-y-3">
       {/* Dept grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {list.map((dept, i) => {
           const isActive = selected?.id === dept.id;
           const ACCENT = [
@@ -990,9 +999,23 @@ export default function DepartmentsPage() {
             {/* Decorative rings */}
             <div className="absolute -top-10 -right-10 w-72 h-72 rounded-full border border-indigo-500/10" />
             <div className="absolute -top-20 -right-20 w-[420px] h-[420px] rounded-full border border-indigo-500/5" />
-            {/* Ghost icon */}
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.04] pointer-events-none">
-              <Building2 className="w-52 h-52 text-indigo-300" />
+            {/* Golomt logo */}
+            <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none">
+              {/* Outer glow ring */}
+              <div className="absolute inset-0 rounded-full bg-indigo-500/10 blur-2xl scale-150" />
+              {/* Subtle ring border */}
+              <div className="absolute inset-0 rounded-full border border-white/10" />
+              <div className="relative w-36 h-36 rounded-full overflow-hidden border-2 border-white/10 shadow-[0_0_40px_rgba(99,102,241,0.15)] bg-white/5 backdrop-blur-sm">
+                <Image
+                  src="/golomt.jpg"
+                  alt="Golomt"
+                  fill
+                  className="object-cover"
+                  sizes="144px"
+                />
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent" />
+              </div>
             </div>
 
             <div className="relative px-8 py-10">
@@ -1204,9 +1227,7 @@ export default function DepartmentsPage() {
           {/* Footer */}
           <div className="flex items-center justify-center gap-3 py-2">
             <div className="h-px flex-1 max-w-20 bg-gradient-to-r from-transparent to-slate-800" />
-            <p className="text-[11px] text-slate-600">
-              DaHUB Internal Audit © 2026
-            </p>
+        
             <div className="h-px flex-1 max-w-20 bg-gradient-to-l from-transparent to-slate-800" />
           </div>
         </motion.div>

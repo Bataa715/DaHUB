@@ -29,7 +29,8 @@ function getImageUrl(path?: string): string | null {
 function sanitizeHtml(html: string): string {
   if (typeof window === "undefined") return "";
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const DOMPurify = (require("dompurify") as typeof import("dompurify")).default;
+  const mod = require("dompurify") as typeof import("dompurify");
+  const DOMPurify = mod.default ?? (mod as unknown as typeof mod.default);
   return DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
@@ -326,7 +327,7 @@ function ChatItem({
               </span>
             </div>
           </div>
-          {getImageUrl(item.imageUrl) && (
+          {getImageUrl(item.imageUrl) ? (
             <div className="relative w-24 h-24 flex-shrink-0 self-center m-3 rounded-xl overflow-hidden">
               <Image
                 src={getImageUrl(item.imageUrl)!}
@@ -337,6 +338,8 @@ function ChatItem({
                 sizes="96px"
               />
             </div>
+          ) : (
+            <div className="relative w-24 h-24 flex-shrink-0 self-center m-3 rounded-xl overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800" />
           )}
         </div>
       </motion.div>
@@ -509,9 +512,9 @@ export default function NewsPage() {
                 maxHeight: "90vh",
               }}
             >
-              {/* Cover image — fixed, never scrolls */}
-              {getImageUrl(selectedNews.imageUrl) && (
-                <div className="relative w-full h-56 flex-shrink-0">
+              {/* Cover image */}
+              <div className="relative w-full h-56 flex-shrink-0">
+                {getImageUrl(selectedNews.imageUrl) ? (
                   <Image
                     src={getImageUrl(selectedNews.imageUrl)!}
                     alt={selectedNews.title}
@@ -520,9 +523,11 @@ export default function NewsPage() {
                     className="object-cover"
                     sizes="900px"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[rgba(10,15,26,0.98)] via-transparent to-black/30" />
-                </div>
-              )}
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[rgba(10,15,26,0.98)] via-transparent to-black/30" />
+              </div>
 
               {/* Scrollable body */}
               <div className="flex-1 overflow-y-auto overscroll-contain">
