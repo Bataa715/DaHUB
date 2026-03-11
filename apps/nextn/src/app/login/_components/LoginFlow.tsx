@@ -495,7 +495,7 @@ export function LoginFlow({
                   <span className="block text-slate-300 text-sm leading-relaxed">
                     Нууц үгээ мартсан бол{" "}
                     <span className="text-purple-400 font-semibold">Skype</span>{" "}
-                    гаар{" "}
+                    аар{" "}
                     <span className="text-white font-semibold">
                       DAA – Батмягмар
                     </span>{" "}

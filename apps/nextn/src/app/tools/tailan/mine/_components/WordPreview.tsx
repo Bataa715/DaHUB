@@ -1003,7 +1003,7 @@ export function WordPreview({
 
           {/* ── Dynamic sections VIII, IX, … ── */}
           {dynamicSections.map((sec, idx) => (
-            <div key={sec._id}>
+            <div key={sec._id ?? idx}>
               <div style={headingStyle}>
                 {ROMAN_NUMS[dynStartRomIdx + idx] ??
                   `${dynStartRomIdx + idx + 1}`}
