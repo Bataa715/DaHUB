@@ -324,15 +324,15 @@ export class ClickHouseAccessService {
 
     // 1. Collect all role_req_* roles currently assigned to this user
     const assignedRoles = await this.getActiveRolesForUser(username);
-    const reqRoles = assignedRoles.filter((r) =>
-      r.startsWith("role_req_"),
-    );
+    const reqRoles = assignedRoles.filter((r) => r.startsWith("role_req_"));
 
     // 2. Also catch orphaned role_req_* roles that still have grants TO this user
     //    in system.grants (user_name column). Scoped strictly to this user —
     //    never touches other users' roles.
     try {
-      const orphanedRoles = await this.clickhouse.queryAcl<{ role_name: string }>(
+      const orphanedRoles = await this.clickhouse.queryAcl<{
+        role_name: string;
+      }>(
         `SELECT DISTINCT role_name
          FROM system.grants
          WHERE user_name = {username:String}
@@ -354,13 +354,19 @@ export class ClickHouseAccessService {
         await this.clickhouse.execAcl(
           `REVOKE IF EXISTS ${this.q(role)} FROM ${this.q(username)}`,
         );
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       try {
         await this.clickhouse.execAcl(`DROP ROLE IF EXISTS ${this.q(role)}`);
         rolesDropped.push(role);
-        this.logger.log(`[cleanup] Dropped orphaned role ${role} for user ${username}`);
+        this.logger.log(
+          `[cleanup] Dropped orphaned role ${role} for user ${username}`,
+        );
       } catch (err: any) {
-        this.logger.warn(`[cleanup] Could not drop role ${role}: ${err?.message}`);
+        this.logger.warn(
+          `[cleanup] Could not drop role ${role}: ${err?.message}`,
+        );
       }
     }
 
@@ -369,11 +375,15 @@ export class ClickHouseAccessService {
     const userExists = await this.clickhouseUserExists(username);
     if (userExists) {
       try {
-        await this.clickhouse.execAcl(`DROP USER IF EXISTS ${this.q(username)}`);
+        await this.clickhouse.execAcl(
+          `DROP USER IF EXISTS ${this.q(username)}`,
+        );
         userDropped = true;
         this.logger.log(`[cleanup] Dropped CH user ${username}`);
       } catch (err: any) {
-        this.logger.warn(`[cleanup] Could not drop CH user ${username}: ${err?.message}`);
+        this.logger.warn(
+          `[cleanup] Could not drop CH user ${username}: ${err?.message}`,
+        );
       }
     }
 
@@ -502,7 +512,9 @@ export class ClickHouseAccessService {
    */
   private async getActiveRolesForUser(username: string): Promise<string[]> {
     try {
-      const rows = await this.clickhouse.queryAcl<{ granted_role_name: string }>(
+      const rows = await this.clickhouse.queryAcl<{
+        granted_role_name: string;
+      }>(
         `SELECT granted_role_name
          FROM system.role_grants
          WHERE user_name = {username:String}`,

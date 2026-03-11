@@ -29,6 +29,19 @@ function buildUserId(department: string, name: string): string {
   return `DAG-${deptCode}-${namePart}`;
 }
 
+/** Safe JSON.parse for allowedTools — ClickHouse returns a String column.
+ * Returns [] if the value is missing, already an array, or corrupt JSON. */
+function safeParseTools(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw as string[];
+  try {
+    const parsed = JSON.parse(raw as string);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -55,7 +68,7 @@ export class UsersService {
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
       isActive: !!user.isActive,
-      allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
+      allowedTools: safeParseTools(user.allowedTools),
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
     }));
@@ -84,7 +97,7 @@ export class UsersService {
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
-      allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
+      allowedTools: safeParseTools(user.allowedTools),
       createdAt: user.createdAt,
     };
   }
@@ -193,7 +206,9 @@ export class UsersService {
     if (updateUserDto.profileImage !== undefined) {
       // Guard against oversized base64 images (~5 MB limit)
       if (updateUserDto.profileImage.length > 7_000_000) {
-        throw new BadRequestException("Профайл зургийн хэмжээ хэт их байна (дээд тал нь 5MB)");
+        throw new BadRequestException(
+          "Профайл зургийн хэмжээ хэт их байна (дээд тал нь 5MB)",
+        );
       }
       fields.push("profileImage = {profileImage:String}");
       params.profileImage = updateUserDto.profileImage;
@@ -237,7 +252,7 @@ export class UsersService {
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
-      allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
+      allowedTools: safeParseTools(user.allowedTools),
     };
   }
 
@@ -330,7 +345,7 @@ export class UsersService {
     return {
       id: user.id,
       name: user.name,
-      allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
+      allowedTools: safeParseTools(user.allowedTools),
     };
   }
 
@@ -382,7 +397,12 @@ export class UsersService {
     if (!match) return null;
 
     // H-5: Whitelist MIME types — prevents Content-Type injection (stored XSS via SVG/HTML)
-    const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const ALLOWED_IMAGE_MIMES = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
     if (!ALLOWED_IMAGE_MIMES.includes(match[1])) return null;
 
     return { buffer: Buffer.from(match[2], "base64"), mimeType: match[1] };

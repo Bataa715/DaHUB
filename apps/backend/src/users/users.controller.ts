@@ -11,6 +11,7 @@ import {
   Request,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { Response } from "express";
 import { UsersService } from "./users.service";
@@ -19,6 +20,20 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
+
+// B-8: Whitelist of valid tool names — prevents granting fake/invented tools
+const VALID_TOOLS = [
+  "tailan",
+  "fitness",
+  "english",
+  "chess",
+  "db_access_requester",
+  "db_access_granter",
+  "tailan_dept_head",
+  "pivot",
+  "sanamsargui-tuuwer",
+  "report",
+] as const;
 
 @Controller("users")
 export class UsersController {
@@ -75,7 +90,20 @@ export class UsersController {
     @Param("id") id: string,
     @Body() body: { allowedTools: string[] },
   ) {
-    return this.usersService.updateTools(id, body.allowedTools);
+    const tools = body.allowedTools;
+    if (!Array.isArray(tools)) {
+      throw new BadRequestException("allowedTools тооц байна");
+    }
+    // B-8: Reject any tool not in the explicit whitelist
+    const invalid = tools.filter(
+      (t) => !(VALID_TOOLS as readonly string[]).includes(t),
+    );
+    if (invalid.length > 0) {
+      throw new BadRequestException(
+        `Дараахи бус байхгүй хэргсэл: ${invalid.join(", ")}`,
+      );
+    }
+    return this.usersService.updateTools(id, tools);
   }
 
   /** SuperAdmin only: promote or demote admin role */
@@ -130,10 +158,17 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  /** Any authenticated user: get avatar image */
+  /** B-1: Authenticated users can only view their own avatar; admins can view any */
   @UseGuards(JwtAuthGuard)
   @Get(":id/avatar")
-  async getAvatar(@Param("id") id: string, @Res() res: Response) {
+  async getAvatar(
+    @Param("id") id: string,
+    @Res() res: Response,
+    @Request() req: any,
+  ) {
+    if (id !== req.user.id && !req.user.isAdmin) {
+      throw new ForbiddenException("Зөвхөн өөрийн аватараа харах боломжтой");
+    }
     const result = await this.usersService.getAvatar(id);
     if (!result) throw new NotFoundException("Avatar not found");
     res.set("Content-Type", result.mimeType);

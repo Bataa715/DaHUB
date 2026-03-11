@@ -44,21 +44,21 @@ export const TITLES = [
     bg: "bg-amber-500/15 border-amber-500/30",
     icon: "👑",
   },
-    {
+  {
     label: "Улсын арслан",
     ratio: 0.9,
     color: "text-orange-400",
     bg: "bg-orange-500/15 border-orange-500/30",
     icon: "",
   },
-    {
+  {
     label: "Улсын заан",
     ratio: 0.75,
     color: "text-orange-400",
     bg: "bg-orange-500/15 border-orange-500/30",
     icon: "",
   },
-    {
+  {
     label: "Аймгийн арслан",
     ratio: 0.6,
     color: "text-orange-400",
@@ -93,7 +93,7 @@ export const TITLES = [
     bg: "bg-slate-700/40 border-slate-600/30",
     icon: "",
   },
-    {
+  {
     label: "Залуу бөх",
     ratio: 0.5,
     color: "text-orange-400",

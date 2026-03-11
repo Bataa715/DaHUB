@@ -312,7 +312,7 @@ export function WordPreview({
               ) : (
                 <>
                   {section1Dashboards.map((t, idx) => (
-                    <tr key={t._id}>
+                    <tr key={t._id ?? idx}>
                       <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
                         {idx + 1}
                       </td>
@@ -480,7 +480,7 @@ export function WordPreview({
                 </tr>
               ) : (
                 section2Tasks.map((t, idx) => (
-                  <tr key={t._id}>
+                  <tr key={t._id ?? idx}>
                     <td style={tdStyle("5%")} className="text-center">
                       {idx + 1}
                     </td>
@@ -613,7 +613,7 @@ export function WordPreview({
               ) : (
                 <>
                   {section3AutoTasks.map((t, idx) => (
-                    <tr key={t._id}>
+                    <tr key={t._id ?? idx}>
                       <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
                         {idx + 1}
                       </td>
@@ -708,7 +708,7 @@ export function WordPreview({
               ) : (
                 <>
                   {section3Dashboards.map((t, idx) => (
-                    <tr key={t._id}>
+                    <tr key={t._id ?? idx}>
                       <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
                         {idx + 1}
                       </td>
@@ -810,7 +810,7 @@ export function WordPreview({
                 </tr>
               ) : (
                 section4Trainings.map((t, idx) => (
-                  <tr key={t._id}>
+                  <tr key={t._id ?? idx}>
                     <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
                       {idx + 1}
                     </td>
@@ -898,7 +898,7 @@ export function WordPreview({
                 </tr>
               ) : (
                 section5Tasks.map((t, idx) => (
-                  <tr key={t._id}>
+                  <tr key={t._id ?? idx}>
                     <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
                       {idx + 1}
                     </td>
@@ -960,7 +960,7 @@ export function WordPreview({
                 </tr>
               ) : (
                 section6Activities.map((t, idx) => (
-                  <tr key={t._id}>
+                  <tr key={t._id ?? idx}>
                     <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
                       {idx + 1}
                     </td>

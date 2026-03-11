@@ -2,9 +2,9 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { UnauthorizedException, ConflictException } from "@nestjs/common";
-import { AuthService } from "./auth.service";
-import { ClickHouseService } from "../clickhouse/clickhouse.service";
-import { AuditLogService } from "../audit/audit-log.service";
+import { AuthService } from "../src/auth/auth.service";
+import { ClickHouseService } from "../src/clickhouse/clickhouse.service";
+import { AuditLogService } from "../src/audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 
 describe("AuthService", () => {

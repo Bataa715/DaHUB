@@ -27,7 +27,7 @@ export class CreateAccessRequestDto {
   // M-9: Only SELECT is permitted — reject INSERT, UPDATE, DELETE, DROP, etc.
   @IsArray()
   @ArrayMinSize(1)
-  @IsIn(['SELECT'], { each: true })
+  @IsIn(["SELECT"], { each: true })
   accessTypes: string[]; // ["SELECT"]
 
   @IsString()

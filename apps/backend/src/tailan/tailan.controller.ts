@@ -136,7 +136,12 @@ export class TailanController {
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.getDeptMemberReport(req.user, userId, year, quarter);
+    return this.tailanService.getDeptMemberReport(
+      req.user,
+      userId,
+      year,
+      quarter,
+    );
   }
 
   // ─── Dept head: download merged Word ──────────────────────────────────────

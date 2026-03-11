@@ -2,6 +2,7 @@
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
@@ -59,6 +60,24 @@ export class DepartmentsService {
     imageData: string,
     caption = "",
   ) {
+    // C-3: Validate base64 image MIME type and size before storing
+    const ALLOWED_PHOTO_MIMES = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
+    const match = (imageData || "").match(
+      /^data:([^;]{1,100});base64,([A-Za-z0-9+/=]+)$/,
+    );
+    if (!match || !ALLOWED_PHOTO_MIMES.includes(match[1])) {
+      throw new BadRequestException(
+        "Зураг зөвхөн форматтай байх ерддэн (JPEG, PNG, WebP, GIF)",
+      );
+    }
+    if (imageData.length > 7_000_000) {
+      throw new BadRequestException("Зурагийн хэмжээ 5MB-аас ихсэхгүй");
+    }
     const id = randomUUID();
     const now = nowCH();
     await this.clickhouse.insert("department_photos", [

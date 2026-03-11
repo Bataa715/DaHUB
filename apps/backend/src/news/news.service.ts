@@ -1,4 +1,8 @@
-﻿import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+﻿import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
 import { randomUUID } from "crypto";
@@ -110,7 +114,9 @@ export class NewsService {
       if (updateNewsDto.imageUrl.startsWith("data:")) {
         // Guard against huge payloads before running regex (ReDoS / memory protection)
         if (updateNewsDto.imageUrl.length > 5_000_000) {
-          throw new BadRequestException("Зурагны хэмжээ хэт их байна (дээд тал нь 5MB)");
+          throw new BadRequestException(
+            "Зурагны хэмжээ хэт их байна (дээд тал нь 5MB)",
+          );
         }
         const matches = updateNewsDto.imageUrl.match(
           /^data:([^;]{1,100});base64,([A-Za-z0-9+/=]+)$/,
@@ -120,7 +126,12 @@ export class NewsService {
           const imageMime = matches[1];
           // H-5: Strict MIME whitelist — reject text/html, image/svg+xml, etc.
           // A permissive regex like /^[a-zA-Z0-9.+/-]+$/ still allows dangerous types.
-          const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+          const ALLOWED_IMAGE_MIMES = [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+          ];
           if (
             /^[A-Za-z0-9+/=]+$/.test(imageData) &&
             ALLOWED_IMAGE_MIMES.includes(imageMime)
@@ -238,9 +249,16 @@ export class NewsService {
     if (!rows || rows.length === 0 || !rows[0].imageUrl) return null;
     // H-5: Enforce MIME whitelist on serve — a previously stored unsafe MIME
     // must not be served even if it passed an earlier (weaker) validation.
-    const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const ALLOWED_IMAGE_MIMES = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
     const storedMime = rows[0].imageMime;
-    const mimeType = ALLOWED_IMAGE_MIMES.includes(storedMime) ? storedMime : 'image/jpeg';
+    const mimeType = ALLOWED_IMAGE_MIMES.includes(storedMime)
+      ? storedMime
+      : "image/jpeg";
     const buffer = Buffer.from(rows[0].imageUrl, "base64");
     return { buffer, mimeType };
   }

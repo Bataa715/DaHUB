@@ -581,7 +581,9 @@ export class AuthService {
     );
     const user = users[0];
     if (!user) {
-      this.logger.warn(`JWT validation failed — user not found or inactive: ${userId}`);
+      this.logger.warn(
+        `JWT validation failed — user not found or inactive: ${userId}`,
+      );
       return null;
     }
     return this.formatUserResponse(user);

@@ -72,11 +72,20 @@ export class ExcelReportService implements OnModuleInit {
     "# === END SECURITY PREAMBLE ===\n\n";
 
   // ── Forbidden patterns for static analysis at save time ───────────────────
-  private static readonly FORBIDDEN_PATTERNS: Array<{ re: RegExp; label: string }> = [
-    { re: /\bimport\s+subprocess\b|\bfrom\s+subprocess\b/, label: "subprocess" },
+  private static readonly FORBIDDEN_PATTERNS: Array<{
+    re: RegExp;
+    label: string;
+  }> = [
+    {
+      re: /\bimport\s+subprocess\b|\bfrom\s+subprocess\b/,
+      label: "subprocess",
+    },
     { re: /\bimport\s+socket\b|\bfrom\s+socket\b/, label: "socket" },
     { re: /\bimport\s+ctypes\b|\bfrom\s+ctypes\b/, label: "ctypes" },
-    { re: /\bimport\s+multiprocessing\b|\bfrom\s+multiprocessing\b/, label: "multiprocessing" },
+    {
+      re: /\bimport\s+multiprocessing\b|\bfrom\s+multiprocessing\b/,
+      label: "multiprocessing",
+    },
     { re: /\bimport\s+pickle\b|\bfrom\s+pickle\b/, label: "pickle" },
     { re: /\bimport\s+shutil\b|\bfrom\s+shutil\b/, label: "shutil" },
     { re: /\beval\s*\(/, label: "eval()" },
@@ -88,8 +97,14 @@ export class ExcelReportService implements OnModuleInit {
     { re: /\bos\.exec[a-z]+\s*\(/, label: "os.exec*()" },
     { re: /\bos\.fork\s*\(/, label: "os.fork()" },
     { re: /\bos\.spawn[a-z]+\s*\(/, label: "os.spawn*()" },
-    { re: /\bos\.remove\s*\(|\bos\.unlink\s*\(|\bos\.rmdir\s*\(/, label: "os file deletion" },
-    { re: /open\s*\([^)]*['"]\s*(?:w|a|wb|ab|w\+|a\+)\s*['"]/, label: "open() in write mode" },
+    {
+      re: /\bos\.remove\s*\(|\bos\.unlink\s*\(|\bos\.rmdir\s*\(/,
+      label: "os file deletion",
+    },
+    {
+      re: /open\s*\([^)]*['"]\s*(?:w|a|wb|ab|w\+|a\+)\s*['"]/,
+      label: "open() in write mode",
+    },
   ];
 
   private validatePythonCode(code: string): void {
@@ -299,7 +314,8 @@ export class ExcelReportService implements OnModuleInit {
     const outputPath = path.join(tmpDir, `excel_report_${randomUUID()}.xlsx`);
 
     try {
-      const securedCode = ExcelReportService.PYTHON_SECURITY_PREAMBLE + template.pythonCode;
+      const securedCode =
+        ExcelReportService.PYTHON_SECURITY_PREAMBLE + template.pythonCode;
       fs.writeFileSync(scriptPath, securedCode, "utf8");
 
       // Build env — pass ClickHouse connection + date params

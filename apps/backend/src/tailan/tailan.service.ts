@@ -1088,7 +1088,9 @@ export class TailanService {
       t.taskType ?? "",
       t.completedWork ?? "",
     ]);
-    postChildren.push(this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]));
+    postChildren.push(
+      this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]),
+    );
     postChildren.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,

@@ -53,11 +53,18 @@ export class AdminDbController {
     //   /* SELECT */ DROP TABLE users
     const stripped = sql
       .replace(/\/\*[\s\S]*?\*\//g, " ") // remove /* ... */
-      .replace(/--[^\n]*/g, " ")          // remove -- to end of line
+      .replace(/--[^\n]*/g, " ") // remove -- to end of line
       .trimStart();
 
-    const isReadQuery =
-      /^(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN|WITH)\b/i.test(stripped);
+    const isReadQuery = /^(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN|WITH)\b/i.test(
+      stripped,
+    );
+
+    // A-2: Reject multi-statement queries — prevents "SELECT 1; DROP TABLE users"
+    // (ClickHouse usually ignores the second statement, but we fail-safe here)
+    if (stripped.includes(";")) {
+      throw new BadRequestException("SQL нэг нэг заавар агуулах боломжгүй (;)");
+    }
 
     if (isReadQuery) {
       const result = await this.clickhouse.getClient().query({ query: sql });
@@ -86,7 +93,7 @@ export class AdminDbController {
         );
         throw new BadRequestException(
           "Энэ SQL команд хориглогдсон байна (DROP, TRUNCATE, CREATE USER, GRANT, REVOKE). " +
-          "Хэрэв зайлшгүй шаардлагатай бол серверийн консолоор гүйцэтгэнэ үү.",
+            "Хэрэв зайлшгүй шаардлагатай бол серверийн консолоор гүйцэтгэнэ үү.",
         );
       }
 

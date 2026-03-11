@@ -462,7 +462,11 @@ export const tailanApi = {
     return response.data;
   },
 
-  getDeptMemberReport: async (userId: string, year: number, quarter: number) => {
+  getDeptMemberReport: async (
+    userId: string,
+    year: number,
+    quarter: number,
+  ) => {
     const response = await api.get(
       `/tailan/dept/member/${encodeURIComponent(userId)}/${year}/${quarter}`,
     );
@@ -646,7 +650,9 @@ export const dbAccessApi = {
   },
 
   deleteRequest: async (id: string) => {
-    const response = await api.delete(`/db-access/requests/${encodeURIComponent(id)}`);
+    const response = await api.delete(
+      `/db-access/requests/${encodeURIComponent(id)}`,
+    );
     return response.data;
   },
 

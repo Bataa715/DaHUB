@@ -104,6 +104,13 @@ export class DbAccessService {
     if (validUntil <= new Date()) {
       throw new BadRequestException("Дуусах хугацаа өнгөрсөн байна");
     }
+    // C-6: Cap access duration at 90 days to prevent indefinite grants
+    const MAX_DURATION_MS = 90 * 24 * 60 * 60 * 1000;
+    if (validUntil.getTime() - Date.now() > MAX_DURATION_MS) {
+      throw new BadRequestException(
+        "Хүсэлтийн хүчинтэй хугацаа 90 хоноос хэтерхгүй",
+      );
+    }
 
     const now = this.formatDateTime(new Date());
 
@@ -295,7 +302,9 @@ export class DbAccessService {
       `ALTER TABLE access_requests DELETE WHERE id = {id:String}`,
       { id },
     );
-    this.logger.log(`[DBAccess] Request ${id} (${rows[0].status}) deleted by ${user.userId}`);
+    this.logger.log(
+      `[DBAccess] Request ${id} (${rows[0].status}) deleted by ${user.userId}`,
+    );
     return { success: true };
   }
 
@@ -307,9 +316,7 @@ export class DbAccessService {
     await this.clickhouse.exec(
       `ALTER TABLE access_requests DELETE WHERE status IN ('approved', 'rejected')`,
     );
-    this.logger.log(
-      `[DBAccess] Request history deleted by ${user.userId}`,
-    );
+    this.logger.log(`[DBAccess] Request history deleted by ${user.userId}`);
     return { success: true, message: "Түүх устгагдлаа" };
   }
 
@@ -479,7 +486,8 @@ export class DbAccessService {
     return {
       success: true,
       action: dto.action,
-      chSetupFailed: dto.action === "approve" ? (chSetupFailed ?? false) : false,
+      chSetupFailed:
+        dto.action === "approve" ? (chSetupFailed ?? false) : false,
     };
   }
 
