@@ -30,9 +30,25 @@ export interface ReportTemplate {
   updatedAt: string;
 }
 
+// ── Async job types ────────────────────────────────────────────────────────
+type JobStatus = "pending" | "running" | "done" | "error";
+
+interface ReportJob {
+  id: string;
+  status: JobStatus;
+  startedAt: number;
+  finishedAt?: number;
+  fileName?: string;
+  error?: string;
+  buffer?: Buffer;
+}
+
 @Injectable()
 export class ExcelReportService implements OnModuleInit {
   private readonly logger = new Logger(ExcelReportService.name);
+
+  // In-memory job store — single-instance singleton is fine
+  private readonly jobs = new Map<string, ReportJob>();
 
   // ── Security preamble injected before every Python execution ──────────────
   // Wraps urllib.request.urlopen so that every ClickHouse HTTP call is
@@ -359,7 +375,7 @@ export class ExcelReportService implements OnModuleInit {
     return new Promise((resolve, reject) => {
       const python = spawn("python3", [scriptPath], {
         env,
-        timeout: 120000, // 2 min max
+        timeout: 600000, // 10 min max for large datasets
       });
 
       let stderr = "";
@@ -387,5 +403,113 @@ export class ExcelReportService implements OnModuleInit {
         );
       });
     });
+  }
+
+  // ── Async job API ──────────────────────────────────────────────────────────
+
+  /** Start report generation in background, return jobId immediately */
+  async runReportAsync(dto: RunReportDto): Promise<string> {
+    const template = await this.getTemplateById(dto.templateId);
+    if (!template.isActive) {
+      throw new BadRequestException("Энэ тайлан идэвхгүй байна");
+    }
+    if (template.dateMode === "range" && (!dto.startDate || !dto.endDate)) {
+      throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
+    }
+    if (template.dateMode === "single" && !dto.startDate) {
+      throw new BadRequestException("Огноо шаардлагатай");
+    }
+
+    const jobId = randomUUID();
+    const job: ReportJob = {
+      id: jobId,
+      status: "pending",
+      startedAt: Date.now(),
+    };
+    this.jobs.set(jobId, job);
+
+    // Fire-and-forget — runs in background
+    this.processJob(jobId, dto, template).catch(() => {});
+
+    // Cleanup old finished jobs after 30 min
+    setTimeout(() => this.jobs.delete(jobId), 30 * 60 * 1000);
+
+    return jobId;
+  }
+
+  private async processJob(
+    jobId: string,
+    dto: RunReportDto,
+    template: ReportTemplate,
+  ): Promise<void> {
+    const job = this.jobs.get(jobId)!;
+    job.status = "running";
+
+    const tmpDir = os.tmpdir();
+    const scriptPath = path.join(tmpDir, `excel_job_${jobId}.py`);
+    const outputPath = path.join(tmpDir, `excel_job_${jobId}.xlsx`);
+
+    try {
+      const securedCode =
+        ExcelReportService.PYTHON_SECURITY_PREAMBLE + template.pythonCode;
+      fs.writeFileSync(scriptPath, securedCode, "utf8");
+
+      const env: Record<string, string> = {
+        ...process.env,
+        CLICKHOUSE_HOST: process.env.CLICKHOUSE_HOST ?? "",
+        CLICKHOUSE_USER: process.env.CLICKHOUSE_USER ?? "default",
+        CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD ?? "",
+        CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
+        OUTPUT_FILE: outputPath,
+        START_DATE: dto.startDate ?? "",
+        END_DATE: dto.endDate ?? dto.startDate ?? "",
+        REPORT_NAME: template.name,
+      };
+
+      await this.executePython(scriptPath, env);
+
+      if (!fs.existsSync(outputPath)) {
+        throw new InternalServerErrorException(
+          "Python скрипт Excel файл үүсгээгүй байна.",
+        );
+      }
+
+      job.buffer = fs.readFileSync(outputPath);
+      const date = new Date().toISOString().slice(0, 10);
+      job.fileName = `${template.name}_${date}.xlsx`;
+      job.status = "done";
+      job.finishedAt = Date.now();
+    } catch (err: any) {
+      job.status = "error";
+      job.finishedAt = Date.now();
+      job.error =
+        err?.message ?? "Тайлан үүсгэхэд тодорхойгүй алдаа гарлаа";
+      this.logger.error(`Job ${jobId} failed: ${job.error}`);
+    } finally {
+      try { fs.unlinkSync(scriptPath); } catch {}
+      try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
+    }
+  }
+
+  getJobStatus(
+    jobId: string,
+  ): { status: JobStatus; elapsedMs: number; error?: string; fileName?: string } {
+    const job = this.jobs.get(jobId);
+    if (!job) throw new NotFoundException("Ажил олдсонгүй");
+    return {
+      status: job.status,
+      elapsedMs: (job.finishedAt ?? Date.now()) - job.startedAt,
+      error: job.error,
+      fileName: job.fileName,
+    };
+  }
+
+  getJobFile(jobId: string): { buffer: Buffer; fileName: string } {
+    const job = this.jobs.get(jobId);
+    if (!job) throw new NotFoundException("Ажил олдсонгүй");
+    if (job.status !== "done" || !job.buffer) {
+      throw new BadRequestException("Тайлан бэлэн болоогүй байна");
+    }
+    return { buffer: job.buffer, fileName: job.fileName! };
   }
 }

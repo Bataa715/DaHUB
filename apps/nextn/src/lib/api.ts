@@ -857,6 +857,41 @@ export const excelReportApi = {
     return res.data as Blob;
   },
 
+  /** Start async job, returns jobId immediately */
+  runReportAsync: async (
+    templateId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<string> => {
+    const res = await api.post("/excel-report/run-async", {
+      templateId,
+      startDate,
+      endDate,
+    });
+    return res.data.jobId as string;
+  },
+
+  /** Poll job status */
+  getJobStatus: async (
+    jobId: string,
+  ): Promise<{
+    status: "pending" | "running" | "done" | "error";
+    elapsedMs: number;
+    error?: string;
+    fileName?: string;
+  }> => {
+    const res = await api.get(`/excel-report/jobs/${jobId}`);
+    return res.data;
+  },
+
+  /** Download finished job file */
+  downloadJob: async (jobId: string): Promise<Blob> => {
+    const res = await api.get(`/excel-report/jobs/${jobId}/download`, {
+      responseType: "blob",
+    });
+    return res.data as Blob;
+  },
+
   // Admin
   adminGetAll: async (): Promise<ReportTemplateAdmin[]> => {
     const res = await api.get("/excel-report/admin/templates");

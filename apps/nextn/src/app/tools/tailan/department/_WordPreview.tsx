@@ -13,21 +13,21 @@
 //  ӨНГӨ СОЛИХ ЗААВАР (бүх хэсгийн өнгийг хаанаас солих):
 //  ──────────────────────────────────────────────────────
 //  ХҮСНЭГТИЙН HEADER ӨНГ (оранж шугам):
-//    → thKpi дотрох  background: "#ea912b"   ← s1, s2 header
-//    → s3/s4 header: background: "#f59e0b"   ← шар-оранж
-//    → 2-р хуудас header: background: "#f97316"
+//    → thKpi дотрох  background: "#f29447"   ← s1, s2 header
+//    → s3/s4 header: background: "#f29447"   ← шар-оранж
+//    → 2-р хуудас header: background: "#f29447"
 //
 //  S1 (Дата Бүтээгдэхүүний KPI) МӨРИЙН ӨНГ:
-//    → background: "#dbeafe"  ← цэнхэр
+//    → background: "#dde8f5"  ← цэнхэр
 //
 //  S2 (Харилцагчийн төлөв байдал) МӨРИЙН ӨНГ:
-//    → background: "#ffedd5"  ← цайвар оранж
+//    → background: "#f5e5d0"  ← цайвар оранж
 //
 //  S3 (Үйл ажиллагааны KPI) МӨРИЙН ӨНГ:
-//    → background: "#d1fae5"  ← цайвар ногоон
+//    → background: "#d8f0e8"  ← цайвар ногоон
 //
 //  S4 (Сургалт, хөгжил) МӨРИЙН ӨНГ:
-//    → background: "#ede9fe"  ← цайвар нил ягаан
+//    → background: "#e8e5f8"  ← цайвар нил ягаан
 //
 //  2-р хуудас нэгтгэлийн МӨРИЙН ӨНГ:
 //    → background: "#fef3c7"  ← цайвар шар
@@ -151,15 +151,15 @@ export function WordPreview({
   };
 
   // thKpi → KPI хүснэгтийн HEADER нүдний стиль
-  // ⚠️  background: "#ea912b"  ← s1, s2 header-ийн оранж өнгө
+  // ⚠️  background: "#f29447"  ← s1, s2 header-ийн оранж өнгө
   //    Энийг өөрчлөхөд s1 болон s2 хүснэгтийн header өнгө өөрчлөгдөнө
-  //    s3, s4 header нь доор тус тусдаа { ...thKpi, background: "#f59e0b" }
+  //    s3, s4 header нь доор тус тусдаа { ...thKpi, background: "#f29447" }
   //    гэж override хийгддэг тул тэдгээрт нөлөөлөхгүй
   const thKpi: React.CSSProperties = {
     border: "0.5px solid #000",
     padding: "4px 6px",
     fontWeight: "bold",
-    background: "#ea912b", // ← S1, S2 HEADER ОРАНЖ ӨНГ — энд солих
+    background: "#f29447", // ← S1, S2 HEADER ОРАНЖ ӨНГ — энд солих
     fontSize: "10pt", // ← хүснэгтийн header 10pt
     color: "#000",
     textAlign: "center",
@@ -167,7 +167,7 @@ export function WordPreview({
 
   // tdKpi → KPI хүснэгтийн МЭДЭЭЛЛИЙН нүдний үндсэн стиль
   // ex параметрээр нэмэлт стилийг давхарлана (spread)
-  // Жнэ: tdKpi({ background: "#dbeafe" }) → цэнхэр фон нэмсэн нүд
+  // Жнэ: tdKpi({ background: "#dde8f5" }) → цэнхэр фон нэмсэн нүд
   const tdKpi = (ex?: React.CSSProperties): React.CSSProperties => ({
     border: "0.5px solid #000",
     padding: "3px 5px",
@@ -285,10 +285,10 @@ export function WordPreview({
                 {/* ════════════════════════════════════════════════
                     S1 KPI ХҮСНЭГТ
                     Секц: "Дата Бүтээгдэхүүний Үйл Ажиллагаа"
-                    Мөрийн ӨНГ: #dbeafe (цайвар цэнхэр)
-                    ⚠️  Энд background: "#dbeafe" гэж тааралдах бүрт
+                    Мөрийн ӨНГ: #dde8f5 (цайвар цэнхэр)
+                    ⚠️  Энд background: "#dde8f5" гэж тааралдах бүрт
                         тэрхүү нүдний өнгийг солино
-                    Header өнгө: thKpi дотрох "#ea912b" (дээрх тодорхойлолт)
+                    Header өнгө: thKpi дотрох "#f29447" (дээрх тодорхойлолт)
                 ════════════════════════════════════════════════ */}
                 {kpiData ? (
                   <div>
@@ -782,8 +782,8 @@ export function WordPreview({
 
                       // ── S1 KPI ХҮСНЭГТ (ердийн KPI мөрүүд) ──
                       // 5 багана: [Бүлэг] | [Үзүүлэлт] | [Хувь] | [Үнэлгээ] | [Тайлбар]
-                      // Мөрийн өнгө: #dbeafe (цайвар цэнхэр)
-                      // ⚠️  Өнгийг өөрчлөхөд: background: "#dbeafe" → шинэ өнгө
+                      // Мөрийн өнгө: #dde8f5 (цайвар цэнхэр)
+                      // ⚠️  Өнгийг өөрчлөхөд: background: "#dde8f5" → шинэ өнгө
                       const totalW = sub.rows.reduce(
                         (s, r) => s + (Number(r.weight) || 0),
                         0,
@@ -799,7 +799,7 @@ export function WordPreview({
                         >
                           <thead>
                             <tr>
-                              {/* Header: thKpi → "#ea912b" оранж (дээр тодорхойлсон) */}
+                              {/* Header: thKpi → "#f29447" оранж (дээр тодорхойлсон) */}
                               <th style={thKpi}></th>
                               <th style={thKpi}>ТҮЛХҮҮР ҮЗҮҮЛЭЛТ</th>
                               <th style={thKpi}>ХУВЬ</th>
@@ -816,7 +816,7 @@ export function WordPreview({
                                     style={tdKpi({
                                       fontWeight: "bold",
                                       textAlign: "center",
-                                      background: "#dbeafe", // ← S1 бүлгийн нүдний цэнхэр өнгө
+                                      background: "#dde8f5", // ← S1 бүлгийн нүдний цэнхэр өнгө
                                       width: "14%",
                                     })}
                                     rowSpan={sub.rows.length}
@@ -832,7 +832,7 @@ export function WordPreview({
                                   suppressContentEditableWarning
                                   style={tdKpi({
                                     width: "40%",
-                                    background: "#dbeafe", // ← S1 үзүүлэлтийн нүдний цэнхэр өнгө
+                                    background: "#dde8f5", // ← S1 үзүүлэлтийн нүдний цэнхэр өнгө
                                     outline: "none",
                                     cursor: "text",
                                   })}
@@ -870,7 +870,7 @@ export function WordPreview({
                                   style={tdKpi({
                                     textAlign: "center",
                                     width: "8%",
-                                    background: "#dbeafe", // ← S1 хувийн нүдний цэнхэр өнгө
+                                    background: "#dde8f5", // ← S1 хувийн нүдний цэнхэр өнгө
                                   })}
                                 >
                                   {row.weight}
@@ -882,8 +882,8 @@ export function WordPreview({
                                     textAlign: "center",
                                     width: "10%",
                                     fontWeight: "bold",
-                                    background: "#dbeafe", // ← S1 үнэлгээний нүдний цэнхэр өнгө
-                                    color: row.score ? "#1d4ed8" : "#bbb",
+                                    background: "#dde8f5", // ← S1 үнэлгээний нүдний цэнхэр өнгө
+                                    color: row.score ? "#374151" : "#bbb",
                                   })}
                                 >
                                   {row.score || ""}
@@ -894,7 +894,7 @@ export function WordPreview({
                                   style={tdKpi({
                                     width: "28%",
                                     color: "#000",
-                                    background: "#dbeafe", // ← S1 тайлбарын нүдний цэнхэр өнгө
+                                    background: "#dde8f5", // ← S1 тайлбарын нүдний цэнхэр өнгө
                                   })}
                                 >
                                   {row.evaluatedBy}
@@ -938,11 +938,11 @@ export function WordPreview({
                 {/* ════════════════════════════════════════════════
                     S2 KPI ХҮСНЭГТ
                     Секц: "Харилцагчийн төлөв байдал"
-                    Мөрийн ӨНГ: #ffedd5 (цайвар оранж)
-                    ⚠️  Бүх нүдэнд background: "#ffedd5" байгааг
+                    Мөрийн ӨНГ: #f5e5d0 (цайвар оранж)
+                    ⚠️  Бүх нүдэнд background: "#f5e5d0" байгааг
                         өөрчлөхөд s2 секцийн мөрийн өнгө өөрчлөгдөнө
                     evaluatedBy нүд: fontWeight: "bold" (bold тайлбар)
-                    Header: thKpi → "#ea912b" оранж (s1-тэй адил)
+                    Header: thKpi → "#f29447" оранж (s1-тэй адил)
                 ════════════════════════════════════════════════ */}
                 {s2kpiData ? (
                   <div style={{ paddingLeft: "6pt" }}>
@@ -1493,7 +1493,7 @@ export function WordPreview({
                         >
                           <thead>
                             <tr>
-                              {/* Header: thKpi → "#ea912b" оранж — s1-тэй адилхан */}
+                              {/* Header: thKpi → "#f29447" оранж — s1-тэй адилхан */}
                               <th style={thKpi}></th>
                               <th style={thKpi}>ТҮЛХҮҮР ҮЗҮҮЛЭЛТ</th>
                               <th style={thKpi}>ХУВЬ</th>
@@ -1510,7 +1510,7 @@ export function WordPreview({
                                     style={tdKpi({
                                       fontWeight: "bold",
                                       textAlign: "center",
-                                      background: "#ffedd5", // ← S2 бүлгийн нүдний ОРАНЖ өнгө
+                                      background: "#f5e5d0", // ← S2 бүлгийн нүдний ОРАНЖ өнгө
                                       width: "14%",
                                       verticalAlign: "middle",
                                     })}
@@ -1527,7 +1527,7 @@ export function WordPreview({
                                   suppressContentEditableWarning
                                   style={tdKpi({
                                     width: "40%",
-                                    background: "#ffedd5", // ← S2 үзүүлэлтийн нүдний ОРАНЖ өнгө
+                                    background: "#f5e5d0", // ← S2 үзүүлэлтийн нүдний ОРАНЖ өнгө
                                     outline: "none",
                                     cursor: "text",
                                   })}
@@ -1565,7 +1565,7 @@ export function WordPreview({
                                   style={tdKpi({
                                     textAlign: "center",
                                     width: "8%",
-                                    background: "#ffedd5", // ← S2 хувийн нүдний ОРАНЖ өнгө
+                                    background: "#f5e5d0", // ← S2 хувийн нүдний ОРАНЖ өнгө
                                   })}
                                 >
                                   {row.weight}
@@ -1577,8 +1577,8 @@ export function WordPreview({
                                     textAlign: "center",
                                     width: "10%",
                                     fontWeight: "bold",
-                                    background: "#ffedd5", // ← S2 үнэлгээний нүдний ОРАНЖ өнгө
-                                    color: row.score ? "#1d4ed8" : "#bbb",
+                                    background: "#f5e5d0", // ← S2 үнэлгээний нүдний ОРАНЖ өнгө
+                                    color: row.score ? "#374151" : "#bbb",
                                   })}
                                 >
                                   {row.score || ""}
@@ -1593,7 +1593,7 @@ export function WordPreview({
                                     width: "28%",
                                     color: "#000",
                                     fontWeight: "bold", // ← S2-д тайлбар bold
-                                    background: "#ffedd5", // ← S2 тайлбарын нүдний ОРАНЖ өнгө
+                                    background: "#f5e5d0", // ← S2 тайлбарын нүдний ОРАНЖ өнгө
                                   })}
                                 >
                                   {row.evaluatedBy}
@@ -1636,12 +1636,12 @@ export function WordPreview({
                   /* ════════════════════════════════════════════════
                       S3 KPI ХҮСНЭГТ
                       Секц: "Үйл ажиллагааны KPI"
-                      Мөрийн ӨНГ: #d1fae5 (цайвар ногоон)
-                      Header ӨНГ: #f59e0b (шар-оранж)
+                      Мөрийн ӨНГ: #d8f0e8 (цайвар ногоон)
+                      Header ӨНГ: #f29447 (шар-оранж)
                       ⚠️  Header өнгийг өөрчлөхөд:
-                          { ...thKpi, background: "#f59e0b" } дахь "#f59e0b"
+                          { ...thKpi, background: "#f29447" } дахь "#f29447"
                       ⚠️  Мөрийн өнгийг өөрчлөхөд:
-                          background: "#d1fae5" → шинэ өнгө
+                          background: "#d8f0e8" → шинэ өнгө
                   ════════════════════════════════════════════════ */
                   <div style={{ paddingLeft: "6pt" }}>
                     {s3kpiData.map((sub) => {
@@ -2205,20 +2205,20 @@ export function WordPreview({
                         >
                           <thead>
                             <tr>
-                              {/* ⚠️  S3 header: thKpi-г override хийж "#f59e0b" шар-оранж болгоно */}
+                              {/* ⚠️  S3 header: thKpi-г override хийж "#f29447" шар-оранж болгоно */}
                               <th
-                                style={{ ...thKpi, background: "#f59e0b" }}
+                                style={{ ...thKpi, background: "#f29447" }}
                               ></th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ТҮЛХҮҮР ҮЗҮҮЛЭЛТ
                               </th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ХУВЬ
                               </th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ҮНЭЛГЭЭ
                               </th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ҮНЭЛСЭН ТАЙЛБАР
                               </th>
                             </tr>
@@ -2231,7 +2231,7 @@ export function WordPreview({
                                     style={tdKpi({
                                       fontWeight: "bold",
                                       textAlign: "center",
-                                      background: "#d1fae5", // ← S3 бүлгийн нүдний НОГООН өнгө
+                                      background: "#d8f0e8", // ← S3 бүлгийн нүдний НОГООН өнгө
                                       width: "14%",
                                       verticalAlign: "middle",
                                     })}
@@ -2248,7 +2248,7 @@ export function WordPreview({
                                   suppressContentEditableWarning
                                   style={tdKpi({
                                     width: "40%",
-                                    background: "#d1fae5", // ← S3 үзүүлэлтийн НОГООН өнгө
+                                    background: "#d8f0e8", // ← S3 үзүүлэлтийн НОГООН өнгө
                                     outline: "none",
                                     cursor: "text",
                                   })}
@@ -2283,7 +2283,7 @@ export function WordPreview({
                                   style={tdKpi({
                                     textAlign: "center",
                                     width: "8%",
-                                    background: "#d1fae5", // ← S3 хувийн НОГООН өнгө
+                                    background: "#d8f0e8", // ← S3 хувийн НОГООН өнгө
                                   })}
                                 >
                                   {row.weight}
@@ -2293,8 +2293,8 @@ export function WordPreview({
                                     textAlign: "center",
                                     width: "10%",
                                     fontWeight: "bold",
-                                    background: "#d1fae5", // ← S3 үнэлгээний НОГООН өнгө
-                                    color: row.score ? "#1d4ed8" : "#bbb",
+                                    background: "#d8f0e8", // ← S3 үнэлгээний НОГООН өнгө
+                                    color: row.score ? "#374151" : "#bbb",
                                   })}
                                 >
                                   {row.score || ""}
@@ -2303,7 +2303,7 @@ export function WordPreview({
                                   style={tdKpi({
                                     width: "28%",
                                     color: "#000",
-                                    background: "#d1fae5", // ← S3 тайлбарын НОГООН өнгө
+                                    background: "#d8f0e8", // ← S3 тайлбарын НОГООН өнгө
                                   })}
                                 >
                                   {row.evaluatedBy}
@@ -2344,10 +2344,10 @@ export function WordPreview({
                   /* ════════════════════════════════════════════════
                       S4 KPI ХҮСНЭГТ
                       Секц: "Сургалт, Хөгжил"
-                      Мөрийн ӨНГ: #ede9fe (цайвар нил ягаан)
-                      Header ӨНГ: #f59e0b (s3-тэй адил шар-оранж)
+                      Мөрийн ӨНГ: #e8e5f8 (цайвар нил ягаан)
+                      Header ӨНГ: #f29447 (s3-тэй адил шар-оранж)
                       ⚠️  Мөрийн өнгийг өөрчлөхөд:
-                          background: "#ede9fe" → шинэ өнгө
+                          background: "#e8e5f8" → шинэ өнгө
                   ════════════════════════════════════════════════ */
                   <div style={{ paddingLeft: "6pt" }}>
                     {s4kpiData.map((sub) => {
@@ -2708,20 +2708,20 @@ export function WordPreview({
                         >
                           <thead>
                             <tr>
-                              {/* ⚠️  S4 header: "#f59e0b" — S3-тэй адилхан шар-оранж */}
+                              {/* ⚠️  S4 header: "#f29447" — S3-тэй адилхан шар-оранж */}
                               <th
-                                style={{ ...thKpi, background: "#f59e0b" }}
+                                style={{ ...thKpi, background: "#f29447" }}
                               ></th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ТҮЛХҮҮР ҮЗҮҮЛЭЛТ
                               </th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ХУВЬ
                               </th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ҮНЭЛГЭЭ
                               </th>
-                              <th style={{ ...thKpi, background: "#f59e0b" }}>
+                              <th style={{ ...thKpi, background: "#f29447" }}>
                                 ҮНЭЛСЭН ТАЙЛБАР
                               </th>
                             </tr>
@@ -2734,7 +2734,7 @@ export function WordPreview({
                                     style={tdKpi({
                                       fontWeight: "bold",
                                       textAlign: "center",
-                                      background: "#ede9fe", // ← S4 бүлгийн нил ягаан өнгө
+                                      background: "#e8e5f8", // ← S4 бүлгийн нил ягаан өнгө
                                       width: "14%",
                                       verticalAlign: "middle",
                                     })}
@@ -2751,7 +2751,7 @@ export function WordPreview({
                                   suppressContentEditableWarning
                                   style={tdKpi({
                                     width: "40%",
-                                    background: "#ede9fe", // ← S4 үзүүлэлтийн нил ягаан өнгө
+                                    background: "#e8e5f8", // ← S4 үзүүлэлтийн нил ягаан өнгө
                                     outline: "none",
                                     cursor: "text",
                                   })}
@@ -2786,7 +2786,7 @@ export function WordPreview({
                                   style={tdKpi({
                                     textAlign: "center",
                                     width: "8%",
-                                    background: "#ede9fe", // ← S4 хувийн нил ягаан өнгө
+                                    background: "#e8e5f8", // ← S4 хувийн нил ягаан өнгө
                                   })}
                                 >
                                   {row.weight}
@@ -2796,8 +2796,8 @@ export function WordPreview({
                                     textAlign: "center",
                                     width: "10%",
                                     fontWeight: "bold",
-                                    background: "#ede9fe", // ← S4 үнэлгээний нил ягаан өнгө
-                                    color: row.score ? "#1d4ed8" : "#bbb",
+                                    background: "#e8e5f8", // ← S4 үнэлгээний нил ягаан өнгө
+                                    color: row.score ? "#374151" : "#bbb",
                                   })}
                                 >
                                   {row.score || ""}
@@ -2806,7 +2806,7 @@ export function WordPreview({
                                   style={tdKpi({
                                     width: "28%",
                                     color: "#000",
-                                    background: "#ede9fe", // ← S4 тайлбарын нил ягаан өнгө
+                                    background: "#e8e5f8", // ← S4 тайлбарын нил ягаан өнгө
                                   })}
                                 >
                                   {row.evaluatedBy}
@@ -2900,7 +2900,7 @@ export function WordPreview({
                         <span
                           style={{
                             fontWeight: "bold",
-                            color: "#1d4ed8",
+                            color: "#374151",
                             fontSize: "11pt",
                           }}
                         >
@@ -2973,7 +2973,7 @@ export function WordPreview({
           >
             <thead>
               <tr>
-                {/* ⚠️  2-р хуудас header өнгө: "#f29451" → энд солих */}
+                {/* ⚠️  2-р хуудас header өнгө: "#f29447" → энд солих */}
                 {[
                   "",
                   "ТҮЛХҮҮР ҮЗҮҮЛЭЛТ",
@@ -2985,7 +2985,7 @@ export function WordPreview({
                     key={h}
                     style={{
                       ...thKpi,
-                      background: "#f29451", // ← 2-р хуудас header тод оранж
+                      background: "#f29447", // ← 2-р хуудас header тод оранж
                       color: "#000",
                     }}
                   >
@@ -3000,7 +3000,7 @@ export function WordPreview({
                   0→цэнхэр(s1), 1→оранж(s2), 2→ногоон(s3), 3→нил ягаан(s4) */}
               {negtgelKpi.map((group, gi) => {
                 // Бүлгийн индексээр тохирох өнгийг сонгох
-                const rowColors = ["#dbeafe", "#ffedd5", "#d1fae5", "#ede9fe"];
+                const rowColors = ["#dde8f5", "#f5e5d0", "#d8f0e8", "#e8e5f8"];
                 const rowBg = rowColors[gi % rowColors.length];
 
                 // Бүлгийн нийт хувийг тооцно
@@ -3050,7 +3050,7 @@ export function WordPreview({
                             width: "7%",
                             fontWeight: "bold",
                             background: rowBg,
-                            color: row.score ? "#1d4ed8" : "#bbb",
+                            color: row.score ? "#374151" : "#bbb",
                           })}
                         >
                           {row.score || ""}
@@ -3141,19 +3141,20 @@ export function WordPreview({
               fontFamily: "'Times New Roman', Times, serif",
               fontSize: "11pt",
               fontWeight: "bold",
+              fontStyle: "normal",
             };
             const tdL: React.CSSProperties = {
               width: "50%",
               padding: "6pt 12pt 2pt",
               verticalAlign: "top",
-              textAlign: "center",
+              textAlign: "left",
               ...sigFont,
             };
             const tdR: React.CSSProperties = {
               width: "50%",
               padding: "6pt 12pt 2pt",
               verticalAlign: "top",
-              textAlign: "center",
+              textAlign: "left",
               ...sigFont,
             };
             return (
@@ -3172,11 +3173,7 @@ export function WordPreview({
                     </td>
                     <td style={tdR}>
                       {p1n && <div style={sigFont}>{p1n}</div>}
-                      {p1t && (
-                        <div style={{ ...sigFont, fontStyle: "italic" }}>
-                          /{p1t}/
-                        </div>
-                      )}
+                      {p1t && <div style={sigFont}>/{p1t}/</div>}
                     </td>
                   </tr>
                   <tr>
@@ -3185,11 +3182,7 @@ export function WordPreview({
                     </td>
                     <td style={tdR}>
                       {p2n && <div style={sigFont}>{p2n}</div>}
-                      {p2t && (
-                        <div style={{ ...sigFont, fontStyle: "italic" }}>
-                          /{p2t}/
-                        </div>
-                      )}
+                      {p2t && <div style={sigFont}>/{p2t}/</div>}
                     </td>
                   </tr>
                   <tr>
@@ -3198,11 +3191,7 @@ export function WordPreview({
                     </td>
                     <td style={tdR}>
                       {p3n && <div style={sigFont}>{p3n}</div>}
-                      {p3t && (
-                        <div style={{ ...sigFont, fontStyle: "italic" }}>
-                          /{p3t}/
-                        </div>
-                      )}
+                      {p3t && <div style={sigFont}>/{p3t}/</div>}
                     </td>
                   </tr>
                 </tbody>

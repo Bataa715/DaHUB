@@ -76,7 +76,7 @@ export class ExcelReportController {
     return this.service.getActiveTemplates();
   }
 
-  /** POST /excel-report/run — execute python and download xlsx */
+  /** POST /excel-report/run — execute python and download xlsx (sync, small datasets) */
   @Post("run")
   async runReport(@Body() dto: RunReportDto, @Res() res: Response) {
     const buffer = await this.service.runReport(dto);
@@ -86,6 +86,32 @@ export class ExcelReportController {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="report_${safeName}_${date}.xlsx"`,
+      "Content-Length": buffer.length,
+    });
+    res.end(buffer);
+  }
+
+  /** POST /excel-report/run-async — start job, return jobId immediately */
+  @Post("run-async")
+  async runReportAsync(@Body() dto: RunReportDto) {
+    const jobId = await this.service.runReportAsync(dto);
+    return { jobId };
+  }
+
+  /** GET /excel-report/jobs/:jobId — poll job status */
+  @Get("jobs/:jobId")
+  getJobStatus(@Param("jobId") jobId: string) {
+    return this.service.getJobStatus(jobId);
+  }
+
+  /** GET /excel-report/jobs/:jobId/download — download finished file */
+  @Get("jobs/:jobId/download")
+  downloadJob(@Param("jobId") jobId: string, @Res() res: Response) {
+    const { buffer, fileName } = this.service.getJobFile(jobId);
+    res.set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="${fileName}"`,
       "Content-Length": buffer.length,
     });
     res.end(buffer);

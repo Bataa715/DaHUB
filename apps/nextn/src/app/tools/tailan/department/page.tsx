@@ -233,15 +233,15 @@ function buildWordHtml(
             (s, r) => s + (Number(r.weight) || 0),
             0,
           );
-          const thK = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#ea912b;font-size:10pt;color:#000;text-align:center`;
+          const thK = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f29447;font-size:10pt;color:#000;text-align:center`;
           const rowsHtml = sub.rows
             .map(
               (row, ri) => `<tr>
-          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#dbeafe;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
-          <td style="${td0};width:40%;background:#dbeafe">${row.indicator}</td>
-          <td style="${td0};text-align:center;width:8%;background:#dbeafe">${row.weight}</td>
-          <td style="${td0};text-align:center;font-weight:bold;background:#dbeafe;color:${row.score ? "#1d4ed8" : "#bbb"};width:10%">${row.score || ""}</td>
-          <td style="${td0};background:#dbeafe;width:28%">${row.evaluatedBy}</td>
+          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#dde8f5;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
+          <td style="${td0};width:40%;background:#dde8f5">${row.indicator}</td>
+          <td style="${td0};text-align:center;width:8%;background:#dde8f5">${row.weight}</td>
+          <td style="${td0};text-align:center;font-weight:bold;background:#dde8f5;color:${row.score ? "#374151" : "#bbb"};width:10%">${row.score || ""}</td>
+          <td style="${td0};background:#dde8f5;width:28%">${row.evaluatedBy}</td>
         </tr>`,
             )
             .join("");
@@ -270,7 +270,7 @@ function buildWordHtml(
 
     if (def.id === "s2") {
       const s2kpiData = mergeKpi(sec.s2kpiTable, DEFAULT_S2_KPI);
-      const thK2 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#ea912b;font-size:10pt;color:#000;text-align:center`;
+      const thK2 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f29447;font-size:10pt;color:#000;text-align:center`;
       const thW2 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#fff;font-size:10pt;color:#000;text-align:center`;
       const s2TablesHtml = s2kpiData
         .map((sub) => {
@@ -384,11 +384,11 @@ function buildWordHtml(
           const rowsHtml = sub.rows
             .map(
               (row, ri) => `<tr>
-          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#ffedd5;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
-          <td style="${td0};width:40%;background:#ffedd5">${row.indicator}</td>
-          <td style="${td0};text-align:center;width:8%;background:#ffedd5">${row.weight}</td>
-          <td style="${td0};text-align:center;font-weight:bold;background:#ffedd5;color:${row.score ? "#1d4ed8" : "#bbb"};width:10%">${row.score || ""}</td>
-          <td style="${td0};font-weight:bold;background:#ffedd5;width:28%">${row.evaluatedBy}</td>
+          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#f5e5d0;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
+          <td style="${td0};width:40%;background:#f5e5d0">${row.indicator}</td>
+          <td style="${td0};text-align:center;width:8%;background:#f5e5d0">${row.weight}</td>
+          <td style="${td0};text-align:center;font-weight:bold;background:#f5e5d0;color:${row.score ? "#374151" : "#bbb"};width:10%">${row.score || ""}</td>
+          <td style="${td0};font-weight:bold;background:#f5e5d0;width:28%">${row.evaluatedBy}</td>
         </tr>`,
             )
             .join("");
@@ -416,7 +416,7 @@ function buildWordHtml(
 
     if (def.id === "s3") {
       const s3kpiData = mergeKpi(sec.s3kpiTable, DEFAULT_S3_KPI);
-      const thK3 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f59e0b;font-size:10pt;color:#000;text-align:center`;
+      const thK3 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f29447;font-size:10pt;color:#000;text-align:center`;
       const thW = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#fff;font-size:10pt;color:#000;text-align:center`;
       const s3TablesHtml = s3kpiData
         .map((sub: KpiSubSection) => {
@@ -557,11 +557,11 @@ function buildWordHtml(
           const rowsHtml = sub.rows
             .map(
               (row: KpiRow, ri: number) => `<tr>
-          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#d1fae5;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
-          <td style="${td0};width:40%;background:#d1fae5">${row.indicator}</td>
-          <td style="${td0};text-align:center;width:8%;background:#d1fae5">${row.weight}</td>
-          <td style="${td0};text-align:center;font-weight:bold;background:#d1fae5;color:${row.score ? "#1d4ed8" : "#bbb"};width:10%">${row.score || ""}</td>
-          <td style="${td0};background:#d1fae5;width:28%">${row.evaluatedBy}</td>
+          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#d8f0e8;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
+          <td style="${td0};width:40%;background:#d8f0e8">${row.indicator}</td>
+          <td style="${td0};text-align:center;width:8%;background:#d8f0e8">${row.weight}</td>
+          <td style="${td0};text-align:center;font-weight:bold;background:#d8f0e8;color:${row.score ? "#374151" : "#bbb"};width:10%">${row.score || ""}</td>
+          <td style="${td0};background:#d8f0e8;width:28%">${row.evaluatedBy}</td>
         </tr>`,
             )
             .join("");
@@ -589,7 +589,7 @@ function buildWordHtml(
 
     if (def.id === "s4") {
       const s4kpiData = mergeKpi(sec.s4kpiTable, DEFAULT_S4_KPI);
-      const thK4 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f59e0b;font-size:10pt;color:#000;text-align:center`;
+      const thK4 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#f29447;font-size:10pt;color:#000;text-align:center`;
       const thW4 = `border:0.5px solid #000;padding:4px 6px;font-weight:bold;background:#fff;font-size:10pt;color:#000;text-align:center`;
       const s4TablesHtml = s4kpiData
         .map((sub: KpiSubSection) => {
@@ -651,6 +651,22 @@ function buildWordHtml(
               ${itemsHtml}
             </div>`;
           }
+          if (sub.type === "section42knowledge") {
+            const s42Rows = sub.section42Rows ?? [];
+            if (s42Rows.length === 0)
+              return `<div style="margin-bottom:8pt;padding-left:6pt">${sub.groupLabel ? `<div style="font-weight:bold;font-size:11pt;margin-bottom:5pt">${sub.groupLabel}</div>` : ""}<div style="font-size:11pt;color:#bbb;font-style:italic">— Өгөгдөл байхгүй —</div></div>`;
+            const rowsHtml42 = s42Rows
+              .map((row) => {
+                const bullets = (row.text || "")
+                  .split("\n")
+                  .filter((l) => l.trim())
+                  .map((l) => `<li style="font-size:11pt;line-height:1.7">${l.trim()}</li>`)
+                  .join("");
+                return `<div style="margin-bottom:6pt"><div style="font-weight:bold;font-size:11pt;color:#000;margin-bottom:2pt">${row.employeeName}</div><ul style="margin:0 0 4pt 20pt;padding:0;list-style:disc">${bullets}</ul></div>`;
+              })
+              .join("");
+            return `<div style="margin-bottom:8pt;padding-left:6pt">${sub.groupLabel ? `<div style="font-weight:bold;font-size:11pt;margin-bottom:5pt">${sub.groupLabel}</div>` : ""}${rowsHtml42}</div>`;
+          }
           if (sub.type === "section43trainings") {
             const s43Rows = sub.section43Rows ?? [];
             if (s43Rows.length === 0)
@@ -693,11 +709,11 @@ function buildWordHtml(
           const rowsHtml = sub.rows
             .map(
               (row: KpiRow, ri: number) => `<tr>
-          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#ede9fe;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
-          <td style="${td0};width:40%;background:#ede9fe">${row.indicator}</td>
-          <td style="${td0};text-align:center;width:8%;background:#ede9fe">${row.weight}</td>
-          <td style="${td0};text-align:center;font-weight:bold;background:#ede9fe;color:${row.score ? "#1d4ed8" : "#bbb"};width:10%">${row.score || ""}</td>
-          <td style="${td0};background:#ede9fe;width:28%">${row.evaluatedBy}</td>
+          ${ri === 0 ? `<td rowspan="${sub.rows.length}" style="${td0};font-weight:bold;text-align:center;background:#e8e5f8;vertical-align:middle;width:14%">${sub.groupLabel}</td>` : ""}
+          <td style="${td0};width:40%;background:#e8e5f8">${row.indicator}</td>
+          <td style="${td0};text-align:center;width:8%;background:#e8e5f8">${row.weight}</td>
+          <td style="${td0};text-align:center;font-weight:bold;background:#e8e5f8;color:${row.score ? "#374151" : "#bbb"};width:10%">${row.score || ""}</td>
+          <td style="${td0};background:#e8e5f8;width:28%">${row.evaluatedBy}</td>
         </tr>`,
             )
             .join("");
@@ -736,8 +752,8 @@ function buildWordHtml(
   );
   const tdN =
     "border:0.5px solid #000;padding:2px 4px;font-size:10pt;vertical-align:middle;color:#000";
-  const thN = `border:0.5px solid #000;padding:2px 4px;font-weight:bold;background:#f97316;font-size:10pt;color:#000;text-align:center`;
-  const negtRowColors = ["#dbeafe", "#ffedd5", "#d1fae5", "#ede9fe"];
+  const thN = `border:0.5px solid #000;padding:2px 4px;font-weight:bold;background:#f29447;font-size:10pt;color:#000;text-align:center`;
+  const negtRowColors = ["#dde8f5", "#f5e5d0", "#d8f0e8", "#e8e5f8"];
   const negtgelTableHtml = `
     <table style="width:100%;border-collapse:collapse;margin-bottom:4pt;font-size:10pt">
       <thead><tr>
@@ -761,7 +777,7 @@ function buildWordHtml(
                   ${ri === 0 ? `<td rowspan="${group.rows.length}" style="${tdN};font-weight:bold;text-align:center;background:${rowBg};vertical-align:middle">${group.groupLabel}</td>` : ""}
                   <td style="${tdN};background:${rowBg}">${row.indicator}</td>
                   <td style="${tdN};text-align:center;background:${rowBg}">${row.weight}</td>
-                  <td style="${tdN};text-align:center;font-weight:bold;background:${rowBg};color:${row.score ? "#1d4ed8" : "#bbb"}">${row.score || ""}</td>
+                  <td style="${tdN};text-align:center;font-weight:bold;background:${rowBg};color:${row.score ? "#374151" : "#bbb"}">${row.score || ""}</td>
                   <td style="${tdN};background:${rowBg}">${row.evaluatedBy}</td>
                 </tr>`,
               )
@@ -796,7 +812,13 @@ function buildWordHtml(
   margin: 16mm 18mm 14mm 18mm;
   mso-page-orientation: portrait;
 }
+@page WordSection2 {
+  size: 21cm 29.7cm;
+  margin: 16mm 18mm 14mm 18mm;
+  mso-page-orientation: portrait;
+}
 div.WordSection1 { page: WordSection1; }
+div.WordSection2 { page: WordSection2; }
 body { font-family: 'Times New Roman', serif; font-size: 11pt; color: #000; }
 p { margin: 0; }
 </style>
@@ -806,7 +828,9 @@ p { margin: 0; }
   <div style="text-align:center;font-weight:bold;font-size:11pt;letter-spacing:1px;margin-bottom:12pt">БҮХ-НЫ ТАЙЛАН, ҮНЭЛГЭЭ</div>
   <div style="font-size:11pt;color:#333;margin-bottom:16pt">${dateStr}</div>
   ${sectionHtml}
-  <div style="page-break-before:always"></div>
+</div>
+<br style="mso-special-character:line-break;page-break-before:always" clear="all">
+<div class="WordSection2">
   <div style="text-align:center;font-weight:bold;font-size:11pt;margin-bottom:2pt">ДАТА АНАЛИЗИЙН АЛБА</div>
   <div style="text-align:center;font-weight:bold;font-size:11pt;margin-bottom:6pt">${year} ОНЫ ${qName} УЛИРЛЫН БҮХ НИЙТИЙН НЭГТГЭЛ</div>
   ${negtgelTableHtml}
@@ -821,15 +845,15 @@ p { margin: 0; }
     const p2t = sig.p2t || "";
     const p3n = sig.p3n || "";
     const p3t = sig.p3t || "";
-    const sigTdL = `style="width:38%;padding:4pt 6pt;vertical-align:middle;text-align:right;font-family:'Times New Roman',Times,serif;font-size:11pt;font-weight:bold;line-height:1.4"`;
-    const sigTdR = `style="width:62%;padding:4pt 6pt;vertical-align:middle;text-align:left;font-family:'Times New Roman',Times,serif;font-size:11pt;font-weight:bold;line-height:1.4"`;
+    const sigTdL = `style="width:200pt;padding:6pt 16pt 6pt 0;vertical-align:top;text-align:left;font-family:'Times New Roman',Times,serif;font-size:11pt;font-weight:bold;font-style:normal;line-height:1.6"`;
+    const sigTdR = `style="padding:6pt 0;vertical-align:top;text-align:left;font-family:'Times New Roman',Times,serif;font-size:11pt;font-weight:bold;font-style:normal;line-height:1.6"`;
     const sigRow = (label: string, name: string, title: string) =>
-      `<tr><td ${sigTdL}>${label}</td><td ${sigTdR}>${name || ""}${title ? ` <span style="font-style:italic">/${title}/</span>` : ""}</td></tr>`;
-    return `<table style="width:100%;border-collapse:collapse;margin-top:6pt;font-family:'Times New Roman',Times,serif;font-size:11pt;font-weight:bold">
+      `<tr><td ${sigTdL}>${label}</td><td ${sigTdR}>${name ? `<div>${name}</div>` : ""}${title ? `<div>/${title}/</div>` : ""}</td></tr>`;
+    return `<p style="margin:0;line-height:1">&nbsp;</p><p style="margin:0;line-height:1">&nbsp;</p><p style="margin:0;line-height:1">&nbsp;</p><div style="text-align:center"><table style="border-collapse:collapse;font-family:'Times New Roman',Times,serif;font-size:11pt;font-weight:bold;font-style:normal;margin:0 auto">
       ${sigRow("БОЛОВСРУУЛСАН:", p1n, p1t)}
       ${sigRow("ҮНЭЛЖ, БАТАЛГААЖУУЛСАН:", p2n, p2t)}
       ${sigRow("ҮНЭЛЖ, БАТАЛГААЖУУЛСАН:", p3n, p3t)}
-    </table>`;
+    </table></div>`;
   })()}
 </div>
 </body></html>`;
@@ -1624,7 +1648,7 @@ export default function TailanBscPage() {
                     value={sig[tKey] ?? ""}
                     onChange={(e) => setSig(tKey, e.target.value)}
                     placeholder="/Албан тушаал/"
-                    className="flex-1 bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1.5 text-xs text-slate-300 italic placeholder-slate-600 focus:outline-none focus:border-blue-500/60"
+                    className="flex-1 bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1.5 text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500/60"
                   />
                 </div>
               );
