@@ -14,6 +14,7 @@ export const nowCH = (): string =>
 @Injectable()
 export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   private client: ClickHouseClient;
+  private aclClient: ClickHouseClient;
   private readonly logger = new Logger(ClickHouseService.name);
 
   async onModuleInit() {
@@ -21,36 +22,58 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       throw new Error("CLICKHOUSE_HOST environment variable is required");
     }
     const host = process.env.CLICKHOUSE_HOST;
-    const username = process.env.CLICKHOUSE_USER || "default";
-    const password = process.env.CLICKHOUSE_PASSWORD || "";
     const database = process.env.CLICKHOUSE_DATABASE || "audit_db";
 
-    this.logger.log(`Connecting to ClickHouse at ${host}...`);
+    // ── 1. Bootstrap (admin) client — schema init + user provisioning only ─────
+    //   Always uses ClickHouse's built-in "default" user (container admin, empty password).
+    //   This client is closed immediately after provisionServiceUsers() completes.
+    const adminUser = "default";
+    const adminPass = "";
+
+    this.logger.log(`Connecting to ClickHouse at ${host} (bootstrap as "${adminUser}")...`);
 
     try {
+      // Temporarily assign so exec() / query() work inside initializeSchema()
       this.client = createClient({
         url: host,
-        username: username,
-        password: password,
-        database: database,
+        username: adminUser,
+        password: adminPass,
+        database,
         request_timeout: 30000,
-        compression: {
-          request: true,
-          response: true,
-        },
+        compression: { request: true, response: true },
       });
 
-      // Test connection
-      const result = await this.client.query({
-        query: "SELECT version() as version",
-      });
+      const result = await this.client.query({ query: "SELECT version() as version" });
       const data: any = await result.json();
-      this.logger.log(
-        `Connected to ClickHouse version: ${data.data[0].version}`,
-      );
+      this.logger.log(`ClickHouse version: ${data.data[0].version}`);
 
-      // Initialize database schema
+      // Initialize schema AND provision audit_app / audit_acl (needs admin rights)
       await this.initializeSchema();
+
+      // ── 2. Switch to limited runtime client (audit_app) ────────────────────
+      const runtimeUser = process.env.CLICKHOUSE_USER;
+      // L-6: Fail fast if CLICKHOUSE_USER is not set — prevents silent fallback
+      // to the bootstrap 'default' admin account for all runtime queries.
+      if (!runtimeUser || runtimeUser === adminUser) {
+        throw new Error(
+          `CLICKHOUSE_USER must be set to a dedicated service account (not "${adminUser}"). ` +
+          "Set CLICKHOUSE_USER=audit_app in your environment.",
+        );
+      }
+      const runtimePass = process.env.CLICKHOUSE_PASSWORD || "";
+      await this.client.close();
+      this.client = createClient({
+        url: host,
+        username: runtimeUser,
+        password: runtimePass,
+        database,
+        request_timeout: 30000,
+        compression: { request: true, response: true },
+      });
+      this.logger.log(`Runtime client switched to "${runtimeUser}" (limited privileges)`);
+
+      // ── 3. ACL client = runtime client (audit_app handles everything) ───────────
+      this.aclClient = this.client;
     } catch (error) {
       this.logger.error("Failed to connect to ClickHouse:", error.message);
       throw error;
@@ -132,6 +155,39 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`ClickHouse command error: ${msg}`, error?.stack);
         throw error;
       }
+    }
+  }
+
+  /**
+   * Execute ACL DDL (CREATE USER, GRANT, DROP USER, etc.) using the dedicated ACL client.
+   */
+  async execAcl(sql: string, params?: Record<string, any>): Promise<void> {
+    const client = this.aclClient ?? this.client;
+    try {
+      await client.command({ query: sql, query_params: params });
+    } catch (error: any) {
+      const msg = error?.message || error?.type || String(error);
+      this.logger.error(`ClickHouse ACL command error: ${msg}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Query system tables using the dedicated ACL client.
+   */
+  async queryAcl<T = any>(
+    query: string,
+    params?: Record<string, any>,
+  ): Promise<T[]> {
+    const client = this.aclClient ?? this.client;
+    try {
+      const result = await client.query({ query, query_params: params });
+      const data: any = await result.json();
+      return data.data as T[];
+    } catch (error: any) {
+      const msg = error?.message || error?.type || String(error);
+      this.logger.error(`ClickHouse ACL query error: ${msg}`);
+      throw error;
     }
   }
 
@@ -465,6 +521,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         `ALTER TABLE news ADD COLUMN IF NOT EXISTS imageMime String DEFAULT ''`,
       ).catch(() => {});
 
+      await this.provisionServiceUsers();
       this.logger.log(
         "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words)",
       );
@@ -472,6 +529,50 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Schema initialization failed: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Auto-provision the two service users used by the backend.
+   *   audit_app — full read/write on audit_db (future: replace "default" as CLICKHOUSE_USER)
+   *   audit_acl — access management + system table reads (used by aclClient)
+   *
+   * Idempotent: CREATE USER IF NOT EXISTS + ALTER USER IF EXISTS keeps passwords in sync.
+   * Skips silently when the corresponding env var is not set.
+   */
+  private async provisionServiceUsers(): Promise<void> {
+    const appPw = process.env.CLICKHOUSE_PASSWORD || '';
+    if (!appPw) return;
+
+    const esc = (pw: string): string =>
+      pw.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const p = esc(appPw);
+
+    // Create/sync audit_app user
+    await this.exec(`CREATE USER IF NOT EXISTS audit_app IDENTIFIED WITH sha256_password BY '${p}'`);
+    await this.exec(`ALTER USER IF EXISTS audit_app IDENTIFIED WITH sha256_password BY '${p}'`);
+
+    // audit_db: full read/write + schema rights
+    await this.exec(`GRANT SELECT, INSERT ON audit_db.* TO audit_app`);
+    await this.exec(`GRANT CREATE DATABASE ON *.* TO audit_app`);
+    await this.exec(`GRANT CREATE TABLE, DROP TABLE, ALTER ON audit_db.* TO audit_app`);
+    await this.exec(`GRANT SELECT ON system.tables TO audit_app`);
+    await this.exec(`GRANT SELECT ON system.columns TO audit_app`);
+
+    // External DBs: SELECT only — cannot modify data, only read
+    for (const db of ['FINACLE', 'ERP', 'CARDZONE', 'EBANK']) {
+      await this.exec(`GRANT SELECT ON \`${db}\`.* TO audit_app`).catch(() => {
+        // DB may not exist yet on this CH instance — skip silently
+      });
+    }
+
+    // ACL management: create/revoke user grants (for db-access feature)
+    await this.exec(`GRANT ACCESS MANAGEMENT ON *.* TO audit_app`);
+    await this.exec(`GRANT SELECT ON system.users TO audit_app`);
+    await this.exec(`GRANT SELECT ON system.roles TO audit_app`);
+    await this.exec(`GRANT SELECT ON system.grants TO audit_app`);
+    await this.exec(`GRANT SELECT ON system.role_grants TO audit_app`);
+
+    this.logger.log('Service user audit_app provisioned (audit_db rw + external DBs ro + ACL mgmt)');
   }
 
   /**

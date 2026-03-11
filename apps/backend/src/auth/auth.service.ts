@@ -2,6 +2,7 @@
   Injectable,
   Logger,
   UnauthorizedException,
+  ForbiddenException,
   ConflictException,
   NotFoundException,
   BadRequestException,
@@ -271,8 +272,9 @@ export class AuthService {
     }
     if (!user.isActive) {
       this.logger.warn(`Login failed — inactive user [${logContext}]`);
+      // Use the same generic message as "user not found" to prevent user enumeration
       throw new UnauthorizedException(
-        "Таны эрх идэвхгүй байна. Админд хандана уу.",
+        "Хэрэглэгч олдсонгүй эсвэл нууц үг буруу байна",
       );
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -364,12 +366,11 @@ export class AuthService {
       name,
       position,
     };
-    const accessToken = this.generateTokenForUser(fakeUser);
-    const refreshToken = await this.generateRefreshToken(id);
+    // Do NOT return tokens: admin-created accounts must authenticate themselves.
+    // Returning a JWT here would give the calling admin a live token for another user.
     return {
       user: this.formatUserResponse(fakeUser),
-      accessToken,
-      refreshToken,
+      message: "Хэрэглэгч амжилттай үүслээ",
     };
   }
 
@@ -409,14 +410,17 @@ export class AuthService {
       )[0];
 
       await this.validateCredentials(user, password, `dept-login:${username}`);
-      this.clearFailedLogins(lockKey);
 
       if (user.isAdmin) {
-        throw new UnauthorizedException(
+        // ForbiddenException (NOT UnauthorizedException) — correct credentials but
+        // wrong endpoint. This ensures the catch block does NOT count it as a failed
+        // login, preventing DoS-lockout of admin accounts via their own correct password.
+        throw new ForbiddenException(
           "Админ хэрэглэгч энд нэвтрэх боломжгүй. Админ хуудсаар нэвтэрнэ үү.",
         );
       }
 
+      this.clearFailedLogins(lockKey);
       await this.updateLastLogin(user.id);
 
       const accessToken = this.generateTokenForUser(user);
@@ -439,9 +443,9 @@ export class AuthService {
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         this.recordFailedLogin(lockKey);
-        throw error;
+      } else if (!(error instanceof ForbiddenException)) {
+        this.logger.error(`Login error: ${error}`);
       }
-      this.logger.error(`Login error: ${error}`);
       throw error;
     }
   }
@@ -458,19 +462,20 @@ export class AuthService {
         await this.clickhouse.query<any>(
           `SELECT u.*, d.name as departmentName
          FROM users u LEFT JOIN departments d ON u.departmentId = d.id
-         WHERE u.userId = {userId:String} LIMIT 1`,
+         WHERE u.userId = {userId:String} AND u.isActive = 1 LIMIT 1`,
           { userId },
         )
       )[0];
 
       await this.validateCredentials(user, password, `id-login:${userId}`);
-      this.clearFailedLogins(lockKey);
 
       if (user.isAdmin) {
-        throw new UnauthorizedException(
+        throw new ForbiddenException(
           "Админ хэрэглэгч энд нэвтрэх боломжгүй. Админ хуудсаар нэвтэрнэ үү.",
         );
       }
+
+      this.clearFailedLogins(lockKey);
 
       await this.updateLastLogin(user.id);
 
@@ -566,15 +571,17 @@ export class AuthService {
   }
 
   async validateUser(userId: string) {
+    // C-1: AND isActive = 1 ensures deactivated users are rejected on every request,
+    // not just at login — their existing JWT becomes invalid immediately after deactivation.
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
-       WHERE u.id = {userId:String} LIMIT 1`,
+       WHERE u.id = {userId:String} AND u.isActive = 1 LIMIT 1`,
       { userId },
     );
     const user = users[0];
     if (!user) {
-      this.logger.warn(`JWT validation failed — user not found: ${userId}`);
+      this.logger.warn(`JWT validation failed — user not found or inactive: ${userId}`);
       return null;
     }
     return this.formatUserResponse(user);

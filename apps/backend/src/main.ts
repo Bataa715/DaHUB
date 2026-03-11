@@ -103,13 +103,6 @@ async function bootstrap() {
     .addTag("news", "News management")
     .addTag("fitness", "Fitness tracking")
     .build();
-  const document = SwaggerModule.createDocument(app, config);
-  if (process.env.NODE_ENV !== "production") {
-    SwaggerModule.setup("api/docs", app, document);
-    logger.log(
-      ` Swagger UI: http://localhost:${process.env.PORT || 3001}/api/docs`,
-    );
-  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

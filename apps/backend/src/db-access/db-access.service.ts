@@ -366,6 +366,12 @@ export class DbAccessService {
     if (!req) throw new NotFoundException("Хүсэлт олдсонгүй");
     if (req.status !== "pending")
       throw new BadRequestException("Хүсэлт аль хэдийн шийдвэрлэгдсэн байна");
+    // L-8: Prevent approving expired requests
+    if (dto.action === "approve" && new Date(req.validUntil) <= new Date()) {
+      throw new BadRequestException(
+        "Хүсэлтийн хүчинтэй хугацаа дуусчихсан байна — дахин хүсэлт илгээнэ үү",
+      );
+    }
 
     const now = this.formatDateTime(new Date());
     let chSetupFailed = false;

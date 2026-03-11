@@ -10,6 +10,7 @@ import {
   Res,
   Request,
   NotFoundException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { Response } from "express";
 import { UsersService } from "./users.service";
@@ -42,10 +43,14 @@ export class UsersController {
     return this.usersService.getAdmins();
   }
 
-  /** Any authenticated user: view a profile */
+  /** Authenticated users can view their own profile; admins can view any profile */
   @UseGuards(JwtAuthGuard)
   @Get(":id")
-  findOne(@Param("id") id: string) {
+  findOne(@Param("id") id: string, @Request() req: any) {
+    // M-1: IDOR fix — prevent any user from reading another user's full profile
+    if (id !== req.user.id && !req.user.isAdmin) {
+      throw new ForbiddenException("Зөвхөн өөрийн профайлыг харах боломжтой");
+    }
     return this.usersService.findOne(id);
   }
 

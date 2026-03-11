@@ -234,7 +234,7 @@ export class ClickHouseAccessService {
       // ── Selective: remove only this table's SELECT privilege from the role ──
       const [db, tbl] = tableName.split(".");
       try {
-        await this.clickhouse.exec(
+        await this.clickhouse.execAcl(
           `REVOKE SELECT ON ${this.q(db)}.${this.q(tbl)} FROM ${this.q(role)}`,
         );
         this.logger.debug(
@@ -263,7 +263,7 @@ export class ClickHouseAccessService {
     // ── Drop the role entirely ───────────────────────────────────────────────
     // First revoke it from the user (ClickHouse requires explicit REVOKE before DROP)
     try {
-      await this.clickhouse.exec(
+      await this.clickhouse.execAcl(
         `REVOKE ${this.q(role)} FROM ${this.q(username)}`,
       );
       this.logger.debug(`[exec] ✓ revoke role ${role} from ${username}`);
@@ -328,31 +328,35 @@ export class ClickHouseAccessService {
       r.startsWith("role_req_"),
     );
 
-    // 2. Also scan system.roles for orphaned role_req_* roles that reference this user
-    //    (catches roles that ClickHouse may still know about even if not in role_grants)
+    // 2. Also catch orphaned role_req_* roles that still have grants TO this user
+    //    in system.grants (user_name column). Scoped strictly to this user —
+    //    never touches other users' roles.
     try {
-      const systemRoles = await this.clickhouse.query<{ name: string }>(
-        `SELECT name FROM system.roles WHERE name LIKE 'role_req_%'`,
+      const orphanedRoles = await this.clickhouse.queryAcl<{ role_name: string }>(
+        `SELECT DISTINCT role_name
+         FROM system.grants
+         WHERE user_name = {username:String}
+           AND role_name LIKE 'role_req_%'`,
+        { username },
       );
-      for (const { name } of systemRoles) {
-        if (!reqRoles.includes(name)) {
-          // Orphaned role — add to list for cleanup
-          reqRoles.push(name);
+      for (const { role_name } of orphanedRoles) {
+        if (!reqRoles.includes(role_name)) {
+          reqRoles.push(role_name);
         }
       }
     } catch {
-      // system.roles unavailable — proceed with what we have
+      // system.grants unavailable — proceed with what we have
     }
 
     // 3. Drop each role (revoke from user first, then drop)
     for (const role of reqRoles) {
       try {
-        await this.clickhouse.exec(
+        await this.clickhouse.execAcl(
           `REVOKE IF EXISTS ${this.q(role)} FROM ${this.q(username)}`,
         );
       } catch { /* ignore */ }
       try {
-        await this.clickhouse.exec(`DROP ROLE IF EXISTS ${this.q(role)}`);
+        await this.clickhouse.execAcl(`DROP ROLE IF EXISTS ${this.q(role)}`);
         rolesDropped.push(role);
         this.logger.log(`[cleanup] Dropped orphaned role ${role} for user ${username}`);
       } catch (err: any) {
@@ -365,7 +369,7 @@ export class ClickHouseAccessService {
     const userExists = await this.clickhouseUserExists(username);
     if (userExists) {
       try {
-        await this.clickhouse.exec(`DROP USER IF EXISTS ${this.q(username)}`);
+        await this.clickhouse.execAcl(`DROP USER IF EXISTS ${this.q(username)}`);
         userDropped = true;
         this.logger.log(`[cleanup] Dropped CH user ${username}`);
       } catch (err: any) {
@@ -444,7 +448,7 @@ export class ClickHouseAccessService {
    */
   private async clickhouseUserExists(username: string): Promise<boolean> {
     try {
-      const rows = await this.clickhouse.query<{ name: string }>(
+      const rows = await this.clickhouse.queryAcl<{ name: string }>(
         `SELECT name FROM system.users WHERE name = {name:String} LIMIT 1`,
         { name: username },
       );
@@ -460,7 +464,7 @@ export class ClickHouseAccessService {
    */
   private async fetchGrants(username: string): Promise<string[]> {
     try {
-      const rows = await this.clickhouse.query<{ grants: string }>(
+      const rows = await this.clickhouse.queryAcl<{ grants: string }>(
         // SHOW GRANTS returns one row per grant line; column name is "GRANTS FOR …"
         // Use the generic system.grants table instead for reliable parsing
         `SHOW GRANTS FOR ${this.q(username)}`,
@@ -479,7 +483,7 @@ export class ClickHouseAccessService {
    */
   private async getRolePrivilegeCount(role: string): Promise<number> {
     try {
-      const rows = await this.clickhouse.query<{ cnt: string }>(
+      const rows = await this.clickhouse.queryAcl<{ cnt: string }>(
         `SELECT count() AS cnt
          FROM system.grants
          WHERE role_name = {role:String}`,
@@ -498,7 +502,7 @@ export class ClickHouseAccessService {
    */
   private async getActiveRolesForUser(username: string): Promise<string[]> {
     try {
-      const rows = await this.clickhouse.query<{ granted_role_name: string }>(
+      const rows = await this.clickhouse.queryAcl<{ granted_role_name: string }>(
         `SELECT granted_role_name
          FROM system.role_grants
          WHERE user_name = {username:String}`,
@@ -546,7 +550,7 @@ export class ClickHouseAccessService {
    */
   private async execSafe(sql: string, description: string): Promise<void> {
     try {
-      await this.clickhouse.exec(sql);
+      await this.clickhouse.execAcl(sql);
       this.logger.debug(`[exec] ✓ ${description}`);
     } catch (error: any) {
       this.logger.error(

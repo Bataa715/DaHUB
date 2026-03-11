@@ -118,10 +118,12 @@ export class NewsService {
         if (matches) {
           const imageData = matches[2];
           const imageMime = matches[1];
-          // Validate: base64 chars only, mime type safe chars only
+          // H-5: Strict MIME whitelist — reject text/html, image/svg+xml, etc.
+          // A permissive regex like /^[a-zA-Z0-9.+/-]+$/ still allows dangerous types.
+          const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
           if (
             /^[A-Za-z0-9+/=]+$/.test(imageData) &&
-            /^[a-zA-Z0-9.+/-]+$/.test(imageMime)
+            ALLOWED_IMAGE_MIMES.includes(imageMime)
           ) {
             await this.clickhouse.exec(
               `ALTER TABLE news UPDATE imageUrl = {imageUrl:String}, imageMime = {imageMime:String} WHERE id = {id:String}`,
@@ -234,7 +236,11 @@ export class NewsService {
       { id },
     );
     if (!rows || rows.length === 0 || !rows[0].imageUrl) return null;
-    const mimeType = rows[0].imageMime || "image/jpeg";
+    // H-5: Enforce MIME whitelist on serve — a previously stored unsafe MIME
+    // must not be served even if it passed an earlier (weaker) validation.
+    const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const storedMime = rows[0].imageMime;
+    const mimeType = ALLOWED_IMAGE_MIMES.includes(storedMime) ? storedMime : 'image/jpeg';
     const buffer = Buffer.from(rows[0].imageUrl, "base64");
     return { buffer, mimeType };
   }

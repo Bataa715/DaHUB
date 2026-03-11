@@ -381,6 +381,10 @@ export class UsersService {
     const match = profileImage.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) return null;
 
+    // H-5: Whitelist MIME types — prevents Content-Type injection (stored XSS via SVG/HTML)
+    const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!ALLOWED_IMAGE_MIMES.includes(match[1])) return null;
+
     return { buffer: Buffer.from(match[2], "base64"), mimeType: match[1] };
   }
 }

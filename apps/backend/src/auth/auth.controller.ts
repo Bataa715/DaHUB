@@ -182,21 +182,14 @@ export class AuthController {
   @ApiOperation({
     summary: "Search users",
     description:
-      "Search users by user ID or name (public - used by login suggestion dropdown)",
+      "Search users by user ID or name (public — login suggestion dropdown, non-admin users only)",
   })
   @ApiQuery({ name: "q", description: "Search query", example: "Bold" })
-  @ApiQuery({
-    name: "adminOnly",
-    required: false,
-    description: "Filter admin users only",
-    example: "true",
-  })
   @ApiResponse({ status: 200, description: "Returns search results" })
-  async searchUsers(
-    @Query("q") query: string,
-    @Query("adminOnly") adminOnly?: string,
-  ) {
-    return this.authService.searchUsersByUserId(query, adminOnly === "true");
+  async searchUsers(@Query("q") query: string) {
+    // H-3: adminOnly is never exposed on this public endpoint to prevent
+    // unauthenticated enumeration of admin user IDs.
+    return this.authService.searchUsersByUserId(query, false);
   }
 
   @UseGuards(JwtAuthGuard)

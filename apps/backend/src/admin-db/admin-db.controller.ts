@@ -70,6 +70,26 @@ export class AdminDbController {
         statistics: json.statistics ?? null,
       };
     } else {
+      // C-2: Block irreversible/destructive DDL even for superadmin.
+      // Compromised accounts and fat-finger mistakes are both real risks.
+      const BLOCKED_PATTERNS = [
+        /\bDROP\s+(?:DATABASE|TABLE|USER)\b/i,
+        /\bTRUNCATE\s+TABLE\b/i,
+        /\bCREATE\s+USER\b/i,
+        /\bGRANT\b\s+/i,
+        /\bREVOKE\b\s+/i,
+      ];
+      const blockedBy = BLOCKED_PATTERNS.find((p) => p.test(stripped));
+      if (blockedBy) {
+        this.logger.error(
+          `[ADMIN-DB] BLOCKED dangerous DDL from superadmin '${req.user?.userId}': ${sql.slice(0, 200)}`,
+        );
+        throw new BadRequestException(
+          "Энэ SQL команд хориглогдсон байна (DROP, TRUNCATE, CREATE USER, GRANT, REVOKE). " +
+          "Хэрэв зайлшгүй шаардлагатай бол серверийн консолоор гүйцэтгэнэ үү.",
+        );
+      }
+
       const start = Date.now();
       await this.clickhouse.exec(sql);
       return {

@@ -213,7 +213,7 @@ export function WordPreview({
               {plannedTasks
                 .filter((t) => t.title?.trim())
                 .map((t, idx) => (
-                  <div key={t._id} style={{ marginBottom: "6pt" }}>
+                  <div key={t._id ?? idx} style={{ marginBottom: "6pt" }}>
                     <span style={{ fontWeight: "bold" }}>
                       {idx + 1}. {t.title}
                     </span>

@@ -23,7 +23,8 @@ import { AdminGuard } from "../auth/guards/admin.guard";
 export class NewsController {
   constructor(private newsService: NewsService) {}
 
-  // Public – published news only (drafts are never exposed here)
+  // L-7: Authenticated users only — news is internal, not public-facing
+  @UseGuards(JwtAuthGuard)
   @Get()
   async findAll(@Query("page") page = 1, @Query("limit") limit = 100) {
     const take = Math.min(Number(limit), 200);
@@ -31,13 +32,15 @@ export class NewsController {
     return this.newsService.findAll(true, take, skip); // always published=true
   }
 
-  // Public – single published news item (increments view)
+  // Authenticated users only
+  @UseGuards(JwtAuthGuard)
   @Get(":id")
   async findOne(@Param("id") id: string) {
     return this.newsService.findOne(id);
   }
 
-  // Public – news by category (published only)
+  // Authenticated users only
+  @UseGuards(JwtAuthGuard)
   @Get("category/:category")
   async getByCategory(@Param("category") category: string) {
     return this.newsService.getByCategory(category);
@@ -75,7 +78,8 @@ export class NewsController {
     return this.newsService.togglePublish(id);
   }
 
-  // Public – serve news image binary
+  // Authenticated users only
+  @UseGuards(JwtAuthGuard)
   @Get(":id/image")
   async getNewsImage(@Param("id") id: string, @Res() res: Response) {
     const result = await this.newsService.getNewsImage(id);
