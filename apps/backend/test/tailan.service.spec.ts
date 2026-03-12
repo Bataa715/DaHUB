@@ -74,7 +74,7 @@ describe("TailanService", () => {
       expect(
         service.isDeptHead({
           ...BASE_USER,
-          allowedTools: ["tailan", "fitness"],
+          allowedTools: ["tailan"],
         }),
       ).toBe(false);
     });

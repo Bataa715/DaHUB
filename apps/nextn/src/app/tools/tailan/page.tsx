@@ -8,13 +8,11 @@ import {
   FileText,
   Users,
   ChevronRight,
-  ChevronLeft,
   Loader2,
   ScrollText,
-  Sparkles,
   Eye,
 } from "lucide-react";
-import Link from "next/link";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 
 const QUARTER_NAMES = ["I", "II", "III", "IV"];
 
@@ -48,7 +46,7 @@ export default function TailanPage() {
     );
 
   return (
-    <div className="relative min-h-[calc(100vh-64px)] bg-[#080d14] flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-screen bg-[#080d14] overflow-hidden">
 
       {/* ── Ambient glow orbs ── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -66,17 +64,18 @@ export default function TailanPage() {
         />
       </div>
 
-      {/* ── Back link ── */}
-      <Link
-        href="/tools"
-        className="absolute top-5 left-5 flex items-center gap-1.5 text-slate-500 hover:text-slate-200 text-sm transition-colors duration-200 z-10"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Хэрэгслүүд
-      </Link>
+      <ToolPageHeader
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+            <ScrollText className="w-3.5 h-3.5 text-white" />
+          </div>
+        }
+        title="Улирлын тайлан"
+        subtitle="Улирлын ажлын тайлан бэлтгэх, нэгтгэх систем"
+      />
 
       {/* ── Main content ── */}
-      <div className="relative z-10 w-full max-w-md px-4">
+      <div className="relative z-10 w-full max-w-md mx-auto px-4 py-16">
 
         {/* Header */}
         <div className="text-center mb-10">
@@ -87,7 +86,6 @@ export default function TailanPage() {
 
           {/* quarter badge */}
           <div className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1 mb-4 ml-2">
-            <Sparkles className="h-3 w-3 text-blue-400" />
             <span className="text-blue-300 text-xs font-medium tracking-wide">
               {year} · {qLabel}-р улирал
             </span>

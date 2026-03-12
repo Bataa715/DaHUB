@@ -182,20 +182,20 @@ export default function PdfToTextPage() {
     .trim().length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* ── Header ── */}
-      <div className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="max-w-[1600px] mx-auto px-4 h-14 flex items-center gap-3">
           <Link
             href="/tools"
-            className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition-colors text-sm"
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Буцах
           </Link>
-          <span className="text-slate-700">/</span>
+          <span className="text-border">/</span>
           <FileSearch className="w-4 h-4 text-pink-400" />
-          <span className="font-semibold text-slate-100">PDF → Текст</span>
+          <span className="font-semibold text-foreground">PDF → Текст</span>
 
           {/* Stats */}
           <div className="flex items-center gap-2 ml-2">

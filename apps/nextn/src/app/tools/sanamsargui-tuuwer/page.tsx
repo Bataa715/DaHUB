@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
-import BackButton from "@/components/shared/BackButton";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Select,
@@ -346,7 +346,7 @@ export default function SanamsarguiTuuwerPage() {
         </div>
       )}
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="absolute inset-0 bg-background">
         <motion.div
           className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-violet-600/10 to-transparent rounded-full blur-3xl"
           animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
@@ -359,24 +359,17 @@ export default function SanamsarguiTuuwerPage() {
         />
       </div>
 
-      <BackButton href="/tools" />
+      <ToolPageHeader
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center shadow-md">
+            <Calculator className="w-3.5 h-3.5 text-white" />
+          </div>
+        }
+        title="Санамсаргүй түүвэр"
+        subtitle="Аудитын түүврийн хэмжээ тооцоолох, санамсаргүй сонгон авах хэрэгсэл"
+      />
 
       <div className="relative z-10 container mx-auto px-6 py-8 max-w-4xl">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 pt-4"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-white">
-              Санамсаргүй түүвэр
-            </h1>
-          </div>
-          <p className="text-slate-400">
-            Аудитын түүврийн хэмжээ тооцоолох, санамсаргүй сонгон авах хэрэгсэл
-          </p>
-        </motion.div>
 
         {/* Config Card */}
         <motion.div

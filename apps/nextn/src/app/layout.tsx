@@ -53,8 +53,9 @@ export default function RootLayout({
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem
+          defaultTheme="tokyo-night"
+          themes={["default", "tokyo-night", "emerald"]}
+          enableSystem={false}
           disableTransitionOnChange
         >
           <AuthProvider>

@@ -21,7 +21,6 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/tailan/department": ["tailan_dept_head"],
   "/tools/tailan/mine": ["tailan", "tailan_dept_head"],
   "/tools/tailan": ["tailan", "tailan_dept_head"],
-  "/tools/fitness": ["fitness"],
   "/tools/todo": ["todo"],
   "/tools/sanamsargui-tuuwer": ["sanamsargui-tuuwer"],
   "/tools/pivot": ["pivot"],

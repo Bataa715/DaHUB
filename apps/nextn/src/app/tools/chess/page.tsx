@@ -21,6 +21,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import type {
   Invitation,
   GameInfo,
@@ -748,31 +749,23 @@ export default function ChessPage() {
         <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[700px] h-[300px] rounded-full bg-amber-500/5 blur-3xl" />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 py-10">
-        {/* Page header */}
-        <div className="flex items-center gap-4 mb-8">
-          {view === "game" && (
-            <button
-              onClick={backToLobby}
-              className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 text-slate-400 hover:text-white transition-all"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          )}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/25">
-              <Crown className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Шатрын тоглоом</h1>
-              <p className="text-xs text-slate-400">
-                {view === "lobby"
-                  ? "Найзтайгаа онлайн шатар тоглоорой"
-                  : `Тоглоом: ${gameId?.slice(0, 8) ?? ""}…`}
-              </p>
-            </div>
+      <ToolPageHeader
+        href="/tools"
+        onBack={view === "game" ? backToLobby : undefined}
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center shadow-md">
+            <Crown className="w-3.5 h-3.5 text-white" />
           </div>
-        </div>
+        }
+        title="Шатрын тоглоом"
+        subtitle={
+          view === "lobby"
+            ? "Найзтайгаа онлайн шатар тоглоорой"
+            : `Тоглоом: ${gameId?.slice(0, 8) ?? ""}…`
+        }
+      />
+
+      <div className="relative z-10 max-w-5xl mx-auto px-4 py-10">
 
         {/* -- LOBBY -------------------------------------------------------- */}
         <AnimatePresence mode="wait">

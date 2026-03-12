@@ -6,7 +6,6 @@ import { ClickHouseModule } from "./clickhouse/clickhouse.module";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { DepartmentsModule } from "./departments/departments.module";
-import { FitnessModule } from "./fitness/fitness.module";
 import { NewsModule } from "./news/news.module";
 import { AuditLogModule } from "./audit/audit-log.module";
 import { DbAccessModule } from "./db-access/db-access.module";
@@ -47,7 +46,6 @@ import configuration from "./config/configuration";
     AuthModule,
     UsersModule,
     DepartmentsModule,
-    FitnessModule,
     NewsModule,
     DbAccessModule,
     TailanModule,

@@ -17,8 +17,6 @@ import type {
   TailanImage,
 } from "../mine/_components/tailan.types";
 import {
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   User,
   X,
@@ -26,8 +24,11 @@ import {
   CheckCircle2,
   Clock,
   MinusCircle,
+  ChevronRight,
   ChevronDown,
 } from "lucide-react";
+import Link from "next/link";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 
 const QUARTER_NAMES = ["I", "II", "III", "IV"];
 
@@ -199,26 +200,19 @@ export default function DeptViewPage() {
         </div>
       </div>
 
-      {/* ─── Main content ─────────────────────────────────────────────────── */}
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
-        {/* Back */}
-        <button
-          onClick={() => router.push("/tools/tailan")}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-200 text-sm transition-colors mb-8"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Тайлан
-        </button>
+      <ToolPageHeader
+        href="/tools/tailan"
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+            <Eye className="w-3.5 h-3.5 text-white" />
+          </div>
+        }
+        title="Гишүүдийн тайлан харах"
+        subtitle="Хэлтсийн гишүүдийн илгээсэн улирлын тайлануудыг харах"
+      />
 
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-1">
-            Гишүүдийн тайлан харах
-          </h1>
-          <p className="text-slate-400 text-sm">
-            Хэлтсийн гишүүдийн илгээсэн улирлын тайлануудыг харах
-          </p>
-        </div>
+      {/* ─── Main content ──────────────────────────────────────────────────── */}
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
 
         {/* Year / Quarter selectors */}
         <div className="flex items-center gap-3 mb-8 flex-wrap">

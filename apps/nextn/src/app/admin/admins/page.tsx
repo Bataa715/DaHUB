@@ -21,7 +21,6 @@ import { usersApi } from "@/lib/api";
 
 const ALL_TOOLS = [
   { id: "todo", name: "Todo" },
-  { id: "fitness", name: "Fitness" },
   { id: "chess", name: "Оюуны спорт" },
   { id: "sanamsargui-tuuwer", name: "Санамсаргүй түүвэр" },
   { id: "pivot", name: "Pivot" },

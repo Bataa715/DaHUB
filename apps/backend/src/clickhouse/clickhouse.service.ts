@@ -54,14 +54,15 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // Initialize schema AND provision audit_app / audit_acl (needs admin rights)
       await this.initializeSchema();
 
-      // ── 2. Switch to limited runtime client (audit_app) ────────────────────
-      const runtimeUser = process.env.CLICKHOUSE_USER;
-      // L-6: Fail fast if CLICKHOUSE_USER is not set — prevents silent fallback
-      // to the bootstrap 'default' admin account for all runtime queries.
-      if (!runtimeUser || runtimeUser === adminUser) {
-        throw new Error(
-          `CLICKHOUSE_USER must be set to a dedicated service account (not "${adminUser}"). ` +
-            "Set CLICKHOUSE_USER=audit_app in your environment.",
+      // ── 2. Switch to limited runtime client ────────────────────────────────
+      // If CLICKHOUSE_USER is unset or is the admin "default", automatically
+      // fall back to "audit_app" which was just provisioned above.
+      const envUser = process.env.CLICKHOUSE_USER;
+      const runtimeUser =
+        !envUser || envUser === adminUser ? "audit_app" : envUser;
+      if (!envUser || envUser === adminUser) {
+        this.logger.warn(
+          `CLICKHOUSE_USER is "${envUser ?? "(unset)"}" — automatically using "audit_app" service account.`,
         );
       }
       const runtimePass = process.env.CLICKHOUSE_PASSWORD || "";
@@ -547,7 +548,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
    */
   private async provisionServiceUsers(): Promise<void> {
     const appPw = process.env.CLICKHOUSE_PASSWORD || "";
-    if (!appPw) return;
 
     const esc = (pw: string): string =>
       pw.replace(/\\/g, "\\\\").replace(/'/g, "\\'");

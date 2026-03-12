@@ -101,7 +101,6 @@ async function bootstrap() {
     .addTag("users", "User management")
     .addTag("departments", "Department management")
     .addTag("news", "News management")
-    .addTag("fitness", "Fitness tracking")
     .build();
 
   const port = process.env.PORT || 3001;

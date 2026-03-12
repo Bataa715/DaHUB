@@ -8,7 +8,6 @@ import { motion } from "framer-motion";
 import {
   ArrowUpRight,
   ListTodo,
-  Dumbbell,
   Wrench,
   Lock,
   Loader2,
@@ -47,17 +46,6 @@ const allTools: Tool[] = [
     gradient: "from-emerald-500 to-teal-500",
     glow: "shadow-emerald-500/20 group-hover:shadow-emerald-500/40",
     tag: "Productivity",
-    category: "free",
-  },
-  {
-    id: "fitness",
-    title: "Биеийн тамир",
-    description: "Өдөр тутмын дасгалын хөтөлбөр болон биеийн байдлын хяналт",
-    icon: Dumbbell,
-    href: "/tools/fitness",
-    gradient: "from-orange-500 to-rose-500",
-    glow: "shadow-orange-500/20 group-hover:shadow-orange-500/40",
-    tag: "Health",
     category: "free",
   },
   {
@@ -283,7 +271,7 @@ export default function ToolsPage() {
 
   /*  BG  */
   const BG = (
-    <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="absolute inset-0 bg-background">
       <motion.div
         className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-purple-600/10 to-transparent rounded-full blur-3xl"
         animate={{ x: [0, 100, 0], y: [0, 50, 0], scale: [1, 1.1, 1] }}
@@ -367,16 +355,13 @@ export default function ToolsPage() {
             </div>
             <div>
               <p className="text-xs text-purple-400/80 font-medium flex items-center gap-1.5 mb-0.5">
-                <Star className="w-3 h-3" /> DaHUB Internal Audit
+                    Дотоод аудитын газар
               </p>
               <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-                Хэрэгслүүд
+                Хэрэгсэл
               </h1>
             </div>
           </div>
-          <p className="text-slate-400 ml-16 text-sm">
-            Дотоод аудитын ажлыг хөнгөвчлөх {available.length} хэрэгсэл
-          </p>
         </motion.div>
 
         {available.length === 0 ? (

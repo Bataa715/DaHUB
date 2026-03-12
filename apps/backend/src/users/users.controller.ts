@@ -24,7 +24,6 @@ import { AuditLogService } from "../audit/audit-log.service";
 // B-8: Whitelist of valid tool names — prevents granting fake/invented tools
 const VALID_TOOLS = [
   "tailan",
-  "fitness",
   "english",
   "chess",
   "db_access_requester",

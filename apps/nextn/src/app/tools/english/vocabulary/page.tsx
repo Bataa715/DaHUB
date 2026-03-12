@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { englishApi } from "@/lib/api";
 import type { EnglishWord } from "@/lib/types";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
   BookOpen,
   Layers,
@@ -1299,23 +1300,17 @@ export default function EnglishVocabularyPage() {
   const studyReady = studyWords.length >= 4;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 px-4 pb-10">
-      {/* ── Header ── */}
-      <div className="pt-4 space-y-1">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-lg">
-            <BookOpen className="w-6 h-6" />
+    <>
+      <ToolPageHeader
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+            <BookOpen className="w-3.5 h-3.5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Англи үг цээжлэх
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Флэшкарт, олон сонголт, бичих гэсэн 3 аргаар тогтоох
-            </p>
-          </div>
-        </div>
-      </div>
+        }
+        title="Англи үг цээжлэх"
+        subtitle="Флэшкарт, олон сонголт, бичих гэсэн 3 аргаар тогтоох"
+      />
+      <div className="max-w-5xl mx-auto space-y-6 px-4 pb-10">
 
       {/* ── Stats row ── */}
       <div className="grid grid-cols-3 gap-3">
@@ -1480,5 +1475,6 @@ export default function EnglishVocabularyPage() {
         </DialogContent>
       </Dialog>
     </div>
+  </>
   );
 }

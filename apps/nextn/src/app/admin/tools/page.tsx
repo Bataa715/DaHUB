@@ -98,15 +98,6 @@ const AVAILABLE_TOOLS: Tool[] = [
     category: "free",
   },
   {
-    id: "fitness",
-    name: "Fitness",
-    description: "Биеийн тамирын бүртгэл, дасгал хөтлөх",
-    icon: Dumbbell,
-    color: "from-emerald-500 to-teal-500",
-    gradient: "bg-gradient-to-br from-emerald-500/20 to-teal-500/20",
-    category: "free",
-  },
-  {
     id: "chess",
     name: "Оюуны спорт",
     description:

@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import {
   Database,
-  ArrowLeft,
   CheckCircle2,
   Loader2,
   RefreshCw,
@@ -22,6 +21,7 @@ import {
   Table2,
   Check,
 } from "lucide-react";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 
 interface TableInfo {
   database: string;
@@ -60,12 +60,11 @@ export default function DbAccessRequestPage() {
   // Table search filter
   const [tableFilter, setTableFilter] = useState("");
 
-  // Set default date to today
+  // Set default date to tomorrow
   useEffect(() => {
-    const today = new Date();
-    const nextMonth = new Date(today);
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    setValidUntilDate(nextMonth.toISOString().split("T")[0]);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setValidUntilDate(tomorrow.toISOString().split("T")[0]);
   }, []);
 
   const loadTables = useCallback(async () => {
@@ -134,6 +133,15 @@ export default function DbAccessRequestPage() {
       return;
     }
 
+    if (!reason.trim()) {
+      toast({
+        title: "Шалтгаан оруулна уу",
+        description: "Эрх хүссэн шалтгааныг заавал бичнэ үү",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const validUntil = new Date(`${validUntilDate}T${validUntilTime}:00`);
     if (validUntil <= new Date()) {
       toast({
@@ -186,27 +194,18 @@ export default function DbAccessRequestPage() {
     }, {});
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href="/tools">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-              <Database className="h-5 w-5 text-cyan-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">ClickHouse Эрх Хүсэх</h1>
-              <p className="text-sm text-muted-foreground">
-                Хүснэгтэд хандах эрх хүсэх
-              </p>
-            </div>
+    <div className="min-h-screen bg-background">
+      <ToolPageHeader
+        href="/tools"
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-md">
+            <Database className="w-3.5 h-3.5 text-white" />
           </div>
-          <div className="flex items-center gap-2 ml-auto">
+        }
+        title="ClickHouse Эрх Хүсэх"
+        subtitle="Хүснэгтэд хандах эрх хүсэх"
+        rightContent={
+          <div className="flex items-center gap-2">
             <Link href="/tools/db-access/my-grants">
               <Button variant="outline" size="sm">
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -223,7 +222,9 @@ export default function DbAccessRequestPage() {
               </Link>
             )}
           </div>
-        </div>
+        }
+      />
+      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-8">
 
         <div className="space-y-4">
             <div className="rounded-xl border bg-card p-5 space-y-4">
@@ -414,7 +415,7 @@ export default function DbAccessRequestPage() {
                   <Input
                     type="date"
                     value={validUntilDate}
-                    min={new Date().toISOString().split("T")[0]}
+                    min={(() => { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().split("T")[0]; })()}
                     onChange={(e) => setValidUntilDate(e.target.value)}
                     className="bg-background"
                   />
@@ -443,7 +444,7 @@ export default function DbAccessRequestPage() {
               <Button
                 className="w-full bg-cyan-600 hover:bg-cyan-500"
                 onClick={handleSubmit}
-                disabled={submitting || selectedTables.length === 0}
+                disabled={submitting || selectedTables.length === 0 || !reason.trim()}
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

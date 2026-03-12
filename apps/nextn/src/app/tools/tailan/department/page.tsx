@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -1254,11 +1255,12 @@ export default function TailanBscPage() {
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-700/50 bg-slate-900/60 backdrop-blur-sm shrink-0">
         <Link
           href="/tools/tailan"
-          className="flex items-center gap-1 text-slate-400 hover:text-white text-sm transition-colors"
+          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 text-sm transition-colors"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
+          Буцах
         </Link>
-        <span className="text-slate-600 text-sm">|</span>
+        <span className="text-slate-700">/</span>
         <span className="text-slate-200 text-sm font-medium">
           Хэлтсийн улирлийн тайлан
         </span>

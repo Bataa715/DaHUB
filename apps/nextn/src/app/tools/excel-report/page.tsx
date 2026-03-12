@@ -10,7 +10,6 @@ import {
   CalendarRange,
   ArrowLeft,
   TableProperties,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,23 +47,23 @@ export default function ExcelReportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* ── Sticky header ── */}
-      <div className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center gap-3">
           <Link
             href="/tools"
-            className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition-colors text-sm"
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Буцах
           </Link>
-          <span className="text-slate-700">/</span>
+          <span className="text-border">/</span>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md">
               <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-semibold text-slate-100">Excel тайлан</span>
+            <span className="font-semibold text-foreground">Excel тайлан</span>
           </div>
           <span className="ml-2 text-xs text-slate-500 hidden sm:block">
             Системийн мэдээллээс Excel тайлан татах
@@ -101,7 +100,6 @@ export default function ExcelReportPage() {
               className="flex items-center gap-2 mb-7"
             >
               <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 text-xs text-emerald-400">
-                <Sparkles className="w-3 h-3" />
                 {templates.length} тайлан боломжтой
               </div>
             </motion.div>

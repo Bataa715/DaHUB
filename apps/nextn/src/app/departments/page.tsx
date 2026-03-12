@@ -971,7 +971,7 @@ export default function DepartmentsPage() {
   const totalCount = members.length || department.employeeCount || 0;
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-950">
+    <div className="min-h-screen relative overflow-hidden bg-background">
       {BG}
 
       <div className="relative z-10 py-8 px-4 sm:px-6">

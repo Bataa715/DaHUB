@@ -9,6 +9,7 @@ import {
   Download,
   Send,
   Save,
+  ArrowLeft,
   ChevronLeft,
   ChevronDown,
   Loader2,
@@ -747,9 +748,10 @@ export default function TailanMinePage() {
           <div className="flex items-center gap-2">
             <Link
               href="/tools/tailan"
-              className="text-slate-400 hover:text-white transition"
+              className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition-colors text-sm"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
+              Буцах
             </Link>
             <span className="font-semibold text-white text-sm">
               Миний тайлан

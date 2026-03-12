@@ -6,8 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
-  ArrowLeft,
   CheckCircle2,
   Loader2,
   RefreshCw,
@@ -79,9 +79,16 @@ function daysLeft(dateStr: string): number {
 
 /** Format DateTime as "YYYY.MM.DD HH:mm" (24h) */
 function fmt24(dateStr: string): string {
-  const d = new Date(dateStr);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleString("mn-MN", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 export default function MyGrantsPage() {
@@ -148,36 +155,28 @@ export default function MyGrantsPage() {
   }, [load]);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-3xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href="/tools/db-access">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Миний Идэвхтэй Эрхүүд</h1>
-              <p className="text-sm text-muted-foreground">
-                Одоогийн хандалтын зөвшөөрлүүд
-              </p>
-            </div>
+    <div className="min-h-screen bg-background">
+      <ToolPageHeader
+        href="/tools/db-access"
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md">
+            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
           </div>
+        }
+        title="Миний Идэвхтэй Эрхүүд"
+        subtitle="Одоогийн хандалтын зөвшөөрлүүд"
+        rightContent={
           <Button
             variant="ghost"
             size="sm"
-            className="ml-auto"
             onClick={load}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
-        </div>
+        }
+      />
+      <div className="max-w-3xl mx-auto space-y-6 p-4 md:p-8">
 
         {loading ? (
           <div className="flex justify-center py-12">

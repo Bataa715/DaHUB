@@ -10,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
-  ArrowLeft,
   Clock,
   CheckCircle2,
   XCircle,
@@ -118,9 +118,16 @@ const STATUS_CONFIG = {
 
 /** Format DateTime as "YYYY.MM.DD HH:mm" (24h) */
 function fmt24(dateStr: string): string {
-  const d = new Date(dateStr);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleString("mn-MN", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 export default function DbAccessManagePage() {
@@ -326,56 +333,30 @@ export default function DbAccessManagePage() {
   );
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href="/tools/db-access">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
-              <ShieldCheck className="h-5 w-5 text-violet-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Эрхийн Хүсэлт Шийдвэрлэх</h1>
-              <p className="text-sm text-muted-foreground">
-                {mounted ? (user?.name ?? "") : ""} ClickHouse хандалтын
-                хүсэлтүүдийг хянах
-              </p>
-            </div>
+    <div className="min-h-screen bg-background">
+      <ToolPageHeader
+        href="/tools/db-access"
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+            <ShieldCheck className="w-3.5 h-3.5 text-white" />
           </div>
-          <div className="ml-auto flex items-center gap-1">
-            {(tab === "pending" || tab === "all") && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:bg-destructive/10"
-                onClick={handleDeleteHistory}
-                disabled={deletingHistory || loading}
-                title="Шийдвэрлэгдсэн хүсэлтийн түүх устгах"
-              >
-                {deletingHistory ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                tab === "grants" ? loadAllGrants() : loadRequests(tab === "all")
-              }
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
+        }
+        title="Эрхийн Хүсэлт Шийдвэрлэх"
+        subtitle="ClickHouse хандалтын хүсэлтүүдийг хянах"
+        rightContent={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              tab === "grants" ? loadAllGrants() : loadRequests(tab === "all")
+            }
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        }
+      />
+      <div className="max-w-5xl mx-auto space-y-6 p-4 md:p-8">
 
         {/* Tabs */}
         <div className="flex gap-0 border-b">
@@ -494,6 +475,18 @@ export default function DbAccessManagePage() {
                           <StatusIcon className="h-3 w-3 mr-1" />
                           {cfg.label}
                         </Badge>
+                        <button
+                          className="shrink-0 p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          disabled={deletingId === req.id}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req.id); }}
+                          title="Устгах"
+                        >
+                          {deletingId === req.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                         {expanded ? (
                           <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
                         ) : (
@@ -558,22 +551,7 @@ export default function DbAccessManagePage() {
                           {/* Review panel */}
                           {(req.status === "pending" || req.status === "rejected") && (
                             <div className="pt-1">
-                              {req.status === "rejected" ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-destructive hover:bg-destructive/10 gap-1.5"
-                                  disabled={deletingId === req.id}
-                                  onClick={() => handleDeleteRequest(req.id)}
-                                >
-                                  {deletingId === req.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  )}
-                                  Устгах
-                                </Button>
-                              ) : reviewingId === req.id ? (
+                              {req.status === "rejected" ? null : reviewingId === req.id ? (
                                 <div className="space-y-2">
                                   <Label className="text-xs">
                                     Тайлбар (заавал)

@@ -24,7 +24,7 @@ const BASE_USER = {
   isAdmin: 0,
   isSuperAdmin: 0,
   isActive: 1,
-  allowedTools: '["tailan","fitness"]',
+  allowedTools: '["tailan"]',
   lastLoginAt: null,
   createdAt: "2024-01-01 00:00:00",
 };
@@ -57,7 +57,7 @@ describe("UsersService", () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("user-123");
       expect(result[0].isAdmin).toBe(false);
-      expect(result[0].allowedTools).toEqual(["tailan", "fitness"]);
+      expect(result[0].allowedTools).toEqual(["tailan"]);
     });
 
     it("safely parses corrupt allowedTools as empty array", async () => {

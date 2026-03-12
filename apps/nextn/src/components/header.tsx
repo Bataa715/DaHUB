@@ -81,7 +81,7 @@ const Header = () => {
   // Admin эрхтэй бол админ хуудас руу очих товч нэмэх
   if (mounted && user?.isAdmin === true && !isAdminPage && !loading) {
     regularLinks.push({
-      href: "/admin",
+      href: "/admin", 
       label: "Админ",
       icon: Shield,
       public: false,
@@ -110,7 +110,7 @@ const Header = () => {
   return (
     <header className="sticky top-0 left-0 w-full z-50 min-h-[60px] md:min-h-[72px]">
       <div className="relative">
-        <div className="mx-3 md:mx-4 mt-3 md:mt-4 grid grid-cols-[1fr_auto_1fr] items-center p-2 px-4 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10">
+        <div className="mx-3 md:mx-4 mt-3 md:mt-4 grid grid-cols-[1fr_auto_1fr] items-center p-2 px-4 bg-background/80 backdrop-blur-md rounded-2xl border border-border/30">
           <div className="flex justify-self-start items-center gap-2">
             {!isAdminPage && (
               <Sheet open={isOpen} onOpenChange={setIsOpen}>

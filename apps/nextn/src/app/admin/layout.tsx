@@ -152,7 +152,7 @@ function AdminSidebar({
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-slate-700/50">
-        <p className="text-xs text-slate-600">DaHUB Internal Audit v2</p>
+        <p className="text-xs text-slate-600">DaHUB</p>
       </div>
     </aside>
   );

@@ -295,9 +295,6 @@ export class DbAccessService {
       { id },
     );
     if (rows.length === 0) throw new NotFoundException("Хүсэлт олдсонгүй");
-    if (rows[0].status === "approved") {
-      throw new BadRequestException("Батлагдаж хүсэлтийг устгах боломжтой");
-    }
     await this.clickhouse.exec(
       `ALTER TABLE access_requests DELETE WHERE id = {id:String}`,
       { id },
