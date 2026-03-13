@@ -108,10 +108,12 @@ export class ExcelReportController {
   @Get("jobs/:jobId/download")
   downloadJob(@Param("jobId") jobId: string, @Res() res: Response) {
     const { buffer, fileName } = this.service.getJobFile(jobId);
+    // RFC 5987: encode non-ASCII filename (e.g. Mongolian/Cyrillic chars)
+    const encodedName = encodeURIComponent(fileName);
     res.set({
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
+      "Content-Disposition": `attachment; filename="report.xlsx"; filename*=UTF-8''${encodedName}`,
       "Content-Length": buffer.length,
     });
     res.end(buffer);

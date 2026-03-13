@@ -23,15 +23,17 @@ import { AuditLogService } from "../audit/audit-log.service";
 
 // B-8: Whitelist of valid tool names — prevents granting fake/invented tools
 const VALID_TOOLS = [
+  "todo",
   "tailan",
+  "tailan_dept_head",
   "english",
   "chess",
   "db_access_requester",
   "db_access_granter",
-  "tailan_dept_head",
   "pivot",
   "sanamsargui-tuuwer",
-  "report",
+  "excel_report",
+  "pdf_to_text",
 ] as const;
 
 @Controller("users")
@@ -93,16 +95,11 @@ export class UsersController {
     if (!Array.isArray(tools)) {
       throw new BadRequestException("allowedTools тооц байна");
     }
-    // B-8: Reject any tool not in the explicit whitelist
-    const invalid = tools.filter(
-      (t) => !(VALID_TOOLS as readonly string[]).includes(t),
+    // B-8: Strip any tool IDs not in the explicit whitelist (handles legacy IDs gracefully)
+    const sanitized = tools.filter((t) =>
+      (VALID_TOOLS as readonly string[]).includes(t),
     );
-    if (invalid.length > 0) {
-      throw new BadRequestException(
-        `Дараахи бус байхгүй хэргсэл: ${invalid.join(", ")}`,
-      );
-    }
-    return this.usersService.updateTools(id, tools);
+    return this.usersService.updateTools(id, sanitized);
   }
 
   /** SuperAdmin only: promote or demote admin role */
