@@ -26,11 +26,11 @@ async function bootstrap() {
     }),
   );
 
-  // Large limit for /users (profile image base64) and /tailan (report base64 images)
+  // Large limit for /users (profile image base64), reduced /tailan limit [MED-4]
   app.use("/users", express.json({ limit: "10mb" }));
   app.use("/users", express.urlencoded({ limit: "10mb", extended: true }));
-  app.use("/tailan", express.json({ limit: "50mb" }));
-  app.use("/tailan", express.urlencoded({ limit: "50mb", extended: true }));
+  app.use("/tailan", express.json({ limit: "10mb" })); // [MED-4] Reduced from 50mb to 10mb
+  app.use("/tailan", express.urlencoded({ limit: "10mb", extended: true }));
   app.use("/news", express.json({ limit: "10mb" }));
   app.use("/news", express.urlencoded({ limit: "10mb", extended: true }));
   // Tight default limit for all other endpoints
@@ -77,31 +77,37 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
+      forbidNonWhitelisted: true, // [LOW-4] Reject requests with unrecognized properties
       transform: true,
     }),
   );
 
-  // Setup Swagger/OpenAPI documentation
-  const config = new DocumentBuilder()
-    .setTitle("Internal Audit API")
-    .setDescription("API documentation for Internal Audit Management System")
-    .setVersion("1.0")
-    .addBearerAuth(
-      {
-        type: "http",
-        scheme: "bearer",
-        bearerFormat: "JWT",
-        name: "JWT",
-        description: "Enter JWT token",
-        in: "header",
-      },
-      "JWT-auth",
-    )
-    .addTag("auth", "Authentication endpoints")
-    .addTag("users", "User management")
-    .addTag("departments", "Department management")
-    .addTag("news", "News management")
-    .build();
+  // [MED-3] Swagger/OpenAPI docs — disabled in production to reduce attack surface
+  if (process.env.NODE_ENV !== "production") {
+    const config = new DocumentBuilder()
+      .setTitle("Internal Audit API")
+      .setDescription("API documentation for Internal Audit Management System")
+      .setVersion("1.0")
+      .addBearerAuth(
+        {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          name: "JWT",
+          description: "Enter JWT token",
+          in: "header",
+        },
+        "JWT-auth",
+      )
+      .addTag("auth", "Authentication endpoints")
+      .addTag("users", "User management")
+      .addTag("departments", "Department management")
+      .addTag("news", "News management")
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("api-docs", app, document);
+    logger.log(` Swagger docs available at /api-docs (dev only)`);
+  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

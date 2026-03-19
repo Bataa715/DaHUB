@@ -49,6 +49,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     // Send safe response to client
+    // [LOW-6] Strip query string from path — query params may contain sensitive data (tokens, IDs)
+    const safePath = request.url.split("?")[0];
     response.status(status).json({
       statusCode: status,
       message:
@@ -56,7 +58,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? "Серверийн алдаа гарлаа"
           : message,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      path: safePath,
     });
   }
 }

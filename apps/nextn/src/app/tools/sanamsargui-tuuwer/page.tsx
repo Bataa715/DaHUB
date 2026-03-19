@@ -66,20 +66,82 @@ function calcStratifiedSampleSize(N: number, Z: number, E: number): number {
   return Math.round(n0 / (1 + (n0 - 1) / N));
 }
 
-// ── Year extraction from Excel date values ───────────────────────────────────
-function toYear(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "number") {
-    try {
-      const d = XLSX.SSF.parse_date_code(value);
-      if (d && d.y) return d.y;
-    } catch {
-      /* ignore */
-    }
+// ── Generic filter value formatter ───────────────────────────────────────────
+function normalizeFilterValue(value: unknown): string {
+  if (value == null) return "(хоосон)";
+  const str = String(value).trim();
+  return str.length ? str : "(хоосон)";
+}
+
+const LARGE_EXPORT_ROW_THRESHOLD = 20_000;
+
+function toCsvCell(value: unknown): string {
+  const raw = String(value ?? "");
+  if (/[",\n\r]/.test(raw)) {
+    return `"${raw.replace(/"/g, '""')}"`;
   }
-  const str = String(value);
-  const m = str.match(/(\d{4})/);
-  return m ? parseInt(m[1]) : null;
+  return raw;
+}
+
+function buildCsvContent(result: SamplingResult, isStratified: boolean): string {
+  const lines: string[] = [];
+  lines.push(`Дизайн,${toCsvCell(result.design)}`);
+  lines.push(`Түүврийн хэмжээ (n),${result.n}`);
+  lines.push(`Хүн ам (N),${result.N}`);
+  lines.push(`Итгэлийн түвшин,${(result.confidence * 100).toFixed(0)}%`);
+  lines.push(`Алдааны марж,${result.margin}%`);
+  lines.push("");
+
+  for (const g of result.groups) {
+    lines.push(`Бүлэг,${toCsvCell(g.label)}`);
+    if (isStratified) {
+      lines.push("Мөр №,Санамсаргүй хувьсагч");
+      for (const idx of g.indices) {
+        lines.push(`${idx},${idx}`);
+      }
+    } else {
+      lines.push(["Мөр №", ...result.headers].map(toCsvCell).join(","));
+      g.indices.forEach((idx, i) => {
+        const row = g.rows[i] ?? [];
+        const cells = [idx, ...result.headers.map((_, ci) => row[ci] ?? "")];
+        lines.push(cells.map(toCsvCell).join(","));
+      });
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+function logExportFailure(
+  reason: string,
+  error?: unknown,
+  extra?: Record<string, unknown>,
+) {
+  const userAgent =
+    typeof navigator !== "undefined" ? navigator.userAgent : "unknown";
+  const payload = {
+    reason,
+    timestamp: new Date().toISOString(),
+    userAgent,
+    ...extra,
+  };
+
+  if (error instanceof Error) {
+    console.error("[SanamsarguiTuuwer][Export]", payload, {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+    return;
+  }
+
+  if (error) {
+    console.error("[SanamsarguiTuuwer][Export]", payload, { error });
+    return;
+  }
+
+  console.warn("[SanamsarguiTuuwer][Export]", payload);
 }
 
 // ── Sampling helpers ──────────────────────────────────────────────────────────
@@ -124,6 +186,7 @@ export default function SanamsarguiTuuwerPage() {
   const [stdDev, setStdDev] = useState(0.5);
   const [exportFilename, setExportFilename] = useState("sample_result.xlsx");
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // SRSWR / SRSWOR
   const [isDragging, setIsDragging] = useState(false);
@@ -131,22 +194,25 @@ export default function SanamsarguiTuuwerPage() {
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [yearCol, setYearCol] = useState<string>("");
-  const [useYearFilter, setUseYearFilter] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
+  const [filterCol, setFilterCol] = useState<string>("");
+  const [useColumnFilter, setUseColumnFilter] = useState(false);
+  const [selectedFilterValue, setSelectedFilterValue] = useState<string>("all");
+  const [coverAllValues, setCoverAllValues] = useState(false);
+  const [preferSaveDialog, setPreferSaveDialog] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Compute unique years from fileData based on yearCol selection
-  const availableYears: number[] = (() => {
-    if (!useYearFilter || !fileData || !yearCol) return [];
-    const idx = fileHeaders.indexOf(yearCol);
+  // Compute unique values from selected filter column
+  const availableFilterValues: string[] = (() => {
+    if (!useColumnFilter || !fileData || !filterCol) return [];
+    const idx = fileHeaders.indexOf(filterCol);
     if (idx < 0) return [];
-    const years = new Set<number>();
+    const values = new Set<string>();
     for (const row of fileData) {
-      const y = toYear((row as unknown[])[idx]);
-      if (y != null) years.add(y);
+      values.add(normalizeFilterValue((row as unknown[])[idx]));
     }
-    return Array.from(years).sort();
+    return Array.from(values).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+    );
   })();
 
   // Stratified
@@ -181,9 +247,10 @@ export default function SanamsarguiTuuwerPage() {
       setFileData(rows.slice(1) as unknown[][]);
       setFileName(file.name);
       setResult(null);
-      setYearCol("");
-      setUseYearFilter(false);
-      setSelectedYear("all");
+      setFilterCol("");
+      setUseColumnFilter(false);
+      setSelectedFilterValue("all");
+      setCoverAllValues(false);
     };
     reader.readAsArrayBuffer(file);
   }, []);
@@ -212,15 +279,31 @@ export default function SanamsarguiTuuwerPage() {
   const computedN = (() => {
     const Z = getZ(confidence);
     if (isStratified) return calcStratifiedSampleSize(totalVars, Z, margin);
-    const yearIdx = yearCol ? fileHeaders.indexOf(yearCol) : -1;
+
+    const baseData = fileData ?? [];
+    const colIdx = filterCol ? fileHeaders.indexOf(filterCol) : -1;
     const filteredLen =
-      selectedYear === "all" || yearIdx < 0
-        ? (fileData?.length ?? 0)
-        : (fileData ?? []).filter(
-            (row) => toYear((row as unknown[])[yearIdx]) === selectedYear,
+      !useColumnFilter || selectedFilterValue === "all" || colIdx < 0
+        ? baseData.length
+        : baseData.filter(
+            (row) =>
+              normalizeFilterValue((row as unknown[])[colIdx]) ===
+              selectedFilterValue,
           ).length;
+
     if (!filteredLen) return null;
-    return calcSampleSize(filteredLen, Z, margin, stdDev);
+    let n = calcSampleSize(filteredLen, Z, margin, stdDev);
+
+    if (
+      useColumnFilter &&
+      coverAllValues &&
+      selectedFilterValue === "all" &&
+      colIdx >= 0
+    ) {
+      n = Math.max(n, availableFilterValues.length);
+    }
+
+    return n;
   })();
 
   // ── Calculate ────────────────────────────────────────────────────────────
@@ -268,23 +351,79 @@ export default function SanamsarguiTuuwerPage() {
       });
     } else {
       const baseData = fileData ?? [];
-      const yearIdx = yearCol ? fileHeaders.indexOf(yearCol) : -1;
-      const filteredData =
-        selectedYear === "all" || yearIdx < 0
-          ? baseData
-          : baseData.filter(
-              (row) => toYear((row as unknown[])[yearIdx]) === selectedYear,
-            );
-      const N = filteredData.length;
+      const colIdx = filterCol ? fileHeaders.indexOf(filterCol) : -1;
+
+      const scopedData = baseData
+        .map((row, idx) => ({ row, sourceIndex: idx + 1 }))
+        .filter(({ row }) => {
+          if (!useColumnFilter || selectedFilterValue === "all" || colIdx < 0) {
+            return true;
+          }
+          return (
+            normalizeFilterValue((row as unknown[])[colIdx]) === selectedFilterValue
+          );
+        });
+
+      const N = scopedData.length;
       if (!N) return;
-      const n = calcSampleSize(N, Z, margin, stdDev);
-      const indices =
-        design === "srswr"
-          ? sampleWithReplacement(N, n)
-          : sampleWithoutReplacement(N, n);
-      const rows = indices.map((idx) => filteredData[idx - 1] ?? []);
+
+      let n = calcSampleSize(N, Z, margin, stdDev);
+      const sampledEntries: Array<{ sourceIndex: number; row: unknown[] }> = [];
+
+      if (
+        useColumnFilter &&
+        coverAllValues &&
+        selectedFilterValue === "all" &&
+        colIdx >= 0
+      ) {
+        const valueMap = new Map<string, Array<{ sourceIndex: number; row: unknown[] }>>();
+        for (const entry of scopedData) {
+          const key = normalizeFilterValue((entry.row as unknown[])[colIdx]);
+          const arr = valueMap.get(key);
+          if (arr) arr.push(entry);
+          else valueMap.set(key, [entry]);
+        }
+
+        const allValues = Array.from(valueMap.keys());
+        n = Math.max(n, allValues.length);
+
+        for (const v of allValues) {
+          const arr = valueMap.get(v) ?? [];
+          if (!arr.length) continue;
+          const pick = arr[Math.floor(Math.random() * arr.length)];
+          sampledEntries.push(pick);
+        }
+      }
+
+      const remaining = Math.max(0, n - sampledEntries.length);
+      if (remaining > 0) {
+        if (design === "srswr") {
+          for (let i = 0; i < remaining; i++) {
+            const pick = scopedData[Math.floor(Math.random() * scopedData.length)];
+            sampledEntries.push(pick);
+          }
+        } else {
+          const used = new Set(sampledEntries.map((e) => e.sourceIndex));
+          const available = scopedData.filter((e) => !used.has(e.sourceIndex));
+          const picks = sampleWithoutReplacement(available.length, remaining);
+          for (const p of picks) {
+            sampledEntries.push(available[p - 1]);
+          }
+        }
+      }
+
+      const indices = sampledEntries.map((e) => e.sourceIndex);
+      const rows = sampledEntries.map((e) => e.row ?? []);
+
+      let groupLabel = "Түүвэр";
+      if (useColumnFilter && filterCol && selectedFilterValue !== "all") {
+        groupLabel = `Түүвэр ${filterCol}=${selectedFilterValue}`;
+      } else if (useColumnFilter && filterCol && selectedFilterValue === "all") {
+        groupLabel = `Түүвэр (${filterCol} бүх утга)`;
+      }
+
       setResult({
-        n,
+        n: sampledEntries.length,
         N,
         Z,
         design,
@@ -294,7 +433,7 @@ export default function SanamsarguiTuuwerPage() {
         headers: fileHeaders,
         groups: [
           {
-            label: selectedYear === "all" ? "Түүвэр" : `Түүвэр ${selectedYear}`,
+            label: groupLabel,
             indices,
             rows,
           },
@@ -306,8 +445,126 @@ export default function SanamsarguiTuuwerPage() {
   // ── Export ───────────────────────────────────────────────────────────────
   const handleExport = async () => {
     if (!result) return;
+    setExportError(null);
     setExporting(true);
+
+    console.info("[SanamsarguiTuuwer][Export] Download started", {
+      design,
+      groupCount: result.groups.length,
+      sampleSize: result.n,
+      requestedFilename: exportFilename || "sample_result.xlsx",
+      useSaveDialog: preferSaveDialog,
+    });
+
+    const saveBlob = async (
+      blob: Blob,
+      filename: string,
+      mime: string,
+      origin: "xlsx" | "csv",
+    ) => {
+      const pickerWindow = window as Window & {
+        showSaveFilePicker?: (options?: {
+          suggestedName?: string;
+          types?: Array<{ description: string; accept: Record<string, string[]> }>;
+        }) => Promise<{
+          createWritable: () => Promise<{
+            write: (data: Blob) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }>;
+      };
+
+      if (preferSaveDialog && typeof pickerWindow.showSaveFilePicker === "function") {
+        try {
+          const handle = await pickerWindow.showSaveFilePicker({
+            suggestedName: filename,
+            types: [
+              {
+                description: origin === "xlsx" ? "Excel file" : "CSV file",
+                accept: { [mime]: [origin === "xlsx" ? ".xlsx" : ".csv"] },
+              },
+            ],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          console.info("[SanamsarguiTuuwer][Export] Saved via File Picker", {
+            filename,
+            size: blob.size,
+            origin,
+          });
+          return;
+        } catch (pickerErr) {
+          if (
+            pickerErr &&
+            typeof pickerErr === "object" &&
+            "name" in pickerErr &&
+            (pickerErr as { name?: string }).name === "AbortError"
+          ) {
+            logExportFailure("User cancelled File Picker save dialog", pickerErr, {
+              origin,
+            });
+            return;
+          }
+          logExportFailure(
+            "File Picker failed, falling back to browser download",
+            pickerErr,
+            { origin },
+          );
+        }
+      }
+
+      const nav = window.navigator as Navigator & {
+        msSaveOrOpenBlob?: (blob: Blob, defaultName?: string) => boolean;
+      };
+      if (typeof nav.msSaveOrOpenBlob === "function") {
+        nav.msSaveOrOpenBlob(blob, filename);
+        console.info("[SanamsarguiTuuwer][Export] Saved via msSaveOrOpenBlob", {
+          filename,
+          size: blob.size,
+          origin,
+        });
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      console.info("[SanamsarguiTuuwer][Export] Browser download link triggered", {
+        filename,
+        size: blob.size,
+        origin,
+        note: "If no save prompt appears, browser download/security settings may be blocking automatic downloads.",
+      });
+
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    };
+
     try {
+      const totalRows = result.groups.reduce((sum, g) => sum + g.indices.length, 0);
+      if (totalRows >= LARGE_EXPORT_ROW_THRESHOLD) {
+        logExportFailure("Large export detected; switching to CSV", undefined, {
+          totalRows,
+          threshold: LARGE_EXPORT_ROW_THRESHOLD,
+        });
+
+        const csvContent = buildCsvContent(result, isStratified);
+        const csvBlob = new Blob(["\uFEFF", csvContent], {
+          type: "text/csv;charset=utf-8",
+        });
+        const csvFilename = (exportFilename || "sample_result")
+          .replace(/\.xlsx$/i, "")
+          .concat(".csv");
+        await saveBlob(csvBlob, csvFilename, "text/csv", "csv");
+        return;
+      }
+
       const res = await fetch("/api/export-sample", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -317,14 +574,40 @@ export default function SanamsarguiTuuwerPage() {
           filename: exportFilename || "sample_result.xlsx",
         }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        logExportFailure("API request failed", undefined, {
+          status: res.status,
+          statusText: res.statusText,
+        });
+        throw new Error(`Export failed (${res.status})`);
+      }
+
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = exportFilename || "sample_result.xlsx";
-      a.click();
-      URL.revokeObjectURL(url);
+      if (!blob.size) {
+        logExportFailure("Empty file received from server");
+        throw new Error("Exported file is empty");
+      }
+
+      const safeFilename = (exportFilename || "sample_result.xlsx").endsWith(
+        ".xlsx",
+      )
+        ? exportFilename || "sample_result.xlsx"
+        : `${exportFilename || "sample_result"}.xlsx`;
+      await saveBlob(
+        blob,
+        safeFilename,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "xlsx",
+      );
+    } catch (err) {
+      logExportFailure("Unhandled export exception", err, {
+        useSaveDialog: preferSaveDialog,
+      });
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Excel татах үед алдаа гарлаа. Дахин оролдоно уу.";
+      setExportError(message);
     } finally {
       setExporting(false);
     }
@@ -525,6 +808,15 @@ export default function SanamsarguiTuuwerPage() {
                     className="bg-slate-800/50 border-slate-600 text-white"
                     placeholder="sample_result.xlsx"
                   />
+                  <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={preferSaveDialog}
+                      onChange={(e) => setPreferSaveDialog(e.target.checked)}
+                      className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
+                    />
+                    Хадгалах цонх (Keep/Save dialog) ашиглах
+                  </label>
                 </div>
               </div>
 
@@ -584,43 +876,45 @@ export default function SanamsarguiTuuwerPage() {
                     <p className="text-red-400 text-sm">{fileError}</p>
                   )}
 
-                  {/* Year column + year filter */}
+                  {/* Generic column + value filter */}
                   {fileData && fileHeaders.length > 0 && (
                     <div className="space-y-3 bg-slate-800/40 rounded-xl p-4 border border-slate-700/50">
                       <label className="flex items-center gap-3 cursor-pointer select-none">
                         <input
                           type="checkbox"
-                          checked={useYearFilter}
+                          checked={useColumnFilter}
                           onChange={(e) => {
-                            setUseYearFilter(e.target.checked);
+                            setUseColumnFilter(e.target.checked);
                             if (!e.target.checked) {
-                              setYearCol("");
-                              setSelectedYear("all");
+                              setFilterCol("");
+                              setSelectedFilterValue("all");
+                              setCoverAllValues(false);
                             }
                           }}
                           className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
                         />
                         <span className="text-slate-200 text-sm font-medium">
-                          📅 Огноон баганаар жил шүүх
+                          🧩 Баганаар шүүх
                         </span>
                         <span className="text-xs text-slate-500">
-                          — онгоцгүй бол бүх мәдээллээр ашиглана
+                          — жишээ: SOL баганаас 100/101/102/103
                         </span>
                       </label>
-                      {useYearFilter && (
+                      {useColumnFilter && (
                         <>
                           <div className="space-y-2">
                             <Label className="text-slate-300">
-                              Огноон багана
+                              Шүүх багана
                               <span className="ml-1 text-xs text-slate-500 font-normal">
-                                (жил агуулсан баганаа сонгоно уу)
+                                (дурын багана сонгоно)
                               </span>
                             </Label>
                             <Select
-                              value={yearCol || "__none__"}
+                              value={filterCol || "__none__"}
                               onValueChange={(v) => {
-                                setYearCol(v === "__none__" ? "" : v);
-                                setSelectedYear("all");
+                                setFilterCol(v === "__none__" ? "" : v);
+                                setSelectedFilterValue("all");
+                                setCoverAllValues(false);
                               }}
                             >
                               <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
@@ -645,42 +939,57 @@ export default function SanamsarguiTuuwerPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          {availableYears.length > 0 && (
+
+                          {availableFilterValues.length > 0 && (
                             <div className="space-y-2">
                               <Label className="text-slate-300">
-                                Жилийн шүүлтүүр
+                                Утгын шүүлтүүр
                               </Label>
                               <div className="flex flex-wrap gap-2">
                                 <button
-                                  onClick={() => setSelectedYear("all")}
+                                  onClick={() => setSelectedFilterValue("all")}
                                   className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                    selectedYear === "all"
+                                    selectedFilterValue === "all"
                                       ? "bg-violet-500 border-violet-400 text-white"
                                       : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
                                   }`}
                                 >
-                                  Бүх жил
+                                  Бүх утга
                                 </button>
-                                {availableYears.map((y) => (
+                                {availableFilterValues.map((v) => (
                                   <button
-                                    key={y}
-                                    onClick={() => setSelectedYear(y)}
+                                    key={v}
+                                    onClick={() => setSelectedFilterValue(v)}
                                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                      selectedYear === y
+                                      selectedFilterValue === v
                                         ? "bg-violet-500 border-violet-400 text-white"
                                         : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
                                     }`}
                                   >
-                                    {y}
+                                    {v}
                                   </button>
                                 ))}
                               </div>
+
+                              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none mt-2">
+                                <input
+                                  type="checkbox"
+                                  checked={coverAllValues}
+                                  onChange={(e) => setCoverAllValues(e.target.checked)}
+                                  disabled={selectedFilterValue !== "all"}
+                                  className="w-4 h-4 rounded accent-violet-500 cursor-pointer disabled:opacity-50"
+                                />
+                                Бүх утгыг заавал хамруулах
+                              </label>
+                              <p className="text-xs text-slate-500">
+                                Жишээ: <strong>SOL</strong> баганад 100, 101, 102, 103 бол энэ тохиргоо асаалттай үед түүвэрт эдгээрийн аль аль нь дор хаяж 1 удаа орно.
+                              </p>
                             </div>
                           )}
-                          {yearCol && availableYears.length === 0 && (
+
+                          {filterCol && availableFilterValues.length === 0 && (
                             <p className="text-xs text-amber-400">
-                              ⚠️ Сонгосон баганаас огноо илэрсэнгүй. Зөв огноон
-                              баганаа сонгоно уу.
+                              ⚠️ Сонгосон баганад илэрц олдсонгүй.
                             </p>
                           )}
                         </>
@@ -691,9 +1000,9 @@ export default function SanamsarguiTuuwerPage() {
                   {computedN !== null && (
                     <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg px-4 py-2 text-sm text-violet-300">
                       Тооцоологдсон түүврийн хэмжээ (
-                      {selectedYear === "all"
-                        ? "Бүх жил"
-                        : `${selectedYear} оны жил`}
+                      {!useColumnFilter || selectedFilterValue === "all"
+                        ? "Бүх өгөгдөл"
+                        : `${filterCol}=${selectedFilterValue}`}
                       ):{" "}
                       <strong className="text-violet-200 text-base">
                         {computedN}
@@ -816,6 +1125,12 @@ export default function SanamsarguiTuuwerPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {exportError && (
+                    <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                      {exportError}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-violet-500/10 rounded-xl p-4 text-center border border-violet-500/20">
                       <div className="text-4xl font-bold text-violet-400">

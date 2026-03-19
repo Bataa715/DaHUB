@@ -7,15 +7,9 @@
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
+import { DEPARTMENT_CODES } from "../common/constants/departments"; // [LOW-1] shared constant
 
-// Mirrors auth.service.ts DEPARTMENT_CODES — keep in sync
-const DEPARTMENT_CODES: Record<string, string> = {
-  Удирдлага: "DAG",
-  "Дата анализын алба": "DAA",
-  "Ерөнхий аудитын хэлтэс": "EAH",
-  "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ZACHBH",
-  "Мэдээллийн технологийн аудитын хэлтэс": "MTAH",
-};
+// [LOW-1] DEPARTMENT_CODES imported from src/common/constants/departments.ts
 
 function buildUserId(department: string, name: string): string {
   const deptCode = DEPARTMENT_CODES[department] || "USR";
@@ -46,7 +40,7 @@ function safeParseTools(raw: unknown): string[] {
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private clickhouse: ClickHouseService) {}
+  constructor(private clickhouse: ClickHouseService) { }
 
   async findAll(limit = 200, offset = 0) {
     const users = await this.clickhouse.query<any>(
@@ -367,7 +361,7 @@ export class UsersService {
       { id },
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
-    const hashed = await bcrypt.hash(newPassword, 10);
+    const hashed = await bcrypt.hash(newPassword, 12); // [LOW-3] cost 12
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
       { id, password: hashed, updatedAt: nowCH() },

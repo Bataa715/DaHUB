@@ -13,6 +13,7 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { DEPARTMENT_CODES } from "../common/constants/departments"; // [LOW-1] shared constant
 import { Cron, CronExpression } from "@nestjs/schedule";
 import {
   SignupDto,
@@ -26,57 +27,81 @@ import {
   RefreshTokenDto,
 } from "./dto/auth.dto";
 
-// Department code mapping for user ID generation
-const DEPARTMENT_CODES: Record<string, string> = {
-  Удирдлага: "DAG",
-  "Дата анализын алба": "DAA",
-  "Ерөнхий аудитын хэлтэс": "EAH",
-  "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ZACHBH",
-  "Мэдээллийн технологийн аудитын хэлтэс": "MTAH",
-};
+// [LOW-1] DEPARTMENT_CODES is now imported from src/common/constants/departments.ts
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  // In-memory brute-force lockout (15 min window, lock after 5 failures, 15 min lockout)
-  private readonly loginAttempts = new Map<
-    string,
-    { count: number; firstAttempt: number; lockedUntil?: number }
-  >();
+  // ─── [CRIT-2] ClickHouse-backed brute-force protection ──────────────────────
+  // Replaces the previous in-memory Map which was lost on every server restart.
+  // login_attempts table schema → scripts/create-login-attempts.sql
   private readonly MAX_ATTEMPTS = 5;
-  private readonly ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
-  private readonly LOCKOUT_MS = 15 * 60 * 1000;
+  private readonly ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 min window
+  private readonly LOCKOUT_MS = 15 * 60 * 1000;        // 15 min lockout
 
-  private guardLogin(key: string): void {
-    const record = this.loginAttempts.get(key);
-    if (record?.lockedUntil && Date.now() < record.lockedUntil) {
-      const remaining = Math.ceil((record.lockedUntil - Date.now()) / 60000);
-      throw new UnauthorizedException(
-        `Хэт олон амжилтгүй оролдлого. ${remaining} минутын дараа дахин оролдоно уу.`,
-      );
+  /** Throws if the key is currently locked out. */
+  private async guardLogin(key: string): Promise<void> {
+    const windowStart = new Date(Date.now() - this.ATTEMPT_WINDOW_MS)
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+
+    const rows = await this.clickhouse.query<any>(
+      `SELECT
+         countIf(success = 0) AS failures,
+         maxIf(attemptedAt, success = 0) AS lastFailure
+       FROM login_attempts
+       WHERE lockKey = {key:String} AND attemptedAt >= {windowStart:String}`,
+      { key, windowStart },
+    );
+
+    const failures = Number(rows[0]?.failures ?? 0);
+    const lastFailureStr: string = rows[0]?.lastFailure ?? "";
+
+    if (failures >= this.MAX_ATTEMPTS && lastFailureStr) {
+      const lastFailureMs = new Date(lastFailureStr).getTime();
+      const lockedUntilMs = lastFailureMs + this.LOCKOUT_MS;
+      if (Date.now() < lockedUntilMs) {
+        const remaining = Math.ceil((lockedUntilMs - Date.now()) / 60000);
+        throw new UnauthorizedException(
+          `Хэт олон амжилтгүй оролдлого. ${remaining} минутын дараа дахин оролдоно уу.`,
+        );
+      }
     }
   }
 
-  private recordFailedLogin(key: string): void {
-    const now = Date.now();
-    const record = this.loginAttempts.get(key);
-    const existing =
-      record && now - record.firstAttempt < this.ATTEMPT_WINDOW_MS
-        ? record
-        : { count: 0, firstAttempt: now };
-    existing.count += 1;
-    if (existing.count >= this.MAX_ATTEMPTS) {
-      existing.lockedUntil = now + this.LOCKOUT_MS;
-      this.logger.warn(
-        `Login locked after ${existing.count} failed attempts: ${key}`,
-      );
+  /** Inserts a failed login attempt row. */
+  private async recordFailedLogin(key: string): Promise<void> {
+    try {
+      await this.clickhouse.insert("login_attempts", [
+        {
+          id: randomUUID(),
+          lockKey: key,
+          attemptedAt: nowCH(),
+          success: 0,
+        },
+      ]);
+    } catch (err) {
+      // Non-fatal: log but do not break the login flow
+      this.logger.error(`Failed to record failed login attempt: ${err}`);
     }
-    this.loginAttempts.set(key, existing);
   }
 
-  private clearFailedLogins(key: string): void {
-    this.loginAttempts.delete(key);
+  /** Inserts a success row, effectively clearing the failure window. */
+  private async clearFailedLogins(key: string): Promise<void> {
+    try {
+      await this.clickhouse.insert("login_attempts", [
+        {
+          id: randomUUID(),
+          lockKey: key,
+          attemptedAt: nowCH(),
+          success: 1,
+        },
+      ]);
+    } catch (err) {
+      this.logger.error(`Failed to clear login attempts: ${err}`);
+    }
   }
 
   constructor(
@@ -84,7 +109,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private auditLogService: AuditLogService,
-  ) {}
+  ) { }
 
   // ─── Private Helpers ───────────────────────────────────────────────────────
 
@@ -108,25 +133,20 @@ export class AuthService {
     };
   }
 
-  /** Sign a JWT with isAdmin included so middleware can verify it */
+  /**
+   * [HIGH-1] Sign a JWT with minimal payload.
+   * allowedTools / grantableTools are intentionally excluded from the token —
+   * they are fetched fresh from the DB in validateUser() on every request.
+   * This keeps the token small and ensures revoked tool access takes effect
+   * without waiting for token expiry.
+   */
   private generateTokenForUser(user: any): string {
-    const tools = user.allowedTools
-      ? Array.isArray(user.allowedTools)
-        ? user.allowedTools
-        : JSON.parse(user.allowedTools)
-      : [];
-    const grantableTools = user.grantableTools
-      ? Array.isArray(user.grantableTools)
-        ? user.grantableTools
-        : JSON.parse(user.grantableTools)
-      : [];
     return this.jwtService.sign({
-      id: user.id,
+      sub: user.id,          // standard JWT subject claim
+      id: user.id,           // kept for backwards compatibility
       userId: user.userId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
-      allowedTools: tools,
-      grantableTools,
     });
   }
 
@@ -134,7 +154,7 @@ export class AuthService {
   private async generateRefreshToken(userId: string): Promise<string> {
     const refreshToken = randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // Refresh token valid for 30 days
+    expiresAt.setDate(expiresAt.getDate() + 7); // [MED-1] Refresh token valid for 7 days (was 30)
 
     const now = nowCH();
     const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace("T", " ");
@@ -333,7 +353,7 @@ export class AuthService {
     position: string,
     usrId: string,
   ) {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12); // [LOW-3] cost 12
     const dept = await this.ensureDepartment(department);
     const id = randomUUID();
     const now = nowCH();
@@ -379,7 +399,7 @@ export class AuthService {
     const lockKey = `login:${department}:${username}`;
 
     try {
-      this.guardLogin(lockKey);
+      await this.guardLogin(lockKey); // [CRIT-2] now async (ClickHouse-backed)
 
       const dept = (
         await this.clickhouse.query<any>(
@@ -420,7 +440,7 @@ export class AuthService {
         );
       }
 
-      this.clearFailedLogins(lockKey);
+      await this.clearFailedLogins(lockKey); // [CRIT-2] async
       await this.updateLastLogin(user.id);
 
       const accessToken = this.generateTokenForUser(user);
@@ -442,7 +462,7 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
-        this.recordFailedLogin(lockKey);
+        await this.recordFailedLogin(lockKey); // [CRIT-2] async
       } else if (!(error instanceof ForbiddenException)) {
         this.logger.error(`Login error: ${error}`);
       }
@@ -455,7 +475,7 @@ export class AuthService {
     const lockKey = `login:${userId}`;
 
     // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
-    this.guardLogin(lockKey);
+    await this.guardLogin(lockKey); // [CRIT-2] now async
 
     try {
       const user = (
@@ -475,7 +495,7 @@ export class AuthService {
         );
       }
 
-      this.clearFailedLogins(lockKey);
+      await this.clearFailedLogins(lockKey); // [CRIT-2] async
 
       await this.updateLastLogin(user.id);
 
@@ -498,7 +518,7 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
-        this.recordFailedLogin(lockKey);
+        await this.recordFailedLogin(lockKey); // [CRIT-2] async
       }
       await this.auditLogService.log({
         userId: "unknown",
@@ -519,7 +539,7 @@ export class AuthService {
     this.logger.debug(`Admin login attempt for userId: ${username}`);
 
     // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
-    this.guardLogin(lockKey);
+    await this.guardLogin(lockKey); // [CRIT-2] now async
 
     try {
       const user = (
@@ -532,7 +552,7 @@ export class AuthService {
       )[0];
 
       await this.validateCredentials(user, password, `admin-login:${username}`);
-      this.clearFailedLogins(lockKey);
+      await this.clearFailedLogins(lockKey); // [CRIT-2] async
       this.logger.log(`Admin login successful: ${username}`);
       await this.updateLastLogin(user.id);
 
@@ -555,7 +575,7 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
-        this.recordFailedLogin(lockKey);
+        await this.recordFailedLogin(lockKey); // [CRIT-2] async
       }
       await this.auditLogService.log({
         userId: "unknown",
@@ -700,8 +720,29 @@ export class AuthService {
     };
   }
 
+  // [MED-2] Password complexity regex — shared by setPassword & changePassword
+  private readonly PASSWORD_COMPLEXITY_REGEX =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()\-_=+\[\]{}|;:',.\/<>~`])[A-Za-z\d@$!%*?&#^()\-_=+\[\]{}|;:',.\/<>~`]+$/;
+
+  private validatePasswordComplexity(password: string): void {
+    if (!password || password.length < 8) {
+      throw new BadRequestException(
+        "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой",
+      );
+    }
+    if (!this.PASSWORD_COMPLEXITY_REGEX.test(password)) {
+      throw new BadRequestException(
+        "Нууц үг нь том үсэг, жижиг үсэг, тоо, тусгай тэмдэгт агуулсан байх ёстой",
+      );
+    }
+  }
+
   async setPassword(setPasswordDto: SetPasswordDto) {
     const { userId, password } = setPasswordDto;
+
+    // [MED-2] Validate complexity before querying DB
+    this.validatePasswordComplexity(password);
+
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
@@ -714,7 +755,7 @@ export class AuthService {
       throw new BadRequestException("Нууц үг аль хэдийн тохируулагдсан байна");
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12); // [LOW-3] cost 12
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE password = {password:String} WHERE id = {id:String}",
       {
@@ -730,7 +771,7 @@ export class AuthService {
       user: this.formatUserResponse(user),
       accessToken,
       refreshToken,
-      token: accessToken, // Add for frontend compatibility
+      token: accessToken, // for frontend compatibility
     };
   }
 
@@ -742,6 +783,10 @@ export class AuthService {
 
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
     const { currentPassword, newPassword } = changePasswordDto;
+
+    // [MED-2] Validate new password complexity
+    this.validatePasswordComplexity(newPassword);
+
     const userResult = await this.clickhouse.query<any>(
       "SELECT * FROM users WHERE id = {userId:String} LIMIT 1",
       { userId },
@@ -756,7 +801,7 @@ export class AuthService {
     if (!isPasswordValid)
       throw new UnauthorizedException("Одоогийн нууц үг буруу байна");
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 12); // [LOW-3] cost 12
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
       {

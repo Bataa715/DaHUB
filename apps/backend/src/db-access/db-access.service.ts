@@ -13,6 +13,11 @@ import {
   ReviewRequestDto,
   RevokeGrantDto,
 } from "./dto/db-access.dto";
+import {
+  encryptCredential,
+  decryptCredential,
+  getEncryptionKey,
+} from "../common/utils/crypto.util"; // [CRIT-1] AES encryption for chPassword
 
 // Databases exposed to auditors
 const ALLOWED_DATABASES = ["FINACLE", "ERP", "CARDZONE", "EBANK"];
@@ -32,7 +37,7 @@ export class DbAccessService {
   constructor(
     private clickhouse: ClickHouseService,
     private chAccess: ClickHouseAccessService,
-  ) {}
+  ) { }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -48,7 +53,12 @@ export class DbAccessService {
 
   // ─── Tables & Columns ───────────────────────────────────────────────────────
 
-  /** List all ClickHouse tables across allowed databases */
+  /** List all ClickHouse tables across allowed databases.
+   * [HIGH-3] DB and table lists are hard-coded constants — not user input.
+   * The string interpolation here is safe (no injection risk) but is intentional:
+   * ClickHouse's IN clause with String literals requires this pattern; parameterized
+   * {value:String} only supports scalar values, not arrays.
+   */
   async getAvailableTables(): Promise<
     { database: string; table: string; full: string }[]
   > {
@@ -345,7 +355,7 @@ export class DbAccessService {
     const result = await this.chAccess.cleanupUserChAccess(requesterUserId);
     this.logger.log(
       `[DBAccess] CH cleanup for userId=${requesterUserId} by ${admin.userId}: ` +
-        `rolesDropped=${result.rolesDropped.length} userDropped=${result.userDropped}`,
+      `rolesDropped=${result.rolesDropped.length} userDropped=${result.userDropped}`,
     );
     return {
       success: true,
@@ -421,6 +431,10 @@ export class DbAccessService {
       // 3. Grant every table in PARALLEL → avoids N sequential round-trips.
       const sharedPassword = randomBytes(12).toString("hex");
 
+      // [CRIT-1] Encrypt password before DB storage — never store plaintext credentials.
+      const encryptionKey = getEncryptionKey();
+      const encryptedPassword = encryptCredential(sharedPassword, encryptionKey);
+
       // Step 1: user + role setup (sequential, must finish before parallel grants)
       try {
         await this.chAccess.setupUserAndRole({
@@ -432,8 +446,8 @@ export class DbAccessService {
         chSetupFailed = true;
         this.logger.error(
           `[CH ACL] setupUserAndRole FAILED for user=${req.requesterUserId}: ${err?.message}. ` +
-            `Grant DB rows will be written but CH access may be broken. ` +
-            `Admin should use the CH cleanup endpoint to reset.`,
+          `Grant DB rows will be written but CH access may be broken. ` +
+          `Admin should use the CH cleanup endpoint to reset.`,
         );
       }
 
@@ -453,7 +467,7 @@ export class DbAccessService {
         `[CH ACL] Approved ${tables.length} table(s) for user=${req.requesterUserId}${chSetupFailed ? " (⚠ CH setup had errors)" : ""}`,
       );
 
-      // ── Insert audit grant rows (all share the same chPassword) ───────────────
+      // ── Insert audit grant rows (all share the same encrypted chPassword) ────
       const grants = tables.map((table) => ({
         id: randomUUID(),
         userId: req.requesterId,
@@ -470,7 +484,7 @@ export class DbAccessService {
         isActive: 1,
         revokedAt: "1970-01-01 00:00:00",
         revokeReason: "",
-        chPassword: sharedPassword, // same for every table in this request
+        chPassword: encryptedPassword, // [CRIT-1] AES-256-GCM encrypted, not plaintext
       }));
 
       await this.clickhouse.insert("access_grants", grants);
@@ -563,7 +577,7 @@ export class DbAccessService {
       });
       this.logger.log(
         `[CH ACL] Revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
-          `table=${grant.tableName} userDropped=${result.userDropped}`,
+        `table=${grant.tableName} userDropped=${result.userDropped}`,
       );
     } catch (err: any) {
       this.logger.warn(
@@ -614,7 +628,7 @@ export class DbAccessService {
       });
       this.logger.log(
         `[CH ACL] Self-revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
-          `table=${grant.tableName} userDropped=${result.userDropped}`,
+        `table=${grant.tableName} userDropped=${result.userDropped}`,
       );
     } catch (err: any) {
       this.logger.warn(
@@ -643,9 +657,25 @@ export class DbAccessService {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
 
+    // [CRIT-1] Decrypt the stored chPassword before returning to the client
+    let plainPassword = "";
+    if (grant.chPassword) {
+      try {
+        const key = getEncryptionKey();
+        plainPassword = decryptCredential(grant.chPassword, key);
+      } catch {
+        // Legacy plaintext passwords (before encryption was introduced)
+        // or decryption failure — return empty string so client knows to re-request.
+        this.logger.warn(
+          `[CRIT-1] Could not decrypt chPassword for grant ${grantId} — may be a legacy plaintext entry`,
+        );
+        plainPassword = "";
+      }
+    }
+
     return {
       username: grant.userUserId,
-      chPassword: grant.chPassword ?? "",
+      chPassword: plainPassword,
       tableName: grant.tableName,
       host: process.env.CLICKHOUSE_EXTERNAL_HOST ?? "localhost",
       port: parseInt(process.env.CLICKHOUSE_EXTERNAL_PORT ?? "8123", 10),
@@ -653,13 +683,19 @@ export class DbAccessService {
     };
   }
 
-  /** List users who can grant access */
+  /** List users who can grant access.
+   * [HIGH-4] Uses has(JSONExtractArrayRaw()) for exact element matching instead
+   * of LIKE '%db_access_granter%' which could false-match partial tool names.
+   */
   async getGrantors() {
     const rows = await this.clickhouse.query<any>(
       `SELECT id, userId, name, position, allowedTools
        FROM users
-       WHERE (isAdmin = 1 OR allowedTools LIKE '%db_access_granter%')
-         AND isActive = 1`,
+       WHERE (
+         isAdmin = 1
+         OR has(JSONExtractArrayRaw(allowedTools), '"db_access_granter"')
+       )
+       AND isActive = 1`,
     );
     return rows.map((u) => ({
       id: u.id,
@@ -728,7 +764,8 @@ export class DbAccessService {
       grantedByName: g.grantedByName,
       grantedAt: g.grantedAt,
       isActive: !!g.isActive,
-      chPassword: g.chPassword ?? "",
+      // [CRIT-1] chPassword is NOT included in list responses — only via getGrantCredentials()
+      // which decrypts on demand. This prevents bulk credential exposure.
     };
   }
 }
