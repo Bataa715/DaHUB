@@ -134,11 +134,11 @@ export class AuthService {
   }
 
   /**
-   * [HIGH-1] Sign a JWT with minimal payload.
-   * allowedTools / grantableTools are intentionally excluded from the token —
-   * they are fetched fresh from the DB in validateUser() on every request.
-   * This keeps the token small and ensures revoked tool access takes effect
-   * without waiting for token expiry.
+   * Sign a JWT with the user's core claims including allowedTools.
+   * allowedTools is included so the Next.js edge middleware can enforce
+   * tool-route guards without making a DB call on every request.
+   * NestJS API routes still call validateUser() on every request via
+   * JwtStrategy to get fresh DB data (deactivation, permission revocation).
    */
   private generateTokenForUser(user: any): string {
     return this.jwtService.sign({
@@ -147,6 +147,7 @@ export class AuthService {
       userId: user.userId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
+      allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
     });
   }
 

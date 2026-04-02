@@ -46,6 +46,7 @@ import {
   Brain,
   Search,
   Volume2,
+  Save,
 } from "lucide-react";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -246,10 +247,10 @@ function WordFormDialog({
 
 function FlashcardMode({
   words,
-  onReview,
+  onSaveResults,
 }: {
   words: EnglishWord[];
-  onReview: (id: string, correct: boolean) => void;
+  onSaveResults: (results: Array<{ id: string; correct: boolean }>) => Promise<void>;
 }) {
   const [deck, setDeck] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
@@ -260,6 +261,9 @@ function FlashcardMode({
     wrong: 0,
   });
   const [finished, setFinished] = useState(false);
+  const [results, setResults] = useState<Array<{ id: string; correct: boolean }>>([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const card = deck[idx];
   const total = deck.length;
@@ -288,7 +292,7 @@ function FlashcardMode({
 
   const handleMark = useCallback(
     (correct: boolean) => {
-      onReview(card.id, correct);
+      setResults((r) => [...r, { id: card.id, correct }]);
       setDone((d) => ({
         ...d,
         [correct ? "correct" : "wrong"]: d[correct ? "correct" : "wrong"] + 1,
@@ -299,7 +303,7 @@ function FlashcardMode({
       }
       goTo(idx + 1);
     },
-    [card, idx, total, goTo, onReview],
+    [card, idx, total, goTo],
   );
 
   // Keyboard shortcuts
@@ -335,6 +339,9 @@ function FlashcardMode({
     setFlipped(false);
     setDone({ correct: 0, wrong: 0 });
     setFinished(false);
+    setResults([]);
+    setSaving(false);
+    setSaved(false);
   };
 
   if (finished) {
@@ -361,10 +368,31 @@ function FlashcardMode({
             <div className="text-sm text-muted-foreground">Оноо</div>
           </div>
         </div>
-        <Button onClick={restart} className="gap-2">
-          <RotateCcw className="w-4 h-4" />
-          Дахин тоглох
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            onClick={async () => {
+              setSaving(true);
+              await onSaveResults(results);
+              setSaving(false);
+              setSaved(true);
+            }}
+            disabled={saving || saved || results.length === 0}
+            variant={saved ? "outline" : "default"}
+            className="gap-2"
+          >
+            {saved ? (
+              <><Check className="w-4 h-4" /> Хадгалагдлаа</>
+            ) : saving ? (
+              "Хадгалж байна..."
+            ) : (
+              <><Save className="w-4 h-4" /> Үр дүн хадгалах</>
+            )}
+          </Button>
+          <Button onClick={restart} variant="outline" className="gap-2">
+            <RotateCcw className="w-4 h-4" />
+            Дахин тоглох
+          </Button>
+        </div>
       </div>
     );
   }
@@ -571,10 +599,10 @@ function FlashcardMode({
 
 function MultipleChoiceMode({
   words,
-  onReview,
+  onSaveResults,
 }: {
   words: EnglishWord[];
-  onReview: (id: string, correct: boolean) => void;
+  onSaveResults: (results: Array<{ id: string; correct: boolean }>) => Promise<void>;
 }) {
   // deck & options must be in state so they don't reshuffle on each render
   const [deck] = useState(() => shuffle(words));
@@ -582,6 +610,9 @@ function MultipleChoiceMode({
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState({ correct: 0, wrong: 0 });
   const [finished, setFinished] = useState(false);
+  const [results, setResults] = useState<Array<{ id: string; correct: boolean }>>([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const card = deck[idx];
   const total = deck.length;
@@ -599,7 +630,7 @@ function MultipleChoiceMode({
       if (selected !== null || !options[i]) return;
       setSelected(i);
       const correct = options[i].id === card.id;
-      onReview(card.id, correct);
+      setResults((r) => [...r, { id: card.id, correct }]);
       setScore((s) => ({
         ...s,
         [correct ? "correct" : "wrong"]: s[correct ? "correct" : "wrong"] + 1,
@@ -613,7 +644,7 @@ function MultipleChoiceMode({
         setIdx((prev) => prev + 1);
       }, 900);
     },
-    [selected, options, card, onReview, idx, total],
+    [selected, options, card, idx, total],
   );
 
   // Keyboard: 1-4 to pick option
@@ -634,6 +665,9 @@ function MultipleChoiceMode({
     setSelected(null);
     setScore({ correct: 0, wrong: 0 });
     setFinished(false);
+    setResults([]);
+    setSaving(false);
+    setSaved(false);
   };
 
   if (finished) {
@@ -662,10 +696,31 @@ function MultipleChoiceMode({
             <div className="text-sm text-muted-foreground">Оноо</div>
           </div>
         </div>
-        <Button onClick={restart} className="gap-2">
-          <RotateCcw className="w-4 h-4" />
-          Дахин тоглох
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            onClick={async () => {
+              setSaving(true);
+              await onSaveResults(results);
+              setSaving(false);
+              setSaved(true);
+            }}
+            disabled={saving || saved || results.length === 0}
+            variant={saved ? "outline" : "default"}
+            className="gap-2"
+          >
+            {saved ? (
+              <><Check className="w-4 h-4" /> Хадгалагдлаа</>
+            ) : saving ? (
+              "Хадгалж байна..."
+            ) : (
+              <><Save className="w-4 h-4" /> Үр дүн хадгалах</>
+            )}
+          </Button>
+          <Button onClick={restart} variant="outline" className="gap-2">
+            <RotateCcw className="w-4 h-4" />
+            Дахин тоглох
+          </Button>
+        </div>
       </div>
     );
   }
@@ -765,10 +820,10 @@ function MultipleChoiceMode({
 
 function TypeAnswerMode({
   words,
-  onReview,
+  onSaveResults,
 }: {
   words: EnglishWord[];
-  onReview: (id: string, correct: boolean) => void;
+  onSaveResults: (results: Array<{ id: string; correct: boolean }>) => Promise<void>;
 }) {
   const [deck] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
@@ -778,6 +833,9 @@ function TypeAnswerMode({
   const [finished, setFinished] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [results, setResults] = useState<Array<{ id: string; correct: boolean }>>([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const card = deck[idx];
   const total = deck.length;
@@ -799,7 +857,7 @@ function TypeAnswerMode({
       correct.includes(ans) ||
       ans.includes(correct.split(" ")[0]);
     setResult(isCorrect ? "correct" : "wrong");
-    onReview(card.id, isCorrect);
+    setResults((r) => [...r, { id: card.id, correct: isCorrect }]);
     setScore((s) => ({
       ...s,
       [isCorrect ? "correct" : "wrong"]: s[isCorrect ? "correct" : "wrong"] + 1,
@@ -825,6 +883,9 @@ function TypeAnswerMode({
     setScore({ correct: 0, wrong: 0 });
     setFinished(false);
     setShowHint(false);
+    setResults([]);
+    setSaving(false);
+    setSaved(false);
   };
 
   if (finished) {
@@ -1044,7 +1105,7 @@ function WordTable({
           <SelectContent>
             <SelectItem value="createdAt">Нэмсэн огноогоор</SelectItem>
             <SelectItem value="word">Үсгийн дарааллаар</SelectItem>
-            <SelectItem value="mastery">Эзэмшилтээр</SelectItem>
+            <SelectItem value="mastery">Цээжилснээр</SelectItem>
           </SelectContent>
         </Select>
         <Button onClick={onAdd} className="gap-2 shrink-0">
@@ -1072,10 +1133,10 @@ function WordTable({
                   Яриа хэлц
                 </th>
                 <th className="text-left px-4 py-3 font-semibold w-28">
-                  Хэцүүлэл
+                  Төрөл
                 </th>
                 <th className="text-left px-4 py-3 font-semibold w-24 hidden sm:table-cell">
-                  Эзэмшилт
+                  Цээжилсэн
                 </th>
                 <th className="text-right px-4 py-3 font-semibold w-20">
                   Үйлдэл
@@ -1290,10 +1351,25 @@ export default function EnglishVocabularyPage() {
     }
   };
 
-  const handleReview = async (id: string, correct: boolean) => {
+  const handleSaveResults = async (
+    results: Array<{ id: string; correct: boolean }>,
+  ) => {
     try {
-      await englishApi.recordReview(id, correct);
-    } catch {}
+      await Promise.all(
+        results.map((r) => englishApi.recordReview(r.id, r.correct)),
+      );
+      toast({
+        title: "Хадгалагдлаа",
+        description: `${results.filter((r) => r.correct).length} үгийн үр дүн бүртгэгдлээ`,
+      });
+      await load();
+    } catch {
+      toast({
+        title: "Алдаа",
+        description: "Хадгалахад алдаа гарлаа",
+        variant: "destructive",
+      });
+    }
   };
 
   const studyWords = words.filter((w) => w.word && w.translation);
@@ -1391,7 +1467,7 @@ export default function EnglishVocabularyPage() {
             <FlashcardMode
               key={tab + words.length}
               words={studyWords}
-              onReview={handleReview}
+              onSaveResults={handleSaveResults}
             />
           ) : (
             <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
@@ -1405,7 +1481,7 @@ export default function EnglishVocabularyPage() {
             <MultipleChoiceMode
               key={tab + words.length}
               words={studyWords}
-              onReview={handleReview}
+              onSaveResults={handleSaveResults}
             />
           ) : (
             <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
@@ -1419,7 +1495,7 @@ export default function EnglishVocabularyPage() {
             <TypeAnswerMode
               key={tab + words.length}
               words={studyWords}
-              onReview={handleReview}
+              onSaveResults={handleSaveResults}
             />
           ) : (
             <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">

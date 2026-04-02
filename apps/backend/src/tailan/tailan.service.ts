@@ -134,6 +134,7 @@ export class TailanService {
           section5Tasks: dto.section5Tasks ?? [],
           section6Activities: dto.section6Activities ?? [],
           section7Text: dto.section7Text ?? "",
+          hiddenSections: dto.hiddenSections ?? [],
         }),
         submittedAt: dto.status === "submitted" ? now : "1970-01-01 00:00:00",
         updatedAt: now,
@@ -314,6 +315,7 @@ export class TailanService {
       section5Tasks: extra.section5Tasks ?? [],
       section6Activities: extra.section6Activities ?? [],
       section7Text: extra.section7Text ?? "",
+      hiddenSections: extra.hiddenSections ?? [],
     };
   }
 
@@ -491,6 +493,7 @@ export class TailanService {
         startDate: t.startDate ?? "",
         endDate: t.endDate ?? "",
         description: t.description ?? "",
+        images: t.images ?? [],
       })),
     );
 
@@ -544,6 +547,19 @@ export class TailanService {
 
     const children: any[] = [];
 
+    // ── Hidden sections + dynamic Roman numbering ───────────────────────────
+    const hidden = new Set<string>(report.hiddenSections ?? []);
+    const FIXED_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"] as const;
+    const secRoman: Record<string, string> = {};
+    let _romIdx = 0;
+    for (const key of FIXED_KEYS) {
+      if (!hidden.has(key)) {
+        secRoman[key] = ROMAN_NUMS[_romIdx++];
+      }
+    }
+    const dynRomStart = _romIdx;
+    let tblCounter = 1;
+
     // ── Cover title ─────────────────────────────────────────────────────────
     children.push(
       new Paragraph({
@@ -561,10 +577,21 @@ export class TailanService {
       }),
     );
 
+    const imgCounter = { n: 1 };
+
+    const fmtPeriodDoc = (period: string): string => {
+      const [s, e] = (period ?? "").split(" \u2013 ");
+      const fmt = (d?: string) => (d ? d.replace(/-/g, ".") : "");
+      if (!s && !e) return "";
+      if (!e) return fmt(s);
+      return `${fmt(s)}-${fmt(e)}`;
+    };
+
     // ── Fixed section I: Data analysis support ───────────────────────────────
+    if (!hidden.has("s1")) {
     children.push(
       this.bigSectionHeading(
-        "I. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал",
+        `${secRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал`,
       ),
     );
 
@@ -572,7 +599,6 @@ export class TailanService {
     const analysisItems = (report.plannedTasks ?? []).filter((t: any) =>
       t.title?.trim(),
     );
-    const imgCounter = { n: 1 };
     if (analysisItems.length === 0) {
       children.push(this.bodyPara(" "));
     } else {
@@ -597,7 +623,7 @@ export class TailanService {
         }
         for (const img of t.images ?? []) {
           children.push(
-            ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter),
+            ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
           );
         }
       });
@@ -605,19 +631,12 @@ export class TailanService {
     children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
 
     // I.2 – Dashboard table from section1Dashboards
+    if (!hidden.has("s12")) {
     children.push(
       this.subSectionHeading(
         "Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:",
       ),
     );
-
-    const fmtPeriodDoc = (period: string): string => {
-      const [s, e] = (period ?? "").split(" \u2013 ");
-      const fmt = (d?: string) => (d ? d.replace(/-/g, ".") : "");
-      if (!s && !e) return "";
-      if (!e) return fmt(s);
-      return `${fmt(s)}-${fmt(e)}`;
-    };
 
     const dashColWidths = [5, 30, 15, 20, 30];
     const dashHeaders = [
@@ -756,7 +775,7 @@ export class TailanService {
     for (const t of s1Dashboards) {
       for (const img of t.images ?? []) {
         children.push(
-          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter),
+          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
         );
       }
     }
@@ -766,7 +785,7 @@ export class TailanService {
         spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: `Хүснэгт 1.`,
+            text: `Хүснэгт ${tblCounter++}.`,
             italics: true,
             size: 18,
             font: "Times New Roman",
@@ -774,11 +793,14 @@ export class TailanService {
         ],
       }),
     );
+    } // end s12
+    } // end s1
 
     // ── Fixed Section II: Өгөгдөл боловсруулах ажил ─────────────────────────
+    if (!hidden.has("s2")) {
     children.push(
       this.bigSectionHeading(
-        "II. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил",
+        `${secRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил`,
       ),
     );
     const s2Tasks: any[] = report.section2Tasks ?? [];
@@ -804,7 +826,7 @@ export class TailanService {
     for (const t of s2Tasks) {
       for (const img of t.images ?? []) {
         children.push(
-          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter),
+          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
         );
       }
     }
@@ -814,7 +836,7 @@ export class TailanService {
         spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: `Хүснэгт 2.`,
+            text: `Хүснэгт ${tblCounter++}.`,
             italics: true,
             size: 18,
             font: "Times New Roman",
@@ -822,9 +844,11 @@ export class TailanService {
         ],
       }),
     );
+    } // end s2
 
     // ── Fixed Section III: Тогтмол хийгддэг ажлууд ──────────────────────────
-    children.push(this.bigSectionHeading("III. Тогтмол хийгддэг ажлууд"));
+    if (!hidden.has("s3")) {
+    children.push(this.bigSectionHeading(`${secRoman.s3}. Тогтмол хийгддэг ажлууд`));
 
     // III.1 – Автоматжуулалт
     children.push(
@@ -910,7 +934,7 @@ export class TailanService {
         spacing: { before: 40, after: 100 },
         children: [
           new TextRun({
-            text: "Хүснэгт 3.",
+            text: `Хүснэгт ${tblCounter++}.`,
             italics: true,
             size: 18,
             font: "Times New Roman",
@@ -920,6 +944,7 @@ export class TailanService {
     );
 
     // III.2 – Dashboard
+    if (!hidden.has("s32")) {
     children.push(
       this.subSectionHeading(
         "Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:",
@@ -1003,7 +1028,7 @@ export class TailanService {
         spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: "Хүснэгт 4.",
+            text: `Хүснэгт ${tblCounter++}.`,
             italics: true,
             size: 18,
             font: "Times New Roman",
@@ -1011,10 +1036,13 @@ export class TailanService {
         ],
       }),
     );
+    } // end s32
+    } // end s3
 
     // ── Fixed Section IV: Хамрагдсан сургалт (landscape section) ────────────
     const s4Children: any[] = [];
-    s4Children.push(this.bigSectionHeading("IV. Хамрагдсан сургалт"));
+    if (!hidden.has("s4")) {
+    s4Children.push(this.bigSectionHeading(`${secRoman.s4}. Хамрагдсан сургалт`));
     const s4Trainings: any[] = report.section4Trainings ?? [];
     const s4Headers = [
       "№",
@@ -1054,7 +1082,7 @@ export class TailanService {
         spacing: { before: 40, after: 100 },
         children: [
           new TextRun({
-            text: "Хүснэгт 5.",
+            text: `Хүснэгт ${tblCounter++}.`,
             italics: true,
             size: 18,
             font: "Times New Roman",
@@ -1074,12 +1102,14 @@ export class TailanService {
       s4Children.push(this.bodyPara(line || " "));
     }
     s4Children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+    } // end s4
 
     // ── Sections V onwards (portrait) ─────────────────────────────────────────
     const postChildren: any[] = [];
 
     // ── Fixed Section V: Үүрэг даалгаварын биелэлт ───────────────────────────
-    postChildren.push(this.bigSectionHeading("V. Үүрэг даалгаварын биелэлт"));
+    if (!hidden.has("s5")) {
+    postChildren.push(this.bigSectionHeading(`${secRoman.s5}. Үүрэг даалгаварын биелэлт`));
     const s5Tasks: any[] = report.section5Tasks ?? [];
     const s5Headers = ["№", "Ажлын төрөл", "Хийгдсэн ажил"];
     const s5Widths = [5, 35, 60];
@@ -1097,7 +1127,7 @@ export class TailanService {
         spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: "Хүснэгт 6.",
+            text: `Хүснэгт ${tblCounter++}.`,
             italics: true,
             size: 18,
             font: "Times New Roman",
@@ -1105,9 +1135,11 @@ export class TailanService {
         ],
       }),
     );
+    } // end s5
 
     // ── Fixed Section VI: Хамт олны ажил ──────────────────────────────────────
-    postChildren.push(this.bigSectionHeading("VI. Хамт олны ажил"));
+    if (!hidden.has("s6")) {
+    postChildren.push(this.bigSectionHeading(`${secRoman.s6}. Хамт олны ажил`));
     const s6Activities: any[] = report.section6Activities ?? [];
     const s6Headers = ["№", "Огноо", "Хамт олны ажил", "Санаачилга"];
     const s6Widths = [5, 20, 50, 25];
@@ -1126,7 +1158,7 @@ export class TailanService {
         spacing: { before: 40, after: 160 },
         children: [
           new TextRun({
-            text: "Хүснэгт 7.",
+            text: `Хүснэгт ${tblCounter++}.`,
             italics: true,
             size: 18,
             font: "Times New Roman",
@@ -1134,19 +1166,26 @@ export class TailanService {
         ],
       }),
     );
+    }
 
     // ── Fixed Section VII: Шинэ санал санаачилга ──────────────────────────────
-    postChildren.push(this.bigSectionHeading("VII. Шинэ санал санаачилга"));
+    if (!hidden.has("s7")) {
+    postChildren.push(this.bigSectionHeading(`${secRoman.s7}. Шинэ санал санаачилга`));
     const s7Lines = (report.section7Text ?? "").split("\n");
     for (const line of s7Lines) {
       postChildren.push(this.bodyPara(line || " "));
     }
     postChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+    }
 
     // ── Dynamic big sections (VIII, IX, …) ───────────────────────────────────
     const dynamicSecs: any[] = report.dynamicSections ?? [];
+    let _dynVisibleIdx = 0;
     dynamicSecs.forEach((sec: any, idx: number) => {
-      const romNum = ROMAN_NUMS[idx + 7] ?? `${idx + 8}`;
+      if (hidden.has(`dyn_${idx}`)) return;
+      const romIdx = dynRomStart + _dynVisibleIdx;
+      _dynVisibleIdx++;
+      const romNum = ROMAN_NUMS[romIdx] ?? `${romIdx + 1}`;
       const secTitle = sec.title ?? "";
       postChildren.push(this.bigSectionHeading(`${romNum}. ${secTitle}`));
       const lines = (sec.content ?? "").split("\n");
@@ -1220,6 +1259,7 @@ export class TailanService {
     otherEntries: any[];
     activities: any[];
     departmentName?: string;
+    rawSections?: Record<string, unknown>;
   }): Promise<Buffer> {
     const quarterNames = ["I", "II", "III", "IV"];
     const qName = quarterNames[(data.quarter - 1) % 4];
@@ -1339,7 +1379,7 @@ export class TailanService {
     // ── Dynamic sections — formatted text by person ───────────────────────────
     let secNum = 2;
     for (const sec of data.sections ?? []) {
-      children.push(this.sectionHeading(`${secNum}. ${sec.title}`));
+      children.push(this.sectionHeading(`${secNum}. ${sec.title}`, true));
       for (const entry of sec.entries ?? []) {
         // Person name sub-label
         children.push(
@@ -1369,7 +1409,7 @@ export class TailanService {
       e.content?.trim(),
     );
     if (validOther.length > 0) {
-      children.push(this.sectionHeading(`${secNum}. Бусад ажлууд`));
+      children.push(this.sectionHeading(`${secNum}. Бусад ажлууд`, true));
       for (const e of validOther) {
         children.push(
           new Paragraph({
@@ -1395,7 +1435,7 @@ export class TailanService {
 
     // ── Хамт олны ажил — per-person bullet list ───────────────────────────────
     if ((data.activities ?? []).length > 0) {
-      children.push(this.sectionHeading(`${secNum}. Хамт олны ажил`));
+      children.push(this.sectionHeading(`${secNum}. Хамт олны ажил`, true));
       for (const a of data.activities) {
         children.push(
           new Paragraph({
@@ -1415,6 +1455,64 @@ export class TailanService {
               }),
             ],
           }),
+        );
+      }
+    }
+
+    // ── Embedded images (single DOCX file; no side folders) ────────────────
+    const imgCounter = { n: 1 };
+    const collected: Array<{
+      dataUrl: string;
+      width?: number;
+      height?: number;
+    }> = [];
+    const seen = new Set<string>();
+
+    const pushIfImage = (val: any) => {
+      if (!val || typeof val !== "object") return;
+      const dataUrl = val.dataUrl;
+      if (typeof dataUrl !== "string") return;
+      if (!dataUrl.startsWith("data:image/")) return;
+      const key = `${dataUrl.slice(0, 80)}|${val.width ?? ""}|${val.height ?? ""}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      collected.push({
+        dataUrl,
+        width:
+          typeof val.width === "number" && !isNaN(val.width)
+            ? val.width
+            : undefined,
+        height:
+          typeof val.height === "number" && !isNaN(val.height)
+            ? val.height
+            : undefined,
+      });
+    };
+
+    const walk = (node: any) => {
+      if (!node) return;
+      if (Array.isArray(node)) {
+        for (const x of node) walk(x);
+        return;
+      }
+      if (typeof node !== "object") return;
+
+      pushIfImage(node);
+      for (const v of Object.values(node)) {
+        if (v && (typeof v === "object" || Array.isArray(v))) walk(v);
+      }
+    };
+
+    // From merged tasks (used by /tailan/dept/:year/:quarter/word)
+    walk(data.tasks ?? []);
+    // From raw sections payload (used by /tailan/dept/generate-word)
+    walk(data.rawSections ?? null);
+
+    if (collected.length > 0) {
+      children.push(this.sectionHeading(`${secNum + 1}. Тайлангийн зураг`, true));
+      for (const img of collected) {
+        children.push(
+          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
         );
       }
     }
@@ -1565,7 +1663,7 @@ export class TailanService {
 
     let sectionNum = 2;
     for (const sec of dynMap.values()) {
-      children.push(this.sectionHeading(`${sectionNum}. ${sec.title}`));
+      children.push(this.sectionHeading(`${sectionNum}. ${sec.title}`, true));
 
       const hRow = new TableRow({
         tableHeader: true,
@@ -1663,7 +1761,7 @@ export class TailanService {
     // ── Бусад ажлууд — one table ─────────────────────────────────────────────
     const otherRows = reports.filter((r) => r.otherWork?.trim());
     if (otherRows.length > 0) {
-      children.push(this.sectionHeading(`${sectionNum}. Бусад ажлууд`));
+      children.push(this.sectionHeading(`${sectionNum}. Бусад ажлууд`, true));
       const hRow = new TableRow({
         tableHeader: true,
         children: [
@@ -1759,7 +1857,7 @@ export class TailanService {
       (r.teamActivities ?? []).map((a: any) => ({ ...a, _name: r.userName })),
     );
     if (allActivities.length > 0) {
-      children.push(this.sectionHeading(`${sectionNum}. Хамт олны ажил`));
+      children.push(this.sectionHeading(`${sectionNum}. Хамт олны ажил`, true));
       const hRow = new TableRow({
         tableHeader: true,
         children: [
@@ -1947,10 +2045,11 @@ export class TailanService {
     });
   }
 
-  private sectionHeading(text: string) {
+  private sectionHeading(text: string, pageBreakBefore = false) {
     return new Paragraph({
       heading: HeadingLevel.HEADING_2,
       spacing: { before: 280, after: 120 },
+      pageBreakBefore,
       children: [
         new TextRun({
           text,
@@ -2142,6 +2241,7 @@ export class TailanService {
     dataUrl: string,
     widthPct: number,
     counter: { n: number },
+    heightPx?: number,
   ): Paragraph[] {
     try {
       const match = dataUrl?.match(/^data:([^;]+);base64,(.+)$/s);
@@ -2186,9 +2286,11 @@ export class TailanService {
       }
 
       const targetH =
-        nativeW > 0 && nativeH > 0
-          ? Math.round(targetW * (nativeH / nativeW))
-          : Math.round(targetW * 0.625); // fallback ~16:10 ratio
+        heightPx && heightPx > 0
+          ? heightPx
+          : nativeW > 0 && nativeH > 0
+            ? Math.round(targetW * (nativeH / nativeW))
+            : Math.round(targetW * 0.625); // fallback ~16:10 ratio
 
       const captionN = counter.n++;
       return [

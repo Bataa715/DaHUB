@@ -415,6 +415,7 @@ export const tailanApi = {
     sections: any[];
     otherEntries: any[];
     activities: any[];
+    rawSections?: Record<string, unknown>;
   }): Promise<Blob> => {
     const response = await api.post("/tailan/dept/generate-word", data, {
       responseType: "blob",

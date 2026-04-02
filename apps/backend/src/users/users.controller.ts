@@ -70,10 +70,29 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
-  /** Admin: update basic user fields (name, position, department, image) */
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  /** Authenticated: user can update own profileImage; Admin can update any field */
+  @UseGuards(JwtAuthGuard)
   @Patch(":id")
-  update(@Param("id") id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(
+    @Param("id") id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @Request() req: any,
+  ) {
+    const isSelf = id === req.user.id;
+    const isAdmin = req.user.isAdmin;
+
+    if (!isSelf && !isAdmin) {
+      throw new ForbiddenException(
+        "Зөвхөн өөрийн профайлыг засах боломжтой",
+      );
+    }
+
+    // Non-admins may only change their own profileImage
+    if (!isAdmin) {
+      const { profileImage } = updateUserDto;
+      return this.usersService.update(id, { profileImage });
+    }
+
     return this.usersService.update(id, updateUserDto);
   }
 

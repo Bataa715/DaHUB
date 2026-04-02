@@ -1,0 +1,56 @@
+# Uncommitted Changes
+
+## Deleted
+- pdf.worker.min.txt
+- tsconfig.tsbuildinfo
+- apps/nextn/tsconfig.tsbuildinfo
+- apps/backend/scripts/create-login-attempts.sql
+- apps/backend/src/admin-db/admin-db.controller.ts
+- apps/backend/src/admin-db/admin-db.module.ts
+- apps/backend/test/admin-db.controller.spec.ts
+- apps/backend/test/audit-log.service.spec.ts
+- apps/backend/test/auth.service.spec.ts
+- apps/backend/test/db-access.service.spec.ts
+- apps/backend/test/departments.service.spec.ts
+- apps/backend/test/news.service.spec.ts
+- apps/backend/test/tailan.service.spec.ts
+- apps/backend/test/users.controller.spec.ts
+- apps/backend/test/users.service.spec.ts
+- apps/nextn/src/app/admin/secret/db/page.tsx
+
+## Modified
+- .env.example
+- package.json
+- apps/backend/.env.example
+- apps/backend/package.json
+- apps/backend/src/app.module.ts
+- apps/backend/src/auth/auth.service.ts
+- apps/backend/src/clickhouse/clickhouse.service.ts
+- apps/backend/src/main.ts
+- apps/backend/src/tailan/dto/tailan.dto.ts
+- apps/backend/src/tailan/tailan.service.ts
+- apps/backend/src/users/users.controller.ts
+- apps/backend/tsconfig.json
+- apps/nextn/src/app/tools/chess/page.tsx
+- apps/nextn/src/app/tools/english/vocabulary/page.tsx
+- apps/nextn/src/app/tools/sanamsargui-tuuwer/page.tsx
+- apps/nextn/src/app/tools/tailan/department/_KpiTableEditor.tsx
+- apps/nextn/src/app/tools/tailan/department/_WordPreview.tsx
+- apps/nextn/src/app/tools/tailan/department/page.tsx
+- apps/nextn/src/app/tools/tailan/mine/_components/WordPreview.tsx
+- apps/nextn/src/app/tools/tailan/mine/page.tsx
+- apps/nextn/src/contexts/AuthContext.tsx
+- apps/nextn/src/lib/api.ts
+- apps/nextn/src/middleware.ts
+
+## New
+- apps/nextn/src/app/tools/chess/_components/GameView.tsx
+- apps/nextn/src/app/tools/chess/_components/LobbyView.tsx
+- apps/nextn/src/app/tools/chess/_hooks/useChessGame.ts
+- apps/nextn/src/app/tools/sanamsargui-tuuwer/_hooks/useSampling.ts
+- apps/nextn/src/app/tools/sanamsargui-tuuwer/_lib/sampling.ts
+- apps/nextn/src/app/tools/tailan/_lib/usePagination.ts
+- apps/nextn/src/app/tools/tailan/department/_hooks/useDepartmentReport.ts
+- apps/nextn/src/app/tools/tailan/department/_lib/buildWordHtml.ts
+- apps/nextn/src/app/tools/tailan/mine/_components/RowImageUpload.tsx
+- apps/nextn/src/app/tools/tailan/mine/_hooks/useTailanReport.ts

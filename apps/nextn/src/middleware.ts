@@ -7,7 +7,6 @@ const PUBLIC_ROUTES = ["/login", "/admin/login"];
 
 // Admin routes that additionally require isSuperAdmin
 const SUPERADMIN_ROUTES = [
-  "/admin/secret",
   "/admin/admins",
   "/admin/excel-reports",
   "/admin/db",

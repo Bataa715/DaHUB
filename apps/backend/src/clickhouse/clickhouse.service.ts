@@ -25,10 +25,17 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     const database = process.env.CLICKHOUSE_DATABASE || "audit_db";
 
     // ── 1. Bootstrap (admin) client — schema init + user provisioning only ─────
-    //   Always uses ClickHouse's built-in "default" user (container admin, empty password).
+    //   Use explicit bootstrap credentials when provided, otherwise fallback to
+    //   ClickHouse's built-in "default" user.
     //   This client is closed immediately after provisionServiceUsers() completes.
-    const adminUser = "default";
-    const adminPass = "";
+    const adminUser =
+      process.env.CLICKHOUSE_BOOTSTRAP_USER ||
+      process.env.CLICKHOUSE_USER ||
+      "default";
+    const adminPass =
+      process.env.CLICKHOUSE_BOOTSTRAP_PASSWORD ??
+      process.env.CLICKHOUSE_PASSWORD ??
+      "";
 
     this.logger.log(
       `Connecting to ClickHouse at ${host} (bootstrap as "${adminUser}")...`,
@@ -142,8 +149,14 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   /**
    * Execute DDL / mutation SQL (ALTER TABLE, CREATE, DROP, etc.)
    * Uses client.command() which automatically drains the response stream.
+   * @param silent — when true, suppresses error logging before re-throwing (for expected/handled failures)
    */
-  async exec(sql: string, params?: Record<string, any>, retries = 1) {
+  async exec(
+    sql: string,
+    params?: Record<string, any>,
+    retries = 1,
+    silent = false,
+  ) {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         await this.client.command({ query: sql, query_params: params });
@@ -159,7 +172,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           await new Promise((r) => setTimeout(r, 500));
           continue;
         }
-        this.logger.error(`ClickHouse command error: ${msg}`, error?.stack);
+        if (!silent) {
+          this.logger.error(`ClickHouse command error: ${msg}`, error?.stack);
+        }
         throw error;
       }
     }
@@ -528,7 +543,24 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         `ALTER TABLE news ADD COLUMN IF NOT EXISTS imageMime String DEFAULT ''`,
       ).catch(() => {});
 
-      await this.provisionServiceUsers();
+      try {
+        await this.provisionServiceUsers();
+      } catch (provisionErr: any) {
+        const msg = provisionErr?.message || String(provisionErr);
+        if (
+          msg.includes("ACCESS_STORAGE_READONLY") ||
+          msg.includes("users_xml") ||
+          msg.includes("ACCESS_DENIED") ||
+          msg.includes("Not enough privileges") ||
+          msg.includes("WITH GRANT OPTION")
+        ) {
+          this.logger.warn(
+            "Skipping user provisioning because current ClickHouse account cannot manage users/grants in this environment.",
+          );
+        } else {
+          throw provisionErr;
+        }
+      }
       this.logger.log(
         "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words)",
       );
@@ -556,33 +588,36 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     // Create/sync audit_app user
     await this.exec(
       `CREATE USER IF NOT EXISTS audit_app IDENTIFIED WITH sha256_password BY '${p}'`,
+      undefined, 1, true,
     );
     await this.exec(
       `ALTER USER IF EXISTS audit_app IDENTIFIED WITH sha256_password BY '${p}'`,
+      undefined, 1, true,
     );
 
     // audit_db: full read/write + schema rights
-    await this.exec(`GRANT SELECT, INSERT ON audit_db.* TO audit_app`);
-    await this.exec(`GRANT CREATE DATABASE ON *.* TO audit_app`);
+    await this.exec(`GRANT SELECT, INSERT ON audit_db.* TO audit_app`, undefined, 1, true);
+    await this.exec(`GRANT CREATE DATABASE ON *.* TO audit_app`, undefined, 1, true);
     await this.exec(
       `GRANT CREATE TABLE, DROP TABLE, ALTER ON audit_db.* TO audit_app`,
+      undefined, 1, true,
     );
-    await this.exec(`GRANT SELECT ON system.tables TO audit_app`);
-    await this.exec(`GRANT SELECT ON system.columns TO audit_app`);
+    await this.exec(`GRANT SELECT ON system.tables TO audit_app`, undefined, 1, true);
+    await this.exec(`GRANT SELECT ON system.columns TO audit_app`, undefined, 1, true);
 
     // External DBs: SELECT only — cannot modify data, only read
     for (const db of ["FINACLE", "ERP", "CARDZONE", "EBANK"]) {
-      await this.exec(`GRANT SELECT ON \`${db}\`.* TO audit_app`).catch(() => {
+      await this.exec(`GRANT SELECT ON \`${db}\`.* TO audit_app`, undefined, 1, true).catch(() => {
         // DB may not exist yet on this CH instance — skip silently
       });
     }
 
     // ACL management: create/revoke user grants (for db-access feature)
-    await this.exec(`GRANT ACCESS MANAGEMENT ON *.* TO audit_app`);
-    await this.exec(`GRANT SELECT ON system.users TO audit_app`);
-    await this.exec(`GRANT SELECT ON system.roles TO audit_app`);
-    await this.exec(`GRANT SELECT ON system.grants TO audit_app`);
-    await this.exec(`GRANT SELECT ON system.role_grants TO audit_app`);
+    await this.exec(`GRANT ACCESS MANAGEMENT ON *.* TO audit_app`, undefined, 1, true);
+    await this.exec(`GRANT SELECT ON system.users TO audit_app`, undefined, 1, true);
+    await this.exec(`GRANT SELECT ON system.roles TO audit_app`, undefined, 1, true);
+    await this.exec(`GRANT SELECT ON system.grants TO audit_app`, undefined, 1, true);
+    await this.exec(`GRANT SELECT ON system.role_grants TO audit_app`, undefined, 1, true);
 
     this.logger.log(
       "Service user audit_app provisioned (audit_db rw + external DBs ro + ACL mgmt)",

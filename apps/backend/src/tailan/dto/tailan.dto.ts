@@ -286,6 +286,10 @@ export class SaveTailanDto {
   @IsOptional()
   section7Text?: string; // Шинэ санал санаачлага текст
 
+  @IsArray()
+  @IsOptional()
+  hiddenSections?: string[]; // e.g. ["s2", "s4", "s32"]
+
   @IsEnum(["draft", "submitted"])
   @IsOptional()
   status?: "draft" | "submitted";

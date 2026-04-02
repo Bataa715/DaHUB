@@ -105,7 +105,7 @@ export function DashTaskCard({
           id: crypto.randomUUID(),
           dataUrl: reader.result as string,
           width: 80,
-          height: 0,
+          height: 280,
         });
         loaded++;
         if (loaded === files.length) onChangeImages?.(newImgs);
@@ -249,19 +249,17 @@ export function DashTaskCard({
                       </span>
                       <input
                         type="range"
-                        min={0}
+                        min={50}
                         max={600}
                         step={10}
-                        value={img.height ?? 0}
+                        value={img.height ?? 280}
                         onChange={(e) =>
                           handleHeightChange(img.id, Number(e.target.value))
                         }
                         className="w-20 accent-purple-400"
                       />
                       <span className="text-[10px] text-slate-300 w-12">
-                        {img.height && img.height > 0
-                          ? `${img.height}px`
-                          : "авто"}
+                        {`${img.height ?? 280}px`}
                       </span>
                     </div>
                   </div>
@@ -540,7 +538,7 @@ export function KpiTableEditor({
                           id: c.id,
                           dataUrl: c.dataUrl ?? "",
                           width: c.width ?? 80,
-                          height: c.height ?? 0,
+                          height: c.height ?? 280,
                         })),
                     },
               ),
@@ -1468,10 +1466,10 @@ export function KpiTableEditor({
                                   </span>
                                   <input
                                     type="range"
-                                    min={0}
+                                    min={50}
                                     max={600}
                                     step={10}
-                                    value={img.height ?? 0}
+                                    value={img.height ?? 280}
                                     onChange={(e) => {
                                       const newImgs = row.images!.map((x) =>
                                         x.id === img.id
@@ -1486,9 +1484,7 @@ export function KpiTableEditor({
                                     className="w-20 accent-purple-400"
                                   />
                                   <span className="text-[10px] text-slate-300 w-12">
-                                    {img.height && img.height > 0
-                                      ? `${img.height}px`
-                                      : "авто"}
+                                    {`${img.height ?? 280}px`}
                                   </span>
                                 </div>
                               </div>
@@ -1880,10 +1876,10 @@ export function KpiTableEditor({
                                   </span>
                                   <input
                                     type="range"
-                                    min={0}
+                                    min={50}
                                     max={600}
                                     step={10}
-                                    value={img.height ?? 0}
+                                    value={img.height ?? 280}
                                     onChange={(e) => {
                                       const newImgs = row.images!.map((x) =>
                                         x.id === img.id
@@ -1898,9 +1894,7 @@ export function KpiTableEditor({
                                     className="w-20 accent-purple-400"
                                   />
                                   <span className="text-[10px] text-slate-300 w-12">
-                                    {img.height && img.height > 0
-                                      ? `${img.height}px`
-                                      : "авто"}
+                                    {`${img.height ?? 280}px`}
                                   </span>
                                 </div>
                               </div>
@@ -2371,10 +2365,10 @@ export function KpiTableEditor({
                                 />
                                 <input
                                   type="range"
-                                  min={0}
+                                  min={50}
                                   max={600}
                                   step={10}
-                                  value={c.height ?? 0}
+                                  value={c.height ?? 280}
                                   onChange={(e) => {
                                     const nc = getItemContents(item).map(
                                       (x, j) =>
@@ -2388,7 +2382,7 @@ export function KpiTableEditor({
                                     updateContents(si, ii, nc);
                                   }}
                                   className="w-16 mt-1 accent-purple-400 self-end"
-                                  title={`Өндөр: ${c.height && c.height > 0 ? c.height + "px" : "авто"}`}
+                                  title={`Өндөр: ${c.height ?? 280}px`}
                                 />
                               </div>
                             </div>
@@ -2432,7 +2426,7 @@ export function KpiTableEditor({
                                     type: "image" as const,
                                     dataUrl: reader.result as string,
                                     width: 80,
-                                    height: 0,
+                                    height: 280,
                                   });
                                   loaded++;
                                   if (loaded === files.length)

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { parseContent } from "./RichEditor";
+import { usePagination, mmToPx } from "../../_lib/usePagination";
 import type {
   PlannedTask,
   DynSection,
@@ -103,8 +104,17 @@ export function WordPreview({
   hiddenSections,
 }: WordPreviewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(1);
   const hidden = hiddenSections ?? new Set<string>();
+
+  // A4 pagination constants (px)
+  const PAGE_H = mmToPx(297);
+  const GAP_H = 20; // 20px grey gap between pages
+  const PAD_TOP = mmToPx(15.9);
+  const PAD_BOTTOM = mmToPx(22.2);
+
+  usePagination(contentRef, PAGE_H, GAP_H, PAD_TOP, PAD_BOTTOM);
 
   React.useEffect(() => {
     const el = containerRef.current;
@@ -127,7 +137,17 @@ export function WordPreview({
 
   const tableCounter = { n: 1 };
   const imgCounter = { n: 1 };
-  const dynStartRomIdx = 7;
+
+  // Compute dynamic Roman numerals based on visible sections
+  const FIXED_SECTION_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"] as const;
+  const sectionRoman: Record<string, string> = {};
+  let _romIdx = 0;
+  for (const key of FIXED_SECTION_KEYS) {
+    if (!hidden.has(key)) {
+      sectionRoman[key] = ROMAN_NUMS[_romIdx++];
+    }
+  }
+  const dynStartRomIdx = _romIdx;
 
   const headingStyle: React.CSSProperties = {
     fontWeight: "bold",
@@ -155,12 +175,19 @@ export function WordPreview({
     width,
   });
 
-  // render: outer grey container → zoom wrapper → A4 page
+  // render: outer grey container → zoom wrapper → paginated A4 pages
+  const pageH = "297mm";
+  const gapH = "20px";
+  const padTop = "15.9mm";
+  const padBottom = "22.2mm";
+  const padLeft = "25.4mm";
+  const padRight = "19mm";
+
   return (
     <div
       ref={containerRef}
       style={{
-        background: "#d8d8d8",
+        background: "#d0d0d0",
         minHeight: "100%",
         width: "100%",
         overflow: "hidden",
@@ -169,23 +196,62 @@ export function WordPreview({
       <div
         style={{
           zoom: scale,
-          padding: "20px",
+          padding: `20px 20px`,
           width: "fit-content",
           minWidth: "100%",
         }}
       >
+        {/* Outer wrapper: repeating page background with gaps */}
         <div
-          className="bg-white shadow-2xl mx-auto"
+          className="mx-auto"
           style={{
             width: "210mm",
-            minHeight: "297mm",
-            padding: "15.9mm 19mm 22.2mm 25.4mm",
-            fontFamily: "'Times New Roman', serif",
-            fontSize: "11pt",
-            lineHeight: "1.5",
-            color: "#000",
+            position: "relative",
+            backgroundImage: `repeating-linear-gradient(
+              to bottom,
+              #ffffff 0px,
+              #ffffff ${pageH},
+              transparent ${pageH},
+              transparent calc(${pageH} + ${gapH})
+            )`,
+            backgroundSize: `100% calc(${pageH} + ${gapH})`,
+            paddingBottom: gapH,
           }}
         >
+          {/* Shadow overlay for each page: use pseudo elements via box-shadow */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0, bottom: 0,
+              pointerEvents: "none",
+              backgroundImage: `repeating-linear-gradient(
+                to bottom,
+                rgba(0,0,0,0.08) 0px,
+                transparent 3px,
+                transparent calc(${pageH} - 3px),
+                rgba(0,0,0,0.08) ${pageH},
+                rgba(0,0,0,0.15) calc(${pageH} + 2px),
+                transparent calc(${pageH} + 2px),
+                transparent calc(${pageH} + calc(${gapH} - 2px)),
+                rgba(0,0,0,0.08) calc(${pageH} + ${gapH})
+              )`,
+              backgroundSize: `100% calc(${pageH} + ${gapH})`,
+              zIndex: 1,
+            }}
+          />
+          {/* Page content with correct padding */}
+          <div
+            ref={contentRef}
+            style={{
+              position: "relative",
+              padding: `${padTop} ${padRight} ${padBottom} ${padLeft}`,
+              fontFamily: "'Times New Roman', serif",
+              fontSize: "11pt",
+              lineHeight: "1.5",
+              color: "#000",
+              zIndex: 0,
+            }}
+          >
           {/* Title */}
           <div
             style={{
@@ -204,7 +270,7 @@ export function WordPreview({
           {!hidden.has("s1") && (
           <>
           <div style={headingStyle}>
-            I. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:
+            {sectionRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:
           </div>
           {plannedTasks.filter((t) => t.title?.trim()).length === 0 ? (
             <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
@@ -244,8 +310,8 @@ export function WordPreview({
                               alt=""
                               style={{
                                 width: `${img.width}%`,
-                                height: img.height ? `${img.height}px` : undefined,
-                                objectFit: img.height ? "fill" : undefined,
+                                height: `${img.height ?? 280}px`,
+                                objectFit: "fill",
                                 maxWidth: "100%",
                                 display: "inline-block",
                               }}
@@ -437,7 +503,7 @@ export function WordPreview({
           {!hidden.has("s2") && (
           <>
           <div style={headingStyle}>
-            II. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын
+            {sectionRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын
             ажил:
           </div>
           <table
@@ -536,8 +602,8 @@ export function WordPreview({
                         alt=""
                         style={{
                           width: `${img.width}%`,
-                          height: img.height ? `${img.height}px` : undefined,
-                          objectFit: img.height ? "fill" : undefined,
+                          height: `${img.height ?? 280}px`,
+                          objectFit: "fill",
                           maxWidth: "100%",
                           display: "inline-block",
                         }}
@@ -572,7 +638,7 @@ export function WordPreview({
           {/* ── Section III ── */}
           {!hidden.has("s3") && (
           <>
-          <div style={headingStyle}>III. Тогтмол хийгддэг ажлууд</div>
+          <div style={headingStyle}>{sectionRoman.s3}. Тогтмол хийгддэг ажлууд</div>
           <div style={subHeadingStyle}>
             Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн
             байдал:
@@ -669,6 +735,9 @@ export function WordPreview({
           >
             Хүснэгт {tableCounter.n++}.
           </div>
+
+          {!hidden.has("s32") && (
+          <>
           <div style={subHeadingStyle}>
             Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:
           </div>
@@ -766,10 +835,14 @@ export function WordPreview({
           </div>
           </>
           )}
+
+          </>
+          )}
+
           {/* ── Section IV ── */}
           {!hidden.has("s4") && (
           <>
-          <div style={headingStyle}>IV. Хамрагдсан сургалт</div>
+          <div style={headingStyle}>{sectionRoman.s4}. Хамрагдсан сургалт</div>
           <table
             style={{
               width: "100%",
@@ -867,7 +940,7 @@ export function WordPreview({
           {/* ── Section V ── */}
           {!hidden.has("s5") && (
           <>
-          <div style={headingStyle}>V. Үүрэг даалгаварын биелэлт</div>
+          <div style={headingStyle}>{sectionRoman.s5}. Үүрэг даалгаварын биелэлт</div>
           <table
             style={{
               width: "100%",
@@ -929,7 +1002,7 @@ export function WordPreview({
           {/* ── Section VI ── */}
           {!hidden.has("s6") && (
           <>
-          <div style={headingStyle}>VI. Хамт олны ажил</div>
+          <div style={headingStyle}>{sectionRoman.s6}. Хамт олны ажил</div>
           <table
             style={{
               width: "100%",
@@ -990,7 +1063,7 @@ export function WordPreview({
           {/* ── Section VII ── */}
           {!hidden.has("s7") && (
           <>
-          <div style={headingStyle}>VII. Шинэ санал санаачилга</div>
+          <div style={headingStyle}>{sectionRoman.s7}. Шинэ санал санаачилга</div>
           {section7Text?.trim() ? (
             <div style={{ marginBottom: "8pt", whiteSpace: "pre-wrap" }}>
               {section7Text}
@@ -1002,16 +1075,21 @@ export function WordPreview({
           )}
 
           {/* ── Dynamic sections VIII, IX, … ── */}
-          {dynamicSections.map((sec, idx) => (
+          {dynamicSections.map((sec, idx) => {
+            if (hidden.has(`dyn_${idx}`)) return null;
+            const visibleBefore = dynamicSections.slice(0, idx).filter((_, i) => !hidden.has(`dyn_${i}`)).length;
+            const romIdx = dynStartRomIdx + visibleBefore;
+            return (
             <div key={sec._id ?? idx}>
               <div style={headingStyle}>
-                {ROMAN_NUMS[dynStartRomIdx + idx] ??
-                  `${dynStartRomIdx + idx + 1}`}
-                . {sec.title ?? ""}
+                {ROMAN_NUMS[romIdx] ??
+                  `${romIdx + 1}`}. {sec.title ?? ""}
               </div>
               {parseContent(sec.content, tableCounter)}
             </div>
-          ))}
+            );
+          })}
+        </div>
         </div>
       </div>
     </div>
@@ -1125,6 +1203,18 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
   const hidden = p.hiddenSections ?? new Set<string>();
 
   const ROMAN = ROMAN_NUMS;
+
+  // Compute dynamic Roman numerals based on visible sections
+  const _fixedSectionKeys = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"] as const;
+  const _sectionRoman: Record<string, string> = {};
+  let _buildRomIdx = 0;
+  for (const key of _fixedSectionKeys) {
+    if (!hidden.has(key)) {
+      _sectionRoman[key] = ROMAN[_buildRomIdx++];
+    }
+  }
+  const _dynRomStart = _buildRomIdx;
+
   const qName = ROMAN[(p.quarter - 1) % 4] ?? "I";
   const deptCode = deptAbbrevMn(p.userDepartment ?? "");
   const posUpper = (p.userPosition ?? "").toUpperCase();
@@ -1168,12 +1258,10 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
     // Word ignores mm in the width/height attributes (only pixels accepted); convert at 96 DPI
     const wPx = Math.round(wMm * 96 / 25.4);
     const captureN = ic.n++;
-    const hPx = img.height ?? undefined;
-    const hMm = hPx ? Math.round(hPx * 25.4 / 96) : undefined;
-    const sizeStyle = hMm
-      ? `width:${wMm}mm;height:${hMm}mm;object-fit:fill;display:block;margin:0 auto`
-      : `width:${wMm}mm;max-width:100%;display:block;margin:0 auto`;
-    const sizeAttr = hPx ? `width="${wPx}" height="${hPx}"` : `width="${wPx}"`;
+    const hPx = img.height ?? 280;
+    const hMm = Math.round(hPx * 25.4 / 96);
+    const sizeStyle = `width:${wMm}mm;height:${hMm}mm;object-fit:fill;display:block;margin:0 auto`;
+    const sizeAttr = `width="${wPx}" height="${hPx}"`;
     return (
       `<div style="text-align:center;margin-bottom:8pt;page-break-inside:avoid">` +
       `<img src="${img.dataUrl}" ${sizeAttr} style="${sizeStyle}" />` +
@@ -1188,7 +1276,7 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
 
   // ── Section I ──
   if (!hidden.has("s1")) {
-  body += heading("I. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:");
+  body += heading(`${_sectionRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:`);
   const filteredTasks = p.plannedTasks.filter((t) => t.title?.trim());
   if (filteredTasks.length === 0) {
     body += `<div style="margin-bottom:8pt">&nbsp;</div>`;
@@ -1250,7 +1338,7 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
 
   // ── Section II ──
   if (!hidden.has("s2")) {
-  body += heading("II. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил:");
+  body += heading(`${_sectionRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил:`);
   body += tblStart;
   body += `<tr style="background:#fff;color:#000">${["№","Төлөвлөгөөт ажлууд<br>(Дууссан ажлууд)","Ажлын гүйцэтгэл","Хийгдсэн хугацаа","Гүйцэтгэл/товч/"].map((h) => `<th style="border:0.5px dotted #bbb;padding:4px 6px;text-align:center;font-weight:bold">${h}</th>`).join("")}</tr>`;
   body += tblMid;
@@ -1280,7 +1368,7 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
 
   // ── Section III ──
   if (!hidden.has("s3")) {
-  body += heading("III. Тогтмол хийгддэг ажлууд");
+  body += heading(`${_sectionRoman.s3}. Тогтмол хийгддэг ажлууд`);
   body += subHeading("Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал:");
   body += tblStart;
   body += `<tr style="background:#fff;color:#000">${["№","Тогтмол хийгддэг өгөгдөл боловсруулалт","Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ","Хэрэглэгчийн нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
@@ -1297,6 +1385,7 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
   }
   body += tblEnd + caption();
 
+  if (!hidden.has("s32")) {
   body += subHeading("Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:");
   body += tblStart;
   body += `<tr style="background:#fff;color:#000">${["№","Дашбоард","Дашбоардын ач холбогдол,хэрэглээ","Хэрэглэгч нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
@@ -1313,10 +1402,11 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
   }
   body += tblEnd + caption();
   }
+  }
 
   // ── Section IV ──
   if (!hidden.has("s4")) {
-  body += heading("IV. Хамрагдсан сургалт");
+  body += heading(`${_sectionRoman.s4}. Хамрагдсан сургалт`);
   body += tblStart;
   body += `<tr style="background:#fff;color:#000">${["№","Хамрагдсан сургалт","Зохион байгуулагч","Сургалтын төрөл","Хэзээ","Сургалтын хэлбэр","Цаг","Аудитын зорилгод нийцсэн эсэх","Мэдлэгээ хуваалцсан эсэх"].map((h) => th(h)).join("")}</tr>`;
   body += tblMid;
@@ -1341,7 +1431,7 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
 
   // ── Section V ──
   if (!hidden.has("s5")) {
-  body += heading("V. Үүрэг даалгаварын биелэлт");
+  body += heading(`${_sectionRoman.s5}. Үүрэг даалгаварын биелэлт`);
   body += tblStart;
   body += `<tr style="background:#fff;color:#000">${["№","Ажлын төрөл","Хийгдсэн ажил"].map((h) => th(h)).join("")}</tr>`;
   body += tblMid;
@@ -1357,7 +1447,7 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
 
   // ── Section VI ──
   if (!hidden.has("s6")) {
-  body += heading("VI. Хамт олны ажил");
+  body += heading(`${_sectionRoman.s6}. Хамт олны ажил`);
   body += tblStart;
   body += `<tr style="background:#fff;color:#000">${["№","Огноо","Хамт олны ажил","Санаачилга"].map((h) => th(h)).join("")}</tr>`;
   body += tblMid;
@@ -1373,15 +1463,19 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
 
   // ── Section VII ──
   if (!hidden.has("s7")) {
-  body += heading("VII. Шинэ санал санаачилга");
+  body += heading(`${_sectionRoman.s7}. Шинэ санал санаачилга`);
   body += p.section7Text?.trim()
     ? `<div style="margin-bottom:8pt;white-space:pre-wrap">${esc(p.section7Text)}</div>`
     : `<div style="margin-bottom:8pt">&nbsp;</div>`;
   }
 
   // ── Dynamic sections VIII, IX, … ──
+  let _dynVisIdx = 0;
   p.dynamicSections.forEach((sec, idx) => {
-    const rom = ROMAN[7 + idx] ?? `${8 + idx}`;
+    if (hidden.has(`dyn_${idx}`)) return;
+    const romIdx = _dynRomStart + _dynVisIdx;
+    _dynVisIdx++;
+    const rom = ROMAN[romIdx] ?? `${romIdx + 1}`;
     body += heading(`${rom}. ${sec.title ?? ""}`);
     body += parseContentHtml(sec.content ?? "", tc);
   });

@@ -37,6 +37,7 @@
 // ============================================================
 
 import React, { useRef, useState, useEffect } from "react";
+import { usePagination, mmToPx } from "../_lib/usePagination";
 import {
   SECTION_DEFS,
   Q_NAMES,
@@ -78,8 +79,19 @@ export function WordPreview({
 }) {
   // containerRef → хуудасны хэмжээг хянах div
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   // scale → хуудсыг дэлгэцийн өргөнд тохируулан жижигрүүлэх хэмжүүр
   const [scale, setScale] = useState(1);
+
+  // A4 pagination constants
+  const PAGE_H = mmToPx(297);
+  const GAP_H = 20;
+  const PAD_TOP = mmToPx(16);
+  const PAD_BOTTOM = mmToPx(14);
+  const PAD_LEFT = "18mm";
+  const PAD_RIGHT = "18mm";
+
+  usePagination(contentRef, PAGE_H, GAP_H, PAD_TOP, PAD_BOTTOM);
 
   // Дэлгэцийн өргөн өөрчлөгдөх бүрт хуудсыг дахин хэмжих
   // 834px = A4 хуудасны пикселийн өргөн
@@ -105,19 +117,8 @@ export function WordPreview({
   //  Эдгээрийг өөрчлөхөд бүх хуудсанд нөлөөлнө
   // ──────────────────────────────────────────────────────────
 
-  // page → A4 цаасны стиль. padding, width, font өөрчлөхөд
-  //        бүх хуудасны layout өөрчлөгдөнө
-  const page: React.CSSProperties = {
-    background: "#fff",
-    width: "210mm", // A4 өргөн
-    margin: "0 auto 20px",
-    padding: "16mm 18mm 14mm", // дотор зай: дээш, хажуу, доош
-    boxSizing: "border-box",
-    fontFamily: "'Times New Roman', serif", // фонт өөрчлөх бол энд
-    fontSize: "11pt", // үндсэн хэмжээ. энд өөрчлөхөд бүх текст өөрчлөгдөнө
-    color: "#000",
-    boxShadow: "0 2px 14px rgba(0,0,0,0.25)",
-  };
+  const pageH = "297mm";
+  const gapH = "20px";
 
   // bigTitle → хуудасны дээд гарчиг (том үсэг)
   // Жнэ: "ДАТА АНАЛИЗЫН АЛБАНЫ 2026 ОНЫ I-Р УЛИРЛЫН"
@@ -211,12 +212,57 @@ export function WordPreview({
           minWidth: "100%",
         }}
       >
-        {/* ══════════════════════════════════════════════════
-            1-Р ХУУДАС
-            Бүх секцүүдийн (s1–s5) KPI хүснэгт болон
-            тайлбар текст энд харагдана
-        ══════════════════════════════════════════════════ */}
-        <div style={page}>
+        {/* Outer wrapper: repeating page background with gaps */}
+        <div
+          className="mx-auto"
+          style={{
+            width: "210mm",
+            position: "relative",
+            backgroundImage: `repeating-linear-gradient(
+              to bottom,
+              #ffffff 0px,
+              #ffffff ${pageH},
+              transparent ${pageH},
+              transparent calc(${pageH} + ${gapH})
+            )`,
+            backgroundSize: `100% calc(${pageH} + ${gapH})`,
+            paddingBottom: gapH,
+          }}
+        >
+          {/* Shadow overlay */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0, bottom: 0,
+              pointerEvents: "none",
+              backgroundImage: `repeating-linear-gradient(
+                to bottom,
+                rgba(0,0,0,0.08) 0px,
+                transparent 3px,
+                transparent calc(${pageH} - 3px),
+                rgba(0,0,0,0.08) ${pageH},
+                rgba(0,0,0,0.15) calc(${pageH} + 2px),
+                transparent calc(${pageH} + 2px),
+                transparent calc(${pageH} + calc(${gapH} - 2px)),
+                rgba(0,0,0,0.08) calc(${pageH} + ${gapH})
+              )`,
+              backgroundSize: `100% calc(${pageH} + ${gapH})`,
+              zIndex: 1,
+            }}
+          />
+          {/* Page content with correct padding */}
+          <div
+            ref={contentRef}
+            style={{
+              position: "relative",
+              padding: `16mm ${PAD_RIGHT} 14mm ${PAD_LEFT}`,
+              boxSizing: "border-box",
+              fontFamily: "'Times New Roman', serif",
+              fontSize: "11pt",
+              color: "#000",
+              zIndex: 0,
+            }}
+          >
           {/* 1-р хуудасны дээд гарчиг — жил, улирал автоматаар орно */}
           <div style={bigTitle}>
             ДАТА АНАЛИЗЫН АЛБАНЫ {year} ОНЫ {qName} УЛИРЛЫН
@@ -682,10 +728,8 @@ export function WordPreview({
                                     alt=""
                                     style={{
                                       width: `${img.width ?? 80}%`,
-                                      height:
-                                        img.height && img.height > 0
-                                          ? `${img.height}px`
-                                          : "auto",
+                                      height: `${img.height ?? 280}px`,
+                                      objectFit: "fill",
                                       maxWidth: "100%",
                                       display: "inline-block",
                                     }}
@@ -763,10 +807,8 @@ export function WordPreview({
                                         alt=""
                                         style={{
                                           width: `${img.width}%`,
-                                          height:
-                                            img.height && img.height > 0
-                                              ? `${img.height}px`
-                                              : "auto",
+                                          height: `${img.height ?? 280}px`,
+                                          objectFit: "fill",
                                           maxWidth: "100%",
                                           display: "inline-block",
                                         }}
@@ -1034,10 +1076,8 @@ export function WordPreview({
                                             alt=""
                                             style={{
                                               width: `${c.width ?? 80}%`,
-                                              height:
-                                                c.height && c.height > 0
-                                                  ? `${c.height}px`
-                                                  : "auto",
+                                              height: `${c.height ?? 280}px`,
+                                              objectFit: "fill",
                                               maxWidth: "100%",
                                               display: "inline-block",
                                             }}
@@ -1464,10 +1504,8 @@ export function WordPreview({
                                     alt=""
                                     style={{
                                       width: `${img.width ?? 80}%`,
-                                      height:
-                                        img.height && img.height > 0
-                                          ? `${img.height}px`
-                                          : "auto",
+                                      height: `${img.height ?? 280}px`,
+                                      objectFit: "fill",
                                       maxWidth: "100%",
                                       display: "inline-block",
                                     }}
@@ -1728,10 +1766,8 @@ export function WordPreview({
                                         alt=""
                                         style={{
                                           width: `${c.width ?? 80}%`,
-                                          height:
-                                            c.height && c.height > 0
-                                              ? `${c.height}px`
-                                              : "auto",
+                                          height: `${c.height ?? 280}px`,
+                                          objectFit: "fill",
                                           maxWidth: "100%",
                                           display: "inline-block",
                                         }}
@@ -2448,10 +2484,8 @@ export function WordPreview({
                                           alt=""
                                           style={{
                                             width: `${c.width ?? 80}%`,
-                                            height:
-                                              c.height && c.height > 0
-                                                ? `${c.height}px`
-                                                : "auto",
+                                            height: `${c.height ?? 280}px`,
+                                            objectFit: "fill",
                                             maxWidth: "100%",
                                             display: "inline-block",
                                           }}
@@ -2926,24 +2960,8 @@ export function WordPreview({
               </div>
             );
           })}
-        </div>
-        {/* ══ 1-Р ХУУДАС ТӨГСӨВ ══ */}
+        {/* ══ НЭГТГЭЛ ХЭСЭГ ══ */}
 
-        {/* ══════════════════════════════════════════════════
-            2-Р ХУУДАС: НЭГТГЭЛ
-            negtgelKpi өгөгдлийг харуулна.
-            negtgelKpi нь page.tsx дотор _types.ts-ын
-            DEFAULT_NEGTGEL_KPI-аас эхлэн state-д хадгалагдана.
-
-            ДИЗАЙН ТАЙЛБАР:
-            Header ӨНГ: #e9965b (тод оранж) — 1-р хуудаснаас ялгаатай
-            Мөрийн ӨНГ: #fef3c7 (цайвар шар)
-            Нийт мөр: цагаан фон
-
-            ⚠️  Header өнгийг өөрчлөхөд: background: "#e6823b"
-            ⚠️  Мөрийн өнгийг өөрчлөхөд: background: "#fef3c7"
-        ══════════════════════════════════════════════════ */}
-        <div style={page}>
           {/* 2-р хуудасны дээд гарчиг */}
           <div style={{ ...bigTitle, marginBottom: "6pt" }}>
             ДАТА АНАЛИЗЫН АЛБА {year} ОНЫ {qName}-Р УЛИРЛЫН БҮХ-НЫ НЭГТГЭЛ
@@ -3200,6 +3218,7 @@ export function WordPreview({
           })()}
           {/* ══ 2-Р ХУУДАС ТӨГСӨВ ══ */}
         </div>
+      </div>
       </div>
     </div>
   );

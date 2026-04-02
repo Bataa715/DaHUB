@@ -48,13 +48,10 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Block requests with no origin in production (allow only in dev for curl/tools)
+      // Allow requests with no Origin header (Docker healthcheck, server-to-server, curl).
+      // Browser-originated traffic still goes through strict whitelist validation below.
       if (!origin) {
-        if (process.env.NODE_ENV !== "production") {
-          callback(null, true);
-        } else {
-          callback(new Error("No origin"));
-        }
+        callback(null, true);
         return;
       }
 

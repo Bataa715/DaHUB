@@ -67,44 +67,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const adminPath = isAdminPath();
     const token = adminPath ? Cookies.get("adminToken") : Cookies.get("token");
+    const refreshKey = adminPath ? "adminRefreshToken" : "refreshToken";
+    const tokenKey = adminPath ? "adminToken" : "token";
+    const userKey = adminPath ? "adminUser" : "user";
+    const storedRefreshToken = Cookies.get(refreshKey);
 
-    if (!token) {
+    if (!token && !storedRefreshToken) {
       setUser(null);
       setLoading(false);
       return;
     }
 
-    authApi
-      .getProfile()
-      .then((profile) => {
-        setUser(profile);
-      })
-      .catch((error) => {
-        if (process.env.NODE_ENV !== "production") {
-          console.error("Profile fetch failed:", error);
+    // Always re-issue the access token on load so the JWT cookie has the
+    // latest allowedTools (in case an admin granted/revoked tools).
+    const doRefresh = async () => {
+      if (storedRefreshToken) {
+        try {
+          const { user: freshUser, accessToken, refreshToken: newRefreshToken } =
+            await authApi.refreshToken(storedRefreshToken);
+          const secure =
+            typeof window !== "undefined" &&
+            window.location.protocol === "https:";
+          Cookies.set(tokenKey, accessToken, {
+            expires: 1 / 24,
+            sameSite: "strict",
+            secure,
+          });
+          Cookies.set(refreshKey, newRefreshToken, {
+            expires: 7,
+            sameSite: "strict",
+            secure,
+          });
+          Cookies.set(userKey, JSON.stringify(freshUser), {
+            expires: 7,
+            sameSite: "strict",
+            secure,
+          });
+          setUser(freshUser);
+          setLoading(false);
+          return;
+        } catch {
+          // Fall through to getProfile if refresh fails
         }
-        if (adminPath) {
-          Cookies.remove("adminToken");
-          Cookies.remove("adminRefreshToken");
-          Cookies.remove("adminUser");
-        } else {
-          Cookies.remove("token");
-          Cookies.remove("refreshToken");
-          Cookies.remove("user");
-        }
-        setUser(null);
-        // Redirect to the correct login page
-        const loginPath = adminPath ? "/admin/login" : "/login";
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.startsWith(loginPath)
-        ) {
-          window.location.replace(loginPath);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      }
+
+      authApi
+        .getProfile()
+        .then((profile) => {
+          setUser(profile);
+        })
+        .catch((error) => {
+          if (process.env.NODE_ENV !== "production") {
+            console.error("Profile fetch failed:", error);
+          }
+          if (adminPath) {
+            Cookies.remove("adminToken");
+            Cookies.remove("adminRefreshToken");
+            Cookies.remove("adminUser");
+          } else {
+            Cookies.remove("token");
+            Cookies.remove("refreshToken");
+            Cookies.remove("user");
+          }
+          setUser(null);
+          const loginPath = adminPath ? "/admin/login" : "/login";
+          if (
+            typeof window !== "undefined" &&
+            !window.location.pathname.startsWith(loginPath)
+          ) {
+            window.location.replace(loginPath);
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    };
+
+    doRefresh();
   }, []);
 
   const saveUserSession = (
@@ -222,6 +261,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     try {
+      const adminPath = isAdminPath();
+      const refreshKey = adminPath ? "adminRefreshToken" : "refreshToken";
+      const tokenKey = adminPath ? "adminToken" : "token";
+      const userKey = adminPath ? "adminUser" : "user";
+      const storedRefreshToken = Cookies.get(refreshKey);
+
+      if (storedRefreshToken) {
+        // Re-issue access token so the JWT cookie contains the latest allowedTools.
+        // The middleware reads allowedTools from the JWT cookie directly, so without
+        // this step newly-granted tool permissions would not take effect until re-login.
+        try {
+          const { user: freshUser, accessToken, refreshToken: newRefreshToken } =
+            await authApi.refreshToken(storedRefreshToken);
+          const secure =
+            typeof window !== "undefined" &&
+            window.location.protocol === "https:";
+          Cookies.set(tokenKey, accessToken, {
+            expires: 1 / 24,
+            sameSite: "strict",
+            secure,
+          });
+          Cookies.set(refreshKey, newRefreshToken, {
+            expires: 7,
+            sameSite: "strict",
+            secure,
+          });
+          Cookies.set(userKey, JSON.stringify(freshUser), {
+            expires: 7,
+            sameSite: "strict",
+            secure,
+          });
+          setUser(freshUser);
+          return;
+        } catch {
+          // If token refresh fails, fall back to getProfile only
+        }
+      }
+
       const profile = await authApi.getProfile();
       setUser(profile);
     } catch (error) {

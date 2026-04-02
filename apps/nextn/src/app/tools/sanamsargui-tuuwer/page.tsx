@@ -1,7 +1,5 @@
-"use client";
+﻿"use client";
 
-import { useState, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -24,600 +22,18 @@ import {
   Shuffle,
   Loader2,
 } from "lucide-react";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-type DesignType = "srswr" | "srswor" | "prop" | "nonprop";
-
-const DESIGN_LABELS: Record<DesignType, string> = {
-  srswr: "1. Буцаалттай энгийн санамсаргүй (SRSWR)",
-  srswor: "2. Буцаалтгүй энгийн санамсаргүй (SRSWOR)",
-  prop: "3. Пропорциональ",
-  nonprop: "4. Пропорциональ биш",
-};
-
-// ── Z-score from confidence level (like scipy.stats.norm.ppf) ─────────────────
-function getZ(cl: number): number {
-  const p = 1 - (1 - cl) / 2;
-  if (p >= 1) return 3.5;
-  const a = [2.515517, 0.802853, 0.010328];
-  const b = [1.432788, 0.189269, 0.001308];
-  const t = Math.sqrt(-2 * Math.log(1 - p));
-  const num = a[0] + a[1] * t + a[2] * t * t;
-  const den = 1 + b[0] * t + b[1] * t * t + b[2] * t * t * t;
-  return parseFloat((t - num / den).toFixed(4));
-}
-
-// ── Formulas matching Python ──────────────────────────────────────────────────
-function calcSampleSize(
-  N: number,
-  Z: number,
-  E: number,
-  stdDev: number,
-): number {
-  const e = E / 100;
-  const n0 = Math.pow((Z * stdDev) / e, 2);
-  return Math.round(n0 / (1 + (n0 - 1) / N));
-}
-
-function calcStratifiedSampleSize(N: number, Z: number, E: number): number {
-  const e = E / 100;
-  const p = 0.05;
-  const n0 = (Z * Z * p * (1 - p)) / (e * e);
-  return Math.round(n0 / (1 + (n0 - 1) / N));
-}
-
-// ── Generic filter value formatter ───────────────────────────────────────────
-function normalizeFilterValue(value: unknown): string {
-  if (value == null) return "(хоосон)";
-  const str = String(value).trim();
-  return str.length ? str : "(хоосон)";
-}
-
-const LARGE_EXPORT_ROW_THRESHOLD = 20_000;
-
-function toCsvCell(value: unknown): string {
-  const raw = String(value ?? "");
-  if (/[",\n\r]/.test(raw)) {
-    return `"${raw.replace(/"/g, '""')}"`;
-  }
-  return raw;
-}
-
-function buildCsvContent(result: SamplingResult, isStratified: boolean): string {
-  const lines: string[] = [];
-  lines.push(`Дизайн,${toCsvCell(result.design)}`);
-  lines.push(`Түүврийн хэмжээ (n),${result.n}`);
-  lines.push(`Хүн ам (N),${result.N}`);
-  lines.push(`Итгэлийн түвшин,${(result.confidence * 100).toFixed(0)}%`);
-  lines.push(`Алдааны марж,${result.margin}%`);
-  lines.push("");
-
-  for (const g of result.groups) {
-    lines.push(`Бүлэг,${toCsvCell(g.label)}`);
-    if (isStratified) {
-      lines.push("Мөр №,Санамсаргүй хувьсагч");
-      for (const idx of g.indices) {
-        lines.push(`${idx},${idx}`);
-      }
-    } else {
-      lines.push(["Мөр №", ...result.headers].map(toCsvCell).join(","));
-      g.indices.forEach((idx, i) => {
-        const row = g.rows[i] ?? [];
-        const cells = [idx, ...result.headers.map((_, ci) => row[ci] ?? "")];
-        lines.push(cells.map(toCsvCell).join(","));
-      });
-    }
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-function logExportFailure(
-  reason: string,
-  error?: unknown,
-  extra?: Record<string, unknown>,
-) {
-  const userAgent =
-    typeof navigator !== "undefined" ? navigator.userAgent : "unknown";
-  const payload = {
-    reason,
-    timestamp: new Date().toISOString(),
-    userAgent,
-    ...extra,
-  };
-
-  if (error instanceof Error) {
-    console.error("[SanamsarguiTuuwer][Export]", payload, {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
-    return;
-  }
-
-  if (error) {
-    console.error("[SanamsarguiTuuwer][Export]", payload, { error });
-    return;
-  }
-
-  console.warn("[SanamsarguiTuuwer][Export]", payload);
-}
-
-// ── Sampling helpers ──────────────────────────────────────────────────────────
-function sampleWithReplacement(total: number, k: number): number[] {
-  return Array.from({ length: k }, () => Math.floor(Math.random() * total) + 1);
-}
-
-function sampleWithoutReplacement(total: number, k: number): number[] {
-  k = Math.min(k, total);
-  const arr = Array.from({ length: total }, (_, i) => i + 1);
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr.slice(0, k).sort((a, b) => a - b);
-}
-
-// ── Result type ───────────────────────────────────────────────────────────────
-interface GroupResult {
-  label: string;
-  indices: number[]; // 1-based row numbers
-  rows: unknown[][]; // actual data rows from the file
-  size?: number;
-}
-
-interface SamplingResult {
-  n: number;
-  N: number;
-  Z: number;
-  design: DesignType;
-  confidence: number;
-  margin: number;
-  stdDev: number;
-  groups: GroupResult[];
-  headers: string[]; // column headers from the file
-}
+import { DESIGN_LABELS, type DesignType } from "./_lib/sampling";
+import { useSampling } from "./_hooks/useSampling";
 
 export default function SanamsarguiTuuwerPage() {
-  const [design, setDesign] = useState<DesignType>("srswr");
-  const [confidence, setConfidence] = useState(0.95);
-  const [margin, setMargin] = useState(5.0);
-  const [stdDev, setStdDev] = useState(0.5);
-  const [exportFilename, setExportFilename] = useState("sample_result.xlsx");
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const s = useSampling();
 
-  // SRSWR / SRSWOR
-  const [isDragging, setIsDragging] = useState(false);
-  const [fileData, setFileData] = useState<unknown[][] | null>(null);
-  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [filterCol, setFilterCol] = useState<string>("");
-  const [useColumnFilter, setUseColumnFilter] = useState(false);
-  const [selectedFilterValue, setSelectedFilterValue] = useState<string>("all");
-  const [coverAllValues, setCoverAllValues] = useState(false);
-  const [preferSaveDialog, setPreferSaveDialog] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Compute unique values from selected filter column
-  const availableFilterValues: string[] = (() => {
-    if (!useColumnFilter || !fileData || !filterCol) return [];
-    const idx = fileHeaders.indexOf(filterCol);
-    if (idx < 0) return [];
-    const values = new Set<string>();
-    for (const row of fileData) {
-      values.add(normalizeFilterValue((row as unknown[])[idx]));
-    }
-    return Array.from(values).sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
-    );
-  })();
-
-  // Stratified
-  const [totalVars, setTotalVars] = useState(100);
-  const [numGroups, setNumGroups] = useState(2);
-  const [groupSizes, setGroupSizes] = useState<number[]>([50, 50]);
-
-  // Result
-  const [result, setResult] = useState<SamplingResult | null>(null);
-
-  const isStratified = design === "prop" || design === "nonprop";
-
-  // ── File handling ────────────────────────────────────────────────────────
-  const processFile = useCallback((file: File) => {
-    if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      setFileError("Зөвхөн Excel (.xlsx, .xls) файл оруулна уу");
-      return;
-    }
-    setFileError(null);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 });
-      if (rows.length < 2) {
-        setFileError("Файлд хангалттай мэдээлэл байхгүй");
-        return;
-      }
-      const hdrs = (rows[0] as unknown[]).map((h) => String(h ?? ""));
-      setFileHeaders(hdrs);
-      setFileData(rows.slice(1) as unknown[][]);
-      setFileName(file.name);
-      setResult(null);
-      setFilterCol("");
-      setUseColumnFilter(false);
-      setSelectedFilterValue("all");
-      setCoverAllValues(false);
-    };
-    reader.readAsArrayBuffer(file);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
-    },
-    [processFile],
-  );
-
-  const handleNumGroupsChange = (val: number) => {
-    const n = Math.max(2, val);
-    setNumGroups(n);
-    setGroupSizes((prev) => {
-      const next = [...prev];
-      while (next.length < n) next.push(50);
-      return next.slice(0, n);
-    });
-  };
-
-  // ── Preview computed n ───────────────────────────────────────────────────
-  const computedN = (() => {
-    const Z = getZ(confidence);
-    if (isStratified) return calcStratifiedSampleSize(totalVars, Z, margin);
-
-    const baseData = fileData ?? [];
-    const colIdx = filterCol ? fileHeaders.indexOf(filterCol) : -1;
-    const filteredLen =
-      !useColumnFilter || selectedFilterValue === "all" || colIdx < 0
-        ? baseData.length
-        : baseData.filter(
-            (row) =>
-              normalizeFilterValue((row as unknown[])[colIdx]) ===
-              selectedFilterValue,
-          ).length;
-
-    if (!filteredLen) return null;
-    let n = calcSampleSize(filteredLen, Z, margin, stdDev);
-
-    if (
-      useColumnFilter &&
-      coverAllValues &&
-      selectedFilterValue === "all" &&
-      colIdx >= 0
-    ) {
-      n = Math.max(n, availableFilterValues.length);
-    }
-
-    return n;
-  })();
-
-  // ── Calculate ────────────────────────────────────────────────────────────
-  const handleCalculate = () => {
-    const Z = getZ(confidence);
-
-    if (isStratified) {
-      const N = totalVars;
-      let sampleSize = calcStratifiedSampleSize(N, Z, margin);
-      const groups: GroupResult[] = [];
-
-      if (design === "prop") {
-        const totalGroupSize = groupSizes.reduce((a, b) => a + b, 0);
-        for (let i = 0; i < numGroups; i++) {
-          const ni = Math.round(sampleSize * (groupSizes[i] / totalGroupSize));
-          groups.push({
-            label: `Бүлэг ${i + 1}`,
-            indices: sampleWithoutReplacement(N, ni),
-            size: groupSizes[i],
-            rows: [],
-          });
-        }
-      } else {
-        if (sampleSize % numGroups !== 0)
-          sampleSize += numGroups - (sampleSize % numGroups);
-        const ni = Math.floor(sampleSize / numGroups);
-        for (let i = 0; i < numGroups; i++) {
-          groups.push({
-            label: `Бүлэг ${i + 1}`,
-            indices: sampleWithoutReplacement(N, ni),
-            rows: [],
-          });
-        }
-      }
-      setResult({
-        n: sampleSize,
-        N,
-        Z,
-        design,
-        confidence,
-        margin,
-        stdDev,
-        headers: [],
-        groups: groups.map((g) => ({ ...g, rows: [] })),
-      });
-    } else {
-      const baseData = fileData ?? [];
-      const colIdx = filterCol ? fileHeaders.indexOf(filterCol) : -1;
-
-      const scopedData = baseData
-        .map((row, idx) => ({ row, sourceIndex: idx + 1 }))
-        .filter(({ row }) => {
-          if (!useColumnFilter || selectedFilterValue === "all" || colIdx < 0) {
-            return true;
-          }
-          return (
-            normalizeFilterValue((row as unknown[])[colIdx]) === selectedFilterValue
-          );
-        });
-
-      const N = scopedData.length;
-      if (!N) return;
-
-      let n = calcSampleSize(N, Z, margin, stdDev);
-      const sampledEntries: Array<{ sourceIndex: number; row: unknown[] }> = [];
-
-      if (
-        useColumnFilter &&
-        coverAllValues &&
-        selectedFilterValue === "all" &&
-        colIdx >= 0
-      ) {
-        const valueMap = new Map<string, Array<{ sourceIndex: number; row: unknown[] }>>();
-        for (const entry of scopedData) {
-          const key = normalizeFilterValue((entry.row as unknown[])[colIdx]);
-          const arr = valueMap.get(key);
-          if (arr) arr.push(entry);
-          else valueMap.set(key, [entry]);
-        }
-
-        const allValues = Array.from(valueMap.keys());
-        n = Math.max(n, allValues.length);
-
-        for (const v of allValues) {
-          const arr = valueMap.get(v) ?? [];
-          if (!arr.length) continue;
-          const pick = arr[Math.floor(Math.random() * arr.length)];
-          sampledEntries.push(pick);
-        }
-      }
-
-      const remaining = Math.max(0, n - sampledEntries.length);
-      if (remaining > 0) {
-        if (design === "srswr") {
-          for (let i = 0; i < remaining; i++) {
-            const pick = scopedData[Math.floor(Math.random() * scopedData.length)];
-            sampledEntries.push(pick);
-          }
-        } else {
-          const used = new Set(sampledEntries.map((e) => e.sourceIndex));
-          const available = scopedData.filter((e) => !used.has(e.sourceIndex));
-          const picks = sampleWithoutReplacement(available.length, remaining);
-          for (const p of picks) {
-            sampledEntries.push(available[p - 1]);
-          }
-        }
-      }
-
-      const indices = sampledEntries.map((e) => e.sourceIndex);
-      const rows = sampledEntries.map((e) => e.row ?? []);
-
-      let groupLabel = "Түүвэр";
-      if (useColumnFilter && filterCol && selectedFilterValue !== "all") {
-        groupLabel = `Түүвэр ${filterCol}=${selectedFilterValue}`;
-      } else if (useColumnFilter && filterCol && selectedFilterValue === "all") {
-        groupLabel = `Түүвэр (${filterCol} бүх утга)`;
-      }
-
-      setResult({
-        n: sampledEntries.length,
-        N,
-        Z,
-        design,
-        confidence,
-        margin,
-        stdDev,
-        headers: fileHeaders,
-        groups: [
-          {
-            label: groupLabel,
-            indices,
-            rows,
-          },
-        ],
-      });
-    }
-  };
-
-  // ── Export ───────────────────────────────────────────────────────────────
-  const handleExport = async () => {
-    if (!result) return;
-    setExportError(null);
-    setExporting(true);
-
-    console.info("[SanamsarguiTuuwer][Export] Download started", {
-      design,
-      groupCount: result.groups.length,
-      sampleSize: result.n,
-      requestedFilename: exportFilename || "sample_result.xlsx",
-      useSaveDialog: preferSaveDialog,
-    });
-
-    const saveBlob = async (
-      blob: Blob,
-      filename: string,
-      mime: string,
-      origin: "xlsx" | "csv",
-    ) => {
-      const pickerWindow = window as Window & {
-        showSaveFilePicker?: (options?: {
-          suggestedName?: string;
-          types?: Array<{ description: string; accept: Record<string, string[]> }>;
-        }) => Promise<{
-          createWritable: () => Promise<{
-            write: (data: Blob) => Promise<void>;
-            close: () => Promise<void>;
-          }>;
-        }>;
-      };
-
-      if (preferSaveDialog && typeof pickerWindow.showSaveFilePicker === "function") {
-        try {
-          const handle = await pickerWindow.showSaveFilePicker({
-            suggestedName: filename,
-            types: [
-              {
-                description: origin === "xlsx" ? "Excel file" : "CSV file",
-                accept: { [mime]: [origin === "xlsx" ? ".xlsx" : ".csv"] },
-              },
-            ],
-          });
-          const writable = await handle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-          console.info("[SanamsarguiTuuwer][Export] Saved via File Picker", {
-            filename,
-            size: blob.size,
-            origin,
-          });
-          return;
-        } catch (pickerErr) {
-          if (
-            pickerErr &&
-            typeof pickerErr === "object" &&
-            "name" in pickerErr &&
-            (pickerErr as { name?: string }).name === "AbortError"
-          ) {
-            logExportFailure("User cancelled File Picker save dialog", pickerErr, {
-              origin,
-            });
-            return;
-          }
-          logExportFailure(
-            "File Picker failed, falling back to browser download",
-            pickerErr,
-            { origin },
-          );
-        }
-      }
-
-      const nav = window.navigator as Navigator & {
-        msSaveOrOpenBlob?: (blob: Blob, defaultName?: string) => boolean;
-      };
-      if (typeof nav.msSaveOrOpenBlob === "function") {
-        nav.msSaveOrOpenBlob(blob, filename);
-        console.info("[SanamsarguiTuuwer][Export] Saved via msSaveOrOpenBlob", {
-          filename,
-          size: blob.size,
-          origin,
-        });
-        return;
-      }
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      console.info("[SanamsarguiTuuwer][Export] Browser download link triggered", {
-        filename,
-        size: blob.size,
-        origin,
-        note: "If no save prompt appears, browser download/security settings may be blocking automatic downloads.",
-      });
-
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    };
-
-    try {
-      const totalRows = result.groups.reduce((sum, g) => sum + g.indices.length, 0);
-      if (totalRows >= LARGE_EXPORT_ROW_THRESHOLD) {
-        logExportFailure("Large export detected; switching to CSV", undefined, {
-          totalRows,
-          threshold: LARGE_EXPORT_ROW_THRESHOLD,
-        });
-
-        const csvContent = buildCsvContent(result, isStratified);
-        const csvBlob = new Blob(["\uFEFF", csvContent], {
-          type: "text/csv;charset=utf-8",
-        });
-        const csvFilename = (exportFilename || "sample_result")
-          .replace(/\.xlsx$/i, "")
-          .concat(".csv");
-        await saveBlob(csvBlob, csvFilename, "text/csv", "csv");
-        return;
-      }
-
-      const res = await fetch("/api/export-sample", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          result,
-          isStratified,
-          filename: exportFilename || "sample_result.xlsx",
-        }),
-      });
-      if (!res.ok) {
-        logExportFailure("API request failed", undefined, {
-          status: res.status,
-          statusText: res.statusText,
-        });
-        throw new Error(`Export failed (${res.status})`);
-      }
-
-      const blob = await res.blob();
-      if (!blob.size) {
-        logExportFailure("Empty file received from server");
-        throw new Error("Exported file is empty");
-      }
-
-      const safeFilename = (exportFilename || "sample_result.xlsx").endsWith(
-        ".xlsx",
-      )
-        ? exportFilename || "sample_result.xlsx"
-        : `${exportFilename || "sample_result"}.xlsx`;
-      await saveBlob(
-        blob,
-        safeFilename,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "xlsx",
-      );
-    } catch (err) {
-      logExportFailure("Unhandled export exception", err, {
-        useSaveDialog: preferSaveDialog,
-      });
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Excel татах үед алдаа гарлаа. Дахин оролдоно уу.";
-      setExportError(message);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const confLabel = (confidence * 100).toFixed(0) + "%";
+  const confLabel = (s.confidence * 100).toFixed(0) + "%";
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {exporting && (
+      {s.exporting && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-slate-800 border border-slate-600 rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-2xl">
             <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
@@ -668,12 +84,12 @@ export default function SanamsarguiTuuwerPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Design */}
+              {/* s.design */}
               <div className="space-y-2">
                 <Label className="text-slate-300">Түүврийн дизайн</Label>
                 <Select
-                  value={design}
-                  onValueChange={(v) => setDesign(v as DesignType)}
+                  value={s.design}
+                  onValueChange={(v) => s.setDesign(v as DesignType)}
                 >
                   <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
                     <SelectValue />
@@ -694,7 +110,7 @@ export default function SanamsarguiTuuwerPage() {
                 </Select>
               </div>
 
-              {/* Confidence Slider */}
+              {/* s.confidence Slider */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <Label className="text-slate-300">Итгэлийн түвшин</Label>
@@ -703,8 +119,8 @@ export default function SanamsarguiTuuwerPage() {
                   </span>
                 </div>
                 <Slider
-                  value={[confidence]}
-                  onValueChange={([v]) => setConfidence(v)}
+                  value={[s.confidence]}
+                  onValueChange={([v]) => s.setConfidence(v)}
                   min={0.8}
                   max={0.99}
                   step={0.01}
@@ -719,17 +135,17 @@ export default function SanamsarguiTuuwerPage() {
                 </div>
               </div>
 
-              {/* Margin + (StdDev for SRSWR/SRSWOR) + Filename */}
+              {/* s.margin + (s.stdDev for SRSWR/SRSWOR) + s.fileName */}
               <div
-                className={`grid grid-cols-1 gap-4 ${!isStratified ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+                className={`grid grid-cols-1 gap-4 ${!s.isStratified ? "md:grid-cols-3" : "md:grid-cols-2"}`}
               >
-                {/* Margin */}
+                {/* s.margin */}
                 <div className="space-y-2">
                   <Label className="text-slate-300">Алдааны марж (%)</Label>
                   <div className="flex">
                     <button
                       onClick={() =>
-                        setMargin((m) =>
+                        s.setMargin((m) =>
                           Math.max(0.1, parseFloat((m - 0.5).toFixed(2))),
                         )
                       }
@@ -742,15 +158,15 @@ export default function SanamsarguiTuuwerPage() {
                       min={0.1}
                       max={20}
                       step={0.5}
-                      value={margin}
+                      value={s.margin}
                       onChange={(e) =>
-                        setMargin(parseFloat(e.target.value) || 5)
+                        s.setMargin(parseFloat(e.target.value) || 5)
                       }
                       className="bg-slate-800/50 border-x-0 border-slate-600 text-white text-center rounded-none"
                     />
                     <button
                       onClick={() =>
-                        setMargin((m) => parseFloat((m + 0.5).toFixed(2)))
+                        s.setMargin((m) => parseFloat((m + 0.5).toFixed(2)))
                       }
                       className="px-3 py-2 rounded-r-md bg-slate-700 text-white hover:bg-slate-600 transition-colors border border-slate-600"
                     >
@@ -759,8 +175,8 @@ export default function SanamsarguiTuuwerPage() {
                   </div>
                 </div>
 
-                {/* StdDev — only for SRSWR/SRSWOR */}
-                {!isStratified && (
+                {/* s.stdDev — only for SRSWR/SRSWOR */}
+                {!s.isStratified && (
                   <div className="space-y-2">
                     <Label className="text-slate-300">
                       Стандарт хазайлт (σ)
@@ -768,7 +184,7 @@ export default function SanamsarguiTuuwerPage() {
                     <div className="flex">
                       <button
                         onClick={() =>
-                          setStdDev((s) =>
+                          s.setStdDev((s) =>
                             Math.max(0.01, parseFloat((s - 0.05).toFixed(3))),
                           )
                         }
@@ -781,15 +197,15 @@ export default function SanamsarguiTuuwerPage() {
                         min={0.01}
                         max={1}
                         step={0.05}
-                        value={stdDev}
+                        value={s.stdDev}
                         onChange={(e) =>
-                          setStdDev(parseFloat(e.target.value) || 0.5)
+                          s.setStdDev(parseFloat(e.target.value) || 0.5)
                         }
                         className="bg-slate-800/50 border-x-0 border-slate-600 text-white text-center rounded-none"
                       />
                       <button
                         onClick={() =>
-                          setStdDev((s) => parseFloat((s + 0.05).toFixed(3)))
+                          s.setStdDev((s) => parseFloat((s + 0.05).toFixed(3)))
                         }
                         className="px-3 py-2 rounded-r-md bg-slate-700 text-white hover:bg-slate-600 transition-colors border border-slate-600"
                       >
@@ -799,20 +215,20 @@ export default function SanamsarguiTuuwerPage() {
                   </div>
                 )}
 
-                {/* Filename */}
+                {/* s.fileName */}
                 <div className="space-y-2">
                   <Label className="text-slate-300">Хадгалах файлын нэр</Label>
                   <Input
-                    value={exportFilename}
-                    onChange={(e) => setExportFilename(e.target.value)}
+                    value={s.exportFilename}
+                    onChange={(e) => s.setExportFilename(e.target.value)}
                     className="bg-slate-800/50 border-slate-600 text-white"
                     placeholder="sample_result.xlsx"
                   />
                   <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      checked={preferSaveDialog}
-                      onChange={(e) => setPreferSaveDialog(e.target.checked)}
+                      checked={s.preferSaveDialog}
+                      onChange={(e) => s.setPreferSaveDialog(e.target.checked)}
                       className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
                     />
                     Хадгалах цонх (Keep/Save dialog) ашиглах
@@ -821,7 +237,7 @@ export default function SanamsarguiTuuwerPage() {
               </div>
 
               {/* ── SRSWR / SRSWOR: File upload ── */}
-              {!isStratified && (
+              {!s.isStratified && (
                 <div className="space-y-2">
                   <Label className="text-slate-300">
                     📎 Excel файл оруулах
@@ -829,37 +245,37 @@ export default function SanamsarguiTuuwerPage() {
                   <div
                     onDragOver={(e) => {
                       e.preventDefault();
-                      setIsDragging(true);
+                      s.setIsDragging(true);
                     }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
+                    onDragLeave={() => s.setIsDragging(false)}
+                    onDrop={s.handleDrop}
+                    onClick={() => s.fileInputRef.current?.click()}
                     className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                      isDragging
+                      s.isDragging
                         ? "border-violet-400 bg-violet-500/10"
-                        : fileName
+                        : s.fileName
                           ? "border-green-500/50 bg-green-500/5"
                           : "border-slate-600 hover:border-violet-500/50 hover:bg-violet-500/5"
                     }`}
                   >
                     <input
-                      ref={fileInputRef}
+                      ref={s.fileInputRef}
                       type="file"
                       accept=".xlsx,.xls"
                       className="hidden"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
-                        if (f) processFile(f);
+                        if (f) s.processFile(f);
                       }}
                     />
-                    {fileName ? (
+                    {s.fileName ? (
                       <div className="flex items-center justify-center gap-2">
                         <FileSpreadsheet className="w-6 h-6 text-green-400" />
                         <span className="text-green-400 font-medium">
-                          {fileName}
+                          {s.fileName}
                         </span>
                         <span className="text-slate-400">
-                          ({fileData?.length} мөр)
+                          ({s.fileData?.length} мөр)
                         </span>
                       </div>
                     ) : (
@@ -872,23 +288,23 @@ export default function SanamsarguiTuuwerPage() {
                       </>
                     )}
                   </div>
-                  {fileError && (
-                    <p className="text-red-400 text-sm">{fileError}</p>
+                  {s.fileError && (
+                    <p className="text-red-400 text-sm">{s.fileError}</p>
                   )}
 
                   {/* Generic column + value filter */}
-                  {fileData && fileHeaders.length > 0 && (
+                  {s.fileData && s.fileHeaders.length > 0 && (
                     <div className="space-y-3 bg-slate-800/40 rounded-xl p-4 border border-slate-700/50">
                       <label className="flex items-center gap-3 cursor-pointer select-none">
                         <input
                           type="checkbox"
-                          checked={useColumnFilter}
+                          checked={s.useColumnFilter}
                           onChange={(e) => {
-                            setUseColumnFilter(e.target.checked);
+                            s.setUseColumnFilter(e.target.checked);
                             if (!e.target.checked) {
-                              setFilterCol("");
-                              setSelectedFilterValue("all");
-                              setCoverAllValues(false);
+                              s.setFilterCol("");
+                              s.setSelectedFilterValue("all");
+                              s.setCoverAllValues(false);
                             }
                           }}
                           className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
@@ -900,7 +316,7 @@ export default function SanamsarguiTuuwerPage() {
                           — жишээ: SOL баганаас 100/101/102/103
                         </span>
                       </label>
-                      {useColumnFilter && (
+                      {s.useColumnFilter && (
                         <>
                           <div className="space-y-2">
                             <Label className="text-slate-300">
@@ -910,11 +326,11 @@ export default function SanamsarguiTuuwerPage() {
                               </span>
                             </Label>
                             <Select
-                              value={filterCol || "__none__"}
+                              value={s.filterCol || "__none__"}
                               onValueChange={(v) => {
-                                setFilterCol(v === "__none__" ? "" : v);
-                                setSelectedFilterValue("all");
-                                setCoverAllValues(false);
+                                s.setFilterCol(v === "__none__" ? "" : v);
+                                s.setSelectedFilterValue("all");
+                                s.setCoverAllValues(false);
                               }}
                             >
                               <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
@@ -927,7 +343,7 @@ export default function SanamsarguiTuuwerPage() {
                                 >
                                   — Багана сонгоно —
                                 </SelectItem>
-                                {fileHeaders.map((h) => (
+                                {s.fileHeaders.map((h) => (
                                   <SelectItem
                                     key={h}
                                     value={h}
@@ -940,28 +356,28 @@ export default function SanamsarguiTuuwerPage() {
                             </Select>
                           </div>
 
-                          {availableFilterValues.length > 0 && (
+                          {s.availableFilterValues.length > 0 && (
                             <div className="space-y-2">
                               <Label className="text-slate-300">
                                 Утгын шүүлтүүр
                               </Label>
                               <div className="flex flex-wrap gap-2">
                                 <button
-                                  onClick={() => setSelectedFilterValue("all")}
+                                  onClick={() => s.setSelectedFilterValue("all")}
                                   className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                    selectedFilterValue === "all"
+                                    s.selectedFilterValue === "all"
                                       ? "bg-violet-500 border-violet-400 text-white"
                                       : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
                                   }`}
                                 >
                                   Бүх утга
                                 </button>
-                                {availableFilterValues.map((v) => (
+                                {s.availableFilterValues.map((v) => (
                                   <button
                                     key={v}
-                                    onClick={() => setSelectedFilterValue(v)}
+                                    onClick={() => s.setSelectedFilterValue(v)}
                                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                      selectedFilterValue === v
+                                      s.selectedFilterValue === v
                                         ? "bg-violet-500 border-violet-400 text-white"
                                         : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
                                     }`}
@@ -974,9 +390,9 @@ export default function SanamsarguiTuuwerPage() {
                               <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none mt-2">
                                 <input
                                   type="checkbox"
-                                  checked={coverAllValues}
-                                  onChange={(e) => setCoverAllValues(e.target.checked)}
-                                  disabled={selectedFilterValue !== "all"}
+                                  checked={s.coverAllValues}
+                                  onChange={(e) => s.setCoverAllValues(e.target.checked)}
+                                  disabled={s.selectedFilterValue !== "all"}
                                   className="w-4 h-4 rounded accent-violet-500 cursor-pointer disabled:opacity-50"
                                 />
                                 Бүх утгыг заавал хамруулах
@@ -987,7 +403,7 @@ export default function SanamsarguiTuuwerPage() {
                             </div>
                           )}
 
-                          {filterCol && availableFilterValues.length === 0 && (
+                          {s.filterCol && s.availableFilterValues.length === 0 && (
                             <p className="text-xs text-amber-400">
                               ⚠️ Сонгосон баганад илэрц олдсонгүй.
                             </p>
@@ -997,15 +413,15 @@ export default function SanamsarguiTuuwerPage() {
                     </div>
                   )}
 
-                  {computedN !== null && (
+                  {s.computedN !== null && (
                     <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg px-4 py-2 text-sm text-violet-300">
                       Тооцоологдсон түүврийн хэмжээ (
-                      {!useColumnFilter || selectedFilterValue === "all"
+                      {!s.useColumnFilter || s.selectedFilterValue === "all"
                         ? "Бүх өгөгдөл"
-                        : `${filterCol}=${selectedFilterValue}`}
+                        : `${s.filterCol}=${s.selectedFilterValue}`}
                       ):{" "}
                       <strong className="text-violet-200 text-base">
-                        {computedN}
+                        {s.computedN}
                       </strong>
                     </div>
                   )}
@@ -1013,7 +429,7 @@ export default function SanamsarguiTuuwerPage() {
               )}
 
               {/* ── Stratified: N + num_groups + group_sizes ── */}
-              {isStratified && (
+              {s.isStratified && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1023,10 +439,10 @@ export default function SanamsarguiTuuwerPage() {
                       <Input
                         type="number"
                         min={30}
-                        value={totalVars}
+                        value={s.totalVars}
                         onChange={(e) => {
-                          setTotalVars(parseInt(e.target.value) || 100);
-                          setResult(null);
+                          s.setTotalVars(parseInt(e.target.value) || 100);
+                          s.setResult(null);
                         }}
                         className="bg-slate-800/50 border-slate-600 text-white"
                       />
@@ -1036,30 +452,30 @@ export default function SanamsarguiTuuwerPage() {
                       <Input
                         type="number"
                         min={2}
-                        value={numGroups}
+                        value={s.numGroups}
                         onChange={(e) => {
-                          handleNumGroupsChange(parseInt(e.target.value) || 2);
-                          setResult(null);
+                          s.handleNumGroupsChange(parseInt(e.target.value) || 2);
+                          s.setResult(null);
                         }}
                         className="bg-slate-800/50 border-slate-600 text-white"
                       />
                     </div>
                   </div>
-                  {computedN !== null && (
+                  {s.computedN !== null && (
                     <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg px-4 py-2 text-sm text-violet-300">
                       Тооцоологдсон түүврийн хэмжээ:{" "}
                       <strong className="text-violet-200 text-base">
-                        {computedN}
+                        {s.computedN}
                       </strong>
                     </div>
                   )}
-                  {design === "prop" && (
+                  {s.design === "prop" && (
                     <div>
                       <Label className="text-slate-300 mb-3 block">
                         Бүлэг тус бүрийн хувьсагчийн тоо:
                       </Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {groupSizes.map((sz, i) => (
+                        {s.groupSizes.map((sz, i) => (
                           <div key={i} className="space-y-1">
                             <Label className="text-slate-400 text-xs">
                               Бүлэг {i + 1} хэмжээ:
@@ -1069,10 +485,10 @@ export default function SanamsarguiTuuwerPage() {
                               min={1}
                               value={sz}
                               onChange={(e) => {
-                                const next = [...groupSizes];
+                                const next = [...s.groupSizes];
                                 next[i] = parseInt(e.target.value) || 1;
-                                setGroupSizes(next);
-                                setResult(null);
+                                s.setGroupSizes(next);
+                                s.setResult(null);
                               }}
                               className="bg-slate-800/50 border-slate-600 text-white text-center"
                             />
@@ -1086,12 +502,12 @@ export default function SanamsarguiTuuwerPage() {
 
               {/* Calculate Button */}
               <Button
-                onClick={handleCalculate}
-                disabled={!isStratified && !fileData}
+                onClick={s.handleCalculate}
+                disabled={!s.isStratified && !s.fileData}
                 className="w-full bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white font-semibold py-6 text-lg disabled:opacity-40"
               >
                 <Shuffle className="w-5 h-5 mr-2" />
-                {isStratified ? "Стратифик түүвэр сонгох" : "Түүвэр сонгох"}
+                {s.isStratified ? "Стратифик түүвэр сонгох" : "Түүвэр сонгох"}
               </Button>
             </CardContent>
           </Card>
@@ -1099,14 +515,16 @@ export default function SanamsarguiTuuwerPage() {
 
         {/* Results */}
         <AnimatePresence>
-          {result && (
+          {s.result && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               className="mb-6"
             >
-              <Card className="bg-slate-900/80 border-violet-500/30 backdrop-blur-xl">
+              {(() => {
+                const result = s.result!;
+                return <Card className="bg-slate-900/80 border-violet-500/30 backdrop-blur-xl">
                 <CardHeader>
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <CardTitle className="text-white flex items-center gap-2">
@@ -1114,7 +532,7 @@ export default function SanamsarguiTuuwerPage() {
                       ✅ Түүвэр амжилттай!
                     </CardTitle>
                     <Button
-                      onClick={handleExport}
+                      onClick={s.handleExport}
                       size="sm"
                       variant="outline"
                       className="border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
@@ -1125,9 +543,9 @@ export default function SanamsarguiTuuwerPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {exportError && (
+                  {s.exportError && (
                     <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                      {exportError}
+                      {s.exportError}
                     </div>
                   )}
 
@@ -1182,7 +600,7 @@ export default function SanamsarguiTuuwerPage() {
                               <th className="px-3 py-2 text-slate-400 text-center whitespace-nowrap border-r border-slate-700">
                                 Мөр №
                               </th>
-                              {isStratified ? (
+                              {s.isStratified ? (
                                 <th className="px-3 py-2 text-slate-400 text-left border-r border-slate-700/50">
                                   Санамсаргүй хувьсагч
                                 </th>
@@ -1212,7 +630,7 @@ export default function SanamsarguiTuuwerPage() {
                                   <td className="px-3 py-1.5 text-violet-400 font-mono font-bold text-center border-r border-slate-700">
                                     {idx}
                                   </td>
-                                  {isStratified ? (
+                                  {s.isStratified ? (
                                     <td className="px-3 py-1.5 text-slate-200 font-mono border-r border-slate-700/30">
                                       {idx}
                                     </td>
@@ -1243,7 +661,8 @@ export default function SanamsarguiTuuwerPage() {
                     </div>
                   ))}
                 </CardContent>
-              </Card>
+              </Card>;
+              })()}
             </motion.div>
           )}
         </AnimatePresence>
