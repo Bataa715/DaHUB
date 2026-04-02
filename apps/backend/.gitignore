@@ -6,11 +6,6 @@ dist/
 .env
 .env.local
 
-# Database
-*.db
-*.db-journal
-prisma/migrations/
-
 # IDE
 .vscode/
 .idea/

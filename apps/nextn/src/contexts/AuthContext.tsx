@@ -159,12 +159,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       secure,
     });
     Cookies.set("refreshToken", refreshToken, {
-      expires: 30,
+      expires: 7,
       sameSite: "strict",
       secure,
     });
     Cookies.set("user", JSON.stringify(userData), {
-      expires: 30,
+      expires: 7,
       sameSite: "strict",
       secure,
     });

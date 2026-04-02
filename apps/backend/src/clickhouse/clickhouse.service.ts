@@ -102,13 +102,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Get ClickHouse client instance
-   */
-  getClient(): ClickHouseClient {
-    return this.client;
-  }
-
-  /**
    * Execute a SELECT query and return rows
    */
   async query<T = any>(

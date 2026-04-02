@@ -15,10 +15,5 @@ build
 # Ensure root .env is always ignored
 /.env
 
-# Docker
-Dockerfile
-Dockerfile.*
-docker-compose.yml
-docker-compose.*.yml
-.dockerignore
+# Docker local data
 .docker/

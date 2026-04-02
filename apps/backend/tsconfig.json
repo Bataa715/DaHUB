@@ -15,11 +15,11 @@
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "test/audit-log.service.spec.ts", "test/db-access.service.spec.ts", "test/departments.service.spec.ts", "test/news.service.spec.ts", "test/tailan.service.spec.ts", "test/users.service.spec.ts", "test/users.controller.spec.ts"],
+  "include": ["src/**/*", "test/**/*.spec.ts"],
   "exclude": ["node_modules", "dist"]
 }

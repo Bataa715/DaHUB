@@ -126,7 +126,7 @@ export function usePagination(
     const debouncedPaginate = debounce(paginate, 100);
 
     const mo = new MutationObserver(debouncedPaginate);
-    mo.observe(el, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["style"] });
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
 
     const ro = new ResizeObserver(debouncedPaginate);
     ro.observe(el);

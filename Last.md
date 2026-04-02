@@ -1,56 +1,32 @@
 # Uncommitted Changes
 
 ## Deleted
-- pdf.worker.min.txt
-- tsconfig.tsbuildinfo
-- apps/nextn/tsconfig.tsbuildinfo
-- apps/backend/scripts/create-login-attempts.sql
-- apps/backend/src/admin-db/admin-db.controller.ts
-- apps/backend/src/admin-db/admin-db.module.ts
-- apps/backend/test/admin-db.controller.spec.ts
-- apps/backend/test/audit-log.service.spec.ts
-- apps/backend/test/auth.service.spec.ts
-- apps/backend/test/db-access.service.spec.ts
-- apps/backend/test/departments.service.spec.ts
-- apps/backend/test/news.service.spec.ts
-- apps/backend/test/tailan.service.spec.ts
-- apps/backend/test/users.controller.spec.ts
-- apps/backend/test/users.service.spec.ts
-- apps/nextn/src/app/admin/secret/db/page.tsx
+- Data/DataHub/ (бүх файлууд)
+- Data/Database_Dictionary.md
+- Data/Test.ipynb
+- Data/Тооцоох харилцагч to DAA.xlsx
 
 ## Modified
-- .env.example
-- package.json
-- apps/backend/.env.example
-- apps/backend/package.json
-- apps/backend/src/app.module.ts
-- apps/backend/src/auth/auth.service.ts
-- apps/backend/src/clickhouse/clickhouse.service.ts
-- apps/backend/src/main.ts
-- apps/backend/src/tailan/dto/tailan.dto.ts
-- apps/backend/src/tailan/tailan.service.ts
-- apps/backend/src/users/users.controller.ts
-- apps/backend/tsconfig.json
-- apps/nextn/src/app/tools/chess/page.tsx
-- apps/nextn/src/app/tools/english/vocabulary/page.tsx
-- apps/nextn/src/app/tools/sanamsargui-tuuwer/page.tsx
-- apps/nextn/src/app/tools/tailan/department/_KpiTableEditor.tsx
-- apps/nextn/src/app/tools/tailan/department/_WordPreview.tsx
-- apps/nextn/src/app/tools/tailan/department/page.tsx
-- apps/nextn/src/app/tools/tailan/mine/_components/WordPreview.tsx
-- apps/nextn/src/app/tools/tailan/mine/page.tsx
-- apps/nextn/src/contexts/AuthContext.tsx
-- apps/nextn/src/lib/api.ts
-- apps/nextn/src/middleware.ts
+- .gitignore (Docker файлуудыг gitignore-оос хаслаа)
+- package.json (@types/dompurify → devDependencies)
+- apps/backend/.gitignore (prisma/migrations хаслаа)
+- apps/backend/package.json (ts-node → devDependencies)
+- apps/backend/tsconfig.json (forceConsistentCasingInFileNames, noFallthroughCasesInSwitch → true, test glob)
+- apps/backend/src/auth/auth.service.ts (guardLogin try-catch-аас гадна зөөсөн)
+- apps/backend/src/auth/dto/auth.dto.ts (SignupDto: MinLength(8) + @Matches complexity regex)
+- apps/backend/src/clickhouse/clickhouse.service.ts (getClient() хассан)
+- apps/nextn/src/app/tools/tailan/_lib/usePagination.ts (MutationObserver style attribute хассан)
+- apps/nextn/src/app/tools/tailan/department/page.tsx (year dropdown +100 хассан)
+- apps/nextn/src/contexts/AuthContext.tsx (refresh token cookie 30→7 хоног)
+- apps/nextn/src/lib/api.ts (network error logout хассан, refresh cookie 30→7)
 
 ## New
-- apps/nextn/src/app/tools/chess/_components/GameView.tsx
-- apps/nextn/src/app/tools/chess/_components/LobbyView.tsx
-- apps/nextn/src/app/tools/chess/_hooks/useChessGame.ts
-- apps/nextn/src/app/tools/sanamsargui-tuuwer/_hooks/useSampling.ts
-- apps/nextn/src/app/tools/sanamsargui-tuuwer/_lib/sampling.ts
-- apps/nextn/src/app/tools/tailan/_lib/usePagination.ts
-- apps/nextn/src/app/tools/tailan/department/_hooks/useDepartmentReport.ts
-- apps/nextn/src/app/tools/tailan/department/_lib/buildWordHtml.ts
-- apps/nextn/src/app/tools/tailan/mine/_components/RowImageUpload.tsx
-- apps/nextn/src/app/tools/tailan/mine/_hooks/useTailanReport.ts
+- .dockerignore
+- Dockerfile.dev
+- apps/backend/.dockerignore
+- apps/backend/Dockerfile
+- apps/backend/Dockerfile.dev
+- apps/nextn/.dockerignore
+- apps/nextn/Dockerfile
+- docker-compose.yml (ClickHouse 24.8-alpine, 127.0.0.1, password/JWT required)
+- docker-compose.dev.yml (ClickHouse 24.8-alpine)

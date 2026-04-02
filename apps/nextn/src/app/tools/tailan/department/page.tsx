@@ -126,7 +126,7 @@ export default function TailanBscPage() {
             className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
           >
             {Array.from(
-              { length: getCurrentYear() + 100 - 2020 + 1 },
+              { length: getCurrentYear() - 2020 + 1 },
               (_, i) => 2020 + i,
             ).map((y) => (
               <option key={y} value={y}>

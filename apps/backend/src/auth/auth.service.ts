@@ -399,8 +399,10 @@ export class AuthService {
     const { department, username, password } = loginDto;
     const lockKey = `login:${department}:${username}`;
 
+    // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
+    await this.guardLogin(lockKey);
+
     try {
-      await this.guardLogin(lockKey); // [CRIT-2] now async (ClickHouse-backed)
 
       const dept = (
         await this.clickhouse.query<any>(

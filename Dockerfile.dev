@@ -1,0 +1,23 @@
+FROM node:20-alpine
+
+RUN apk add --no-cache libc6-compat python3 make g++
+
+WORKDIR /app
+
+# Install root dependencies
+COPY package*.json nx.json tsconfig*.json ./
+
+# Copy nextn config files (not src — mounted via volume)
+COPY apps/nextn/next.config.ts apps/nextn/
+COPY apps/nextn/tsconfig.json apps/nextn/
+COPY apps/nextn/project.json apps/nextn/
+COPY apps/nextn/tailwind.config.ts apps/nextn/
+COPY apps/nextn/postcss.config.mjs apps/nextn/
+COPY apps/nextn/components.json apps/nextn/
+
+RUN npm install --legacy-peer-deps
+
+# src/ and public/ are mounted via volume at runtime
+EXPOSE 9002
+
+CMD ["npx", "nx", "serve", "nextn"]

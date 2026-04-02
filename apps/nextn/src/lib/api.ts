@@ -63,7 +63,7 @@ api.interceptors.response.use(
             secure,
           });
           Cookies.set(refreshKey, newRefreshToken, {
-            expires: 30,
+            expires: 7,
             sameSite: "strict",
             secure,
           });
@@ -98,17 +98,9 @@ api.interceptors.response.use(
       }
     }
 
-    // Network error (backend unreachable) → clear session and go to login
+    // Network error (backend unreachable) — don't clear session (may be temporary)
     if (!error.response && error.code !== "ERR_CANCELED") {
-      Cookies.remove(tokenKey);
-      Cookies.remove(refreshKey);
-      Cookies.remove(userKey);
-      if (typeof window !== "undefined") {
-        const loginPath = isAdmin ? "/admin/login" : "/login";
-        if (!window.location.pathname.startsWith(loginPath)) {
-          window.location.replace(loginPath);
-        }
-      }
+      console.warn("Network error — backend may be unreachable");
     }
 
     return Promise.reject(error);

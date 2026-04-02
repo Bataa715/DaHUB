@@ -4,11 +4,19 @@ import { ApiProperty } from "@nestjs/swagger";
 export class SignupDto {
   @ApiProperty({
     example: "Password123!",
-    description: "User password (min 6 characters)",
-    minLength: 6,
+    description:
+      "User password (min 8 chars, must contain uppercase, lowercase, number, special char)",
+    minLength: 8,
   })
   @IsString()
-  @MinLength(6)
+  @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
+  @Matches(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`])[A-Za-z\d@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`]+$/,
+    {
+      message:
+        "Нууц үг нь том үсэг, жижиг үсэг, тоо, тусгай тэмдэгт агуулсан байх ёстой",
+    },
+  )
   password: string;
 
   @ApiProperty({ example: "Болд-Эрдэнэ", description: "Full name of the user" })
