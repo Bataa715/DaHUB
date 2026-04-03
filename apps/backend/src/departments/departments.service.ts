@@ -10,28 +10,7 @@ import { randomUUID } from "crypto";
 
 @Injectable()
 export class DepartmentsService {
-  constructor(private clickhouse: ClickHouseService) {
-    this.ensurePhotosTable();
-  }
-
-  private async ensurePhotosTable() {
-    try {
-      await this.clickhouse.exec(`
-        CREATE TABLE IF NOT EXISTS department_photos (
-          id String,
-          departmentId String,
-          departmentName String,
-          uploadedBy String,
-          uploadedByName String,
-          imageData String,
-          caption String DEFAULT '',
-          uploadedAt DateTime DEFAULT now()
-        ) ENGINE = MergeTree() ORDER BY (departmentId, uploadedAt)
-      `);
-    } catch (e) {
-      console.error("Failed to ensure department_photos table:", e);
-    }
-  }
+  constructor(private clickhouse: ClickHouseService) {}
 
   async getPhotos(departmentId: string) {
     return this.clickhouse.query<any>(

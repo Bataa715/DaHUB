@@ -34,9 +34,7 @@ export interface ChessGame {
 
 @Injectable()
 export class ChessService {
-  constructor(private clickhouse: ClickHouseService) {
-    this.ensureTablesExist();
-  }
+  constructor(private clickhouse: ClickHouseService) {}
 
   private async ensureTablesExist() {
     try {
