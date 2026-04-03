@@ -518,7 +518,7 @@ export class AuthService {
         accessToken,
         refreshToken,
       };
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof UnauthorizedException) {
         await this.recordFailedLogin(lockKey); // [CRIT-2] async
       }
@@ -575,7 +575,7 @@ export class AuthService {
         accessToken,
         refreshToken,
       };
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof UnauthorizedException) {
         await this.recordFailedLogin(lockKey); // [CRIT-2] async
       }

@@ -88,7 +88,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
 
       // ── 3. ACL client = runtime client (audit_app handles everything) ───────────
       this.aclClient = this.client;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error("Failed to connect to ClickHouse:", error.message);
       throw error;
     }
@@ -499,6 +499,18 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
+      // Create login_attempts table for brute-force protection
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS login_attempts (
+          id String,
+          lockKey String,
+          attemptedAt DateTime DEFAULT now(),
+          success UInt8 DEFAULT 0
+        ) ENGINE = MergeTree()
+        ORDER BY (lockKey, attemptedAt)
+        TTL attemptedAt + INTERVAL 1 DAY
+      `);
+
       // Create rag_chunks table for RAG vector store
       await this.exec(`
         CREATE TABLE IF NOT EXISTS rag_chunks (
@@ -570,7 +582,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.logger.log(
-        "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words, rag_chunks)",
+        "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words, rag_chunks, login_attempts)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);
