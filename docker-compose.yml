@@ -45,6 +45,10 @@ services:
       - CLICKHOUSE_EXTERNAL_HOST=${CLICKHOUSE_EXTERNAL_HOST:-localhost}
       - CLICKHOUSE_EXTERNAL_PORT=${CLICKHOUSE_EXTERNAL_PORT:-8123}
       - CLICKHOUSE_PLAY_URL=${CLICKHOUSE_PLAY_URL:-http://localhost:8123/play}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -70,6 +74,10 @@ services:
       - NEXT_PUBLIC_CLICKHOUSE_PLAY_URL=${CLICKHOUSE_PLAY_URL:-http://localhost:8123/play}
       # JWT verify in middleware — must match backend JWT_SECRET
       - JWT_SECRET=${JWT_SECRET}
+      # DataDoc: Database Dictionary MD file path
+      - MD_FILE_PATH=/app/Data/Database_Dictionary.md
+    volumes:
+      - ./Data:/app/Data
     depends_on:
       backend:
         condition: service_healthy

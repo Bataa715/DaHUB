@@ -1,27 +1,31 @@
 # ============================================
 # Frontend (Next.js) — Standalone Image
 # ============================================
+# syntax=docker/dockerfile:1
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
 
 # --- Dependencies ---
+# Copy ONLY root manifests — lock file lives at root in this monorepo
+# This layer is cached as long as package-lock.json hasn't changed
 FROM base AS deps
 WORKDIR /app
 COPY package*.json nx.json tsconfig*.json ./
-COPY apps/nextn/ ./apps/nextn/
-RUN npm ci --legacy-peer-deps
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
 
 # --- Build ---
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json ./
-COPY --from=deps /app/nx.json ./
-COPY --from=deps /app/tsconfig*.json ./
-COPY --from=deps /app/apps/nextn ./apps/nextn
+COPY package*.json nx.json tsconfig*.json ./
+# Copy source AFTER node_modules — npm ci layer stays cached on source changes
+COPY apps/nextn/ ./apps/nextn/
 
 WORKDIR /app/apps/nextn
-RUN ../../node_modules/.bin/next build
+# Cache .next/cache between builds for faster incremental compilation
+RUN --mount=type=cache,target=/app/apps/nextn/.next/cache \
+    ../../node_modules/.bin/next build
 
 # --- Production ---
 FROM base AS runner

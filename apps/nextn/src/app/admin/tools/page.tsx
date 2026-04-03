@@ -52,6 +52,7 @@ import {
   BookOpen,
   FileSpreadsheet,
   FileSearch,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -190,6 +191,24 @@ const AVAILABLE_TOOLS: Tool[] = [
     color: "from-pink-500 to-rose-500",
     gradient: "bg-gradient-to-br from-pink-500/20 to-rose-500/20",
     category: "free",
+  },
+  {
+    id: "rag_chat",
+    name: "RAG Чат",
+    description: "Баримт бичигт суурилсан AI чат — файл байршуулж, асуулт асууна уу",
+    icon: MessageSquare,
+    color: "from-purple-500 to-indigo-500",
+    gradient: "bg-gradient-to-br from-purple-500/20 to-indigo-500/20",
+    category: "work",
+  },
+  {
+    id: "data_doc",
+    name: "Өгөгдлийн толь бичиг",
+    description: "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
+    icon: Database,
+    color: "from-teal-500 to-cyan-500",
+    gradient: "bg-gradient-to-br from-teal-500/20 to-cyan-500/20",
+    category: "work",
   },
 ];
 
