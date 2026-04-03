@@ -16,7 +16,7 @@ export class EmbeddingService implements OnModuleInit {
     );
     this.modelName = this.configService.get<string>(
       "EMBEDDING_MODEL",
-      "nomic-embed-text",
+      "llama3",
     );
   }
 
