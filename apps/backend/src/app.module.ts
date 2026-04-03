@@ -14,6 +14,7 @@ import { TuuwerModule } from "./tuuwer/tuuwer.module";
 import { ChessModule } from "./chess/chess.module";
 import { EnglishModule } from "./english/english.module";
 import { ExcelReportModule } from "./excel-report/excel-report.module";
+import { RagChatModule } from "./rag-chat/rag-chat.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 
@@ -52,6 +53,7 @@ import configuration from "./config/configuration";
     ChessModule,
     EnglishModule,
     ExcelReportModule,
+    RagChatModule,
   ],
   controllers: [HealthController],
 })

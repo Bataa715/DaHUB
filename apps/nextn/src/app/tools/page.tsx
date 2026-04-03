@@ -20,6 +20,7 @@ import {
   Database,
   Crown,
   BookOpen,
+  MessageSquare,
 } from "lucide-react";
 
 interface Tool {
@@ -152,6 +153,30 @@ const allTools: Tool[] = [
     glow: "shadow-pink-500/20 group-hover:shadow-pink-500/40",
     tag: "Utility",
     category: "free",
+  },
+  {
+    id: "rag_chat",
+    title: "RAG Чат",
+    description:
+      "Баримт бичигт суурилсан AI чат — файл байршуулж, асуулт асууна уу",
+    icon: MessageSquare,
+    href: "/tools/rag-chat",
+    gradient: "from-purple-500 to-indigo-500",
+    glow: "shadow-purple-500/20 group-hover:shadow-purple-500/40",
+    tag: "AI",
+    category: "work",
+  },
+  {
+    id: "data_doc",
+    title: "Өгөгдлийн толь бичиг",
+    description:
+      "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
+    icon: Database,
+    href: "/tools/data-doc",
+    gradient: "from-teal-500 to-cyan-500",
+    glow: "shadow-teal-500/20 group-hover:shadow-teal-500/40",
+    tag: "Data",
+    category: "work",
   },
 ];
 

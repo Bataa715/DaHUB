@@ -2961,7 +2961,7 @@ export function WordPreview({
             );
           })}
         {/* ══ НЭГТГЭЛ ХЭСЭГ ══ */}
-
+        <div data-page-break>
           {/* 2-р хуудасны дээд гарчиг */}
           <div style={{ ...bigTitle, marginBottom: "6pt" }}>
             ДАТА АНАЛИЗЫН АЛБА {year} ОНЫ {qName}-Р УЛИРЛЫН БҮХ-НЫ НЭГТГЭЛ
@@ -3217,6 +3217,7 @@ export function WordPreview({
             );
           })()}
           {/* ══ 2-Р ХУУДАС ТӨГСӨВ ══ */}
+        </div>
         </div>
       </div>
       </div>

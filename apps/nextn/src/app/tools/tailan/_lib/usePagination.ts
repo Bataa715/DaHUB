@@ -86,6 +86,23 @@ export function usePagination(
 
             const pageIdx = Math.floor(top / slot);
             const pageContentEnd = pageIdx * slot + contentBottom;
+            const pageContentStart = pageIdx * slot + padTopPx;
+
+            // data-page-break: шинэ хуудаснаас эхлүүлэх
+            if (child.hasAttribute("data-page-break") && top > pageContentStart + 2) {
+              const nextPageContentStart = (pageIdx + 1) * slot + padTopPx;
+              const spacer = nextPageContentStart - top;
+
+              child.dataset.pgOrigMt = child.style.marginTop;
+              child.dataset.pgSpacer = "1";
+              const existing = parseFloat(getComputedStyle(child).marginTop) || 0;
+              child.style.marginTop = `${existing + spacer}px`;
+
+              void el.offsetHeight;
+              // Дотор child-уудыг мөн шалгах
+              processChildren(child, depth + 1);
+              continue;
+            }
 
             if (bottom > pageContentEnd && top < pageContentEnd) {
               // Элемент нэг хуудасны контент зайд багтаж чадах уу?
