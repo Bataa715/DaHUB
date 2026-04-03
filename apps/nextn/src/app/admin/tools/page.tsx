@@ -186,7 +186,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "pdf_to_text",
     name: "PDF → Текст",
-    description: "PDF файлыг текст болгон хөрвүүлж, хуулж авах боломжтой хэрэгсэл",
+    description:
+      "PDF файлыг текст болгон хөрвүүлж, хуулж авах боломжтой хэрэгсэл",
     icon: FileSearch,
     color: "from-pink-500 to-rose-500",
     gradient: "bg-gradient-to-br from-pink-500/20 to-rose-500/20",
@@ -195,7 +196,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "rag_chat",
     name: "RAG Чат",
-    description: "Баримт бичигт суурилсан AI чат — файл байршуулж, асуулт асууна уу",
+    description:
+      "Баримт бичигт суурилсан AI чат — файл байршуулж, асуулт асууна уу",
     icon: MessageSquare,
     color: "from-purple-500 to-indigo-500",
     gradient: "bg-gradient-to-br from-purple-500/20 to-indigo-500/20",
@@ -204,7 +206,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "data_doc",
     name: "Өгөгдлийн толь бичиг",
-    description: "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
+    description:
+      "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
     icon: Database,
     color: "from-teal-500 to-cyan-500",
     gradient: "bg-gradient-to-br from-teal-500/20 to-cyan-500/20",

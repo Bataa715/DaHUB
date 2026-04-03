@@ -416,10 +416,14 @@ export function useDepartmentReport() {
   const qName = Q_NAMES[(quarter - 1) % 4];
 
   return {
-    year, setYear,
-    quarter, setQuarter,
-    activeTab, setActiveTab,
-    sidebarOpen, setSidebarOpen,
+    year,
+    setYear,
+    quarter,
+    setQuarter,
+    activeTab,
+    setActiveTab,
+    sidebarOpen,
+    setSidebarOpen,
     sections,
     saving,
     lastSaved,

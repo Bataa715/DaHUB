@@ -89,13 +89,17 @@ export function usePagination(
             const pageContentStart = pageIdx * slot + padTopPx;
 
             // data-page-break: шинэ хуудаснаас эхлүүлэх
-            if (child.hasAttribute("data-page-break") && top > pageContentStart + 2) {
+            if (
+              child.hasAttribute("data-page-break") &&
+              top > pageContentStart + 2
+            ) {
               const nextPageContentStart = (pageIdx + 1) * slot + padTopPx;
               const spacer = nextPageContentStart - top;
 
               child.dataset.pgOrigMt = child.style.marginTop;
               child.dataset.pgSpacer = "1";
-              const existing = parseFloat(getComputedStyle(child).marginTop) || 0;
+              const existing =
+                parseFloat(getComputedStyle(child).marginTop) || 0;
               child.style.marginTop = `${existing + spacer}px`;
 
               void el.offsetHeight;
@@ -113,7 +117,8 @@ export function usePagination(
 
                 child.dataset.pgOrigMt = child.style.marginTop;
                 child.dataset.pgSpacer = "1";
-                const existing = parseFloat(getComputedStyle(child).marginTop) || 0;
+                const existing =
+                  parseFloat(getComputedStyle(child).marginTop) || 0;
                 child.style.marginTop = `${existing + spacer}px`;
 
                 void el.offsetHeight;
@@ -159,12 +164,15 @@ export function usePagination(
 
 function debounce(fn: () => void, ms: number) {
   let t: ReturnType<typeof setTimeout>;
-  return () => { clearTimeout(t); t = setTimeout(fn, ms); };
+  return () => {
+    clearTimeout(t);
+    t = setTimeout(fn, ms);
+  };
 }
 
 /**
  * mm → px хөрвүүлэх (96 DPI стандарт)
  */
 export function mmToPx(mm: number): number {
-  return mm * 96 / 25.4;
+  return (mm * 96) / 25.4;
 }

@@ -31,7 +31,9 @@ export class DocumentService {
     }
   }
 
-  async processFile(file: Express.Multer.File): Promise<{ chunksCount: number; documentName: string }> {
+  async processFile(
+    file: Express.Multer.File,
+  ): Promise<{ chunksCount: number; documentName: string }> {
     const ext = path.extname(file.originalname).toLowerCase();
     const savePath = path.join(this.uploadDir, file.originalname);
     fs.writeFileSync(savePath, file.buffer);
@@ -59,7 +61,9 @@ export class DocumentService {
     const chunks = this.splitIntoChunks(text, file.originalname, savePath);
     await this.vectorStoreService.addChunks(chunks);
 
-    this.logger.log(`${file.originalname}: ${chunks.length} chunk боловсрууллаа.`);
+    this.logger.log(
+      `${file.originalname}: ${chunks.length} chunk боловсрууллаа.`,
+    );
     return { chunksCount: chunks.length, documentName: file.originalname };
   }
 
@@ -138,7 +142,8 @@ export class DocumentService {
   private async extractPdf(buffer: Buffer): Promise<string> {
     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const data = new Uint8Array(buffer);
-    const doc = await pdfjsLib.getDocument({ data, useSystemFonts: true }).promise;
+    const doc = await pdfjsLib.getDocument({ data, useSystemFonts: true })
+      .promise;
     const pages: string[] = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);

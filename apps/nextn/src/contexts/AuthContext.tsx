@@ -83,8 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const doRefresh = async () => {
       if (storedRefreshToken) {
         try {
-          const { user: freshUser, accessToken, refreshToken: newRefreshToken } =
-            await authApi.refreshToken(storedRefreshToken);
+          const {
+            user: freshUser,
+            accessToken,
+            refreshToken: newRefreshToken,
+          } = await authApi.refreshToken(storedRefreshToken);
           const secure =
             typeof window !== "undefined" &&
             window.location.protocol === "https:";
@@ -272,8 +275,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // The middleware reads allowedTools from the JWT cookie directly, so without
         // this step newly-granted tool permissions would not take effect until re-login.
         try {
-          const { user: freshUser, accessToken, refreshToken: newRefreshToken } =
-            await authApi.refreshToken(storedRefreshToken);
+          const {
+            user: freshUser,
+            accessToken,
+            refreshToken: newRefreshToken,
+          } = await authApi.refreshToken(storedRefreshToken);
           const secure =
             typeof window !== "undefined" &&
             window.location.protocol === "https:";

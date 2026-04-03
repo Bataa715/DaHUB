@@ -250,7 +250,9 @@ function FlashcardMode({
   onSaveResults,
 }: {
   words: EnglishWord[];
-  onSaveResults: (results: Array<{ id: string; correct: boolean }>) => Promise<void>;
+  onSaveResults: (
+    results: Array<{ id: string; correct: boolean }>,
+  ) => Promise<void>;
 }) {
   const [deck, setDeck] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
@@ -261,7 +263,9 @@ function FlashcardMode({
     wrong: 0,
   });
   const [finished, setFinished] = useState(false);
-  const [results, setResults] = useState<Array<{ id: string; correct: boolean }>>([]);
+  const [results, setResults] = useState<
+    Array<{ id: string; correct: boolean }>
+  >([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -381,11 +385,15 @@ function FlashcardMode({
             className="gap-2"
           >
             {saved ? (
-              <><Check className="w-4 h-4" /> Хадгалагдлаа</>
+              <>
+                <Check className="w-4 h-4" /> Хадгалагдлаа
+              </>
             ) : saving ? (
               "Хадгалж байна..."
             ) : (
-              <><Save className="w-4 h-4" /> Үр дүн хадгалах</>
+              <>
+                <Save className="w-4 h-4" /> Үр дүн хадгалах
+              </>
             )}
           </Button>
           <Button onClick={restart} variant="outline" className="gap-2">
@@ -602,7 +610,9 @@ function MultipleChoiceMode({
   onSaveResults,
 }: {
   words: EnglishWord[];
-  onSaveResults: (results: Array<{ id: string; correct: boolean }>) => Promise<void>;
+  onSaveResults: (
+    results: Array<{ id: string; correct: boolean }>,
+  ) => Promise<void>;
 }) {
   // deck & options must be in state so they don't reshuffle on each render
   const [deck] = useState(() => shuffle(words));
@@ -610,7 +620,9 @@ function MultipleChoiceMode({
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState({ correct: 0, wrong: 0 });
   const [finished, setFinished] = useState(false);
-  const [results, setResults] = useState<Array<{ id: string; correct: boolean }>>([]);
+  const [results, setResults] = useState<
+    Array<{ id: string; correct: boolean }>
+  >([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -709,11 +721,15 @@ function MultipleChoiceMode({
             className="gap-2"
           >
             {saved ? (
-              <><Check className="w-4 h-4" /> Хадгалагдлаа</>
+              <>
+                <Check className="w-4 h-4" /> Хадгалагдлаа
+              </>
             ) : saving ? (
               "Хадгалж байна..."
             ) : (
-              <><Save className="w-4 h-4" /> Үр дүн хадгалах</>
+              <>
+                <Save className="w-4 h-4" /> Үр дүн хадгалах
+              </>
             )}
           </Button>
           <Button onClick={restart} variant="outline" className="gap-2">
@@ -823,7 +839,9 @@ function TypeAnswerMode({
   onSaveResults,
 }: {
   words: EnglishWord[];
-  onSaveResults: (results: Array<{ id: string; correct: boolean }>) => Promise<void>;
+  onSaveResults: (
+    results: Array<{ id: string; correct: boolean }>,
+  ) => Promise<void>;
 }) {
   const [deck] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
@@ -833,7 +851,9 @@ function TypeAnswerMode({
   const [finished, setFinished] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [results, setResults] = useState<Array<{ id: string; correct: boolean }>>([]);
+  const [results, setResults] = useState<
+    Array<{ id: string; correct: boolean }>
+  >([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -1387,170 +1407,171 @@ export default function EnglishVocabularyPage() {
         subtitle="Флэшкарт, олон сонголт, бичих гэсэн 3 аргаар тогтоох"
       />
       <div className="max-w-5xl mx-auto space-y-6 px-4 pb-10">
+        {/* ── Stats row ── */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            {
+              icon: <Star className="w-5 h-5 text-amber-500" />,
+              label: "Нийт үг",
+              value: stats.total,
+              color: "text-amber-500",
+            },
+            {
+              icon: <Brain className="w-5 h-5 text-sky-500" />,
+              label: "Давтсан",
+              value: stats.reviewed,
+              color: "text-sky-500",
+            },
+            {
+              icon: <TrendingUp className="w-5 h-5 text-emerald-500" />,
+              label: "Эзэмшсэн",
+              value: stats.mastered,
+              color: "text-emerald-500",
+            },
+          ].map((s) => (
+            <Card
+              key={s.label}
+              className="border-0 shadow-md bg-card/80 backdrop-blur"
+            >
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">{s.icon}</div>
+                <div>
+                  <div className={`text-2xl font-bold ${s.color}`}>
+                    {s.value}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-      {/* ── Stats row ── */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          {
-            icon: <Star className="w-5 h-5 text-amber-500" />,
-            label: "Нийт үг",
-            value: stats.total,
-            color: "text-amber-500",
-          },
-          {
-            icon: <Brain className="w-5 h-5 text-sky-500" />,
-            label: "Давтсан",
-            value: stats.reviewed,
-            color: "text-sky-500",
-          },
-          {
-            icon: <TrendingUp className="w-5 h-5 text-emerald-500" />,
-            label: "Эзэмшсэн",
-            value: stats.mastered,
-            color: "text-emerald-500",
-          },
-        ].map((s) => (
-          <Card
-            key={s.label}
-            className="border-0 shadow-md bg-card/80 backdrop-blur"
-          >
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">{s.icon}</div>
-              <div>
-                <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                <div className="text-xs text-muted-foreground">{s.label}</div>
+        {/* ── Main tabs ── */}
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="grid grid-cols-4 w-full md:w-auto md:inline-flex gap-0">
+            <TabsTrigger value="table" className="gap-1.5 text-sm">
+              <BookOpen className="w-4 h-4 hidden sm:block" />
+              Үгийн сан
+            </TabsTrigger>
+            <TabsTrigger value="flashcard" className="gap-1.5 text-sm">
+              <Layers className="w-4 h-4 hidden sm:block" />
+              Флэшкарт
+            </TabsTrigger>
+            <TabsTrigger value="choice" className="gap-1.5 text-sm">
+              <Target className="w-4 h-4 hidden sm:block" />
+              Сонголт
+            </TabsTrigger>
+            <TabsTrigger value="type" className="gap-1.5 text-sm">
+              <PenLine className="w-4 h-4 hidden sm:block" />
+              Бичих
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="table" className="mt-4">
+            <WordTable
+              words={words}
+              loading={loading}
+              onAdd={() => {
+                setEditTarget(null);
+                setFormOpen(true);
+              }}
+              onEdit={(w) => {
+                setEditTarget(w);
+                setFormOpen(true);
+              }}
+              onDelete={(w) => setDeleteConfirm(w)}
+            />
+          </TabsContent>
+
+          <TabsContent value="flashcard" className="mt-4">
+            {studyReady ? (
+              <FlashcardMode
+                key={tab + words.length}
+                words={studyWords}
+                onSaveResults={handleSaveResults}
+              />
+            ) : (
+              <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
+                Флэшкарт эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            )}
+          </TabsContent>
+
+          <TabsContent value="choice" className="mt-4">
+            {studyReady ? (
+              <MultipleChoiceMode
+                key={tab + words.length}
+                words={studyWords}
+                onSaveResults={handleSaveResults}
+              />
+            ) : (
+              <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
+                Сонголтын дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="type" className="mt-4">
+            {studyReady ? (
+              <TypeAnswerMode
+                key={tab + words.length}
+                words={studyWords}
+                onSaveResults={handleSaveResults}
+              />
+            ) : (
+              <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
+                Бичих дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* ── Word form dialog ── */}
+        <WordFormDialog
+          open={formOpen}
+          onClose={() => {
+            setFormOpen(false);
+            setEditTarget(null);
+          }}
+          initial={editTarget}
+          onSave={handleSave}
+          loading={formSaving}
+        />
+
+        {/* ── Delete confirm dialog ── */}
+        <Dialog
+          open={!!deleteConfirm}
+          onOpenChange={(v) => !v && setDeleteConfirm(null)}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Үг устгах уу?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                "{deleteConfirm?.word}"
+              </span>{" "}
+              үгийг устгавал буцаах боломжгүй.
+            </p>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleteLoading}
+              >
+                Цуцлах
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? "Устгаж байна..." : "Устгах"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* ── Main tabs ── */}
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-4 w-full md:w-auto md:inline-flex gap-0">
-          <TabsTrigger value="table" className="gap-1.5 text-sm">
-            <BookOpen className="w-4 h-4 hidden sm:block" />
-            Үгийн сан
-          </TabsTrigger>
-          <TabsTrigger value="flashcard" className="gap-1.5 text-sm">
-            <Layers className="w-4 h-4 hidden sm:block" />
-            Флэшкарт
-          </TabsTrigger>
-          <TabsTrigger value="choice" className="gap-1.5 text-sm">
-            <Target className="w-4 h-4 hidden sm:block" />
-            Сонголт
-          </TabsTrigger>
-          <TabsTrigger value="type" className="gap-1.5 text-sm">
-            <PenLine className="w-4 h-4 hidden sm:block" />
-            Бичих
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="table" className="mt-4">
-          <WordTable
-            words={words}
-            loading={loading}
-            onAdd={() => {
-              setEditTarget(null);
-              setFormOpen(true);
-            }}
-            onEdit={(w) => {
-              setEditTarget(w);
-              setFormOpen(true);
-            }}
-            onDelete={(w) => setDeleteConfirm(w)}
-          />
-        </TabsContent>
-
-        <TabsContent value="flashcard" className="mt-4">
-          {studyReady ? (
-            <FlashcardMode
-              key={tab + words.length}
-              words={studyWords}
-              onSaveResults={handleSaveResults}
-            />
-          ) : (
-            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
-              Флэшкарт эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="choice" className="mt-4">
-          {studyReady ? (
-            <MultipleChoiceMode
-              key={tab + words.length}
-              words={studyWords}
-              onSaveResults={handleSaveResults}
-            />
-          ) : (
-            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
-              Сонголтын дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="type" className="mt-4">
-          {studyReady ? (
-            <TypeAnswerMode
-              key={tab + words.length}
-              words={studyWords}
-              onSaveResults={handleSaveResults}
-            />
-          ) : (
-            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
-              Бичих дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* ── Word form dialog ── */}
-      <WordFormDialog
-        open={formOpen}
-        onClose={() => {
-          setFormOpen(false);
-          setEditTarget(null);
-        }}
-        initial={editTarget}
-        onSave={handleSave}
-        loading={formSaving}
-      />
-
-      {/* ── Delete confirm dialog ── */}
-      <Dialog
-        open={!!deleteConfirm}
-        onOpenChange={(v) => !v && setDeleteConfirm(null)}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Үг устгах уу?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">
-              "{deleteConfirm?.word}"
-            </span>{" "}
-            үгийг устгавал буцаах боломжгүй.
-          </p>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirm(null)}
-              disabled={deleteLoading}
-            >
-              Цуцлах
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteLoading}
-            >
-              {deleteLoading ? "Устгаж байна..." : "Устгах"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  </>
+    </>
   );
 }

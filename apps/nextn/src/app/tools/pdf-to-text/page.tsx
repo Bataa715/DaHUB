@@ -59,9 +59,9 @@ export default function PdfToTextPage() {
         pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
         const arrayBuffer = await f.arrayBuffer();
-        const pdf = await pdfjsLib
-          .getDocument({ data: new Uint8Array(arrayBuffer) })
-          .promise;
+        const pdf = await pdfjsLib.getDocument({
+          data: new Uint8Array(arrayBuffer),
+        }).promise;
 
         const numPages: number = pdf.numPages;
         setPageCount(numPages);

@@ -46,7 +46,10 @@ export default function RagChatPage() {
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [health, setHealth] = useState<{ ollama: boolean; totalChunks: number } | null>(null);
+  const [health, setHealth] = useState<{
+    ollama: boolean;
+    totalChunks: number;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -96,9 +99,9 @@ export default function RagChatPage() {
     setLoading(true);
 
     try {
-      const conversationHistory = messages.slice(-6).map(
-        (m) => `${m.role === "user" ? "Хэрэглэгч" : "AI"}: ${m.content}`
-      );
+      const conversationHistory = messages
+        .slice(-6)
+        .map((m) => `${m.role === "user" ? "Хэрэглэгч" : "AI"}: ${m.content}`);
 
       const token = document.cookie
         .split("; ")
@@ -114,7 +117,7 @@ export default function RagChatPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ question, conversationHistory }),
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Хариулт авахад алдаа гарлаа");
@@ -139,7 +142,10 @@ export default function RagChatPage() {
                 fullContent += data.token;
                 setMessages((prev) => {
                   const updated = [...prev];
-                  updated[updated.length - 1] = { role: "assistant", content: fullContent };
+                  updated[updated.length - 1] = {
+                    role: "assistant",
+                    content: fullContent,
+                  };
                   return updated;
                 });
               }
@@ -152,7 +158,11 @@ export default function RagChatPage() {
 
       setMessages((prev) => {
         const updated = [...prev];
-        updated[updated.length - 1] = { role: "assistant", content: fullContent, sources };
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: fullContent,
+          sources,
+        };
         return updated;
       });
     } catch {
@@ -199,7 +209,7 @@ export default function RagChatPage() {
     try {
       const res = await api.post("/rag-chat/documents/scan-training");
       alert(
-        `Боловсруулсан: ${res.data.processed?.length || 0}\nАлдаа: ${res.data.errors?.length || 0}`
+        `Боловсруулсан: ${res.data.processed?.length || 0}\nАлдаа: ${res.data.errors?.length || 0}`,
       );
       await loadDocs();
       await checkHealth();
@@ -258,15 +268,21 @@ export default function RagChatPage() {
           }`}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-            <span className="text-sm font-medium text-slate-300">Баримтууд</span>
+            <span className="text-sm font-medium text-slate-300">
+              Баримтууд
+            </span>
             <div className="flex items-center gap-2">
               {health && (
                 <span
-                  title={health.ollama ? "Ollama холбоотой" : "Ollama холбогдоогүй"}
+                  title={
+                    health.ollama ? "Ollama холбоотой" : "Ollama холбогдоогүй"
+                  }
                   className={`w-2 h-2 rounded-full ${health.ollama ? "bg-green-400" : "bg-red-400"}`}
                 />
               )}
-              <span className="text-xs text-slate-500">{health?.totalChunks ?? 0} chunk</span>
+              <span className="text-xs text-slate-500">
+                {health?.totalChunks ?? 0} chunk
+              </span>
             </div>
           </div>
 
@@ -284,7 +300,11 @@ export default function RagChatPage() {
               disabled={uploading}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
             >
-              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {uploading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Upload className="w-3.5 h-3.5" />
+              )}
               Файл байршуулах
             </button>
             <button
@@ -292,7 +312,11 @@ export default function RagChatPage() {
               disabled={scanning}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
             >
-              {scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderSync className="w-3.5 h-3.5" />}
+              {scanning ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FolderSync className="w-3.5 h-3.5" />
+              )}
               Training скан
             </button>
           </div>
@@ -302,7 +326,11 @@ export default function RagChatPage() {
             {docs.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-600 py-8">
                 <FileText className="w-8 h-8 mb-2 opacity-50" />
-                <p className="text-xs text-center">Баримт байхгүй<br />PDF, DOCX, TXT, MD</p>
+                <p className="text-xs text-center">
+                  Баримт байхгүй
+                  <br />
+                  PDF, DOCX, TXT, MD
+                </p>
               </div>
             ) : (
               docs.map((doc) => (
@@ -312,8 +340,12 @@ export default function RagChatPage() {
                 >
                   <File className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-300 truncate">{doc.source}</p>
-                    <p className="text-[10px] text-slate-600">{doc.chunksCount} chunks</p>
+                    <p className="text-xs text-slate-300 truncate">
+                      {doc.source}
+                    </p>
+                    <p className="text-[10px] text-slate-600">
+                      {doc.chunksCount} chunks
+                    </p>
                   </div>
                   <button
                     onClick={() => handleDelete(doc.source)}
@@ -354,12 +386,16 @@ export default function RagChatPage() {
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-slate-600 select-none">
                 {/* 3D Bot Character */}
-                <div className="relative mb-6" style={{ animation: "botFloat 3s ease-in-out infinite" }}>
+                <div
+                  className="relative mb-6"
+                  style={{ animation: "botFloat 3s ease-in-out infinite" }}
+                >
                   {/* Glow ring */}
                   <div
                     className="absolute inset-0 rounded-full blur-2xl pointer-events-none"
                     style={{
-                      background: "radial-gradient(circle, rgba(139,92,246,0.45) 0%, transparent 68%)",
+                      background:
+                        "radial-gradient(circle, rgba(139,92,246,0.45) 0%, transparent 68%)",
                       animation: "glowRing 2.5s ease-in-out infinite",
                     }}
                   />
@@ -368,40 +404,85 @@ export default function RagChatPage() {
                     <div className="flex flex-col items-center mb-0.5">
                       <div
                         style={{
-                          width: 13, height: 13, borderRadius: "50%",
+                          width: 13,
+                          height: 13,
+                          borderRadius: "50%",
                           background: "#a78bfa",
                           boxShadow: "0 0 10px #a78bfa, 0 0 22px #7c3aed",
                         }}
                       />
-                      <div className="w-px h-4" style={{ background: "linear-gradient(to bottom, rgba(167,139,250,0.8), rgba(109,40,217,0.2))" }} />
+                      <div
+                        className="w-px h-4"
+                        style={{
+                          background:
+                            "linear-gradient(to bottom, rgba(167,139,250,0.8), rgba(109,40,217,0.2))",
+                        }}
+                      />
                     </div>
                     {/* Head */}
                     <div
                       className="w-24 h-24 rounded-2xl relative overflow-hidden flex items-center justify-center"
                       style={{
-                        background: "linear-gradient(145deg, #5b21b6 0%, #4338ca 45%, #6d28d9 100%)",
-                        boxShadow: "0 14px 44px rgba(109,40,217,0.55), 0 4px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -3px 8px rgba(0,0,0,0.4)",
+                        background:
+                          "linear-gradient(145deg, #5b21b6 0%, #4338ca 45%, #6d28d9 100%)",
+                        boxShadow:
+                          "0 14px 44px rgba(109,40,217,0.55), 0 4px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -3px 8px rgba(0,0,0,0.4)",
                       }}
                     >
                       {/* Shine */}
                       <div
                         className="absolute top-0 left-0 right-0 h-1/2 rounded-t-2xl"
-                        style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)" }}
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)",
+                        }}
                       />
                       {/* Face panel */}
                       <div
                         className="w-16 h-14 rounded-xl flex flex-col items-center justify-center gap-2 relative"
-                        style={{ background: "rgba(0,0,0,0.38)", boxShadow: "inset 0 2px 6px rgba(0,0,0,0.65)" }}
+                        style={{
+                          background: "rgba(0,0,0,0.38)",
+                          boxShadow: "inset 0 2px 6px rgba(0,0,0,0.65)",
+                        }}
                       >
                         {/* Eyes */}
                         <div className="flex gap-4 items-center">
-                          <div style={{ width: 12, height: 12, borderRadius: 3, background: "#c4b5fd", boxShadow: "0 0 8px #a78bfa, 0 0 18px #7c3aed", animation: "eyeBlink 5s ease-in-out infinite" }} />
-                          <div style={{ width: 12, height: 12, borderRadius: 3, background: "#c4b5fd", boxShadow: "0 0 8px #a78bfa, 0 0 18px #7c3aed", animation: "eyeBlink 5s ease-in-out infinite 0.18s" }} />
+                          <div
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: 3,
+                              background: "#c4b5fd",
+                              boxShadow: "0 0 8px #a78bfa, 0 0 18px #7c3aed",
+                              animation: "eyeBlink 5s ease-in-out infinite",
+                            }}
+                          />
+                          <div
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: 3,
+                              background: "#c4b5fd",
+                              boxShadow: "0 0 8px #a78bfa, 0 0 18px #7c3aed",
+                              animation:
+                                "eyeBlink 5s ease-in-out infinite 0.18s",
+                            }}
+                          />
                         </div>
                         {/* LED mouth */}
                         <div className="flex gap-0.5 items-center">
                           {[1, 0.25, 1, 0.25, 1].map((op, i) => (
-                            <div key={i} style={{ width: 6, height: 4, borderRadius: 1, background: "#818cf8", opacity: op, animation: `ledAnim 0.55s ease-in-out infinite ${i * 0.11}s alternate` }} />
+                            <div
+                              key={i}
+                              style={{
+                                width: 6,
+                                height: 4,
+                                borderRadius: 1,
+                                background: "#818cf8",
+                                opacity: op,
+                                animation: `ledAnim 0.55s ease-in-out infinite ${i * 0.11}s alternate`,
+                              }}
+                            />
                           ))}
                         </div>
                       </div>
@@ -409,7 +490,10 @@ export default function RagChatPage() {
                     {/* Floor shadow */}
                     <div
                       className="w-16 h-2 rounded-full mt-1.5 blur-sm"
-                      style={{ background: "rgba(109,40,217,0.35)", animation: "botShadow 3s ease-in-out infinite" }}
+                      style={{
+                        background: "rgba(109,40,217,0.35)",
+                        animation: "botShadow 3s ease-in-out infinite",
+                      }}
                     />
                   </div>
                 </div>
@@ -426,7 +510,10 @@ export default function RagChatPage() {
             )}
 
             {messages.map((msg, i) => (
-              <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+              <div
+                key={i}
+                className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+              >
                 {/* Avatar */}
                 <div
                   className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
@@ -442,7 +529,9 @@ export default function RagChatPage() {
                   )}
                 </div>
 
-                <div className={`flex flex-col gap-1 max-w-[75%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                <div
+                  className={`flex flex-col gap-1 max-w-[75%] ${msg.role === "user" ? "items-end" : "items-start"}`}
+                >
                   <div
                     className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
@@ -454,9 +543,18 @@ export default function RagChatPage() {
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     ) : (
                       <span className="flex gap-1 items-center text-slate-500">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce"
+                          style={{ animationDelay: "0ms" }}
+                        />
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce"
+                          style={{ animationDelay: "150ms" }}
+                        />
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce"
+                          style={{ animationDelay: "300ms" }}
+                        />
                       </span>
                     )}
                   </div>
@@ -470,7 +568,9 @@ export default function RagChatPage() {
                         >
                           <FileText className="w-2.5 h-2.5" />
                           {s.source}
-                          <span className="text-slate-700">·{(s.score * 100).toFixed(0)}%</span>
+                          <span className="text-slate-700">
+                            ·{(s.score * 100).toFixed(0)}%
+                          </span>
                         </span>
                       ))}
                     </div>
@@ -479,20 +579,31 @@ export default function RagChatPage() {
               </div>
             ))}
 
-            {loading && messages.length > 0 && messages[messages.length - 1].role === "user" && (
-              <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-lg bg-purple-600/20 border border-purple-500/20 flex items-center justify-center shrink-0">
-                  <Bot className="w-3.5 h-3.5 text-purple-400" />
-                </div>
-                <div className="bg-slate-800/70 border border-slate-700/50 rounded-2xl rounded-tl-sm px-4 py-3">
-                  <div className="flex gap-1 items-center">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+            {loading &&
+              messages.length > 0 &&
+              messages[messages.length - 1].role === "user" && (
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-purple-600/20 border border-purple-500/20 flex items-center justify-center shrink-0">
+                    <Bot className="w-3.5 h-3.5 text-purple-400" />
+                  </div>
+                  <div className="bg-slate-800/70 border border-slate-700/50 rounded-2xl rounded-tl-sm px-4 py-3">
+                    <div className="flex gap-1 items-center">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce"
+                        style={{ animationDelay: "0ms" }}
+                      />
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -536,4 +647,3 @@ export default function RagChatPage() {
     </div>
   );
 }
-

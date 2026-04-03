@@ -50,10 +50,14 @@ function SectionIcon({ icon, cls }: { icon: string; cls: string }) {
 
 export default function TailanBscPage() {
   const {
-    year, setYear,
-    quarter, setQuarter,
-    activeTab, setActiveTab,
-    sidebarOpen, setSidebarOpen,
+    year,
+    setYear,
+    quarter,
+    setQuarter,
+    activeTab,
+    setActiveTab,
+    sidebarOpen,
+    setSidebarOpen,
     sections,
     saving,
     lastSaved,

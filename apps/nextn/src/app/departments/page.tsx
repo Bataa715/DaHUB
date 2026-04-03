@@ -760,9 +760,9 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
                 {dept.name}
               </p>
               <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                  <Users className="w-3 h-3" />
-                  {dept.users?.length ?? dept.employeeCount ?? 0} ажилтан
-                </div>
+                <Users className="w-3 h-3" />
+                {dept.users?.length ?? dept.employeeCount ?? 0} ажилтан
+              </div>
             </button>
           );
         })}
@@ -1227,7 +1227,7 @@ export default function DepartmentsPage() {
           {/* Footer */}
           <div className="flex items-center justify-center gap-3 py-2">
             <div className="h-px flex-1 max-w-20 bg-gradient-to-r from-transparent to-slate-800" />
-        
+
             <div className="h-px flex-1 max-w-20 bg-gradient-to-l from-transparent to-slate-800" />
           </div>
         </motion.div>

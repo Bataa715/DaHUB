@@ -20,10 +20,34 @@ const LANG_META: Record<
   string,
   { label: string; color: string; bg: string; border: string; icon: string }
 > = {
-  python: { label: "Python", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: "🐍" },
-  sql: { label: "SQL", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30", icon: "🗄️" },
-  bash: { label: "Bash", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30", icon: "⚡" },
-  other: { label: "Other", color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/30", icon: "📝" },
+  python: {
+    label: "Python",
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/30",
+    icon: "🐍",
+  },
+  sql: {
+    label: "SQL",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
+    icon: "🗄️",
+  },
+  bash: {
+    label: "Bash",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    icon: "⚡",
+  },
+  other: {
+    label: "Other",
+    color: "text-slate-400",
+    bg: "bg-slate-500/10",
+    border: "border-slate-500/30",
+    icon: "📝",
+  },
 };
 
 const STORAGE_KEY = "golomt_datadoc_snippets";
@@ -109,7 +133,9 @@ export default function CodePage() {
   function updateSnippet() {
     if (!selected) return;
     const updated = snippets.map((s) =>
-      s.id === selected.id ? { ...s, ...form, updatedAt: new Date().toISOString() } : s,
+      s.id === selected.id
+        ? { ...s, ...form, updatedAt: new Date().toISOString() }
+        : s,
     );
     const updatedSnippet = updated.find((s) => s.id === selected.id)!;
     save(updated);
@@ -129,7 +155,13 @@ export default function CodePage() {
   }
 
   function resetForm() {
-    setForm({ title: "", description: "", language: "python", code: "", tags: [] });
+    setForm({
+      title: "",
+      description: "",
+      language: "python",
+      code: "",
+      tags: [],
+    });
     setTagInput("");
   }
 
@@ -162,7 +194,13 @@ export default function CodePage() {
     return matchSearch && matchLang;
   });
 
-  const FormPanel = ({ onSubmit, onCancel }: { onSubmit: () => void; onCancel: () => void }) => (
+  const FormPanel = ({
+    onSubmit,
+    onCancel,
+  }: {
+    onSubmit: () => void;
+    onCancel: () => void;
+  }) => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -182,7 +220,9 @@ export default function CodePage() {
           </label>
           <select
             value={form.language || "python"}
-            onChange={(e) => setForm((f) => ({ ...f, language: e.target.value as any }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, language: e.target.value as any }))
+            }
             className="w-full px-3 py-2 text-sm bg-[#0d1526] border border-slate-700/50 rounded-xl text-slate-200 focus:outline-none focus:border-cyan-500/50"
           >
             {Object.entries(LANG_META).map(([k, v]) => (
@@ -199,7 +239,9 @@ export default function CodePage() {
         </label>
         <input
           value={form.description || ""}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, description: e.target.value }))
+          }
           placeholder="Богино тайлбар…"
           className="w-full px-3 py-2 text-sm bg-[#0d1526] border border-slate-700/50 rounded-xl text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
         />
@@ -227,7 +269,10 @@ export default function CodePage() {
               className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 text-slate-300 text-xs rounded-md"
             >
               {tag}
-              <button onClick={() => removeTag(tag)} className="text-slate-500 hover:text-red-400">
+              <button
+                onClick={() => removeTag(tag)}
+                className="text-slate-500 hover:text-red-400"
+              >
                 <X className="w-2.5 h-2.5" />
               </button>
             </span>
@@ -329,7 +374,9 @@ export default function CodePage() {
 
           <div className="flex-1 overflow-y-auto py-2">
             {filtered.length === 0 ? (
-              <div className="px-4 py-10 text-center text-slate-600 text-sm">Код олдсонгүй</div>
+              <div className="px-4 py-10 text-center text-slate-600 text-sm">
+                Код олдсонгүй
+              </div>
             ) : (
               filtered.map((snippet) => {
                 const meta = LANG_META[snippet.language];
@@ -383,7 +430,9 @@ export default function CodePage() {
             )}
           </div>
           <div className="px-4 py-3 border-t border-slate-800/60">
-            <span className="text-[11px] text-slate-600">{filtered.length} код</span>
+            <span className="text-[11px] text-slate-600">
+              {filtered.length} код
+            </span>
           </div>
         </div>
 
@@ -392,14 +441,21 @@ export default function CodePage() {
           {showForm ? (
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl">
-                <h2 className="text-base font-bold text-white mb-5">Шинэ код</h2>
-                <FormPanel onSubmit={createSnippet} onCancel={() => setShowForm(false)} />
+                <h2 className="text-base font-bold text-white mb-5">
+                  Шинэ код
+                </h2>
+                <FormPanel
+                  onSubmit={createSnippet}
+                  onCancel={() => setShowForm(false)}
+                />
               </div>
             </div>
           ) : editing && selected ? (
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl">
-                <h2 className="text-base font-bold text-white mb-5">Код засах</h2>
+                <h2 className="text-base font-bold text-white mb-5">
+                  Код засах
+                </h2>
                 <FormPanel
                   onSubmit={updateSnippet}
                   onCancel={() => {
@@ -413,7 +469,9 @@ export default function CodePage() {
             <div className="flex-1 overflow-hidden flex flex-col">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800/60 shrink-0">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-bold text-white truncate">{selected.title}</h2>
+                  <h2 className="text-base font-bold text-white truncate">
+                    {selected.title}
+                  </h2>
                   {selected.description && (
                     <p className="text-sm text-slate-400 truncate mt-0.5">
                       {selected.description}
@@ -424,7 +482,8 @@ export default function CodePage() {
                   <span
                     className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${LANG_META[selected.language].color} ${LANG_META[selected.language].bg} ${LANG_META[selected.language].border}`}
                   >
-                    {LANG_META[selected.language].icon} {LANG_META[selected.language].label}
+                    {LANG_META[selected.language].icon}{" "}
+                    {LANG_META[selected.language].label}
                   </span>
                   <button
                     onClick={() => copyCode(selected.code)}
@@ -446,7 +505,8 @@ export default function CodePage() {
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm("Энэ кодыг устгах уу?")) deleteSnippet(selected.id);
+                      if (confirm("Энэ кодыг устгах уу?"))
+                        deleteSnippet(selected.id);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs transition-colors"
                   >
@@ -482,7 +542,9 @@ export default function CodePage() {
                 <div className="w-16 h-16 rounded-2xl bg-slate-800/40 flex items-center justify-center mx-auto mb-4">
                   <Code2 className="w-8 h-8 text-slate-600" />
                 </div>
-                <h3 className="text-slate-400 font-medium mb-1">Код сонгоогүй байна</h3>
+                <h3 className="text-slate-400 font-medium mb-1">
+                  Код сонгоогүй байна
+                </h3>
                 <p className="text-slate-600 text-sm">
                   Зүүн талаас код сонгох эсвэл шинээр нэмнэ үү
                 </p>

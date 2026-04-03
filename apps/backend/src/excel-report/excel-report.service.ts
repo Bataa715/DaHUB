@@ -482,18 +482,24 @@ export class ExcelReportService implements OnModuleInit {
     } catch (err: any) {
       job.status = "error";
       job.finishedAt = Date.now();
-      job.error =
-        err?.message ?? "Тайлан үүсгэхэд тодорхойгүй алдаа гарлаа";
+      job.error = err?.message ?? "Тайлан үүсгэхэд тодорхойгүй алдаа гарлаа";
       this.logger.error(`Job ${jobId} failed: ${job.error}`);
     } finally {
-      try { fs.unlinkSync(scriptPath); } catch {}
-      try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
+      try {
+        fs.unlinkSync(scriptPath);
+      } catch {}
+      try {
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      } catch {}
     }
   }
 
-  getJobStatus(
-    jobId: string,
-  ): { status: JobStatus; elapsedMs: number; error?: string; fileName?: string } {
+  getJobStatus(jobId: string): {
+    status: JobStatus;
+    elapsedMs: number;
+    error?: string;
+    fileName?: string;
+  } {
     const job = this.jobs.get(jobId);
     if (!job) throw new NotFoundException("Ажил олдсонгүй");
     return {

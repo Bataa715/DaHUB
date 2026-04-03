@@ -12,7 +12,10 @@ export class RagService {
     private vectorStoreService: VectorStoreService,
   ) {}
 
-  async query(question: string, conversationHistory?: string[]): Promise<ChatResponse> {
+  async query(
+    question: string,
+    conversationHistory?: string[],
+  ): Promise<ChatResponse> {
     const sanitized = this.sanitizeInput(question);
     const results = await this.vectorStoreService.search(sanitized, 5);
     const prompt = this.buildPrompt(sanitized, results, conversationHistory);

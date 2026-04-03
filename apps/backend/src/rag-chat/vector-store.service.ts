@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EmbeddingService } from "./embedding.service";
 import { DocumentChunk, SearchResult } from "./types";
@@ -83,11 +88,15 @@ export class VectorStoreService implements OnModuleInit, OnModuleDestroy {
       },
     );
 
-    insertMany(chunks.map((chunk, i) => ({ chunk, embedding: newEmbeddings[i] })));
+    insertMany(
+      chunks.map((chunk, i) => ({ chunk, embedding: newEmbeddings[i] })),
+    );
 
     this.cachedChunks.push(...chunks);
     this.cachedEmbeddings.push(...newEmbeddings);
-    this.logger.log(`${chunks.length} chunk нэмэгдлээ. Нийт: ${this.cachedChunks.length}`);
+    this.logger.log(
+      `${chunks.length} chunk нэмэгдлээ. Нийт: ${this.cachedChunks.length}`,
+    );
   }
 
   async search(query: string, topK = 5): Promise<SearchResult[]> {
@@ -107,7 +116,9 @@ export class VectorStoreService implements OnModuleInit, OnModuleDestroy {
   }
 
   async removeBySource(source: string): Promise<number> {
-    const result = this.db.prepare("DELETE FROM chunks WHERE source = ?").run(source);
+    const result = this.db
+      .prepare("DELETE FROM chunks WHERE source = ?")
+      .run(source);
     this.loadCache();
     return result.changes;
   }
@@ -120,11 +131,17 @@ export class VectorStoreService implements OnModuleInit, OnModuleDestroy {
   }
 
   getTotalChunks(): number {
-    return (this.db.prepare("SELECT COUNT(*) as cnt FROM chunks").get() as { cnt: number }).cnt;
+    return (
+      this.db.prepare("SELECT COUNT(*) as cnt FROM chunks").get() as {
+        cnt: number;
+      }
+    ).cnt;
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
-    let dot = 0, nA = 0, nB = 0;
+    let dot = 0,
+      nA = 0,
+      nB = 0;
     for (let i = 0; i < a.length; i++) {
       dot += a[i] * b[i];
       nA += a[i] * a[i];
@@ -136,15 +153,27 @@ export class VectorStoreService implements OnModuleInit, OnModuleDestroy {
 
   private loadCache(): void {
     const rows = this.db
-      .prepare("SELECT id, content, source, chunk_index, document_name, page, embedding FROM chunks")
+      .prepare(
+        "SELECT id, content, source, chunk_index, document_name, page, embedding FROM chunks",
+      )
       .all() as {
-        id: string; content: string; source: string; chunk_index: number;
-        document_name: string; page: number | null; embedding: string;
-      }[];
+      id: string;
+      content: string;
+      source: string;
+      chunk_index: number;
+      document_name: string;
+      page: number | null;
+      embedding: string;
+    }[];
     this.cachedChunks = rows.map((r) => ({
       id: r.id,
       content: r.content,
-      metadata: { source: r.source, chunkIndex: r.chunk_index, documentName: r.document_name, page: r.page ?? undefined },
+      metadata: {
+        source: r.source,
+        chunkIndex: r.chunk_index,
+        documentName: r.document_name,
+        page: r.page ?? undefined,
+      },
     }));
     this.cachedEmbeddings = rows.map((r) => JSON.parse(r.embedding));
   }

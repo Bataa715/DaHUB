@@ -79,7 +79,9 @@ export default function ExcelReportPage() {
               <div className="w-14 h-14 rounded-full border-4 border-slate-800" />
               <div className="absolute inset-0 w-14 h-14 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
             </div>
-            <p className="text-sm text-slate-500">Тайлангуудыг ачаалж байна...</p>
+            <p className="text-sm text-slate-500">
+              Тайлангуудыг ачаалж байна...
+            </p>
           </div>
         ) : templates.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -87,8 +89,12 @@ export default function ExcelReportPage() {
               <TableProperties className="w-10 h-10 text-slate-600" />
             </div>
             <div className="text-center">
-              <p className="text-slate-300 font-medium text-lg">Тайлан байхгүй байна</p>
-              <p className="text-slate-500 text-sm mt-1">Удахгүй тайлангуудыг нэмэх болно</p>
+              <p className="text-slate-300 font-medium text-lg">
+                Тайлан байхгүй байна
+              </p>
+              <p className="text-slate-500 text-sm mt-1">
+                Удахгүй тайлангуудыг нэмэх болно
+              </p>
             </div>
           </div>
         ) : (
@@ -138,7 +144,12 @@ function ReportCard({
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, type: "spring", stiffness: 260, damping: 24 }}
+      transition={{
+        delay: index * 0.06,
+        type: "spring",
+        stiffness: 260,
+        damping: 24,
+      }}
       whileHover={{ y: -4 }}
       className="group cursor-pointer"
       onClick={onClick}
@@ -149,7 +160,9 @@ function ReportCard({
 
         <div className="p-5">
           {/* Icon */}
-          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${template.color} flex items-center justify-center shadow-lg mb-4`}>
+          <div
+            className={`w-12 h-12 rounded-xl bg-gradient-to-br ${template.color} flex items-center justify-center shadow-lg mb-4`}
+          >
             <FileSpreadsheet className="w-6 h-6 text-white" />
           </div>
 

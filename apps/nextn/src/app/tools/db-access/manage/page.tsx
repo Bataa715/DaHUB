@@ -357,7 +357,6 @@ export default function DbAccessManagePage() {
         }
       />
       <div className="max-w-5xl mx-auto space-y-6 p-4 md:p-8">
-
         {/* Tabs */}
         <div className="flex gap-0 border-b">
           {(
@@ -478,7 +477,10 @@ export default function DbAccessManagePage() {
                         <button
                           className="shrink-0 p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                           disabled={deletingId === req.id}
-                          onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRequest(req.id);
+                          }}
                           title="Устгах"
                         >
                           {deletingId === req.id ? (
@@ -549,9 +551,11 @@ export default function DbAccessManagePage() {
                           </div>
 
                           {/* Review panel */}
-                          {(req.status === "pending" || req.status === "rejected") && (
+                          {(req.status === "pending" ||
+                            req.status === "rejected") && (
                             <div className="pt-1">
-                              {req.status === "rejected" ? null : reviewingId === req.id ? (
+                              {req.status ===
+                              "rejected" ? null : reviewingId === req.id ? (
                                 <div className="space-y-2">
                                   <Label className="text-xs">
                                     Тайлбар (заавал)
@@ -612,7 +616,9 @@ export default function DbAccessManagePage() {
                                       size="sm"
                                       className="text-destructive hover:bg-destructive/10 ml-auto"
                                       disabled={deletingId === req.id}
-                                      onClick={() => handleDeleteRequest(req.id)}
+                                      onClick={() =>
+                                        handleDeleteRequest(req.id)
+                                      }
                                     >
                                       {deletingId === req.id ? (
                                         <Loader2 className="h-3.5 w-3.5 animate-spin" />

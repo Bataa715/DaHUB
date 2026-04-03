@@ -84,9 +84,7 @@ export class UsersController {
     const isAdmin = req.user.isAdmin;
 
     if (!isSelf && !isAdmin) {
-      throw new ForbiddenException(
-        "Зөвхөн өөрийн профайлыг засах боломжтой",
-      );
+      throw new ForbiddenException("Зөвхөн өөрийн профайлыг засах боломжтой");
     }
 
     // Non-admins may only change their own profileImage

@@ -53,7 +53,9 @@ export class ChatController {
       );
       res.write(`data: ${JSON.stringify({ done: true, sources })}\n\n`);
     } catch (err) {
-      res.write(`data: ${JSON.stringify({ error: (err as Error).message })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ error: (err as Error).message })}\n\n`,
+      );
     } finally {
       res.end();
     }

@@ -581,36 +581,92 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     // Create/sync audit_app user
     await this.exec(
       `CREATE USER IF NOT EXISTS audit_app IDENTIFIED WITH sha256_password BY '${p}'`,
-      undefined, 1, true,
+      undefined,
+      1,
+      true,
     );
     await this.exec(
       `ALTER USER IF EXISTS audit_app IDENTIFIED WITH sha256_password BY '${p}'`,
-      undefined, 1, true,
+      undefined,
+      1,
+      true,
     );
 
     // audit_db: full read/write + schema rights
-    await this.exec(`GRANT SELECT, INSERT ON audit_db.* TO audit_app`, undefined, 1, true);
-    await this.exec(`GRANT CREATE DATABASE ON *.* TO audit_app`, undefined, 1, true);
+    await this.exec(
+      `GRANT SELECT, INSERT ON audit_db.* TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
+    await this.exec(
+      `GRANT CREATE DATABASE ON *.* TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
     await this.exec(
       `GRANT CREATE TABLE, DROP TABLE, ALTER ON audit_db.* TO audit_app`,
-      undefined, 1, true,
+      undefined,
+      1,
+      true,
     );
-    await this.exec(`GRANT SELECT ON system.tables TO audit_app`, undefined, 1, true);
-    await this.exec(`GRANT SELECT ON system.columns TO audit_app`, undefined, 1, true);
+    await this.exec(
+      `GRANT SELECT ON system.tables TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
+    await this.exec(
+      `GRANT SELECT ON system.columns TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
 
     // External DBs: SELECT only — cannot modify data, only read
     for (const db of ["FINACLE", "ERP", "CARDZONE", "EBANK"]) {
-      await this.exec(`GRANT SELECT ON \`${db}\`.* TO audit_app`, undefined, 1, true).catch(() => {
+      await this.exec(
+        `GRANT SELECT ON \`${db}\`.* TO audit_app`,
+        undefined,
+        1,
+        true,
+      ).catch(() => {
         // DB may not exist yet on this CH instance — skip silently
       });
     }
 
     // ACL management: create/revoke user grants (for db-access feature)
-    await this.exec(`GRANT ACCESS MANAGEMENT ON *.* TO audit_app`, undefined, 1, true);
-    await this.exec(`GRANT SELECT ON system.users TO audit_app`, undefined, 1, true);
-    await this.exec(`GRANT SELECT ON system.roles TO audit_app`, undefined, 1, true);
-    await this.exec(`GRANT SELECT ON system.grants TO audit_app`, undefined, 1, true);
-    await this.exec(`GRANT SELECT ON system.role_grants TO audit_app`, undefined, 1, true);
+    await this.exec(
+      `GRANT ACCESS MANAGEMENT ON *.* TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
+    await this.exec(
+      `GRANT SELECT ON system.users TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
+    await this.exec(
+      `GRANT SELECT ON system.roles TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
+    await this.exec(
+      `GRANT SELECT ON system.grants TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
+    await this.exec(
+      `GRANT SELECT ON system.role_grants TO audit_app`,
+      undefined,
+      1,
+      true,
+    );
 
     this.logger.log(
       "Service user audit_app provisioned (audit_db rw + external DBs ro + ACL mgmt)",

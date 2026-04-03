@@ -498,7 +498,6 @@ export default function PivotPage() {
       />
 
       <div className="relative z-10 container mx-auto px-6 py-8 max-w-6xl">
-
         {/* File Upload */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

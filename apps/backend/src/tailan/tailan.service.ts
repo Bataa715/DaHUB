@@ -589,80 +589,331 @@ export class TailanService {
 
     // ── Fixed section I: Data analysis support ───────────────────────────────
     if (!hidden.has("s1")) {
-    children.push(
-      this.bigSectionHeading(
-        `${secRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал`,
-      ),
-    );
+      children.push(
+        this.bigSectionHeading(
+          `${secRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал`,
+        ),
+      );
 
-    // I.1 – numbered planned tasks (bold title)
-    const analysisItems = (report.plannedTasks ?? []).filter((t: any) =>
-      t.title?.trim(),
-    );
-    if (analysisItems.length === 0) {
-      children.push(this.bodyPara(" "));
-    } else {
-      analysisItems.forEach((t: any, idx: number) => {
+      // I.1 – numbered planned tasks (bold title)
+      const analysisItems = (report.plannedTasks ?? []).filter((t: any) =>
+        t.title?.trim(),
+      );
+      if (analysisItems.length === 0) {
+        children.push(this.bodyPara(" "));
+      } else {
+        analysisItems.forEach((t: any, idx: number) => {
+          children.push(
+            new Paragraph({
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { before: 80, after: 60, line: 276 },
+              indent: { left: 360, hanging: 360 },
+              children: [
+                new TextRun({
+                  text: `${idx + 1}. ${t.title ?? ""}`,
+                  bold: true,
+                  size: 22,
+                  font: "Times New Roman",
+                }),
+              ],
+            }),
+          );
+          if (t.description?.trim()) {
+            children.push(this.bodyPara(t.description));
+          }
+          for (const img of t.images ?? []) {
+            children.push(
+              ...this.inlineImageParas(
+                img.dataUrl,
+                img.width ?? 80,
+                imgCounter,
+                img.height,
+              ),
+            );
+          }
+        });
+      }
+      children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+
+      // I.2 – Dashboard table from section1Dashboards
+      if (!hidden.has("s12")) {
+        children.push(
+          this.subSectionHeading(
+            "Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:",
+          ),
+        );
+
+        const dashColWidths = [5, 30, 15, 20, 30];
+        const dashHeaders = [
+          "№",
+          "Төлөвлөгөөт ажил",
+          "Ажлын гүйцэтгэл",
+          "Хийгдсэн хугацаа",
+          "Гүйцэтгэл /товч/",
+        ];
+        const dashHeaderRow = new TableRow({
+          tableHeader: true,
+          children: dashHeaders.map(
+            (lbl, i) =>
+              new TableCell({
+                width: { size: dashColWidths[i], type: WidthType.PERCENTAGE },
+                borders: this.border("888888"),
+                shading: { type: ShadingType.SOLID, color: "FFFFFF" },
+                margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new TextRun({
+                        text: lbl,
+                        bold: true,
+                        color: "000000",
+                        size: 22,
+                        font: "Times New Roman",
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+          ),
+        });
+
+        const s1Dashboards: any[] = report.section1Dashboards ?? [];
+        const dashDataRows =
+          s1Dashboards.length > 0
+            ? s1Dashboards.map(
+                (t: any, idx: number) =>
+                  new TableRow({
+                    children: [
+                      this.tc(`${idx + 1}`, dashColWidths[0], true),
+                      this.tc(t.title ?? "", dashColWidths[1]),
+                      this.tc(
+                        t.completion !== undefined && t.completion !== ""
+                          ? `${t.completion}%`
+                          : "",
+                        dashColWidths[2],
+                        true,
+                      ),
+                      this.tc(
+                        fmtPeriodDoc(t.period ?? ""),
+                        dashColWidths[3],
+                        true,
+                      ),
+                      this.tc(t.summary ?? "", dashColWidths[4]),
+                    ],
+                  }),
+              )
+            : [
+                new TableRow({
+                  children: dashColWidths.map((w) => this.tc(" ", w, true)),
+                }),
+              ];
+
+        // Дундаж гүйцэтгэл row
+        const dashNums = s1Dashboards
+          .map((t: any) => parseFloat(t.completion))
+          .filter((n: number) => !isNaN(n));
+        const dashAvg =
+          dashNums.length > 0
+            ? Math.round(
+                dashNums.reduce((a: number, b: number) => a + b, 0) /
+                  dashNums.length,
+              )
+            : null;
+        const avgRow = new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              width: { size: 35, type: WidthType.PERCENTAGE },
+              borders: this.border("888888"),
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({
+                      text: "Дундаж гүйцэтгэл",
+                      bold: true,
+                      size: 22,
+                      font: "Times New Roman",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 15, type: WidthType.PERCENTAGE },
+              borders: this.border("888888"),
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({
+                      text: dashAvg !== null ? `${dashAvg}%` : "",
+                      bold: true,
+                      size: 22,
+                      font: "Times New Roman",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 20, type: WidthType.PERCENTAGE },
+              borders: this.border("888888"),
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              children: [new Paragraph({ text: " " })],
+            }),
+            new TableCell({
+              width: { size: 30, type: WidthType.PERCENTAGE },
+              borders: this.border("888888"),
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              children: [new Paragraph({ text: " " })],
+            }),
+          ],
+        });
+
+        children.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [dashHeaderRow, ...dashDataRows, avgRow],
+          }),
+        );
+        // Images from section1Dashboards rows
+        for (const t of s1Dashboards) {
+          for (const img of t.images ?? []) {
+            children.push(
+              ...this.inlineImageParas(
+                img.dataUrl,
+                img.width ?? 80,
+                imgCounter,
+                img.height,
+              ),
+            );
+          }
+        }
         children.push(
           new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
-            spacing: { before: 80, after: 60, line: 276 },
-            indent: { left: 360, hanging: 360 },
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 40, after: 160 },
             children: [
               new TextRun({
-                text: `${idx + 1}. ${t.title ?? ""}`,
-                bold: true,
-                size: 22,
+                text: `Хүснэгт ${tblCounter++}.`,
+                italics: true,
+                size: 18,
                 font: "Times New Roman",
               }),
             ],
           }),
         );
-        if (t.description?.trim()) {
-          children.push(this.bodyPara(t.description));
-        }
+      } // end s12
+    } // end s1
+
+    // ── Fixed Section II: Өгөгдөл боловсруулах ажил ─────────────────────────
+    if (!hidden.has("s2")) {
+      children.push(
+        this.bigSectionHeading(
+          `${secRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил`,
+        ),
+      );
+      const s2Tasks: any[] = report.section2Tasks ?? [];
+      const s2Headers = [
+        "№",
+        "Төлөвлөгөөт ажлууд\n(Дууссан ажлууд)",
+        "Ажлын гүйцэтгэл",
+        "Хийгдсэн хугацаа",
+        "Гүйцэтгэл /товч/",
+      ];
+      const s2Widths = [5, 30, 20, 20, 25];
+      const s2Rows: string[][] = s2Tasks.map((t, i) => [
+        `${i + 1}`,
+        t.title ?? "",
+        t.result !== undefined && t.result !== "" ? `${t.result}%` : "",
+        fmtPeriodDoc(t.period ?? ""),
+        t.completion ?? "",
+      ]);
+      children.push(
+        this.buildDashedTable(s2Headers, s2Widths, s2Rows, [], [0, 2, 3]),
+      );
+      // Images from section2Tasks rows
+      for (const t of s2Tasks) {
         for (const img of t.images ?? []) {
           children.push(
-            ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
+            ...this.inlineImageParas(
+              img.dataUrl,
+              img.width ?? 80,
+              imgCounter,
+              img.height,
+            ),
           );
         }
-      });
-    }
-    children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+      }
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 160 },
+          children: [
+            new TextRun({
+              text: `Хүснэгт ${tblCounter++}.`,
+              italics: true,
+              size: 18,
+              font: "Times New Roman",
+            }),
+          ],
+        }),
+      );
+    } // end s2
 
-    // I.2 – Dashboard table from section1Dashboards
-    if (!hidden.has("s12")) {
-    children.push(
-      this.subSectionHeading(
-        "Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:",
-      ),
-    );
+    // ── Fixed Section III: Тогтмол хийгддэг ажлууд ──────────────────────────
+    if (!hidden.has("s3")) {
+      children.push(
+        this.bigSectionHeading(`${secRoman.s3}. Тогтмол хийгддэг ажлууд`),
+      );
 
-    const dashColWidths = [5, 30, 15, 20, 30];
-    const dashHeaders = [
-      "№",
-      "Төлөвлөгөөт ажил",
-      "Ажлын гүйцэтгэл",
-      "Хийгдсэн хугацаа",
-      "Гүйцэтгэл /товч/",
-    ];
-    const dashHeaderRow = new TableRow({
-      tableHeader: true,
-      children: dashHeaders.map(
-        (lbl, i) =>
+      // III.1 – Автоматжуулалт
+      children.push(
+        this.subSectionHeading(
+          "Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал:",
+        ),
+      );
+      const s3AutoTasks: any[] = report.section3AutoTasks ?? [];
+      const s3aHeaders = [
+        "№",
+        "Тогтмол хийгддэг өгөгдөл боловсруулалт",
+        "Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ",
+        "Хэрэглэгчийн нэгжийн өгсөн үнэлгээ",
+      ];
+      const s3aWidths = [5, 40, 35, 20];
+      const s3aRows: string[][] = s3AutoTasks.map((t, i) => [
+        `${i + 1}`,
+        t.title ?? "",
+        t.value ?? "",
+        t.rating ?? "",
+      ]);
+      const s3aAvgNums = s3AutoTasks
+        .map((t: any) => parseFloat(t.rating))
+        .filter((n: number) => !isNaN(n));
+      const s3aAvg =
+        s3aAvgNums.length > 0
+          ? Math.round(
+              s3aAvgNums.reduce((a: number, b: number) => a + b, 0) /
+                s3aAvgNums.length,
+            )
+          : null;
+      const s3aAvgRow = new TableRow({
+        children: [
           new TableCell({
-            width: { size: dashColWidths[i], type: WidthType.PERCENTAGE },
-            borders: this.border("888888"),
-            shading: { type: ShadingType.SOLID, color: "FFFFFF" },
+            columnSpan: 3,
+            width: { size: 80, type: WidthType.PERCENTAGE },
             margins: { top: 40, bottom: 40, left: 80, right: 80 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: lbl,
+                    text: "Дундаж үнэлгээ",
                     bold: true,
-                    color: "000000",
                     size: 22,
                     font: "Times New Roman",
                   }),
@@ -670,438 +921,210 @@ export class TailanService {
               }),
             ],
           }),
-      ),
-    });
-
-    const s1Dashboards: any[] = report.section1Dashboards ?? [];
-    const dashDataRows =
-      s1Dashboards.length > 0
-        ? s1Dashboards.map(
-            (t: any, idx: number) =>
-              new TableRow({
+          new TableCell({
+            width: { size: 20, type: WidthType.PERCENTAGE },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
                 children: [
-                  this.tc(`${idx + 1}`, dashColWidths[0], true),
-                  this.tc(t.title ?? "", dashColWidths[1]),
-                  this.tc(
-                    t.completion !== undefined && t.completion !== ""
-                      ? `${t.completion}%`
-                      : "",
-                    dashColWidths[2],
-                    true,
-                  ),
-                  this.tc(fmtPeriodDoc(t.period ?? ""), dashColWidths[3], true),
-                  this.tc(t.summary ?? "", dashColWidths[4]),
+                  new TextRun({
+                    text: s3aAvg !== null ? `${s3aAvg}%` : "",
+                    bold: true,
+                    size: 22,
+                    font: "Times New Roman",
+                  }),
                 ],
               }),
-          )
-        : [
-            new TableRow({
-              children: dashColWidths.map((w) => this.tc(" ", w, true)),
-            }),
-          ];
-
-    // Дундаж гүйцэтгэл row
-    const dashNums = s1Dashboards
-      .map((t: any) => parseFloat(t.completion))
-      .filter((n: number) => !isNaN(n));
-    const dashAvg =
-      dashNums.length > 0
-        ? Math.round(
-            dashNums.reduce((a: number, b: number) => a + b, 0) /
-              dashNums.length,
-          )
-        : null;
-    const avgRow = new TableRow({
-      children: [
-        new TableCell({
-          columnSpan: 2,
-          width: { size: 35, type: WidthType.PERCENTAGE },
-          borders: this.border("888888"),
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
+            ],
+          }),
+        ],
+      });
+      children.push(
+        this.buildDashedTable(
+          s3aHeaders,
+          s3aWidths,
+          s3aRows,
+          [s3aAvgRow],
+          [0, 3],
+        ),
+      );
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 100 },
           children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: "Дундаж гүйцэтгэл",
-                  bold: true,
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
+            new TextRun({
+              text: `Хүснэгт ${tblCounter++}.`,
+              italics: true,
+              size: 18,
+              font: "Times New Roman",
             }),
           ],
         }),
-        new TableCell({
-          width: { size: 15, type: WidthType.PERCENTAGE },
-          borders: this.border("888888"),
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: dashAvg !== null ? `${dashAvg}%` : "",
-                  bold: true,
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
-            }),
-          ],
-        }),
-        new TableCell({
-          width: { size: 20, type: WidthType.PERCENTAGE },
-          borders: this.border("888888"),
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
-          children: [new Paragraph({ text: " " })],
-        }),
-        new TableCell({
-          width: { size: 30, type: WidthType.PERCENTAGE },
-          borders: this.border("888888"),
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
-          children: [new Paragraph({ text: " " })],
-        }),
-      ],
-    });
+      );
 
-    children.push(
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [dashHeaderRow, ...dashDataRows, avgRow],
-      }),
-    );
-    // Images from section1Dashboards rows
-    for (const t of s1Dashboards) {
-      for (const img of t.images ?? []) {
+      // III.2 – Dashboard
+      if (!hidden.has("s32")) {
         children.push(
-          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
+          this.subSectionHeading(
+            "Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:",
+          ),
         );
-      }
-    }
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 40, after: 160 },
-        children: [
-          new TextRun({
-            text: `Хүснэгт ${tblCounter++}.`,
-            italics: true,
-            size: 18,
-            font: "Times New Roman",
-          }),
-        ],
-      }),
-    );
-    } // end s12
-    } // end s1
-
-    // ── Fixed Section II: Өгөгдөл боловсруулах ажил ─────────────────────────
-    if (!hidden.has("s2")) {
-    children.push(
-      this.bigSectionHeading(
-        `${secRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил`,
-      ),
-    );
-    const s2Tasks: any[] = report.section2Tasks ?? [];
-    const s2Headers = [
-      "№",
-      "Төлөвлөгөөт ажлууд\n(Дууссан ажлууд)",
-      "Ажлын гүйцэтгэл",
-      "Хийгдсэн хугацаа",
-      "Гүйцэтгэл /товч/",
-    ];
-    const s2Widths = [5, 30, 20, 20, 25];
-    const s2Rows: string[][] = s2Tasks.map((t, i) => [
-      `${i + 1}`,
-      t.title ?? "",
-      t.result !== undefined && t.result !== "" ? `${t.result}%` : "",
-      fmtPeriodDoc(t.period ?? ""),
-      t.completion ?? "",
-    ]);
-    children.push(
-      this.buildDashedTable(s2Headers, s2Widths, s2Rows, [], [0, 2, 3]),
-    );
-    // Images from section2Tasks rows
-    for (const t of s2Tasks) {
-      for (const img of t.images ?? []) {
+        const s3Dashboards: any[] = report.section3Dashboards ?? [];
+        const s3dHeaders = [
+          "№",
+          "Дашбоард",
+          "Дашбоардын ач холбогдол,хэрэглээ",
+          "Хэрэглэгч нэгжийн өгсөн үнэлгээ",
+        ];
+        const s3dWidths = [5, 35, 40, 20];
+        const s3dRows: string[][] = s3Dashboards.map((t, i) => [
+          `${i + 1}`,
+          t.dashboard ?? "",
+          t.value ?? "",
+          t.rating ?? "",
+        ]);
+        const s3dAvgNums = s3Dashboards
+          .map((t: any) => parseFloat(t.rating))
+          .filter((n: number) => !isNaN(n));
+        const s3dAvg =
+          s3dAvgNums.length > 0
+            ? Math.round(
+                s3dAvgNums.reduce((a: number, b: number) => a + b, 0) /
+                  s3dAvgNums.length,
+              )
+            : null;
+        const s3dAvgRow = new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 3,
+              width: { size: 80, type: WidthType.PERCENTAGE },
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({
+                      text: "Дундаж үнэлгээ",
+                      bold: true,
+                      size: 22,
+                      font: "Times New Roman",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 20, type: WidthType.PERCENTAGE },
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({
+                      text: s3dAvg !== null ? `${s3dAvg}%` : "",
+                      bold: true,
+                      size: 22,
+                      font: "Times New Roman",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        });
         children.push(
-          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
+          this.buildDashedTable(
+            s3dHeaders,
+            s3dWidths,
+            s3dRows,
+            [s3dAvgRow],
+            [0, 3],
+          ),
         );
-      }
-    }
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 40, after: 160 },
-        children: [
-          new TextRun({
-            text: `Хүснэгт ${tblCounter++}.`,
-            italics: true,
-            size: 18,
-            font: "Times New Roman",
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 40, after: 160 },
+            children: [
+              new TextRun({
+                text: `Хүснэгт ${tblCounter++}.`,
+                italics: true,
+                size: 18,
+                font: "Times New Roman",
+              }),
+            ],
           }),
-        ],
-      }),
-    );
-    } // end s2
-
-    // ── Fixed Section III: Тогтмол хийгддэг ажлууд ──────────────────────────
-    if (!hidden.has("s3")) {
-    children.push(this.bigSectionHeading(`${secRoman.s3}. Тогтмол хийгддэг ажлууд`));
-
-    // III.1 – Автоматжуулалт
-    children.push(
-      this.subSectionHeading(
-        "Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал:",
-      ),
-    );
-    const s3AutoTasks: any[] = report.section3AutoTasks ?? [];
-    const s3aHeaders = [
-      "№",
-      "Тогтмол хийгддэг өгөгдөл боловсруулалт",
-      "Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ",
-      "Хэрэглэгчийн нэгжийн өгсөн үнэлгээ",
-    ];
-    const s3aWidths = [5, 40, 35, 20];
-    const s3aRows: string[][] = s3AutoTasks.map((t, i) => [
-      `${i + 1}`,
-      t.title ?? "",
-      t.value ?? "",
-      t.rating ?? "",
-    ]);
-    const s3aAvgNums = s3AutoTasks
-      .map((t: any) => parseFloat(t.rating))
-      .filter((n: number) => !isNaN(n));
-    const s3aAvg =
-      s3aAvgNums.length > 0
-        ? Math.round(
-            s3aAvgNums.reduce((a: number, b: number) => a + b, 0) /
-              s3aAvgNums.length,
-          )
-        : null;
-    const s3aAvgRow = new TableRow({
-      children: [
-        new TableCell({
-          columnSpan: 3,
-          width: { size: 80, type: WidthType.PERCENTAGE },
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: "Дундаж үнэлгээ",
-                  bold: true,
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
-            }),
-          ],
-        }),
-        new TableCell({
-          width: { size: 20, type: WidthType.PERCENTAGE },
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: s3aAvg !== null ? `${s3aAvg}%` : "",
-                  bold: true,
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
-            }),
-          ],
-        }),
-      ],
-    });
-    children.push(
-      this.buildDashedTable(
-        s3aHeaders,
-        s3aWidths,
-        s3aRows,
-        [s3aAvgRow],
-        [0, 3],
-      ),
-    );
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 40, after: 100 },
-        children: [
-          new TextRun({
-            text: `Хүснэгт ${tblCounter++}.`,
-            italics: true,
-            size: 18,
-            font: "Times New Roman",
-          }),
-        ],
-      }),
-    );
-
-    // III.2 – Dashboard
-    if (!hidden.has("s32")) {
-    children.push(
-      this.subSectionHeading(
-        "Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:",
-      ),
-    );
-    const s3Dashboards: any[] = report.section3Dashboards ?? [];
-    const s3dHeaders = [
-      "№",
-      "Дашбоард",
-      "Дашбоардын ач холбогдол,хэрэглээ",
-      "Хэрэглэгч нэгжийн өгсөн үнэлгээ",
-    ];
-    const s3dWidths = [5, 35, 40, 20];
-    const s3dRows: string[][] = s3Dashboards.map((t, i) => [
-      `${i + 1}`,
-      t.dashboard ?? "",
-      t.value ?? "",
-      t.rating ?? "",
-    ]);
-    const s3dAvgNums = s3Dashboards
-      .map((t: any) => parseFloat(t.rating))
-      .filter((n: number) => !isNaN(n));
-    const s3dAvg =
-      s3dAvgNums.length > 0
-        ? Math.round(
-            s3dAvgNums.reduce((a: number, b: number) => a + b, 0) /
-              s3dAvgNums.length,
-          )
-        : null;
-    const s3dAvgRow = new TableRow({
-      children: [
-        new TableCell({
-          columnSpan: 3,
-          width: { size: 80, type: WidthType.PERCENTAGE },
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: "Дундаж үнэлгээ",
-                  bold: true,
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
-            }),
-          ],
-        }),
-        new TableCell({
-          width: { size: 20, type: WidthType.PERCENTAGE },
-          margins: { top: 40, bottom: 40, left: 80, right: 80 },
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: s3dAvg !== null ? `${s3dAvg}%` : "",
-                  bold: true,
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
-            }),
-          ],
-        }),
-      ],
-    });
-    children.push(
-      this.buildDashedTable(
-        s3dHeaders,
-        s3dWidths,
-        s3dRows,
-        [s3dAvgRow],
-        [0, 3],
-      ),
-    );
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 40, after: 160 },
-        children: [
-          new TextRun({
-            text: `Хүснэгт ${tblCounter++}.`,
-            italics: true,
-            size: 18,
-            font: "Times New Roman",
-          }),
-        ],
-      }),
-    );
-    } // end s32
+        );
+      } // end s32
     } // end s3
 
     // ── Fixed Section IV: Хамрагдсан сургалт (landscape section) ────────────
     const s4Children: any[] = [];
     if (!hidden.has("s4")) {
-    s4Children.push(this.bigSectionHeading(`${secRoman.s4}. Хамрагдсан сургалт`));
-    const s4Trainings: any[] = report.section4Trainings ?? [];
-    const s4Headers = [
-      "№",
-      "Хамрагдсан сургалт",
-      "Зохион байгуулагч",
-      "Сургалтын төрөл",
-      "Хэзээ",
-      "Сургалтын хэлбэр",
-      "Цаг",
-      "Аудитын зорилгод нийцсэн эсэх",
-      "Мэдлэгээ хуваалцсан эсэх",
-    ];
-    const s4Widths = [5, 22, 13, 11, 9, 9, 6, 13, 12];
-    const s4Rows: string[][] = s4Trainings.map((t, i) => [
-      `${i + 1}`,
-      t.training ?? "",
-      t.organizer ?? "",
-      t.type ?? "",
-      t.date ? t.date.replace(/-/g, ".") : "",
-      t.format ?? "",
-      t.hours ? `${t.hours} цаг` : "",
-      t.meetsAuditGoal ?? "",
-      t.sharedKnowledge ?? "",
-    ]);
-    s4Children.push(
-      this.buildDashedTable(
-        s4Headers,
-        s4Widths,
-        s4Rows,
-        [],
-        [0, 4, 5, 6, 7, 8],
-      ),
-    );
-    s4Children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 40, after: 100 },
-        children: [
-          new TextRun({
-            text: `Хүснэгт ${tblCounter++}.`,
-            italics: true,
-            size: 18,
-            font: "Times New Roman",
-          }),
-        ],
-      }),
-    );
+      s4Children.push(
+        this.bigSectionHeading(`${secRoman.s4}. Хамрагдсан сургалт`),
+      );
+      const s4Trainings: any[] = report.section4Trainings ?? [];
+      const s4Headers = [
+        "№",
+        "Хамрагдсан сургалт",
+        "Зохион байгуулагч",
+        "Сургалтын төрөл",
+        "Хэзээ",
+        "Сургалтын хэлбэр",
+        "Цаг",
+        "Аудитын зорилгод нийцсэн эсэх",
+        "Мэдлэгээ хуваалцсан эсэх",
+      ];
+      const s4Widths = [5, 22, 13, 11, 9, 9, 6, 13, 12];
+      const s4Rows: string[][] = s4Trainings.map((t, i) => [
+        `${i + 1}`,
+        t.training ?? "",
+        t.organizer ?? "",
+        t.type ?? "",
+        t.date ? t.date.replace(/-/g, ".") : "",
+        t.format ?? "",
+        t.hours ? `${t.hours} цаг` : "",
+        t.meetsAuditGoal ?? "",
+        t.sharedKnowledge ?? "",
+      ]);
+      s4Children.push(
+        this.buildDashedTable(
+          s4Headers,
+          s4Widths,
+          s4Rows,
+          [],
+          [0, 4, 5, 6, 7, 8],
+        ),
+      );
+      s4Children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 100 },
+          children: [
+            new TextRun({
+              text: `Хүснэгт ${tblCounter++}.`,
+              italics: true,
+              size: 18,
+              font: "Times New Roman",
+            }),
+          ],
+        }),
+      );
 
-    // IV sub-section: Мэдлэгээ ашиглаж буй байдал
-    s4Children.push(
-      this.subSectionHeading(
-        "Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:",
-      ),
-    );
-    const knowledgeLines = (report.section4KnowledgeText ?? "").split("\n");
-    for (const line of knowledgeLines) {
-      s4Children.push(this.bodyPara(line || " "));
-    }
-    s4Children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+      // IV sub-section: Мэдлэгээ ашиглаж буй байдал
+      s4Children.push(
+        this.subSectionHeading(
+          "Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:",
+        ),
+      );
+      const knowledgeLines = (report.section4KnowledgeText ?? "").split("\n");
+      for (const line of knowledgeLines) {
+        s4Children.push(this.bodyPara(line || " "));
+      }
+      s4Children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
     } // end s4
 
     // ── Sections V onwards (portrait) ─────────────────────────────────────────
@@ -1109,73 +1132,79 @@ export class TailanService {
 
     // ── Fixed Section V: Үүрэг даалгаварын биелэлт ───────────────────────────
     if (!hidden.has("s5")) {
-    postChildren.push(this.bigSectionHeading(`${secRoman.s5}. Үүрэг даалгаварын биелэлт`));
-    const s5Tasks: any[] = report.section5Tasks ?? [];
-    const s5Headers = ["№", "Ажлын төрөл", "Хийгдсэн ажил"];
-    const s5Widths = [5, 35, 60];
-    const s5Rows: string[][] = s5Tasks.map((t, i) => [
-      `${i + 1}`,
-      t.taskType ?? "",
-      t.completedWork ?? "",
-    ]);
-    postChildren.push(
-      this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]),
-    );
-    postChildren.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 40, after: 160 },
-        children: [
-          new TextRun({
-            text: `Хүснэгт ${tblCounter++}.`,
-            italics: true,
-            size: 18,
-            font: "Times New Roman",
-          }),
-        ],
-      }),
-    );
+      postChildren.push(
+        this.bigSectionHeading(`${secRoman.s5}. Үүрэг даалгаварын биелэлт`),
+      );
+      const s5Tasks: any[] = report.section5Tasks ?? [];
+      const s5Headers = ["№", "Ажлын төрөл", "Хийгдсэн ажил"];
+      const s5Widths = [5, 35, 60];
+      const s5Rows: string[][] = s5Tasks.map((t, i) => [
+        `${i + 1}`,
+        t.taskType ?? "",
+        t.completedWork ?? "",
+      ]);
+      postChildren.push(
+        this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]),
+      );
+      postChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 160 },
+          children: [
+            new TextRun({
+              text: `Хүснэгт ${tblCounter++}.`,
+              italics: true,
+              size: 18,
+              font: "Times New Roman",
+            }),
+          ],
+        }),
+      );
     } // end s5
 
     // ── Fixed Section VI: Хамт олны ажил ──────────────────────────────────────
     if (!hidden.has("s6")) {
-    postChildren.push(this.bigSectionHeading(`${secRoman.s6}. Хамт олны ажил`));
-    const s6Activities: any[] = report.section6Activities ?? [];
-    const s6Headers = ["№", "Огноо", "Хамт олны ажил", "Санаачилга"];
-    const s6Widths = [5, 20, 50, 25];
-    const s6Rows: string[][] = s6Activities.map((t, i) => [
-      `${i + 1}`,
-      t.date ? t.date.replace(/-/g, ".") : "",
-      t.activity ?? "",
-      t.initiative ?? "",
-    ]);
-    postChildren.push(
-      this.buildDashedTable(s6Headers, s6Widths, s6Rows, [], [0, 1]),
-    );
-    postChildren.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 40, after: 160 },
-        children: [
-          new TextRun({
-            text: `Хүснэгт ${tblCounter++}.`,
-            italics: true,
-            size: 18,
-            font: "Times New Roman",
-          }),
-        ],
-      }),
-    );
+      postChildren.push(
+        this.bigSectionHeading(`${secRoman.s6}. Хамт олны ажил`),
+      );
+      const s6Activities: any[] = report.section6Activities ?? [];
+      const s6Headers = ["№", "Огноо", "Хамт олны ажил", "Санаачилга"];
+      const s6Widths = [5, 20, 50, 25];
+      const s6Rows: string[][] = s6Activities.map((t, i) => [
+        `${i + 1}`,
+        t.date ? t.date.replace(/-/g, ".") : "",
+        t.activity ?? "",
+        t.initiative ?? "",
+      ]);
+      postChildren.push(
+        this.buildDashedTable(s6Headers, s6Widths, s6Rows, [], [0, 1]),
+      );
+      postChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 160 },
+          children: [
+            new TextRun({
+              text: `Хүснэгт ${tblCounter++}.`,
+              italics: true,
+              size: 18,
+              font: "Times New Roman",
+            }),
+          ],
+        }),
+      );
     }
 
     // ── Fixed Section VII: Шинэ санал санаачилга ──────────────────────────────
     if (!hidden.has("s7")) {
-    postChildren.push(this.bigSectionHeading(`${secRoman.s7}. Шинэ санал санаачилга`));
-    const s7Lines = (report.section7Text ?? "").split("\n");
-    for (const line of s7Lines) {
-      postChildren.push(this.bodyPara(line || " "));
-    }
-    postChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+      postChildren.push(
+        this.bigSectionHeading(`${secRoman.s7}. Шинэ санал санаачилга`),
+      );
+      const s7Lines = (report.section7Text ?? "").split("\n");
+      for (const line of s7Lines) {
+        postChildren.push(this.bodyPara(line || " "));
+      }
+      postChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
     }
 
     // ── Dynamic big sections (VIII, IX, …) ───────────────────────────────────
@@ -1509,10 +1538,17 @@ export class TailanService {
     walk(data.rawSections ?? null);
 
     if (collected.length > 0) {
-      children.push(this.sectionHeading(`${secNum + 1}. Тайлангийн зураг`, true));
+      children.push(
+        this.sectionHeading(`${secNum + 1}. Тайлангийн зураг`, true),
+      );
       for (const img of collected) {
         children.push(
-          ...this.inlineImageParas(img.dataUrl, img.width ?? 80, imgCounter, img.height),
+          ...this.inlineImageParas(
+            img.dataUrl,
+            img.width ?? 80,
+            imgCounter,
+            img.height,
+          ),
         );
       }
     }

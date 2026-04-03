@@ -70,7 +70,8 @@ export async function PATCH(req: Request) {
     }
 
     const newSection = section.replace(colRegex, `$1${safeDesc} $2`);
-    const newContent = content.slice(0, sectionStart) + newSection + content.slice(sectionEnd);
+    const newContent =
+      content.slice(0, sectionStart) + newSection + content.slice(sectionEnd);
     fs.writeFileSync(mdPath, newContent, "utf8");
 
     return NextResponse.json({ ok: true });

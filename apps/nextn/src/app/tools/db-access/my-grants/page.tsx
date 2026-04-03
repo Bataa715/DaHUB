@@ -166,18 +166,12 @@ export default function MyGrantsPage() {
         title="Миний Идэвхтэй Эрхүүд"
         subtitle="Одоогийн хандалтын зөвшөөрлүүд"
         rightContent={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={load}
-            disabled={loading}
-          >
+          <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         }
       />
       <div className="max-w-3xl mx-auto space-y-6 p-4 md:p-8">
-
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

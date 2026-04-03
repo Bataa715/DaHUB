@@ -10,7 +10,12 @@ import {
   Trophy,
   TrendingUp,
 } from "lucide-react";
-import type { Invitation, GameInfo, RankEntry, HistoryGame } from "./chess.types";
+import type {
+  Invitation,
+  GameInfo,
+  RankEntry,
+  HistoryGame,
+} from "./chess.types";
 import { RESULT_REASON, getTitle, parseMoves } from "./chess.utils";
 
 interface LobbyViewProps {
@@ -99,9 +104,7 @@ export default function LobbyView(props: LobbyViewProps) {
               value={searchQuery}
               autoComplete="off"
               onChange={(e) => handleSearch(e.target.value)}
-              onFocus={() =>
-                searchResults.length > 0 && setShowDropdown(true)
-              }
+              onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
               placeholder="Нэр эсвэл ID-ээр хайх..."
               className="w-full h-11 bg-slate-800/60 border border-slate-700 rounded-xl pl-4 pr-11 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 transition-all"
             />
@@ -228,9 +231,7 @@ export default function LobbyView(props: LobbyViewProps) {
                 className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-900/50 border border-slate-700/30"
               >
                 <div>
-                  <p className="text-sm text-slate-300">
-                    {inv.toUserName}
-                  </p>
+                  <p className="text-sm text-slate-300">{inv.toUserName}</p>
                   <p className="text-xs text-amber-400/70 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     Хариу хүлээж байна...
@@ -274,12 +275,9 @@ export default function LobbyView(props: LobbyViewProps) {
                     className="flex items-center justify-between px-4 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/18 border border-emerald-500/20 transition-all text-left w-full"
                   >
                     <div>
-                      <p className="text-sm font-medium text-white">
-                        vs {opp}
-                      </p>
+                      <p className="text-sm font-medium text-white">vs {opp}</p>
                       <p className="text-xs text-slate-500">
-                        {moves.length} нүүд •{" "}
-                        {amWhite ? "Цагаан" : "Хар"}
+                        {moves.length} нүүд • {amWhite ? "Цагаан" : "Хар"}
                       </p>
                     </div>
                     {isMyTurn && (

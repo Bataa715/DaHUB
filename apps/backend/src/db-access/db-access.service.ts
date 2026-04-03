@@ -37,7 +37,7 @@ export class DbAccessService {
   constructor(
     private clickhouse: ClickHouseService,
     private chAccess: ClickHouseAccessService,
-  ) { }
+  ) {}
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -355,7 +355,7 @@ export class DbAccessService {
     const result = await this.chAccess.cleanupUserChAccess(requesterUserId);
     this.logger.log(
       `[DBAccess] CH cleanup for userId=${requesterUserId} by ${admin.userId}: ` +
-      `rolesDropped=${result.rolesDropped.length} userDropped=${result.userDropped}`,
+        `rolesDropped=${result.rolesDropped.length} userDropped=${result.userDropped}`,
     );
     return {
       success: true,
@@ -433,7 +433,10 @@ export class DbAccessService {
 
       // [CRIT-1] Encrypt password before DB storage — never store plaintext credentials.
       const encryptionKey = getEncryptionKey();
-      const encryptedPassword = encryptCredential(sharedPassword, encryptionKey);
+      const encryptedPassword = encryptCredential(
+        sharedPassword,
+        encryptionKey,
+      );
 
       // Step 1: user + role setup (sequential, must finish before parallel grants)
       try {
@@ -446,8 +449,8 @@ export class DbAccessService {
         chSetupFailed = true;
         this.logger.error(
           `[CH ACL] setupUserAndRole FAILED for user=${req.requesterUserId}: ${err?.message}. ` +
-          `Grant DB rows will be written but CH access may be broken. ` +
-          `Admin should use the CH cleanup endpoint to reset.`,
+            `Grant DB rows will be written but CH access may be broken. ` +
+            `Admin should use the CH cleanup endpoint to reset.`,
         );
       }
 
@@ -577,7 +580,7 @@ export class DbAccessService {
       });
       this.logger.log(
         `[CH ACL] Revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
-        `table=${grant.tableName} userDropped=${result.userDropped}`,
+          `table=${grant.tableName} userDropped=${result.userDropped}`,
       );
     } catch (err: any) {
       this.logger.warn(
@@ -628,7 +631,7 @@ export class DbAccessService {
       });
       this.logger.log(
         `[CH ACL] Self-revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
-        `table=${grant.tableName} userDropped=${result.userDropped}`,
+          `table=${grant.tableName} userDropped=${result.userDropped}`,
       );
     } catch (err: any) {
       this.logger.warn(

@@ -28,7 +28,6 @@ import { useSampling } from "./_hooks/useSampling";
 export default function SanamsarguiTuuwerPage() {
   const s = useSampling();
 
-
   const confLabel = (s.confidence * 100).toFixed(0) + "%";
 
   return (
@@ -69,7 +68,6 @@ export default function SanamsarguiTuuwerPage() {
       />
 
       <div className="relative z-10 container mx-auto px-6 py-8 max-w-4xl">
-
         {/* Config Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -363,7 +361,9 @@ export default function SanamsarguiTuuwerPage() {
                               </Label>
                               <div className="flex flex-wrap gap-2">
                                 <button
-                                  onClick={() => s.setSelectedFilterValue("all")}
+                                  onClick={() =>
+                                    s.setSelectedFilterValue("all")
+                                  }
                                   className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                                     s.selectedFilterValue === "all"
                                       ? "bg-violet-500 border-violet-400 text-white"
@@ -391,23 +391,28 @@ export default function SanamsarguiTuuwerPage() {
                                 <input
                                   type="checkbox"
                                   checked={s.coverAllValues}
-                                  onChange={(e) => s.setCoverAllValues(e.target.checked)}
+                                  onChange={(e) =>
+                                    s.setCoverAllValues(e.target.checked)
+                                  }
                                   disabled={s.selectedFilterValue !== "all"}
                                   className="w-4 h-4 rounded accent-violet-500 cursor-pointer disabled:opacity-50"
                                 />
                                 Бүх утгыг заавал хамруулах
                               </label>
                               <p className="text-xs text-slate-500">
-                                Жишээ: <strong>SOL</strong> баганад 100, 101, 102, 103 бол энэ тохиргоо асаалттай үед түүвэрт эдгээрийн аль аль нь дор хаяж 1 удаа орно.
+                                Жишээ: <strong>SOL</strong> баганад 100, 101,
+                                102, 103 бол энэ тохиргоо асаалттай үед түүвэрт
+                                эдгээрийн аль аль нь дор хаяж 1 удаа орно.
                               </p>
                             </div>
                           )}
 
-                          {s.filterCol && s.availableFilterValues.length === 0 && (
-                            <p className="text-xs text-amber-400">
-                              ⚠️ Сонгосон баганад илэрц олдсонгүй.
-                            </p>
-                          )}
+                          {s.filterCol &&
+                            s.availableFilterValues.length === 0 && (
+                              <p className="text-xs text-amber-400">
+                                ⚠️ Сонгосон баганад илэрц олдсонгүй.
+                              </p>
+                            )}
                         </>
                       )}
                     </div>
@@ -454,7 +459,9 @@ export default function SanamsarguiTuuwerPage() {
                         min={2}
                         value={s.numGroups}
                         onChange={(e) => {
-                          s.handleNumGroupsChange(parseInt(e.target.value) || 2);
+                          s.handleNumGroupsChange(
+                            parseInt(e.target.value) || 2,
+                          );
                           s.setResult(null);
                         }}
                         className="bg-slate-800/50 border-slate-600 text-white"
@@ -524,144 +531,151 @@ export default function SanamsarguiTuuwerPage() {
             >
               {(() => {
                 const result = s.result!;
-                return <Card className="bg-slate-900/80 border-violet-500/30 backdrop-blur-xl">
-                <CardHeader>
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                      ✅ Түүвэр амжилттай!
-                    </CardTitle>
-                    <Button
-                      onClick={s.handleExport}
-                      size="sm"
-                      variant="outline"
-                      className="border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      📥 Excel татах
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {s.exportError && (
-                    <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                      {s.exportError}
-                    </div>
-                  )}
+                return (
+                  <Card className="bg-slate-900/80 border-violet-500/30 backdrop-blur-xl">
+                    <CardHeader>
+                      <div className="flex items-center justify-between flex-wrap gap-3">
+                        <CardTitle className="text-white flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                          ✅ Түүвэр амжилттай!
+                        </CardTitle>
+                        <Button
+                          onClick={s.handleExport}
+                          size="sm"
+                          variant="outline"
+                          className="border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          📥 Excel татах
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {s.exportError && (
+                        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                          {s.exportError}
+                        </div>
+                      )}
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-violet-500/10 rounded-xl p-4 text-center border border-violet-500/20">
-                      <div className="text-4xl font-bold text-violet-400">
-                        {result.n}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-violet-500/10 rounded-xl p-4 text-center border border-violet-500/20">
+                          <div className="text-4xl font-bold text-violet-400">
+                            {result.n}
+                          </div>
+                          <div className="text-slate-400 text-sm mt-1">
+                            Түүврийн хэмжээ (n)
+                          </div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-xl p-4 text-center">
+                          <div className="text-3xl font-bold text-white">
+                            {result.N}
+                          </div>
+                          <div className="text-slate-400 text-sm mt-1">
+                            Хүн ам (N)
+                          </div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-xl p-4 text-center">
+                          <div className="text-3xl font-bold text-white">
+                            {result.Z}
+                          </div>
+                          <div className="text-slate-400 text-sm mt-1">
+                            Z утга
+                          </div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-xl p-4 text-center">
+                          <div className="text-3xl font-bold text-white">
+                            {(result.confidence * 100).toFixed(0)}%
+                          </div>
+                          <div className="text-slate-400 text-sm mt-1">
+                            Итгэлийн түвшин
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-slate-400 text-sm mt-1">
-                        Түүврийн хэмжээ (n)
-                      </div>
-                    </div>
-                    <div className="bg-slate-800/50 rounded-xl p-4 text-center">
-                      <div className="text-3xl font-bold text-white">
-                        {result.N}
-                      </div>
-                      <div className="text-slate-400 text-sm mt-1">
-                        Хүн ам (N)
-                      </div>
-                    </div>
-                    <div className="bg-slate-800/50 rounded-xl p-4 text-center">
-                      <div className="text-3xl font-bold text-white">
-                        {result.Z}
-                      </div>
-                      <div className="text-slate-400 text-sm mt-1">Z утга</div>
-                    </div>
-                    <div className="bg-slate-800/50 rounded-xl p-4 text-center">
-                      <div className="text-3xl font-bold text-white">
-                        {(result.confidence * 100).toFixed(0)}%
-                      </div>
-                      <div className="text-slate-400 text-sm mt-1">
-                        Итгэлийн түвшин
-                      </div>
-                    </div>
-                  </div>
 
-                  {result.groups.map((g, gi) => (
-                    <div key={gi} className={gi > 0 ? "mt-6" : ""}>
-                      <p className="text-slate-300 text-sm font-semibold mb-2">
-                        {result.groups.length > 1 ? g.label : "Түүврийн үр дүн"}
-                        {g.size !== undefined
-                          ? ` (бүлгийн хэмжээ: ${g.size})`
-                          : ""}
-                        {" — "}
-                        {g.indices.length} мөр сонгогдлоо
-                        {g.indices.length > 50 && " (эхний 50 харагдаж байна)"}
-                      </p>
-                      <div className="overflow-x-auto rounded-lg border border-slate-700">
-                        <table className="text-xs min-w-full">
-                          <thead>
-                            <tr className="bg-slate-800 sticky top-0">
-                              <th className="px-3 py-2 text-slate-400 text-center whitespace-nowrap border-r border-slate-700">
-                                Мөр №
-                              </th>
-                              {s.isStratified ? (
-                                <th className="px-3 py-2 text-slate-400 text-left border-r border-slate-700/50">
-                                  Санамсаргүй хувьсагч
-                                </th>
-                              ) : (
-                                result.headers.map((h, hi) => (
-                                  <th
-                                    key={hi}
-                                    className="px-3 py-2 text-slate-400 text-left whitespace-nowrap border-r border-slate-700/50"
-                                  >
-                                    {h}
+                      {result.groups.map((g, gi) => (
+                        <div key={gi} className={gi > 0 ? "mt-6" : ""}>
+                          <p className="text-slate-300 text-sm font-semibold mb-2">
+                            {result.groups.length > 1
+                              ? g.label
+                              : "Түүврийн үр дүн"}
+                            {g.size !== undefined
+                              ? ` (бүлгийн хэмжээ: ${g.size})`
+                              : ""}
+                            {" — "}
+                            {g.indices.length} мөр сонгогдлоо
+                            {g.indices.length > 50 &&
+                              " (эхний 50 харагдаж байна)"}
+                          </p>
+                          <div className="overflow-x-auto rounded-lg border border-slate-700">
+                            <table className="text-xs min-w-full">
+                              <thead>
+                                <tr className="bg-slate-800 sticky top-0">
+                                  <th className="px-3 py-2 text-slate-400 text-center whitespace-nowrap border-r border-slate-700">
+                                    Мөр №
                                   </th>
-                                ))
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {g.indices.slice(0, 50).map((idx, i) => {
-                              return (
-                                <tr
-                                  key={i}
-                                  className={
-                                    i % 2 === 0
-                                      ? "bg-slate-900"
-                                      : "bg-slate-800/40"
-                                  }
-                                >
-                                  <td className="px-3 py-1.5 text-violet-400 font-mono font-bold text-center border-r border-slate-700">
-                                    {idx}
-                                  </td>
                                   {s.isStratified ? (
-                                    <td className="px-3 py-1.5 text-slate-200 font-mono border-r border-slate-700/30">
-                                      {idx}
-                                    </td>
+                                    <th className="px-3 py-2 text-slate-400 text-left border-r border-slate-700/50">
+                                      Санамсаргүй хувьсагч
+                                    </th>
                                   ) : (
-                                    (g.rows[i] ?? []).map((cell, ci) => (
-                                      <td
-                                        key={ci}
-                                        className="px-3 py-1.5 text-slate-200 whitespace-nowrap border-r border-slate-700/30"
+                                    result.headers.map((h, hi) => (
+                                      <th
+                                        key={hi}
+                                        className="px-3 py-2 text-slate-400 text-left whitespace-nowrap border-r border-slate-700/50"
                                       >
-                                        {cell instanceof Date
-                                          ? cell.toLocaleDateString("mn-MN")
-                                          : String(cell ?? "")}
-                                      </td>
+                                        {h}
+                                      </th>
                                     ))
                                   )}
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                      {g.indices.length > 50 && (
-                        <p className="text-slate-500 text-xs mt-2 text-center">
-                          Бүгдийг Excel-д татаж харна уу ({g.indices.length} мөр
-                          нийт)
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>;
+                              </thead>
+                              <tbody>
+                                {g.indices.slice(0, 50).map((idx, i) => {
+                                  return (
+                                    <tr
+                                      key={i}
+                                      className={
+                                        i % 2 === 0
+                                          ? "bg-slate-900"
+                                          : "bg-slate-800/40"
+                                      }
+                                    >
+                                      <td className="px-3 py-1.5 text-violet-400 font-mono font-bold text-center border-r border-slate-700">
+                                        {idx}
+                                      </td>
+                                      {s.isStratified ? (
+                                        <td className="px-3 py-1.5 text-slate-200 font-mono border-r border-slate-700/30">
+                                          {idx}
+                                        </td>
+                                      ) : (
+                                        (g.rows[i] ?? []).map((cell, ci) => (
+                                          <td
+                                            key={ci}
+                                            className="px-3 py-1.5 text-slate-200 whitespace-nowrap border-r border-slate-700/30"
+                                          >
+                                            {cell instanceof Date
+                                              ? cell.toLocaleDateString("mn-MN")
+                                              : String(cell ?? "")}
+                                          </td>
+                                        ))
+                                      )}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          {g.indices.length > 50 && (
+                            <p className="text-slate-500 text-xs mt-2 text-center">
+                              Бүгдийг Excel-д татаж харна уу ({g.indices.length}{" "}
+                              мөр нийт)
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                );
               })()}
             </motion.div>
           )}

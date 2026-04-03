@@ -14,9 +14,7 @@ const Footer = () => {
             height={24}
             className="rounded"
           />
-          <span className="text-xs text-muted-foreground">
-            Голомт Банк
-          </span>
+          <span className="text-xs text-muted-foreground">Голомт Банк</span>
         </div>
       </div>
     </footer>

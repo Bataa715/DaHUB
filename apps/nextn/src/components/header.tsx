@@ -81,7 +81,7 @@ const Header = () => {
   // Admin эрхтэй бол админ хуудас руу очих товч нэмэх
   if (mounted && user?.isAdmin === true && !isAdminPage && !loading) {
     regularLinks.push({
-      href: "/admin", 
+      href: "/admin",
       label: "Админ",
       icon: Shield,
       public: false,

@@ -380,7 +380,7 @@ export default function ToolsPage() {
             </div>
             <div>
               <p className="text-xs text-purple-400/80 font-medium flex items-center gap-1.5 mb-0.5">
-                    Дотоод аудитын газар
+                Дотоод аудитын газар
               </p>
               <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
                 Хэрэгсэл

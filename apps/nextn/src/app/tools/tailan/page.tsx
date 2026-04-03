@@ -47,7 +47,6 @@ export default function TailanPage() {
 
   return (
     <div className="relative min-h-screen bg-[#080d14] overflow-hidden">
-
       {/* ── Ambient glow orbs ── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
@@ -76,7 +75,6 @@ export default function TailanPage() {
 
       {/* ── Main content ── */}
       <div className="relative z-10 w-full max-w-md mx-auto px-4 py-16">
-
         {/* Header */}
         <div className="text-center mb-10">
           {/* icon badge */}
@@ -101,7 +99,6 @@ export default function TailanPage() {
 
         {/* Cards */}
         <div className="flex flex-col gap-3">
-
           {/* ── Өөрийн тайлан ── */}
           <button
             onClick={() => router.push("/tools/tailan/mine")}
@@ -115,12 +112,14 @@ export default function TailanPage() {
             {/* subtle left glow stripe */}
             <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-2xl bg-gradient-to-b from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-250" />
 
-            <div className="flex-shrink-0 w-12 h-12 rounded-xl
+            <div
+              className="flex-shrink-0 w-12 h-12 rounded-xl
               bg-gradient-to-br from-blue-500/20 to-indigo-600/20
               border border-blue-500/20
               flex items-center justify-center
               group-hover:from-blue-500/30 group-hover:to-indigo-600/30
-              transition-all duration-200">
+              transition-all duration-200"
+            >
               <FileText className="h-5 w-5 text-blue-300" />
             </div>
 
@@ -154,12 +153,14 @@ export default function TailanPage() {
             >
               <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-2xl bg-gradient-to-b from-emerald-400 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-250" />
 
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl
+              <div
+                className="flex-shrink-0 w-12 h-12 rounded-xl
                 bg-gradient-to-br from-emerald-500/20 to-teal-600/20
                 border border-emerald-500/20
                 flex items-center justify-center
                 group-hover:from-emerald-500/30 group-hover:to-teal-600/30
-                transition-all duration-200">
+                transition-all duration-200"
+              >
                 <Users className="h-5 w-5 text-emerald-300" />
               </div>
 
@@ -194,12 +195,14 @@ export default function TailanPage() {
             >
               <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-2xl bg-gradient-to-b from-violet-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-250" />
 
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl
+              <div
+                className="flex-shrink-0 w-12 h-12 rounded-xl
                 bg-gradient-to-br from-violet-500/20 to-purple-600/20
                 border border-violet-500/20
                 flex items-center justify-center
                 group-hover:from-violet-500/30 group-hover:to-purple-600/30
-                transition-all duration-200">
+                transition-all duration-200"
+              >
                 <Eye className="h-5 w-5 text-violet-300" />
               </div>
 
@@ -220,7 +223,6 @@ export default function TailanPage() {
               <ChevronRight className="flex-shrink-0 h-4 w-4 text-slate-600 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all duration-200" />
             </button>
           )}
-
         </div>
 
         {/* Footer note */}

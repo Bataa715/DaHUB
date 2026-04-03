@@ -10,10 +10,7 @@ import { ChatController } from "./chat.controller";
 import { DocumentController } from "./document.controller";
 
 @Module({
-  imports: [
-    ConfigModule,
-    MulterModule.register({ storage: undefined }),
-  ],
+  imports: [ConfigModule, MulterModule.register({ storage: undefined })],
   controllers: [ChatController, DocumentController],
   providers: [
     EmbeddingService,

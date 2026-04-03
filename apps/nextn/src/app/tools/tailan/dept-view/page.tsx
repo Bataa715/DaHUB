@@ -77,7 +77,9 @@ export default function DeptViewPage() {
   const [membersLoading, setMembersLoading] = useState(false);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<MemberOverview | null>(null);
+  const [selectedMember, setSelectedMember] = useState<MemberOverview | null>(
+    null,
+  );
   const [memberReport, setMemberReport] = useState<MemberReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
 
@@ -103,7 +105,11 @@ export default function DeptViewPage() {
     setDrawerOpen(true);
     setReportLoading(true);
     try {
-      const data = await tailanApi.getDeptMemberReport(member.userId, year, quarter);
+      const data = await tailanApi.getDeptMemberReport(
+        member.userId,
+        year,
+        quarter,
+      );
       setMemberReport(data ?? null);
     } catch {
       setMemberReport(null);
@@ -150,7 +156,9 @@ export default function DeptViewPage() {
               <Eye className="h-4 w-4 text-violet-300" />
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] text-slate-400 leading-none mb-0.5">Тайлан харах</p>
+              <p className="text-[13px] text-slate-400 leading-none mb-0.5">
+                Тайлан харах
+              </p>
               <p className="text-[15px] font-semibold text-white truncate leading-tight">
                 {selectedMember?.userName ?? "…"}
               </p>
@@ -169,7 +177,9 @@ export default function DeptViewPage() {
           {reportLoading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <Loader2 className="h-7 w-7 animate-spin text-violet-400" />
-              <span className="text-slate-400 text-sm">Тайлан ачааллаж байна…</span>
+              <span className="text-slate-400 text-sm">
+                Тайлан ачааллаж байна…
+              </span>
             </div>
           ) : memberReport ? (
             <WordPreview
@@ -213,7 +223,6 @@ export default function DeptViewPage() {
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
-
         {/* Year / Quarter selectors */}
         <div className="flex items-center gap-3 mb-8 flex-wrap">
           {/* Year */}
@@ -226,7 +235,11 @@ export default function DeptViewPage() {
                 hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-violet-500/40
                 transition-colors"
             >
-              {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => (
+              {[
+                now.getFullYear() - 1,
+                now.getFullYear(),
+                now.getFullYear() + 1,
+              ].map((y) => (
                 <option key={y} value={y} className="bg-[#1a2130]">
                   {y} он
                 </option>
@@ -242,9 +255,10 @@ export default function DeptViewPage() {
                 key={q}
                 onClick={() => setQuarter(i + 1)}
                 className={`px-4 py-2.5 text-sm font-medium transition-colors
-                  ${quarter === i + 1
-                    ? "bg-violet-600 text-white"
-                    : "bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-white"
+                  ${
+                    quarter === i + 1
+                      ? "bg-violet-600 text-white"
+                      : "bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-white"
                   }`}
               >
                 {q}
@@ -268,7 +282,9 @@ export default function DeptViewPage() {
         ) : members.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <MinusCircle className="h-10 w-10 text-slate-700" />
-            <p className="text-slate-500 text-sm">Энэ улиралд бүртгэсэн тайлан байхгүй</p>
+            <p className="text-slate-500 text-sm">
+              Энэ улиралд бүртгэсэн тайлан байхгүй
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -281,9 +297,10 @@ export default function DeptViewPage() {
                   className={`group relative flex flex-col gap-3 rounded-2xl p-5 text-left
                     bg-white/[0.03] hover:bg-white/[0.06]
                     border transition-all duration-200 cursor-pointer overflow-hidden
-                    ${isSubmitted
-                      ? "border-white/[0.07] hover:border-violet-500/40 hover:shadow-[0_0_24px_rgba(139,92,246,0.10)]"
-                      : "border-white/[0.05] hover:border-amber-500/30"
+                    ${
+                      isSubmitted
+                        ? "border-white/[0.07] hover:border-violet-500/40 hover:shadow-[0_0_24px_rgba(139,92,246,0.10)]"
+                        : "border-white/[0.05] hover:border-amber-500/30"
                     }`}
                 >
                   {/* Hover stripe */}
@@ -295,17 +312,24 @@ export default function DeptViewPage() {
                   {/* Top row */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="w-10 h-10 rounded-xl bg-slate-700/50 border border-white/10 flex items-center justify-center flex-shrink-0">
-                      <User className="h-4.5 w-4.5 text-slate-400" style={{ width: "1.125rem", height: "1.125rem" }} />
+                      <User
+                        className="h-4.5 w-4.5 text-slate-400"
+                        style={{ width: "1.125rem", height: "1.125rem" }}
+                      />
                     </div>
 
                     {isSubmitted ? (
                       <span className="flex items-center gap-1 text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-full px-2 py-0.5">
-                        <CheckCircle2 style={{ width: "0.625rem", height: "0.625rem" }} />
+                        <CheckCircle2
+                          style={{ width: "0.625rem", height: "0.625rem" }}
+                        />
                         Илгээсэн
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-full px-2 py-0.5">
-                        <Clock style={{ width: "0.625rem", height: "0.625rem" }} />
+                        <Clock
+                          style={{ width: "0.625rem", height: "0.625rem" }}
+                        />
                         Ноорог
                       </span>
                     )}
@@ -328,7 +352,9 @@ export default function DeptViewPage() {
                     <div className="flex items-center gap-1 text-[11px] text-violet-400/70 group-hover:text-violet-300 transition-colors">
                       <Eye style={{ width: "0.75rem", height: "0.75rem" }} />
                       Тайлан харах
-                      <ChevronRight style={{ width: "0.75rem", height: "0.75rem" }} />
+                      <ChevronRight
+                        style={{ width: "0.75rem", height: "0.75rem" }}
+                      />
                     </div>
                   )}
                 </button>

@@ -604,7 +604,10 @@ export function buildWordHtml(
                 const bullets = (row.text || "")
                   .split("\n")
                   .filter((l) => l.trim())
-                  .map((l) => `<li style="font-size:11pt;line-height:1.7">${l.trim()}</li>`)
+                  .map(
+                    (l) =>
+                      `<li style="font-size:11pt;line-height:1.7">${l.trim()}</li>`,
+                  )
                   .join("");
                 return `<div style="margin-bottom:6pt"><div style="font-weight:bold;font-size:11pt;color:#000;margin-bottom:2pt">${row.employeeName}</div><ul style="margin:0 0 4pt 20pt;padding:0;list-style:disc">${bullets}</ul></div>`;
               })

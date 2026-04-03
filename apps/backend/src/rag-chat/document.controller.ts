@@ -25,7 +25,9 @@ export class DocumentController {
       limits: { fileSize: 50 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         const allowed = [".pdf", ".docx", ".txt", ".md"];
-        const ext = file.originalname.toLowerCase().replace(/.*(\.[^.]+)$/, "$1");
+        const ext = file.originalname
+          .toLowerCase()
+          .replace(/.*(\.[^.]+)$/, "$1");
         if (allowed.includes(ext)) {
           cb(null, true);
         } else {
@@ -59,10 +61,7 @@ export class DocumentController {
       const removed = await this.documentService.deleteDocument(source);
       return { removed, source };
     } catch (err) {
-      throw new HttpException(
-        (err as Error).message,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException((err as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 

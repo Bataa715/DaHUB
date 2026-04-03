@@ -257,8 +257,9 @@ export default function TodoPage() {
 
   // Quick-add state
   const [quickTask, setQuickTask] = useState("");
-  const [quickPriority, setQuickPriority] =
-    useState<"high" | "medium" | "low">("medium");
+  const [quickPriority, setQuickPriority] = useState<"high" | "medium" | "low">(
+    "medium",
+  );
 
   // Dialog form state
   const [newTask, setNewTask] = useState("");
@@ -367,8 +368,7 @@ export default function TodoPage() {
 
   const filteredTodos = todos.filter((t) => {
     const statusOk =
-      filter === "all" ||
-      (filter === "active" ? !t.completed : t.completed);
+      filter === "all" || (filter === "active" ? !t.completed : t.completed);
     const catOk = categoryFilter === "all" || t.category === categoryFilter;
     return statusOk && catOk;
   });
@@ -655,9 +655,7 @@ export default function TodoPage() {
           </DialogHeader>
           <form onSubmit={handleDialogAdd} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Ажлын нэр
-              </Label>
+              <Label className="text-xs text-muted-foreground">Ажлын нэр</Label>
               <input
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
@@ -702,9 +700,7 @@ export default function TodoPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  Ангилал
-                </Label>
+                <Label className="text-xs text-muted-foreground">Ангилал</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger className="bg-background/60 border-border/50 rounded-xl">
                     <SelectValue placeholder="Сонгох" />

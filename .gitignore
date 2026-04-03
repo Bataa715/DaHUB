@@ -4,6 +4,7 @@ node_modules
 *.next/cache
 dist
 build
+*.tsbuildinfo
 .venv
 # Environment files — .env.example файлууд commit хийгддэг, .env хийгддэггүй
 .env
@@ -17,3 +18,5 @@ build
 
 # Docker local data
 .docker/
+docker-compose.override.yml
+docker-compose.*.local.yml

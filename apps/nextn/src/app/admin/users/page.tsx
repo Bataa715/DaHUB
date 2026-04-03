@@ -260,13 +260,17 @@ export default function UsersPage() {
     setIsSavingUserId(true);
     try {
       await usersApi.update(changingUserIdId, { userId: editUserId.trim() });
-      toast({ title: "Амжилттай", description: "Хэрэглэгчийн ID өөрчлөгдлөө." });
+      toast({
+        title: "Амжилттай",
+        description: "Хэрэглэгчийн ID өөрчлөгдлөө.",
+      });
       setChangingUserIdId(null);
       loadUsers();
     } catch (error: any) {
       toast({
         title: "Алдаа",
-        description: error?.response?.data?.message ?? "ID өөрчлөхөд алдаа гарлаа.",
+        description:
+          error?.response?.data?.message ?? "ID өөрчлөхөд алдаа гарлаа.",
         variant: "destructive",
       });
     } finally {
@@ -532,10 +536,13 @@ export default function UsersPage() {
                               <div className="flex items-center gap-1">
                                 <Input
                                   value={editUserId}
-                                  onChange={(e) => setEditUserId(e.target.value)}
+                                  onChange={(e) =>
+                                    setEditUserId(e.target.value)
+                                  }
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") handleChangeUserId();
-                                    if (e.key === "Escape") setChangingUserIdId(null);
+                                    if (e.key === "Escape")
+                                      setChangingUserIdId(null);
                                   }}
                                   className="h-7 w-40 bg-slate-700/80 border-slate-600 text-white text-xs font-mono"
                                   autoFocus
@@ -544,7 +551,9 @@ export default function UsersPage() {
                                   size="icon"
                                   variant="ghost"
                                   className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-500/10"
-                                  disabled={isSavingUserId || !editUserId.trim()}
+                                  disabled={
+                                    isSavingUserId || !editUserId.trim()
+                                  }
                                   onClick={handleChangeUserId}
                                 >
                                   {isSavingUserId ? (

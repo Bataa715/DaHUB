@@ -139,7 +139,15 @@ export function WordPreview({
   const imgCounter = { n: 1 };
 
   // Compute dynamic Roman numerals based on visible sections
-  const FIXED_SECTION_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"] as const;
+  const FIXED_SECTION_KEYS = [
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "s5",
+    "s6",
+    "s7",
+  ] as const;
   const sectionRoman: Record<string, string> = {};
   let _romIdx = 0;
   for (const key of FIXED_SECTION_KEYS) {
@@ -222,7 +230,10 @@ export function WordPreview({
           <div
             style={{
               position: "absolute",
-              top: 0, left: 0, right: 0, bottom: 0,
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               pointerEvents: "none",
               backgroundImage: `repeating-linear-gradient(
                 to bottom,
@@ -252,56 +263,359 @@ export function WordPreview({
               zIndex: 0,
             }}
           >
-          {/* Title */}
-          <div
-            style={{
-              textAlign: "center",
-              marginBottom: "20pt",
-              fontWeight: "bold",
-              fontSize: "11pt",
-              textTransform: "uppercase",
-              fontFamily: "'Times New Roman', serif",
-            }}
-          >
-            {titleText}
-          </div>
+            {/* Title */}
+            <div
+              style={{
+                textAlign: "center",
+                marginBottom: "20pt",
+                fontWeight: "bold",
+                fontSize: "11pt",
+                textTransform: "uppercase",
+                fontFamily: "'Times New Roman', serif",
+              }}
+            >
+              {titleText}
+            </div>
 
-          {/* ── Section I ── */}
-          {!hidden.has("s1") && (
-          <>
-          <div style={headingStyle}>
-            {sectionRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:
-          </div>
-          {plannedTasks.filter((t) => t.title?.trim()).length === 0 ? (
-            <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
-          ) : (
-            <div style={{ marginBottom: "8pt" }}>
-              {plannedTasks
-                .filter((t) => t.title?.trim())
-                .map((t, idx) => (
-                  <div key={t._id ?? idx} style={{ marginBottom: "6pt" }}>
-                    <span style={{ fontWeight: "bold" }}>
-                      {idx + 1}. {t.title}
-                    </span>
-                    {t.description?.trim() && (
-                      <div
-                        style={{
-                          marginLeft: "16pt",
-                          marginTop: "2pt",
-                          color: "#080808",
-                        }}
-                      >
-                        {parseContent(t.description, tableCounter)}
-                      </div>
+            {/* ── Section I ── */}
+            {!hidden.has("s1") && (
+              <>
+                <div style={headingStyle}>
+                  {sectionRoman.s1}. Дата анализын үр дүнгээр аудитын үйл
+                  ажиллагааг дэмжсэн байдал:
+                </div>
+                {plannedTasks.filter((t) => t.title?.trim()).length === 0 ? (
+                  <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
+                ) : (
+                  <div style={{ marginBottom: "8pt" }}>
+                    {plannedTasks
+                      .filter((t) => t.title?.trim())
+                      .map((t, idx) => (
+                        <div key={t._id ?? idx} style={{ marginBottom: "6pt" }}>
+                          <span style={{ fontWeight: "bold" }}>
+                            {idx + 1}. {t.title}
+                          </span>
+                          {t.description?.trim() && (
+                            <div
+                              style={{
+                                marginLeft: "16pt",
+                                marginTop: "2pt",
+                                color: "#080808",
+                              }}
+                            >
+                              {parseContent(t.description, tableCounter)}
+                            </div>
+                          )}
+                          {t.images?.length > 0 && (
+                            <div style={{ marginTop: "6pt" }}>
+                              {t.images.map((img) => (
+                                <div
+                                  key={img.id}
+                                  style={{
+                                    textAlign: "center",
+                                    marginBottom: "8pt",
+                                    pageBreakInside: "avoid",
+                                  }}
+                                >
+                                  <img
+                                    src={img.dataUrl}
+                                    alt=""
+                                    style={{
+                                      width: `${img.width}%`,
+                                      height: `${img.height ?? 280}px`,
+                                      objectFit: "fill",
+                                      maxWidth: "100%",
+                                      display: "inline-block",
+                                    }}
+                                  />
+                                  <div
+                                    style={{
+                                      fontSize: "9pt",
+                                      fontStyle: "italic",
+                                      marginTop: "3pt",
+                                    }}
+                                  >
+                                    Зураг {imgCounter.n++}.
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {!hidden.has("s12") && (
+              <>
+                <div style={subHeadingStyle}>
+                  Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:
+                </div>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "9.5pt",
+                    marginBottom: "10pt",
+                    fontFamily: "'Times New Roman', serif",
+                    border: "1px solid #000",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#fff", color: "#000" }}>
+                      {[
+                        "№",
+                        "Төлөвлөгөөт ажил",
+                        "Ажлын гүйцэтгэл",
+                        "Хийгдсэн хугацаа",
+                        "Гүйцэтгэл /товч/",
+                      ].map((h) => (
+                        <th key={h} style={thStyle}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section1Dashboards.length === 0 ? (
+                      <tr>
+                        {[5, 30, 15, 20, 30].map((w, i) => (
+                          <td key={i} style={tdStyle(`${w}%`)}>
+                            &nbsp;
+                          </td>
+                        ))}
+                      </tr>
+                    ) : (
+                      <>
+                        {section1Dashboards.map((t, idx) => (
+                          <tr key={t._id ?? idx}>
+                            <td
+                              style={{ ...tdStyle("5%"), textAlign: "center" }}
+                            >
+                              {idx + 1}
+                            </td>
+                            <td style={tdStyle("30%")}>{t.title}</td>
+                            <td
+                              style={{ ...tdStyle("15%"), textAlign: "center" }}
+                            >
+                              {t.completion}
+                              {t.completion !== "" ? "%" : ""}
+                            </td>
+                            <td
+                              style={{
+                                ...tdStyle("20%"),
+                                textAlign: "center",
+                                fontSize: "8.5pt",
+                              }}
+                            >
+                              {(() => {
+                                const [s, e] = (t.period || "").split(
+                                  " \u2013 ",
+                                );
+                                const fmt = (d?: string) =>
+                                  d ? d.replace(/-/g, ".") : "";
+                                if (!s && !e) return "";
+                                if (!e) return fmt(s);
+                                return (
+                                  <>
+                                    {fmt(s)}-<br />
+                                    {fmt(e)}
+                                  </>
+                                );
+                              })()}
+                            </td>
+                            <td style={tdStyle("30%")}>
+                              {t.summary
+                                ? parseContent(t.summary, tableCounter)
+                                : ""}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr>
+                          <td
+                            colSpan={2}
+                            style={{
+                              ...tdStyle("35%"),
+                              fontWeight: "bold",
+                              textAlign: "center",
+                            }}
+                          >
+                            Дундаж гүйцэтгэл
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle("15%"),
+                              fontWeight: "bold",
+                              textAlign: "center",
+                            }}
+                          >
+                            {(() => {
+                              const nums = section1Dashboards
+                                .map((t) => parseFloat(t.completion))
+                                .filter((n) => !isNaN(n));
+                              if (nums.length === 0) return "";
+                              const avg = Math.round(
+                                nums.reduce((a, b) => a + b, 0) / nums.length,
+                              );
+                              return `${avg}%`;
+                            })()}
+                          </td>
+                          <td style={tdStyle("20%")}>&nbsp;</td>
+                          <td style={tdStyle("30%")}>&nbsp;</td>
+                        </tr>
+                      </>
                     )}
-                    {t.images?.length > 0 && (
-                      <div style={{ marginTop: "6pt" }}>
-                        {t.images.map((img) => (
+                  </tbody>
+                </table>
+                {/* Row images for I.2 */}
+                {section1Dashboards.some((t) => t.images?.length > 0) && (
+                  <div style={{ marginBottom: "8pt" }}>
+                    {section1Dashboards
+                      .filter((t) => t.images?.length > 0)
+                      .map((t) =>
+                        t.images.map((img) => (
                           <div
                             key={img.id}
                             style={{
                               textAlign: "center",
-                              marginBottom: "8pt",
+                              marginBottom: "10pt",
+                              pageBreakInside: "avoid",
+                            }}
+                          >
+                            <img
+                              src={img.dataUrl}
+                              alt=""
+                              style={{
+                                width: `${img.width}%`,
+                                maxWidth: "100%",
+                                display: "inline-block",
+                              }}
+                            />
+                            <div
+                              style={{
+                                fontSize: "9pt",
+                                fontStyle: "italic",
+                                marginTop: "3pt",
+                              }}
+                            >
+                              Зураг {imgCounter.n++}.
+                            </div>
+                          </div>
+                        )),
+                      )}
+                  </div>
+                )}
+                <div
+                  style={{
+                    fontSize: "9pt",
+                    fontStyle: "italic",
+                    marginBottom: "2pt",
+                    textAlign: "center",
+                  }}
+                >
+                  Хүснэгт {tableCounter.n++}.
+                </div>
+              </>
+            )}
+            {/* ── Section II ── */}
+            {!hidden.has("s2") && (
+              <>
+                <div style={headingStyle}>
+                  {sectionRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай
+                  өгөгдөл боловсруулалтын ажил:
+                </div>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "9.5pt",
+                    marginBottom: "10pt",
+                    fontFamily: "'Times New Roman', serif",
+                    border: "1px solid #000",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#fff", color: "#000" }}>
+                      {[
+                        "№",
+                        <span>
+                          Төлөвлөгөөт ажлууд
+                          <br />
+                          (Дууссан ажлууд)
+                        </span>,
+                        "Ажлын гүйцэтгэл",
+                        "Хийгдсэн хугацаа",
+                        "Гүйцэтгэл/товч/",
+                      ].map((h, i) => (
+                        <th key={i} style={thStyle}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section2Tasks.length === 0 ? (
+                      <tr>
+                        {[5, 30, 20, 20, 25].map((w, i) => (
+                          <td key={i} style={tdStyle(`${w}%`)}>
+                            &nbsp;
+                          </td>
+                        ))}
+                      </tr>
+                    ) : (
+                      section2Tasks.map((t, idx) => (
+                        <tr key={t._id ?? idx}>
+                          <td style={tdStyle("5%")} className="text-center">
+                            {idx + 1}
+                          </td>
+                          <td style={tdStyle("30%")}>{t.title}</td>
+                          <td
+                            style={{ ...tdStyle("20%"), textAlign: "center" }}
+                          >
+                            {t.result}
+                            {t.result !== "" ? "%" : ""}
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle("20%"),
+                              textAlign: "center",
+                              fontSize: "8.5pt",
+                            }}
+                          >
+                            {(() => {
+                              const [s, e] = (t.period || "").split(" \u2013 ");
+                              const fmt = (d?: string) =>
+                                d ? d.replace(/-/g, ".") : "";
+                              if (!s && !e) return "";
+                              if (!e) return fmt(s);
+                              return (
+                                <>
+                                  {fmt(s)}-<br />
+                                  {fmt(e)}
+                                </>
+                              );
+                            })()}
+                          </td>
+                          <td style={tdStyle("25%")}>{t.completion}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                {/* Row images for II */}
+                {section2Tasks.some((t) => t.images?.length > 0) && (
+                  <div style={{ marginBottom: "8pt" }}>
+                    {section2Tasks
+                      .filter((t) => t.images?.length > 0)
+                      .map((t) =>
+                        t.images.map((img) => (
+                          <div
+                            key={img.id}
+                            style={{
+                              textAlign: "center",
+                              marginBottom: "10pt",
                               pageBreakInside: "avoid",
                             }}
                           >
@@ -326,770 +640,515 @@ export function WordPreview({
                               Зураг {imgCounter.n++}.
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        )),
+                      )}
                   </div>
-                ))}
-            </div>
-          )}
-          </>
-          )}
-
-          {!hidden.has("s12") && (
-          <>
-          <div style={subHeadingStyle}>
-            Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:
-          </div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9.5pt",
-              marginBottom: "10pt",
-              fontFamily: "'Times New Roman', serif",
-              border: "1px solid #000",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#fff", color: "#000" }}>
-                {[
-                  "№",
-                  "Төлөвлөгөөт ажил",
-                  "Ажлын гүйцэтгэл",
-                  "Хийгдсэн хугацаа",
-                  "Гүйцэтгэл /товч/",
-                ].map((h) => (
-                  <th key={h} style={thStyle}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section1Dashboards.length === 0 ? (
-                <tr>
-                  {[5, 30, 15, 20, 30].map((w, i) => (
-                    <td key={i} style={tdStyle(`${w}%`)}>
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ) : (
-                <>
-                  {section1Dashboards.map((t, idx) => (
-                    <tr key={t._id ?? idx}>
-                      <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
-                        {idx + 1}
-                      </td>
-                      <td style={tdStyle("30%")}>{t.title}</td>
-                      <td style={{ ...tdStyle("15%"), textAlign: "center" }}>
-                        {t.completion}
-                        {t.completion !== "" ? "%" : ""}
-                      </td>
-                      <td
-                        style={{
-                          ...tdStyle("20%"),
-                          textAlign: "center",
-                          fontSize: "8.5pt",
-                        }}
-                      >
-                        {(() => {
-                          const [s, e] = (t.period || "").split(" \u2013 ");
-                          const fmt = (d?: string) =>
-                            d ? d.replace(/-/g, ".") : "";
-                          if (!s && !e) return "";
-                          if (!e) return fmt(s);
-                          return (
-                            <>
-                              {fmt(s)}-<br />
-                              {fmt(e)}
-                            </>
-                          );
-                        })()}
-                      </td>
-                      <td style={tdStyle("30%")}>
-                        {t.summary ? parseContent(t.summary, tableCounter) : ""}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr>
-                    <td
-                      colSpan={2}
-                      style={{
-                        ...tdStyle("35%"),
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      Дундаж гүйцэтгэл
-                    </td>
-                    <td
-                      style={{
-                        ...tdStyle("15%"),
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      {(() => {
-                        const nums = section1Dashboards
-                          .map((t) => parseFloat(t.completion))
-                          .filter((n) => !isNaN(n));
-                        if (nums.length === 0) return "";
-                        const avg = Math.round(
-                          nums.reduce((a, b) => a + b, 0) / nums.length,
-                        );
-                        return `${avg}%`;
-                      })()}
-                    </td>
-                    <td style={tdStyle("20%")}>&nbsp;</td>
-                    <td style={tdStyle("30%")}>&nbsp;</td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
-          {/* Row images for I.2 */}
-          {section1Dashboards.some((t) => t.images?.length > 0) && (
-            <div style={{ marginBottom: "8pt" }}>
-              {section1Dashboards
-                .filter((t) => t.images?.length > 0)
-                .map((t) =>
-                  t.images.map((img) => (
-                    <div
-                      key={img.id}
-                      style={{
-                        textAlign: "center",
-                        marginBottom: "10pt",
-                        pageBreakInside: "avoid",
-                      }}
-                    >
-                      <img
-                        src={img.dataUrl}
-                        alt=""
-                        style={{
-                          width: `${img.width}%`,
-                          maxWidth: "100%",
-                          display: "inline-block",
-                        }}
-                      />
-                      <div
-                        style={{
-                          fontSize: "9pt",
-                          fontStyle: "italic",
-                          marginTop: "3pt",
-                        }}
-                      >
-                        Зураг {imgCounter.n++}.
-                      </div>
-                    </div>
-                  )),
                 )}
-            </div>
-          )}
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              marginBottom: "2pt",
-              textAlign: "center",
-            }}
-          >
-            Хүснэгт {tableCounter.n++}.
-          </div>
-          </>
-          )}
-          {/* ── Section II ── */}
-          {!hidden.has("s2") && (
-          <>
-          <div style={headingStyle}>
-            {sectionRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын
-            ажил:
-          </div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9.5pt",
-              marginBottom: "10pt",
-              fontFamily: "'Times New Roman', serif",
-              border: "1px solid #000",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#fff", color: "#000" }}>
-                {[
-                  "№",
-                  <span>
-                    Төлөвлөгөөт ажлууд
-                    <br />
-                    (Дууссан ажлууд)
-                  </span>,
-                  "Ажлын гүйцэтгэл",
-                  "Хийгдсэн хугацаа",
-                  "Гүйцэтгэл/товч/",
-                ].map((h, i) => (
-                  <th key={i} style={thStyle}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section2Tasks.length === 0 ? (
-                <tr>
-                  {[5, 30, 20, 20, 25].map((w, i) => (
-                    <td key={i} style={tdStyle(`${w}%`)}>
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ) : (
-                section2Tasks.map((t, idx) => (
-                  <tr key={t._id ?? idx}>
-                    <td style={tdStyle("5%")} className="text-center">
-                      {idx + 1}
-                    </td>
-                    <td style={tdStyle("30%")}>{t.title}</td>
-                    <td style={{ ...tdStyle("20%"), textAlign: "center" }}>
-                      {t.result}
-                      {t.result !== "" ? "%" : ""}
-                    </td>
-                    <td
+                <div
+                  style={{
+                    fontSize: "9pt",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    marginBottom: "2pt",
+                  }}
+                >
+                  Хүснэгт {tableCounter.n++}.
+                </div>
+              </>
+            )}
+
+            {/* ── Section III ── */}
+            {!hidden.has("s3") && (
+              <>
+                <div style={headingStyle}>
+                  {sectionRoman.s3}. Тогтмол хийгддэг ажлууд
+                </div>
+                <div style={subHeadingStyle}>
+                  Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь
+                  гүйцэтгэсэн байдал:
+                </div>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "9.5pt",
+                    marginBottom: "10pt",
+                    fontFamily: "'Times New Roman', serif",
+                    border: "1px solid #000",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#fff", color: "#000" }}>
+                      {[
+                        "№",
+                        "Тогтмол хийгддэг өгөгдөл боловсруулалт",
+                        "Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ",
+                        "Хэрэглэгчийн нэгжийн өгсөн үнэлгээ",
+                      ].map((h) => (
+                        <th key={h} style={thStyle}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section3AutoTasks.length === 0 ? (
+                      <tr>
+                        {[5, 40, 35, 20].map((w, i) => (
+                          <td key={i} style={tdStyle(`${w}%`)}>
+                            &nbsp;
+                          </td>
+                        ))}
+                      </tr>
+                    ) : (
+                      <>
+                        {section3AutoTasks.map((t, idx) => (
+                          <tr key={t._id ?? idx}>
+                            <td
+                              style={{ ...tdStyle("5%"), textAlign: "center" }}
+                            >
+                              {idx + 1}
+                            </td>
+                            <td style={tdStyle("40%")}>{t.title}</td>
+                            <td style={tdStyle("35%")}>{t.value}</td>
+                            <td
+                              style={{ ...tdStyle("20%"), textAlign: "center" }}
+                            >
+                              {t.rating}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr>
+                          <td
+                            colSpan={3}
+                            style={{
+                              ...tdStyle("80%"),
+                              fontWeight: "bold",
+                              textAlign: "center",
+                            }}
+                          >
+                            Дундаж үнэлгээ
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle("20%"),
+                              fontWeight: "bold",
+                              textAlign: "center",
+                            }}
+                          >
+                            {(() => {
+                              const nums = section3AutoTasks
+                                .map((t) => parseFloat(t.rating))
+                                .filter((n) => !isNaN(n));
+                              if (nums.length === 0) return "";
+                              const avg = Math.round(
+                                nums.reduce((a, b) => a + b, 0) / nums.length,
+                              );
+                              return `${avg}%`;
+                            })()}
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                  </tbody>
+                </table>
+
+                <div
+                  style={{
+                    fontSize: "9pt",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    marginBottom: "2pt",
+                  }}
+                >
+                  Хүснэгт {tableCounter.n++}.
+                </div>
+
+                {!hidden.has("s32") && (
+                  <>
+                    <div style={subHeadingStyle}>
+                      Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:
+                    </div>
+                    <table
                       style={{
-                        ...tdStyle("20%"),
-                        textAlign: "center",
-                        fontSize: "8.5pt",
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        fontSize: "9.5pt",
+                        marginBottom: "10pt",
+                        fontFamily: "'Times New Roman', serif",
+                        border: "1px solid #000",
                       }}
                     >
-                      {(() => {
-                        const [s, e] = (t.period || "").split(" \u2013 ");
-                        const fmt = (d?: string) =>
-                          d ? d.replace(/-/g, ".") : "";
-                        if (!s && !e) return "";
-                        if (!e) return fmt(s);
-                        return (
+                      <thead>
+                        <tr style={{ background: "#fff", color: "#000" }}>
+                          {[
+                            "№",
+                            "Дашбоард",
+                            "Дашбоардын ач холбогдол,хэрэглээ",
+                            "Хэрэглэгч нэгжийн өгсөн үнэлгээ",
+                          ].map((h) => (
+                            <th key={h} style={thStyle}>
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {section3Dashboards.length === 0 ? (
+                          <tr>
+                            {[5, 35, 40, 20].map((w, i) => (
+                              <td key={i} style={tdStyle(`${w}%`)}>
+                                &nbsp;
+                              </td>
+                            ))}
+                          </tr>
+                        ) : (
                           <>
-                            {fmt(s)}-<br />
-                            {fmt(e)}
+                            {section3Dashboards.map((t, idx) => (
+                              <tr key={t._id ?? idx}>
+                                <td
+                                  style={{
+                                    ...tdStyle("5%"),
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {idx + 1}
+                                </td>
+                                <td style={tdStyle("35%")}>{t.dashboard}</td>
+                                <td style={tdStyle("40%")}>{t.value}</td>
+                                <td
+                                  style={{
+                                    ...tdStyle("20%"),
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {t.rating}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr>
+                              <td
+                                colSpan={3}
+                                style={{
+                                  ...tdStyle("80%"),
+                                  fontWeight: "bold",
+                                  textAlign: "center",
+                                }}
+                              >
+                                Дундаж үнэлгээ
+                              </td>
+                              <td
+                                style={{
+                                  ...tdStyle("20%"),
+                                  fontWeight: "bold",
+                                  textAlign: "center",
+                                }}
+                              >
+                                {(() => {
+                                  const nums = section3Dashboards
+                                    .map((t) => parseFloat(t.rating))
+                                    .filter((n) => !isNaN(n));
+                                  if (nums.length === 0) return "";
+                                  const avg = Math.round(
+                                    nums.reduce((a, b) => a + b, 0) /
+                                      nums.length,
+                                  );
+                                  return `${avg}%`;
+                                })()}
+                              </td>
+                            </tr>
                           </>
-                        );
-                      })()}
-                    </td>
-                    <td style={tdStyle("25%")}>{t.completion}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          {/* Row images for II */}
-          {section2Tasks.some((t) => t.images?.length > 0) && (
-            <div style={{ marginBottom: "8pt" }}>
-              {section2Tasks
-                .filter((t) => t.images?.length > 0)
-                .map((t) =>
-                  t.images.map((img) => (
+                        )}
+                      </tbody>
+                    </table>
+
                     <div
-                      key={img.id}
                       style={{
+                        fontSize: "9pt",
+                        fontStyle: "italic",
                         textAlign: "center",
-                        marginBottom: "10pt",
-                        pageBreakInside: "avoid",
+                        marginBottom: "2pt",
                       }}
                     >
-                      <img
-                        src={img.dataUrl}
-                        alt=""
-                        style={{
-                          width: `${img.width}%`,
-                          height: `${img.height ?? 280}px`,
-                          objectFit: "fill",
-                          maxWidth: "100%",
-                          display: "inline-block",
-                        }}
-                      />
-                      <div
-                        style={{
-                          fontSize: "9pt",
-                          fontStyle: "italic",
-                          marginTop: "3pt",
-                        }}
-                      >
-                        Зураг {imgCounter.n++}.
-                      </div>
+                      Хүснэгт {tableCounter.n++}.
                     </div>
-                  )),
+                  </>
                 )}
-            </div>
-          )}
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              textAlign: "center",
-              marginBottom: "2pt",
-            }}
-          >
-            Хүснэгт {tableCounter.n++}.
-          </div>
-          </>
-          )}
+              </>
+            )}
 
-          {/* ── Section III ── */}
-          {!hidden.has("s3") && (
-          <>
-          <div style={headingStyle}>{sectionRoman.s3}. Тогтмол хийгддэг ажлууд</div>
-          <div style={subHeadingStyle}>
-            Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн
-            байдал:
-          </div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9.5pt",
-              marginBottom: "10pt",
-              fontFamily: "'Times New Roman', serif",
-              border: "1px solid #000",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#fff", color: "#000" }}>
-                {[
-                  "№",
-                  "Тогтмол хийгддэг өгөгдөл боловсруулалт",
-                  "Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ",
-                  "Хэрэглэгчийн нэгжийн өгсөн үнэлгээ",
-                ].map((h) => (
-                  <th key={h} style={thStyle}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section3AutoTasks.length === 0 ? (
-                <tr>
-                  {[5, 40, 35, 20].map((w, i) => (
-                    <td key={i} style={tdStyle(`${w}%`)}>
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ) : (
-                <>
-                  {section3AutoTasks.map((t, idx) => (
-                    <tr key={t._id ?? idx}>
-                      <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
-                        {idx + 1}
-                      </td>
-                      <td style={tdStyle("40%")}>{t.title}</td>
-                      <td style={tdStyle("35%")}>{t.value}</td>
-                      <td style={{ ...tdStyle("20%"), textAlign: "center" }}>
-                        {t.rating}
-                      </td>
+            {/* ── Section IV ── */}
+            {!hidden.has("s4") && (
+              <>
+                <div style={headingStyle}>
+                  {sectionRoman.s4}. Хамрагдсан сургалт
+                </div>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "9.5pt",
+                    marginBottom: "10pt",
+                    fontFamily: "'Times New Roman', serif",
+                    border: "1px solid #000",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#fff", color: "#000" }}>
+                      {[
+                        "№",
+                        "Хамрагдсан сургалт",
+                        "Зохион байгуулагч",
+                        "Сургалтын төрөл",
+                        "Хэзээ",
+                        "Сургалтын хэлбэр",
+                        "Цаг",
+                        "Аудитын зорилгод нийцсэн эсэх",
+                        "Мэдлэгээ хуваалцсан эсэх",
+                      ].map((h) => (
+                        <th key={h} style={thStyle}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                  <tr>
-                    <td
-                      colSpan={3}
-                      style={{
-                        ...tdStyle("80%"),
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      Дундаж үнэлгээ
-                    </td>
-                    <td
-                      style={{
-                        ...tdStyle("20%"),
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      {(() => {
-                        const nums = section3AutoTasks
-                          .map((t) => parseFloat(t.rating))
-                          .filter((n) => !isNaN(n));
-                        if (nums.length === 0) return "";
-                        const avg = Math.round(
-                          nums.reduce((a, b) => a + b, 0) / nums.length,
-                        );
-                        return `${avg}%`;
-                      })()}
-                    </td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
+                  </thead>
+                  <tbody>
+                    {section4Trainings.length === 0 ? (
+                      <tr>
+                        {[5, 25, 15, 12, 10, 10, 7, 8, 8].map((w, i) => (
+                          <td key={i} style={tdStyle(`${w}%`)}>
+                            &nbsp;
+                          </td>
+                        ))}
+                      </tr>
+                    ) : (
+                      section4Trainings.map((t, idx) => (
+                        <tr key={t._id ?? idx}>
+                          <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
+                            {idx + 1}
+                          </td>
+                          <td style={tdStyle("25%")}>{t.training}</td>
+                          <td
+                            style={{ ...tdStyle("15%"), textAlign: "center" }}
+                          >
+                            {t.organizer}
+                          </td>
+                          <td
+                            style={{ ...tdStyle("12%"), textAlign: "center" }}
+                          >
+                            {t.type}
+                          </td>
+                          <td
+                            style={{ ...tdStyle("10%"), textAlign: "center" }}
+                          >
+                            {t.date ? t.date.replace(/-/g, ".") : ""}
+                          </td>
+                          <td
+                            style={{ ...tdStyle("10%"), textAlign: "center" }}
+                          >
+                            {t.format}
+                          </td>
+                          <td style={{ ...tdStyle("7%"), textAlign: "center" }}>
+                            {t.hours ? `${t.hours} цаг` : ""}
+                          </td>
+                          <td style={{ ...tdStyle("8%"), textAlign: "center" }}>
+                            {t.meetsAuditGoal}
+                          </td>
+                          <td style={{ ...tdStyle("8%"), textAlign: "center" }}>
+                            {t.sharedKnowledge}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                <div
+                  style={{
+                    fontSize: "9pt",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    marginBottom: "2pt",
+                  }}
+                >
+                  Хүснэгт {tableCounter.n++}.
+                </div>
+                <div style={subHeadingStyle}>
+                  Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:
+                </div>
+                {section4KnowledgeText?.trim() ? (
+                  <div style={{ marginBottom: "8pt", whiteSpace: "pre-wrap" }}>
+                    {section4KnowledgeText}
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
+                )}
+              </>
+            )}
 
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              textAlign: "center",
-              marginBottom: "2pt",
-            }}
-          >
-            Хүснэгт {tableCounter.n++}.
-          </div>
-
-          {!hidden.has("s32") && (
-          <>
-          <div style={subHeadingStyle}>
-            Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:
-          </div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9.5pt",
-              marginBottom: "10pt",
-              fontFamily: "'Times New Roman', serif",
-              border: "1px solid #000",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#fff", color: "#000" }}>
-                {[
-                  "№",
-                  "Дашбоард",
-                  "Дашбоардын ач холбогдол,хэрэглээ",
-                  "Хэрэглэгч нэгжийн өгсөн үнэлгээ",
-                ].map((h) => (
-                  <th key={h} style={thStyle}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section3Dashboards.length === 0 ? (
-                <tr>
-                  {[5, 35, 40, 20].map((w, i) => (
-                    <td key={i} style={tdStyle(`${w}%`)}>
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ) : (
-                <>
-                  {section3Dashboards.map((t, idx) => (
-                    <tr key={t._id ?? idx}>
-                      <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
-                        {idx + 1}
-                      </td>
-                      <td style={tdStyle("35%")}>{t.dashboard}</td>
-                      <td style={tdStyle("40%")}>{t.value}</td>
-                      <td style={{ ...tdStyle("20%"), textAlign: "center" }}>
-                        {t.rating}
-                      </td>
+            {/* ── Section V ── */}
+            {!hidden.has("s5") && (
+              <>
+                <div style={headingStyle}>
+                  {sectionRoman.s5}. Үүрэг даалгаварын биелэлт
+                </div>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "9.5pt",
+                    marginBottom: "10pt",
+                    fontFamily: "'Times New Roman', serif",
+                    border: "1px solid #000",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#fff", color: "#000" }}>
+                      {["№", "Ажлын төрөл", "Хийгдсэн ажил"].map((h) => (
+                        <th key={h} style={thStyle}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                  <tr>
-                    <td
-                      colSpan={3}
-                      style={{
-                        ...tdStyle("80%"),
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      Дундаж үнэлгээ
-                    </td>
-                    <td
-                      style={{
-                        ...tdStyle("20%"),
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      {(() => {
-                        const nums = section3Dashboards
-                          .map((t) => parseFloat(t.rating))
-                          .filter((n) => !isNaN(n));
-                        if (nums.length === 0) return "";
-                        const avg = Math.round(
-                          nums.reduce((a, b) => a + b, 0) / nums.length,
-                        );
-                        return `${avg}%`;
-                      })()}
-                    </td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
+                  </thead>
+                  <tbody>
+                    {section5Tasks.length === 0 ? (
+                      <tr>
+                        {[5, 35, 60].map((w, i) => (
+                          <td key={i} style={tdStyle(`${w}%`)}>
+                            &nbsp;
+                          </td>
+                        ))}
+                      </tr>
+                    ) : (
+                      section5Tasks.map((t, idx) => (
+                        <tr key={t._id ?? idx}>
+                          <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
+                            {idx + 1}
+                          </td>
+                          <td style={tdStyle("35%")}>{t.taskType}</td>
+                          <td style={tdStyle("60%")}>
+                            {t.completedWork
+                              ? parseContent(t.completedWork, tableCounter)
+                              : ""}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
 
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              textAlign: "center",
-              marginBottom: "2pt",
-            }}
-          >
-            Хүснэгт {tableCounter.n++}.
+                <div
+                  style={{
+                    fontSize: "9pt",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    marginBottom: "2pt",
+                  }}
+                >
+                  Хүснэгт {tableCounter.n++}.
+                </div>
+              </>
+            )}
+            {/* ── Section VI ── */}
+            {!hidden.has("s6") && (
+              <>
+                <div style={headingStyle}>
+                  {sectionRoman.s6}. Хамт олны ажил
+                </div>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "9.5pt",
+                    marginBottom: "10pt",
+                    fontFamily: "'Times New Roman', serif",
+                    border: "1px solid #000",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#fff", color: "#000" }}>
+                      {["№", "Огноо", "Хамт олны ажил", "Санаачилга"].map(
+                        (h) => (
+                          <th key={h} style={thStyle}>
+                            {h}
+                          </th>
+                        ),
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section6Activities.length === 0 ? (
+                      <tr>
+                        {[5, 20, 50, 25].map((w, i) => (
+                          <td key={i} style={tdStyle(`${w}%`)}>
+                            &nbsp;
+                          </td>
+                        ))}
+                      </tr>
+                    ) : (
+                      section6Activities.map((t, idx) => (
+                        <tr key={t._id ?? idx}>
+                          <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
+                            {idx + 1}
+                          </td>
+                          <td
+                            style={{ ...tdStyle("20%"), textAlign: "center" }}
+                          >
+                            {t.date ? t.date.replace(/-/g, ".") : ""}
+                          </td>
+                          <td style={tdStyle("50%")}>{t.activity}</td>
+                          <td style={tdStyle("25%")}>{t.initiative}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+
+                <div
+                  style={{
+                    fontSize: "9pt",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    marginBottom: "2pt",
+                  }}
+                >
+                  Хүснэгт {tableCounter.n++}.
+                </div>
+              </>
+            )}
+            {/* ── Section VII ── */}
+            {!hidden.has("s7") && (
+              <>
+                <div style={headingStyle}>
+                  {sectionRoman.s7}. Шинэ санал санаачилга
+                </div>
+                {section7Text?.trim() ? (
+                  <div style={{ marginBottom: "8pt", whiteSpace: "pre-wrap" }}>
+                    {section7Text}
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
+                )}
+              </>
+            )}
+
+            {/* ── Dynamic sections VIII, IX, … ── */}
+            {dynamicSections.map((sec, idx) => {
+              if (hidden.has(`dyn_${idx}`)) return null;
+              const visibleBefore = dynamicSections
+                .slice(0, idx)
+                .filter((_, i) => !hidden.has(`dyn_${i}`)).length;
+              const romIdx = dynStartRomIdx + visibleBefore;
+              return (
+                <div key={sec._id ?? idx}>
+                  <div style={headingStyle}>
+                    {ROMAN_NUMS[romIdx] ?? `${romIdx + 1}`}. {sec.title ?? ""}
+                  </div>
+                  {parseContent(sec.content, tableCounter)}
+                </div>
+              );
+            })}
           </div>
-          </>
-          )}
-
-          </>
-          )}
-
-          {/* ── Section IV ── */}
-          {!hidden.has("s4") && (
-          <>
-          <div style={headingStyle}>{sectionRoman.s4}. Хамрагдсан сургалт</div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9.5pt",
-              marginBottom: "10pt",
-              fontFamily: "'Times New Roman', serif",
-              border: "1px solid #000",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#fff", color: "#000" }}>
-                {[
-                  "№",
-                  "Хамрагдсан сургалт",
-                  "Зохион байгуулагч",
-                  "Сургалтын төрөл",
-                  "Хэзээ",
-                  "Сургалтын хэлбэр",
-                  "Цаг",
-                  "Аудитын зорилгод нийцсэн эсэх",
-                  "Мэдлэгээ хуваалцсан эсэх",
-                ].map((h) => (
-                  <th key={h} style={thStyle}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section4Trainings.length === 0 ? (
-                <tr>
-                  {[5, 25, 15, 12, 10, 10, 7, 8, 8].map((w, i) => (
-                    <td key={i} style={tdStyle(`${w}%`)}>
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ) : (
-                section4Trainings.map((t, idx) => (
-                  <tr key={t._id ?? idx}>
-                    <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
-                      {idx + 1}
-                    </td>
-                    <td style={tdStyle("25%")}>{t.training}</td>
-                    <td style={{ ...tdStyle("15%"), textAlign: "center" }}>
-                      {t.organizer}
-                    </td>
-                    <td style={{ ...tdStyle("12%"), textAlign: "center" }}>
-                      {t.type}
-                    </td>
-                    <td style={{ ...tdStyle("10%"), textAlign: "center" }}>
-                      {t.date ? t.date.replace(/-/g, ".") : ""}
-                    </td>
-                    <td style={{ ...tdStyle("10%"), textAlign: "center" }}>
-                      {t.format}
-                    </td>
-                    <td style={{ ...tdStyle("7%"), textAlign: "center" }}>
-                      {t.hours ? `${t.hours} цаг` : ""}
-                    </td>
-                    <td style={{ ...tdStyle("8%"), textAlign: "center" }}>
-                      {t.meetsAuditGoal}
-                    </td>
-                    <td style={{ ...tdStyle("8%"), textAlign: "center" }}>
-                      {t.sharedKnowledge}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              textAlign: "center",
-              marginBottom: "2pt",
-            }}
-          >
-            Хүснэгт {tableCounter.n++}.
-          </div>
-          <div style={subHeadingStyle}>
-            Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:
-          </div>
-          {section4KnowledgeText?.trim() ? (
-            <div style={{ marginBottom: "8pt", whiteSpace: "pre-wrap" }}>
-              {section4KnowledgeText}
-            </div>
-          ) : (
-            <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
-          )}
-          </>
-          )}
-
-          {/* ── Section V ── */}
-          {!hidden.has("s5") && (
-          <>
-          <div style={headingStyle}>{sectionRoman.s5}. Үүрэг даалгаварын биелэлт</div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9.5pt",
-              marginBottom: "10pt",
-              fontFamily: "'Times New Roman', serif",
-              border: "1px solid #000",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#fff", color: "#000" }}>
-                {["№", "Ажлын төрөл", "Хийгдсэн ажил"].map((h) => (
-                  <th key={h} style={thStyle}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section5Tasks.length === 0 ? (
-                <tr>
-                  {[5, 35, 60].map((w, i) => (
-                    <td key={i} style={tdStyle(`${w}%`)}>
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ) : (
-                section5Tasks.map((t, idx) => (
-                  <tr key={t._id ?? idx}>
-                    <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
-                      {idx + 1}
-                    </td>
-                    <td style={tdStyle("35%")}>{t.taskType}</td>
-                    <td style={tdStyle("60%")}>
-                      {t.completedWork
-                        ? parseContent(t.completedWork, tableCounter)
-                        : ""}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              textAlign: "center",
-              marginBottom: "2pt",
-            }}
-          >
-            Хүснэгт {tableCounter.n++}.
-          </div>
-          </>
-          )}
-          {/* ── Section VI ── */}
-          {!hidden.has("s6") && (
-          <>
-          <div style={headingStyle}>{sectionRoman.s6}. Хамт олны ажил</div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "9.5pt",
-              marginBottom: "10pt",
-              fontFamily: "'Times New Roman', serif",
-              border: "1px solid #000",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#fff", color: "#000" }}>
-                {["№", "Огноо", "Хамт олны ажил", "Санаачилга"].map((h) => (
-                  <th key={h} style={thStyle}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section6Activities.length === 0 ? (
-                <tr>
-                  {[5, 20, 50, 25].map((w, i) => (
-                    <td key={i} style={tdStyle(`${w}%`)}>
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ) : (
-                section6Activities.map((t, idx) => (
-                  <tr key={t._id ?? idx}>
-                    <td style={{ ...tdStyle("5%"), textAlign: "center" }}>
-                      {idx + 1}
-                    </td>
-                    <td style={{ ...tdStyle("20%"), textAlign: "center" }}>
-                      {t.date ? t.date.replace(/-/g, ".") : ""}
-                    </td>
-                    <td style={tdStyle("50%")}>{t.activity}</td>
-                    <td style={tdStyle("25%")}>{t.initiative}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          <div
-            style={{
-              fontSize: "9pt",
-              fontStyle: "italic",
-              textAlign: "center",
-              marginBottom: "2pt",
-            }}
-          >
-            Хүснэгт {tableCounter.n++}.
-          </div>
-          </>
-          )}
-          {/* ── Section VII ── */}
-          {!hidden.has("s7") && (
-          <>
-          <div style={headingStyle}>{sectionRoman.s7}. Шинэ санал санаачилга</div>
-          {section7Text?.trim() ? (
-            <div style={{ marginBottom: "8pt", whiteSpace: "pre-wrap" }}>
-              {section7Text}
-            </div>
-          ) : (
-            <div style={{ marginBottom: "8pt" }}>&nbsp;</div>
-          )}
-          </>
-          )}
-
-          {/* ── Dynamic sections VIII, IX, … ── */}
-          {dynamicSections.map((sec, idx) => {
-            if (hidden.has(`dyn_${idx}`)) return null;
-            const visibleBefore = dynamicSections.slice(0, idx).filter((_, i) => !hidden.has(`dyn_${i}`)).length;
-            const romIdx = dynStartRomIdx + visibleBefore;
-            return (
-            <div key={sec._id ?? idx}>
-              <div style={headingStyle}>
-                {ROMAN_NUMS[romIdx] ??
-                  `${romIdx + 1}`}. {sec.title ?? ""}
-              </div>
-              {parseContent(sec.content, tableCounter)}
-            </div>
-            );
-          })}
-        </div>
         </div>
       </div>
     </div>
@@ -1254,12 +1313,12 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
   const inlineImgHtml = (img: RowInlineImage): string => {
     if (!img.dataUrl) return "";
     const pct = img.width ?? 80;
-    const wMm = Math.round(CONTENT_WIDTH_MM * pct / 100);
+    const wMm = Math.round((CONTENT_WIDTH_MM * pct) / 100);
     // Word ignores mm in the width/height attributes (only pixels accepted); convert at 96 DPI
-    const wPx = Math.round(wMm * 96 / 25.4);
+    const wPx = Math.round((wMm * 96) / 25.4);
     const captureN = ic.n++;
     const hPx = img.height ?? 280;
-    const hMm = Math.round(hPx * 25.4 / 96);
+    const hMm = Math.round((hPx * 25.4) / 96);
     const sizeStyle = `width:${wMm}mm;height:${hMm}mm;object-fit:fill;display:block;margin:0 auto`;
     const sizeAttr = `width="${wPx}" height="${hPx}"`;
     return (
@@ -1276,197 +1335,267 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
 
   // ── Section I ──
   if (!hidden.has("s1")) {
-  body += heading(`${_sectionRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:`);
-  const filteredTasks = p.plannedTasks.filter((t) => t.title?.trim());
-  if (filteredTasks.length === 0) {
-    body += `<div style="margin-bottom:8pt">&nbsp;</div>`;
-  } else {
-    body += `<div style="margin-bottom:8pt">`;
-    filteredTasks.forEach((t, idx) => {
-      body += `<div style="margin-bottom:6pt"><span style="font-weight:bold">${idx + 1}. ${esc(t.title)}</span>`;
-      if (t.description?.trim()) {
-        body += `<div style="margin-left:16pt;margin-top:2pt;color:#080808">${parseContentHtml(t.description, tc)}</div>`;
-      }
-      if (t.images?.length > 0) {
-        body += `<div style="margin-top:6pt">`;
-        t.images.forEach((img) => { body += inlineImgHtml(img); });
+    body += heading(
+      `${_sectionRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал:`,
+    );
+    const filteredTasks = p.plannedTasks.filter((t) => t.title?.trim());
+    if (filteredTasks.length === 0) {
+      body += `<div style="margin-bottom:8pt">&nbsp;</div>`;
+    } else {
+      body += `<div style="margin-bottom:8pt">`;
+      filteredTasks.forEach((t, idx) => {
+        body += `<div style="margin-bottom:6pt"><span style="font-weight:bold">${idx + 1}. ${esc(t.title)}</span>`;
+        if (t.description?.trim()) {
+          body += `<div style="margin-left:16pt;margin-top:2pt;color:#080808">${parseContentHtml(t.description, tc)}</div>`;
+        }
+        if (t.images?.length > 0) {
+          body += `<div style="margin-top:6pt">`;
+          t.images.forEach((img) => {
+            body += inlineImgHtml(img);
+          });
+          body += `</div>`;
+        }
         body += `</div>`;
-      }
+      });
       body += `</div>`;
-    });
-    body += `</div>`;
-  }
+    }
   }
 
   // I.2 dashboard table
   if (!hidden.has("s12")) {
-  body += subHeading("Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:");
-  body += tblStart;
-  body += `<tr style="background:#fff;color:#000">${["№","Төлөвлөгөөт ажил","Ажлын гүйцэтгэл","Хийгдсэн хугацаа","Гүйцэтгэл /товч/"].map((h) => th(h)).join("")}</tr>`;
-  body += tblMid;
-  if (p.section1Dashboards.length === 0) {
-    body += `<tr>${[5,30,15,20,30].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
-  } else {
-    p.section1Dashboards.forEach((t, idx) => {
-      const nums1 = p.section1Dashboards.map((x) => parseFloat(x.completion)).filter((n) => !isNaN(n));
-      body += `<tr>` +
-        tdC(`${idx + 1}`, "5%") +
-        tdL(esc(t.title), "30%") +
-        tdC(t.completion !== "" ? `${esc(t.completion)}%` : "", "15%") +
-        `<td style="border:0.5px dotted #ccc;padding:3px 5px;text-align:center;width:20%;font-size:8.5pt">${fmtPeriodHtml(t.period ?? "")}</td>` +
-        tdLH(parseContentHtml(t.summary ?? "", tc), "30%") +
+    body += subHeading(
+      "Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:",
+    );
+    body += tblStart;
+    body += `<tr style="background:#fff;color:#000">${["№", "Төлөвлөгөөт ажил", "Ажлын гүйцэтгэл", "Хийгдсэн хугацаа", "Гүйцэтгэл /товч/"].map((h) => th(h)).join("")}</tr>`;
+    body += tblMid;
+    if (p.section1Dashboards.length === 0) {
+      body += `<tr>${[5, 30, 15, 20, 30].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+    } else {
+      p.section1Dashboards.forEach((t, idx) => {
+        const nums1 = p.section1Dashboards
+          .map((x) => parseFloat(x.completion))
+          .filter((n) => !isNaN(n));
+        body +=
+          `<tr>` +
+          tdC(`${idx + 1}`, "5%") +
+          tdL(esc(t.title), "30%") +
+          tdC(t.completion !== "" ? `${esc(t.completion)}%` : "", "15%") +
+          `<td style="border:0.5px dotted #ccc;padding:3px 5px;text-align:center;width:20%;font-size:8.5pt">${fmtPeriodHtml(t.period ?? "")}</td>` +
+          tdLH(parseContentHtml(t.summary ?? "", tc), "30%") +
+          `</tr>`;
+      });
+      const nums1 = p.section1Dashboards
+        .map((x) => parseFloat(x.completion))
+        .filter((n) => !isNaN(n));
+      const avg1 =
+        nums1.length > 0
+          ? Math.round(nums1.reduce((a, b) => a + b, 0) / nums1.length)
+          : null;
+      body +=
+        `<tr>` +
+        `<td colspan="2" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:35%">Дундаж гүйцэтгэл</td>` +
+        `<td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:15%">${avg1 !== null ? `${avg1}%` : ""}</td>` +
+        tdL("&nbsp;", "20%") +
+        tdL("&nbsp;", "30%") +
         `</tr>`;
-    });
-    const nums1 = p.section1Dashboards.map((x) => parseFloat(x.completion)).filter((n) => !isNaN(n));
-    const avg1 = nums1.length > 0 ? Math.round(nums1.reduce((a, b) => a + b, 0) / nums1.length) : null;
-    body += `<tr>` +
-      `<td colspan="2" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:35%">Дундаж гүйцэтгэл</td>` +
-      `<td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:15%">${avg1 !== null ? `${avg1}%` : ""}</td>` +
-      tdL("&nbsp;","20%") + tdL("&nbsp;","30%") +
-      `</tr>`;
-  }
-  body += tblEnd;
-  if (p.section1Dashboards.some((t) => t.images?.length > 0)) {
-    body += `<div style="margin-bottom:8pt">`;
-    p.section1Dashboards.filter((t) => t.images?.length > 0).forEach((t) => {
-      t.images.forEach((img) => { body += inlineImgHtml(img); });
-    });
-    body += `</div>`;
-  }
-  body += caption();
+    }
+    body += tblEnd;
+    if (p.section1Dashboards.some((t) => t.images?.length > 0)) {
+      body += `<div style="margin-bottom:8pt">`;
+      p.section1Dashboards
+        .filter((t) => t.images?.length > 0)
+        .forEach((t) => {
+          t.images.forEach((img) => {
+            body += inlineImgHtml(img);
+          });
+        });
+      body += `</div>`;
+    }
+    body += caption();
   }
 
   // ── Section II ──
   if (!hidden.has("s2")) {
-  body += heading(`${_sectionRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил:`);
-  body += tblStart;
-  body += `<tr style="background:#fff;color:#000">${["№","Төлөвлөгөөт ажлууд<br>(Дууссан ажлууд)","Ажлын гүйцэтгэл","Хийгдсэн хугацаа","Гүйцэтгэл/товч/"].map((h) => `<th style="border:0.5px dotted #bbb;padding:4px 6px;text-align:center;font-weight:bold">${h}</th>`).join("")}</tr>`;
-  body += tblMid;
-  if (p.section2Tasks.length === 0) {
-    body += `<tr>${[5,30,20,20,25].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
-  } else {
-    p.section2Tasks.forEach((t, idx) => {
-      body += `<tr>` +
-        tdC(`${idx + 1}`, "5%") +
-        tdL(esc(t.title), "30%") +
-        tdC(t.result !== "" ? `${esc(t.result)}%` : "", "20%") +
-        `<td style="border:0.5px dotted #ccc;padding:3px 5px;text-align:center;width:20%;font-size:8.5pt">${fmtPeriodHtml(t.period ?? "")}</td>` +
-        tdL(esc(t.completion), "25%") +
-        `</tr>`;
-    });
-  }
-  body += tblEnd;
-  if (p.section2Tasks.some((t) => t.images?.length > 0)) {
-    body += `<div style="margin-bottom:8pt">`;
-    p.section2Tasks.filter((t) => t.images?.length > 0).forEach((t) => {
-      t.images.forEach((img) => { body += inlineImgHtml(img); });
-    });
-    body += `</div>`;
-  }
-  body += caption();
+    body += heading(
+      `${_sectionRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил:`,
+    );
+    body += tblStart;
+    body += `<tr style="background:#fff;color:#000">${["№", "Төлөвлөгөөт ажлууд<br>(Дууссан ажлууд)", "Ажлын гүйцэтгэл", "Хийгдсэн хугацаа", "Гүйцэтгэл/товч/"].map((h) => `<th style="border:0.5px dotted #bbb;padding:4px 6px;text-align:center;font-weight:bold">${h}</th>`).join("")}</tr>`;
+    body += tblMid;
+    if (p.section2Tasks.length === 0) {
+      body += `<tr>${[5, 30, 20, 20, 25].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+    } else {
+      p.section2Tasks.forEach((t, idx) => {
+        body +=
+          `<tr>` +
+          tdC(`${idx + 1}`, "5%") +
+          tdL(esc(t.title), "30%") +
+          tdC(t.result !== "" ? `${esc(t.result)}%` : "", "20%") +
+          `<td style="border:0.5px dotted #ccc;padding:3px 5px;text-align:center;width:20%;font-size:8.5pt">${fmtPeriodHtml(t.period ?? "")}</td>` +
+          tdL(esc(t.completion), "25%") +
+          `</tr>`;
+      });
+    }
+    body += tblEnd;
+    if (p.section2Tasks.some((t) => t.images?.length > 0)) {
+      body += `<div style="margin-bottom:8pt">`;
+      p.section2Tasks
+        .filter((t) => t.images?.length > 0)
+        .forEach((t) => {
+          t.images.forEach((img) => {
+            body += inlineImgHtml(img);
+          });
+        });
+      body += `</div>`;
+    }
+    body += caption();
   }
 
   // ── Section III ──
   if (!hidden.has("s3")) {
-  body += heading(`${_sectionRoman.s3}. Тогтмол хийгддэг ажлууд`);
-  body += subHeading("Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал:");
-  body += tblStart;
-  body += `<tr style="background:#fff;color:#000">${["№","Тогтмол хийгддэг өгөгдөл боловсруулалт","Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ","Хэрэглэгчийн нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
-  body += tblMid;
-  if (p.section3AutoTasks.length === 0) {
-    body += `<tr>${[5,40,35,20].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
-  } else {
-    p.section3AutoTasks.forEach((t, idx) => {
-      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdL(esc(t.title),"40%") + tdL(esc(t.value),"35%") + tdC(esc(t.rating),"20%") + `</tr>`;
-    });
-    const nums3a = p.section3AutoTasks.map((t) => parseFloat(t.rating)).filter((n) => !isNaN(n));
-    const avg3a = nums3a.length > 0 ? Math.round(nums3a.reduce((a,b)=>a+b,0)/nums3a.length) : null;
-    body += `<tr><td colspan="3" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:80%">Дундаж үнэлгээ</td><td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:20%">${avg3a !== null ? `${avg3a}%` : ""}</td></tr>`;
-  }
-  body += tblEnd + caption();
+    body += heading(`${_sectionRoman.s3}. Тогтмол хийгддэг ажлууд`);
+    body += subHeading(
+      "Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал:",
+    );
+    body += tblStart;
+    body += `<tr style="background:#fff;color:#000">${["№", "Тогтмол хийгддэг өгөгдөл боловсруулалт", "Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ", "Хэрэглэгчийн нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
+    body += tblMid;
+    if (p.section3AutoTasks.length === 0) {
+      body += `<tr>${[5, 40, 35, 20].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+    } else {
+      p.section3AutoTasks.forEach((t, idx) => {
+        body +=
+          `<tr>` +
+          tdC(`${idx + 1}`, "5%") +
+          tdL(esc(t.title), "40%") +
+          tdL(esc(t.value), "35%") +
+          tdC(esc(t.rating), "20%") +
+          `</tr>`;
+      });
+      const nums3a = p.section3AutoTasks
+        .map((t) => parseFloat(t.rating))
+        .filter((n) => !isNaN(n));
+      const avg3a =
+        nums3a.length > 0
+          ? Math.round(nums3a.reduce((a, b) => a + b, 0) / nums3a.length)
+          : null;
+      body += `<tr><td colspan="3" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:80%">Дундаж үнэлгээ</td><td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:20%">${avg3a !== null ? `${avg3a}%` : ""}</td></tr>`;
+    }
+    body += tblEnd + caption();
 
-  if (!hidden.has("s32")) {
-  body += subHeading("Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:");
-  body += tblStart;
-  body += `<tr style="background:#fff;color:#000">${["№","Дашбоард","Дашбоардын ач холбогдол,хэрэглээ","Хэрэглэгч нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
-  body += tblMid;
-  if (p.section3Dashboards.length === 0) {
-    body += `<tr>${[5,35,40,20].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
-  } else {
-    p.section3Dashboards.forEach((t, idx) => {
-      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdL(esc(t.dashboard),"35%") + tdL(esc(t.value),"40%") + tdC(esc(t.rating),"20%") + `</tr>`;
-    });
-    const nums3d = p.section3Dashboards.map((t) => parseFloat(t.rating)).filter((n) => !isNaN(n));
-    const avg3d = nums3d.length > 0 ? Math.round(nums3d.reduce((a,b)=>a+b,0)/nums3d.length) : null;
-    body += `<tr><td colspan="3" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:80%">Дундаж үнэлгээ</td><td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:20%">${avg3d !== null ? `${avg3d}%` : ""}</td></tr>`;
-  }
-  body += tblEnd + caption();
-  }
+    if (!hidden.has("s32")) {
+      body += subHeading(
+        "Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:",
+      );
+      body += tblStart;
+      body += `<tr style="background:#fff;color:#000">${["№", "Дашбоард", "Дашбоардын ач холбогдол,хэрэглээ", "Хэрэглэгч нэгжийн өгсөн үнэлгээ"].map((h) => th(h)).join("")}</tr>`;
+      body += tblMid;
+      if (p.section3Dashboards.length === 0) {
+        body += `<tr>${[5, 35, 40, 20].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+      } else {
+        p.section3Dashboards.forEach((t, idx) => {
+          body +=
+            `<tr>` +
+            tdC(`${idx + 1}`, "5%") +
+            tdL(esc(t.dashboard), "35%") +
+            tdL(esc(t.value), "40%") +
+            tdC(esc(t.rating), "20%") +
+            `</tr>`;
+        });
+        const nums3d = p.section3Dashboards
+          .map((t) => parseFloat(t.rating))
+          .filter((n) => !isNaN(n));
+        const avg3d =
+          nums3d.length > 0
+            ? Math.round(nums3d.reduce((a, b) => a + b, 0) / nums3d.length)
+            : null;
+        body += `<tr><td colspan="3" style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:80%">Дундаж үнэлгээ</td><td style="border:0.5px dotted #ccc;padding:3px 5px;font-weight:bold;text-align:center;width:20%">${avg3d !== null ? `${avg3d}%` : ""}</td></tr>`;
+      }
+      body += tblEnd + caption();
+    }
   }
 
   // ── Section IV ──
   if (!hidden.has("s4")) {
-  body += heading(`${_sectionRoman.s4}. Хамрагдсан сургалт`);
-  body += tblStart;
-  body += `<tr style="background:#fff;color:#000">${["№","Хамрагдсан сургалт","Зохион байгуулагч","Сургалтын төрөл","Хэзээ","Сургалтын хэлбэр","Цаг","Аудитын зорилгод нийцсэн эсэх","Мэдлэгээ хуваалцсан эсэх"].map((h) => th(h)).join("")}</tr>`;
-  body += tblMid;
-  if (p.section4Trainings.length === 0) {
-    body += `<tr>${[5,25,15,12,10,10,7,8,8].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
-  } else {
-    p.section4Trainings.forEach((t, idx) => {
-      body += `<tr>` +
-        tdC(`${idx+1}`,"5%") + tdL(esc(t.training),"25%") + tdC(esc(t.organizer),"15%") +
-        tdC(esc(t.type),"12%") + tdC(t.date ? t.date.replace(/-/g,".") : "","10%") +
-        tdC(esc(t.format),"10%") + tdC(t.hours ? `${esc(t.hours)} цаг` : "","7%") +
-        tdC(esc(t.meetsAuditGoal),"8%") + tdC(esc(t.sharedKnowledge),"8%") +
-        `</tr>`;
-    });
-  }
-  body += tblEnd + caption();
-  body += subHeading("Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:");
-  body += p.section4KnowledgeText?.trim()
-    ? `<div style="margin-bottom:8pt;white-space:pre-wrap">${esc(p.section4KnowledgeText)}</div>`
-    : `<div style="margin-bottom:8pt">&nbsp;</div>`;
+    body += heading(`${_sectionRoman.s4}. Хамрагдсан сургалт`);
+    body += tblStart;
+    body += `<tr style="background:#fff;color:#000">${["№", "Хамрагдсан сургалт", "Зохион байгуулагч", "Сургалтын төрөл", "Хэзээ", "Сургалтын хэлбэр", "Цаг", "Аудитын зорилгод нийцсэн эсэх", "Мэдлэгээ хуваалцсан эсэх"].map((h) => th(h)).join("")}</tr>`;
+    body += tblMid;
+    if (p.section4Trainings.length === 0) {
+      body += `<tr>${[5, 25, 15, 12, 10, 10, 7, 8, 8].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+    } else {
+      p.section4Trainings.forEach((t, idx) => {
+        body +=
+          `<tr>` +
+          tdC(`${idx + 1}`, "5%") +
+          tdL(esc(t.training), "25%") +
+          tdC(esc(t.organizer), "15%") +
+          tdC(esc(t.type), "12%") +
+          tdC(t.date ? t.date.replace(/-/g, ".") : "", "10%") +
+          tdC(esc(t.format), "10%") +
+          tdC(t.hours ? `${esc(t.hours)} цаг` : "", "7%") +
+          tdC(esc(t.meetsAuditGoal), "8%") +
+          tdC(esc(t.sharedKnowledge), "8%") +
+          `</tr>`;
+      });
+    }
+    body += tblEnd + caption();
+    body += subHeading("Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:");
+    body += p.section4KnowledgeText?.trim()
+      ? `<div style="margin-bottom:8pt;white-space:pre-wrap">${esc(p.section4KnowledgeText)}</div>`
+      : `<div style="margin-bottom:8pt">&nbsp;</div>`;
   }
 
   // ── Section V ──
   if (!hidden.has("s5")) {
-  body += heading(`${_sectionRoman.s5}. Үүрэг даалгаварын биелэлт`);
-  body += tblStart;
-  body += `<tr style="background:#fff;color:#000">${["№","Ажлын төрөл","Хийгдсэн ажил"].map((h) => th(h)).join("")}</tr>`;
-  body += tblMid;
-  if (p.section5Tasks.length === 0) {
-    body += `<tr>${[5,35,60].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
-  } else {
-    p.section5Tasks.forEach((t, idx) => {
-      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdL(esc(t.taskType),"35%") + tdLH(parseContentHtml(t.completedWork ?? "", tc),"60%") + `</tr>`;
-    });
-  }
-  body += tblEnd + caption();
+    body += heading(`${_sectionRoman.s5}. Үүрэг даалгаварын биелэлт`);
+    body += tblStart;
+    body += `<tr style="background:#fff;color:#000">${["№", "Ажлын төрөл", "Хийгдсэн ажил"].map((h) => th(h)).join("")}</tr>`;
+    body += tblMid;
+    if (p.section5Tasks.length === 0) {
+      body += `<tr>${[5, 35, 60].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+    } else {
+      p.section5Tasks.forEach((t, idx) => {
+        body +=
+          `<tr>` +
+          tdC(`${idx + 1}`, "5%") +
+          tdL(esc(t.taskType), "35%") +
+          tdLH(parseContentHtml(t.completedWork ?? "", tc), "60%") +
+          `</tr>`;
+      });
+    }
+    body += tblEnd + caption();
   }
 
   // ── Section VI ──
   if (!hidden.has("s6")) {
-  body += heading(`${_sectionRoman.s6}. Хамт олны ажил`);
-  body += tblStart;
-  body += `<tr style="background:#fff;color:#000">${["№","Огноо","Хамт олны ажил","Санаачилга"].map((h) => th(h)).join("")}</tr>`;
-  body += tblMid;
-  if (p.section6Activities.length === 0) {
-    body += `<tr>${[5,20,50,25].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
-  } else {
-    p.section6Activities.forEach((t, idx) => {
-      body += `<tr>` + tdC(`${idx+1}`,"5%") + tdC(t.date ? t.date.replace(/-/g,".") : "","20%") + tdL(esc(t.activity),"50%") + tdL(esc(t.initiative),"25%") + `</tr>`;
-    });
-  }
-  body += tblEnd + caption();
+    body += heading(`${_sectionRoman.s6}. Хамт олны ажил`);
+    body += tblStart;
+    body += `<tr style="background:#fff;color:#000">${["№", "Огноо", "Хамт олны ажил", "Санаачилга"].map((h) => th(h)).join("")}</tr>`;
+    body += tblMid;
+    if (p.section6Activities.length === 0) {
+      body += `<tr>${[5, 20, 50, 25].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
+    } else {
+      p.section6Activities.forEach((t, idx) => {
+        body +=
+          `<tr>` +
+          tdC(`${idx + 1}`, "5%") +
+          tdC(t.date ? t.date.replace(/-/g, ".") : "", "20%") +
+          tdL(esc(t.activity), "50%") +
+          tdL(esc(t.initiative), "25%") +
+          `</tr>`;
+      });
+    }
+    body += tblEnd + caption();
   }
 
   // ── Section VII ──
   if (!hidden.has("s7")) {
-  body += heading(`${_sectionRoman.s7}. Шинэ санал санаачилга`);
-  body += p.section7Text?.trim()
-    ? `<div style="margin-bottom:8pt;white-space:pre-wrap">${esc(p.section7Text)}</div>`
-    : `<div style="margin-bottom:8pt">&nbsp;</div>`;
+    body += heading(`${_sectionRoman.s7}. Шинэ санал санаачилга`);
+    body += p.section7Text?.trim()
+      ? `<div style="margin-bottom:8pt;white-space:pre-wrap">${esc(p.section7Text)}</div>`
+      : `<div style="margin-bottom:8pt">&nbsp;</div>`;
   }
 
   // ── Dynamic sections VIII, IX, … ──

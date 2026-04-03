@@ -38,7 +38,7 @@ export class AuthService {
   // login_attempts table schema → scripts/create-login-attempts.sql
   private readonly MAX_ATTEMPTS = 5;
   private readonly ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 min window
-  private readonly LOCKOUT_MS = 15 * 60 * 1000;        // 15 min lockout
+  private readonly LOCKOUT_MS = 15 * 60 * 1000; // 15 min lockout
 
   /** Throws if the key is currently locked out. */
   private async guardLogin(key: string): Promise<void> {
@@ -109,7 +109,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private auditLogService: AuditLogService,
-  ) { }
+  ) {}
 
   // ─── Private Helpers ───────────────────────────────────────────────────────
 
@@ -142,8 +142,8 @@ export class AuthService {
    */
   private generateTokenForUser(user: any): string {
     return this.jwtService.sign({
-      sub: user.id,          // standard JWT subject claim
-      id: user.id,           // kept for backwards compatibility
+      sub: user.id, // standard JWT subject claim
+      id: user.id, // kept for backwards compatibility
       userId: user.userId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
@@ -403,7 +403,6 @@ export class AuthService {
     await this.guardLogin(lockKey);
 
     try {
-
       const dept = (
         await this.clickhouse.query<any>(
           "SELECT * FROM departments WHERE name = {name:String} LIMIT 1",

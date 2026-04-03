@@ -44,8 +44,14 @@ export default function ExcelReportDetailPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopTimers = () => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
   };
 
   const load = useCallback(async () => {
@@ -59,7 +65,11 @@ export default function ExcelReportDetailPage() {
       }
       setTemplate(found);
     } catch {
-      toast({ title: "Алдаа", description: "Мэдээлэл татахад алдаа гарлаа", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Мэдээлэл татахад алдаа гарлаа",
+        variant: "destructive",
+      });
       router.replace("/tools/excel-report");
     } finally {
       setLoading(false);
@@ -76,7 +86,8 @@ export default function ExcelReportDetailPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = fileName ?? `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.download =
+      fileName ?? `report_${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -135,7 +146,9 @@ export default function ExcelReportDetailPage() {
     } catch (e: any) {
       stopTimers();
       setStage("error");
-      setErrorMsg(e?.response?.data?.message ?? "Тайлан эхлүүлэхэд алдаа гарлаа");
+      setErrorMsg(
+        e?.response?.data?.message ?? "Тайлан эхлүүлэхэд алдаа гарлаа",
+      );
     }
   };
 
@@ -165,10 +178,14 @@ export default function ExcelReportDetailPage() {
           </button>
           <span className="text-border">/</span>
           <div className="flex items-center gap-2">
-            <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${template.color} flex items-center justify-center shadow-md`}>
+            <div
+              className={`w-6 h-6 rounded-md bg-gradient-to-br ${template.color} flex items-center justify-center shadow-md`}
+            >
               <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-semibold text-foreground truncate">{template.name}</span>
+            <span className="font-semibold text-foreground truncate">
+              {template.name}
+            </span>
           </div>
         </div>
       </div>
@@ -178,20 +195,23 @@ export default function ExcelReportDetailPage() {
         <div className="w-full max-w-md">
           {/* Card top icon */}
           <div className="flex flex-col items-center gap-3 mb-8 text-center">
-            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${template.color} flex items-center justify-center shadow-xl`}>
+            <div
+              className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${template.color} flex items-center justify-center shadow-xl`}
+            >
               <FileSpreadsheet className="w-8 h-8 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">{template.name}</h1>
               {template.description && (
-                <p className="text-sm text-slate-400 mt-1">{template.description}</p>
+                <p className="text-sm text-slate-400 mt-1">
+                  {template.description}
+                </p>
               )}
             </div>
           </div>
 
           {/* Form card */}
           <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl p-6 shadow-2xl space-y-5">
-
             {template.dateMode === "range" && (
               <>
                 <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -246,20 +266,26 @@ export default function ExcelReportDetailPage() {
                 <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center">
                   <FileSpreadsheet className="w-6 h-6 text-emerald-400" />
                 </div>
-                <p className="text-sm text-slate-300">Тайлан шууд татахад бэлэн байна</p>
-                <p className="text-xs text-slate-500">Огноо оруулах шаардлагагүй</p>
+                <p className="text-sm text-slate-300">
+                  Тайлан шууд татахад бэлэн байна
+                </p>
+                <p className="text-xs text-slate-500">
+                  Огноо оруулах шаардлагагүй
+                </p>
               </div>
             )}
 
             {/* Progress indicator */}
             {(busy || stage === "done" || stage === "error") && (
-              <div className={`rounded-xl px-4 py-3 text-sm flex items-center gap-3 ${
-                stage === "done"
-                  ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
-                  : stage === "error"
-                  ? "bg-rose-500/10 border border-rose-500/30 text-rose-300"
-                  : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-300"
-              }`}>
+              <div
+                className={`rounded-xl px-4 py-3 text-sm flex items-center gap-3 ${
+                  stage === "done"
+                    ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
+                    : stage === "error"
+                      ? "bg-rose-500/10 border border-rose-500/30 text-rose-300"
+                      : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-300"
+                }`}
+              >
                 {stage === "done" ? (
                   <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                 ) : stage === "error" ? (
@@ -272,7 +298,9 @@ export default function ExcelReportDetailPage() {
                   {stage === "running" && (
                     <span>
                       Боловсруулж байна
-                      <span className="ml-2 text-indigo-400 font-mono text-xs">{formatElapsed(elapsed)}</span>
+                      <span className="ml-2 text-indigo-400 font-mono text-xs">
+                        {formatElapsed(elapsed)}
+                      </span>
                     </span>
                   )}
                   {stage === "done" && <span>Татаж байна...</span>}

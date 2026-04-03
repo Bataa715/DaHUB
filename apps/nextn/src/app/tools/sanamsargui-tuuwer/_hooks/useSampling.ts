@@ -2,11 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
-import type {
-  DesignType,
-  SamplingResult,
-  GroupResult,
-} from "../_lib/sampling";
+import type { DesignType, SamplingResult, GroupResult } from "../_lib/sampling";
 import {
   getZ,
   calcSampleSize,
@@ -200,7 +196,8 @@ export function useSampling() {
             return true;
           }
           return (
-            normalizeFilterValue((row as unknown[])[colIdx]) === selectedFilterValue
+            normalizeFilterValue((row as unknown[])[colIdx]) ===
+            selectedFilterValue
           );
         });
 
@@ -216,7 +213,10 @@ export function useSampling() {
         selectedFilterValue === "all" &&
         colIdx >= 0
       ) {
-        const valueMap = new Map<string, Array<{ sourceIndex: number; row: unknown[] }>>();
+        const valueMap = new Map<
+          string,
+          Array<{ sourceIndex: number; row: unknown[] }>
+        >();
         for (const entry of scopedData) {
           const key = normalizeFilterValue((entry.row as unknown[])[colIdx]);
           const arr = valueMap.get(key);
@@ -239,7 +239,8 @@ export function useSampling() {
       if (remaining > 0) {
         if (design === "srswr") {
           for (let i = 0; i < remaining; i++) {
-            const pick = scopedData[Math.floor(Math.random() * scopedData.length)];
+            const pick =
+              scopedData[Math.floor(Math.random() * scopedData.length)];
             sampledEntries.push(pick);
           }
         } else {
@@ -258,7 +259,11 @@ export function useSampling() {
       let groupLabel = "Түүвэр";
       if (useColumnFilter && filterCol && selectedFilterValue !== "all") {
         groupLabel = `Түүвэр ${filterCol}=${selectedFilterValue}`;
-      } else if (useColumnFilter && filterCol && selectedFilterValue === "all") {
+      } else if (
+        useColumnFilter &&
+        filterCol &&
+        selectedFilterValue === "all"
+      ) {
         groupLabel = `Түүвэр (${filterCol} бүх утга)`;
       }
 
@@ -305,7 +310,10 @@ export function useSampling() {
       const pickerWindow = window as Window & {
         showSaveFilePicker?: (options?: {
           suggestedName?: string;
-          types?: Array<{ description: string; accept: Record<string, string[]> }>;
+          types?: Array<{
+            description: string;
+            accept: Record<string, string[]>;
+          }>;
         }) => Promise<{
           createWritable: () => Promise<{
             write: (data: Blob) => Promise<void>;
@@ -314,7 +322,10 @@ export function useSampling() {
         }>;
       };
 
-      if (preferSaveDialog && typeof pickerWindow.showSaveFilePicker === "function") {
+      if (
+        preferSaveDialog &&
+        typeof pickerWindow.showSaveFilePicker === "function"
+      ) {
         try {
           const handle = await pickerWindow.showSaveFilePicker({
             suggestedName: filename,
@@ -341,9 +352,13 @@ export function useSampling() {
             "name" in pickerErr &&
             (pickerErr as { name?: string }).name === "AbortError"
           ) {
-            logExportFailure("User cancelled File Picker save dialog", pickerErr, {
-              origin,
-            });
+            logExportFailure(
+              "User cancelled File Picker save dialog",
+              pickerErr,
+              {
+                origin,
+              },
+            );
             return;
           }
           logExportFailure(
@@ -376,18 +391,24 @@ export function useSampling() {
       a.click();
       a.remove();
 
-      console.info("[SanamsarguiTuuwer][Export] Browser download link triggered", {
-        filename,
-        size: blob.size,
-        origin,
-        note: "If no save prompt appears, browser download/security settings may be blocking automatic downloads.",
-      });
+      console.info(
+        "[SanamsarguiTuuwer][Export] Browser download link triggered",
+        {
+          filename,
+          size: blob.size,
+          origin,
+          note: "If no save prompt appears, browser download/security settings may be blocking automatic downloads.",
+        },
+      );
 
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     };
 
     try {
-      const totalRows = result.groups.reduce((sum, g) => sum + g.indices.length, 0);
+      const totalRows = result.groups.reduce(
+        (sum, g) => sum + g.indices.length,
+        0,
+      );
       if (totalRows >= LARGE_EXPORT_ROW_THRESHOLD) {
         logExportFailure("Large export detected; switching to CSV", undefined, {
           totalRows,

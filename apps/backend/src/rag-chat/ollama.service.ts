@@ -27,24 +27,35 @@ export class OllamaService {
           model: this.model,
           prompt,
           stream: false,
-          options: { temperature: 0.3, top_p: 0.9, num_predict: 2048, num_ctx: 4096 },
+          options: {
+            temperature: 0.3,
+            top_p: 0.9,
+            num_predict: 2048,
+            num_ctx: 4096,
+          },
         }),
         signal: controller.signal,
       });
 
       clearTimeout(timeout);
-      if (!response.ok) throw new Error(`Ollama хариу алдаатай: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Ollama хариу алдаатай: ${response.status}`);
 
       const data = await response.json();
       return data.response;
     } catch (error: any) {
       clearTimeout(timeout);
       this.logger.error(`Ollama алдаа: ${error.message}`);
-      throw new Error("LLM модельтой холбогдож чадсангүй. Ollama ажиллаж байгаа эсэхийг шалгана уу.");
+      throw new Error(
+        "LLM модельтой холбогдож чадсангүй. Ollama ажиллаж байгаа эсэхийг шалгана уу.",
+      );
     }
   }
 
-  async generateStream(prompt: string, onToken: (token: string) => void): Promise<string> {
+  async generateStream(
+    prompt: string,
+    onToken: (token: string) => void,
+  ): Promise<string> {
     try {
       const response = await fetch(`${this.baseUrl}/api/generate`, {
         method: "POST",
@@ -53,11 +64,17 @@ export class OllamaService {
           model: this.model,
           prompt,
           stream: true,
-          options: { temperature: 0.3, top_p: 0.9, num_predict: 2048, num_ctx: 4096 },
+          options: {
+            temperature: 0.3,
+            top_p: 0.9,
+            num_predict: 2048,
+            num_ctx: 4096,
+          },
         }),
       });
 
-      if (!response.ok) throw new Error(`Ollama хариу алдаатай: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Ollama хариу алдаатай: ${response.status}`);
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Stream уншигч олдсонгүй");
@@ -88,7 +105,9 @@ export class OllamaService {
       return fullResponse;
     } catch (error: any) {
       this.logger.error(`Ollama stream алдаа: ${error.message}`);
-      throw new Error("LLM модельтой холбогдож чадсангүй. Ollama ажиллаж байгаа эсэхийг шалгана уу.");
+      throw new Error(
+        "LLM модельтой холбогдож чадсангүй. Ollama ажиллаж байгаа эсэхийг шалгана уу.",
+      );
     }
   }
 

@@ -15,7 +15,11 @@ import {
   Loader2,
   Code2,
 } from "lucide-react";
-import type { DatabaseSchema, DatabaseTable, Column } from "@/lib/data-doc-types";
+import type {
+  DatabaseSchema,
+  DatabaseTable,
+  Column,
+} from "@/lib/data-doc-types";
 
 type FilterMode = "all" | "described" | "undescribed";
 
@@ -70,7 +74,11 @@ export default function DataDocPage() {
 
   const startEdit = useCallback(
     (tableName: string, colName: string, current: string) => {
-      setEditingCol({ table: tableName, col: colName, value: current === "—" ? "" : current });
+      setEditingCol({
+        table: tableName,
+        col: colName,
+        value: current === "—" ? "" : current,
+      });
       setSaveError(null);
     },
     [],
@@ -117,7 +125,9 @@ export default function DataDocPage() {
   const filteredTables = useMemo(() => {
     if (!currentDb) return [];
     return currentDb.tables.filter(
-      (t) => !tableSearch || t.name.toLowerCase().includes(tableSearch.toLowerCase()),
+      (t) =>
+        !tableSearch ||
+        t.name.toLowerCase().includes(tableSearch.toLowerCase()),
     );
   }, [currentDb, tableSearch]);
 
@@ -156,9 +166,11 @@ export default function DataDocPage() {
     setTimeout(() => setCopied(null), 1200);
   }
 
-  const describedCount = currentTable?.columns.filter((c) => c.description).length ?? 0;
+  const describedCount =
+    currentTable?.columns.filter((c) => c.description).length ?? 0;
   const totalCount = currentTable?.totalColumns ?? 0;
-  const coverage = totalCount > 0 ? Math.round((describedCount / totalCount) * 100) : 0;
+  const coverage =
+    totalCount > 0 ? Math.round((describedCount / totalCount) * 100) : 0;
 
   if (loading) {
     return (
@@ -316,7 +328,9 @@ export default function DataDocPage() {
                   <span className="font-mono font-bold text-white text-sm">
                     {currentTable.name}
                   </span>
-                  <span className="text-slate-500 text-xs ml-2">{currentDb?.name}</span>
+                  <span className="text-slate-500 text-xs ml-2">
+                    {currentDb?.name}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700/50">
                   <div
@@ -329,19 +343,25 @@ export default function DataDocPage() {
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-1 bg-slate-800/60 rounded-lg p-1">
-                  {(["all", "described", "undescribed"] as FilterMode[]).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setFilter(f)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                        filter === f
-                          ? "bg-slate-700 text-white"
-                          : "text-slate-500 hover:text-slate-300"
-                      }`}
-                    >
-                      {f === "all" ? "Бүгд" : f === "described" ? "Тайлбартай" : "Тайлбаргүй"}
-                    </button>
-                  ))}
+                  {(["all", "described", "undescribed"] as FilterMode[]).map(
+                    (f) => (
+                      <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                          filter === f
+                            ? "bg-slate-700 text-white"
+                            : "text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        {f === "all"
+                          ? "Бүгд"
+                          : f === "described"
+                            ? "Тайлбартай"
+                            : "Тайлбаргүй"}
+                      </button>
+                    ),
+                  )}
                 </div>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
@@ -354,7 +374,9 @@ export default function DataDocPage() {
                 </div>
               </>
             ) : (
-              <span className="text-sm text-slate-500">← Хүснэгт сонгоно уу</span>
+              <span className="text-sm text-slate-500">
+                ← Хүснэгт сонгоно уу
+              </span>
             )}
           </div>
 
@@ -417,7 +439,9 @@ export default function DataDocPage() {
                               value={editingCol.value}
                               onChange={(e) =>
                                 setEditingCol((prev) =>
-                                  prev ? { ...prev, value: e.target.value } : prev,
+                                  prev
+                                    ? { ...prev, value: e.target.value }
+                                    : prev,
                                 )
                               }
                               onKeyDown={(e) => {
@@ -442,20 +466,30 @@ export default function DataDocPage() {
                                 Болих
                               </button>
                               {saveError && (
-                                <span className="text-[11px] text-red-400">{saveError}</span>
+                                <span className="text-[11px] text-red-400">
+                                  {saveError}
+                                </span>
                               )}
                             </div>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group/desc">
                             {col.description ? (
-                              <span className="text-slate-300 text-xs">{col.description}</span>
+                              <span className="text-slate-300 text-xs">
+                                {col.description}
+                              </span>
                             ) : (
-                              <span className="text-slate-700 text-xs italic">—</span>
+                              <span className="text-slate-700 text-xs italic">
+                                —
+                              </span>
                             )}
                             <button
                               onClick={() =>
-                                startEdit(currentTable.name, col.name, col.description || "—")
+                                startEdit(
+                                  currentTable.name,
+                                  col.name,
+                                  col.description || "—",
+                                )
                               }
                               className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
                             >
@@ -468,7 +502,10 @@ export default function DataDocPage() {
                   ))}
                   {filteredColumns.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="px-5 py-12 text-center text-slate-600 text-sm">
+                      <td
+                        colSpan={3}
+                        className="px-5 py-12 text-center text-slate-600 text-sm"
+                      >
                         Тохирох багана олдсонгүй
                       </td>
                     </tr>
@@ -482,7 +519,9 @@ export default function DataDocPage() {
                 <div className="w-16 h-16 rounded-2xl bg-slate-800/40 flex items-center justify-center mx-auto mb-4">
                   <Database className="w-8 h-8 text-slate-600" />
                 </div>
-                <h3 className="text-slate-400 font-medium mb-1">Хүснэгт сонгоогүй байна</h3>
+                <h3 className="text-slate-400 font-medium mb-1">
+                  Хүснэгт сонгоогүй байна
+                </h3>
                 <p className="text-slate-600 text-sm">
                   Зүүн талаас мэдээллийн сан болон хүснэгт сонгоно уу
                 </p>

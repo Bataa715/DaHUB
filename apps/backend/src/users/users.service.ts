@@ -40,7 +40,7 @@ function safeParseTools(raw: unknown): string[] {
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private clickhouse: ClickHouseService) { }
+  constructor(private clickhouse: ClickHouseService) {}
 
   async findAll(limit = 200, offset = 0) {
     const users = await this.clickhouse.query<any>(

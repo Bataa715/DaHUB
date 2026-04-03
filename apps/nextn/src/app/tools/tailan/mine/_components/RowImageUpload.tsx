@@ -45,7 +45,9 @@ export function RowImageUpload({
   const setWidth = (id: string, w: number) =>
     onChange(images.map((img) => (img.id === id ? { ...img, width: w } : img)));
   const setHeight = (id: string, h: number | undefined) =>
-    onChange(images.map((img) => (img.id === id ? { ...img, height: h } : img)));
+    onChange(
+      images.map((img) => (img.id === id ? { ...img, height: h } : img)),
+    );
   return (
     <div className={inputId ? "mt-1" : "mt-2"}>
       {!inputId && (
@@ -77,7 +79,8 @@ export function RowImageUpload({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500">
-                  {img.width}% өргөн{img.height ? ` · ${img.height}px өндөр` : ""}
+                  {img.width}% өргөн
+                  {img.height ? ` · ${img.height}px өндөр` : ""}
                 </span>
                 <button
                   type="button"
@@ -98,7 +101,9 @@ export function RowImageUpload({
                 className="rounded max-w-full"
               />
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-600 w-10 shrink-0">Өргөн</span>
+                <span className="text-xs text-slate-600 w-10 shrink-0">
+                  Өргөн
+                </span>
                 <input
                   type="range"
                   min={10}
@@ -108,10 +113,14 @@ export function RowImageUpload({
                   onChange={(e) => setWidth(img.id, Number(e.target.value))}
                   className="flex-1 accent-blue-500"
                 />
-                <span className="text-xs text-slate-500 w-9 text-right shrink-0">{img.width}%</span>
+                <span className="text-xs text-slate-500 w-9 text-right shrink-0">
+                  {img.width}%
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-600 w-10 shrink-0">Өндөр</span>
+                <span className="text-xs text-slate-600 w-10 shrink-0">
+                  Өндөр
+                </span>
                 <input
                   type="number"
                   min={50}
@@ -119,7 +128,10 @@ export function RowImageUpload({
                   step={10}
                   value={img.height ?? 280}
                   onChange={(e) =>
-                    setHeight(img.id, Math.max(50, Number(e.target.value) || 280))
+                    setHeight(
+                      img.id,
+                      Math.max(50, Number(e.target.value) || 280),
+                    )
                   }
                   className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-slate-300 placeholder-slate-600"
                 />
