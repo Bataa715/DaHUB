@@ -499,6 +499,21 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
+      // Create rag_chunks table for RAG vector store
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS rag_chunks (
+          id String,
+          content String,
+          source String,
+          chunk_index UInt32,
+          document_name String,
+          page UInt32 DEFAULT 0,
+          embedding Array(Float32),
+          created_at DateTime DEFAULT now()
+        ) ENGINE = MergeTree()
+        ORDER BY (source, chunk_index)
+      `);
+
       // Create dept_bsc_reports table (department BSC/ТҮЗ quarterly reports)
       await this.exec(`
         CREATE TABLE IF NOT EXISTS dept_bsc_reports (
@@ -555,7 +570,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.logger.log(
-        "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words)",
+        "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words, rag_chunks)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);

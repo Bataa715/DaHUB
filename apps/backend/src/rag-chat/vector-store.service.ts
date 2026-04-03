@@ -1,96 +1,52 @@
-import {
-  Injectable,
-  OnModuleInit,
-  OnModuleDestroy,
-  Logger,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { EmbeddingService } from "./embedding.service";
 import { DocumentChunk, SearchResult } from "./types";
-import { existsSync, mkdirSync } from "fs";
-import * as path from "path";
-import Database from "better-sqlite3";
+import { ClickHouseService } from "../clickhouse/clickhouse.service";
+
+interface ChunkRow {
+  id: string;
+  content: string;
+  source: string;
+  chunk_index: number;
+  document_name: string;
+  page: number;
+  embedding: number[];
+}
 
 @Injectable()
-export class VectorStoreService implements OnModuleInit, OnModuleDestroy {
+export class VectorStoreService implements OnModuleInit {
   private readonly logger = new Logger(VectorStoreService.name);
-  private storePath: string;
-  private db: Database.Database;
 
   private cachedChunks: DocumentChunk[] = [];
   private cachedEmbeddings: number[][] = [];
 
   constructor(
-    private configService: ConfigService,
     private embeddingService: EmbeddingService,
-  ) {
-    this.storePath = this.configService.get<string>(
-      "VECTOR_STORE_PATH",
-      "./data/vector_store",
-    );
-  }
+    private clickhouse: ClickHouseService,
+  ) {}
 
   async onModuleInit() {
-    if (!existsSync(this.storePath)) {
-      mkdirSync(this.storePath, { recursive: true });
-    }
-
-    const dbPath = path.join(this.storePath, "vector_store.db");
-    this.db = new Database(dbPath);
-    this.db.pragma("journal_mode = WAL");
-
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS chunks (
-        id TEXT PRIMARY KEY,
-        content TEXT NOT NULL,
-        source TEXT NOT NULL,
-        chunk_index INTEGER NOT NULL,
-        document_name TEXT NOT NULL,
-        page INTEGER,
-        embedding TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now'))
-      );
-      CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source);
-    `);
-
-    this.loadCache();
+    await this.loadCache();
     this.logger.log(
-      `SQLite vector store ачааллав. Нийт ${this.cachedChunks.length} chunk бүртгэлтэй.`,
+      `ClickHouse vector store ачааллав. Нийт ${this.cachedChunks.length} chunk бүртгэлтэй.`,
     );
-  }
-
-  onModuleDestroy() {
-    if (this.db) this.db.close();
   }
 
   async addChunks(chunks: DocumentChunk[]): Promise<void> {
     const texts = chunks.map((c) => c.content);
     const newEmbeddings = await this.embeddingService.embedBatch(texts);
 
-    const insert = this.db.prepare(`
-      INSERT OR REPLACE INTO chunks (id, content, source, chunk_index, document_name, page, embedding)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    const rows = chunks.map((chunk, i) => ({
+      id: chunk.id,
+      content: chunk.content,
+      source: chunk.metadata.source,
+      chunk_index: chunk.metadata.chunkIndex,
+      document_name: chunk.metadata.documentName,
+      page: chunk.metadata.page ?? 0,
+      embedding: newEmbeddings[i],
+    }));
 
-    const insertMany = this.db.transaction(
-      (items: { chunk: DocumentChunk; embedding: number[] }[]) => {
-        for (const { chunk, embedding } of items) {
-          insert.run(
-            chunk.id,
-            chunk.content,
-            chunk.metadata.source,
-            chunk.metadata.chunkIndex,
-            chunk.metadata.documentName,
-            chunk.metadata.page ?? null,
-            JSON.stringify(embedding),
-          );
-        }
-      },
-    );
-
-    insertMany(
-      chunks.map((chunk, i) => ({ chunk, embedding: newEmbeddings[i] })),
-    );
+    await this.clickhouse.insert("rag_chunks", rows);
 
     this.cachedChunks.push(...chunks);
     this.cachedEmbeddings.push(...newEmbeddings);
@@ -116,26 +72,36 @@ export class VectorStoreService implements OnModuleInit, OnModuleDestroy {
   }
 
   async removeBySource(source: string): Promise<number> {
-    const result = this.db
-      .prepare("DELETE FROM chunks WHERE source = ?")
-      .run(source);
-    this.loadCache();
-    return result.changes;
+    const countRows = await this.clickhouse.query<{ cnt: string }>(
+      "SELECT count() as cnt FROM rag_chunks WHERE source = {source:String}",
+      { source },
+    );
+    const count = parseInt(countRows[0]?.cnt ?? "0", 10);
+
+    if (count > 0) {
+      await this.clickhouse.exec(
+        "ALTER TABLE rag_chunks DELETE WHERE source = {source:String}",
+        { source },
+      );
+      await this.loadCache();
+    }
+
+    return count;
   }
 
   getDocumentList(): { source: string; chunksCount: number }[] {
-    const rows = this.db
-      .prepare("SELECT source, COUNT(*) as cnt FROM chunks GROUP BY source")
-      .all() as { source: string; cnt: number }[];
-    return rows.map((r) => ({ source: r.source, chunksCount: r.cnt }));
+    const map = new Map<string, number>();
+    for (const chunk of this.cachedChunks) {
+      map.set(chunk.metadata.source, (map.get(chunk.metadata.source) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).map(([source, chunksCount]) => ({
+      source,
+      chunksCount,
+    }));
   }
 
   getTotalChunks(): number {
-    return (
-      this.db.prepare("SELECT COUNT(*) as cnt FROM chunks").get() as {
-        cnt: number;
-      }
-    ).cnt;
+    return this.cachedChunks.length;
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
@@ -151,30 +117,24 @@ export class VectorStoreService implements OnModuleInit, OnModuleDestroy {
     return denom === 0 ? 0 : dot / denom;
   }
 
-  private loadCache(): void {
-    const rows = this.db
-      .prepare(
-        "SELECT id, content, source, chunk_index, document_name, page, embedding FROM chunks",
-      )
-      .all() as {
-      id: string;
-      content: string;
-      source: string;
-      chunk_index: number;
-      document_name: string;
-      page: number | null;
-      embedding: string;
-    }[];
+  private async loadCache(): Promise<void> {
+    const rows = await this.clickhouse.query<ChunkRow>(
+      "SELECT id, content, source, chunk_index, document_name, page, embedding FROM rag_chunks ORDER BY source, chunk_index",
+    );
     this.cachedChunks = rows.map((r) => ({
       id: r.id,
       content: r.content,
       metadata: {
         source: r.source,
-        chunkIndex: r.chunk_index,
+        chunkIndex: Number(r.chunk_index),
         documentName: r.document_name,
-        page: r.page ?? undefined,
+        page: r.page ? Number(r.page) : undefined,
       },
     }));
-    this.cachedEmbeddings = rows.map((r) => JSON.parse(r.embedding));
+    this.cachedEmbeddings = rows.map((r) =>
+      Array.isArray(r.embedding)
+        ? (r.embedding as number[])
+        : (JSON.parse(r.embedding as unknown as string) as number[]),
+    );
   }
 }
