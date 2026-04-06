@@ -35,10 +35,11 @@ export class EmbeddingService implements OnModuleInit {
   }
 
   async embed(text: string): Promise<number[]> {
-    const response = await fetch(`${this.baseUrl}/api/embeddings`, {
+    // /api/embed — works with nomic-embed-text and llama3 (Ollama 0.1.26+)
+    const response = await fetch(`${this.baseUrl}/api/embed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: this.modelName, prompt: text }),
+      body: JSON.stringify({ model: this.modelName, input: text }),
     });
 
     if (!response.ok) {
@@ -48,20 +49,30 @@ export class EmbeddingService implements OnModuleInit {
     }
 
     const data = await response.json();
-    if (!data.embedding || !Array.isArray(data.embedding)) {
+    // /api/embed returns { embeddings: [[...]] }
+    const embedding = data.embeddings?.[0] ?? data.embedding;
+    if (!embedding || !Array.isArray(embedding)) {
       throw new Error("Ollama embedding хариу буруу форматтай байна");
     }
 
-    this.dimension = data.embedding.length;
-    return data.embedding as number[];
+    this.dimension = embedding.length;
+    return embedding as number[];
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    const embeddings: number[][] = [];
-    for (const text of texts) {
-      embeddings.push(await this.embed(text));
+    const concurrency = 2;
+    const results: number[][] = new Array(texts.length);
+    for (let i = 0; i < texts.length; i += concurrency) {
+      const batch = texts.slice(i, i + concurrency);
+      const batchResults = await Promise.all(batch.map((t) => this.embed(t)));
+      batchResults.forEach((emb, j) => {
+        results[i + j] = emb;
+      });
+      this.logger.log(`Embedding: ${Math.min(i + concurrency, texts.length)}/${texts.length} chunk`);
+      // CPU-г амраах — халахаас сэргийлнэ
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    return embeddings;
+    return results;
   }
 
   getDimension(): number {

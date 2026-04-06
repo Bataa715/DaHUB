@@ -14,6 +14,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 import {
   SECTION_DEFS,
@@ -49,6 +50,13 @@ function SectionIcon({ icon, cls }: { icon: string; cls: string }) {
 }
 
 export default function TailanBscPage() {
+  const { t, language } = useLanguage();
+  const SECTION_LABEL_KEYS = {
+    s1: "tailan_s1Label",
+    s2: "tailan_s2Label",
+    s3: "tailan_s3Label",
+    s4: "tailan_s4Label",
+  } as const;
   const {
     year,
     setYear,
@@ -107,14 +115,14 @@ export default function TailanBscPage() {
           className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Буцах
+          {t("back")}
         </Link>
         <span className="text-slate-700">/</span>
         <span className="text-slate-200 text-sm font-medium">
-          Хэлтсийн улирлийн тайлан
+          {t("tailan_deptReportPageTitle")}
         </span>
         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/70 text-slate-300 border border-slate-600/50">
-          {year} оны {qName} улирал
+          {language === "en" ? `Q${quarter} ${year}` : `${year} оны ${qName} улирал`}
         </span>
         {totalWS > 0 && (
           <span
@@ -134,7 +142,7 @@ export default function TailanBscPage() {
               (_, i) => 2020 + i,
             ).map((y) => (
               <option key={y} value={y}>
-                {y} он
+                {language === "en" ? y : `${y} он`}
               </option>
             ))}
           </select>
@@ -145,13 +153,13 @@ export default function TailanBscPage() {
           >
             {[1, 2, 3, 4].map((q) => (
               <option key={q} value={q}>
-                {q}-р улирал
+                {language === "en" ? `Q${q}` : `${q}-р улирал`}
               </option>
             ))}
           </select>
           {lastSaved && (
             <span className="text-[10px] text-slate-500 whitespace-nowrap">
-              Сүүлд: {lastSaved}
+              {t("tailan_lastSavedLabel")} {lastSaved}
             </span>
           )}
           <button
@@ -160,14 +168,14 @@ export default function TailanBscPage() {
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
           >
             <Save className="h-3.5 w-3.5" />
-            {saving ? "Хадгалаж байна..." : "Хадгалах"}
+            {saving ? t("tailan_savingLabel") : t("save")}
           </button>
           <button
             onClick={handleWordExport}
             className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
-            Word татах
+            {t("tailan_downloadWord")}
           </button>
         </div>
       </div>
@@ -182,7 +190,7 @@ export default function TailanBscPage() {
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             className="flex items-center justify-center h-9 w-full border-b border-slate-700/50 text-slate-400 hover:text-white hover:bg-white/5 transition-colors shrink-0"
-            title={sidebarOpen ? "Хураах" : "Дэлгэх"}
+            title={sidebarOpen ? t("tailan_collapseSidebar") : t("tailan_expandSidebar")}
           >
             {sidebarOpen ? (
               <PanelLeftClose className="h-4 w-4" />
@@ -200,7 +208,7 @@ export default function TailanBscPage() {
                   onClick={() => {
                     setActiveTab(def.id);
                   }}
-                  title={!sidebarOpen ? `${def.num}. ${def.label}` : undefined}
+                  title={!sidebarOpen ? `${def.num}. ${t(SECTION_LABEL_KEYS[def.id])}` : undefined}
                   className={`flex items-start gap-2.5 w-full text-left px-2.5 py-2.5 rounded-xl transition-all duration-150 text-xs ${
                     active
                       ? COLOR_TAB_ACTIVE[def.color]
@@ -214,13 +222,13 @@ export default function TailanBscPage() {
                   {sidebarOpen && (
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold leading-tight">
-                        {def.num}. {def.label}
+                        {def.num}. {t(SECTION_LABEL_KEYS[def.id])}
                       </div>
                       {sections[def.id]?.score && (
                         <span
                           className={`text-[10px] font-bold ${active ? "" : "text-amber-400"}`}
                         >
-                          {sections[def.id]!.score} оноо
+                          {sections[def.id]!.score} {t("tailan_scorePointsSuffix")}
                         </span>
                       )}
                     </div>
@@ -231,7 +239,7 @@ export default function TailanBscPage() {
             <div className="border-t border-slate-700/50 pt-1.5 mt-1">
               <button
                 onClick={() => setActiveTab("eval")}
-                title={!sidebarOpen ? "Нэгтгэл / Дүгнэлт" : undefined}
+                title={!sidebarOpen ? t("tailan_evalTitle") : undefined}
                 className={`flex items-start gap-2.5 w-full text-left px-2.5 py-2.5 rounded-xl transition-all duration-150 text-xs ${
                   isEval
                     ? "bg-rose-500/20 border border-rose-500/40 text-rose-300"
@@ -244,12 +252,12 @@ export default function TailanBscPage() {
                 {sidebarOpen && (
                   <div>
                     <div className="font-semibold leading-tight">
-                      Нэгтгэл / Дүгнэлт
+                      {t("tailan_evalTitle")}
                     </div>
                     <div className="text-[10px] opacity-70 mt-0.5">
                       {totalWS > 0
-                        ? `Нийт оноо: ${totalWS.toFixed(3)}`
-                        : "Бүх төлөвийн нэгтгэл"}
+                        ? `${t("tailan_totalScoreLabel")} ${totalWS.toFixed(3)}`
+                        : t("tailan_allSectionsOverview")}
                     </div>
                   </div>
                 )}
@@ -269,7 +277,7 @@ export default function TailanBscPage() {
                   {totalWS.toFixed(3)}
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  {scoreLabel(totalWS)}
+                  {language === "en" ? (totalWS >= 4.5 ? t("tailan_scoreExcellent") : totalWS >= 3.5 ? t("tailan_scoreGood") : totalWS >= 2.5 ? t("tailan_scoreSatisfactory") : totalWS >= 1.5 ? t("tailan_scoreAverage") : t("tailan_scoreInsufficient")) : scoreLabel(totalWS)}
                 </div>
               </div>
             )}
@@ -314,31 +322,31 @@ export default function TailanBscPage() {
         ) : (
           <div className="flex-1 overflow-y-auto p-5">
             <div className="text-sm font-bold text-white mb-4">
-              Нэгтгэл — Дата Анализийн Алба {year} оны {qName} улирал
+              {language === "en" ? `Summary — Data Analytics Division Q${quarter} ${year}` : `Нэгтгэл — Дата Анализийн Алба ${year} оны ${qName} улирал`}
             </div>
 
             {/* ── Detailed negtgel KPI table ── */}
             <div className="text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wide">
-              Дэлгэрэнгүй үнэлгээний хүснэгт
+              {t("tailan_detailedEvalTable")}
             </div>
             <div className="rounded-xl border border-slate-700/50 overflow-hidden mb-5">
               <table className="w-full border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-800/80 text-slate-300">
                     <th className="border border-slate-700/50 px-2 py-2 text-left font-semibold w-36">
-                      Бүлэг
+                      {t("tailan_groupCol")}
                     </th>
                     <th className="border border-slate-700/50 px-2 py-2 text-left font-semibold">
-                      Түлхүүр үзүүлэлт
+                      {t("tailan_keyIndicatorCol")}
                     </th>
                     <th className="border border-slate-700/50 px-2 py-2 text-center font-semibold w-10">
-                      Хувь
+                      {t("tailan_weightCol")}
                     </th>
                     <th className="border border-slate-700/50 px-2 py-2 text-center font-semibold w-16">
-                      Үнэлгээ
+                      {t("tailan_scoreCol")}
                     </th>
                     <th className="border border-slate-700/50 px-2 py-2 text-left font-semibold w-48">
-                      Үнэлгээний тайлбар
+                      {t("tailan_scoreDescCol")}
                     </th>
                   </tr>
                 </thead>
@@ -380,7 +388,7 @@ export default function TailanBscPage() {
                                     e.target.value,
                                   )
                                 }
-                                placeholder="Үзүүлэлт..."
+                                placeholder={t("tailan_kpiIndicatorPlaceholder")}
                                 className="w-full bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60 leading-relaxed"
                               />
                             </td>
@@ -429,7 +437,7 @@ export default function TailanBscPage() {
                                   )
                                 }
                                 className="w-full bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1 text-slate-300 focus:outline-none focus:border-blue-500/60 placeholder-slate-600"
-                                placeholder="Тайлбар..."
+                                placeholder={t("tailan_kpiEvaluationPlaceholder")}
                               />
                             </td>
                           </tr>
@@ -437,7 +445,7 @@ export default function TailanBscPage() {
                         {/* Total row for group */}
                         <tr className="bg-slate-800/50">
                           <td className="border border-slate-700/50 px-2 py-1.5 text-center text-slate-400 italic">
-                            Нийт
+                            {t("tailan_subtotalRow")}
                           </td>
                           <td className="border border-slate-700/50 px-2 py-1.5 text-center text-white font-bold">
                             {totalW}
@@ -452,7 +460,7 @@ export default function TailanBscPage() {
                   })}
                   <tr className="bg-slate-800/80 font-bold">
                     <td className="border border-slate-700/50 px-2 py-2 text-center text-white">
-                      НИЙТ
+                      {t("tailan_grandTotalRow")}
                     </td>
                     <td className="border border-slate-700/50 px-2 py-2 text-center text-white">
                       {negtgelKpi.reduce(
@@ -492,13 +500,13 @@ export default function TailanBscPage() {
                   <input
                     value={sig[nKey] ?? ""}
                     onChange={(e) => setSig(nKey, e.target.value)}
-                    placeholder="Нэр..."
+                    placeholder={t("tailan_namePlaceholder")}
                     className="flex-1 bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1.5 text-xs text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500/60"
                   />
                   <input
                     value={sig[tKey] ?? ""}
                     onChange={(e) => setSig(tKey, e.target.value)}
-                    placeholder="/Албан тушаал/"
+                    placeholder={t("tailan_titleJobPlaceholder")}
                     className="flex-1 bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1.5 text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500/60"
                   />
                 </div>
@@ -506,11 +514,11 @@ export default function TailanBscPage() {
               return (
                 <div className="mt-4 border border-slate-700/40 rounded-xl p-3 space-y-2">
                   <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-1">
-                    Гарын үсэг
+                    {t("tailan_signatureSection")}
                   </div>
-                  {row("БОЛОВСРУУЛСАН:", "p1n", "p1t")}
-                  {row("ҮНЭЛЖ, БАТАЛГААЖУУЛСАН:", "p2n", "p2t")}
-                  {row("ҮНЭЛЖ, БАТАЛГААЖУУЛСАН:", "p3n", "p3t")}
+                  {row(t("tailan_preparedBy"), "p1n", "p1t")}
+                  {row(t("tailan_evaluatedBy"), "p2n", "p2t")}
+                  {row(t("tailan_evaluatedBy"), "p3n", "p3t")}
                 </div>
               );
             })()}
@@ -518,7 +526,7 @@ export default function TailanBscPage() {
         )}
         <div className="flex-1 min-w-[300px] border-l border-slate-700/50 overflow-y-auto bg-slate-950/40">
           <div className="px-3 py-2 border-b border-slate-700/30 text-[11px] text-slate-400 font-semibold tracking-wide uppercase">
-            Урьдчилан харах
+            {t("tailan_previewSection")}
           </div>
           <WordPreview
             year={year}

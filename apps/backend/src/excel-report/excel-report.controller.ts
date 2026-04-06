@@ -20,6 +20,7 @@ import {
   CreateReportTemplateDto,
   UpdateReportTemplateDto,
   RunReportDto,
+  QueryToExcelDto,
 } from "./dto/excel-report.dto";
 
 @Controller("excel-report")
@@ -114,6 +115,25 @@ export class ExcelReportController {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="report.xlsx"; filename*=UTF-8''${encodedName}`,
+      "Content-Length": buffer.length,
+    });
+    res.end(buffer);
+  }
+
+  /** POST /excel-report/query-to-excel — run custom SELECT → download xlsx */
+  @Post("query-to-excel")
+  async queryToExcel(@Body() dto: QueryToExcelDto, @Res() res: Response) {
+    const buffer = await this.service.queryToExcel(dto);
+    const baseName = (dto.fileName ?? "query_result").replace(
+      /[^a-z0-9_\-\u0400-\u04FF]/gi,
+      "_",
+    );
+    const date = new Date().toISOString().slice(0, 10);
+    const encodedName = encodeURIComponent(`${baseName}_${date}.xlsx`);
+    res.set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="query_result.xlsx"; filename*=UTF-8''${encodedName}`,
       "Content-Length": buffer.length,
     });
     res.end(buffer);

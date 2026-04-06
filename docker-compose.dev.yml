@@ -1,7 +1,7 @@
 services:
   # ─── ClickHouse ──────────────────────────────────────────────────────────────
   clickhouse:
-    image: clickhouse/clickhouse-server:24.8-alpine
+    image: clickhouse/clickhouse-server:latest
     container_name: clickhouse
     ports:
       - "8123:8123"
@@ -29,17 +29,12 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3001
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET environment variable is required}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production}
       - CORS_ORIGINS=${FRONTEND_URL:-http://localhost:9002}
       - CLICKHOUSE_HOST=http://clickhouse:8123
-      # Single service user (audit_app): audit_db full access + SELECT on external DBs + ACCESS MANAGEMENT
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-audit_app}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
       - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-audit_db}
-      # External ClickHouse URL shown to browser users (Tabix / Play UI)
-      - CLICKHOUSE_EXTERNAL_HOST=${CLICKHOUSE_EXTERNAL_HOST:-localhost}
-      - CLICKHOUSE_EXTERNAL_PORT=${CLICKHOUSE_EXTERNAL_PORT:-8123}
-      - CLICKHOUSE_PLAY_URL=${CLICKHOUSE_PLAY_URL:-http://localhost:8123/play}
       # File watching on Windows/Docker
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_INTERVAL=1000
@@ -67,8 +62,6 @@ services:
       - NODE_ENV=development
       # Browser calls backend — must be reachable from the browser
       - NEXT_PUBLIC_API_URL=${BACKEND_URL:-http://localhost:3001}
-      # ClickHouse Play UI link shown to users inside the app
-      - NEXT_PUBLIC_CLICKHOUSE_PLAY_URL=${CLICKHOUSE_PLAY_URL:-http://localhost:8123/play}
       # JWT verify in middleware — must match backend JWT_SECRET
       - JWT_SECRET=${JWT_SECRET}
       # File watching on Windows/Docker

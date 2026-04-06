@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   KpiRow,
   KpiSubSection,
@@ -84,6 +85,7 @@ export function DashTaskCard({
 }) {
   const [open, setOpen] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const { t } = useLanguage();
   const iCls =
     "w-full bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60";
 
@@ -146,12 +148,12 @@ export function DashTaskCard({
         </span>
         <span className="flex-1 text-xs font-semibold text-white truncate">
           {row.title || (
-            <span className="font-normal text-slate-500">Ажлын нэр...</span>
+            <span className="font-normal text-slate-500">{t("tailan_taskNamePlaceholder")}</span>
           )}
         </span>
         {(row.images ?? []).length > 0 && (
           <span className="text-[9px] text-slate-500">
-            {row.images!.length} зур
+            {row.images!.length} {t("tailan_imagesCount")}
           </span>
         )}
         <button
@@ -194,24 +196,24 @@ export function DashTaskCard({
         <div className="px-3 pb-3 space-y-2 border-t border-slate-700/40">
           <div className="pt-2">
             <label className="block text-[10px] text-slate-400 mb-1">
-              Ажлын нэр
+              {t("tailan_taskNameLabel")}
             </label>
             <input
               value={row.title}
               onChange={(e) => onChangeTitle(e.target.value)}
-              placeholder="Ажлын нэр..."
+              placeholder={t("tailan_taskNamePlaceholder")}
               className={iCls + " font-bold"}
             />
           </div>
           <div>
             <label className="block text-[10px] text-slate-400 mb-1">
-              Гүйцэтгэл /тайлбар/
+              {t("tailan_taskResultLabel")}
             </label>
             <textarea
               rows={4}
               value={row.description}
               onChange={(e) => onChangeDesc(e.target.value)}
-              placeholder="Дэлгэрэнгүй тайлбар..."
+              placeholder={t("tailan_taskDetailedPlaceholder")}
               className={iCls + " resize-none leading-relaxed"}
             />
           </div>
@@ -227,7 +229,7 @@ export function DashTaskCard({
                   <div className="flex flex-col gap-1 flex-1">
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] text-slate-400 w-10 shrink-0">
-                        Өргөн:
+                        {t("tailan_widthLabel")}
                       </span>
                       <input
                         type="range"
@@ -245,7 +247,7 @@ export function DashTaskCard({
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] text-slate-400 w-10 shrink-0">
-                        Өндөр:
+                        {t("tailan_heightLabel")}
                       </span>
                       <input
                         type="range"
@@ -267,7 +269,7 @@ export function DashTaskCard({
                     <button
                       onClick={() => handleDeleteImage(img.id)}
                       className="text-slate-600 hover:text-rose-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Устгах"
+                      title={t("tailan_deleteAction")}
                     >
                       ✕
                     </button>
@@ -290,7 +292,7 @@ export function DashTaskCard({
                 onClick={() => fileRef.current?.click()}
                 className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
               >
-                + Зураг нэмэх
+                {t("tailan_addImage")}
               </button>
             </div>
           )}
@@ -327,6 +329,7 @@ export function KpiTableEditor({
   onS42KnowledgeApiLoad?: (si: number) => Promise<RichTextItem[]>;
   onS43TrainingsApiLoad?: (si: number) => Promise<Section43Row[]>;
 }) {
+  const { t } = useLanguage();
   const iCls =
     "w-full bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60";
   const taCls = iCls + " resize-none overflow-hidden leading-relaxed";
@@ -1059,8 +1062,8 @@ export function KpiTableEditor({
           ) => {
             const label =
               group === "new"
-                ? "Тайлант хугацаанд шинээр нэвтрүүлсэн дата бүтээгдэхүүн"
-                : "Тайлант хугацаанд аудитын үйл ажиллагаанд ашигласан дата бүтээгдэхүүн";
+                ? t("tailan_s14NewProducts")
+                : t("tailan_s14UsedProducts");
             const total = rows.reduce(
               (s, r) => s + (parseFloat(r.savedDays) || 0),
               0,
@@ -1081,7 +1084,7 @@ export function KpiTableEditor({
                       colSpan={5}
                       className="border border-slate-700/40 px-2 py-2 text-center text-slate-600 text-[10px]"
                     >
-                      — Мэдээлэл байхгүй —
+                      — {t("tailan_noData")} —
                     </td>
                   </tr>
                 )}
@@ -1098,7 +1101,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection14Row(si, ri, "title", e.target.value)
                           }
-                          placeholder="Бүтээгдэхүүний нэр..."
+                          placeholder={t("tailan_productNamePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1153,7 +1156,7 @@ export function KpiTableEditor({
                     colSpan={3}
                     className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-[10px] text-slate-400"
                   >
-                    НИЙТ
+                    {t("tailan_grandTotalRow")}
                   </td>
                   <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white text-xs">
                     {total > 0 ? total : "–"}
@@ -1185,7 +1188,7 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS14TableApiLoad && (
@@ -1200,19 +1203,19 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
               <div className="px-3 pt-2 pb-1">
                 <label className="block text-[10px] text-slate-400 mb-1">
-                  Тайлбар текст
+                  {t("tailan_descriptionText")}
                 </label>
                 <textarea
                   rows={3}
                   value={sub.section14Text ?? ""}
                   onChange={(e) => updateSection14Text(si, e.target.value)}
-                  placeholder="Тайлант хугацаанд хэмнэсэн нөөц, цаг хугацааны талаарх тайлбар..."
+                  placeholder={t("tailan_s14ResourceSavedPlaceholder")}
                   className={iCls + " resize-none leading-relaxed"}
                 />
               </div>
@@ -1224,13 +1227,13 @@ export function KpiTableEditor({
                         №
                       </th>
                       <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                        ДАТА БҮТЭЭГДЭХҮҮН
+                        {t("tailan_dataProductCol")}
                       </th>
                       <th className="border border-slate-700/40 px-2 py-1.5 w-40">
-                        БҮТЭЭГДЭХҮҮНИЙ ТӨРӨЛ
+                        {t("tailan_productTypeCol")}
                       </th>
                       <th className="border border-slate-700/40 px-2 py-1.5 text-center w-24">
-                        ХЭМНЭСЭН ХҮН/ӨДӨР
+                        {t("tailan_savedDaysCol")}
                       </th>
                       <th className="border border-slate-700/40 w-7"></th>
                     </tr>
@@ -1262,7 +1265,7 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS2TableApiLoad && (
@@ -1277,7 +1280,7 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
@@ -1288,16 +1291,16 @@ export function KpiTableEditor({
                       №
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                      Төлөвлөгөөт ажил (Дууссан ажлууд)
+                      {t("tailan_plannedTaskCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-center w-16">
-                      Ажлын гүйцэтгэл
+                      {t("tailan_taskCompletionCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 w-32">
-                      Хийгдсэн хугацаа
+                      {t("tailan_taskPeriodCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5">
-                      Гүйцэтгэл /товч/
+                      {t("tailan_completionBriefCol")}
                     </th>
                     <th className="border border-slate-700/40 w-7"></th>
                   </tr>
@@ -1309,8 +1312,8 @@ export function KpiTableEditor({
                         colSpan={6}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        Ажил байхгүй — "Хувийн тайланаас татах" эсвэл "+" товч
-                        дарна уу
+                        {t("tailan_noTasksHint")}
+                        
                       </td>
                     </tr>
                   )}
@@ -1325,7 +1328,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection2Row(si, ri, "title", e.target.value)
                           }
-                          placeholder="Ажлын нэр..."
+                          placeholder={t("tailan_taskNamePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1346,7 +1349,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection2Row(si, ri, "period", e.target.value)
                           }
-                          placeholder="Хугацаа..."
+                          placeholder={t("tailan_periodPlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1361,7 +1364,7 @@ export function KpiTableEditor({
                               e.target.value,
                             )
                           }
-                          placeholder="Гүйцэтгэл /товч/..."
+                          placeholder={t("tailan_completionBriefPlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1369,7 +1372,7 @@ export function KpiTableEditor({
                         <button
                           onClick={() => removeSection2Row(si, ri)}
                           className="text-slate-600 hover:text-rose-400 text-sm leading-none"
-                          title="Устгах"
+                          title={t("tailan_deleteAction")}
                         >
                           ×
                         </button>
@@ -1388,7 +1391,7 @@ export function KpiTableEditor({
                       <tr className="bg-slate-800/50">
                         <td className="border border-slate-700/40 px-1 py-1"></td>
                         <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white">
-                          Дундаж
+                          {t("tailan_avgLabel")}
                         </td>
                         <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? `${avg.toFixed(1)}%` : "–"}
@@ -1408,19 +1411,19 @@ export function KpiTableEditor({
                   onClick={() => addSection2Row(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Ажил нэмэх
+                  {t("tailan_addTask")}
                 </button>
               </div>
               {s2Rows.some((r) => (r.images ?? []).length > 0) && (
                 <div className="px-3 py-2 bg-slate-900/60 border-t border-slate-700/40">
                   <div className="text-[10px] text-slate-500 mb-1.5">
-                    Зургуудын өргөн тохиргоо
+                    {t("tailan_imageWidthSettings")}
                   </div>
                   {s2Rows.map((row, ri) =>
                     (row.images ?? []).length > 0 ? (
                       <div key={ri} className="mb-2">
                         <div className="text-[10px] text-slate-400 mb-1 truncate">
-                          {ri + 1}. {row.title || "(нэргүй)"}
+                          {ri + 1}. {row.title || `(${t("tailan_unnamed")})`}
                         </div>
                         {row.images!.map((img) => (
                           <div
@@ -1436,7 +1439,7 @@ export function KpiTableEditor({
                               <div className="flex flex-col gap-0.5 flex-1">
                                 <div className="flex items-center gap-1">
                                   <span className="text-[10px] text-slate-400 w-10 shrink-0">
-                                    Өргөн:
+                                    {t("tailan_widthLabel")}
                                   </span>
                                   <input
                                     type="range"
@@ -1462,7 +1465,7 @@ export function KpiTableEditor({
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <span className="text-[10px] text-slate-400 w-10 shrink-0">
-                                    Өндөр:
+                                    {t("tailan_heightLabel")}
                                   </span>
                                   <input
                                     type="range"
@@ -1517,7 +1520,7 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS23TableApiLoad && (
@@ -1532,7 +1535,7 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
@@ -1543,13 +1546,13 @@ export function KpiTableEditor({
                       №
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                      Өгөгдөл боловсруулалт
+                      {t("tailan_dataProcessingCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                      Ач холбогдол хэрэглээ
+                      {t("tailan_usageSignificanceCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-center w-28">
-                      Хэрэглэгч үнэлгээ
+                      {t("tailan_clientScoreCol")}
                     </th>
                     <th className="border border-slate-700/40 w-7"></th>
                   </tr>
@@ -1561,7 +1564,7 @@ export function KpiTableEditor({
                         colSpan={5}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        Татах товч дарна уу
+                        {t("tailan_clickFetchHint")} 
                       </td>
                     </tr>
                   )}
@@ -1577,7 +1580,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection23Row(si, ri, "title", e.target.value)
                           }
-                          placeholder="Ажлын нэр..."
+                          placeholder={t("tailan_taskNamePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1588,7 +1591,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection23Row(si, ri, "usage", e.target.value)
                           }
-                          placeholder="Ач холбогдол, хэрэглээ..."
+                          placeholder={t("tailan_usagePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1603,7 +1606,7 @@ export function KpiTableEditor({
                               e.target.value,
                             )
                           }
-                          placeholder="Үнэлгээ..."
+                          placeholder={t("tailan_scorePlaceholder")}
                           className={`${iCls} text-center`}
                         />
                       </td>
@@ -1611,7 +1614,7 @@ export function KpiTableEditor({
                         <button
                           onClick={() => removeSection23Row(si, ri)}
                           className="text-slate-600 hover:text-rose-400 text-sm leading-none"
-                          title="Устгах"
+                          title={t("tailan_deleteAction")}
                         >
                           ×
                         </button>
@@ -1632,7 +1635,7 @@ export function KpiTableEditor({
                           colSpan={3}
                           className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white"
                         >
-                          Дундаж
+                          {t("tailan_avgLabel")}
                         </td>
                         <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? avg.toFixed(1) : "–"}
@@ -1648,7 +1651,7 @@ export function KpiTableEditor({
                   onClick={() => addSection23Row(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Мөр нэмэх
+                  {t("tailan_addRow")}
                 </button>
               </div>
             </div>
@@ -1672,7 +1675,7 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS24TableApiLoad && (
@@ -1687,7 +1690,7 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
@@ -1698,16 +1701,16 @@ export function KpiTableEditor({
                       №
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                      АЖЛЫН НЭР
+                      {t("tailan_taskNameHeader")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-center w-16">
-                      ГҮЙЦЭТГЭЛ %
+                      {t("tailan_completionPctHeader")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 w-28">
-                      ГҮЙЦЭТГЭЛ /ТОВЧ/
+                      {t("tailan_completionBriefHeader")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 w-36">
-                      ХУГАЦАА
+                      {t("tailan_periodHeader")}
                     </th>
                     <th className="border border-slate-700/40 w-7"></th>
                   </tr>
@@ -1719,7 +1722,7 @@ export function KpiTableEditor({
                         colSpan={6}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        Татах товч дарна уу
+                        {t("tailan_clickFetchHint")} 
                       </td>
                     </tr>
                   )}
@@ -1735,7 +1738,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection24Row(si, ri, "title", e.target.value)
                           }
-                          placeholder="Ажлын нэр..."
+                          placeholder={t("tailan_taskNamePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1761,7 +1764,7 @@ export function KpiTableEditor({
                               e.target.value,
                             )
                           }
-                          placeholder="Товч тайлбар..."
+                          placeholder={t("tailan_briefSummaryPlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1772,7 +1775,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection24Row(si, ri, "period", e.target.value)
                           }
-                          placeholder="Хугацаа..."
+                          placeholder={t("tailan_periodPlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1798,7 +1801,7 @@ export function KpiTableEditor({
                       <tr className="bg-slate-800/50">
                         <td className="border border-slate-700/40 px-1 py-1"></td>
                         <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white">
-                          Дундаж
+                          {t("tailan_avgLabel")}
                         </td>
                         <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? `${avg.toFixed(1)}%` : "–"}
@@ -1818,19 +1821,19 @@ export function KpiTableEditor({
                   onClick={() => addSection24Row(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Мөр нэмэх
+                  {t("tailan_addRow")}
                 </button>
               </div>
               {s24Rows.some((r) => (r.images ?? []).length > 0) && (
                 <div className="px-3 py-2 bg-slate-900/60 border-t border-slate-700/40">
                   <div className="text-[10px] text-slate-500 mb-1.5">
-                    Зургуудын өргөн тохиргоо
+                    {t("tailan_imageWidthSettings")}
                   </div>
                   {s24Rows.map((row, ri) =>
                     (row.images ?? []).length > 0 ? (
                       <div key={ri} className="mb-2">
                         <div className="text-[10px] text-slate-400 mb-1 truncate">
-                          {ri + 1}. {row.title || "(нэргүй)"}
+                          {ri + 1}. {row.title || `(${t("tailan_unnamed")})`}
                         </div>
                         {row.images!.map((img) => (
                           <div
@@ -1846,7 +1849,7 @@ export function KpiTableEditor({
                               <div className="flex flex-col gap-0.5 flex-1">
                                 <div className="flex items-center gap-1">
                                   <span className="text-[10px] text-slate-400 w-10 shrink-0">
-                                    Өргөн:
+                                    {t("tailan_widthLabel")}
                                   </span>
                                   <input
                                     type="range"
@@ -1872,7 +1875,7 @@ export function KpiTableEditor({
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <span className="text-[10px] text-slate-400 w-10 shrink-0">
-                                    Өндөр:
+                                    {t("tailan_heightLabel")}
                                   </span>
                                   <input
                                     type="range"
@@ -1927,7 +1930,7 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS33TableApiLoad && (
@@ -1942,7 +1945,7 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
@@ -1953,13 +1956,13 @@ export function KpiTableEditor({
                       №
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                      Тогтмол хийгддэг өгөгдөл боловсруулалт
+                      {t("tailan_regularDataProcessingCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                      Ач холбогдол хэрэглээ
+                      {t("tailan_usageSignificanceCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-center w-28">
-                      Хэрэглэгч үнэлгээ
+                      {t("tailan_clientScoreCol")}
                     </th>
                     <th className="border border-slate-700/40 w-7"></th>
                   </tr>
@@ -1971,7 +1974,7 @@ export function KpiTableEditor({
                         colSpan={5}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        Татах товч дарна уу
+                        {t("tailan_clickFetchHint")} 
                       </td>
                     </tr>
                   )}
@@ -1987,7 +1990,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection33Row(si, ri, "title", e.target.value)
                           }
-                          placeholder="Өгөгдөл боловсруулалтын нэр..."
+                          placeholder={t("tailan_dataProcessingNamePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -1998,7 +2001,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection33Row(si, ri, "usage", e.target.value)
                           }
-                          placeholder="Ач холбогдол, хэрэглээ..."
+                          placeholder={t("tailan_usagePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -2013,7 +2016,7 @@ export function KpiTableEditor({
                               e.target.value,
                             )
                           }
-                          placeholder="Үнэлгээ..."
+                          placeholder={t("tailan_scorePlaceholder")}
                           className={`${iCls} text-center`}
                         />
                       </td>
@@ -2041,7 +2044,7 @@ export function KpiTableEditor({
                           colSpan={3}
                           className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white"
                         >
-                          Дундаж
+                          {t("tailan_avgLabel")}
                         </td>
                         <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? avg.toFixed(1) : "–"}
@@ -2057,7 +2060,7 @@ export function KpiTableEditor({
                   onClick={() => addSection33Row(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Мөр нэмэх
+                  {t("tailan_addRow")}
                 </button>
               </div>
             </div>
@@ -2081,7 +2084,7 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS34TableApiLoad && (
@@ -2096,7 +2099,7 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
@@ -2110,10 +2113,10 @@ export function KpiTableEditor({
                       Dashboard
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                      Dashboard-ийн ач холбогдол хэрэглээ
+                      {t("tailan_dashUsageCol")}
                     </th>
                     <th className="border border-slate-700/40 px-2 py-1.5 text-center w-28">
-                      Хэрэглэгч үнэлгээ
+                      {t("tailan_clientScoreCol")}
                     </th>
                     <th className="border border-slate-700/40 w-7"></th>
                   </tr>
@@ -2125,7 +2128,7 @@ export function KpiTableEditor({
                         colSpan={5}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        Татах товч дарна уу
+                        {t("tailan_clickFetchHint")} 
                       </td>
                     </tr>
                   )}
@@ -2141,7 +2144,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection34Row(si, ri, "title", e.target.value)
                           }
-                          placeholder="Dashboard-ийн нэр..."
+                          placeholder={t("tailan_dashNamePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -2152,7 +2155,7 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection34Row(si, ri, "usage", e.target.value)
                           }
-                          placeholder="Ач холбогдол, хэрэглээ..."
+                          placeholder={t("tailan_usagePlaceholder")}
                           className={taCls}
                         />
                       </td>
@@ -2167,7 +2170,7 @@ export function KpiTableEditor({
                               e.target.value,
                             )
                           }
-                          placeholder="Үнэлгээ..."
+                          placeholder={t("tailan_scorePlaceholder")}
                           className={`${iCls} text-center`}
                         />
                       </td>
@@ -2195,7 +2198,7 @@ export function KpiTableEditor({
                           colSpan={3}
                           className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white"
                         >
-                          Дундаж
+                          {t("tailan_avgLabel")}
                         </td>
                         <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? avg.toFixed(1) : "–"}
@@ -2211,7 +2214,7 @@ export function KpiTableEditor({
                   onClick={() => addSection34Row(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Мөр нэмэх
+                  {t("tailan_addRow")}
                 </button>
               </div>
             </div>
@@ -2250,14 +2253,14 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
               <div className="divide-y divide-slate-700/30">
                 {items.length === 0 && (
                   <div className="px-4 py-3 text-[11px] text-slate-600 text-center">
-                    Зүйл байхгүй — &quot;+ Зүйл нэмэх&quot; товч дарна уу
+                    {t("tailan_noItemsHint")}
                   </div>
                 )}
                 {items.map((item, ii) => (
@@ -2271,13 +2274,13 @@ export function KpiTableEditor({
                         onChange={(e) =>
                           updateRichTextTitle(si, ii, e.target.value)
                         }
-                        placeholder="Гарчиг..."
+                        placeholder={t("tailan_titlePlaceholder")}
                         className={`${iCls} font-bold flex-1`}
                       />
                       <button
                         onClick={() => removeRichTextItem(si, ii)}
                         className="text-red-400/60 hover:text-red-400 transition text-sm leading-none shrink-0"
-                        title="Зүйл устгах"
+                        title={t("tailan_deleteItemAction")}
                       >
                         ×
                       </button>
@@ -2301,7 +2304,7 @@ export function KpiTableEditor({
                                   );
                                   updateContents(si, ii, nc);
                                 }}
-                                placeholder="Буллет текст..."
+                                placeholder={t("tailan_bulletTextPlaceholder")}
                                 className={iCls}
                               />
                               <button
@@ -2361,7 +2364,7 @@ export function KpiTableEditor({
                                     updateContents(si, ii, nc);
                                   }}
                                   className="w-16 mt-1 accent-blue-400 self-end"
-                                  title={`Өргөн: ${c.width ?? 80}%`}
+                                  title={`${t("tailan_widthLabel")} ${c.width ?? 80}%`}
                                 />
                                 <input
                                   type="range"
@@ -2382,7 +2385,7 @@ export function KpiTableEditor({
                                     updateContents(si, ii, nc);
                                   }}
                                   className="w-16 mt-1 accent-purple-400 self-end"
-                                  title={`Өндөр: ${c.height ?? 280}px`}
+                                  title={`${t("tailan_heightLabel")} ${c.height ?? 280}px`}
                                 />
                               </div>
                             </div>
@@ -2403,10 +2406,10 @@ export function KpiTableEditor({
                           }
                           className="text-[10px] text-slate-500 hover:text-green-400 transition-colors"
                         >
-                          + Буллет нэмэх
+                          {t("tailan_addBullet")}
                         </button>
                         <label className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors cursor-pointer">
-                          + Зураг нэмэх
+                          {t("tailan_addImage")}
                           <input
                             type="file"
                             accept="image/*"
@@ -2451,7 +2454,7 @@ export function KpiTableEditor({
                   onClick={() => addRichTextItem(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Зүйл нэмэх
+                  {t("tailan_addItem")}
                 </button>
               </div>
             </div>
@@ -2475,14 +2478,14 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
               </div>
               <div className="divide-y divide-slate-700/30">
                 {s42Rows.length === 0 && (
                   <div className="px-4 py-3 text-[11px] text-slate-600 text-center">
-                    Татах товч дарна уу
+                    {t("tailan_clickFetchHint")}
                   </div>
                 )}
                 {s42Rows.map((row, ri) => (
@@ -2498,7 +2501,7 @@ export function KpiTableEditor({
                             e.target.value,
                           )
                         }
-                        placeholder="Ажилтаны нэр..."
+                        placeholder={t("tailan_employeeNamePlaceholder")}
                         className={`${iCls} font-bold w-40 shrink-0`}
                       />
                       <button
@@ -2514,7 +2517,7 @@ export function KpiTableEditor({
                       onChange={(e) =>
                         updateSection42Row(si, ri, "text", e.target.value)
                       }
-                      placeholder="Мэдлэг ашиглалтын тайлбар... (шинэ мөрөөнд буллет байдлаар харагдана)"
+                      placeholder={t("tailan_knowledgeUsagePlaceholder")}
                       className={`${iCls} min-h-[60px] resize-none`}
                     />
                   </div>
@@ -2525,7 +2528,7 @@ export function KpiTableEditor({
                   onClick={() => addSection42Row(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Мөр нэмэх
+                  {t("tailan_addRow")}
                 </button>
               </div>
             </div>
@@ -2564,7 +2567,7 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
@@ -2573,18 +2576,18 @@ export function KpiTableEditor({
                   <thead>
                     <tr className="bg-amber-400/30 text-amber-100">
                       {[
-                        "Ажилтан",
-                        "Сургалтын нэр",
-                        "Зохион байгуулагч",
-                        "Төрөл",
-                        "Огноо",
-                        "Хэлбэр",
-                        "Цаг",
-                        "Аудитын зорилготой холбогдсон",
-                        "Мэдлэг хуваалцсан",
-                      ].map((h) => (
+                        t("tailan_s43employeeHeader"),
+                        t("tailan_s43trainingHeader"),
+                        t("tailan_s43organizerHeader"),
+                        t("tailan_s43typeHeader"),
+                        t("tailan_s43dateHeader"),
+                        t("tailan_s43formatHeader"),
+                        t("tailan_s43hoursHeader"),
+                        t("tailan_s43meetsGoalHeader"),
+                        t("tailan_s43sharedHeader"),
+                      ].map((h, i) => (
                         <th
-                          key={h}
+                          key={i}
                           className="border border-slate-700/40 px-2 py-1.5 text-left"
                         >
                           {h}
@@ -2600,7 +2603,7 @@ export function KpiTableEditor({
                           colSpan={10}
                           className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                         >
-                          Татах товч дарна уу
+                          {t("tailan_clickFetchHint")}
                         </td>
                       </tr>
                     )}
@@ -2608,15 +2611,15 @@ export function KpiTableEditor({
                       <tr key={ri} className="border-b border-slate-700/30">
                         {(
                           [
-                            ["employeeName", "Ажилтан..."],
-                            ["training", "Сургалт..."],
-                            ["organizer", "Зохион байгуулагч..."],
-                            ["type", "Төрөл..."],
-                            ["date", "Огноо..."],
-                            ["format", "Хэлбэр..."],
-                            ["hours", "Цаг..."],
-                            ["meetsAuditGoal", "Тийм/Үгүй..."],
-                            ["sharedKnowledge", "Мэдлэг..."],
+                            ["employeeName", t("tailan_s43employeePlaceholder")],
+                            ["training", t("tailan_s43trainingPlaceholder")],
+                            ["organizer", t("tailan_s43organizerPlaceholder")],
+                            ["type", t("tailan_s43typePlaceholder")],
+                            ["date", t("tailan_s43datePlaceholder")],
+                            ["format", t("tailan_s43formatPlaceholder")],
+                            ["hours", t("tailan_s43hoursPlaceholder")],
+                            ["meetsAuditGoal", t("tailan_s43meetsGoalPlaceholder")],
+                            ["sharedKnowledge", t("tailan_s43sharedPlaceholder")],
                           ] as [keyof Section43Row, string][]
                         ).map(([field, ph]) => (
                           <td
@@ -2656,7 +2659,7 @@ export function KpiTableEditor({
                   onClick={() => addSection43Row(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Мөр нэмэх
+                  {t("tailan_addRow")}
                 </button>
               </div>
             </div>
@@ -2680,7 +2683,7 @@ export function KpiTableEditor({
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                  placeholder="Хэсгийн нэр..."
+                  placeholder={t("tailan_sectionNamePlaceholder")}
                   className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onApiLoad && (
@@ -2695,15 +2698,14 @@ export function KpiTableEditor({
                     }}
                     className="text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded px-2 py-1 transition-colors shrink-0"
                   >
-                    Хувийн тайланаас татах
+                    {t("tailan_fetchFromPersonal")}
                   </button>
                 )}
               </div>
               <div className="divide-y divide-slate-700/30">
                 {dashRows.length === 0 && (
                   <div className="px-4 py-4 text-center text-slate-600 text-[11px]">
-                    Ажил байхгүй — "Хувийн тайланаас татах" эсвэл "+" товч дарна
-                    уу
+                    {t("tailan_noTasksHint")}
                   </div>
                 )}
                 {dashRows.map((row, ri) => (
@@ -2725,7 +2727,7 @@ export function KpiTableEditor({
                   onClick={() => addDashRow(si)}
                   className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
                 >
-                  + Ажил нэмэх
+                  {t("tailan_addTask")}
                 </button>
               </div>
             </div>
@@ -2751,7 +2753,7 @@ export function KpiTableEditor({
               <input
                 value={sub.groupLabel}
                 onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
-                placeholder="Хэсгийн нэр..."
+                placeholder={t("tailan_sectionNamePlaceholder")}
                 className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
               />
             </div>
@@ -2759,16 +2761,16 @@ export function KpiTableEditor({
               <thead>
                 <tr className="bg-amber-400/30 text-amber-100">
                   <th className="border border-slate-700/40 px-2 py-1.5 text-left">
-                    ТҮЛХҮҮР ҮЗҮҮЛЭЛТ
+                    {t("tailan_keyIndicatorHeader")}
                   </th>
                   <th className="border border-slate-700/40 px-2 py-1.5 text-center w-14">
-                    ХУВЬ
+                    {t("tailan_weightPctHeader")}
                   </th>
                   <th className="border border-slate-700/40 px-2 py-1.5 text-center w-16">
-                    ҮНЭЛГЭЭ
+                    {t("tailan_scoreHeader")}
                   </th>
                   <th className="border border-slate-700/40 px-2 py-1.5 w-44">
-                    ҮНЭЛСЭН ТАЙЛБАР
+                    {t("tailan_evaluatedDescHeader")}
                   </th>
                   <th className="border border-slate-700/40 w-7"></th>
                 </tr>
@@ -2782,7 +2784,7 @@ export function KpiTableEditor({
                         onChange={(e) =>
                           updateRow(si, ri, "indicator", e.target.value)
                         }
-                        placeholder="Үзүүлэлт..."
+                        placeholder={t("tailan_kpiIndicatorPlaceholder")}
                         className={taCls}
                       />
                     </td>
@@ -2802,7 +2804,7 @@ export function KpiTableEditor({
                         onChange={(e) =>
                           updateRow(si, ri, "score", e.target.value)
                         }
-                        placeholder="Оноо"
+                        placeholder={t("tailan_scorePlaceholder")}
                         className={`${iCls} text-center`}
                       />
                     </td>
@@ -2819,7 +2821,7 @@ export function KpiTableEditor({
                       <button
                         onClick={() => removeRow(si, ri)}
                         className="text-slate-600 hover:text-rose-400 text-sm leading-none"
-                        title="Устгах"
+                        title={t("tailan_deleteAction")}
                       >
                         ×
                       </button>
@@ -2828,7 +2830,7 @@ export function KpiTableEditor({
                 ))}
                 <tr className="bg-slate-800/40">
                   <td className="border border-slate-700/40 px-2 py-1.5 text-center text-slate-400 font-bold text-[10px]">
-                    Нийт
+                    {t("tailan_subtotalRow")}
                   </td>
                   <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white">
                     {totalW}
@@ -2842,7 +2844,7 @@ export function KpiTableEditor({
                 onClick={() => addRow(si)}
                 className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
               >
-                + Мөр нэмэх
+                {t("tailan_addRow")}
               </button>
             </div>
           </div>

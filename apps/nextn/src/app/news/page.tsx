@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Dialog,
   DialogContent,
@@ -103,6 +104,7 @@ function formatDate(d: string) {
 
 // --- Hero Section -----------------------------------------------------------
 function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
+  const { t } = useLanguage();
   const cat = getCat(item.category);
   return (
     <motion.div
@@ -152,7 +154,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             className="text-xs font-bold tracking-[0.3em] uppercase text-slate-300"
             style={{ fontFamily: "monospace" }}
           >
-            Дотоод аудит — DAHUB
+            {t("internalAuditLabel")}
           </p>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight tracking-tight">
@@ -165,11 +167,11 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             </div>
             <div>
               <p className="text-white text-sm font-semibold">
-                {item.authorName || "Дотоод аудитын алба"}
+                {item.authorName || t("newsDefaultAuthor")}
               </p>
               <p className="text-slate-400 text-xs">
                 {formatDate(item.createdAt)} &nbsp;·&nbsp;{" "}
-                {calcReadTime(item.content)} мин
+                {calcReadTime(item.content)} {t("minRead")}
               </p>
             </div>
             <div className="ml-auto flex items-center gap-1.5 text-slate-400 text-sm">
@@ -184,7 +186,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
           animate={{ x: [0, 4, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <span>Дэлгэрэнгүй</span>
+          <span>{t("readMore")}</span>
           <ArrowRight className="w-4 h-4" />
         </motion.div>
       </div>
@@ -202,6 +204,7 @@ function CarouselCard({
   index: number;
   onClick: () => void;
 }) {
+  const { t } = useLanguage();
   const cat = getCat(item.category);
   return (
     <motion.div
@@ -235,7 +238,7 @@ function CarouselCard({
       </div>
 
       <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full">
-        {calcReadTime(item.content)} мин
+        {calcReadTime(item.content)} {t("minRead")}
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
@@ -267,6 +270,7 @@ function ChatItem({
   index: number;
   onClick: () => void;
 }) {
+  const { t } = useLanguage();
   const isRight = index % 2 !== 0;
   const cat = getCat(item.category);
 
@@ -285,10 +289,10 @@ function ChatItem({
         </div>
         <div className={isRight ? "text-right" : "text-left"}>
           <p className="text-slate-300 text-xs font-semibold whitespace-nowrap">
-            {item.authorName || "Аудитын алба"}
+            {item.authorName || t("newsDefaultAuthor")}
           </p>
           <p className="text-slate-500 text-xs whitespace-nowrap">
-            {formatDate(item.createdAt)} · {calcReadTime(item.content)} мин
+            {formatDate(item.createdAt)} · {calcReadTime(item.content)} {t("minRead")}
           </p>
         </div>
       </div>
@@ -323,7 +327,7 @@ function ChatItem({
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                {calcReadTime(item.content)} мин
+                {calcReadTime(item.content)} {t("minRead")}
               </span>
             </div>
           </div>
@@ -349,6 +353,7 @@ function ChatItem({
 
 // --- Main Page --------------------------------------------------------------
 export default function NewsPage() {
+  const { t } = useLanguage();
   const [news, setNews] = useState<News[]>([]);
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -402,7 +407,7 @@ export default function NewsPage() {
             <Loader2 className="h-10 w-10 text-purple-400" />
           </motion.div>
           <p className="text-slate-400 text-sm animate-pulse">
-            Мэдээ ачаалж байна...
+            {t("newsLoading")}
           </p>
         </div>
       </div>
@@ -418,10 +423,10 @@ export default function NewsPage() {
         className="space-y-1"
       >
         <h1 className="text-3xl font-black text-white tracking-tight">
-          Мэдээ мэдэгдэл
+          {t("newsTitle")}
         </h1>
         <p className="text-slate-400 text-sm">
-          DaHUB — Дотоод аудитын мэдэгдэлийн систем
+          {t("newsSubtitle")}
         </p>
       </motion.div>
 
@@ -432,7 +437,7 @@ export default function NewsPage() {
       {carousel.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-white font-bold text-xl">Сүүлийн мэдээнүүд</h2>
+            <h2 className="text-white font-bold text-xl">{t("latestNews")}</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => scroll("left")}
@@ -477,7 +482,7 @@ export default function NewsPage() {
       {/* Chat Feed */}
       {feed.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-white font-bold text-xl">Бусад мэдээнүүд</h2>
+          <h2 className="text-white font-bold text-xl">{t("otherNews")}</h2>
           <div className="space-y-5">
             {feed.map((item, i) => (
               <ChatItem
@@ -493,7 +498,7 @@ export default function NewsPage() {
 
       {!isLoading && news.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-          <p className="text-lg">Мэдээ байхгүй байна</p>
+          <p className="text-lg">{t("noNews")}</p>
         </div>
       )}
 
@@ -565,13 +570,13 @@ export default function NewsPage() {
                     </div>
                     <div>
                       <p className="text-slate-200 text-sm font-semibold">
-                        {selectedNews.authorName || "Дотоод аудитын алба"}
+                        {selectedNews.authorName || t("newsDefaultAuthor")}
                       </p>
                       <p className="text-slate-500 text-xs flex items-center gap-2">
                         <Calendar className="w-3 h-3" />
                         {formatDate(selectedNews.createdAt)} &nbsp;·&nbsp;
                         <Clock className="w-3 h-3" />
-                        {calcReadTime(selectedNews.content)} минут унших
+                        {calcReadTime(selectedNews.content)} {t("minuteRead")}
                       </p>
                     </div>
                   </div>

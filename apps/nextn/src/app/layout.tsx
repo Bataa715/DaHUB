@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import MainLayout from "@/components/MainLayout";
 import { JetBrains_Mono } from "next/font/google";
 
@@ -59,8 +60,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <MainLayout>{children}</MainLayout>
-            <Toaster />
+            <LanguageProvider>
+              <MainLayout>{children}</MainLayout>
+              <Toaster />
+            </LanguageProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

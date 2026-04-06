@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { tailanApi } from "@/lib/api";
 import {
   FileText,
@@ -19,6 +20,7 @@ const QUARTER_NAMES = ["I", "II", "III", "IV"];
 export default function TailanPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [isDeptHead, setIsDeptHead] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export default function TailanPage() {
       <div className="flex h-screen items-center justify-center bg-[#080d14]">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
-          <span className="text-slate-400 text-sm">Уншиж байна…</span>
+          <span className="text-slate-400 text-sm">{t("tailan_loading")}</span>
         </div>
       </div>
     );
@@ -69,8 +71,8 @@ export default function TailanPage() {
             <ScrollText className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Улирлын тайлан"
-        subtitle="Улирлын ажлын тайлан бэлтгэх, нэгтгэх систем"
+        title={t("tailan_title")}
+        subtitle={t("tailan_subtitle")}
       />
 
       {/* ── Main content ── */}
@@ -85,15 +87,15 @@ export default function TailanPage() {
           {/* quarter badge */}
           <div className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1 mb-4 ml-2">
             <span className="text-blue-300 text-xs font-medium tracking-wide">
-              {year} · {qLabel}-р улирал
+              {year} · {language === "en" ? `Q${quarter}` : `${qLabel}-р улирал`}
             </span>
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-            Улирлын тайлан
+            {t("tailan_title")}
           </h1>
           <p className="text-slate-400 text-sm leading-relaxed">
-            Улирлын ажлын тайлан бэлтгэх, нэгтгэх систем
+            {t("tailan_subtitle")}
           </p>
         </div>
 
@@ -126,14 +128,14 @@ export default function TailanPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <h2 className="text-[15px] font-semibold text-white leading-tight">
-                  Өөрийн тайлан
+                  {t("tailan_myReport")}
                 </h2>
                 <span className="text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/20 rounded-full px-2 py-0.5">
-                  Хувийн
+                  {t("tailan_privateTag")}
                 </span>
               </div>
               <p className="text-slate-400 text-xs leading-relaxed">
-                Тайлангаа бэлтгэж хэлтсийн ахлагч руу илгээх
+                {t("tailan_myReportDesc")}
               </p>
             </div>
 
@@ -167,14 +169,14 @@ export default function TailanPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <h2 className="text-[15px] font-semibold text-white leading-tight">
-                    Хэлтсийн тайлан
+                    {t("tailan_deptReport")}
                   </h2>
                   <span className="text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-full px-2 py-0.5">
-                    Ахлагч
+                    {t("tailan_headTag")}
                   </span>
                 </div>
                 <p className="text-slate-400 text-xs leading-relaxed">
-                  Гишүүдийн тайлануудыг нэгтгэж нэг баримт болгох
+                  {t("tailan_deptReportDesc")}
                 </p>
               </div>
 
@@ -209,14 +211,14 @@ export default function TailanPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <h2 className="text-[15px] font-semibold text-white leading-tight">
-                    Гишүүдийн тайлан харах
+                    {t("tailan_membersView")}
                   </h2>
                   <span className="text-[10px] font-medium bg-violet-500/15 text-violet-300 border border-violet-500/20 rounded-full px-2 py-0.5">
-                    Харах
+                    {t("tailan_viewTag")}
                   </span>
                 </div>
                 <p className="text-slate-400 text-xs leading-relaxed">
-                  Хэлтсийн гишүүдийн илгээсэн тайлануудыг харах
+                  {t("tailan_membersViewDesc")}
                 </p>
               </div>
 

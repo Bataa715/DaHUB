@@ -11,6 +11,7 @@ import {
   CreateReportTemplateDto,
   UpdateReportTemplateDto,
   RunReportDto,
+  QueryToExcelDto,
 } from "./dto/excel-report.dto";
 import { randomUUID } from "crypto";
 import { spawn } from "child_process";
@@ -86,6 +87,67 @@ export class ExcelReportService implements OnModuleInit {
     "\n" +
     "_urllib_req.urlopen = _safe_urlopen\n" +
     "# === END SECURITY PREAMBLE ===\n\n";
+
+  // ── Fixed Python template for direct SQL → Excel (server-controlled, no user code) ──
+  private static readonly SQL_TO_EXCEL_PYTHON = [
+    "import os, json, urllib.request, openpyxl",
+    "from openpyxl.styles import Font, PatternFill, Alignment, Border, Side",
+    "from openpyxl.utils import get_column_letter",
+    "from urllib.parse import urlencode",
+    "",
+    "CH_HOST = os.environ.get('CLICKHOUSE_HOST', 'localhost')",
+    "CH_PORT = os.environ.get('CLICKHOUSE_PORT', '8123')",
+    "CH_USER = os.environ.get('CLICKHOUSE_USER', 'default')",
+    "CH_PASS = os.environ.get('CLICKHOUSE_PASSWORD', '')",
+    "CH_DB   = os.environ.get('CLICKHOUSE_DATABASE', 'audit_db')",
+    "SQL     = os.environ['QUERY_SQL']",
+    "OUTPUT  = os.environ['OUTPUT_FILE']",
+    "",
+    "params = urlencode({'user': CH_USER, 'password': CH_PASS, 'database': CH_DB, 'default_format': 'JSONCompact'})",
+    "url = 'http://' + CH_HOST + ':' + CH_PORT + '/?' + params",
+    "req = urllib.request.Request(url, data=SQL.encode('utf-8'), method='POST')",
+    "with urllib.request.urlopen(req) as resp:",
+    "    result = json.loads(resp.read().decode('utf-8'))",
+    "",
+    "headers = [col['name'] for col in result.get('meta', [])]",
+    "rows = result.get('data', [])",
+    "",
+    "wb = openpyxl.Workbook()",
+    "ws = wb.active",
+    "ws.title = 'Result'",
+    "",
+    "header_fill = PatternFill(start_color='1F4E79', end_color='1F4E79', fill_type='solid')",
+    "header_font = Font(color='FFFFFF', bold=True)",
+    "thin = Side(border_style='thin', color='8EA9C1')",
+    "for ci, h in enumerate(headers, 1):",
+    "    cell = ws.cell(row=1, column=ci, value=h)",
+    "    cell.fill = header_fill",
+    "    cell.font = header_font",
+    "    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)",
+    "    cell.border = Border(bottom=thin)",
+    "",
+    "even_fill = PatternFill(start_color='D6E4F0', end_color='D6E4F0', fill_type='solid')",
+    "data_side = Side(border_style='thin', color='D0D0D0')",
+    "for ri, row in enumerate(rows, 2):",
+    "    for ci, val in enumerate(row, 1):",
+    "        cell = ws.cell(row=ri, column=ci, value=val)",
+    "        if ri % 2 == 0:",
+    "            cell.fill = even_fill",
+    "        cell.border = Border(bottom=data_side)",
+    "",
+    "for ci in range(1, len(headers) + 1):",
+    "    max_len = len(str(headers[ci - 1]))",
+    "    for ri in range(2, min(len(rows) + 2, 102)):",
+    "        v = ws.cell(row=ri, column=ci).value",
+    "        if v is not None:",
+    "            max_len = max(max_len, len(str(v)))",
+    "    ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 50)",
+    "",
+    "ws.row_dimensions[1].height = 30",
+    "ws.freeze_panes = 'A2'",
+    "wb.save(OUTPUT)",
+    "print('Done: ' + str(len(rows)) + ' rows, ' + str(len(headers)) + ' columns')",
+  ].join("\n");
 
   // ── Forbidden patterns for static analysis at save time ───────────────────
   private static readonly FORBIDDEN_PATTERNS: Array<{
@@ -517,5 +579,56 @@ export class ExcelReportService implements OnModuleInit {
       throw new BadRequestException("Тайлан бэлэн болоогүй байна");
     }
     return { buffer: job.buffer, fileName: job.fileName! };
+  }
+
+  // ── Direct SQL → Excel ────────────────────────────────────────────────────
+
+  async queryToExcel(dto: QueryToExcelDto): Promise<Buffer> {
+    // Validate SELECT-only before executing
+    const cleaned = dto.sql
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "")
+      .trim();
+    if (!/^\s*SELECT\b/i.test(cleaned)) {
+      throw new BadRequestException(
+        "Зөвхөн SELECT query зөвшөөрөгдөнө. INSERT/UPDATE/DELETE/DROP зэрэг үйлдэл хориглоно.",
+      );
+    }
+
+    const tmpDir = os.tmpdir();
+    const scriptPath = path.join(tmpDir, `sql_excel_${randomUUID()}.py`);
+    const outputPath = path.join(tmpDir, `sql_excel_${randomUUID()}.xlsx`);
+
+    try {
+      fs.writeFileSync(scriptPath, ExcelReportService.SQL_TO_EXCEL_PYTHON, "utf8");
+
+      const env: Record<string, string> = {
+        ...process.env,
+        CLICKHOUSE_HOST: process.env.CLICKHOUSE_HOST ?? "",
+        CLICKHOUSE_PORT: process.env.CLICKHOUSE_PORT ?? "8123",
+        CLICKHOUSE_USER: process.env.CLICKHOUSE_USER ?? "default",
+        CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD ?? "",
+        CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
+        QUERY_SQL: dto.sql,
+        OUTPUT_FILE: outputPath,
+      };
+
+      await this.executePython(scriptPath, env);
+
+      if (!fs.existsSync(outputPath)) {
+        throw new InternalServerErrorException(
+          "Python скрипт Excel файл үүсгээгүй байна.",
+        );
+      }
+
+      return fs.readFileSync(outputPath);
+    } finally {
+      try {
+        fs.unlinkSync(scriptPath);
+      } catch {}
+      try {
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      } catch {}
+    }
   }
 }

@@ -18,6 +18,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { RichToolbar } from "./_components/RichEditor";
 import { WordPreview, ROMAN_NUMS } from "./_components/WordPreview";
 import { RowImageUpload } from "./_components/RowImageUpload";
@@ -34,6 +35,7 @@ const labelCls = "block text-xs font-medium text-slate-400 mb-1";
 // --- Main Page ---------------------------------------------------------------
 export default function TailanMinePage() {
   const { user } = useAuth();
+  const { t, language } = useLanguage();
   const report = useTailanReport(user?.name);
   const {
     mounted,
@@ -115,10 +117,10 @@ export default function TailanMinePage() {
               className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition-colors text-sm"
             >
               <ArrowLeft className="h-4 w-4" />
-              Буцах
+              {t("back")}
             </Link>
             <span className="font-semibold text-white text-sm">
-              Миний тайлан
+              {t("tailan_myReportTitle")}
             </span>
           </div>
 
@@ -145,7 +147,7 @@ export default function TailanMinePage() {
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
-              Хадгалах
+              {t("save")}
             </button>
             <button
               onClick={handleDownload}
@@ -157,7 +159,7 @@ export default function TailanMinePage() {
               ) : (
                 <Download className="h-3.5 w-3.5" />
               )}
-              Word татах
+              {t("tailan_downloadWord")}
             </button>
             <button
               onClick={handleSubmit}
@@ -169,7 +171,7 @@ export default function TailanMinePage() {
               ) : (
                 <Send className="h-3.5 w-3.5" />
               )}
-              Илгээх
+              {t("tailan_submitReport")}
             </button>
           </div>
         </div>
@@ -179,16 +181,16 @@ export default function TailanMinePage() {
           {/* Year & Quarter & Name */}
           <div className="flex gap-3 flex-wrap">
             <div className="flex-1 min-w-[120px]">
-              <label className={labelCls}>Нэр (кириллээр)</label>
+              <label className={labelCls}>{t("tailan_cyrillicName")}</label>
               <input
                 value={cyrillicName}
                 onChange={(e) => setCyrillicName(e.target.value)}
-                placeholder="Тайланд бичигдэх нэрээ оруулна уу"
+                placeholder={t("tailan_cyrillicNamePlaceholder")}
                 className={inputCls}
               />
             </div>
             <div className="flex-1 min-w-[100px]">
-              <label className={labelCls}>Он</label>
+              <label className={labelCls}>{t("tailan_yearLabel")}</label>
               <select
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
@@ -202,7 +204,7 @@ export default function TailanMinePage() {
               </select>
             </div>
             <div className="flex-1">
-              <label className={labelCls}>Улирал</label>
+              <label className={labelCls}>{t("tailan_quarterLabel")}</label>
               <select
                 value={quarter}
                 onChange={(e) => setQuarter(Number(e.target.value))}
@@ -210,7 +212,7 @@ export default function TailanMinePage() {
               >
                 {[1, 2, 3, 4].map((q) => (
                   <option key={q} value={q}>
-                    {q}-р улирал
+                    {language === "en" ? `Q${q}` : `${q}-р улирал`}
                   </option>
                 ))}
               </select>
@@ -225,8 +227,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s1")}
             >
               <h3 className="text-sm font-semibold text-white">
-                I. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн
-                байдал
+                {t("tailan_s1Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -236,10 +237,9 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s1")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s1") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
                   {hiddenSections.has("s1") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -254,7 +254,7 @@ export default function TailanMinePage() {
                   }}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                  <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s1") ? "-rotate-90" : ""}`}
@@ -265,24 +265,24 @@ export default function TailanMinePage() {
             <div
               className={`space-y-2 mt-3 ${collapsedSections.has("s1") ? "hidden" : ""}`}
             >
-              {plannedTasks.map((t) => {
-                const isOpen = expandedTaskIds.has(t._id);
+              {plannedTasks.map((task) => {
+                const isOpen = expandedTaskIds.has(task._id);
                 return (
                   <div
-                    key={t._id}
+                    key={task._id}
                     className="bg-slate-700/30 rounded-lg overflow-hidden"
                   >
                     {/* Collapsed header — always visible */}
                     <div
                       className="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-slate-700/60 transition select-none"
-                      onClick={() => toggleTaskExpand(t._id)}
+                      onClick={() => toggleTaskExpand(task._id)}
                     >
                       <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
-                        {t.order}
+                        {task.order}
                       </span>
                       <span className="flex-1 text-sm font-bold text-white">
-                        {t.title ? (
-                          t.title
+                        {task.title ? (
+                          task.title
                         ) : (
                           <span className="font-normal text-slate-500">
                             Ажлын нэр...
@@ -291,7 +291,7 @@ export default function TailanMinePage() {
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <label
-                          htmlFor={t._id + "-img"}
+                          htmlFor={task._id + "-img"}
                           className="cursor-pointer text-slate-400 hover:text-blue-400 transition"
                           onClick={(e) => e.stopPropagation()}
                           suppressHydrationWarning
@@ -301,7 +301,7 @@ export default function TailanMinePage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeTask(t._id);
+                            removeTask(task._id);
                           }}
                           className="text-red-400/70 hover:text-red-400 transition"
                         >
@@ -317,35 +317,35 @@ export default function TailanMinePage() {
                       <div className="px-3 pb-3 space-y-2 border-t border-slate-700/50">
                         <div className="grid grid-cols-2 gap-2 pt-2">
                           <div className="col-span-2">
-                            <label className={labelCls}>Ажлын нэр</label>
+                            <label className={labelCls}>{t("tailan_taskNameLabel")}</label>
                             <input
-                              value={t.title}
+                              value={task.title}
                               onChange={(e) =>
-                                updateTask(t._id, "title", e.target.value)
+                                updateTask(task._id, "title", e.target.value)
                               }
-                              placeholder="Ажлын нэр..."
+                              placeholder={t("tailan_taskNamePlaceholder")}
                               className={inputCls + " font-bold"}
                             />
                           </div>
                           <div className="col-span-2">
                             <label className={labelCls}>
-                              Гүйцэтгэл /тайлбар/
+                              {t("tailan_taskDescLabel")}
                             </label>
                             <RichToolbar
-                              value={t.description}
+                              value={task.description}
                               onChange={(v) =>
-                                updateTask(t._id, "description", v)
+                                updateTask(task._id, "description", v)
                               }
-                              placeholder="Дэлгэрэнгүй тайлбар бичнэ үү..."
+                              placeholder={t("tailan_detailedDescPlaceholder")}
                               rows={2}
                               className={inputCls + " resize-none"}
                             />
                           </div>
                         </div>
                         <RowImageUpload
-                          inputId={t._id + "-img"}
-                          images={t.images ?? []}
-                          onChange={(imgs) => updateTask(t._id, "images", imgs)}
+                          inputId={task._id + "-img"}
+                          images={task.images ?? []}
+                          onChange={(imgs) => updateTask(task._id, "images", imgs)}
                         />
                       </div>
                     )}
@@ -363,7 +363,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s12")}
             >
               <h3 className="text-sm font-semibold text-white">
-                I.2 Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн
+                {t("tailan_s12Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -373,8 +373,8 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s12")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
                   className={`transition ${hiddenSections.has("s12") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
@@ -391,7 +391,7 @@ export default function TailanMinePage() {
                   }}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Нэмэх
+                  <Plus className="h-3.5 w-3.5" /> {t("tailan_addEntry")}
                 </button>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s12") ? "-rotate-90" : ""}`}
@@ -401,25 +401,25 @@ export default function TailanMinePage() {
             <div
               className={`space-y-3 mt-3 ${collapsedSections.has("s12") ? "hidden" : ""}`}
             >
-              {section1Dashboards.map((t) => (
+              {section1Dashboards.map((dash) => (
                 <div
-                  key={t._id}
+                  key={dash._id}
                   className="bg-slate-700/30 rounded-lg p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-medium">
-                      #{t.order}
+                      #{dash.order}
                     </span>
                     <div className="flex items-center gap-2">
                       <label
-                        htmlFor={t._id + "-img"}
+                        htmlFor={dash._id + "-img"}
                         className="cursor-pointer text-slate-400 hover:text-blue-400 transition"
                         suppressHydrationWarning
                       >
                         <ImageIcon className="h-3.5 w-3.5" />
                       </label>
                       <button
-                        onClick={() => removeSection1Dashboard(t._id)}
+                        onClick={() => removeSection1Dashboard(dash._id)}
                         className="text-red-400/70 hover:text-red-400 transition"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -428,30 +428,30 @@ export default function TailanMinePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="col-span-2">
-                      <label className={labelCls}>Төлөвлөгөөт ажил</label>
+                      <label className={labelCls}>{t("tailan_plannedTaskLabel")}</label>
                       <input
-                        value={t.title}
+                        value={dash.title}
                         onChange={(e) =>
                           updateSection1Dashboard(
-                            t._id,
+                            dash._id,
                             "title",
                             e.target.value,
                           )
                         }
-                        placeholder="Ажлын нэр..."
+                        placeholder={t("tailan_taskNamePlaceholder")}
                         className={inputCls}
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>Ажлын гүйцэтгэл (%)</label>
+                      <label className={labelCls}>{t("tailan_taskCompletionPct")}</label>
                       <input
                         type="number"
                         min={0}
                         max={100}
-                        value={t.completion}
+                        value={dash.completion}
                         onChange={(e) =>
                           updateSection1Dashboard(
-                            t._id,
+                            dash._id,
                             "completion",
                             e.target.value,
                           )
@@ -462,17 +462,17 @@ export default function TailanMinePage() {
                     </div>
                     <div />
                     <div className="col-span-2">
-                      <label className={labelCls}>Хийгдсэн хугацаа</label>
+                      <label className={labelCls}>{t("tailan_periodLabel")}</label>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className={labelCls}>Эхлэх огноо</label>
+                          <label className={labelCls}>{t("tailan_startDateLabel")}</label>
                           <input
                             type="date"
-                            value={t.period.split(" – ")[0] ?? ""}
+                            value={dash.period.split(" – ")[0] ?? ""}
                             onChange={(e) => {
-                              const end = t.period.split(" – ")[1] ?? "";
+                              const end = dash.period.split(" – ")[1] ?? "";
                               updateSection1Dashboard(
-                                t._id,
+                                dash._id,
                                 "period",
                                 e.target.value + (end ? ` – ${end}` : ""),
                               );
@@ -481,14 +481,14 @@ export default function TailanMinePage() {
                           />
                         </div>
                         <div>
-                          <label className={labelCls}>Дуусах огноо</label>
+                          <label className={labelCls}>{t("tailan_endDateLabel")}</label>
                           <input
                             type="date"
-                            value={t.period.split(" – ")[1] ?? ""}
+                            value={dash.period.split(" – ")[1] ?? ""}
                             onChange={(e) => {
-                              const start = t.period.split(" – ")[0] ?? "";
+                              const start = dash.period.split(" – ")[0] ?? "";
                               updateSection1Dashboard(
-                                t._id,
+                                dash._id,
                                 "period",
                                 (start ? `${start} – ` : "") + e.target.value,
                               );
@@ -499,23 +499,23 @@ export default function TailanMinePage() {
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <label className={labelCls}>Гүйцэтгэл /товч/</label>
+                      <label className={labelCls}>{t("tailan_taskSummaryLabel")}</label>
                       <RichToolbar
-                        value={t.summary}
+                        value={dash.summary}
                         onChange={(v) =>
-                          updateSection1Dashboard(t._id, "summary", v)
+                          updateSection1Dashboard(dash._id, "summary", v)
                         }
-                        placeholder="Товч тайлбар..."
+                        placeholder={t("tailan_briefSummaryPlaceholder")}
                         rows={2}
                         className={inputCls + " resize-none"}
                       />
                     </div>
                   </div>
                   <RowImageUpload
-                    inputId={t._id + "-img"}
-                    images={t.images ?? []}
+                    inputId={dash._id + "-img"}
+                    images={dash.images ?? []}
                     onChange={(imgs) =>
-                      updateSection1Dashboard(t._id, "images", imgs)
+                      updateSection1Dashboard(dash._id, "images", imgs)
                     }
                   />
                 </div>
@@ -531,8 +531,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s2")}
             >
               <h3 className="text-sm font-semibold text-white">
-                II. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулах
-                ажил
+                {t("tailan_s2Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -542,8 +541,8 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s2")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
                   className={`transition ${hiddenSections.has("s2") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
@@ -560,7 +559,7 @@ export default function TailanMinePage() {
                   }}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                  <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s2") ? "-rotate-90" : ""}`}
@@ -570,32 +569,32 @@ export default function TailanMinePage() {
             <div
               className={`space-y-2 mt-3 ${collapsedSections.has("s2") ? "hidden" : ""}`}
             >
-              {section2Tasks.map((t) => (
+              {section2Tasks.map((s2) => (
                 <div
-                  key={t._id}
+                  key={s2._id}
                   className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
-                      {t.order}
+                      {s2.order}
                     </span>
                     <input
-                      value={t.title}
+                      value={s2.title}
                       onChange={(e) =>
-                        updateSection2Task(t._id, "title", e.target.value)
+                        updateSection2Task(s2._id, "title", e.target.value)
                       }
-                      placeholder="Төлөвлөгөөт ажлын нэр..."
+                      placeholder={t("tailan_plannedTaskPlaceholder")}
                       className={inputCls + " flex-1"}
                     />
                     <label
-                      htmlFor={t._id + "-img"}
+                      htmlFor={s2._id + "-img"}
                       className="cursor-pointer text-slate-400 hover:text-blue-400 transition shrink-0"
                       suppressHydrationWarning
                     >
                       <ImageIcon className="h-3.5 w-3.5" />
                     </label>
                     <button
-                      onClick={() => removeSection2Task(t._id)}
+                      onClick={() => removeSection2Task(s2._id)}
                       className="text-red-400/70 hover:text-red-400 transition shrink-0"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -606,32 +605,32 @@ export default function TailanMinePage() {
                       type="number"
                       min={0}
                       max={100}
-                      value={t.result}
+                      value={s2.result}
                       onChange={(e) =>
-                        updateSection2Task(t._id, "result", e.target.value)
+                        updateSection2Task(s2._id, "result", e.target.value)
                       }
-                      placeholder="Ажлын гүйцэтгэл (%)"
+                      placeholder={t("tailan_taskCompletionPct")}
                       className={inputCls}
                     />
                     <textarea
                       rows={2}
-                      value={t.completion}
+                      value={s2.completion}
                       onChange={(e) =>
-                        updateSection2Task(t._id, "completion", e.target.value)
+                        updateSection2Task(s2._id, "completion", e.target.value)
                       }
-                      placeholder="Гүйцэтгэл /товч/"
+                      placeholder={t("tailan_taskSummaryLabel")}
                       className={inputCls + " resize-none"}
                     />
                     <div className="grid grid-cols-2 gap-1.5">
                       <div>
-                        <label className={labelCls}>Эхлэх огноо</label>
+                        <label className={labelCls}>{t("tailan_startDateLabel")}</label>
                         <input
                           type="date"
-                          value={t.period.split(" – ")[0] ?? ""}
+                          value={s2.period.split(" – ")[0] ?? ""}
                           onChange={(e) => {
-                            const end = t.period.split(" – ")[1] ?? "";
+                            const end = s2.period.split(" – ")[1] ?? "";
                             updateSection2Task(
-                              t._id,
+                              s2._id,
                               "period",
                               e.target.value + (end ? ` – ${end}` : ""),
                             );
@@ -640,14 +639,14 @@ export default function TailanMinePage() {
                         />
                       </div>
                       <div>
-                        <label className={labelCls}>Дуусах огноо</label>
+                        <label className={labelCls}>{t("tailan_endDateLabel")}</label>
                         <input
                           type="date"
-                          value={t.period.split(" – ")[1] ?? ""}
+                          value={s2.period.split(" – ")[1] ?? ""}
                           onChange={(e) => {
-                            const start = t.period.split(" – ")[0] ?? "";
+                            const start = s2.period.split(" – ")[0] ?? "";
                             updateSection2Task(
-                              t._id,
+                              s2._id,
                               "period",
                               (start ? `${start} – ` : "") + e.target.value,
                             );
@@ -658,10 +657,10 @@ export default function TailanMinePage() {
                     </div>
                   </div>
                   <RowImageUpload
-                    inputId={t._id + "-img"}
-                    images={t.images ?? []}
+                    inputId={s2._id + "-img"}
+                    images={s2.images ?? []}
                     onChange={(imgs) =>
-                      updateSection2Task(t._id, "images", imgs)
+                      updateSection2Task(s2._id, "images", imgs)
                     }
                   />
                 </div>
@@ -677,7 +676,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s3")}
             >
               <h3 className="text-sm font-semibold text-white">
-                III. Тогтмол хийгддэг ажлууд
+                {t("tailan_s3Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -687,8 +686,8 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s3")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
                   className={`transition ${hiddenSections.has("s3") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
@@ -711,40 +710,39 @@ export default function TailanMinePage() {
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-medium text-slate-300">
-                    III.1 Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд
-                    нь гүйцэтгэсэн байдал
+                    {t("tailan_s31Title")}
                   </p>
                   <button
                     onClick={addSection3AutoTask}
                     className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition shrink-0"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Нэмэх
+                    <Plus className="h-3.5 w-3.5" /> {t("tailan_addEntry")}
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {section3AutoTasks.map((t) => (
+                  {section3AutoTasks.map((s3a) => (
                     <div
-                      key={t._id}
+                      key={s3a._id}
                       className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
                     >
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
-                          {t.order}
+                          {s3a.order}
                         </span>
                         <input
-                          value={t.title}
+                          value={s3a.title}
                           onChange={(e) =>
                             updateSection3AutoTask(
-                              t._id,
+                              s3a._id,
                               "title",
                               e.target.value,
                             )
                           }
-                          placeholder="Тогтмол хийгддэг автоматжуулалт..."
+                          placeholder={t("tailan_autoTaskPlaceholder")}
                           className={inputCls + " flex-1"}
                         />
                         <button
-                          onClick={() => removeSection3AutoTask(t._id)}
+                          onClick={() => removeSection3AutoTask(s3a._id)}
                           className="text-red-400/70 hover:text-red-400 transition shrink-0"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -753,30 +751,30 @@ export default function TailanMinePage() {
                       <div className="space-y-1.5 pl-6">
                         <textarea
                           rows={2}
-                          value={t.value}
+                          value={s3a.value}
                           onChange={(e) =>
                             updateSection3AutoTask(
-                              t._id,
+                              s3a._id,
                               "value",
                               e.target.value,
                             )
                           }
-                          placeholder="Ач холбогдол/хэрэглээ..."
+                          placeholder={t("tailan_valueUsagePlaceholder")}
                           className={inputCls + " resize-none"}
                         />
                         <input
                           type="number"
                           min={0}
                           max={100}
-                          value={t.rating}
+                          value={s3a.rating}
                           onChange={(e) =>
                             updateSection3AutoTask(
-                              t._id,
+                              s3a._id,
                               "rating",
                               e.target.value,
                             )
                           }
-                          placeholder="Хэрэглэгчийн үнэлгээ (0-100)"
+                          placeholder={t("tailan_userRatingPlaceholder")}
                           className={inputCls}
                         />
                       </div>
@@ -790,7 +788,7 @@ export default function TailanMinePage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <p className="text-xs font-medium text-slate-300">
-                      III.2 Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал
+                      {t("tailan_s32Title")}
                     </p>
                     <button
                       onClick={(e) => {
@@ -799,8 +797,8 @@ export default function TailanMinePage() {
                       }}
                       title={
                         hiddenSections.has("s32")
-                          ? "Тайланд харуулах"
-                          : "Тайлангаас нуух"
+                          ? t("tailan_showInReport")
+                          : t("tailan_hideFromReport")
                       }
                       className={`transition ${hiddenSections.has("s32") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                     >
@@ -815,33 +813,33 @@ export default function TailanMinePage() {
                     onClick={addSection3Dashboard}
                     className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition shrink-0"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Нэмэх
+                    <Plus className="h-3.5 w-3.5" /> {t("tailan_addEntry")}
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {section3Dashboards.map((t) => (
+                  {section3Dashboards.map((s3d) => (
                     <div
-                      key={t._id}
+                      key={s3d._id}
                       className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
                     >
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
-                          {t.order}
+                          {s3d.order}
                         </span>
                         <input
-                          value={t.dashboard}
+                          value={s3d.dashboard}
                           onChange={(e) =>
                             updateSection3Dashboard(
-                              t._id,
+                              s3d._id,
                               "dashboard",
                               e.target.value,
                             )
                           }
-                          placeholder="Dashboard нэр..."
+                          placeholder={t("tailan_dashboardNamePlaceholder")}
                           className={inputCls + " flex-1"}
                         />
                         <button
-                          onClick={() => removeSection3Dashboard(t._id)}
+                          onClick={() => removeSection3Dashboard(s3d._id)}
                           className="text-red-400/70 hover:text-red-400 transition shrink-0"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -850,30 +848,30 @@ export default function TailanMinePage() {
                       <div className="space-y-1.5 pl-6">
                         <textarea
                           rows={2}
-                          value={t.value}
+                          value={s3d.value}
                           onChange={(e) =>
                             updateSection3Dashboard(
-                              t._id,
+                              s3d._id,
                               "value",
                               e.target.value,
                             )
                           }
-                          placeholder="Ач холбогдол/хэрэглээ..."
+                          placeholder={t("tailan_valueUsagePlaceholder")}
                           className={inputCls + " resize-none"}
                         />
                         <input
                           type="number"
                           min={0}
                           max={100}
-                          value={t.rating}
+                          value={s3d.rating}
                           onChange={(e) =>
                             updateSection3Dashboard(
-                              t._id,
+                              s3d._id,
                               "rating",
                               e.target.value,
                             )
                           }
-                          placeholder="Хэрэглэгч нэгжийн үнэлгээ (0-100)"
+                          placeholder={t("tailan_clientRatingPlaceholder")}
                           className={inputCls}
                         />
                       </div>
@@ -892,7 +890,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s4")}
             >
               <h3 className="text-sm font-semibold text-white">
-                IV. Хамрагдсан сургалт
+                {t("tailan_s4Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -902,8 +900,8 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s4")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
                   className={`transition ${hiddenSections.has("s4") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
@@ -920,7 +918,7 @@ export default function TailanMinePage() {
                   }}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Сургалт нэмэх
+                  <Plus className="h-3.5 w-3.5" /> {t("tailan_addTraining")}
                 </button>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s4") ? "-rotate-90" : ""}`}
@@ -931,29 +929,29 @@ export default function TailanMinePage() {
               className={`mt-3 ${collapsedSections.has("s4") ? "hidden" : ""}`}
             >
               <div className="space-y-2">
-                {section4Trainings.map((t) => (
+                {section4Trainings.map((tr) => (
                   <div
-                    key={t._id}
+                    key={tr._id}
                     className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
-                        {t.order}
+                        {tr.order}
                       </span>
                       <input
-                        value={t.training}
+                        value={tr.training}
                         onChange={(e) =>
                           updateSection4Training(
-                            t._id,
+                            tr._id,
                             "training",
                             e.target.value,
                           )
                         }
-                        placeholder="Сургалтын нэр..."
+                        placeholder={t("tailan_trainingNamePlaceholder")}
                         className={inputCls + " flex-1"}
                       />
                       <button
-                        onClick={() => removeSection4Training(t._id)}
+                        onClick={() => removeSection4Training(tr._id)}
                         className="text-red-400/70 hover:text-red-400 transition shrink-0"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -961,43 +959,43 @@ export default function TailanMinePage() {
                     </div>
                     <div className="grid grid-cols-3 gap-1.5 pl-6">
                       <input
-                        value={t.organizer}
+                        value={tr.organizer}
                         onChange={(e) =>
                           updateSection4Training(
-                            t._id,
+                            tr._id,
                             "organizer",
                             e.target.value,
                           )
                         }
-                        placeholder="Зохион байгуулагч"
+                        placeholder={t("tailan_organizerLabel")}
                         className={inputCls}
                       />
                       <div>
-                        <label className={labelCls}>Сургалтын төрөл</label>
+                        <label className={labelCls}>{t("tailan_trainingTypeLabel")}</label>
                         <select
-                          value={t.type}
+                          value={tr.type}
                           onChange={(e) =>
                             updateSection4Training(
-                              t._id,
+                              tr._id,
                               "type",
                               e.target.value,
                             )
                           }
                           className={selectCls}
                         >
-                          <option value="">-- Сонгох --</option>
-                          <option value="Гадаад">Гадаад</option>
-                          <option value="Дотоод">Дотоод</option>
+                          <option value="">{t("tailan_selectOption")}</option>
+                          <option value="Гадаад">{t("tailan_externalTraining")}</option>
+                          <option value="Дотоод">{t("tailan_internalTraining")}</option>
                         </select>
                       </div>
                       <div>
-                        <label className={labelCls}>Огноо</label>
+                        <label className={labelCls}>{t("tailan_dateLabel")}</label>
                         <input
                           type="date"
-                          value={t.date}
+                          value={tr.date}
                           onChange={(e) =>
                             updateSection4Training(
-                              t._id,
+                              tr._id,
                               "date",
                               e.target.value,
                             )
@@ -1006,69 +1004,69 @@ export default function TailanMinePage() {
                         />
                       </div>
                       <div>
-                        <label className={labelCls}>Сургалтын хэлбэр</label>
+                        <label className={labelCls}>{t("tailan_trainingFormatLabel")}</label>
                         <select
-                          value={t.format}
+                          value={tr.format}
                           onChange={(e) =>
                             updateSection4Training(
-                              t._id,
+                              tr._id,
                               "format",
                               e.target.value,
                             )
                           }
                           className={selectCls}
                         >
-                          <option value="">-- Сонгох --</option>
-                          <option value="Онлайн">Онлайн</option>
-                          <option value="Танхим">Танхим</option>
+                          <option value="">{t("tailan_selectOption")}</option>
+                          <option value="Онлайн">{t("tailan_onlineFormat")}</option>
+                          <option value="Танхим">{t("tailan_inPersonFormat")}</option>
                         </select>
                       </div>
                       <input
-                        value={t.hours}
+                        value={tr.hours}
                         onChange={(e) =>
-                          updateSection4Training(t._id, "hours", e.target.value)
+                          updateSection4Training(tr._id, "hours", e.target.value)
                         }
-                        placeholder="Цаг"
+                        placeholder={t("tailan_hoursLabel")}
                         className={inputCls}
                       />
                       <div>
                         <label className={labelCls}>
-                          Аудитын зорилгод нийцсэн эсэх
+                          {t("tailan_meetsGoalLabel")}
                         </label>
                         <select
-                          value={t.meetsAuditGoal}
+                          value={tr.meetsAuditGoal}
                           onChange={(e) =>
                             updateSection4Training(
-                              t._id,
+                              tr._id,
                               "meetsAuditGoal",
                               e.target.value,
                             )
                           }
                           className={selectCls}
                         >
-                          <option value="">-- Сонгох --</option>
-                          <option value="Нийцсэн">Нийцсэн</option>
-                          <option value="Нийцээгүй">Нийцээгүй</option>
+                          <option value="">{t("tailan_selectOption")}</option>
+                          <option value="Нийцсэн">{t("tailan_meetsGoalYes")}</option>
+                          <option value="Нийцээгүй">{t("tailan_meetsGoalNo")}</option>
                         </select>
                       </div>
                       <div>
                         <label className={labelCls}>
-                          Мэдлэгээ хуваалцсан эсэх
+                          {t("tailan_sharedKnowledgeLabel")}
                         </label>
                         <select
-                          value={t.sharedKnowledge}
+                          value={tr.sharedKnowledge}
                           onChange={(e) =>
                             updateSection4Training(
-                              t._id,
+                              tr._id,
                               "sharedKnowledge",
                               e.target.value,
                             )
                           }
                           className={selectCls}
                         >
-                          <option value="">-- Сонгох --</option>
-                          <option value="Хуваалцсан">Хуваалцсан</option>
-                          <option value="Хуваалцаагүй">Хуваалцаагүй</option>
+                          <option value="">{t("tailan_selectOption")}</option>
+                          <option value="Хуваалцсан">{t("tailan_sharedKnowledgeYes")}</option>
+                          <option value="Хуваалцаагүй">{t("tailan_sharedKnowledgeNo")}</option>
                         </select>
                       </div>
                     </div>
@@ -1077,13 +1075,13 @@ export default function TailanMinePage() {
               </div>
               <div className="mt-3">
                 <p className="text-xs font-medium text-slate-300 mb-1">
-                  IV.1 Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал
+                  {t("tailan_s41Title")}
                 </p>
                 <RichToolbar
                   value={section4KnowledgeText}
                   onChange={setSection4KnowledgeText}
                   rows={3}
-                  placeholder="Сургалтаас авсан мэдлэгийг хэрхэн ашиглаж байгаа тухай..."
+                  placeholder={t("tailan_knowledgeUsagePlaceholder")}
                   className={inputCls + " resize-y"}
                 />
               </div>
@@ -1098,7 +1096,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s5")}
             >
               <h3 className="text-sm font-semibold text-white">
-                V. Үүрэг даалгаварын биелэлт
+                {t("tailan_s5Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -1108,8 +1106,8 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s5")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
                   className={`transition ${hiddenSections.has("s5") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
@@ -1126,7 +1124,7 @@ export default function TailanMinePage() {
                   }}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                  <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s5") ? "-rotate-90" : ""}`}
@@ -1184,7 +1182,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s6")}
             >
               <h3 className="text-sm font-semibold text-white">
-                VI. Хамт олны ажил
+                {t("tailan_s6Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -1194,10 +1192,9 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s6")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s6") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
                   {hiddenSections.has("s6") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -1212,7 +1209,7 @@ export default function TailanMinePage() {
                   }}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Ажил нэмэх
+                  <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s6") ? "-rotate-90" : ""}`}
@@ -1222,29 +1219,29 @@ export default function TailanMinePage() {
             <div
               className={`space-y-2 mt-3 ${collapsedSections.has("s6") ? "hidden" : ""}`}
             >
-              {section6Activities.map((t) => (
+              {section6Activities.map((act) => (
                 <div
-                  key={t._id}
+                  key={act._id}
                   className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
-                      {t.order}
+                      {act.order}
                     </span>
                     <input
-                      value={t.activity}
+                      value={act.activity}
                       onChange={(e) =>
                         updateSection6Activity(
-                          t._id,
+                          act._id,
                           "activity",
                           e.target.value,
                         )
                       }
-                      placeholder="Хамт олны ажил..."
+                      placeholder={t("tailan_teamActivityPlaceholder")}
                       className={inputCls + " flex-1"}
                     />
                     <button
-                      onClick={() => removeSection6Activity(t._id)}
+                      onClick={() => removeSection6Activity(act._id)}
                       className="text-red-400/70 hover:text-red-400 transition shrink-0"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -1253,23 +1250,23 @@ export default function TailanMinePage() {
                   <div className="space-y-1.5 pl-6">
                     <input
                       type="date"
-                      value={t.date}
+                      value={act.date}
                       onChange={(e) =>
-                        updateSection6Activity(t._id, "date", e.target.value)
+                        updateSection6Activity(act._id, "date", e.target.value)
                       }
                       className={inputCls}
                     />
                     <textarea
                       rows={2}
-                      value={t.initiative}
+                      value={act.initiative}
                       onChange={(e) =>
                         updateSection6Activity(
-                          t._id,
+                          act._id,
                           "initiative",
                           e.target.value,
                         )
                       }
-                      placeholder="Санаачилга"
+                      placeholder={t("tailan_initiativeLabel")}
                       className={inputCls + " resize-none"}
                     />
                   </div>
@@ -1286,7 +1283,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("s7")}
             >
               <h3 className="text-sm font-semibold text-white">
-                VII. Шинэ санал санаачилга
+                {t("tailan_s7Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -1296,8 +1293,8 @@ export default function TailanMinePage() {
                   }}
                   title={
                     hiddenSections.has("s7")
-                      ? "Тайланд харуулах"
-                      : "Тайлангаас нуух"
+                      ? t("tailan_showInReport")
+                      : t("tailan_hideFromReport")
                   }
                   className={`transition ${hiddenSections.has("s7") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                 >
@@ -1319,7 +1316,7 @@ export default function TailanMinePage() {
                 value={section7Text}
                 onChange={setSection7Text}
                 rows={4}
-                placeholder="Шинэ санал санаачилга, дэвшүүлсэн санааг бичнэ үү..."
+                placeholder={t("tailan_proposalPlaceholder")}
                 className={inputCls + " resize-y"}
               />
             </div>
@@ -1331,7 +1328,7 @@ export default function TailanMinePage() {
               onClick={() => toggleSection("sdyn")}
             >
               <h3 className="text-sm font-semibold text-white">
-                Нэмэлт хэсгүүд (VIII, IX, …)
+                {t("tailan_dynTitle")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -1341,7 +1338,7 @@ export default function TailanMinePage() {
                   }}
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Нэмэлт хэсэг нэмэх
+                  <Plus className="h-3.5 w-3.5" /> {t("tailan_addSection")}
                 </button>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("sdyn") ? "-rotate-90" : ""}`}
@@ -1366,7 +1363,7 @@ export default function TailanMinePage() {
                         updateSection(sec._id, "title", e.target.value)
                       }
                       className={inputCls + " flex-1"}
-                      placeholder="Хэсгийн гарчиг..."
+                      placeholder={t("tailan_sectionTitlePlaceholder")}
                     />
                     <button
                       onClick={(e) => {
@@ -1375,8 +1372,8 @@ export default function TailanMinePage() {
                       }}
                       title={
                         hiddenSections.has(`dyn_${idx}`)
-                          ? "Тайланд харуулах"
-                          : "Тайлангаас нуух"
+                          ? t("tailan_showInReport")
+                          : t("tailan_hideFromReport")
                       }
                       className={`transition flex-shrink-0 ${hiddenSections.has(`dyn_${idx}`) ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
                     >
@@ -1397,7 +1394,7 @@ export default function TailanMinePage() {
                     value={sec.content}
                     onChange={(v) => updateSection(sec._id, "content", v)}
                     rows={4}
-                    placeholder="Хэсгийн агуулга..."
+                    placeholder={t("tailan_sectionContentPlaceholder")}
                     className={inputCls + " resize-y"}
                   />
                 </div>
@@ -1411,7 +1408,7 @@ export default function TailanMinePage() {
       <div className="flex flex-col flex-1 bg-slate-600 overflow-hidden">
         <div className="px-4 py-2.5 border-b border-slate-500/50 text-xs font-medium text-slate-300 flex items-center gap-2 flex-shrink-0 bg-slate-700/50">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Realtime preview — Word баримт
+          {t("tailan_livePreview")}
         </div>
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <WordPreview

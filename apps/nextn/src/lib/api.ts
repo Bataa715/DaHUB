@@ -857,4 +857,14 @@ export const excelReportApi = {
   adminDelete: async (id: string): Promise<void> => {
     await api.delete(`/excel-report/admin/templates/${id}`);
   },
+
+  /** POST /excel-report/query-to-excel — run a custom SELECT query and download xlsx */
+  queryToExcel: async (sql: string, fileName?: string): Promise<Blob> => {
+    const res = await api.post(
+      "/excel-report/query-to-excel",
+      { sql, fileName },
+      { responseType: "blob" },
+    );
+    return res.data as Blob;
+  },
 };

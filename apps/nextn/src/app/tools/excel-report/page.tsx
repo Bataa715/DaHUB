@@ -10,6 +10,9 @@ import {
   CalendarRange,
   ArrowLeft,
   TableProperties,
+  Code2,
+  Database,
+  Play,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,6 +24,11 @@ export default function ExcelReportPage() {
   const router = useRouter();
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // SQL → Excel state
+  const [sql, setSql] = useState("");
+  const [sqlFileName, setSqlFileName] = useState("");
+  const [sqlRunning, setSqlRunning] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,6 +52,37 @@ export default function ExcelReportPage() {
 
   const openCard = (t: ReportTemplate) => {
     router.push(`/tools/excel-report/${t.id}`);
+  };
+
+  const handleSqlDownload = async () => {
+    if (!sql.trim()) {
+      toast({ title: "SQL оруулна уу", variant: "destructive" });
+      return;
+    }
+    setSqlRunning(true);
+    try {
+      const blob = await excelReportApi.queryToExcel(
+        sql.trim(),
+        sqlFileName.trim() || undefined,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const baseName = sqlFileName.trim() || "query_result";
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `${baseName}_${date}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Excel татагдлаа", description: `${a.download}` });
+    } catch (err: any) {
+      const msg =
+        err?.response?.data instanceof Blob
+          ? await err.response.data.text()
+          : err?.message ?? "Алдаа гарлаа";
+      toast({ title: "Алдаа", description: msg, variant: "destructive" });
+    } finally {
+      setSqlRunning(false);
+    }
   };
 
   return (
@@ -72,7 +111,73 @@ export default function ExcelReportPage() {
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8">
+      <div className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 space-y-10">
+
+        {/* ── SQL → Excel panel ── */}
+        <div className="rounded-2xl border border-violet-500/20 bg-slate-900/70 backdrop-blur-sm overflow-hidden">
+          {/* Panel header */}
+          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-700/50 bg-slate-800/40">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow">
+              <Database className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-100">SQL → Excel шууд татах</p>
+              <p className="text-xs text-slate-500">ClickHouse SQL SELECT query оруулаад Excel файл татна</p>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {/* SQL editor */}
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Code2 className="w-3.5 h-3.5 text-violet-400" />
+                <span className="text-xs text-slate-400 font-medium">SQL Query</span>
+                <span className="text-xs text-slate-600">(зөвхөн SELECT)</span>
+              </div>
+              <textarea
+                className="w-full h-40 rounded-xl border border-slate-700/60 bg-slate-950/80 px-4 py-3 text-sm font-mono text-slate-100 placeholder:text-slate-600 resize-y focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 transition-colors"
+                placeholder={"SELECT *\nFROM your_table\nWHERE date >= '2024-01-01'\nLIMIT 1000"}
+                value={sql}
+                onChange={(e) => setSql(e.target.value)}
+                spellCheck={false}
+              />
+            </div>
+
+            {/* Filename + button row */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+              <div className="flex-1">
+                <label className="text-xs text-slate-400 mb-1.5 block">Файлын нэр (заавал биш)</label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-slate-700/60 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 transition-colors"
+                  placeholder="report_name"
+                  value={sqlFileName}
+                  onChange={(e) => setSqlFileName(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={handleSqlDownload}
+                disabled={sqlRunning || !sql.trim()}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-lg shadow-violet-900/30 transition-all duration-150 whitespace-nowrap"
+              >
+                {sqlRunning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Боловсруулж байна...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Excel татах
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Templates section ── */}
+        <div>
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <div className="relative">
@@ -125,6 +230,7 @@ export default function ExcelReportPage() {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );

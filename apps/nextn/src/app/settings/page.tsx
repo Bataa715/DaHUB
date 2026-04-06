@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Card,
   CardContent,
@@ -26,6 +27,7 @@ import {
   Settings as SettingsIcon,
   Shield,
   Star,
+  Globe,
 } from "lucide-react";
 import { usersApi } from "@/lib/api";
 import api from "@/lib/api";
@@ -34,6 +36,7 @@ import { motion } from "framer-motion";
 
 export default function SettingsPage() {
   const { user, loading, refreshUser } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -47,11 +50,11 @@ export default function SettingsPage() {
   const { toast } = useToast();
 
   const passwordRequirements = [
-    "Хамгийн багадаа 8 тэмдэгт",
-    "Том үсэг агуулсан (A-Z)",
-    "Жижиг үсэг агуулсан (a-z)",
-    "Тоо агуулсан (0-9)",
-    "Тусгай тэмдэгт агуулсан (@$!%*?&#)",
+    t("passwordReq1"),
+    t("passwordReq2"),
+    t("passwordReq3"),
+    t("passwordReq4"),
+    t("passwordReq5"),
   ];
 
   const validatePassword = (password: string) => {
@@ -72,29 +75,17 @@ export default function SettingsPage() {
     e.preventDefault();
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast({
-        title: "Алдаа",
-        description: "Бүх талбарыг бөглөнө үү",
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: t("passwordFillAll"), variant: "destructive" });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast({
-        title: "Алдаа",
-        description: "Шинэ нууц үг таарахгүй байна",
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: t("passwordMismatch"), variant: "destructive" });
       return;
     }
 
     if (!validatePassword(newPassword)) {
-      toast({
-        title: "Алдаа",
-        description: "Нууц үг шаардлагыг хангахгүй байна",
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: t("passwordInvalid"), variant: "destructive" });
       return;
     }
 
@@ -106,21 +97,15 @@ export default function SettingsPage() {
         newPassword,
       });
 
-      toast({
-        title: "Амжилттай",
-        description: "Нууц үг амжилттай солигдлоо",
-      });
-
-      // Clear form
+      toast({ title: t("success"), description: t("passwordChanged") });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
       console.error("Error changing password:", error);
       toast({
-        title: "Алдаа",
-        description:
-          error.response?.data?.message || "Нууц үг солихдоо алдаа гарлаа",
+        title: t("error"),
+        description: error.response?.data?.message || t("passwordChangeBtn"),
         variant: "destructive",
       });
     } finally {
@@ -205,35 +190,19 @@ export default function SettingsPage() {
     try {
       await usersApi.update(user.id, { profileImage: imagePreview });
 
-      toast({
-        title: "Амжилттай",
-        description: "Профайл зураг амжилттай солигдлоо",
-      });
-
-      // Refresh user context to update profile image
+      toast({ title: t("success"), description: t("imageSuccess") });
       await refreshUser();
       setImagePreview(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error: any) {
       console.error("Error uploading profile image:", error);
-
-      let errorMessage = "Зураг хадгалахад алдаа гарлаа";
-      if (
-        error.response?.status === 413 ||
-        error.message?.includes("too large")
-      ) {
-        errorMessage = "Зураг хэт том байна. Жижиг зураг сонгоно уу.";
+      let errorMessage = t("imageError");
+      if (error.response?.status === 413 || error.message?.includes("too large")) {
+        errorMessage = t("imageTooBig");
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
-
-      toast({
-        title: "Алдаа",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: errorMessage, variant: "destructive" });
     } finally {
       setIsUploadingImage(false);
     }
@@ -247,20 +216,11 @@ export default function SettingsPage() {
     try {
       await usersApi.update(user.id, { profileImage: "" });
 
-      toast({
-        title: "Амжилттай",
-        description: "Профайл зураг устгагдлаа",
-      });
-
-      // Refresh user context to update profile image
+      toast({ title: t("success"), description: t("imageRemoved") });
       await refreshUser();
     } catch (error: any) {
       console.error("Error removing profile image:", error);
-      toast({
-        title: "Алдаа",
-        description: "Зураг устгахад алдаа гарлаа",
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: t("imageError"), variant: "destructive" });
     } finally {
       setIsUploadingImage(false);
     }
@@ -315,10 +275,10 @@ export default function SettingsPage() {
             <SettingsIcon className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">Тохиргоо</h1>
+            <h1 className="text-3xl font-bold text-white">{t("settingsTitle")}</h1>
             <p className="text-slate-400 flex items-center gap-2">
               <Star className="w-4 h-4 text-purple-500" />
-              Профайл болон аюулгүй байдлын тохиргоо
+              {t("settingsSubtitle")}
             </p>
           </div>
         </motion.div>
@@ -334,10 +294,10 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Camera className="w-5 h-5 text-purple-500" />
-                  Профайл зураг
+                  {t("profileImage")}
                 </CardTitle>
                 <CardDescription className="text-slate-400">
-                  Өөрийн профайл зургаа солих
+                  {t("profileImageDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -380,7 +340,7 @@ export default function SettingsPage() {
                       disabled={isUploadingImage}
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      Зураг сонгох
+                      {t("changeImage")}
                     </Button>
                   ) : (
                     <div className="space-y-2">
@@ -407,7 +367,7 @@ export default function SettingsPage() {
                         className="w-full border-slate-600 hover:bg-slate-800"
                         disabled={isUploadingImage}
                       >
-                        Болих
+                        {t("cancel")}
                       </Button>
                     </div>
                   )}
@@ -422,16 +382,16 @@ export default function SettingsPage() {
                       {isUploadingImage ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
-                        "Зураг устгах"
+                        t("removeImage")
                       )}
                     </Button>
                   )}
                 </div>
 
                 <div className="text-xs text-slate-500 space-y-1">
-                  <p>• Хамгийн ихдээ 5MB хэмжээтэй зураг</p>
-                  <p>• Автоматаар 300x300 хэмжээтэй болгоно</p>
-                  <p>• JPG, PNG, GIF форматтай байх</p>
+                  <p>• {t("imageHint1")}</p>
+                  <p>• {t("imageHint2")}</p>
+                  <p>• {t("imageHint3")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -447,10 +407,10 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <KeyRound className="w-5 h-5 text-blue-500" />
-                  Нууц үг солих
+                  {t("changePassword")}
                 </CardTitle>
                 <CardDescription className="text-slate-400">
-                  Аюулгүй байдлын тулд шинэ нууц үг үүсгэх
+                  {t("changePasswordDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -458,7 +418,7 @@ export default function SettingsPage() {
                   {/* Current Password */}
                   <div className="space-y-2">
                     <Label htmlFor="currentPassword" className="text-slate-300">
-                      Одоогийн нууц үг
+                      {t("currentPassword")}
                     </Label>
                     <div className="relative">
                       <Input
@@ -467,7 +427,7 @@ export default function SettingsPage() {
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         className="bg-slate-800/50 border-slate-700 text-white pr-10"
-                        placeholder="Одоогийн нууц үгээ оруулна уу"
+                        placeholder={t("currentPasswordPlaceholder")}
                       />
                       <button
                         type="button"
@@ -488,7 +448,7 @@ export default function SettingsPage() {
                   {/* New Password */}
                   <div className="space-y-2">
                     <Label htmlFor="newPassword" className="text-slate-300">
-                      Шинэ нууц үг
+                      {t("newPassword")}
                     </Label>
                     <div className="relative">
                       <Input
@@ -497,7 +457,7 @@ export default function SettingsPage() {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         className="bg-slate-800/50 border-slate-700 text-white pr-10"
-                        placeholder="Шинэ нууц үгээ оруулна уу"
+                        placeholder={t("newPasswordPlaceholder")}
                       />
                       <button
                         type="button"
@@ -516,7 +476,7 @@ export default function SettingsPage() {
                   {/* Confirm Password */}
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword" className="text-slate-300">
-                      Нууц үг баталгаажуулах
+                      {t("confirmPassword")}
                     </Label>
                     <div className="relative">
                       <Input
@@ -525,7 +485,7 @@ export default function SettingsPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="bg-slate-800/50 border-slate-700 text-white pr-10"
-                        placeholder="Нууц үгээ дахин оруулна уу"
+                        placeholder={t("confirmPasswordPlaceholder")}
                       />
                       <button
                         type="button"
@@ -546,7 +506,7 @@ export default function SettingsPage() {
                   {/* Password Requirements */}
                   <div className="bg-slate-800/50 rounded-lg p-4 space-y-2">
                     <p className="text-sm font-medium text-slate-300 mb-2">
-                      Нууц үгийн шаардлага:
+                      {t("passwordRequirements")}
                     </p>
                     {passwordRequirements.map((req, index) => (
                       <div key={index} className="flex items-center gap-2">
@@ -564,16 +524,59 @@ export default function SettingsPage() {
                     {isChangingPassword ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Солиж байна...
+                        {t("passwordChanging")}
                       </>
                     ) : (
                       <>
                         <Lock className="w-4 h-4 mr-2" />
-                        Нууц үг солих
+                        {t("passwordChangeBtn")}
                       </>
                     )}
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          </motion.div>
+          {/* Language Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="md:col-span-2"
+          >
+            <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-700/50 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Globe className="w-5 h-5 text-emerald-500" />
+                  {t("language")}
+                </CardTitle>
+                <CardDescription className="text-slate-400">
+                  {t("languageDesc")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setLanguage("mn")}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                      language === "mn"
+                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
+                        : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500"
+                    }`}
+                  >
+                    🇲🇳 {t("mongolian")}
+                  </button>
+                  <button
+                    onClick={() => setLanguage("en")}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                      language === "en"
+                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
+                        : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500"
+                    }`}
+                  >
+                    🇺🇸 {t("english")}
+                  </button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>

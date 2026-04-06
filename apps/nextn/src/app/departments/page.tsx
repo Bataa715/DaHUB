@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { departmentsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -103,6 +104,7 @@ type DeptPhoto = {
 };
 
 function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
+  const { t } = useLanguage();
   const [photos, setPhotos] = useState<DeptPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -145,8 +147,8 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
       toast({
-        title: "Алдаа",
-        description: "Зургийн хэмжээ 3MB-аас бага байх шаардлагатай",
+        title: t("error"),
+        description: t("photoSizeError"),
         variant: "destructive",
       });
       return;
@@ -161,12 +163,12 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           deptName,
           ev.target!.result as string,
         );
-        toast({ title: "Амжилттай", description: "Зураг нэмэгдлээ" });
+        toast({ title: t("success"), description: t("photoAdded") });
         await loadPhotos();
       } catch {
         toast({
-          title: "Алдаа",
-          description: "Зураг оруулахад алдаа гарлаа",
+          title: t("error"),
+          description: t("photoUploadError"),
           variant: "destructive",
         });
       } finally {
@@ -177,15 +179,15 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
   };
 
   const handleDelete = async (photoId: string) => {
-    if (!confirm("Энэ зурагийг устгах уу?")) return;
+    if (!confirm(t("confirmDeletePhoto"))) return;
     try {
       await departmentsApi.deletePhoto(deptId, photoId);
       if (lightbox !== null) setLightbox(null);
       await loadPhotos();
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Устгахад алдаа гарлаа",
+        title: t("error"),
+        description: t("deleteError"),
         variant: "destructive",
       });
     }
@@ -266,10 +268,10 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center">
             <Camera className="w-4 h-4 text-rose-400" />
           </div>
-          <h2 className="text-lg font-semibold text-white">Альбом</h2>
+          <h2 className="text-lg font-semibold text-white">{t("albumTitle")}</h2>
           {photos.length > 0 && (
             <span className="text-xs text-slate-500">
-              {photos.length} зураг
+              {photos.length} {t("photosSuffix")}
             </span>
           )}
         </div>
@@ -283,7 +285,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           ) : (
             <ImagePlus className="w-3.5 h-3.5" />
           )}
-          {"Зураг нэмэх"}
+          {t("addPhoto")}
         </button>
       </div>
 
@@ -298,9 +300,9 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           className="w-full py-14 rounded-2xl border-2 border-dashed border-slate-700 hover:border-rose-500/50 bg-slate-800/30 hover:bg-slate-800/50 flex flex-col items-center gap-2 text-slate-500 hover:text-rose-400 transition-all"
         >
           <Camera className="w-10 h-10" />
-          <p className="text-sm">Хамт олны зураг оруулах</p>
+          <p className="text-sm">{t("uploadPhotoPrompt")}</p>
           <p className="text-xs text-slate-600">
-            PNG, JPG, WEBP · дээд тал 3MB
+            {t("photoSizeHint")}
           </p>
         </button>
       ) : (
@@ -333,12 +335,11 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
               >
                 {expanded ? (
                   <>
-                    <ChevronUp className="w-3.5 h-3.5" /> Хураах
+                    <ChevronUp className="w-3.5 h-3.5" /> {t("collapseText")}
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="w-3.5 h-3.5" /> Цааш харах (
-                    {remaining})
+                    <ChevronDown className="w-3.5 h-3.5" /> {t("showMoreText")} ({remaining})
                   </>
                 )}
               </button>
@@ -450,6 +451,7 @@ function EmployeeCard({
   isSelf: boolean;
   isManager: boolean;
 }) {
+  const { t } = useLanguage();
   const gradient = getGradient(member.name);
   return (
     <motion.div
@@ -475,11 +477,11 @@ function EmployeeCard({
             <div className="absolute top-4 left-4 z-10">
               {isSelf ? (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white shadow-lg">
-                  <User className="w-2.5 h-2.5" /> Та
+                  <User className="w-2.5 h-2.5" /> {t("youBadge")}
                 </span>
               ) : (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-black shadow-lg">
-                  <Crown className="w-2.5 h-2.5" /> Дарга
+                  <Crown className="w-2.5 h-2.5" /> {t("managerBadge")}
                 </span>
               )}
             </div>
@@ -525,12 +527,12 @@ function EmployeeCard({
           {member.isActive !== false ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-semibold text-emerald-400">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-              Идэвхтэй
+              {t("activeStatus")}
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-700/50 border border-slate-600/20 text-[11px] font-semibold text-slate-500">
               <span className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
-              Идэвхгүй
+              {t("inactiveStatus")}
             </div>
           )}
         </div>
@@ -624,6 +626,7 @@ function MemberCarousel({
  */
 function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [list, setList] = useState<DepartmentData[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selected, setSelected] = useState<DepartmentData | null>(null);
@@ -645,8 +648,8 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
       })
       .catch(() =>
         toast({
-          title: "Алдаа",
-          description: "Хэлтсүүдийн жагсаалт ачаалахад алдаа гарлаа.",
+          title: t("error"),
+          description: t("deptsLoadError"),
           variant: "destructive",
         }),
       )
@@ -665,8 +668,8 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
       setSelected(full);
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хэлтсийн дэлгэрэнгүй мэдээлэл ачаалахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("deptDetailLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -685,7 +688,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   if (list.length === 0) {
     return (
       <p className="text-slate-500 text-sm text-center py-6">
-        Бусад хэлтэс олдсонгүй.
+        {t("noOtherDepts")}
       </p>
     );
   }
@@ -761,7 +764,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
               </p>
               <div className="flex items-center gap-1 text-[11px] text-slate-500">
                 <Users className="w-3 h-3" />
-                {dept.users?.length ?? dept.employeeCount ?? 0} ажилтан
+                {dept.users?.length ?? dept.employeeCount ?? 0} {t("employeeSuffix")}
               </div>
             </button>
           );
@@ -814,11 +817,11 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
                         <Users className="w-3.5 h-3.5 text-cyan-400" />
                       </div>
                       <span className="text-sm font-semibold text-white">
-                        Хамт олон
+                        {t("teamTitle")}
                       </span>
                       <div className="ml-auto px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
                         <span className="text-[11px] font-bold text-cyan-300">
-                          {selected.users.length} ажилтан
+                          {selected.users.length} {t("employeeSuffix")}
                         </span>
                       </div>
                     </div>
@@ -849,6 +852,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
 export default function DepartmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [department, setDepartment] = useState<DepartmentData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -868,8 +872,8 @@ export default function DepartmentsPage() {
       setDepartment(data);
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хэлтсийн мэдээлэл ачаалахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("deptLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -915,7 +919,7 @@ export default function DepartmentsPage() {
           className="relative z-10 text-center"
         >
           <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-slate-400">Ачаалж байна</p>
+          <p className="text-slate-400">{t("loadingText")}</p>
         </motion.div>
       </div>
     );
@@ -934,10 +938,10 @@ export default function DepartmentsPage() {
             <Lock className="w-10 h-10 text-red-400" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">
-            Нэвтрэх шаардлагатай
+            {t("needLogin")}
           </h2>
           <p className="text-slate-400">
-            Энэ хуудсыг үзэхийн тулд нэвтэрнэ үү.
+            {t("needLoginDeptDesc")}
           </p>
         </motion.div>
       </div>
@@ -957,10 +961,10 @@ export default function DepartmentsPage() {
             <Building2 className="w-10 h-10 text-amber-400" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">
-            Хэлтэс тодорхойгүй
+            {t("deptUnknownTitle")}
           </h2>
           <p className="text-slate-400">
-            Таны хэлтэс тодорхойлогдоогүй байна. Админтай холбогдоно уу.
+            {t("deptUnknownDesc")}
           </p>
         </motion.div>
       </div>
@@ -1027,7 +1031,7 @@ export default function DepartmentsPage() {
               >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-5">
                   <Star className="w-3 h-3" />
-                  Миний хэлтэс
+                  {t("myDept")}
                 </div>
               </motion.div>
 
@@ -1069,7 +1073,7 @@ export default function DepartmentsPage() {
                     <p className="text-base font-extrabold text-white leading-none">
                       {totalCount}
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Ажилтан</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{t("employeeSuffix")}</p>
                   </div>
                 </div>
 
@@ -1084,7 +1088,7 @@ export default function DepartmentsPage() {
                         {department.manager}
                       </p>
                       <p className="text-[10px] text-slate-500 mt-0.5">
-                        Менежер
+                        {t("managerLabel")}
                       </p>
                     </div>
                   </div>
@@ -1094,7 +1098,7 @@ export default function DepartmentsPage() {
                 <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-xs font-semibold text-emerald-300">
-                    Идэвхтэй
+                    {t("activeStatus")}
                   </span>
                 </div>
               </motion.div>
@@ -1115,9 +1119,9 @@ export default function DepartmentsPage() {
                   <Target className="w-4 h-4 text-blue-400" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">Чиг үүрэг</h2>
+                  <h2 className="text-base font-bold text-white">{t("missionTitle")}</h2>
                   <p className="text-[11px] text-slate-500">
-                    Хэлтсийн үндсэн зорилго
+                    {t("missionSubtitle")}
                   </p>
                 </div>
               </div>
@@ -1128,7 +1132,7 @@ export default function DepartmentsPage() {
               ) : (
                 <div className="flex items-center gap-3 py-6 text-slate-500 italic text-sm">
                   <Target className="w-5 h-5 text-slate-600 shrink-0" />
-                  Тайлбар оруулаагүй байна. Админ энэ мэдээллийг нэмж болно.
+                  {t("noDescription")}
                 </div>
               )}
             </div>
@@ -1150,16 +1154,16 @@ export default function DepartmentsPage() {
                   </div>
                   <div>
                     <h2 className="text-base font-bold text-white">
-                      Хамт олон
+                      {t("teamTitle")}
                     </h2>
                     <p className="text-[11px] text-slate-500">
-                      Хэлтсийн бүрэлдэхүүн
+                      {t("teamSubtitle")}
                     </p>
                   </div>
                 </div>
                 <div className="px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
                   <span className="text-xs font-bold text-cyan-300">
-                    {totalCount} ажилтан
+                    {totalCount} {t("employeeSuffix")}
                   </span>
                 </div>
               </div>
@@ -1175,7 +1179,7 @@ export default function DepartmentsPage() {
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-800/30 py-14 flex flex-col items-center gap-3 text-slate-500">
                   <Users className="w-10 h-10 text-slate-600" />
-                  <p className="text-sm">Ажилтан бүртгэгдээгүй байна</p>
+                  <p className="text-sm">{t("noEmployees")}</p>
                 </div>
               )}
             </div>
@@ -1211,10 +1215,10 @@ export default function DepartmentsPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-white">
-                    Бусад хэлтсүүд
+                    {t("otherDeptsTitle")}
                   </h2>
                   <p className="text-[11px] text-slate-500">
-                    Байгууллагын бүтэц
+                    {t("otherDeptsSubtitle")}
                   </p>
                 </div>
               </div>

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const QUARTER_NAMES = ["I", "II", "III", "IV"];
 
@@ -68,6 +69,7 @@ function fmtDate(iso: string | null | undefined): string {
 
 export default function DeptViewPage() {
   const router = useRouter();
+  const { t, language } = useLanguage();
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -157,7 +159,7 @@ export default function DeptViewPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[13px] text-slate-400 leading-none mb-0.5">
-                Тайлан харах
+                {t("tailan_viewReportTitle")}
               </p>
               <p className="text-[15px] font-semibold text-white truncate leading-tight">
                 {selectedMember?.userName ?? "…"}
@@ -178,7 +180,7 @@ export default function DeptViewPage() {
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <Loader2 className="h-7 w-7 animate-spin text-violet-400" />
               <span className="text-slate-400 text-sm">
-                Тайлан ачааллаж байна…
+                {t("tailan_reportLoading")}
               </span>
             </div>
           ) : memberReport ? (
@@ -203,7 +205,7 @@ export default function DeptViewPage() {
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <MinusCircle className="h-8 w-8 text-slate-600" />
               <p className="text-slate-400 text-sm text-center px-6">
-                {selectedMember?.userName} энэ улиралд тайлан илгээгээгүй байна.
+                {selectedMember?.userName} {t("tailan_noReportSubmitted")}
               </p>
             </div>
           )}
@@ -217,8 +219,8 @@ export default function DeptViewPage() {
             <Eye className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Гишүүдийн тайлан харах"
-        subtitle="Хэлтсийн гишүүдийн илгээсэн улирлын тайлануудыг харах"
+        title={t("tailan_membersView")}
+        subtitle={t("tailan_membersViewDesc")}
       />
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
@@ -241,7 +243,7 @@ export default function DeptViewPage() {
                 now.getFullYear() + 1,
               ].map((y) => (
                 <option key={y} value={y} className="bg-[#1a2130]">
-                  {y} он
+                  {language === "en" ? y : `${y} он`}
                 </option>
               ))}
             </select>
@@ -269,7 +271,7 @@ export default function DeptViewPage() {
           {/* Summary badge */}
           {!membersLoading && members.length > 0 && (
             <span className="ml-auto text-xs bg-violet-500/15 text-violet-300 border border-violet-500/25 rounded-full px-3 py-1.5">
-              {submittedCount} / {members.length} илгээсэн
+              {submittedCount} / {members.length} {t("tailan_submitted").toLowerCase()}
             </span>
           )}
         </div>
@@ -283,7 +285,7 @@ export default function DeptViewPage() {
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <MinusCircle className="h-10 w-10 text-slate-700" />
             <p className="text-slate-500 text-sm">
-              Энэ улиралд бүртгэсэн тайлан байхгүй
+              {t("tailan_noReportsThisQuarter")}
             </p>
           </div>
         ) : (
@@ -323,14 +325,14 @@ export default function DeptViewPage() {
                         <CheckCircle2
                           style={{ width: "0.625rem", height: "0.625rem" }}
                         />
-                        Илгээсэн
+                        {t("tailan_submitted")}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-full px-2 py-0.5">
                         <Clock
                           style={{ width: "0.625rem", height: "0.625rem" }}
                         />
-                        Ноорог
+                        {t("tailan_draft")}
                       </span>
                     )}
                   </div>
@@ -342,8 +344,8 @@ export default function DeptViewPage() {
                     </p>
                     <p className="text-[11px] text-slate-500">
                       {isSubmitted
-                        ? `Илгээсэн: ${fmtDate(member.submittedAt)}`
-                        : `Шинэчилсэн: ${fmtDate(member.updatedAt)}`}
+                        ? `${t("tailan_submittedAtLabel")} ${fmtDate(member.submittedAt)}`
+                        : `${t("tailan_updatedAtLabel")} ${fmtDate(member.updatedAt)}`}
                     </p>
                   </div>
 
@@ -351,7 +353,7 @@ export default function DeptViewPage() {
                   {isSubmitted && (
                     <div className="flex items-center gap-1 text-[11px] text-violet-400/70 group-hover:text-violet-300 transition-colors">
                       <Eye style={{ width: "0.75rem", height: "0.75rem" }} />
-                      Тайлан харах
+                      {t("tailan_viewReportHint")}
                       <ChevronRight
                         style={{ width: "0.75rem", height: "0.75rem" }}
                       />

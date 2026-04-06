@@ -4,8 +4,8 @@ services:
   backend:
     container_name: internal-audit-backend
     build:
-      context: ./apps/backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/backend/Dockerfile
       args:
         HTTP_PROXY: http://103.51.60.125:3128
         HTTPS_PROXY: http://103.51.60.125:3128

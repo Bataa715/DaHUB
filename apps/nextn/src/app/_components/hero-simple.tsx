@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
@@ -29,6 +30,7 @@ const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
 
 export default function Hero() {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [time, setTime] = useState(new Date());
 
@@ -52,9 +54,9 @@ export default function Hero() {
 
   const getGreeting = () => {
     const hour = time.getHours();
-    if (hour < 12) return { text: "Өглөөний мэнд", emoji: "🌅" };
-    if (hour < 18) return { text: "Өдрийн мэнд", emoji: "☀️" };
-    return { text: "Оройн мэнд", emoji: "🌙" };
+    if (hour < 12) return { text: t("greetingMorning"), emoji: "🌅" };
+    if (hour < 18) return { text: t("greetingAfternoon"), emoji: "☀️" };
+    return { text: t("greetingEvening"), emoji: "🌙" };
   };
 
   const greeting = getGreeting();
@@ -70,7 +72,7 @@ export default function Hero() {
             <Loader2 className="h-12 w-12 text-purple-400" />
           </motion.div>
           <p className="text-slate-400 text-sm animate-pulse">
-            Ачаалж байна...
+            {t("loadingText")}
           </p>
         </div>
       </div>
@@ -173,8 +175,8 @@ export default function Hero() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
               </span>
               <span className="text-xs font-semibold text-indigo-300">
-                {user?.position || "Ажилтан"}
-                {user?.isAdmin && " · Админ"}
+                {user?.position || t("defaultEmployee")}
+                {user?.isAdmin && " · Admin"}
               </span>
             </motion.div>
 
@@ -203,7 +205,7 @@ export default function Hero() {
                       "linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)",
                   }}
                 >
-                  {user?.name || "Хэрэглэгч"}
+                  {user?.name || t("defaultUser")}
                 </span>
               </motion.h1>
 
@@ -219,7 +221,7 @@ export default function Hero() {
                     <Building2 className="h-4 w-4 text-emerald-400" />
                   </div>
                   <p className="text-slate-200 font-medium">
-                    {user?.department || "Дотоод Аудитын Газар"}
+                    {user?.department || t("defaultDepartment")}
                   </p>
                 </div>
                 {user?.userId && (
@@ -266,7 +268,7 @@ export default function Hero() {
                   }}
                 />
                 <Wrench className="h-5 w-5 relative z-10" />
-                <span className="relative z-10">Хэрэгслүүд</span>
+                <span className="relative z-10">{t("toolsButton")}</span>
                 <motion.div
                   className="relative z-10"
                   animate={{ x: [0, 4, 0] }}
@@ -405,7 +407,7 @@ export default function Hero() {
                 />
               </div>
               <p className="relative text-slate-400 text-sm">
-                {user?.position || "Дата инженер"}
+                {user?.position || t("defaultPosition")}
               </p>
             </motion.div>
           </motion.div>
@@ -493,7 +495,7 @@ export default function Hero() {
                 ></motion.div>
                 <div>
                   <p className="text-emerald-300 text-xs font-semibold uppercase tracking-widest mb-0.5">
-                    Дотоод аудитын газар
+                    {t("internalAuditDept")}
                   </p>
                   <p className="text-slate-400 text-xs">DaHUB</p>
                 </div>

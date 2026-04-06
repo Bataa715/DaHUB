@@ -23,6 +23,7 @@ import {
   Shield,
   Newspaper,
   User as UserIcon,
+  Globe,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
 import { themes } from "@/lib/themes";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,41 +58,40 @@ const Header = () => {
 
   const { user, loading, logout } = useAuth();
   const appName = "DaHUB";
+  const { theme, setTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
 
   // Admin хуудас дээр байгаа эсэх
   const isAdminPage = pathname.startsWith("/admin");
 
   // Admin хуудасны menu
   const adminLinks = [
-    { href: "/admin", label: "Нүүр", icon: Home },
-    { href: "/admin/users", label: "Хэрэглэгч", icon: Users },
-    { href: "/admin/departments", label: "Хэлтэс", icon: Building2 },
-    { href: "/admin/news", label: "Мэдээ", icon: Newspaper },
-    { href: "/admin/tools", label: "Хэрэгсэл", icon: Wrench },
+    { href: "/admin", label: t("navHome"), icon: Home },
+    { href: "/admin/users", label: t("navUsers"), icon: Users },
+    { href: "/admin/departments", label: t("navDepartments"), icon: Building2 },
+    { href: "/admin/news", label: t("navNews"), icon: Newspaper },
+    { href: "/admin/tools", label: t("navTools"), icon: Wrench },
   ];
 
-  // Үндсэн menu - энгийн хэрэглэгч: Нүүр, Хэлтэс, Мэдээ, Хэрэгсэл
-  // Admin: + Хэрэглэгч
+  // Үндсэн menu
   const regularLinks = [
-    { href: "/", label: "Нүүр", icon: Home, public: true },
-    { href: "/departments", label: "Хэлтэс", icon: Building2, public: true },
-    { href: "/news", label: "Мэдээ", icon: Newspaper, public: true },
-    { href: "/tools", label: "Хэрэгсэл", icon: Wrench, public: true },
+    { href: "/", label: t("navHome"), icon: Home, public: true },
+    { href: "/departments", label: t("navDepartments"), icon: Building2, public: true },
+    { href: "/news", label: t("navNews"), icon: Newspaper, public: true },
+    { href: "/tools", label: t("navTools"), icon: Wrench, public: true },
   ];
 
   // Admin эрхтэй бол админ хуудас руу очих товч нэмэх
   if (mounted && user?.isAdmin === true && !isAdminPage && !loading) {
     regularLinks.push({
       href: "/admin",
-      label: "Админ",
+      label: t("navAdmin"),
       icon: Shield,
       public: false,
     });
   }
 
   const mainLinks = isAdminPage ? adminLinks : regularLinks;
-
-  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -225,7 +226,7 @@ const Header = () => {
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
                       <Palette className="mr-2 h-4 w-4" />
-                      <span>Загвар</span>
+                      <span>{t("navTheme")}</span>
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="p-2 min-w-[180px]">
                       <div className="grid gap-1">
@@ -262,12 +263,27 @@ const Header = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => router.push("/settings")}>
                     <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Профайл тохиргоо</span>
+                    <span>{t("navProfileSettings")}</span>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Globe className="mr-2 h-4 w-4" />
+                      <span>{language === "mn" ? "🇲🇳 Монгол" : "🇺🇸 English"}</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => setLanguage("mn")} className={language === "mn" ? "bg-primary/15" : ""}>
+                        🇲🇳 Монгол {language === "mn" && <Check className="ml-auto h-4 w-4 text-primary" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setLanguage("en")} className={language === "en" ? "bg-primary/15" : ""}>
+                        🇺🇸 English {language === "en" && <Check className="ml-auto h-4 w-4 text-primary" />}
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Гарах</span>
+                    <span>{t("logout")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

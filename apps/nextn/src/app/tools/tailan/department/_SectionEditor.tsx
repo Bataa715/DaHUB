@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   SECTION_DEFS,
   SectionReport,
@@ -44,6 +45,7 @@ export function SectionEditor({
   onS42KnowledgeApiLoad?: (si: number) => Promise<RichTextItem[]>;
   onS43TrainingsApiLoad?: (si: number) => Promise<Section43Row[]>;
 }) {
+  const { t } = useLanguage();
   const field = (key: keyof SectionReport, value: string) =>
     onChange({ ...report, [key]: value });
 
@@ -111,13 +113,13 @@ export function SectionEditor({
           />
           <div>
             <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-              Сургалт, хөгжлийн төлөв байдалын дэлгэрэнгүй тайлбар:
+              {t("tailan_s4ContentLabel")}
             </label>
             <textarea
               rows={6}
               value={report.content}
               onChange={(e) => field("content", e.target.value)}
-              placeholder="Сургалт, хөгжлийн ажлын талаар дэлгэрэнгүйгээр бичнэ..."
+              placeholder={t("tailan_s4ContentPlaceholder")}
               className={inputCls}
             />
           </div>
@@ -126,37 +128,37 @@ export function SectionEditor({
         <>
           <div>
             <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-              Ерөнхий тайлбар
+              {t("tailan_generalDescLabel")}
             </label>
             <textarea
               rows={5}
               value={report.content}
               onChange={(e) => field("content", e.target.value)}
-              placeholder="Энэ тэлэвийн хүрээнд хийсэн ажил, үйл ажиллагааны талаар дэлгэрэнгүй тайлбар бичнэ..."
+              placeholder={t("tailan_generalDescPlaceholder")}
               className={inputCls}
             />
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-              Амжилт, давуу тал
+              {t("tailan_achievementsLabel")}
             </label>
             <textarea
               rows={3}
               value={report.achievements}
               onChange={(e) => field("achievements", e.target.value)}
-              placeholder="Тайлант хугацаанд гарсан амжилт, сайн үр дүн, давуу талыг тэмдэглэнэ..."
+              placeholder={t("tailan_achievementsPlaceholder")}
               className={inputCls}
             />
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-              Бэрхшээл, сорилт
+              {t("tailan_challengesLabel")}
             </label>
             <textarea
               rows={3}
               value={report.issues}
               onChange={(e) => field("issues", e.target.value)}
-              placeholder="Тайлант хугацаанд тулгарсан бэрхшээл, шийдвэрлэх шаардлагатай асуудлуудыг тэмдэглэнэ..."
+              placeholder={t("tailan_challengesPlaceholder")}
               className={inputCls}
             />
           </div>

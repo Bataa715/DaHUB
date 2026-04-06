@@ -116,8 +116,8 @@ export class DocumentService {
     text: string,
     documentName: string,
     source: string,
-    chunkSize = 500,
-    overlap = 50,
+    chunkSize = 1000,
+    overlap = 100,
   ): DocumentChunk[] {
     const words = text.split(/\s+/).filter(Boolean);
     const chunks: DocumentChunk[] = [];

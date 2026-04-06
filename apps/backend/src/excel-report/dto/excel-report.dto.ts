@@ -56,3 +56,13 @@ export class RunReportDto {
   @IsOptional()
   endDate?: string;
 }
+
+export class QueryToExcelDto {
+  @IsString()
+  @IsNotEmpty()
+  sql: string;
+
+  @IsString()
+  @IsOptional()
+  fileName?: string;
+}

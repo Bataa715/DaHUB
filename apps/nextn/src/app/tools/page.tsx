@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 import { usersApi } from "@/lib/api";
 import { motion } from "framer-motion";
 import {
@@ -36,12 +37,12 @@ interface Tool {
   matchIds?: string[]; // if set, card is visible if user has ANY of these tool ids
 }
 
-const allTools: Tool[] = [
+function getTools(t: (key: TranslationKey) => string): Tool[] {
+  return [
   {
     id: "todo",
-    title: "Хийх зүйлсийн жагсаалт",
-    description:
-      "Өдөр тутмын ажлуудаа үр дүнтэй төлөвлөж, хянах боломжтой хэрэгсэл",
+    title: t("toolTodoTitle"),
+    description: t("toolTodoDesc"),
     icon: ListTodo,
     href: "/tools/todo",
     gradient: "from-emerald-500 to-teal-500",
@@ -51,9 +52,8 @@ const allTools: Tool[] = [
   },
   {
     id: "chess",
-    title: "Оюуны спорт",
-    description:
-      "Шатар тоглоом — хамт олныхоо гишүүнтэй онлайнаар тоглох боломж",
+    title: t("toolChessTitle"),
+    description: t("toolChessDesc"),
     icon: Crown,
     href: "/tools/chess",
     gradient: "from-amber-500 to-yellow-500",
@@ -63,8 +63,8 @@ const allTools: Tool[] = [
   },
   {
     id: "sanamsargui-tuuwer",
-    title: "Санамсаргүй түүвэр",
-    description: "Аудитын санамсаргүй түүвэр гаргах хэрэгсэл",
+    title: t("toolSampleTitle"),
+    description: t("toolSampleDesc"),
     icon: Dice6,
     href: "/tools/sanamsargui-tuuwer",
     gradient: "from-violet-500 to-indigo-500",
@@ -74,8 +74,8 @@ const allTools: Tool[] = [
   },
   {
     id: "pivot",
-    title: "Pivot",
-    description: "Excel файлаас pivot хүснэгт үүсгэх",
+    title: t("toolPivotTitle"),
+    description: t("toolPivotDesc"),
     icon: Table2,
     href: "/tools/pivot",
     gradient: "from-cyan-500 to-blue-500",
@@ -86,8 +86,8 @@ const allTools: Tool[] = [
   {
     id: "tailan",
     matchIds: ["tailan", "tailan_dept_head"],
-    title: "Улирлын тайлан",
-    description: "Улирлын ажлын тайлан бэлтгэх",
+    title: t("toolReportTitle"),
+    description: t("toolReportDesc"),
     icon: FileText,
     href: "/tools/tailan",
     gradient: "from-violet-500 to-purple-500",
@@ -97,9 +97,8 @@ const allTools: Tool[] = [
   },
   {
     id: "db_access_requester",
-    title: "Эрх Хүсэх",
-    description:
-      "ClickHouse хүснэгтэд хандах эрх хүсэх, өөрийн хүсэлтүүдийг хянах",
+    title: t("toolDbRequestTitle"),
+    description: t("toolDbRequestDesc"),
     icon: Database,
     href: "/tools/db-access",
     gradient: "from-cyan-500 to-teal-500",
@@ -109,8 +108,8 @@ const allTools: Tool[] = [
   },
   {
     id: "db_access_granter",
-    title: "Эрх Олгох",
-    description: "ClickHouse хандалтын хүсэлтүүдийг хянаж удирдах",
+    title: t("toolDbGrantTitle"),
+    description: t("toolDbGrantDesc"),
     icon: Database,
     href: "/tools/db-access/manage",
     gradient: "from-violet-500 to-indigo-500",
@@ -120,9 +119,8 @@ const allTools: Tool[] = [
   },
   {
     id: "english",
-    title: "Англи үгс",
-    description:
-      "Англи үгийн санг бүрдүүлж, flash card болон тест горимоор цээжлэх",
+    title: t("toolEnglishTitle"),
+    description: t("toolEnglishDesc"),
     icon: BookOpen,
     href: "/tools/english/vocabulary",
     gradient: "from-sky-500 to-blue-500",
@@ -132,9 +130,8 @@ const allTools: Tool[] = [
   },
   {
     id: "excel_report",
-    title: "Excel тайлан",
-    description:
-      "Системийн мэдээллээс динамик Python кодоор Excel тайлан үүсгэж татах",
+    title: t("toolExcelTitle"),
+    description: t("toolExcelDesc"),
     icon: FileSpreadsheet,
     href: "/tools/excel-report",
     gradient: "from-green-500 to-emerald-500",
@@ -144,9 +141,8 @@ const allTools: Tool[] = [
   },
   {
     id: "pdf_to_text",
-    title: "PDF → Текст",
-    description:
-      "PDF файлыг текст болгон хөрвүүлж, хуулж авах боломжтой хэрэгсэл",
+    title: t("toolPdfTitle"),
+    description: t("toolPdfDesc"),
     icon: FileSearch,
     href: "/tools/pdf-to-text",
     gradient: "from-pink-500 to-rose-500",
@@ -156,9 +152,8 @@ const allTools: Tool[] = [
   },
   {
     id: "rag_chat",
-    title: "RAG Чат",
-    description:
-      "Баримт бичигт суурилсан AI чат — файл байршуулж, асуулт асууна уу",
+    title: t("toolRagTitle"),
+    description: t("toolRagDesc"),
     icon: MessageSquare,
     href: "/tools/rag-chat",
     gradient: "from-purple-500 to-indigo-500",
@@ -168,9 +163,8 @@ const allTools: Tool[] = [
   },
   {
     id: "data_doc",
-    title: "Өгөгдлийн толь бичиг",
-    description:
-      "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
+    title: t("toolDataDocTitle"),
+    description: t("toolDataDocDesc"),
     icon: Database,
     href: "/tools/data-doc",
     gradient: "from-teal-500 to-cyan-500",
@@ -178,7 +172,8 @@ const allTools: Tool[] = [
     tag: "Data",
     category: "work",
   },
-];
+  ];
+}
 
 const PARTICLES = [
   { l: 15, t: 25 },
@@ -196,6 +191,7 @@ const PARTICLES = [
 ];
 
 function ToolCard({ tool, index }: { tool: Tool; index: number }) {
+  const { t } = useLanguage();
   const Icon = tool.icon;
   return (
     <motion.div
@@ -248,7 +244,7 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
             </div>
             {/* bottom cta */}
             <div className="mt-3 flex items-center gap-1 text-xs font-medium text-slate-400 group-hover:text-white opacity-70 group-hover:opacity-100 transition-all">
-              Нээх
+              {t("toolsOpen")}
               <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </div>
           </div>
@@ -260,6 +256,7 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
 
 export default function ToolsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const [allowedTools, setAllowedTools] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -286,10 +283,13 @@ export default function ToolsPage() {
     load();
   }, [user]);
 
-  const available = allTools.filter((t) => {
-    const ids = t.matchIds ?? [t.id];
-    return ids.some((id) => allowedTools.includes(id));
-  });
+  const available = (() => {
+    const allTools = getTools(t);
+    return allTools.filter((tool) => {
+      const ids = tool.matchIds ?? [tool.id];
+      return ids.some((id) => allowedTools.includes(id));
+    });
+  })();
 
   const freeTools = available.filter((t) => t.category === "free");
   const workTools = available.filter((t) => t.category === "work");
@@ -333,7 +333,7 @@ export default function ToolsPage() {
           className="relative z-10 text-center"
         >
           <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto mb-4" />
-          <p className="text-slate-400">Ачаалж байна...</p>
+          <p className="text-slate-400">{t("loadingText")}</p>
         </motion.div>
       </div>
     );
@@ -352,10 +352,10 @@ export default function ToolsPage() {
             <Lock className="w-10 h-10 text-red-400" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">
-            Нэвтрэх шаардлагатай
+            {t("needLogin")}
           </h2>
           <p className="text-slate-400">
-            Хэрэгслүүдийг ашиглахын тулд нэвтэрнэ үү.
+            {t("needLoginToolsDesc")}
           </p>
         </motion.div>
       </div>
@@ -380,10 +380,10 @@ export default function ToolsPage() {
             </div>
             <div>
               <p className="text-xs text-purple-400/80 font-medium flex items-center gap-1.5 mb-0.5">
-                Дотоод аудитын газар
+                {t("toolsPageSubtitle")}
               </p>
               <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-                Хэрэгсэл
+                {t("toolsPageTitle")}
               </h1>
             </div>
           </div>
@@ -399,11 +399,10 @@ export default function ToolsPage() {
               <Lock className="w-16 h-16 text-slate-500 mx-auto" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-3">
-              Хэрэгсэл олдсонгүй
+              {t("toolsNoneFound")}
             </h2>
             <p className="text-slate-400 max-w-md">
-              Танд ашиглах боломжтой хэрэгсэл байхгүй байна. Админтай холбогдож
-              эрх авна уу.
+              {t("toolsNoneDesc")}
             </p>
           </motion.div>
         ) : (
@@ -414,7 +413,7 @@ export default function ToolsPage() {
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-base font-bold text-white">
-                      Чөлөөт хэрэгслүүд
+                      {t("toolsFree")}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                       {freeTools.length}
@@ -436,7 +435,7 @@ export default function ToolsPage() {
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-base font-bold text-white">
-                      Ажлын хэрэгслүүд
+                      {t("toolsWork")}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
                       {workTools.length}
