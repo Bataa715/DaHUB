@@ -34,14 +34,14 @@ export default function MainLayout({
     <div
       className={cn(
         "min-h-screen bg-background",
-        !isPublicPath && "p-3 md:p-4 lg:p-6",
+        !isPublicPath && "p-1.5 md:p-2 lg:p-2.5",
       )}
     >
       {!isPublicPath ? (
         <div className="animated-border-wrapper">
-          <div className="relative min-h-screen w-full overflow-x-hidden bg-background rounded-[1.6rem]">
+          <div className="flex flex-col min-h-screen w-full overflow-x-hidden bg-background rounded-2xl">
             <Header />
-            <main className="relative">{children}</main>
+            <main className="relative flex-1">{children}</main>
             <Footer />
           </div>
         </div>

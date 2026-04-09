@@ -4,16 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import {
-  Crown,
-  Shield,
-  ShieldCheck,
-  UserPlus,
-  Trash2,
   Search,
   X,
   AlertTriangle,
   Loader2,
-  Wrench,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -261,7 +255,6 @@ export default function AdminsPage() {
   return (
     <div className="min-h-screen bg-slate-950">
       <AdminPageHeader
-        icon={<div className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md"><ShieldCheck className="w-3.5 h-3.5 text-white" /></div>}
         title="Админ удирдлага"
         rightContent={
           isSuperAdmin ? (
@@ -269,7 +262,6 @@ export default function AdminsPage() {
               onClick={() => setShowAddSheet(true)}
               className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-3 py-1.5 rounded-lg text-sm transition-colors"
             >
-              <UserPlus className="w-3.5 h-3.5" />
               Админ нэмэх
             </button>
           ) : undefined
@@ -279,42 +271,14 @@ export default function AdminsPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
-          {
-            label: "Нийт админ",
-            value: admins.length,
-            icon: Shield,
-            color: "text-blue-400",
-            bg: "bg-blue-500/10 border-blue-500/20",
-          },
-          {
-            label: "Супер админ",
-            value: superAdminCount,
-            icon: Crown,
-            color: "text-amber-400",
-            bg: "bg-amber-500/10 border-amber-500/20",
-          },
-          {
-            label: "Саб админ",
-            value: subAdminCount,
-            icon: Wrench,
-            color: "text-emerald-400",
-            bg: "bg-emerald-500/10 border-emerald-500/20",
-          },
+          { label: "Нийт админ", value: admins.length, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
+          { label: "Супер админ", value: superAdminCount, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+          { label: "Саб админ", value: subAdminCount, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
         ].map((stat) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`rounded-xl border p-5 flex items-center gap-4 ${stat.bg}`}
-          >
-            <stat.icon className={`w-8 h-8 ${stat.color}`} />
-            <div>
-              <div className={`text-2xl font-bold ${stat.color}`}>
-                {stat.value}
-              </div>
-              <div className="text-slate-400 text-sm">{stat.label}</div>
-            </div>
-          </motion.div>
+          <div key={stat.label} className={`rounded-xl border px-4 py-3 ${stat.bg}`}>
+            <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
+            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+          </div>
         ))}
       </div>
 
@@ -367,12 +331,12 @@ export default function AdminsPage() {
                           {admin.name || admin.userId}
                         </span>
                         {admin.isSuperAdmin ? (
-                          <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-xs px-2 py-0.5 rounded-full border border-amber-500/30">
-                            <Crown className="w-3 h-3" /> Супер админ
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                            Супер админ
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-500/30">
-                            <Wrench className="w-3 h-3" /> Саб админ
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            Саб админ
                           </span>
                         )}
                         {isSelf && (
@@ -386,12 +350,9 @@ export default function AdminsPage() {
                       </p>
                       {!admin.isSuperAdmin && (
                         <button
-                          onClick={() =>
-                            setExpandedAdmin(isExpanded ? null : admin.id)
-                          }
+                          onClick={() => setExpandedAdmin(isExpanded ? null : admin.id)}
                           className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 mt-0.5 transition-colors"
                         >
-                          <Wrench className="w-3 h-3" />
                           {toolNames.length > 0
                             ? `${toolNames.length} хэрэгсэл олгох эрхтэй`
                             : "Хэрэгсэл тохируулаагүй"}
@@ -407,37 +368,33 @@ export default function AdminsPage() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {!admin.isSuperAdmin && (
                           <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => {
-                              setEditTarget(admin);
-                              setEditTools(admin.grantableTools ?? []);
-                            }}
-                            title="Хэрэгсэл эрх тохируулах"
-                            className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { setEditTarget(admin); setEditTools(admin.grantableTools ?? []); }}
+                            className="text-xs text-slate-400 hover:text-emerald-400 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition-colors border border-slate-800"
                           >
-                            <Wrench className="w-4 h-4" />
+                            Эрх
                           </motion.button>
                         )}
                         <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => handleToggleSuperAdmin(admin)}
-                          title={
-                            admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"
-                          }
-                          className={`p-2 rounded-lg transition-colors ${admin.isSuperAdmin ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30" : "bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"}`}
+                          className={`text-xs px-2 py-1 rounded-lg transition-colors border ${
+                            admin.isSuperAdmin
+                              ? "text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                              : "text-slate-400 border-slate-800 hover:text-amber-400 hover:border-amber-500/30"
+                          }`}
                         >
-                          <Crown className="w-4 h-4" />
+                          {admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
                         </motion.button>
                         <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => setRemoveTarget(admin)}
-                          title="Админ эрх хасах"
-                          className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                          className="text-xs text-slate-400 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-slate-800"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          Хасах
                         </motion.button>
                       </div>
                     )}
@@ -474,9 +431,8 @@ export default function AdminsPage() {
             })}
           </AnimatePresence>
           {admins.length === 0 && (
-            <div className="text-center py-16 text-slate-500">
-              <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Одоогоор админ бүртгэгдээгүй байна</p>
+            <div className="text-center py-16 text-slate-600 text-sm">
+              Одоогоор админ бүртгэгдээгүй байна
             </div>
           )}
         </div>
@@ -504,8 +460,7 @@ export default function AdminsPage() {
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <UserPlus className="w-5 h-5 text-amber-400" />
+                  <h2 className="text-lg font-semibold text-white">
                     Шинэ админ нэмэх
                   </h2>
                   <button
@@ -568,7 +523,10 @@ export default function AdminsPage() {
                     Роль
                   </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {(["sub", "super"] as const).map((role) => (
+                    {([
+                      "sub",
+                      "super",
+                    ] as const).map((role) => (
                       <button
                         key={role}
                         onClick={() => setSelectedRole(role)}
@@ -580,11 +538,6 @@ export default function AdminsPage() {
                             : "border-slate-700 text-slate-400 hover:border-slate-600"
                         }`}
                       >
-                        {role === "super" ? (
-                          <Crown className="w-4 h-4" />
-                        ) : (
-                          <Wrench className="w-4 h-4" />
-                        )}
                         {role === "super" ? "Супер админ" : "Саб админ"}
                       </button>
                     ))}
@@ -612,9 +565,7 @@ export default function AdminsPage() {
                 >
                   {addLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <UserPlus className="w-4 h-4" />
-                  )}
+                  ) : null}
                   Нэмэх
                 </motion.button>
               </div>
@@ -643,8 +594,7 @@ export default function AdminsPage() {
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <Wrench className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-lg font-semibold text-white">
                     Хэрэгсэл эрх засах
                   </h2>
                   <button
@@ -673,11 +623,7 @@ export default function AdminsPage() {
                   disabled={editLoading}
                   className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-colors"
                 >
-                  {editLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Wrench className="w-4 h-4" />
-                  )}
+                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Хадгалах
                 </motion.button>
               </div>
@@ -739,9 +685,7 @@ export default function AdminsPage() {
                   >
                     {removeLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
+                    ) : null}
                     Хасах
                   </motion.button>
                 </div>

@@ -71,7 +71,7 @@ export default function Hero() {
           >
             <Loader2 className="h-12 w-12 text-purple-400" />
           </motion.div>
-          <p className="text-slate-400 text-sm animate-pulse">
+          <p className="text-muted-foreground text-sm animate-pulse">
             {t("loadingText")}
           </p>
         </div>
@@ -163,10 +163,8 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full border backdrop-blur-xl"
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full border backdrop-blur-xl bg-card/60"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(168,85,247,0.1))",
                 borderColor: "rgba(99,102,241,0.3)",
               }}
             >
@@ -186,7 +184,7 @@ export default function Hero() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="flex items-center gap-2 text-slate-400 text-lg font-medium"
+                className="flex items-center gap-2 text-muted-foreground text-lg font-medium"
               >
                 <span>{greeting.emoji}</span>
                 <span>{greeting.text}</span>
@@ -220,12 +218,12 @@ export default function Hero() {
                   <div className="p-1.5 rounded-lg bg-emerald-500/15">
                     <Building2 className="h-4 w-4 text-emerald-400" />
                   </div>
-                  <p className="text-slate-200 font-medium">
+                  <p className="text-foreground/80 font-medium">
                     {user?.department || t("defaultDepartment")}
                   </p>
                 </div>
                 {user?.userId && (
-                  <p className="text-xs text-slate-500 font-mono pl-10">
+                  <p className="text-xs text-muted-foreground/70 font-mono pl-10">
                     {user.userId}
                   </p>
                 )}
@@ -254,7 +252,7 @@ export default function Hero() {
                 whileHover={{ scale: 1.04, y: -3 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => router.push("/tools")}
-                className="group relative inline-flex items-center gap-3 px-7 py-4 rounded-2xl overflow-hidden font-semibold text-white shadow-xl shadow-purple-900/30"
+                className="group relative inline-flex items-center gap-3 px-7 py-4 rounded-2xl overflow-hidden font-semibold text-foreground shadow-xl shadow-purple-900/30"
                 style={{
                   background:
                     "linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899)",
@@ -337,7 +335,7 @@ export default function Hero() {
                 whileHover={{ scale: 1.06 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
-                <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 relative">
+                <div className="w-full h-full rounded-full overflow-hidden bg-muted relative">
                   {user?.profileImage ? (
                     <Image
                       src={user.profileImage}
@@ -366,7 +364,7 @@ export default function Hero() {
                           ease: "easeInOut",
                         }}
                       >
-                        <User className="h-20 w-20 text-slate-600" />
+                        <User className="h-20 w-20 text-muted-foreground/60" />
                       </motion.div>
                     </div>
                   )}
@@ -379,11 +377,8 @@ export default function Hero() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="relative text-center px-8 py-4 rounded-2xl overflow-hidden"
+              className="relative text-center px-8 py-4 rounded-2xl overflow-hidden bg-card/70 backdrop-blur-xl border border-border/25"
               style={{
-                background: "rgba(15,20,35,0.7)",
-                border: "1px solid rgba(99,102,241,0.25)",
-                backdropFilter: "blur(20px)",
                 minWidth: "220px",
               }}
             >
@@ -406,7 +401,7 @@ export default function Hero() {
                   }}
                 />
               </div>
-              <p className="relative text-slate-400 text-sm">
+              <p className="relative text-muted-foreground text-sm">
                 {user?.position || t("defaultPosition")}
               </p>
             </motion.div>
@@ -438,7 +433,7 @@ export default function Hero() {
                 }}
               />
               <div className="flex items-center gap-3 mb-3"></div>
-              <p className="text-4xl font-black text-white tracking-tight font-mono">
+                <p className="text-4xl font-black text-foreground tracking-tight font-mono">
                 {currentTime}
               </p>
             </motion.div>
@@ -448,18 +443,13 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="relative overflow-hidden rounded-3xl p-5"
-              style={{
-                background: "rgba(15,20,35,0.6)",
-                border: "1px solid rgba(99,102,241,0.15)",
-                backdropFilter: "blur(20px)",
-              }}
-            >
+              className="relative overflow-hidden rounded-3xl p-5 bg-card/60 backdrop-blur-xl border border-border/15"
+              style={{}}>
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-purple-500/15">
                   <Calendar className="h-4 w-4 text-purple-400" />
                 </div>
-                <p className="text-slate-300 text-sm font-medium leading-snug">
+                <p className="text-muted-foreground text-sm font-medium leading-snug">
                   {currentDate}
                 </p>
               </div>
@@ -469,12 +459,11 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="relative overflow-hidden rounded-3xl p-5"
+              className="relative overflow-hidden rounded-3xl p-5 backdrop-blur-xl"
               style={{
                 background:
                   "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.05))",
                 border: "1px solid rgba(16,185,129,0.2)",
-                backdropFilter: "blur(20px)",
               }}
             >
               <div
@@ -497,7 +486,7 @@ export default function Hero() {
                   <p className="text-emerald-300 text-xs font-semibold uppercase tracking-widest mb-0.5">
                     {t("internalAuditDept")}
                   </p>
-                  <p className="text-slate-400 text-xs">DaHUB</p>
+                  <p className="text-muted-foreground text-xs">DaHUB</p>
                 </div>
               </div>
             </motion.div>
@@ -507,7 +496,7 @@ export default function Hero() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
-              className="flex items-center gap-2 px-2 text-slate-600 text-xs"
+              className="flex items-center gap-2 px-2 text-muted-foreground/60 text-xs"
             ></motion.div>
           </motion.div>
         </div>

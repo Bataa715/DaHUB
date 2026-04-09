@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { departmentsApi } from "@/lib/api";
@@ -222,7 +222,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           {photo.caption && (
             <div className="absolute bottom-0 inset-x-0 p-2 translate-y-1 group-hover:translate-y-0 transition-transform">
-              <p className="text-white text-xs font-medium line-clamp-1">
+              <p className="text-foreground text-xs font-medium line-clamp-1">
                 {photo.caption}
               </p>
             </div>
@@ -233,7 +233,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
                 e.stopPropagation();
                 setLightbox(startIdx + i);
               }}
-              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white transition-all"
+              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-foreground transition-all"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -242,7 +242,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
                 e.stopPropagation();
                 handleDelete(photo.id);
               }}
-              className="p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/80 text-white transition-all"
+              className="p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/80 text-foreground transition-all"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -268,9 +268,9 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center">
             <Camera className="w-4 h-4 text-rose-400" />
           </div>
-          <h2 className="text-lg font-semibold text-white">{t("albumTitle")}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("albumTitle")}</h2>
           {photos.length > 0 && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground/70">
               {photos.length} {t("photosSuffix")}
             </span>
           )}
@@ -297,11 +297,11 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
       ) : photos.length === 0 ? (
         <button
           onClick={() => fileRef.current?.click()}
-          className="w-full py-14 rounded-2xl border-2 border-dashed border-slate-700 hover:border-rose-500/50 bg-slate-800/30 hover:bg-slate-800/50 flex flex-col items-center gap-2 text-slate-500 hover:text-rose-400 transition-all"
+          className="w-full py-14 rounded-2xl border-2 border-dashed border-border hover:border-rose-500/50 bg-muted/30 hover:bg-card/50 flex flex-col items-center gap-2 text-muted-foreground/70 hover:text-rose-400 transition-all"
         >
           <Camera className="w-10 h-10" />
           <p className="text-sm">{t("uploadPhotoPrompt")}</p>
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-muted-foreground/60">
             {t("photoSizeHint")}
           </p>
         </button>
@@ -331,7 +331,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
               </AnimatePresence>
               <button
                 onClick={() => setExpanded((v) => !v)}
-                className="mt-4 w-full py-2 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-400 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
+                className="mt-4 w-full py-2 rounded-xl bg-card/50 hover:bg-muted/50 border border-border/50 text-muted-foreground hover:text-foreground text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
               >
                 {expanded ? (
                   <>
@@ -362,7 +362,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
             {/* Close */}
             <button
               onClick={() => setLightbox(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-foreground transition-all z-10"
             >
               <X className="w-5 h-5" />
             </button>
@@ -374,7 +374,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
                   e.stopPropagation();
                   setLightbox((i) => (i as number) - 1);
                 }}
-                className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+                className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-foreground transition-all z-10"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -387,7 +387,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
                   e.stopPropagation();
                   setLightbox((i) => (i as number) + 1);
                 }}
-                className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"
+                className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-foreground transition-all z-10"
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
@@ -411,17 +411,17 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
               />
               <div className="mt-3 text-center">
                 {photos[lightbox].caption && (
-                  <p className="text-white font-medium">
+                  <p className="text-foreground font-medium">
                     {photos[lightbox].caption}
                   </p>
                 )}
-                <p className="text-slate-400 text-xs mt-1">
+                <p className="text-muted-foreground text-xs mt-1">
                   {photos[lightbox].uploadedByName} ·{" "}
                   {new Date(photos[lightbox].uploadedAt).toLocaleDateString(
                     "mn-MN",
                   )}
                 </p>
-                <p className="text-slate-600 text-xs mt-1">
+                <p className="text-muted-foreground/60 text-xs mt-1">
                   {lightbox + 1} / {photos.length}
                 </p>
               </div>
@@ -460,13 +460,13 @@ function EmployeeCard({
       className="relative flex-shrink-0 w-52"
     >
       <div
-        className={`rounded-3xl overflow-hidden border transition-all duration-300 bg-slate-900/90 backdrop-blur-xl shadow-lg
+        className={`rounded-3xl overflow-hidden border transition-all duration-300 bg-card backdrop-blur-xl shadow-lg
           ${
             isSelf
               ? "border-blue-500/50 shadow-blue-900/20"
               : isManager
                 ? "border-amber-500/50 shadow-amber-900/20"
-                : "border-white/5 hover:border-white/10"
+                : "border-border/30 hover:border-border/60"
           }`}
       >
         {/* Colored top stripe */}
@@ -476,7 +476,7 @@ function EmployeeCard({
           {(isSelf || isManager) && (
             <div className="absolute top-4 left-4 z-10">
               {isSelf ? (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white shadow-lg">
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-foreground shadow-lg">
                   <User className="w-2.5 h-2.5" /> {t("youBadge")}
                 </span>
               ) : (
@@ -500,7 +500,7 @@ function EmployeeCard({
               />
             ) : (
               <div
-                className="rounded-2xl bg-slate-800 flex items-center justify-center text-white text-xl font-extrabold"
+                className="rounded-2xl bg-muted flex items-center justify-center text-foreground text-xl font-extrabold"
                 style={{ width: 70, height: 70 }}
               >
                 {getInitials(member.name)}
@@ -510,12 +510,12 @@ function EmployeeCard({
 
           {/* Name & position */}
           <div className="text-center w-full">
-            <p className="font-bold text-white text-sm leading-snug truncate">
+            <p className="font-bold text-foreground text-sm leading-snug truncate">
               {member.name}
             </p>
             {member.position && (
-              <p className="mt-0.5 text-xs text-slate-400 flex items-center justify-center gap-1">
-                <Briefcase className="w-2.5 h-2.5 shrink-0 text-slate-500" />
+              <p className="mt-0.5 text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <Briefcase className="w-2.5 h-2.5 shrink-0 text-muted-foreground/70" />
                 <span className="truncate max-w-[140px]">
                   {member.position}
                 </span>
@@ -530,7 +530,7 @@ function EmployeeCard({
               {t("activeStatus")}
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-700/50 border border-slate-600/20 text-[11px] font-semibold text-slate-500">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 border border-border/30 text-[11px] font-semibold text-muted-foreground/70">
               <span className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
               {t("inactiveStatus")}
             </div>
@@ -589,7 +589,7 @@ function MemberCarousel({
           <button
             onClick={prev}
             disabled={idx === 0}
-            className="p-2 rounded-full bg-slate-700/60 hover:bg-blue-500/70 disabled:opacity-30 text-white transition-all hover:scale-110 disabled:scale-100"
+            className="p-2 rounded-full bg-muted/60 hover:bg-blue-500/70 disabled:opacity-30 text-foreground transition-all hover:scale-110 disabled:scale-100"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -602,7 +602,7 @@ function MemberCarousel({
                 className={`rounded-full transition-all ${
                   i === idx
                     ? "w-6 h-2 bg-blue-500"
-                    : "w-2 h-2 bg-slate-600 hover:bg-slate-500"
+                    : "w-2 h-2 bg-muted-foreground/40 hover:bg-muted-foreground/60"
                 }`}
               />
             ))}
@@ -611,7 +611,7 @@ function MemberCarousel({
           <button
             onClick={next}
             disabled={idx === max}
-            className="p-2 rounded-full bg-slate-700/60 hover:bg-blue-500/70 disabled:opacity-30 text-white transition-all hover:scale-110 disabled:scale-100"
+            className="p-2 rounded-full bg-muted/60 hover:bg-blue-500/70 disabled:opacity-30 text-foreground transition-all hover:scale-110 disabled:scale-100"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
@@ -687,7 +687,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
 
   if (list.length === 0) {
     return (
-      <p className="text-slate-500 text-sm text-center py-6">
+      <p className="text-muted-foreground/70 text-sm text-center py-6">
         {t("noOtherDepts")}
       </p>
     );
@@ -746,7 +746,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
                 ${
                   isActive
                     ? `bg-gradient-to-br ${ac.activeBg} ${ac.activeBorder} shadow-lg`
-                    : "bg-slate-800/50 border-white/5 hover:border-white/10 hover:bg-slate-800/70 hover:scale-[1.03]"
+                    : "bg-card/50 border-border/30 hover:border-border/40 hover:bg-muted/70 hover:scale-[1.03]"
                 }`}
             >
               <div
@@ -754,15 +754,15 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
                   ${
                     isActive
                       ? `${ac.iconBg} ${ac.icon}`
-                      : "bg-slate-700/60 text-slate-400 group-hover:bg-slate-700/80"
+                      : "bg-muted/60 text-muted-foreground group-hover:bg-muted/80"
                   }`}
               >
                 <Building2 className="w-4 h-4" />
               </div>
-              <p className="text-sm font-semibold text-white leading-snug line-clamp-2 mb-2">
+              <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2 mb-2">
                 {dept.name}
               </p>
-              <div className="flex items-center gap-1 text-[11px] text-slate-500">
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground/70">
                 <Users className="w-3 h-3" />
                 {dept.users?.length ?? dept.employeeCount ?? 0} {t("employeeSuffix")}
               </div>
@@ -790,15 +790,15 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-white/5 bg-slate-800/50 backdrop-blur p-5 space-y-6"
+                className="rounded-2xl border border-border/30 bg-card/50 backdrop-blur p-5 space-y-6"
               >
                 {/* Dept header */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg">
-                    <Building2 className="w-5 h-5 text-white" />
+                    <Building2 className="w-5 h-5 text-foreground" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">
+                    <h3 className="text-base font-bold text-foreground">
                       {selected.name}
                     </h3>
                     {selected.manager && (
@@ -816,7 +816,7 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
                       <div className="w-7 h-7 rounded-lg bg-cyan-500/15 flex items-center justify-center">
                         <Users className="w-3.5 h-3.5 text-cyan-400" />
                       </div>
-                      <span className="text-sm font-semibold text-white">
+                      <span className="text-sm font-semibold text-foreground">
                         {t("teamTitle")}
                       </span>
                       <div className="ml-auto px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
@@ -882,7 +882,7 @@ export default function DepartmentsPage() {
   };
 
   const BG = (
-    <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pointer-events-none">
+    <div className="absolute inset-0 bg-background pointer-events-none">
       <motion.div
         className="absolute -top-1/2 -left-1/4 w-3/4 h-3/4 bg-gradient-to-br from-blue-600/8 to-transparent rounded-full blur-3xl"
         animate={{ x: [0, 80, 0], y: [0, 40, 0] }}
@@ -919,7 +919,7 @@ export default function DepartmentsPage() {
           className="relative z-10 text-center"
         >
           <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-slate-400">{t("loadingText")}</p>
+          <p className="text-muted-foreground">{t("loadingText")}</p>
         </motion.div>
       </div>
     );
@@ -937,10 +937,10 @@ export default function DepartmentsPage() {
           <div className="w-20 h-20 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {t("needLogin")}
           </h2>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             {t("needLoginDeptDesc")}
           </p>
         </motion.div>
@@ -960,10 +960,10 @@ export default function DepartmentsPage() {
           <div className="w-20 h-20 rounded-2xl bg-amber-500/20 flex items-center justify-center mx-auto mb-6">
             <Building2 className="w-10 h-10 text-amber-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {t("deptUnknownTitle")}
           </h2>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             {t("deptUnknownDesc")}
           </p>
         </motion.div>
@@ -988,15 +988,15 @@ export default function DepartmentsPage() {
           {/* ── HERO ─────────────────────────────────────────────────── */}
           <div className="relative rounded-3xl overflow-hidden">
             {/* Layered background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_85%_-10%,rgba(99,102,241,0.22),transparent)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_5%_100%,rgba(6,182,212,0.07),transparent)]" />
+            <div className="absolute inset-0 bg-card" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_85%_-10%,rgba(99,102,241,0.10),transparent)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_5%_100%,rgba(6,182,212,0.04),transparent)]" />
             {/* Grid overlay */}
             <div
-              className="absolute inset-0 opacity-[0.03]"
+              className="absolute inset-0 opacity-[0.04]"
               style={{
                 backgroundImage:
-                  "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+                  "linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)",
                 backgroundSize: "50px 50px",
               }}
             />
@@ -1008,8 +1008,8 @@ export default function DepartmentsPage() {
               {/* Outer glow ring */}
               <div className="absolute inset-0 rounded-full bg-indigo-500/10 blur-2xl scale-150" />
               {/* Subtle ring border */}
-              <div className="absolute inset-0 rounded-full border border-white/10" />
-              <div className="relative w-36 h-36 rounded-full overflow-hidden border-2 border-white/10 shadow-[0_0_40px_rgba(99,102,241,0.15)] bg-white/5 backdrop-blur-sm">
+              <div className="absolute inset-0 rounded-full border border-border/40" />
+              <div className="relative w-36 h-36 rounded-full overflow-hidden border-2 border-border/40 shadow-[0_0_40px_rgba(99,102,241,0.15)] bg-primary/5 backdrop-blur-sm">
                 <Image
                   src="/golomt.jpg"
                   alt="Golomt"
@@ -1040,7 +1040,7 @@ export default function DepartmentsPage() {
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight max-w-lg"
+                className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight leading-tight max-w-lg"
               >
                 {department.name}
               </motion.h1>
@@ -1051,7 +1051,7 @@ export default function DepartmentsPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="mt-2 text-slate-400 text-sm leading-relaxed max-w-md line-clamp-2"
+                  className="mt-2 text-muted-foreground text-sm leading-relaxed max-w-md line-clamp-2"
                 >
                   {department.description}
                 </motion.p>
@@ -1065,29 +1065,29 @@ export default function DepartmentsPage() {
                 className="flex flex-wrap items-center gap-3 mt-7"
               >
                 {/* Employee count */}
-                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-primary/5 border border-border/40 backdrop-blur-sm">
                   <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center">
                     <Users className="w-4 h-4 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-base font-extrabold text-white leading-none">
+                    <p className="text-base font-extrabold text-foreground leading-none">
                       {totalCount}
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{t("employeeSuffix")}</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">{t("employeeSuffix")}</p>
                   </div>
                 </div>
 
                 {/* Manager */}
                 {department.manager && (
-                  <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-primary/5 border border-border/40 backdrop-blur-sm">
                     <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center">
                       <Crown className="w-4 h-4 text-amber-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white leading-none">
+                      <p className="text-sm font-bold text-foreground leading-none">
                         {department.manager}
                       </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
+                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">
                         {t("managerLabel")}
                       </p>
                     </div>
@@ -1110,7 +1110,7 @@ export default function DepartmentsPage() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
           >
             <div className="h-px bg-gradient-to-r from-blue-500/70 via-cyan-400/40 to-transparent" />
             <div className="p-6 md:p-8">
@@ -1119,19 +1119,19 @@ export default function DepartmentsPage() {
                   <Target className="w-4 h-4 text-blue-400" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">{t("missionTitle")}</h2>
-                  <p className="text-[11px] text-slate-500">
+                  <h2 className="text-base font-bold text-foreground">{t("missionTitle")}</h2>
+                  <p className="text-[11px] text-muted-foreground/70">
                     {t("missionSubtitle")}
                   </p>
                 </div>
               </div>
               {department.description ? (
-                <p className="text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">
+                <p className="text-foreground/70 leading-relaxed text-sm whitespace-pre-wrap">
                   {department.description}
                 </p>
               ) : (
-                <div className="flex items-center gap-3 py-6 text-slate-500 italic text-sm">
-                  <Target className="w-5 h-5 text-slate-600 shrink-0" />
+                <div className="flex items-center gap-3 py-6 text-muted-foreground/70 italic text-sm">
+                  <Target className="w-5 h-5 text-muted-foreground/60 shrink-0" />
                   {t("noDescription")}
                 </div>
               )}
@@ -1143,7 +1143,7 @@ export default function DepartmentsPage() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
-            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
           >
             <div className="h-px bg-gradient-to-r from-cyan-500/70 via-blue-400/40 to-transparent" />
             <div className="p-6 md:p-8">
@@ -1153,10 +1153,10 @@ export default function DepartmentsPage() {
                     <Users className="w-4 h-4 text-cyan-400" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-white">
+                    <h2 className="text-base font-bold text-foreground">
                       {t("teamTitle")}
                     </h2>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-muted-foreground/70">
                       {t("teamSubtitle")}
                     </p>
                   </div>
@@ -1177,8 +1177,8 @@ export default function DepartmentsPage() {
                   managerName={department.manager}
                 />
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-800/30 py-14 flex flex-col items-center gap-3 text-slate-500">
-                  <Users className="w-10 h-10 text-slate-600" />
+                <div className="rounded-2xl border border-dashed border-border bg-muted/30 py-14 flex flex-col items-center gap-3 text-muted-foreground/70">
+                  <Users className="w-10 h-10 text-muted-foreground/60" />
                   <p className="text-sm">{t("noEmployees")}</p>
                 </div>
               )}
@@ -1190,7 +1190,7 @@ export default function DepartmentsPage() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
-            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
           >
             <div className="h-px bg-gradient-to-r from-rose-500/70 via-pink-400/40 to-transparent" />
             <div className="p-6 md:p-8">
@@ -1205,7 +1205,7 @@ export default function DepartmentsPage() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.65 }}
-            className="rounded-3xl overflow-hidden border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl"
+            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
           >
             <div className="h-px bg-gradient-to-r from-violet-500/70 via-indigo-400/40 to-transparent" />
             <div className="p-6 md:p-8">
@@ -1214,10 +1214,10 @@ export default function DepartmentsPage() {
                   <Building2 className="w-4 h-4 text-violet-400" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">
+                  <h2 className="text-base font-bold text-foreground">
                     {t("otherDeptsTitle")}
                   </h2>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-muted-foreground/70">
                     {t("otherDeptsSubtitle")}
                   </p>
                 </div>
@@ -1227,13 +1227,6 @@ export default function DepartmentsPage() {
               )}
             </div>
           </motion.div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-center gap-3 py-2">
-            <div className="h-px flex-1 max-w-20 bg-gradient-to-r from-transparent to-slate-800" />
-
-            <div className="h-px flex-1 max-w-20 bg-gradient-to-l from-transparent to-slate-800" />
-          </div>
         </motion.div>
       </div>
     </div>

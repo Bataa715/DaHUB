@@ -79,76 +79,70 @@ const EMPTY_FORM = {
 const SQL_MARKER = "# __SQL_MODE__\n";
 
 // ── Starter template for Python mode ─────────────────────────────────────────
+// ── Starter template for Python (DataFrame) mode ─────────────────────────
 const PYTHON_STARTER = [
-  "import os, json, urllib.request, openpyxl",
-  "from openpyxl.styles import Font, PatternFill, Alignment, Border, Side",
-  "from openpyxl.utils import get_column_letter",
-  "from urllib.parse import urlencode",
+  "# __DF_MODE__",
+  "# ch_query(sql) болон START_DATE, END_DATE автоматаар байна.",
+  "# df хувьсагчид DataFrame оноогоод дуусаарай — Excel автоматаар үүснэ.",
+  "# Олон хуудас: sheets = {'Хуудас1': df1, 'Хуудас2': df2}",
   "",
-  "CH_HOST = os.environ.get('CLICKHOUSE_HOST', 'localhost')",
-  "CH_PORT = os.environ.get('CLICKHOUSE_PORT', '8123')",
-  "CH_USER = os.environ.get('CLICKHOUSE_USER', 'default')",
-  "CH_PASS = os.environ.get('CLICKHOUSE_PASSWORD', '')",
-  "CH_DB   = os.environ.get('CLICKHOUSE_DATABASE', 'audit_db')",
-  "OUTPUT  = os.environ['OUTPUT_FILE']",
-  "START   = os.environ.get('START_DATE', '')",
-  "END     = os.environ.get('END_DATE', '')",
-  "",
-  "# ── SQL ──────────────────────────────────────────────────────────────────────",
-  "SQL = f\"\"\"",
+  "sql = f\"\"\"",
   "SELECT *",
   "FROM your_table",
-  "WHERE date >= '{START}' AND date <= '{END}'",
-  "LIMIT 10000",
+  "WHERE date >= '{START_DATE}'",
+  "  AND date <= '{END_DATE}'",
+  "ORDER BY date DESC",
+  "LIMIT 50000",
   "\"\"\"",
   "",
-  "# ── ClickHouse query ─────────────────────────────────────────────────────────",
-  "params = urlencode({'user': CH_USER, 'password': CH_PASS, 'database': CH_DB, 'default_format': 'JSONCompact'})",
-  "url = 'http://' + CH_HOST + ':' + CH_PORT + '/?' + params",
-  "req = urllib.request.Request(url, data=SQL.encode('utf-8'), method='POST')",
-  "with urllib.request.urlopen(req) as resp:",
-  "    result = json.loads(resp.read().decode('utf-8'))",
+  "df = ch_query(sql)",
   "",
-  "headers = [col['name'] for col in result.get('meta', [])]",
-  "rows = result.get('data', [])",
-  "",
-  "# ── Excel ─────────────────────────────────────────────────────────────────────",
-  "wb = openpyxl.Workbook()",
-  "ws = wb.active",
-  "ws.title = 'Тайлан'",
-  "",
-  "header_fill = PatternFill(start_color='1F4E79', end_color='1F4E79', fill_type='solid')",
-  "header_font = Font(color='FFFFFF', bold=True)",
-  "thin = Side(border_style='thin', color='8EA9C1')",
-  "for ci, h in enumerate(headers, 1):",
-  "    cell = ws.cell(row=1, column=ci, value=h)",
-  "    cell.fill = header_fill",
-  "    cell.font = header_font",
-  "    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)",
-  "    cell.border = Border(bottom=thin)",
-  "",
-  "even_fill = PatternFill(start_color='D6E4F0', end_color='D6E4F0', fill_type='solid')",
-  "data_side = Side(border_style='thin', color='D0D0D0')",
-  "for ri, row in enumerate(rows, 2):",
-  "    for ci, val in enumerate(row, 1):",
-  "        cell = ws.cell(row=ri, column=ci, value=val)",
-  "        if ri % 2 == 0:",
-  "            cell.fill = even_fill",
-  "        cell.border = Border(bottom=data_side)",
-  "",
-  "for ci in range(1, len(headers) + 1):",
-  "    max_len = len(str(headers[ci - 1]))",
-  "    for ri in range(2, min(len(rows) + 2, 102)):",
-  "        v = ws.cell(row=ri, column=ci).value",
-  "        if v is not None:",
-  "            max_len = max(max_len, len(str(v)))",
-  "    ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 50)",
-  "",
-  "ws.row_dimensions[1].height = 30",
-  "ws.freeze_panes = 'A2'",
-  "wb.save(OUTPUT)",
-  "print('Done: ' + str(len(rows)) + ' rows')",
+  "# Нэмэлт боловсруулалт:",
+  "# df = df[df['amount'] > 0]",
+  "# df['total'] = df['qty'] * df['price']",
 ].join("\n");
+
+// ── Quick-insert snippets ─────────────────────────────────────────────────
+interface Snippet { label: string; desc: string; code: string; }
+const SNIPPETS: Snippet[] = [
+  {
+    label: "ch_query",
+    desc: "ClickHouse query → df",
+    code: [
+      "sql = f\"\"\"",
+      "SELECT col1, col2, SUM(amount) AS total",
+      "FROM your_table",
+      "WHERE date >= '{START_DATE}'",
+      "  AND date <= '{END_DATE}'",
+      "GROUP BY col1, col2",
+      "ORDER BY total DESC",
+      "LIMIT 50000",
+      "\"\"\"",
+      "df = ch_query(sql)",
+    ].join("\n"),
+  },
+  {
+    label: "merge",
+    desc: "2 DataFrame нэгтгэх",
+    code: [
+      "df1 = ch_query(\"SELECT id, name FROM table1\")",
+      "df2 = ch_query(\"SELECT id, amount FROM table2\")",
+      "df = pd.merge(df1, df2, on='id', how='left')",
+    ].join("\n"),
+  },
+  {
+    label: "sheets",
+    desc: "Олон хуудас",
+    code: [
+      "df1 = ch_query(\"SELECT ... FROM table1\")",
+      "df2 = ch_query(\"SELECT ... FROM table2\")",
+      "sheets = {",
+      "    '1-р хуудас': df1,",
+      "    '2-р хуудас': df2,",
+      "}",
+    ].join("\n"),
+  },
+];
 
 function sqlToPython(sql: string): string {
   // Build the same template as the backend SQL_TO_EXCEL_PYTHON, with SQL injected.
@@ -642,7 +636,7 @@ export default function AdminExcelReportsPage() {
                   <p className="text-xs text-slate-500 mt-0.5">
                     {sqlMode
                       ? "SQL query оруулна — Python код автоматаар үүснэ"
-                      : <>Python скрипт{" "}<code className="bg-slate-800 px-1 rounded text-slate-300">OUTPUT_FILE</code>-д .xlsx бичих ёстой</>
+                      : "df = ch_query(sql) бичнэ — Excel автоматаар гарна"
                     }
                   </p>
                 </div>
@@ -774,8 +768,7 @@ export default function AdminExcelReportsPage() {
                         if (next === false && !form.pythonCode.trim()) {
                           setForm((f) => ({ ...f, pythonCode: PYTHON_STARTER }));
                         }
-                      }}
-                      className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
+                      }}                      className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
                       title="SQL горим / Python горим солих"
                     >
                       {sqlMode ? (
@@ -810,35 +803,48 @@ export default function AdminExcelReportsPage() {
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center justify-between">
-                        <span />
-                        <div className="flex items-center gap-2">
-                          {!form.pythonCode.trim() && (
-                            <button
-                              type="button"
-                              onClick={() => setForm((f) => ({ ...f, pythonCode: PYTHON_STARTER }))}
-                              className="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors"
-                            >
-                              Загвар оруулах
-                            </button>
-                          )}
-                          <span className="text-xs text-slate-600">
-                            {form.pythonCode.split("\n").length} мөр
-                          </span>
-                        </div>
+                      {/* Snippets */}
+                      <div className="flex flex-wrap gap-1.5 mb-1">
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, pythonCode: PYTHON_STARTER }))}
+                          className="text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                        >
+                          ↺ загвар
+                        </button>
+                        {SNIPPETS.map((s) => (
+                          <button
+                            key={s.label}
+                            type="button"
+                            title={s.desc}
+                            onClick={() =>
+                              setForm((f) => ({
+                                ...f,
+                                pythonCode:
+                                  (f.pythonCode ? f.pythonCode + "\n\n" : "") + s.code,
+                              }))
+                            }
+                            className="text-xs px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+                          >
+                            + {s.label}
+                          </button>
+                        ))}
+                        <span className="ml-auto text-xs text-slate-600 self-center">
+                          {form.pythonCode.split("\n").length} мөр
+                        </span>
                       </div>
                       <CodeEditor
                         value={form.pythonCode}
                         onChange={(v) => setForm((f) => ({ ...f, pythonCode: v }))}
-                        placeholder={`import os\nimport openpyxl\n\nstart = os.environ.get('START_DATE', '')\nend   = os.environ.get('END_DATE', '')\nout   = os.environ['OUTPUT_FILE']\n\nwb = openpyxl.Workbook()\nws = wb.active\nws.title = 'Тайлан'\nws.append(['Огноо', 'Дүн'])\n# ... ClickHouse-аас өгөгдөл татах ...\nwb.save(out)`}
+                        placeholder={`# __DF_MODE__\nsql = f"""\nSELECT *\nFROM your_table\nWHERE date >= '{START_DATE}'\n  AND date <= '{END_DATE}'\n"""\ndf = ch_query(sql)`}
                       />
-                      <p className="text-xs text-slate-600">
-                        Env:{" "}
-                        <code className="text-slate-400">
-                          OUTPUT_FILE, START_DATE, END_DATE, CLICKHOUSE_HOST,
-                          CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE
-                        </code>
-                      </p>
+                      <div className="rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2 space-y-1">
+                        <p className="text-xs text-slate-400 font-medium">Автоматаар байдаг:</p>
+                        <p className="text-xs text-slate-500 font-mono">ch_query(sql) → pd.DataFrame</p>
+                        <p className="text-xs text-slate-500 font-mono">START_DATE, END_DATE, CLICKHOUSE_*</p>
+                        <p className="text-xs text-slate-500 font-mono">df = ... <span className="text-slate-600">→ Excel автоматаар</span></p>
+                        <p className="text-xs text-slate-500 font-mono">sheets = {"{'Хуудас': df}"} <span className="text-slate-600">→ олон хуудас</span></p>
+                      </div>
                     </>
                   )}
                 </div>

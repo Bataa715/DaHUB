@@ -88,6 +88,101 @@ export class ExcelReportService implements OnModuleInit {
     "_urllib_req.urlopen = _safe_urlopen\n" +
     "# === END SECURITY PREAMBLE ===\n\n";
 
+  // ── DataFrame mode preamble: injected before user code when # __DF_MODE__ is detected ─
+  // Provides: ch_query(), START_DATE, END_DATE, OUTPUT_FILE, CLICKHOUSE_* env vars
+  private static readonly PYTHON_DF_PREAMBLE = [
+    "# === DATAFRAME PREAMBLE (auto-injected) ===",
+    "import sys, os, json, warnings",
+    "sys.stdout.reconfigure(encoding='utf-8', errors='replace')",
+    "sys.stderr.reconfigure(encoding='utf-8', errors='replace')",
+    "import pandas as pd",
+    "import urllib.request",
+    "from urllib.parse import urlencode",
+    "warnings.filterwarnings('ignore')",
+    "",
+    "CLICKHOUSE_HOST = os.environ.get('CLICKHOUSE_HOST', 'localhost')",
+    "CLICKHOUSE_PORT = os.environ.get('CLICKHOUSE_PORT', '8123')",
+    "CLICKHOUSE_USER = os.environ.get('CLICKHOUSE_USER', 'default')",
+    "CLICKHOUSE_PASSWORD = os.environ.get('CLICKHOUSE_PASSWORD', '')",
+    "CLICKHOUSE_DATABASE = os.environ.get('CLICKHOUSE_DATABASE', 'audit_db')",
+    "START_DATE = os.environ.get('START_DATE', '')",
+    "END_DATE   = os.environ.get('END_DATE', '')",
+    "OUTPUT_FILE = os.environ['OUTPUT_FILE']",
+    "",
+    "def ch_query(sql, **kw):",
+    "    \"\"\"ClickHouse-аас DataFrame буцаана. {start_date}/{end_date} автоматаар орлуулна.\"\"\"",
+    "    sql = sql.replace('{start_date}', START_DATE).replace('{end_date}', END_DATE)",
+    "    for k, v in kw.items():",
+    "        sql = sql.replace('{' + k + '}', str(v))",
+    "    params = urlencode({'user': CLICKHOUSE_USER, 'password': CLICKHOUSE_PASSWORD,",
+    "                        'database': CLICKHOUSE_DATABASE, 'default_format': 'JSONCompact'})",
+    "    url = 'http://' + CLICKHOUSE_HOST + ':' + CLICKHOUSE_PORT + '/?' + params",
+    "    req = urllib.request.Request(url, data=sql.encode('utf-8'), method='POST')",
+    "    with urllib.request.urlopen(req) as resp:",
+    "        result = json.loads(resp.read().decode('utf-8'))",
+    "    cols = [m['name'] for m in result.get('meta', [])]",
+    "    return pd.DataFrame(result.get('data', []), columns=cols)",
+    "",
+    "# === END DATAFRAME PREAMBLE ===",
+    "",
+  ].join("\n");
+
+  // ── DataFrame mode postamble: auto-exports df (or sheets dict) to styled Excel ──
+  private static readonly PYTHON_DF_POSTAMBLE = [
+    "",
+    "# === DATAFRAME POSTAMBLE (auto-injected) ===",
+    "_lc = vars()",
+    "if 'sheets' in _lc and isinstance(_lc['sheets'], dict):",
+    "    _sheets = _lc['sheets']",
+    "elif 'df' in _lc and hasattr(_lc['df'], 'to_excel'):",
+    "    _sheets = {'Тайлан': _lc['df']}",
+    "else:",
+    "    raise RuntimeError(",
+    "        \"'df' (pandas.DataFrame) эсвэл 'sheets' (dict) хувьсагч тодорхойлогдоогүй байна.\\n\"",
+    "        \"Жишээ: df = ch_query(sql)\"",
+    "    )",
+    "import openpyxl",
+    "from openpyxl.styles import Font, PatternFill, Alignment, Border, Side",
+    "from openpyxl.utils import get_column_letter",
+    "_first = True",
+    "_wb = None",
+    "for _sn, _sdf in _sheets.items():",
+    "    if _first:",
+    "        _sdf.to_excel(OUTPUT_FILE, sheet_name=_sn, index=False, engine='openpyxl')",
+    "        _wb = openpyxl.load_workbook(OUTPUT_FILE)",
+    "        _first = False",
+    "    else:",
+    "        _ws2 = _wb.create_sheet(title=_sn)",
+    "        _ws2.append(list(_sdf.columns))",
+    "        for _r in _sdf.itertuples(index=False, name=None):",
+    "            _ws2.append(list(_r))",
+    "_hfill = PatternFill(start_color='1F4E79', end_color='1F4E79', fill_type='solid')",
+    "_hfont = Font(color='FFFFFF', bold=True)",
+    "_thin  = Side(border_style='thin', color='8EA9C1')",
+    "_efill = PatternFill(start_color='D6E4F0', end_color='D6E4F0', fill_type='solid')",
+    "_dside = Side(border_style='thin', color='D0D0D0')",
+    "for _ws in _wb.worksheets:",
+    "    for _c in _ws[1]:",
+    "        _c.fill = _hfill; _c.font = _hfont",
+    "        _c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)",
+    "        _c.border = Border(bottom=_thin)",
+    "    for _ri, _row in enumerate(_ws.iter_rows(min_row=2), 2):",
+    "        for _c in _row:",
+    "            if _ri % 2 == 0: _c.fill = _efill",
+    "            _c.border = Border(bottom=_dside)",
+    "    for _col in _ws.columns:",
+    "        _ml = 0",
+    "        for _c in list(_col)[:101]:",
+    "            if _c.value is not None: _ml = max(_ml, len(str(_c.value)))",
+    "        _ws.column_dimensions[get_column_letter(list(_col)[0].column)].width = min(_ml + 2, 50)",
+    "    _ws.row_dimensions[1].height = 30",
+    "    _ws.freeze_panes = 'A2'",
+    "_wb.save(OUTPUT_FILE)",
+    "_tot = sum(len(d) for d in _sheets.values())",
+    "print('Done: ' + str(_tot) + ' rows | ' + str(len(_sheets)) + ' sheet(s)')",
+    "# === END DATAFRAME POSTAMBLE ===",
+  ].join("\n");
+
   // ── Fixed Python template for direct SQL → Excel (server-controlled, no user code) ──
   private static readonly SQL_TO_EXCEL_PYTHON = [
     "import os, json, urllib.request, openpyxl",
@@ -229,6 +324,23 @@ export class ExcelReportService implements OnModuleInit {
       CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
       ...extra,
     };
+  }
+
+  // ── Assemble executable script for a template ─────────────────────────────
+  private buildScript(pythonCode: string): string {
+    if (pythonCode.startsWith("# __DF_MODE__")) {
+      // Strip the marker line, wrap user code with preamble + postamble
+      const userCode = pythonCode.replace(/^#\s*__DF_MODE__[^\n]*\n?/, "");
+      return (
+        ExcelReportService.PYTHON_SECURITY_PREAMBLE +
+        ExcelReportService.PYTHON_DF_PREAMBLE +
+        userCode +
+        "\n" +
+        ExcelReportService.PYTHON_DF_POSTAMBLE
+      );
+    }
+    // Legacy full-Python mode: security preamble only
+    return ExcelReportService.PYTHON_SECURITY_PREAMBLE + pythonCode;
   }
 
   constructor(private clickhouse: ClickHouseService) {}
@@ -431,8 +543,7 @@ export class ExcelReportService implements OnModuleInit {
     const outputPath = path.join(tmpDir, `excel_report_${randomUUID()}.xlsx`);
 
     try {
-      const securedCode =
-        ExcelReportService.PYTHON_SECURITY_PREAMBLE + template.pythonCode;
+      const securedCode = this.buildScript(template.pythonCode);
       fs.writeFileSync(scriptPath, securedCode, "utf8");
 
       // Build env — pass ClickHouse connection + date params
@@ -594,8 +705,7 @@ export class ExcelReportService implements OnModuleInit {
     const outputPath = path.join(tmpDir, `excel_job_${jobId}.xlsx`);
 
     try {
-      const securedCode =
-        ExcelReportService.PYTHON_SECURITY_PREAMBLE + template.pythonCode;
+      const securedCode = this.buildScript(template.pythonCode);
       fs.writeFileSync(scriptPath, securedCode, "utf8");
 
       const env: Record<string, string> = this.buildPythonEnv({

@@ -6,7 +6,7 @@ import { ReactNode } from "react";
 
 interface AdminPageHeaderProps {
   href?: string;
-  icon: ReactNode;
+  icon?: ReactNode;
   title: string;
   rightContent?: ReactNode;
 }

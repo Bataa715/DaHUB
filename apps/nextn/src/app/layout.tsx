@@ -55,7 +55,7 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="tokyo-night"
-          themes={["default", "tokyo-night", "emerald"]}
+          themes={["default", "tokyo-night", "light"]}
           enableSystem={false}
           disableTransitionOnChange
         >

@@ -4,18 +4,16 @@ import Image from "next/image";
 
 const Footer = () => {
   return (
-    <footer className="border-t min-h-[72px]">
-      <div className="container mx-auto flex items-center justify-center gap-4 py-6">
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50">
-          <Image
-            src="/golomt.jpg"
-            alt="Golomt"
-            width={24}
-            height={24}
-            className="rounded"
-          />
-          <span className="text-xs text-muted-foreground">Голомт Банк</span>
-        </div>
+    <footer className="py-3 flex items-center justify-center border-t border-border/30">
+      <div className="flex items-center gap-2">
+        <Image
+          src="/golomt.jpg"
+          alt="Golomt"
+          width={18}
+          height={18}
+          className="rounded opacity-70"
+        />
+        <span className="text-xs text-muted-foreground/60">Голомт Банк</span>
       </div>
     </footer>
   );

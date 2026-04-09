@@ -166,8 +166,8 @@ export const translations = {
     deptLoadError: "Хэлтсийн мэдээлэл ачаалахад алдаа гарлаа.",
 
     // News page
-    newsTitle: "Мэдээ мэдэгдэл",
-    newsSubtitle: "DaHUB — Дотоод аудитын мэдэгдэлийн систем",
+    newsTitle: "Мэдээ",
+    newsSubtitle: "DaHews — Дотоод аудитын мэдээ",
     latestNews: "Сүүлийн мэдээнүүд",
     otherNews: "Бусад мэдээнүүд",
     noNews: "Мэдээ байхгүй байна",

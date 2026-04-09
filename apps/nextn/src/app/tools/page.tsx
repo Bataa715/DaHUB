@@ -203,9 +203,9 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
         <div
           className={`
             relative h-full rounded-2xl
-            bg-slate-800/60 backdrop-blur-xl
-            border border-slate-700/50
-            hover:border-slate-600/70
+            bg-card/60 backdrop-blur-xl
+            border border-border/50
+            hover:border-border
             shadow-xl ${tool.glow}
             transition-all duration-300
             overflow-hidden
@@ -235,15 +235,15 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
             </div>
             {/* text */}
             <div className="flex-1">
-              <h2 className="text-sm font-bold text-white mb-1 leading-snug">
+              <h2 className="text-sm font-bold text-foreground mb-1 leading-snug">
                 {tool.title}
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
                 {tool.description}
               </p>
             </div>
             {/* bottom cta */}
-            <div className="mt-3 flex items-center gap-1 text-xs font-medium text-slate-400 group-hover:text-white opacity-70 group-hover:opacity-100 transition-all">
+            <div className="mt-3 flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground opacity-70 group-hover:opacity-100 transition-all">
               {t("toolsOpen")}
               <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </div>
@@ -260,6 +260,8 @@ export default function ToolsPage() {
   const [allowedTools, setAllowedTools] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const allTools = getTools(t);
+
   useEffect(() => {
     const load = async () => {
       if (!user) {
@@ -267,7 +269,7 @@ export default function ToolsPage() {
         return;
       }
       if (user.isAdmin) {
-        setAllowedTools(allTools.map((t) => t.id));
+        setAllowedTools(allTools.map((tool) => tool.id));
         setIsLoading(false);
         return;
       }
@@ -283,16 +285,13 @@ export default function ToolsPage() {
     load();
   }, [user]);
 
-  const available = (() => {
-    const allTools = getTools(t);
-    return allTools.filter((tool) => {
-      const ids = tool.matchIds ?? [tool.id];
-      return ids.some((id) => allowedTools.includes(id));
-    });
-  })();
+  const available = allTools.filter((tool) => {
+    const ids = tool.matchIds ?? [tool.id];
+    return ids.some((id) => allowedTools.includes(id));
+  });
 
-  const freeTools = available.filter((t) => t.category === "free");
-  const workTools = available.filter((t) => t.category === "work");
+  const freeTools = available.filter((tool) => tool.category === "free");
+  const workTools = available.filter((tool) => tool.category === "work");
 
   /*  BG  */
   const BG = (
@@ -382,7 +381,7 @@ export default function ToolsPage() {
               <p className="text-xs text-purple-400/80 font-medium flex items-center gap-1.5 mb-0.5">
                 {t("toolsPageSubtitle")}
               </p>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+              <h1 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight">
                 {t("toolsPageTitle")}
               </h1>
             </div>
@@ -395,13 +394,13 @@ export default function ToolsPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center min-h-[50vh] text-center"
           >
-            <div className="p-8 rounded-3xl bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 mb-6">
+            <div className="p-8 rounded-3xl bg-card/50 backdrop-blur-xl border border-border/50 mb-6">
               <Lock className="w-16 h-16 text-slate-500 mx-auto" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">
+            <h2 className="text-2xl font-bold text-foreground mb-3">
               {t("toolsNoneFound")}
             </h2>
-            <p className="text-slate-400 max-w-md">
+            <p className="text-muted-foreground max-w-md">
               {t("toolsNoneDesc")}
             </p>
           </motion.div>
@@ -412,14 +411,14 @@ export default function ToolsPage() {
               <section>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-white">
+                    <span className="text-base font-bold text-foreground">
                       {t("toolsFree")}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                       {freeTools.length}
                     </span>
                   </div>
-                  <div className="flex-1 h-px bg-slate-700/50" />
+                  <div className="flex-1 h-px bg-border/50" />
                 </div>
                 <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                   {freeTools.map((tool, i) => (
@@ -434,14 +433,14 @@ export default function ToolsPage() {
               <section>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-white">
+                    <span className="text-base font-bold text-foreground">
                       {t("toolsWork")}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
                       {workTools.length}
                     </span>
                   </div>
-                  <div className="flex-1 h-px bg-slate-700/50" />
+                  <div className="flex-1 h-px bg-border/50" />
                 </div>
                 <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                   {workTools.map((tool, i) => (

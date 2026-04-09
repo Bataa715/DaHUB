@@ -272,8 +272,7 @@ export default function ExcelReportDetailPage() {
             ) : (
               <div className="h-48 lg:h-64 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700/60 text-slate-600 gap-2">
                 <Code2 className="w-7 h-7 text-amber-600/60" />
-                <p className="text-sm text-slate-500">Python горимын тайлан</p>
-                <p className="text-xs text-slate-700 text-center max-w-xs">Preview зөвхөн SQL горимд ажиллана.<br/>Excel татах товчийг ашиглана уу.</p>
+           
               </div>
             )
           )}

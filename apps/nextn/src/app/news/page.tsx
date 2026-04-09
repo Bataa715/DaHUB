@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -84,9 +85,9 @@ const CATEGORY_COLORS: Record<
 function getCat(cat: string) {
   return (
     CATEGORY_COLORS[cat] ?? {
-      bg: "bg-slate-500/20",
-      text: "text-slate-400",
-      dot: "bg-slate-400",
+      bg: "bg-muted/50",
+      text: "text-muted-foreground",
+      dot: "bg-muted-foreground/70",
     }
   );
 }
@@ -146,14 +147,14 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             >
               {item.category}
             </span>
-            <span className="text-slate-400 text-xs">·</span>
-            <span className="text-slate-400 text-xs">
+            <span className="text-white/50 text-xs">·</span>
+            <span className="text-white/50 text-xs">
               {formatDate(item.createdAt)}
             </span>
           </div>
 
           <p
-            className="text-xs font-bold tracking-[0.3em] uppercase text-slate-300"
+            className="text-xs font-bold tracking-[0.3em] uppercase text-white/70"
             style={{ fontFamily: "monospace" }}
           >
             {t("internalAuditLabel")}
@@ -163,33 +164,22 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             {item.title}
           </h1>
 
-          <div className="flex items-center gap-4 pt-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-white text-sm font-semibold">
-                {item.authorName || t("newsDefaultAuthor")}
-              </p>
-              <p className="text-slate-400 text-xs">
-                {formatDate(item.createdAt)} &nbsp;·&nbsp;{" "}
-                {calcReadTime(item.content)} {t("minRead")}
-              </p>
-            </div>
-            <div className="ml-auto flex items-center gap-1.5 text-slate-400 text-sm">
-              <Eye className="w-4 h-4" />
-              <span>{item.views}</span>
-            </div>
+          <div className="flex items-center gap-1.5 text-white/50 text-sm">
+            <Eye className="w-4 h-4" />
+            <span>{item.views}</span>
           </div>
         </div>
 
+        {/* Read more — bottom-right pill button */}
         <motion.div
-          className="absolute bottom-8 right-8 md:bottom-12 md:right-12 flex items-center gap-2 text-white/60 text-sm group-hover:text-white transition-colors"
-          animate={{ x: [0, 4, 0] }}
+          className="absolute bottom-6 right-6 md:bottom-8 md:right-8"
+          animate={{ x: [0, 3, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <span>{t("readMore")}</span>
-          <ArrowRight className="w-4 h-4" />
+          <span className="flex items-center gap-2 text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm px-3.5 py-2 rounded-full transition-colors group-hover:border-white/40">
+            {t("readMore")}
+            <ArrowRight className="w-3.5 h-3.5" />
+          </span>
         </motion.div>
       </div>
     </motion.div>
@@ -287,13 +277,13 @@ function ChatItem({
         className={`flex flex-col items-center gap-1.5 flex-shrink-0 ${isRight ? "items-end" : "items-start"}`}
       >
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-900/30">
-          <User className="w-4 h-4 text-white" />
+          <User className="w-4 h-4 text-foreground" />
         </div>
         <div className={isRight ? "text-right" : "text-left"}>
-          <p className="text-slate-300 text-xs font-semibold whitespace-nowrap">
+          <p className="text-foreground/70 text-xs font-semibold whitespace-nowrap">
             {item.authorName || t("newsDefaultAuthor")}
           </p>
-          <p className="text-slate-500 text-xs whitespace-nowrap">
+          <p className="text-muted-foreground/70 text-xs whitespace-nowrap">
             {formatDate(item.createdAt)} · {calcReadTime(item.content)} {t("minRead")}
           </p>
         </div>
@@ -319,10 +309,10 @@ function ChatItem({
                 {item.category}
               </span>
             </div>
-            <h3 className="text-white font-bold text-base leading-snug line-clamp-2">
+            <h3 className="text-foreground font-bold text-base leading-snug line-clamp-2">
               {item.title}
             </h3>
-            <div className="flex items-center gap-3 text-slate-500 text-xs">
+            <div className="flex items-center gap-3 text-muted-foreground/70 text-xs">
               <span className="flex items-center gap-1">
                 <Eye className="w-3.5 h-3.5" />
                 {item.views}
@@ -359,10 +349,13 @@ export default function NewsPage() {
   const [news, setNews] = useState<News[]>([]);
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setMounted(true);
     fetchNews();
+    return () => { document.body.style.overflow = ""; };
   }, []);
 
   const fetchNews = async () => {
@@ -384,6 +377,16 @@ export default function NewsPage() {
     } catch {
       setSelectedNews(item);
     }
+    // Lock body scroll without layout shift (compensate scrollbar width)
+    const sb = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.paddingRight = sb + "px";
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeDetail = () => {
+    setSelectedNews(null);
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
   };
 
   const scroll = (dir: "left" | "right") => {
@@ -408,7 +411,7 @@ export default function NewsPage() {
           >
             <Loader2 className="h-10 w-10 text-purple-400" />
           </motion.div>
-          <p className="text-slate-400 text-sm animate-pulse">
+          <p className="text-muted-foreground text-sm animate-pulse">
             {t("newsLoading")}
           </p>
         </div>
@@ -424,22 +427,21 @@ export default function NewsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-1"
       >
-        <h1 className="text-3xl font-black text-white tracking-tight">
+        <h1 className="text-3xl font-black text-foreground tracking-tight">
           {t("newsTitle")}
         </h1>
-        <p className="text-slate-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           {t("newsSubtitle")}
         </p>
       </motion.div>
 
       {/* Hero */}
       {hero && <HeroNews item={hero} onClick={() => handleClick(hero)} />}
-
       {/* Carousel */}
       {carousel.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-white font-bold text-xl">{t("latestNews")}</h2>
+            <h2 className="text-foreground font-bold text-xl">{t("latestNews")}</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => scroll("left")}
@@ -449,7 +451,7 @@ export default function NewsPage() {
                   border: "1px solid rgba(99,102,241,0.2)",
                 }}
               >
-                <ChevronLeft className="w-4 h-4 text-slate-300" />
+                <ChevronLeft className="w-4 h-4 text-foreground/70" />
               </button>
               <button
                 onClick={() => scroll("right")}
@@ -459,7 +461,7 @@ export default function NewsPage() {
                   border: "1px solid rgba(99,102,241,0.2)",
                 }}
               >
-                <ChevronRight className="w-4 h-4 text-slate-300" />
+                <ChevronRight className="w-4 h-4 text-foreground/70" />
               </button>
             </div>
           </div>
@@ -484,7 +486,7 @@ export default function NewsPage() {
       {/* Chat Feed */}
       {feed.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-white font-bold text-xl">{t("otherNews")}</h2>
+          <h2 className="text-foreground font-bold text-xl">{t("otherNews")}</h2>
           <div className="space-y-5">
             {feed.map((item, i) => (
               <ChatItem
@@ -499,141 +501,146 @@ export default function NewsPage() {
       )}
 
       {!isLoading && news.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/70">
           <p className="text-lg">{t("noNews")}</p>
         </div>
       )}
 
-      {/* Detail — full-screen overlay */}
-      <AnimatePresence>
-        {selectedNews && (
-          <motion.div
-            key="news-detail"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 flex flex-col"
-            style={{ background: "rgba(8,12,23,0.98)", backdropFilter: "blur(12px)" }}
+      {/* Detail — book/magazine spread (portal to body, AnimatePresence inside) */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {selectedNews && (
+            <motion.div
+              key="news-detail"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="fixed inset-0 z-[9999] flex"
+            style={{ background: "rgba(4,6,15,1)" }}
           >
-            {/* ── Sticky top bar ── */}
-            <div
-              className="flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 h-14 border-b"
-              style={{ borderColor: "rgba(99,102,241,0.18)", background: "rgba(10,15,28,0.96)" }}
+            {/* ─── LEFT PAGE — Cover image + title ───────────────── */}
+            <motion.div
+              initial={{ x: -30, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
+              className="relative hidden md:block w-[44%] flex-shrink-0 h-full overflow-hidden"
+              style={{ borderRight: "1px solid rgba(99,102,241,0.22)" }}
             >
-              <button
-                onClick={() => setSelectedNews(null)}
-                className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">{t("back") || "Буцах"}</span>
-              </button>
-              <div
-                className="mx-2 h-4 w-px flex-shrink-0"
-                style={{ background: "rgba(99,102,241,0.25)" }}
-              />
-              <p className="flex-1 text-white font-semibold text-sm truncate">
-                {selectedNews.title}
-              </p>
-              <button
-                onClick={() => setSelectedNews(null)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700/60 transition-colors flex-shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* ── Scrollable body ── */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Cover image */}
-              {getImageUrl(selectedNews.imageUrl) && (
-                <div className="relative w-full" style={{ height: "min(45vh, 420px)" }}>
-                  <Image
-                    src={getImageUrl(selectedNews.imageUrl)!}
-                    alt={selectedNews.title}
-                    fill
-                    unoptimized
-                    className="object-cover"
-                    sizes="100vw"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[rgba(8,12,23,1)] via-[rgba(8,12,23,0.3)] to-transparent" />
-                </div>
+              {/* Background */}
+              {getImageUrl(selectedNews.imageUrl) ? (
+                <Image
+                  src={getImageUrl(selectedNews.imageUrl)!}
+                  alt={selectedNews.title}
+                  fill
+                  unoptimized
+                  className="object-contain"
+                  sizes="50vw"
+                  priority
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 to-slate-900" />
               )}
+              {/* Overlays — only bottom gradient for text readability */}
+              <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
 
-              {/* Content */}
-              <div className="max-w-3xl mx-auto px-4 sm:px-8 pb-16">
-                <div
-                  className={getImageUrl(selectedNews.imageUrl) ? "-mt-10 relative" : "pt-8"}
-                >
-                  {/* Category + views */}
-                  <div className="flex items-center gap-2 mb-4">
-                    {(() => {
-                      const cat = getCat(selectedNews.category);
-                      return (
-                        <span
-                          className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
-                            cat.bg
-                          } ${cat.text}`}
-                        >
-                          {selectedNews.category}
-                        </span>
-                      );
-                    })()}
-                    <span className="text-slate-500 text-xs flex items-center gap-1">
-                      <Eye className="w-3 h-3" /> {selectedNews.views}
+              {/* Brand label */}
+              <div className="absolute top-6 left-7 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-70" />
+                <span className="text-white/25 text-xs font-mono uppercase tracking-widest">DaHUB News</span>
+              </div>
+
+              {/* Bottom: category + title */}
+              <div className="absolute bottom-0 left-0 right-0 p-8 space-y-3">
+                {(() => {
+                  const cat = getCat(selectedNews.category);
+                  return (
+                    <span className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${cat.bg} ${cat.text}`}>
+                      {selectedNews.category}
                     </span>
+                  );
+                })()}
+                <h1 className="text-white text-2xl lg:text-3xl font-black leading-tight">
+                  {selectedNews.title}
+                </h1>
+              </div>
+            </motion.div>
+
+            {/* ─── RIGHT PAGE — Article content ──────────────── */}
+            <motion.div
+              initial={{ x: 30, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}
+              className="flex-1 flex flex-col h-full min-w-0"
+            >
+              {/* Nav bar */}
+              <div
+                className="flex-shrink-0 flex items-center gap-3 px-6 h-12 border-b"
+                style={{ borderColor: "rgba(99,102,241,0.18)", background: "rgba(4,6,15,0.95)" }}
+              >
+                <button
+                  onClick={closeDetail}
+                  className="flex items-center gap-1.5 text-white/50 hover:text-white transition-colors text-sm"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>{t("back") || "Буцах"}</span>
+                </button>
+                <div className="flex-1" />
+                <span className="text-white/20 text-xs hidden sm:block">
+                  {calcReadTime(selectedNews.content)} {t("minuteRead")}
+                </span>
+                <div className="w-px h-4 mx-2" style={{ background: "rgba(99,102,241,0.2)" }} />
+                <button
+                  onClick={closeDetail}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scrollable content */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+
+
+
+                {/* Article body */}
+                <div className="max-w-2xl mx-auto px-6 sm:px-10 py-8 pb-16">
+
+                  {/* Desktop: article header on right page */}
+                  <div className="hidden md:block mb-8 pb-8" style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      {(() => {
+                        const cat = getCat(selectedNews.category);
+                        return <span className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${cat.bg} ${cat.text}`}>{selectedNews.category}</span>;
+                      })()}
+                      <span className="text-white/30 text-xs flex items-center gap-1">
+                        <Eye className="w-3 h-3" /> {selectedNews.views}
+                      </span>
+                    </div>
+                    <h2 className="text-white/90 text-xl font-bold leading-snug">{selectedNews.title}</h2>
                   </div>
 
-                  {/* Title */}
-                  <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight mb-4">
-                    {selectedNews.title}
-                  </h1>
-
-                  {/* Author / meta */}
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-slate-200 text-sm font-semibold">
-                        {selectedNews.authorName || t("newsDefaultAuthor")}
-                      </p>
-                      <p className="text-slate-500 text-xs flex items-center gap-2">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(selectedNews.createdAt)} &nbsp;·&nbsp;
-                        <Clock className="w-3 h-3" />
-                        {calcReadTime(selectedNews.content)} {t("minuteRead")}
-                      </p>
-                    </div>
-                  </div>
-
+                  {/* Full article content */}
                   <div
-                    className="mb-6 h-px"
-                    style={{ background: "rgba(99,102,241,0.18)" }}
-                  />
-
-                  {/* Full content */}
-                  <div
-                    className="prose prose-invert prose-sm sm:prose-base max-w-none text-slate-300 leading-relaxed
+                    className="prose prose-invert prose-sm sm:prose-base max-w-none text-white/70 leading-relaxed
                       prose-headings:text-white prose-headings:font-bold
                       prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
-                      prose-strong:text-slate-100
+                      prose-strong:text-white/90
                       prose-code:text-purple-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
                       prose-pre:bg-white/5 prose-pre:border prose-pre:border-white/10
-                      prose-blockquote:border-l-purple-500 prose-blockquote:text-slate-400
+                      prose-blockquote:border-l-purple-500 prose-blockquote:text-white/50
                       prose-img:rounded-xl prose-img:mx-auto prose-img:w-full
-                      prose-table:text-sm prose-th:text-slate-200 prose-td:text-slate-400"
-                    dangerouslySetInnerHTML={{
-                      __html: sanitizeHtml(selectedNews.content),
-                    }}
+                      prose-table:text-sm prose-th:text-white/80 prose-td:text-white/60"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedNews.content) }}
                   />
                 </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

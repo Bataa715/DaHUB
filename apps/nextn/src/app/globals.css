@@ -185,26 +185,31 @@
     --ring: 195 100% 75%;
   }
 
-  html[class="emerald"] {
-    --background: 155 14% 9%;
-    --foreground: 152 6% 95%;
-    --card: 155 14% 12%;
-    --card-foreground: 152 6% 95%;
-    --popover: 155 14% 9%;
-    --popover-foreground: 152 6% 95%;
-    --primary: 152 76% 45%;
-    --primary-foreground: 152 100% 4%;
-    --secondary: 155 12% 18%;
-    --secondary-foreground: 152 6% 95%;
-    --muted: 155 12% 18%;
-    --muted-foreground: 155 6% 58%;
-    --accent: 168 70% 48%;
-    --accent-foreground: 168 100% 4%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 155 12% 22%;
-    --input: 155 12% 22%;
-    --ring: 152 76% 45%;
+  html[class="light"] {
+    --background: 210 20% 96%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 8%;
+    --primary: 198 80% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 90%;
+    --secondary-foreground: 222 47% 8%;
+    --muted: 210 20% 90%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 198 80% 38%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 74%;
+    --input: 214 20% 74%;
+    --ring: 198 80% 38%;
+    --chart-1: 198 80% 40%;
+    --chart-2: 152 76% 38%;
+    --chart-3: 251 78% 60%;
+    --chart-4: 330 70% 55%;
+    --chart-5: 40 85% 55%;
   }
 }
 
@@ -511,7 +516,7 @@
 
 /* Rotating border animation for layout */
 .animated-border-wrapper {
-  @apply relative overflow-hidden rounded-[1.75rem] p-[3px];
+  @apply relative overflow-hidden rounded-2xl p-[2px];
 }
 
 .animated-border-wrapper::before {

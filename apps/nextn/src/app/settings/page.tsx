@@ -228,7 +228,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
       </div>
     );
@@ -236,30 +236,17 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Lock className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl text-white">Нэвтрэх шаардлагатай</h2>
+          <h2 className="text-xl text-foreground">Нэвтрэх шаардлагатай</h2>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <motion.div
-          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-purple-600/10 to-transparent rounded-full blur-3xl"
-          animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        />
-        <motion.div
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-blue-600/10 to-transparent rounded-full blur-3xl"
-          animate={{ x: [0, -100, 0], y: [0, -50, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        />
-      </div>
+    <div className="min-h-screen bg-background relative overflow-hidden">
 
       <div className="relative z-10 container mx-auto px-4 py-8">
         <div className="mb-6">
@@ -272,11 +259,11 @@ export default function SettingsPage() {
           className="flex items-center gap-4 mb-8"
         >
           <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30">
-            <SettingsIcon className="w-8 h-8 text-white" />
+            <SettingsIcon className="w-8 h-8 text-foreground" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">{t("settingsTitle")}</h1>
-            <p className="text-slate-400 flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-foreground">{t("settingsTitle")}</h1>
+            <p className="text-muted-foreground flex items-center gap-2">
               <Star className="w-4 h-4 text-purple-500" />
               {t("settingsSubtitle")}
             </p>
@@ -290,13 +277,13 @@ export default function SettingsPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-700/50 shadow-xl">
+            <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
+                <CardTitle className="flex items-center gap-2 text-foreground">
                   <Camera className="w-5 h-5 text-purple-500" />
                   {t("profileImage")}
                 </CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-muted-foreground">
                   {t("profileImageDesc")}
                 </CardDescription>
               </CardHeader>
@@ -307,20 +294,20 @@ export default function SettingsPage() {
                       src={imagePreview || user.profileImage}
                       alt={user.name}
                     />
-                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-3xl">
+                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-foreground text-3xl">
                       {user.name?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-white font-semibold flex items-center gap-2">
+                    <p className="text-foreground font-semibold flex items-center gap-2">
                       {user.isAdmin && (
                         <Shield className="w-4 h-4 text-blue-500" />
                       )}
                       {user.name}
                     </p>
-                    <p className="text-sm text-slate-400">{user.userId}</p>
-                    <p className="text-xs text-slate-500">{user.department}</p>
+                    <p className="text-sm text-muted-foreground">{user.userId}</p>
+                    <p className="text-xs text-muted-foreground/70">{user.department}</p>
                   </div>
                 </div>
 
@@ -364,7 +351,7 @@ export default function SettingsPage() {
                           }
                         }}
                         variant="outline"
-                        className="w-full border-slate-600 hover:bg-slate-800"
+                        className="w-full"
                         disabled={isUploadingImage}
                       >
                         {t("cancel")}
@@ -388,7 +375,7 @@ export default function SettingsPage() {
                   )}
                 </div>
 
-                <div className="text-xs text-slate-500 space-y-1">
+                <div className="text-xs text-muted-foreground/70 space-y-1">
                   <p>• {t("imageHint1")}</p>
                   <p>• {t("imageHint2")}</p>
                   <p>• {t("imageHint3")}</p>
@@ -403,13 +390,13 @@ export default function SettingsPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-700/50 shadow-xl">
+            <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
+                <CardTitle className="flex items-center gap-2 text-foreground">
                   <KeyRound className="w-5 h-5 text-blue-500" />
                   {t("changePassword")}
                 </CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-muted-foreground">
                   {t("changePasswordDesc")}
                 </CardDescription>
               </CardHeader>
@@ -417,7 +404,7 @@ export default function SettingsPage() {
                 <form onSubmit={handlePasswordChange} className="space-y-4">
                   {/* Current Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword" className="text-slate-300">
+                    <Label htmlFor="currentPassword" className="text-foreground/80">
                       {t("currentPassword")}
                     </Label>
                     <div className="relative">
@@ -426,7 +413,7 @@ export default function SettingsPage() {
                         type={showCurrentPassword ? "text" : "password"}
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white pr-10"
+                        className="pr-10"
                         placeholder={t("currentPasswordPlaceholder")}
                       />
                       <button
@@ -434,7 +421,7 @@ export default function SettingsPage() {
                         onClick={() =>
                           setShowCurrentPassword(!showCurrentPassword)
                         }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {showCurrentPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -447,7 +434,7 @@ export default function SettingsPage() {
 
                   {/* New Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword" className="text-slate-300">
+                    <Label htmlFor="newPassword" className="text-foreground/80">
                       {t("newPassword")}
                     </Label>
                     <div className="relative">
@@ -456,13 +443,13 @@ export default function SettingsPage() {
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white pr-10"
+                        className="pr-10"
                         placeholder={t("newPasswordPlaceholder")}
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {showNewPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -475,7 +462,7 @@ export default function SettingsPage() {
 
                   {/* Confirm Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-slate-300">
+                    <Label htmlFor="confirmPassword" className="text-foreground/80">
                       {t("confirmPassword")}
                     </Label>
                     <div className="relative">
@@ -484,7 +471,7 @@ export default function SettingsPage() {
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="bg-slate-800/50 border-slate-700 text-white pr-10"
+                        className="pr-10"
                         placeholder={t("confirmPasswordPlaceholder")}
                       />
                       <button
@@ -492,7 +479,7 @@ export default function SettingsPage() {
                         onClick={() =>
                           setShowConfirmPassword(!showConfirmPassword)
                         }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -504,14 +491,14 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Password Requirements */}
-                  <div className="bg-slate-800/50 rounded-lg p-4 space-y-2">
-                    <p className="text-sm font-medium text-slate-300 mb-2">
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                    <p className="text-sm font-medium text-foreground/80 mb-2">
                       {t("passwordRequirements")}
                     </p>
                     {passwordRequirements.map((req, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span className="text-xs text-slate-400">{req}</span>
+                        <span className="text-xs text-muted-foreground">{req}</span>
                       </div>
                     ))}
                   </div>
@@ -544,13 +531,13 @@ export default function SettingsPage() {
             transition={{ delay: 0.3 }}
             className="md:col-span-2"
           >
-            <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-700/50 shadow-xl">
+            <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
+                <CardTitle className="flex items-center gap-2 text-foreground">
                   <Globe className="w-5 h-5 text-emerald-500" />
                   {t("language")}
                 </CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-muted-foreground">
                   {t("languageDesc")}
                 </CardDescription>
               </CardHeader>
@@ -561,7 +548,7 @@ export default function SettingsPage() {
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                       language === "mn"
                         ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                        : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500"
+                        : "bg-muted/50 border-border text-muted-foreground hover:border-border/60"
                     }`}
                   >
                     🇲🇳 {t("mongolian")}
@@ -571,7 +558,7 @@ export default function SettingsPage() {
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                       language === "en"
                         ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                        : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500"
+                        : "bg-muted/50 border-border text-muted-foreground hover:border-border/60"
                     }`}
                   >
                     🇺🇸 {t("english")}
