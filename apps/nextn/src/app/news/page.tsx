@@ -18,6 +18,8 @@ import {
   User,
   Loader2,
   ArrowRight,
+  X,
+  ArrowLeft,
 } from "lucide-react";
 import Image from "next/image";
 import api from "@/lib/api";
@@ -502,50 +504,77 @@ export default function NewsPage() {
         </div>
       )}
 
-      {/* Detail Dialog */}
+      {/* Detail — full-screen overlay */}
       <AnimatePresence>
         {selectedNews && (
-          <Dialog
-            open={!!selectedNews}
-            onOpenChange={() => setSelectedNews(null)}
+          <motion.div
+            key="news-detail"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 flex flex-col"
+            style={{ background: "rgba(8,12,23,0.98)", backdropFilter: "blur(12px)" }}
           >
-            <DialogContent
-              className="max-w-3xl w-full p-0 rounded-2xl flex flex-col overflow-hidden"
-              style={{
-                background: "rgba(10,15,26,0.98)",
-                border: "1px solid rgba(99,102,241,0.2)",
-                maxHeight: "90vh",
-              }}
+            {/* ── Sticky top bar ── */}
+            <div
+              className="flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 h-14 border-b"
+              style={{ borderColor: "rgba(99,102,241,0.18)", background: "rgba(10,15,28,0.96)" }}
             >
+              <button
+                onClick={() => setSelectedNews(null)}
+                className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">{t("back") || "Буцах"}</span>
+              </button>
+              <div
+                className="mx-2 h-4 w-px flex-shrink-0"
+                style={{ background: "rgba(99,102,241,0.25)" }}
+              />
+              <p className="flex-1 text-white font-semibold text-sm truncate">
+                {selectedNews.title}
+              </p>
+              <button
+                onClick={() => setSelectedNews(null)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700/60 transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* ── Scrollable body ── */}
+            <div className="flex-1 overflow-y-auto">
               {/* Cover image */}
-              <div className="relative w-full h-56 flex-shrink-0">
-                {getImageUrl(selectedNews.imageUrl) ? (
+              {getImageUrl(selectedNews.imageUrl) && (
+                <div className="relative w-full" style={{ height: "min(45vh, 420px)" }}>
                   <Image
                     src={getImageUrl(selectedNews.imageUrl)!}
                     alt={selectedNews.title}
                     fill
                     unoptimized
                     className="object-cover"
-                    sizes="900px"
+                    sizes="100vw"
+                    priority
                   />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[rgba(10,15,26,0.98)] via-transparent to-black/30" />
-              </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[rgba(8,12,23,1)] via-[rgba(8,12,23,0.3)] to-transparent" />
+                </div>
+              )}
 
-              {/* Scrollable body */}
-              <div className="flex-1 overflow-y-auto overscroll-contain">
+              {/* Content */}
+              <div className="max-w-3xl mx-auto px-4 sm:px-8 pb-16">
                 <div
-                  className={`px-6 pb-8 ${getImageUrl(selectedNews.imageUrl) ? "-mt-8 relative" : "pt-6"}`}
+                  className={getImageUrl(selectedNews.imageUrl) ? "-mt-10 relative" : "pt-8"}
                 >
                   {/* Category + views */}
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     {(() => {
                       const cat = getCat(selectedNews.category);
                       return (
                         <span
-                          className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${cat.bg} ${cat.text}`}
+                          className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                            cat.bg
+                          } ${cat.text}`}
                         >
                           {selectedNews.category}
                         </span>
@@ -557,16 +586,14 @@ export default function NewsPage() {
                   </div>
 
                   {/* Title */}
-                  <DialogHeader>
-                    <DialogTitle className="text-white text-2xl font-black leading-tight">
-                      {selectedNews.title}
-                    </DialogTitle>
-                  </DialogHeader>
+                  <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight mb-4">
+                    {selectedNews.title}
+                  </h1>
 
                   {/* Author / meta */}
-                  <div className="flex items-center gap-3 mt-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                      <User className="w-3.5 h-3.5 text-white" />
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4 text-white" />
                     </div>
                     <div>
                       <p className="text-slate-200 text-sm font-semibold">
@@ -582,20 +609,20 @@ export default function NewsPage() {
                   </div>
 
                   <div
-                    className="my-5 h-px"
-                    style={{ background: "rgba(99,102,241,0.15)" }}
+                    className="mb-6 h-px"
+                    style={{ background: "rgba(99,102,241,0.18)" }}
                   />
 
-                  {/* Full content — no max-height restriction */}
+                  {/* Full content */}
                   <div
-                    className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed
+                    className="prose prose-invert prose-sm sm:prose-base max-w-none text-slate-300 leading-relaxed
                       prose-headings:text-white prose-headings:font-bold
                       prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
                       prose-strong:text-slate-100
                       prose-code:text-purple-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
                       prose-pre:bg-white/5 prose-pre:border prose-pre:border-white/10
                       prose-blockquote:border-l-purple-500 prose-blockquote:text-slate-400
-                      prose-img:rounded-xl prose-img:mx-auto
+                      prose-img:rounded-xl prose-img:mx-auto prose-img:w-full
                       prose-table:text-sm prose-th:text-slate-200 prose-td:text-slate-400"
                     dangerouslySetInnerHTML={{
                       __html: sanitizeHtml(selectedNews.content),
@@ -603,8 +630,8 @@ export default function NewsPage() {
                   />
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -751,6 +751,7 @@ export interface ReportTemplate {
   color: string;
   createdAt: string;
   updatedAt: string;
+  isSqlMode: boolean;
 }
 
 export interface ReportTemplateAdmin extends ReportTemplate {
@@ -811,6 +812,20 @@ export const excelReportApi = {
       responseType: "blob",
     });
     return res.data as Blob;
+  },
+
+  /** Preview: run SQL-mode report and return first 100 rows as JSON */
+  previewReport: async (
+    templateId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{ columns: string[]; rows: any[][] }> => {
+    const res = await api.post("/excel-report/preview", {
+      templateId,
+      startDate,
+      endDate,
+    });
+    return res.data as { columns: string[]; rows: any[][] };
   },
 
   // Admin

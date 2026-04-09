@@ -129,6 +129,8 @@ export const translations = {
     toolRagDesc: "Баримт бичигт суурилсан AI чат — файл байршуулж, асуулт асууна уу",
     toolDataDocTitle: "Өгөгдлийн толь бичиг",
     toolDataDocDesc: "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
+    toolAlertBoxTitle: "Alert Box",
+    toolAlertBoxDesc: "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, улаан тугийн мэдэгдэл",
 
     // Departments page
     albumTitle: "Альбом",
@@ -496,6 +498,8 @@ export const translations = {
     toolRagDesc: "Document-based AI chat — upload files and ask questions",
     toolDataDocTitle: "Data dictionary",
     toolDataDocDesc: "ClickHouse database structure, column descriptions, and code library",
+    toolAlertBoxTitle: "Alert Box",
+    toolAlertBoxDesc: "Transaction risk analysis, CIF search, and red-flag alerts",
 
     // Departments page
     albumTitle: "Album",

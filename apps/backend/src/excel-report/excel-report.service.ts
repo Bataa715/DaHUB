@@ -195,6 +195,42 @@ export class ExcelReportService implements OnModuleInit {
     }
   }
 
+  /**
+   * Parse CLICKHOUSE_HOST which may be a full URL like "http://localhost:8123"
+   * or a bare hostname like "localhost". Returns clean { host, port } for Python.
+   */
+  private static parseCHHostPort(): { host: string; port: string } {
+    const raw = process.env.CLICKHOUSE_HOST ?? "localhost";
+    try {
+      const url = new URL(raw.includes("://") ? raw : `http://${raw}`);
+      return {
+        host: url.hostname,
+        port: url.port || process.env.CLICKHOUSE_PORT || "8123",
+      };
+    } catch {
+      // Not a valid URL — use as bare hostname
+      return {
+        host: raw.replace(/^https?:\/\//i, "").split(":")[0],
+        port: process.env.CLICKHOUSE_PORT ?? "8123",
+      };
+    }
+  }
+
+  private buildPythonEnv(
+    extra: Record<string, string> = {},
+  ): Record<string, string> {
+    const { host, port } = ExcelReportService.parseCHHostPort();
+    return {
+      ...process.env,
+      CLICKHOUSE_HOST: host,
+      CLICKHOUSE_PORT: port,
+      CLICKHOUSE_USER: process.env.CLICKHOUSE_USER ?? "default",
+      CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD ?? "",
+      CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
+      ...extra,
+    };
+  }
+
   constructor(private clickhouse: ClickHouseService) {}
 
   async onModuleInit() {
@@ -360,10 +396,13 @@ export class ExcelReportService implements OnModuleInit {
   // ── User: list active templates ────────────────────────────────────────────
 
   async getActiveTemplates(): Promise<
-    Omit<ReportTemplate, "pythonCode" | "isActive">[]
+    (Omit<ReportTemplate, "pythonCode" | "isActive"> & { isSqlMode: boolean })[]
   > {
     const all = await this.getLatestTemplates(true);
-    return all.map(({ pythonCode: _p, isActive: _a, ...rest }) => rest);
+    return all.map(({ pythonCode, isActive: _a, ...rest }) => ({
+      ...rest,
+      isSqlMode: pythonCode.startsWith("# __SQL_MODE__"),
+    }));
   }
 
   // ── Run report ─────────────────────────────────────────────────────────────
@@ -397,23 +436,18 @@ export class ExcelReportService implements OnModuleInit {
       fs.writeFileSync(scriptPath, securedCode, "utf8");
 
       // Build env — pass ClickHouse connection + date params
-      const env: Record<string, string> = {
-        ...process.env,
-        CLICKHOUSE_HOST: process.env.CLICKHOUSE_HOST ?? "",
-        CLICKHOUSE_USER: process.env.CLICKHOUSE_USER ?? "default",
-        CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD ?? "",
-        CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
+      const env: Record<string, string> = this.buildPythonEnv({
         OUTPUT_FILE: outputPath,
         START_DATE: dto.startDate ?? "",
         END_DATE: dto.endDate ?? dto.startDate ?? "",
         REPORT_NAME: template.name,
-      };
+      });
 
-      await this.executePython(scriptPath, env);
+      const stdout1 = await this.executePython(scriptPath, env);
 
       if (!fs.existsSync(outputPath)) {
         throw new InternalServerErrorException(
-          "Python скрипт Excel файл үүсгээгүй байна. OUTPUT_FILE замд файл хадгалах шаардлагатай.",
+          `Python скрипт Excel файл үүсгээгүй байна. OUTPUT_FILE замд файл хадгалах шаардлагтай.${stdout1.trim() ? "\nStdout: " + stdout1.trim().slice(0, 400) : ""}`,
         );
       }
 
@@ -433,37 +467,85 @@ export class ExcelReportService implements OnModuleInit {
   private executePython(
     scriptPath: string,
     env: Record<string, string>,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const python = spawn("python3", [scriptPath], {
+  ): Promise<string> {
+    // Try 'python', then 'py' (Windows Store alias), then 'python3' (Linux/Mac)
+    const candidates =
+      process.platform === "win32"
+        ? ["python", "py", "python3"]
+        : ["python3", "python"];
+
+    const tryNext = (
+      remaining: string[],
+      resolve: (out: string) => void,
+      reject: (e: Error) => void,
+    ) => {
+      if (remaining.length === 0) {
+        reject(
+          new InternalServerErrorException(
+            "Python олдсонгүй. 'python', 'py', эсвэл 'python3' командын аль нэг нь PATH-д байх ёстой.",
+          ) as unknown as Error,
+        );
+        return;
+      }
+      const [cmd, ...rest] = remaining;
+      const proc = spawn(cmd, [scriptPath], {
         env,
-        timeout: 600000, // 10 min max for large datasets
+        timeout: 600000,
       });
 
       let stderr = "";
-      python.stderr.on("data", (data: Buffer) => {
+      let stdout = "";
+      proc.stderr.on("data", (data: Buffer) => {
         stderr += data.toString();
       });
+      proc.stdout.on("data", (data: Buffer) => {
+        stdout += data.toString();
+      });
 
-      python.on("close", (code: number) => {
+      proc.on("close", (code: number) => {
         if (code !== 0) {
-          reject(
-            new InternalServerErrorException(
-              `Python скрипт алдаатай дуусгав (code ${code}):\n${stderr.slice(0, 500)}`,
-            ),
-          );
+          // Windows App Execution Alias for Python exits with 9009 and prints
+          // "Python was not found; run without arguments to install from the
+          // Microsoft Store …" — treat this as "not found" and try next.
+          const isStoreAlias =
+            code === 9009 ||
+            stderr.includes("Microsoft Store") ||
+            stderr.includes("was not found");
+          if (isStoreAlias && rest.length > 0) {
+            tryNext(rest, resolve, reject);
+          } else {
+            const detail = [stderr, stdout]
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .join("\n")
+              .slice(0, 800);
+            reject(
+              new InternalServerErrorException(
+                `Python скрипт алдаатай дуусгав (code ${code}):\n${detail}`,
+              ) as unknown as Error,
+            );
+          }
         } else {
-          resolve();
+          resolve(stdout);
         }
       });
 
-      python.on("error", (err: Error) => {
-        reject(
-          new InternalServerErrorException(
-            `Python ажиллуулах боломжгүй: ${err.message}`,
-          ),
-        );
+      proc.on("error", (err: Error) => {
+        // ENOENT = command not found → try next candidate
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          tryNext(rest, resolve, reject);
+        } else {
+          reject(
+            new InternalServerErrorException(
+              `Python ажиллуулах боломжгүй (${cmd}): ${err.message}`,
+            ) as unknown as Error,
+          );
+        }
       });
+    };
+
+    return new Promise((resolve, reject) => {
+      tryNext(candidates, resolve, reject);
     });
   }
 
@@ -516,23 +598,18 @@ export class ExcelReportService implements OnModuleInit {
         ExcelReportService.PYTHON_SECURITY_PREAMBLE + template.pythonCode;
       fs.writeFileSync(scriptPath, securedCode, "utf8");
 
-      const env: Record<string, string> = {
-        ...process.env,
-        CLICKHOUSE_HOST: process.env.CLICKHOUSE_HOST ?? "",
-        CLICKHOUSE_USER: process.env.CLICKHOUSE_USER ?? "default",
-        CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD ?? "",
-        CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
+      const env: Record<string, string> = this.buildPythonEnv({
         OUTPUT_FILE: outputPath,
         START_DATE: dto.startDate ?? "",
         END_DATE: dto.endDate ?? dto.startDate ?? "",
         REPORT_NAME: template.name,
-      };
+      });
 
-      await this.executePython(scriptPath, env);
+      const jobStdout = await this.executePython(scriptPath, env);
 
       if (!fs.existsSync(outputPath)) {
         throw new InternalServerErrorException(
-          "Python скрипт Excel файл үүсгээгүй байна.",
+          `Python скрипт Excel файл үүсгээгүй байна.${jobStdout.trim() ? "\nStdout: " + jobStdout.trim().slice(0, 400) : ""}`,
         );
       }
 
@@ -581,6 +658,75 @@ export class ExcelReportService implements OnModuleInit {
     return { buffer: job.buffer, fileName: job.fileName! };
   }
 
+  // ── Preview: run SQL-mode report against ClickHouse directly, return JSON ─
+
+  async previewReport(dto: RunReportDto): Promise<{ columns: string[]; rows: any[][] }> {
+    const template = await this.getTemplateById(dto.templateId);
+    const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
+    if (!sql) {
+      throw new BadRequestException(
+        "Энэ тайлан preview дэмжихгүй (SQL горим биш). Зөвхөн SQL горимын тайлан урьдчилан харагдана.",
+      );
+    }
+
+    // Substitute date placeholders
+    const start = dto.startDate ?? "";
+    const end = dto.endDate ?? dto.startDate ?? "";
+    const resolvedSql = sql
+      .replace(/\{start_date\}/g, start)
+      .replace(/\{end_date\}/g, end);
+
+    // Inject LIMIT 100 as outer query for safety
+    const previewSql = `SELECT * FROM (\n${resolvedSql}\n) LIMIT 100`;
+
+    // Run directly via ClickHouse HTTP (JSONCompact → meta + data)
+    const { host, port } = ExcelReportService.parseCHHostPort();
+    const url = `http://${host}:${port}/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&default_format=JSONCompact`;
+
+    const result = await new Promise<{ meta: {name:string}[]; data: any[][] }>(
+      (resolve, reject) => {
+        const http = require("http") as typeof import("http");
+        const body = Buffer.from(previewSql, "utf-8");
+        const parsed = new URL(url);
+        const req = http.request(
+          { hostname: parsed.hostname, port: Number(parsed.port) || 8123, path: parsed.pathname + parsed.search, method: "POST" },
+          (res) => {
+            const chunks: Buffer[] = [];
+            res.on("data", (c: Buffer) => chunks.push(c));
+            res.on("end", () => {
+              const text = Buffer.concat(chunks).toString("utf-8");
+              try {
+                resolve(JSON.parse(text));
+              } catch {
+                reject(new InternalServerErrorException("ClickHouse хариу буруу: " + text.slice(0, 200)));
+              }
+            });
+          },
+        );
+        req.on("error", (e: Error) => reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)));
+        req.write(body);
+        req.end();
+      },
+    );
+
+    if (!result?.meta) {
+      throw new InternalServerErrorException("ClickHouse meta мэдээлэл ирсэнгүй");
+    }
+
+    return {
+      columns: result.meta.map((m) => m.name),
+      rows: result.data ?? [],
+    };
+  }
+
+  /** Extract SQL string from SQL-mode pythonCode, or null if not SQL mode. */
+  private static extractSqlFromPythonCode(pythonCode: string): string | null {
+    if (!pythonCode.startsWith("# __SQL_MODE__")) return null;
+    const m = pythonCode.match(/^SQL = r'''\n([\s\S]*?)\n'''\.strip\(\)/m);
+    if (m) return m[1].replace(/''\\'''/g, "'''");
+    return null;
+  }
+
   // ── Direct SQL → Excel ────────────────────────────────────────────────────
 
   async queryToExcel(dto: QueryToExcelDto): Promise<Buffer> {
@@ -602,22 +748,16 @@ export class ExcelReportService implements OnModuleInit {
     try {
       fs.writeFileSync(scriptPath, ExcelReportService.SQL_TO_EXCEL_PYTHON, "utf8");
 
-      const env: Record<string, string> = {
-        ...process.env,
-        CLICKHOUSE_HOST: process.env.CLICKHOUSE_HOST ?? "",
-        CLICKHOUSE_PORT: process.env.CLICKHOUSE_PORT ?? "8123",
-        CLICKHOUSE_USER: process.env.CLICKHOUSE_USER ?? "default",
-        CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD ?? "",
-        CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
+      const env: Record<string, string> = this.buildPythonEnv({
         QUERY_SQL: dto.sql,
         OUTPUT_FILE: outputPath,
-      };
+      });
 
-      await this.executePython(scriptPath, env);
+      const sqlStdout = await this.executePython(scriptPath, env);
 
       if (!fs.existsSync(outputPath)) {
         throw new InternalServerErrorException(
-          "Python скрипт Excel файл үүсгээгүй байна.",
+          `Python скрипт Excel файл үүсгээгүй байна.${sqlStdout.trim() ? "\nStdout: " + sqlStdout.trim().slice(0, 400) : ""}`,
         );
       }
 

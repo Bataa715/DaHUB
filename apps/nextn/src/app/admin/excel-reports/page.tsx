@@ -27,6 +27,9 @@ import {
   X,
   AlertTriangle,
   Check,
+  Database,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import Link from "next/link";
 import { excelReportApi, ReportTemplateAdmin } from "@/lib/api";
@@ -71,6 +74,174 @@ const EMPTY_FORM = {
   dateMode: "range" as "none" | "single" | "range",
   color: "from-emerald-500 to-teal-500",
 };
+
+// ── SQL_MARKER prefix so we can detect + extract SQL when editing ─────────────
+const SQL_MARKER = "# __SQL_MODE__\n";
+
+// ── Starter template for Python mode ─────────────────────────────────────────
+const PYTHON_STARTER = [
+  "import os, json, urllib.request, openpyxl",
+  "from openpyxl.styles import Font, PatternFill, Alignment, Border, Side",
+  "from openpyxl.utils import get_column_letter",
+  "from urllib.parse import urlencode",
+  "",
+  "CH_HOST = os.environ.get('CLICKHOUSE_HOST', 'localhost')",
+  "CH_PORT = os.environ.get('CLICKHOUSE_PORT', '8123')",
+  "CH_USER = os.environ.get('CLICKHOUSE_USER', 'default')",
+  "CH_PASS = os.environ.get('CLICKHOUSE_PASSWORD', '')",
+  "CH_DB   = os.environ.get('CLICKHOUSE_DATABASE', 'audit_db')",
+  "OUTPUT  = os.environ['OUTPUT_FILE']",
+  "START   = os.environ.get('START_DATE', '')",
+  "END     = os.environ.get('END_DATE', '')",
+  "",
+  "# ── SQL ──────────────────────────────────────────────────────────────────────",
+  "SQL = f\"\"\"",
+  "SELECT *",
+  "FROM your_table",
+  "WHERE date >= '{START}' AND date <= '{END}'",
+  "LIMIT 10000",
+  "\"\"\"",
+  "",
+  "# ── ClickHouse query ─────────────────────────────────────────────────────────",
+  "params = urlencode({'user': CH_USER, 'password': CH_PASS, 'database': CH_DB, 'default_format': 'JSONCompact'})",
+  "url = 'http://' + CH_HOST + ':' + CH_PORT + '/?' + params",
+  "req = urllib.request.Request(url, data=SQL.encode('utf-8'), method='POST')",
+  "with urllib.request.urlopen(req) as resp:",
+  "    result = json.loads(resp.read().decode('utf-8'))",
+  "",
+  "headers = [col['name'] for col in result.get('meta', [])]",
+  "rows = result.get('data', [])",
+  "",
+  "# ── Excel ─────────────────────────────────────────────────────────────────────",
+  "wb = openpyxl.Workbook()",
+  "ws = wb.active",
+  "ws.title = 'Тайлан'",
+  "",
+  "header_fill = PatternFill(start_color='1F4E79', end_color='1F4E79', fill_type='solid')",
+  "header_font = Font(color='FFFFFF', bold=True)",
+  "thin = Side(border_style='thin', color='8EA9C1')",
+  "for ci, h in enumerate(headers, 1):",
+  "    cell = ws.cell(row=1, column=ci, value=h)",
+  "    cell.fill = header_fill",
+  "    cell.font = header_font",
+  "    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)",
+  "    cell.border = Border(bottom=thin)",
+  "",
+  "even_fill = PatternFill(start_color='D6E4F0', end_color='D6E4F0', fill_type='solid')",
+  "data_side = Side(border_style='thin', color='D0D0D0')",
+  "for ri, row in enumerate(rows, 2):",
+  "    for ci, val in enumerate(row, 1):",
+  "        cell = ws.cell(row=ri, column=ci, value=val)",
+  "        if ri % 2 == 0:",
+  "            cell.fill = even_fill",
+  "        cell.border = Border(bottom=data_side)",
+  "",
+  "for ci in range(1, len(headers) + 1):",
+  "    max_len = len(str(headers[ci - 1]))",
+  "    for ri in range(2, min(len(rows) + 2, 102)):",
+  "        v = ws.cell(row=ri, column=ci).value",
+  "        if v is not None:",
+  "            max_len = max(max_len, len(str(v)))",
+  "    ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 50)",
+  "",
+  "ws.row_dimensions[1].height = 30",
+  "ws.freeze_panes = 'A2'",
+  "wb.save(OUTPUT)",
+  "print('Done: ' + str(len(rows)) + ' rows')",
+].join("\n");
+
+function sqlToPython(sql: string): string {
+  // Build the same template as the backend SQL_TO_EXCEL_PYTHON, with SQL injected.
+  // We use os.environ['QUERY_SQL'] which we put into env from the SQL field.
+  // However for template-based reports the SQL is baked into the script directly
+  // so the user doesn't need to pass it each time.
+  return [
+    SQL_MARKER.trim(),
+    "import os, json, urllib.request, openpyxl",
+    "from openpyxl.styles import Font, PatternFill, Alignment, Border, Side",
+    "from openpyxl.utils import get_column_letter",
+    "from urllib.parse import urlencode",
+    "",
+    "CH_HOST = os.environ.get('CLICKHOUSE_HOST', 'localhost')",
+    "CH_PORT = os.environ.get('CLICKHOUSE_PORT', '8123')",
+    "CH_USER = os.environ.get('CLICKHOUSE_USER', 'default')",
+    "CH_PASS = os.environ.get('CLICKHOUSE_PASSWORD', '')",
+    "CH_DB   = os.environ.get('CLICKHOUSE_DATABASE', 'audit_db')",
+    "OUTPUT  = os.environ['OUTPUT_FILE']",
+    "START   = os.environ.get('START_DATE', '')",
+    "END     = os.environ.get('END_DATE', '')",
+    "",
+    // Embed SQL as a raw triple-quoted Python string — immune to \n / \\ round-trip issues.
+    // Triple single-quotes are escaped inside the SQL to avoid prematurely closing the string.
+    "SQL = r'''",
+    sql.replace(/'''/g, "''\\'''"),
+    "'''.strip()",
+    "",
+    "# Replace date placeholders if present",
+    "SQL = SQL.replace('{start_date}', START).replace('{end_date}', END)",
+    "",
+    "params = urlencode({'user': CH_USER, 'password': CH_PASS, 'database': CH_DB, 'default_format': 'JSONCompact'})",
+    "url = 'http://' + CH_HOST + ':' + CH_PORT + '/?' + params",
+    "req = urllib.request.Request(url, data=SQL.encode('utf-8'), method='POST')",
+    "with urllib.request.urlopen(req) as resp:",
+    "    result = json.loads(resp.read().decode('utf-8'))",
+    "",
+    "headers = [col['name'] for col in result.get('meta', [])]",
+    "rows = result.get('data', [])",
+    "",
+    "wb = openpyxl.Workbook()",
+    "ws = wb.active",
+    "ws.title = 'Result'",
+    "",
+    "header_fill = PatternFill(start_color='1F4E79', end_color='1F4E79', fill_type='solid')",
+    "header_font = Font(color='FFFFFF', bold=True)",
+    "thin = Side(border_style='thin', color='8EA9C1')",
+    "for ci, h in enumerate(headers, 1):",
+    "    cell = ws.cell(row=1, column=ci, value=h)",
+    "    cell.fill = header_fill",
+    "    cell.font = header_font",
+    "    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)",
+    "    cell.border = Border(bottom=thin)",
+    "",
+    "even_fill = PatternFill(start_color='D6E4F0', end_color='D6E4F0', fill_type='solid')",
+    "data_side = Side(border_style='thin', color='D0D0D0')",
+    "for ri, row in enumerate(rows, 2):",
+    "    for ci, val in enumerate(row, 1):",
+    "        cell = ws.cell(row=ri, column=ci, value=val)",
+    "        if ri % 2 == 0:",
+    "            cell.fill = even_fill",
+    "        cell.border = Border(bottom=data_side)",
+    "",
+    "for ci in range(1, len(headers) + 1):",
+    "    max_len = len(str(headers[ci - 1]))",
+    "    for ri in range(2, min(len(rows) + 2, 102)):",
+    "        v = ws.cell(row=ri, column=ci).value",
+    "        if v is not None:",
+    "            max_len = max(max_len, len(str(v)))",
+    "    ws.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 50)",
+    "",
+    "ws.row_dimensions[1].height = 30",
+    "ws.freeze_panes = 'A2'",
+    "wb.save(OUTPUT)",
+    "print('SAVED:' + OUTPUT)",
+  ].join("\n");
+}
+
+/** Extract SQL from a SQL-mode generated pythonCode, or return null */
+function extractSqlFromPython(code: string): string | null {
+  if (!code.startsWith(SQL_MARKER.trim())) return null;
+  // SQL is embedded as: SQL = r'''
+  // <sql lines>
+  // '''.strip()
+  const match = code.match(/^SQL = r'''\n([\s\S]*?)\n'''\.strip\(\)/m);
+  if (match) return match[1].replace(/''\\'''/g, "'''");
+  // Fallback: old JSON-encoded format SQL = "..."
+  const legacyMatch = code.match(/^SQL = ("[\s\S]*?")\s*$/m);
+  if (legacyMatch) {
+    try { return JSON.parse(legacyMatch[1]) as string; } catch { return null; }
+  }
+  return null;
+}
 
 // ── Inline code editor with line numbers ─────────────────────────────────────
 function CodeEditor({
@@ -150,6 +321,10 @@ export default function AdminExcelReportsPage() {
   const [toggling, setToggling] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // SQL vs Python mode
+  const [sqlMode, setSqlMode] = useState(true);
+  const [sqlCode, setSqlCode] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -173,11 +348,16 @@ export default function AdminExcelReportsPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setSqlMode(true);
+    setSqlCode("");
     setPanelOpen(true);
   };
 
   const openEdit = (t: ReportTemplateAdmin) => {
     setEditing(t);
+    const extracted = extractSqlFromPython(t.pythonCode);
+    setSqlMode(extracted !== null);
+    setSqlCode(extracted ?? "");
     setForm({
       name: t.name,
       description: t.description,
@@ -198,17 +378,23 @@ export default function AdminExcelReportsPage() {
       toast({ title: "Нэр оруулна уу", variant: "destructive" });
       return;
     }
-    if (!form.pythonCode.trim()) {
+    if (sqlMode && !sqlCode.trim()) {
+      toast({ title: "SQL query оруулна уу", variant: "destructive" });
+      return;
+    }
+    if (!sqlMode && !form.pythonCode.trim()) {
       toast({ title: "Python код оруулна уу", variant: "destructive" });
       return;
     }
+    const finalPythonCode = sqlMode ? sqlToPython(sqlCode.trim()) : form.pythonCode;
     setSaving(true);
     try {
+      const payload = { ...form, pythonCode: finalPythonCode };
       if (editing) {
-        await excelReportApi.adminUpdate(editing.id, form);
+        await excelReportApi.adminUpdate(editing.id, payload);
         toast({ title: "Амжилттай шинэчлэгдлээ" });
       } else {
-        await excelReportApi.adminCreate(form);
+        await excelReportApi.adminCreate(payload);
         toast({ title: "Амжилттай үүслээ" });
       }
       closePanel();
@@ -373,8 +559,11 @@ export default function AdminExcelReportsPage() {
                             {dm.label}
                           </span>
                           <span className="inline-flex items-center gap-1 text-xs rounded-full border border-slate-700/60 bg-slate-800/40 text-slate-500 px-2 py-0.5">
-                            <Code2 className="w-3 h-3" />
-                            {t.pythonCode.split("\n").length} мөр
+                            {t.pythonCode.startsWith("# __SQL_MODE__") ? (
+                              <><Database className="w-3 h-3 text-violet-400" /><span className="text-violet-400">SQL</span></>
+                            ) : (
+                              <><Code2 className="w-3 h-3" />{t.pythonCode.split("\n").length} мөр</>
+                            )}
                           </span>
                         </div>
                         <div className="mt-4 flex gap-2">
@@ -451,11 +640,10 @@ export default function AdminExcelReportsPage() {
                     {editing ? "Тайлан загвар засах" : "Шинэ тайлан загвар"}
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Python скрипт{" "}
-                    <code className="bg-slate-800 px-1 rounded text-slate-300">
-                      OUTPUT_FILE
-                    </code>
-                    -д .xlsx бичих ёстой
+                    {sqlMode
+                      ? "SQL query оруулна — Python код автоматаар үүснэ"
+                      : <>Python скрипт{" "}<code className="bg-slate-800 px-1 rounded text-slate-300">OUTPUT_FILE</code>-д .xlsx бичих ёстой</>
+                    }
                   </p>
                 </div>
                 <button
@@ -572,26 +760,87 @@ export default function AdminExcelReportsPage() {
                 />
 
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
+                  {/* Mode toggle */}
+                  <div className="flex items-center justify-between mb-1">
                     <Label className="text-slate-300 text-xs font-medium">
-                      Python код *
+                      {sqlMode ? "SQL Query *" : "Python код *"}
                     </Label>
-                    <span className="text-xs text-slate-600">
-                      {form.pythonCode.split("\n").length} мөр
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !sqlMode;
+                        setSqlMode(next);
+                        // When switching to Python mode with empty code → load starter template
+                        if (next === false && !form.pythonCode.trim()) {
+                          setForm((f) => ({ ...f, pythonCode: PYTHON_STARTER }));
+                        }
+                      }}
+                      className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
+                      title="SQL горим / Python горим солих"
+                    >
+                      {sqlMode ? (
+                        <>
+                          <Database className="w-3 h-3 text-violet-400" />
+                          <span className="text-violet-300">SQL горим</span>
+                          <ToggleRight className="w-4 h-4 text-violet-400" />
+                        </>
+                      ) : (
+                        <>
+                          <Code2 className="w-3 h-3 text-slate-400" />
+                          <span className="text-slate-400">Python горим</span>
+                          <ToggleLeft className="w-4 h-4 text-slate-500" />
+                        </>
+                      )}
+                    </button>
                   </div>
-                  <CodeEditor
-                    value={form.pythonCode}
-                    onChange={(v) => setForm((f) => ({ ...f, pythonCode: v }))}
-                    placeholder={`import os\nimport openpyxl\n\nstart = os.environ.get('START_DATE', '')\nend   = os.environ.get('END_DATE', '')\nout   = os.environ['OUTPUT_FILE']\n\nwb = openpyxl.Workbook()\nws = wb.active\nws.title = 'Тайлан'\nws.append(['Огноо', 'Дүн'])\n# ... ClickHouse-аас өгөгдөл татах ...\nwb.save(out)`}
-                  />
-                  <p className="text-xs text-slate-600">
-                    Env:{" "}
-                    <code className="text-slate-400">
-                      OUTPUT_FILE, START_DATE, END_DATE, CLICKHOUSE_HOST,
-                      CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE
-                    </code>
-                  </p>
+
+                  {sqlMode ? (
+                    <>
+                      <CodeEditor
+                        value={sqlCode}
+                        onChange={setSqlCode}
+                        placeholder={"SELECT *\nFROM your_table\nWHERE date >= '{start_date}'\n  AND date <= '{end_date}'\nLIMIT 10000"}
+                      />
+                      <p className="text-xs text-slate-600">
+                        Хадгалахад автоматаар Python код үүснэ.{" "}
+                        <code className="text-slate-400">{"'{start_date}'"}</code>,{" "}
+                        <code className="text-slate-400">{"'{end_date}'"}</code>{" "}
+                        placeholder ашиглаж болно.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span />
+                        <div className="flex items-center gap-2">
+                          {!form.pythonCode.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => setForm((f) => ({ ...f, pythonCode: PYTHON_STARTER }))}
+                              className="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors"
+                            >
+                              Загвар оруулах
+                            </button>
+                          )}
+                          <span className="text-xs text-slate-600">
+                            {form.pythonCode.split("\n").length} мөр
+                          </span>
+                        </div>
+                      </div>
+                      <CodeEditor
+                        value={form.pythonCode}
+                        onChange={(v) => setForm((f) => ({ ...f, pythonCode: v }))}
+                        placeholder={`import os\nimport openpyxl\n\nstart = os.environ.get('START_DATE', '')\nend   = os.environ.get('END_DATE', '')\nout   = os.environ['OUTPUT_FILE']\n\nwb = openpyxl.Workbook()\nws = wb.active\nws.title = 'Тайлан'\nws.append(['Огноо', 'Дүн'])\n# ... ClickHouse-аас өгөгдөл татах ...\nwb.save(out)`}
+                      />
+                      <p className="text-xs text-slate-600">
+                        Env:{" "}
+                        <code className="text-slate-400">
+                          OUTPUT_FILE, START_DATE, END_DATE, CLICKHOUSE_HOST,
+                          CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE
+                        </code>
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 

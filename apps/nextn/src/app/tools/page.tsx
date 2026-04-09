@@ -22,6 +22,7 @@ import {
   Crown,
   BookOpen,
   MessageSquare,
+  BellDot,
 } from "lucide-react";
 
 interface Tool {
@@ -170,6 +171,17 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
     gradient: "from-teal-500 to-cyan-500",
     glow: "shadow-teal-500/20 group-hover:shadow-teal-500/40",
     tag: "Data",
+    category: "work",
+  },
+  {
+    id: "alert_box",
+    title: t("toolAlertBoxTitle"),
+    description: t("toolAlertBoxDesc"),
+    icon: BellDot,
+    href: "/tools/alert-box",
+    gradient: "from-red-500 to-rose-500",
+    glow: "shadow-red-500/20 group-hover:shadow-red-500/40",
+    tag: "Audit",
     category: "work",
   },
   ];

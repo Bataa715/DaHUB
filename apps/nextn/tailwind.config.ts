@@ -63,6 +63,24 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // ── Alert Box (GolomtTableui) scoped colors ──
+        surface: {
+          DEFAULT: "var(--surface)",
+          card: "var(--surface-card)",
+          elevated: "var(--surface-elevated)",
+          border: "var(--surface-border)",
+          hover: "var(--surface-hover)",
+        },
+        txt: {
+          DEFAULT: "var(--txt)",
+          muted: "var(--txt-muted)",
+          dim: "var(--txt-dim)",
+        },
+        golomt: {
+          50: "#f0f1ff", 100: "#e0e1ff", 200: "#c7c8fe", 300: "#a4a5fc",
+          400: "#8183f9", 500: "#6366f1", 600: "#4f46e5", 700: "#4338ca",
+          800: "#3730a3", 900: "#312e81", 950: "#1e1b4b",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -102,12 +120,17 @@ export default {
             opacity: "0.8",
           },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "200% center" },
+          "100%": { backgroundPosition: "-200% center" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "spin-slow": "spin-slow 8s linear infinite",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
+        shimmer: "shimmer 1.6s linear infinite",
       },
     },
   },

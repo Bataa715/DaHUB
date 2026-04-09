@@ -120,6 +120,12 @@ export class ExcelReportController {
     res.end(buffer);
   }
 
+  /** POST /excel-report/preview — run SQL-mode report, return first 100 rows as JSON */
+  @Post("preview")
+  previewReport(@Body() dto: RunReportDto) {
+    return this.service.previewReport(dto);
+  }
+
   /** POST /excel-report/query-to-excel — run custom SELECT → download xlsx */
   @Post("query-to-excel")
   async queryToExcel(@Body() dto: QueryToExcelDto, @Res() res: Response) {
