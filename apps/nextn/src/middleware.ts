@@ -26,8 +26,8 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/report": ["report"],
   "/tools/chess": ["chess"],
   "/tools/english": ["english"],
-  "/tools/rag-chat": ["rag_chat"],
   "/tools/data-doc": ["data_doc"],
+  "/tools/alert-box": ["alert_box"],
 };
 
 async function getTokenPayload(token: string | undefined) {

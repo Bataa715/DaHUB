@@ -49,6 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import AdminPageHeader from "@/components/shared/AdminPageHeader";
 
 // Fixed particle positions for SSR
 const PARTICLE_POSITIONS = [
@@ -263,6 +264,10 @@ export default function AdminDepartmentsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
+      <AdminPageHeader
+        icon={<div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md"><Building2 className="w-3.5 h-3.5 text-white" /></div>}
+        title="Хэлтсүүд"
+      />
       {/* Animated Background Orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -309,43 +314,6 @@ export default function AdminDepartmentsPage() {
       ))}
 
       <div className="relative z-10 container mx-auto py-8 px-4 space-y-8">
-        {/* Back Button */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Link href="/admin">
-            <Button
-              variant="ghost"
-              className="text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Буцах
-            </Button>
-          </Link>
-        </motion.div>
-
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-        >
-          <div className="text-center md:text-left">
-            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30">
-              <Building2 className="w-8 h-8 text-emerald-400" />
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
-                Хэлтсүүд
-              </h1>
-            </div>
-            <p className="text-slate-400 mt-4 max-w-lg">
-              Байгууллагын бүх хэлтсийн мэдээлэл, тохиргоо удирдах
-            </p>
-          </div>
-        </motion.div>
-
         {/* Stats Overview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

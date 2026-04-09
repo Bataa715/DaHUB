@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import {
   Crown,
   Shield,
@@ -29,6 +30,9 @@ const ALL_TOOLS = [
   { id: "tailan", name: "Улирлын тайлан (ажилтан)" },
   { id: "tailan_dept_head", name: "Улирлын тайлан (ахлагч)" },
   { id: "english", name: "Англи үгс" },
+  { id: "excel_report", name: "Excel тайлан" },
+  { id: "data_doc", name: "Өгөгдлийн толь бичиг" },
+  { id: "alert_box", name: "Alert Box" },
 ];
 
 interface AdminUser {
@@ -255,30 +259,23 @@ export default function AdminsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <ShieldCheck className="w-7 h-7 text-amber-400" />
-            Админ удирдлага
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Системийн администраторуудыг удирдах
-          </p>
-        </div>
-        {isSuperAdmin && (
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setShowAddSheet(true)}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-4 py-2.5 rounded-xl transition-colors"
-          >
-            <UserPlus className="w-4 h-4" />
-            Админ нэмэх
-          </motion.button>
-        )}
-      </div>
-
+    <div className="min-h-screen bg-slate-950">
+      <AdminPageHeader
+        icon={<div className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md"><ShieldCheck className="w-3.5 h-3.5 text-white" /></div>}
+        title="Админ удирдлага"
+        rightContent={
+          isSuperAdmin ? (
+            <button
+              onClick={() => setShowAddSheet(true)}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-3 py-1.5 rounded-lg text-sm transition-colors"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Админ нэмэх
+            </button>
+          ) : undefined
+        }
+      />
+      <div className="p-6">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
@@ -484,6 +481,8 @@ export default function AdminsPage() {
           )}
         </div>
       )}
+
+      </div>{/* /p-6 */}
 
       {/* Add Admin Sheet */}
       <AnimatePresence>

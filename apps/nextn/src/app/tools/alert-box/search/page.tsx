@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { abSearchByCif } from '../_lib/api';
 import { Search, Loader2, Database, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import ToolPageHeader from '@/components/shared/ToolPageHeader';
 
 interface DashboardResult {
   dashboardId: number;
@@ -68,12 +69,14 @@ function SearchContent() {
   };
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-extrabold text-txt">Search Engine</h1>
-        <p className="text-[11px] text-txt-dim">12 Dashboard дээр CIF хайлт</p>
-      </div>
+    <div className="space-y-5">
+      <ToolPageHeader
+        href="/tools"
+        icon={<Search size={16} className="text-blue-400" />}
+        title="Search Engine"
+        subtitle="12 Dashboard дээр CIF хайлт"
+      />
+      <div className="px-6 space-y-5">
 
       {/* Search Form */}
       <div className="bg-surface-card rounded-xl border border-surface-border p-5">
@@ -224,6 +227,7 @@ function SearchContent() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

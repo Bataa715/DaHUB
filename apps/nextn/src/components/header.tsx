@@ -44,6 +44,7 @@ import {
 import { useTheme } from "next-themes";
 import { themes } from "@/lib/themes";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { authApi } from "@/lib/api";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -96,8 +97,13 @@ const Header = () => {
   const handleLogout = async () => {
     try {
       const isAdmin = user?.isAdmin;
+      try {
+        await authApi.logout();
+      } catch {
+        // Ignore backend errors — proceed with local cleanup
+      }
       logout();
-      window.location.replace(isAdmin ? "/admin/login" : "/login");
+      window.location.href = isAdmin ? "/admin/login" : "/login";
     } catch (error) {
       console.error("Logout error:", error);
       toast({ title: "Гарахад алдаа гарлаа.", variant: "destructive" });

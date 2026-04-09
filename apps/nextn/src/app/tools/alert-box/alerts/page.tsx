@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { abFetchAlerts, abSearchByCif } from '../_lib/api';
-import { AlertTriangle, Loader2, ArrowLeft, ChevronDown, ChevronUp, RefreshCw, Users } from 'lucide-react';
+import { AlertTriangle, Loader2, ChevronDown, ChevronUp, RefreshCw, Users } from 'lucide-react';
+import ToolPageHeader from '@/components/shared/ToolPageHeader';
 
 interface AlertDashboard {
   id: number;
@@ -75,34 +76,34 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-xl font-extrabold text-txt">Alert</h1>
-            <p className="text-[11px] text-txt-dim">2+ Dashboard-д илэрсэн CIF-үүд</p>
+    <div className="space-y-5">
+      <ToolPageHeader
+        href="/tools"
+        icon={<AlertTriangle size={16} className="text-red-400" />}
+        title="Alert"
+        subtitle="2+ Dashboard-д илэрсэн CIF-үүд"
+        rightContent={
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-surface-card border border-surface-border rounded-lg px-3 py-1.5">
+              <span className="text-[10px] text-txt-dim">Хамгийн бага:</span>
+              <select
+                value={minDash}
+                onChange={e => setMinDash(Number(e.target.value))}
+                className="bg-transparent text-[11px] font-bold text-txt border-none focus:outline-none cursor-pointer"
+              >
+                {[2, 3, 4, 5, 6].map(n => (
+                  <option key={n} value={n}>{n}+ dashboard</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={loadAlerts} disabled={loading}
+              className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50">
+              <RefreshCw size={14} className={`text-txt-dim ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-surface-card border border-surface-border rounded-lg px-3 py-1.5">
-            <span className="text-[10px] text-txt-dim">Хамгийн бага:</span>
-            <select
-              value={minDash}
-              onChange={e => setMinDash(Number(e.target.value))}
-              className="bg-transparent text-[11px] font-bold text-txt border-none focus:outline-none cursor-pointer"
-            >
-              {[2, 3, 4, 5, 6].map(n => (
-                <option key={n} value={n}>{n}+ dashboard</option>
-              ))}
-            </select>
-          </div>
-          <button onClick={loadAlerts} disabled={loading}
-            className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50">
-            <RefreshCw size={14} className={`text-txt-dim ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
+        }
+      />
+      <div className="px-6 space-y-4">
 
       {loading && (
         <div className="flex items-center justify-center py-20">
@@ -236,6 +237,7 @@ export default function AlertsPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

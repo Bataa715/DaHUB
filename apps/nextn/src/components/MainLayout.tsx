@@ -17,7 +17,18 @@ export default function MainLayout({
     pathname === "/signup" ||
     pathname.startsWith("/admin");
 
+  // Tools that manage their own layout (no DaHUB header/footer)
+  const isSelfLayoutTool = pathname.startsWith("/tools/alert-box");
+
   // Middleware handles all redirects, so no useEffect needed here
+
+  if (isSelfLayoutTool) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="relative">{children}</main>
+      </div>
+    );
+  }
 
   return (
     <div

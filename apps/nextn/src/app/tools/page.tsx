@@ -21,7 +21,6 @@ import {
   Database,
   Crown,
   BookOpen,
-  MessageSquare,
   BellDot,
 } from "lucide-react";
 
@@ -150,17 +149,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
     glow: "shadow-pink-500/20 group-hover:shadow-pink-500/40",
     tag: "Utility",
     category: "free",
-  },
-  {
-    id: "rag_chat",
-    title: t("toolRagTitle"),
-    description: t("toolRagDesc"),
-    icon: MessageSquare,
-    href: "/tools/rag-chat",
-    gradient: "from-purple-500 to-indigo-500",
-    glow: "shadow-purple-500/20 group-hover:shadow-purple-500/40",
-    tag: "AI",
-    category: "work",
   },
   {
     id: "data_doc",

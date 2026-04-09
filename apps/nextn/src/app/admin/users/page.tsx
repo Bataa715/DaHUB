@@ -65,6 +65,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { DEPARTMENTS } from "@/lib/constants";
 import Link from "next/link";
+import AdminPageHeader from "@/components/shared/AdminPageHeader";
 
 interface UserData {
   id: string;
@@ -338,6 +339,11 @@ export default function UsersPage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      <AdminPageHeader
+        icon={<div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md"><UsersIcon className="w-3.5 h-3.5 text-white" /></div>}
+        title="Хэрэглэгчид"
+        rightContent={<span className="text-slate-400 text-sm">{filteredUsers.length} / {users.length}</span>}
+      />
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <motion.div
@@ -369,48 +375,6 @@ export default function UsersPage() {
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6 py-8">
-        {/* Back Button */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="mb-6"
-        >
-          <Link href="/admin">
-            <Button
-              variant="ghost"
-              className="text-slate-400 hover:text-white hover:bg-slate-800/50"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Буцах
-            </Button>
-          </Link>
-        </motion.div>
-
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between flex-wrap gap-4 mb-8"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/30">
-              <UsersIcon className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Хэрэглэгчид</h1>
-              <p className="text-slate-400 flex items-center gap-2">
-                <Star className="w-4 h-4 text-blue-500" />
-                Бүх бүртгэлтэй хэрэглэгчдийн удирдлага
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Badge className="bg-slate-700/50 text-slate-300 border-0 text-lg px-4 py-2">
-              {filteredUsers.length} / {users.length}
-            </Badge>
-          </div>
-        </motion.div>
-
         {/* Filters */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

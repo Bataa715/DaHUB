@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { abFetchRedFlags } from '../_lib/api';
 import { Flag, Loader2, ChevronDown, ChevronUp, ArrowRight, RefreshCw, AlertTriangle } from 'lucide-react';
+import ToolPageHeader from '@/components/shared/ToolPageHeader';
 
 interface ChainResult {
   id: number;
@@ -139,18 +140,20 @@ export default function RedFlagPage() {
   };
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-extrabold text-txt">Red Flag</h1>
-          <p className="text-[11px] text-txt-dim">Event Chain дүрмийн илэрцүүд — 15 дүрэм</p>
-        </div>
-        <button onClick={load} disabled={loading}
-          className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50">
-          <RefreshCw size={14} className={`text-txt-dim ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
+    <div className="space-y-5">
+      <ToolPageHeader
+        href="/tools"
+        icon={<Flag size={16} className="text-red-400" />}
+        title="Red Flag"
+        subtitle="Event Chain дүрмийн илэрцүүд"
+        rightContent={
+          <button onClick={load} disabled={loading}
+            className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50">
+            <RefreshCw size={14} className={`text-txt-dim ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        }
+      />
+      <div className="px-6 space-y-5">
 
       {loading && (
         <div className="flex items-center justify-center py-20">
@@ -199,6 +202,7 @@ export default function RedFlagPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -34,8 +34,8 @@ const VALID_TOOLS = [
   "sanamsargui-tuuwer",
   "excel_report",
   "pdf_to_text",
-  "rag_chat",
   "data_doc",
+  "alert_box",
 ] as const;
 
 @Controller("users")

@@ -250,15 +250,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    if (user?.isAdmin) {
-      Cookies.remove("adminToken");
-      Cookies.remove("adminRefreshToken");
-      Cookies.remove("adminUser");
-    } else {
-      Cookies.remove("token");
-      Cookies.remove("refreshToken");
-      Cookies.remove("user");
-    }
+    // Clear both regular and admin cookies unconditionally
+    Cookies.remove("token");
+    Cookies.remove("refreshToken");
+    Cookies.remove("user");
+    Cookies.remove("adminToken");
+    Cookies.remove("adminRefreshToken");
+    Cookies.remove("adminUser");
     setUser(null);
   };
 
