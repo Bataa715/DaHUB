@@ -16,6 +16,9 @@ build
 # Ensure root .env is always ignored
 /.env
 
+# Notebooks with sensitive data
+Data/riskemployeescore.ipynb
+
 # Docker local data
 .docker/
 docker-compose.override.yml
