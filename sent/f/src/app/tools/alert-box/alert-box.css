@@ -1,0 +1,37 @@
+/* GolomtTableui CSS variables scoped to .ab-theme */
+.ab-theme {
+  --surface: #111118;
+  --surface-card: #18181f;
+  --surface-elevated: #1e1e28;
+  --surface-border: #2a2a3a;
+  --surface-hover: #222230;
+  --txt: #e4e4ec;
+  --txt-muted: #7c7c96;
+  --txt-dim: #55556b;
+
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--surface);
+  color: var(--txt);
+}
+
+.ab-theme ::-webkit-scrollbar { width: 5px; height: 5px; }
+.ab-theme ::-webkit-scrollbar-track { background: transparent; }
+.ab-theme ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 99px; }
+.ab-theme ::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+
+.ab-theme .skeleton {
+  background: linear-gradient(90deg, #18181f 25%, #222230 50%, #18181f 75%);
+  background-size: 200% 100%;
+  animation: ab-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes ab-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* native select dark styling */
+.ab-theme select option {
+  background: #18181f;
+  color: #e4e4ec;
+}

@@ -1,0 +1,27 @@
+import { IsString, IsBoolean, IsOptional, IsArray } from "class-validator";
+
+export class UpdateUserDto {
+  @IsString()
+  @IsOptional()
+  userId?: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  position?: string;
+
+  @IsString()
+  @IsOptional()
+  departmentId?: string;
+
+  @IsString()
+  @IsOptional()
+  profileImage?: string;
+
+  @IsArray()
+  @IsOptional()
+  allowedTools?: string[];
+}
