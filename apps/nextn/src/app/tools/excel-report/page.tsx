@@ -138,10 +138,13 @@ export default function ExcelReportPage() {
               className="flex items-center gap-3 mb-6"
             >
               <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 text-xs text-emerald-400">
-                {filtered.length}{search ? ` / ${templates.length}` : ""} тайлан
+                {filtered.length}
+                {search ? ` / ${templates.length}` : ""} тайлан
               </div>
               {search && filtered.length === 0 && (
-                <span className="text-xs text-slate-500">«{search}» — тайлан олдсонгүй</span>
+                <span className="text-xs text-slate-500">
+                  «{search}» — тайлан олдсонгүй
+                </span>
               )}
             </motion.div>
 

@@ -271,7 +271,8 @@ export default function DeptViewPage() {
           {/* Summary badge */}
           {!membersLoading && members.length > 0 && (
             <span className="ml-auto text-xs bg-violet-500/15 text-violet-300 border border-violet-500/25 rounded-full px-3 py-1.5">
-              {submittedCount} / {members.length} {t("tailan_submitted").toLowerCase()}
+              {submittedCount} / {members.length}{" "}
+              {t("tailan_submitted").toLowerCase()}
             </span>
           )}
         </div>

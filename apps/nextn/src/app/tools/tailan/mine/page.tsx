@@ -317,7 +317,9 @@ export default function TailanMinePage() {
                       <div className="px-3 pb-3 space-y-2 border-t border-slate-700/50">
                         <div className="grid grid-cols-2 gap-2 pt-2">
                           <div className="col-span-2">
-                            <label className={labelCls}>{t("tailan_taskNameLabel")}</label>
+                            <label className={labelCls}>
+                              {t("tailan_taskNameLabel")}
+                            </label>
                             <input
                               value={task.title}
                               onChange={(e) =>
@@ -345,7 +347,9 @@ export default function TailanMinePage() {
                         <RowImageUpload
                           inputId={task._id + "-img"}
                           images={task.images ?? []}
-                          onChange={(imgs) => updateTask(task._id, "images", imgs)}
+                          onChange={(imgs) =>
+                            updateTask(task._id, "images", imgs)
+                          }
                         />
                       </div>
                     )}
@@ -428,7 +432,9 @@ export default function TailanMinePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="col-span-2">
-                      <label className={labelCls}>{t("tailan_plannedTaskLabel")}</label>
+                      <label className={labelCls}>
+                        {t("tailan_plannedTaskLabel")}
+                      </label>
                       <input
                         value={dash.title}
                         onChange={(e) =>
@@ -443,7 +449,9 @@ export default function TailanMinePage() {
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>{t("tailan_taskCompletionPct")}</label>
+                      <label className={labelCls}>
+                        {t("tailan_taskCompletionPct")}
+                      </label>
                       <input
                         type="number"
                         min={0}
@@ -462,10 +470,14 @@ export default function TailanMinePage() {
                     </div>
                     <div />
                     <div className="col-span-2">
-                      <label className={labelCls}>{t("tailan_periodLabel")}</label>
+                      <label className={labelCls}>
+                        {t("tailan_periodLabel")}
+                      </label>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className={labelCls}>{t("tailan_startDateLabel")}</label>
+                          <label className={labelCls}>
+                            {t("tailan_startDateLabel")}
+                          </label>
                           <input
                             type="date"
                             value={dash.period.split(" – ")[0] ?? ""}
@@ -481,7 +493,9 @@ export default function TailanMinePage() {
                           />
                         </div>
                         <div>
-                          <label className={labelCls}>{t("tailan_endDateLabel")}</label>
+                          <label className={labelCls}>
+                            {t("tailan_endDateLabel")}
+                          </label>
                           <input
                             type="date"
                             value={dash.period.split(" – ")[1] ?? ""}
@@ -499,7 +513,9 @@ export default function TailanMinePage() {
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <label className={labelCls}>{t("tailan_taskSummaryLabel")}</label>
+                      <label className={labelCls}>
+                        {t("tailan_taskSummaryLabel")}
+                      </label>
                       <RichToolbar
                         value={dash.summary}
                         onChange={(v) =>
@@ -623,7 +639,9 @@ export default function TailanMinePage() {
                     />
                     <div className="grid grid-cols-2 gap-1.5">
                       <div>
-                        <label className={labelCls}>{t("tailan_startDateLabel")}</label>
+                        <label className={labelCls}>
+                          {t("tailan_startDateLabel")}
+                        </label>
                         <input
                           type="date"
                           value={s2.period.split(" – ")[0] ?? ""}
@@ -639,7 +657,9 @@ export default function TailanMinePage() {
                         />
                       </div>
                       <div>
-                        <label className={labelCls}>{t("tailan_endDateLabel")}</label>
+                        <label className={labelCls}>
+                          {t("tailan_endDateLabel")}
+                        </label>
                         <input
                           type="date"
                           value={s2.period.split(" – ")[1] ?? ""}
@@ -971,7 +991,9 @@ export default function TailanMinePage() {
                         className={inputCls}
                       />
                       <div>
-                        <label className={labelCls}>{t("tailan_trainingTypeLabel")}</label>
+                        <label className={labelCls}>
+                          {t("tailan_trainingTypeLabel")}
+                        </label>
                         <select
                           value={tr.type}
                           onChange={(e) =>
@@ -984,12 +1006,18 @@ export default function TailanMinePage() {
                           className={selectCls}
                         >
                           <option value="">{t("tailan_selectOption")}</option>
-                          <option value="Гадаад">{t("tailan_externalTraining")}</option>
-                          <option value="Дотоод">{t("tailan_internalTraining")}</option>
+                          <option value="Гадаад">
+                            {t("tailan_externalTraining")}
+                          </option>
+                          <option value="Дотоод">
+                            {t("tailan_internalTraining")}
+                          </option>
                         </select>
                       </div>
                       <div>
-                        <label className={labelCls}>{t("tailan_dateLabel")}</label>
+                        <label className={labelCls}>
+                          {t("tailan_dateLabel")}
+                        </label>
                         <input
                           type="date"
                           value={tr.date}
@@ -1004,7 +1032,9 @@ export default function TailanMinePage() {
                         />
                       </div>
                       <div>
-                        <label className={labelCls}>{t("tailan_trainingFormatLabel")}</label>
+                        <label className={labelCls}>
+                          {t("tailan_trainingFormatLabel")}
+                        </label>
                         <select
                           value={tr.format}
                           onChange={(e) =>
@@ -1017,14 +1047,22 @@ export default function TailanMinePage() {
                           className={selectCls}
                         >
                           <option value="">{t("tailan_selectOption")}</option>
-                          <option value="Онлайн">{t("tailan_onlineFormat")}</option>
-                          <option value="Танхим">{t("tailan_inPersonFormat")}</option>
+                          <option value="Онлайн">
+                            {t("tailan_onlineFormat")}
+                          </option>
+                          <option value="Танхим">
+                            {t("tailan_inPersonFormat")}
+                          </option>
                         </select>
                       </div>
                       <input
                         value={tr.hours}
                         onChange={(e) =>
-                          updateSection4Training(tr._id, "hours", e.target.value)
+                          updateSection4Training(
+                            tr._id,
+                            "hours",
+                            e.target.value,
+                          )
                         }
                         placeholder={t("tailan_hoursLabel")}
                         className={inputCls}
@@ -1045,8 +1083,12 @@ export default function TailanMinePage() {
                           className={selectCls}
                         >
                           <option value="">{t("tailan_selectOption")}</option>
-                          <option value="Нийцсэн">{t("tailan_meetsGoalYes")}</option>
-                          <option value="Нийцээгүй">{t("tailan_meetsGoalNo")}</option>
+                          <option value="Нийцсэн">
+                            {t("tailan_meetsGoalYes")}
+                          </option>
+                          <option value="Нийцээгүй">
+                            {t("tailan_meetsGoalNo")}
+                          </option>
                         </select>
                       </div>
                       <div>
@@ -1065,8 +1107,12 @@ export default function TailanMinePage() {
                           className={selectCls}
                         >
                           <option value="">{t("tailan_selectOption")}</option>
-                          <option value="Хуваалцсан">{t("tailan_sharedKnowledgeYes")}</option>
-                          <option value="Хуваалцаагүй">{t("tailan_sharedKnowledgeNo")}</option>
+                          <option value="Хуваалцсан">
+                            {t("tailan_sharedKnowledgeYes")}
+                          </option>
+                          <option value="Хуваалцаагүй">
+                            {t("tailan_sharedKnowledgeNo")}
+                          </option>
                         </select>
                       </div>
                     </div>

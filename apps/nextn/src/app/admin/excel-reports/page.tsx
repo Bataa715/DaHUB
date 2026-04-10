@@ -86,14 +86,14 @@ const PYTHON_STARTER = [
   "# df хувьсагчид DataFrame оноогоод дуусаарай — Excel автоматаар үүснэ.",
   "# Олон хуудас: sheets = {'Хуудас1': df1, 'Хуудас2': df2}",
   "",
-  "sql = f\"\"\"",
+  'sql = f"""',
   "SELECT *",
   "FROM your_table",
   "WHERE date >= '{START_DATE}'",
   "  AND date <= '{END_DATE}'",
   "ORDER BY date DESC",
   "LIMIT 50000",
-  "\"\"\"",
+  '"""',
   "",
   "df = ch_query(sql)",
   "",
@@ -103,13 +103,17 @@ const PYTHON_STARTER = [
 ].join("\n");
 
 // ── Quick-insert snippets ─────────────────────────────────────────────────
-interface Snippet { label: string; desc: string; code: string; }
+interface Snippet {
+  label: string;
+  desc: string;
+  code: string;
+}
 const SNIPPETS: Snippet[] = [
   {
     label: "ch_query",
     desc: "ClickHouse query → df",
     code: [
-      "sql = f\"\"\"",
+      'sql = f"""',
       "SELECT col1, col2, SUM(amount) AS total",
       "FROM your_table",
       "WHERE date >= '{START_DATE}'",
@@ -117,7 +121,7 @@ const SNIPPETS: Snippet[] = [
       "GROUP BY col1, col2",
       "ORDER BY total DESC",
       "LIMIT 50000",
-      "\"\"\"",
+      '"""',
       "df = ch_query(sql)",
     ].join("\n"),
   },
@@ -125,8 +129,8 @@ const SNIPPETS: Snippet[] = [
     label: "merge",
     desc: "2 DataFrame нэгтгэх",
     code: [
-      "df1 = ch_query(\"SELECT id, name FROM table1\")",
-      "df2 = ch_query(\"SELECT id, amount FROM table2\")",
+      'df1 = ch_query("SELECT id, name FROM table1")',
+      'df2 = ch_query("SELECT id, amount FROM table2")',
       "df = pd.merge(df1, df2, on='id', how='left')",
     ].join("\n"),
   },
@@ -134,8 +138,8 @@ const SNIPPETS: Snippet[] = [
     label: "sheets",
     desc: "Олон хуудас",
     code: [
-      "df1 = ch_query(\"SELECT ... FROM table1\")",
-      "df2 = ch_query(\"SELECT ... FROM table2\")",
+      'df1 = ch_query("SELECT ... FROM table1")',
+      'df2 = ch_query("SELECT ... FROM table2")',
       "sheets = {",
       "    '1-р хуудас': df1,",
       "    '2-р хуудас': df2,",
@@ -232,7 +236,11 @@ function extractSqlFromPython(code: string): string | null {
   // Fallback: old JSON-encoded format SQL = "..."
   const legacyMatch = code.match(/^SQL = ("[\s\S]*?")\s*$/m);
   if (legacyMatch) {
-    try { return JSON.parse(legacyMatch[1]) as string; } catch { return null; }
+    try {
+      return JSON.parse(legacyMatch[1]) as string;
+    } catch {
+      return null;
+    }
   }
   return null;
 }
@@ -380,7 +388,9 @@ export default function AdminExcelReportsPage() {
       toast({ title: "Python код оруулна уу", variant: "destructive" });
       return;
     }
-    const finalPythonCode = sqlMode ? sqlToPython(sqlCode.trim()) : form.pythonCode;
+    const finalPythonCode = sqlMode
+      ? sqlToPython(sqlCode.trim())
+      : form.pythonCode;
     setSaving(true);
     try {
       const payload = { ...form, pythonCode: finalPythonCode };
@@ -554,9 +564,15 @@ export default function AdminExcelReportsPage() {
                           </span>
                           <span className="inline-flex items-center gap-1 text-xs rounded-full border border-slate-700/60 bg-slate-800/40 text-slate-500 px-2 py-0.5">
                             {t.pythonCode.startsWith("# __SQL_MODE__") ? (
-                              <><Database className="w-3 h-3 text-violet-400" /><span className="text-violet-400">SQL</span></>
+                              <>
+                                <Database className="w-3 h-3 text-violet-400" />
+                                <span className="text-violet-400">SQL</span>
+                              </>
                             ) : (
-                              <><Code2 className="w-3 h-3" />{t.pythonCode.split("\n").length} мөр</>
+                              <>
+                                <Code2 className="w-3 h-3" />
+                                {t.pythonCode.split("\n").length} мөр
+                              </>
                             )}
                           </span>
                         </div>
@@ -636,8 +652,7 @@ export default function AdminExcelReportsPage() {
                   <p className="text-xs text-slate-500 mt-0.5">
                     {sqlMode
                       ? "SQL query оруулна — Python код автоматаар үүснэ"
-                      : "df = ch_query(sql) бичнэ — Excel автоматаар гарна"
-                    }
+                      : "df = ch_query(sql) бичнэ — Excel автоматаар гарна"}
                   </p>
                 </div>
                 <button
@@ -766,9 +781,13 @@ export default function AdminExcelReportsPage() {
                         setSqlMode(next);
                         // When switching to Python mode with empty code → load starter template
                         if (next === false && !form.pythonCode.trim()) {
-                          setForm((f) => ({ ...f, pythonCode: PYTHON_STARTER }));
+                          setForm((f) => ({
+                            ...f,
+                            pythonCode: PYTHON_STARTER,
+                          }));
                         }
-                      }}                      className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
+                      }}
+                      className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
                       title="SQL горим / Python горим солих"
                     >
                       {sqlMode ? (
@@ -792,11 +811,16 @@ export default function AdminExcelReportsPage() {
                       <CodeEditor
                         value={sqlCode}
                         onChange={setSqlCode}
-                        placeholder={"SELECT *\nFROM your_table\nWHERE date >= '{start_date}'\n  AND date <= '{end_date}'\nLIMIT 10000"}
+                        placeholder={
+                          "SELECT *\nFROM your_table\nWHERE date >= '{start_date}'\n  AND date <= '{end_date}'\nLIMIT 10000"
+                        }
                       />
                       <p className="text-xs text-slate-600">
                         Хадгалахад автоматаар Python код үүснэ.{" "}
-                        <code className="text-slate-400">{"'{start_date}'"}</code>,{" "}
+                        <code className="text-slate-400">
+                          {"'{start_date}'"}
+                        </code>
+                        ,{" "}
                         <code className="text-slate-400">{"'{end_date}'"}</code>{" "}
                         placeholder ашиглаж болно.
                       </p>
@@ -807,7 +831,12 @@ export default function AdminExcelReportsPage() {
                       <div className="flex flex-wrap gap-1.5 mb-1">
                         <button
                           type="button"
-                          onClick={() => setForm((f) => ({ ...f, pythonCode: PYTHON_STARTER }))}
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              pythonCode: PYTHON_STARTER,
+                            }))
+                          }
                           className="text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                         >
                           ↺ загвар
@@ -821,7 +850,8 @@ export default function AdminExcelReportsPage() {
                               setForm((f) => ({
                                 ...f,
                                 pythonCode:
-                                  (f.pythonCode ? f.pythonCode + "\n\n" : "") + s.code,
+                                  (f.pythonCode ? f.pythonCode + "\n\n" : "") +
+                                  s.code,
                               }))
                             }
                             className="text-xs px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
@@ -835,15 +865,31 @@ export default function AdminExcelReportsPage() {
                       </div>
                       <CodeEditor
                         value={form.pythonCode}
-                        onChange={(v) => setForm((f) => ({ ...f, pythonCode: v }))}
+                        onChange={(v) =>
+                          setForm((f) => ({ ...f, pythonCode: v }))
+                        }
                         placeholder={`# __DF_MODE__\nsql = f"""\nSELECT *\nFROM your_table\nWHERE date >= '{START_DATE}'\n  AND date <= '{END_DATE}'\n"""\ndf = ch_query(sql)`}
                       />
                       <div className="rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2 space-y-1">
-                        <p className="text-xs text-slate-400 font-medium">Автоматаар байдаг:</p>
-                        <p className="text-xs text-slate-500 font-mono">ch_query(sql) → pd.DataFrame</p>
-                        <p className="text-xs text-slate-500 font-mono">START_DATE, END_DATE, CLICKHOUSE_*</p>
-                        <p className="text-xs text-slate-500 font-mono">df = ... <span className="text-slate-600">→ Excel автоматаар</span></p>
-                        <p className="text-xs text-slate-500 font-mono">sheets = {"{'Хуудас': df}"} <span className="text-slate-600">→ олон хуудас</span></p>
+                        <p className="text-xs text-slate-400 font-medium">
+                          Автоматаар байдаг:
+                        </p>
+                        <p className="text-xs text-slate-500 font-mono">
+                          ch_query(sql) → pd.DataFrame
+                        </p>
+                        <p className="text-xs text-slate-500 font-mono">
+                          START_DATE, END_DATE, CLICKHOUSE_*
+                        </p>
+                        <p className="text-xs text-slate-500 font-mono">
+                          df = ...{" "}
+                          <span className="text-slate-600">
+                            → Excel автоматаар
+                          </span>
+                        </p>
+                        <p className="text-xs text-slate-500 font-mono">
+                          sheets = {"{'Хуудас': df}"}{" "}
+                          <span className="text-slate-600">→ олон хуудас</span>
+                        </p>
                       </div>
                     </>
                   )}

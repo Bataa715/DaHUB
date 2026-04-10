@@ -268,7 +268,9 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center">
             <Camera className="w-4 h-4 text-rose-400" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">{t("albumTitle")}</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            {t("albumTitle")}
+          </h2>
           {photos.length > 0 && (
             <span className="text-xs text-muted-foreground/70">
               {photos.length} {t("photosSuffix")}
@@ -339,7 +341,8 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="w-3.5 h-3.5" /> {t("showMoreText")} ({remaining})
+                    <ChevronDown className="w-3.5 h-3.5" /> {t("showMoreText")}{" "}
+                    ({remaining})
                   </>
                 )}
               </button>
@@ -764,7 +767,8 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
               </p>
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground/70">
                 <Users className="w-3 h-3" />
-                {dept.users?.length ?? dept.employeeCount ?? 0} {t("employeeSuffix")}
+                {dept.users?.length ?? dept.employeeCount ?? 0}{" "}
+                {t("employeeSuffix")}
               </div>
             </button>
           );
@@ -940,9 +944,7 @@ export default function DepartmentsPage() {
           <h2 className="text-2xl font-bold text-foreground mb-2">
             {t("needLogin")}
           </h2>
-          <p className="text-muted-foreground">
-            {t("needLoginDeptDesc")}
-          </p>
+          <p className="text-muted-foreground">{t("needLoginDeptDesc")}</p>
         </motion.div>
       </div>
     );
@@ -963,9 +965,7 @@ export default function DepartmentsPage() {
           <h2 className="text-2xl font-bold text-foreground mb-2">
             {t("deptUnknownTitle")}
           </h2>
-          <p className="text-muted-foreground">
-            {t("deptUnknownDesc")}
-          </p>
+          <p className="text-muted-foreground">{t("deptUnknownDesc")}</p>
         </motion.div>
       </div>
     );
@@ -1073,7 +1073,9 @@ export default function DepartmentsPage() {
                     <p className="text-base font-extrabold text-foreground leading-none">
                       {totalCount}
                     </p>
-                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">{t("employeeSuffix")}</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                      {t("employeeSuffix")}
+                    </p>
                   </div>
                 </div>
 
@@ -1119,7 +1121,9 @@ export default function DepartmentsPage() {
                   <Target className="w-4 h-4 text-blue-400" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-foreground">{t("missionTitle")}</h2>
+                  <h2 className="text-base font-bold text-foreground">
+                    {t("missionTitle")}
+                  </h2>
                   <p className="text-[11px] text-muted-foreground/70">
                     {t("missionSubtitle")}
                   </p>

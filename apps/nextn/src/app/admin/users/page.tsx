@@ -71,8 +71,12 @@ export default function UsersPage() {
   const [deleteUser, setDeleteUser] = useState<UserData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
-  const [changingDeptUserId, setChangingDeptUserId] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [changingDeptUserId, setChangingDeptUserId] = useState<string | null>(
+    null,
+  );
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [isSavingDept, setIsSavingDept] = useState(false);
 
@@ -80,19 +84,30 @@ export default function UsersPage() {
   const [editUserId, setEditUserId] = useState("");
   const [isSavingUserId, setIsSavingUserId] = useState(false);
 
-  const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(
+    null,
+  );
   const [newPassword, setNewPassword] = useState("");
   const [isResetting, setIsResetting] = useState(false);
 
-  useEffect(() => { loadUsers(); loadDepartments(); }, []);
-  useEffect(() => { filterUsers(); }, [users, searchQuery, departmentFilter]);
+  useEffect(() => {
+    loadUsers();
+    loadDepartments();
+  }, []);
+  useEffect(() => {
+    filterUsers();
+  }, [users, searchQuery, departmentFilter]);
 
   const loadUsers = async () => {
     try {
       const data = await usersApi.getAll();
       setUsers((data || []).filter((u: UserData) => !u.isAdmin));
     } catch {
-      toast({ title: "Алдаа", description: "Хэрэглэгчдийг ачааллахад алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэрэглэгчдийг ачааллахад алдаа гарлаа.",
+        variant: "destructive",
+      });
       setUsers([]);
     } finally {
       setIsLoading(false);
@@ -102,7 +117,9 @@ export default function UsersPage() {
   const loadDepartments = async () => {
     try {
       const data = await departmentsApi.getAll();
-      setDepartments((data || []).map((d: any) => ({ id: d.id, name: d.name })));
+      setDepartments(
+        (data || []).map((d: any) => ({ id: d.id, name: d.name })),
+      );
     } catch {}
   };
 
@@ -121,7 +138,11 @@ export default function UsersPage() {
       setChangingDeptUserId(null);
       loadUsers();
     } catch {
-      toast({ title: "Алдаа", description: "Хэлтэс өөрчлөхөд алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэлтэс өөрчлөхөд алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsSavingDept(false);
     }
@@ -129,7 +150,8 @@ export default function UsersPage() {
 
   const filterUsers = () => {
     let filtered = [...users];
-    if (departmentFilter !== "all") filtered = filtered.filter((u) => u.department === departmentFilter);
+    if (departmentFilter !== "all")
+      filtered = filtered.filter((u) => u.department === departmentFilter);
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -142,13 +164,23 @@ export default function UsersPage() {
     setFilteredUsers(filtered);
   };
 
-  const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
+  const handleToggleUserStatus = async (
+    userId: string,
+    currentStatus: boolean,
+  ) => {
     try {
       await usersApi.updateStatus(userId, !currentStatus);
-      toast({ title: "Амжилттай", description: `Хэрэглэгчийн эрх ${!currentStatus ? "идэвхжүүллээ" : "хааглаа"}.` });
+      toast({
+        title: "Амжилттай",
+        description: `Хэрэглэгчийн эрх ${!currentStatus ? "идэвхжүүллээ" : "хааглаа"}.`,
+      });
       loadUsers();
     } catch {
-      toast({ title: "Алдаа", description: "Хэрэглэгчийн эрхийг өөрчлөхөд алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэрэглэгчийн эрхийг өөрчлөхөд алдаа гарлаа.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -161,7 +193,11 @@ export default function UsersPage() {
       setDeleteUser(null);
       loadUsers();
     } catch {
-      toast({ title: "Алдаа", description: "Хэрэглэгч устгахад алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэрэглэгч устгахад алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -172,11 +208,19 @@ export default function UsersPage() {
     setIsSavingUserId(true);
     try {
       await usersApi.update(changingUserIdId, { userId: editUserId.trim() });
-      toast({ title: "Амжилттай", description: "Хэрэглэгчийн ID өөрчлөгдлөө." });
+      toast({
+        title: "Амжилттай",
+        description: "Хэрэглэгчийн ID өөрчлөгдлөө.",
+      });
       setChangingUserIdId(null);
       loadUsers();
     } catch (error: any) {
-      toast({ title: "Алдаа", description: error?.response?.data?.message ?? "ID өөрчлөхөд алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description:
+          error?.response?.data?.message ?? "ID өөрчлөхөд алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsSavingUserId(false);
     }
@@ -187,11 +231,19 @@ export default function UsersPage() {
     setIsResetting(true);
     try {
       await usersApi.resetPassword(resetPasswordUser.id, newPassword);
-      toast({ title: "Нууц үг сэргээлээ", description: `${resetPasswordUser.name} — шинэ нууц үг тохируулагдлаа.` });
+      toast({
+        title: "Нууц үг сэргээлээ",
+        description: `${resetPasswordUser.name} — шинэ нууц үг тохируулагдлаа.`,
+      });
       setResetPasswordUser(null);
       setNewPassword("");
     } catch (error: any) {
-      toast({ title: "Алдаа", description: error?.response?.data?.message || "Нууц үг сэргээхэд алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description:
+          error?.response?.data?.message || "Нууц үг сэргээхэд алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsResetting(false);
     }
@@ -218,7 +270,9 @@ export default function UsersPage() {
       <AdminPageHeader
         title="Хэрэглэгчид"
         rightContent={
-          <span className="text-slate-500 text-xs">{filteredUsers.length} / {users.length}</span>
+          <span className="text-slate-500 text-xs">
+            {filteredUsers.length} / {users.length}
+          </span>
         }
       />
 
@@ -236,9 +290,20 @@ export default function UsersPage() {
               <SelectValue placeholder="Хэлтэс" />
             </SelectTrigger>
             <SelectContent className="bg-slate-900 border-slate-800">
-              <SelectItem value="all" className="text-slate-300 focus:bg-slate-800">Бүх хэлтэс</SelectItem>
+              <SelectItem
+                value="all"
+                className="text-slate-300 focus:bg-slate-800"
+              >
+                Бүх хэлтэс
+              </SelectItem>
               {DEPARTMENTS.map((dept) => (
-                <SelectItem key={dept} value={dept} className="text-slate-300 focus:bg-slate-800">{dept}</SelectItem>
+                <SelectItem
+                  key={dept}
+                  value={dept}
+                  className="text-slate-300 focus:bg-slate-800"
+                >
+                  {dept}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -249,20 +314,39 @@ export default function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-slate-800 hover:bg-transparent">
-                <TableHead className="text-slate-500 text-xs font-medium">Төлөв</TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">ID</TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">Нэр</TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">Хэлтэс</TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">Албан тушаал</TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">Сүүлд нэвтэрсэн</TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium text-right">Үйлдэл</TableHead>
+                <TableHead className="text-slate-500 text-xs font-medium">
+                  Төлөв
+                </TableHead>
+                <TableHead className="text-slate-500 text-xs font-medium">
+                  ID
+                </TableHead>
+                <TableHead className="text-slate-500 text-xs font-medium">
+                  Нэр
+                </TableHead>
+                <TableHead className="text-slate-500 text-xs font-medium">
+                  Хэлтэс
+                </TableHead>
+                <TableHead className="text-slate-500 text-xs font-medium">
+                  Албан тушаал
+                </TableHead>
+                <TableHead className="text-slate-500 text-xs font-medium">
+                  Сүүлд нэвтэрсэн
+                </TableHead>
+                <TableHead className="text-slate-500 text-xs font-medium text-right">
+                  Үйлдэл
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-16 text-slate-600">
-                    {searchQuery || departmentFilter !== "all" ? "Хайлтын үр дүн олдсонгүй" : "Хэрэглэгч олдсонгүй"}
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-16 text-slate-600"
+                  >
+                    {searchQuery || departmentFilter !== "all"
+                      ? "Хайлтын үр дүн олдсонгүй"
+                      : "Хэрэглэгч олдсонгүй"}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -277,7 +361,12 @@ export default function UsersPage() {
                     <TableCell>
                       <Switch
                         checked={userData.isActive !== false}
-                        onCheckedChange={() => handleToggleUserStatus(userData.id, userData.isActive !== false)}
+                        onCheckedChange={() =>
+                          handleToggleUserStatus(
+                            userData.id,
+                            userData.isActive !== false,
+                          )
+                        }
                       />
                     </TableCell>
                     <TableCell>
@@ -298,16 +387,26 @@ export default function UsersPage() {
                             onClick={handleChangeUserId}
                             className="p-1 text-emerald-400 hover:text-emerald-300 disabled:opacity-40"
                           >
-                            {isSavingUserId ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            {isSavingUserId ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
                           </button>
-                          <button onClick={() => setChangingUserIdId(null)} className="p-1 text-slate-500 hover:text-white">
+                          <button
+                            onClick={() => setChangingUserIdId(null)}
+                            className="p-1 text-slate-500 hover:text-white"
+                          >
                             <X className="w-3 h-3" />
                           </button>
                         </div>
                       ) : (
                         <button
                           className="flex items-center gap-1.5 group"
-                          onClick={() => { setEditUserId(userData.userId ?? ""); setChangingUserIdId(userData.id); }}
+                          onClick={() => {
+                            setEditUserId(userData.userId ?? "");
+                            setChangingUserIdId(userData.id);
+                          }}
                         >
                           <code className="text-xs font-mono text-slate-400 group-hover:text-white transition-colors">
                             {userData.userId || "—"}
@@ -316,17 +415,28 @@ export default function UsersPage() {
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm font-medium text-white">{userData.name}</TableCell>
+                    <TableCell className="text-sm font-medium text-white">
+                      {userData.name}
+                    </TableCell>
                     <TableCell>
                       {changingDeptUserId === userData.id ? (
                         <div className="flex items-center gap-1">
-                          <Select value={selectedDeptId} onValueChange={setSelectedDeptId}>
+                          <Select
+                            value={selectedDeptId}
+                            onValueChange={setSelectedDeptId}
+                          >
                             <SelectTrigger className="h-7 w-44 bg-slate-800 border-slate-700 text-white text-xs">
                               <SelectValue placeholder="Хэлтэс сонгох" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800">
                               {departments.map((dept) => (
-                                <SelectItem key={dept.id} value={dept.id} className="text-slate-300 focus:bg-slate-800 text-xs">{dept.name}</SelectItem>
+                                <SelectItem
+                                  key={dept.id}
+                                  value={dept.id}
+                                  className="text-slate-300 focus:bg-slate-800 text-xs"
+                                >
+                                  {dept.name}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -335,9 +445,16 @@ export default function UsersPage() {
                             onClick={() => handleSaveDept(userData.id)}
                             className="p-1 text-emerald-400 hover:text-emerald-300 disabled:opacity-40"
                           >
-                            {isSavingDept ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            {isSavingDept ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
                           </button>
-                          <button onClick={() => setChangingDeptUserId(null)} className="p-1 text-slate-500 hover:text-white">
+                          <button
+                            onClick={() => setChangingDeptUserId(null)}
+                            className="p-1 text-slate-500 hover:text-white"
+                          >
                             <X className="w-3 h-3" />
                           </button>
                         </div>
@@ -347,23 +464,34 @@ export default function UsersPage() {
                           onClick={() => handleChangeDept(userData)}
                         >
                           <span className="text-sm text-slate-400 group-hover:text-white transition-colors">
-                            {userData.department ?? <span className="text-slate-600">—</span>}
+                            {userData.department ?? (
+                              <span className="text-slate-600">—</span>
+                            )}
                           </span>
                           <Pencil className="w-2.5 h-2.5 text-slate-700 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-all" />
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-400">{userData.position || <span className="text-slate-600">—</span>}</TableCell>
+                    <TableCell className="text-sm text-slate-400">
+                      {userData.position || (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs text-slate-500">
-                      {userData.lastLoginAt
-                        ? new Date(userData.lastLoginAt).toLocaleString("mn-MN")
-                        : <span className="text-slate-600">Хэзээ ч үгүй</span>}
+                      {userData.lastLoginAt ? (
+                        new Date(userData.lastLoginAt).toLocaleString("mn-MN")
+                      ) : (
+                        <span className="text-slate-600">Хэзээ ч үгүй</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {user?.isSuperAdmin && (
                           <button
-                            onClick={() => { setResetPasswordUser(userData); setNewPassword(""); }}
+                            onClick={() => {
+                              setResetPasswordUser(userData);
+                              setNewPassword("");
+                            }}
                             className="text-xs text-slate-500 hover:text-amber-400 px-2 py-1 rounded-lg hover:bg-amber-500/10 transition-colors"
                           >
                             Нууц үг
@@ -386,16 +514,29 @@ export default function UsersPage() {
       </div>
 
       {/* Reset Password Dialog */}
-      <Dialog open={!!resetPasswordUser} onOpenChange={(open) => { if (!open) { setResetPasswordUser(null); setNewPassword(""); } }}>
+      <Dialog
+        open={!!resetPasswordUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetPasswordUser(null);
+            setNewPassword("");
+          }
+        }}
+      >
         <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-white">Нууц үг сэргээх</DialogTitle>
             <DialogDescription className="text-slate-400">
-              <span className="text-white font-medium">{resetPasswordUser?.name}</span> ({resetPasswordUser?.userId})
+              <span className="text-white font-medium">
+                {resetPasswordUser?.name}
+              </span>{" "}
+              ({resetPasswordUser?.userId})
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <Label className="text-slate-400 text-xs mb-1.5 block">Шинэ нууц үг</Label>
+            <Label className="text-slate-400 text-xs mb-1.5 block">
+              Шинэ нууц үг
+            </Label>
             <Input
               type="text"
               placeholder="Хамгийн багадаа 6 тэмдэгт"
@@ -405,12 +546,17 @@ export default function UsersPage() {
               autoComplete="off"
             />
             {newPassword.length > 0 && newPassword.length < 6 && (
-              <p className="text-red-400 text-xs mt-1">Хамгийн багадаа 6 тэмдэгт байх ёстой</p>
+              <p className="text-red-400 text-xs mt-1">
+                Хамгийн багадаа 6 тэмдэгт байх ёстой
+              </p>
             )}
           </div>
           <DialogFooter className="gap-2">
             <button
-              onClick={() => { setResetPasswordUser(null); setNewPassword(""); }}
+              onClick={() => {
+                setResetPasswordUser(null);
+                setNewPassword("");
+              }}
               disabled={isResetting}
               className="flex-1 py-2 text-sm text-slate-400 hover:text-white border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors"
             >
@@ -432,19 +578,26 @@ export default function UsersPage() {
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
         <AlertDialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Хэрэглэгч устгах</AlertDialogTitle>
+            <AlertDialogTitle className="text-white">
+              Хэрэглэгч устгах
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
-              "{deleteUser?.name}" хэрэглэгчийг устгахдаа итгэлтэй байна уу? Буцаах боломжгүй.
+              "{deleteUser?.name}" хэрэглэгчийг устгахдаа итгэлтэй байна уу?
+              Буцаах боломжгүй.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Болих</AlertDialogCancel>
+            <AlertDialogCancel className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
+              Болих
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteUser}
               disabled={isDeleting}
               className="bg-red-500 hover:bg-red-600 text-white border-0"
             >
-              {isDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+              {isDeleting && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              )}
               Устгах
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -148,7 +148,9 @@ export function DashTaskCard({
         </span>
         <span className="flex-1 text-xs font-semibold text-white truncate">
           {row.title || (
-            <span className="font-normal text-slate-500">{t("tailan_taskNamePlaceholder")}</span>
+            <span className="font-normal text-slate-500">
+              {t("tailan_taskNamePlaceholder")}
+            </span>
           )}
         </span>
         {(row.images ?? []).length > 0 && (
@@ -1313,7 +1315,6 @@ export function KpiTableEditor({
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
                         {t("tailan_noTasksHint")}
-                        
                       </td>
                     </tr>
                   )}
@@ -1564,7 +1565,7 @@ export function KpiTableEditor({
                         colSpan={5}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        {t("tailan_clickFetchHint")} 
+                        {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
@@ -1722,7 +1723,7 @@ export function KpiTableEditor({
                         colSpan={6}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        {t("tailan_clickFetchHint")} 
+                        {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
@@ -1974,7 +1975,7 @@ export function KpiTableEditor({
                         colSpan={5}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        {t("tailan_clickFetchHint")} 
+                        {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
@@ -1990,7 +1991,9 @@ export function KpiTableEditor({
                           onChange={(e) =>
                             updateSection33Row(si, ri, "title", e.target.value)
                           }
-                          placeholder={t("tailan_dataProcessingNamePlaceholder")}
+                          placeholder={t(
+                            "tailan_dataProcessingNamePlaceholder",
+                          )}
                           className={taCls}
                         />
                       </td>
@@ -2128,7 +2131,7 @@ export function KpiTableEditor({
                         colSpan={5}
                         className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
                       >
-                        {t("tailan_clickFetchHint")} 
+                        {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
@@ -2611,15 +2614,24 @@ export function KpiTableEditor({
                       <tr key={ri} className="border-b border-slate-700/30">
                         {(
                           [
-                            ["employeeName", t("tailan_s43employeePlaceholder")],
+                            [
+                              "employeeName",
+                              t("tailan_s43employeePlaceholder"),
+                            ],
                             ["training", t("tailan_s43trainingPlaceholder")],
                             ["organizer", t("tailan_s43organizerPlaceholder")],
                             ["type", t("tailan_s43typePlaceholder")],
                             ["date", t("tailan_s43datePlaceholder")],
                             ["format", t("tailan_s43formatPlaceholder")],
                             ["hours", t("tailan_s43hoursPlaceholder")],
-                            ["meetsAuditGoal", t("tailan_s43meetsGoalPlaceholder")],
-                            ["sharedKnowledge", t("tailan_s43sharedPlaceholder")],
+                            [
+                              "meetsAuditGoal",
+                              t("tailan_s43meetsGoalPlaceholder"),
+                            ],
+                            [
+                              "sharedKnowledge",
+                              t("tailan_s43sharedPlaceholder"),
+                            ],
                           ] as [keyof Section43Row, string][]
                         ).map(([field, ph]) => (
                           <td

@@ -87,7 +87,8 @@ export default function TailanPage() {
           {/* quarter badge */}
           <div className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1 mb-4 ml-2">
             <span className="text-blue-300 text-xs font-medium tracking-wide">
-              {year} · {language === "en" ? `Q${quarter}` : `${qLabel}-р улирал`}
+              {year} ·{" "}
+              {language === "en" ? `Q${quarter}` : `${qLabel}-р улирал`}
             </span>
           </div>
 

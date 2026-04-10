@@ -268,177 +268,200 @@ export default function AdminsPage() {
         }
       />
       <div className="p-6">
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { label: "Нийт админ", value: admins.length, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
-          { label: "Супер админ", value: superAdminCount, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
-          { label: "Саб админ", value: subAdminCount, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
-        ].map((stat) => (
-          <div key={stat.label} className={`rounded-xl border px-4 py-3 ${stat.bg}`}>
-            <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {[
+            {
+              label: "Нийт админ",
+              value: admins.length,
+              color: "text-blue-400",
+              bg: "bg-blue-500/10 border-blue-500/20",
+            },
+            {
+              label: "Супер админ",
+              value: superAdminCount,
+              color: "text-amber-400",
+              bg: "bg-amber-500/10 border-amber-500/20",
+            },
+            {
+              label: "Саб админ",
+              value: subAdminCount,
+              color: "text-emerald-400",
+              bg: "bg-emerald-500/10 border-emerald-500/20",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className={`rounded-xl border px-4 py-3 ${stat.bg}`}
+            >
+              <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
+              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 text-red-400 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {error}
           </div>
-        ))}
-      </div>
+        )}
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 text-red-400 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
+        {/* Admin list */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <AnimatePresence>
+              {admins.map((admin, i) => {
+                const isSelf = admin.id === user?.id;
+                const isExpanded = expandedAdmin === admin.id;
+                const toolNames = (admin.grantableTools ?? []).map(
+                  (tid) => ALL_TOOLS.find((t) => t.id === tid)?.name ?? tid,
+                );
 
-      {/* Admin list */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <AnimatePresence>
-            {admins.map((admin, i) => {
-              const isSelf = admin.id === user?.id;
-              const isExpanded = expandedAdmin === admin.id;
-              const toolNames = (admin.grantableTools ?? []).map(
-                (tid) => ALL_TOOLS.find((t) => t.id === tid)?.name ?? tid,
-              );
-
-              return (
-                <motion.div
-                  key={admin.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"
-                >
-                  <div className="p-4 flex items-center gap-4">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                        admin.isSuperAdmin
-                          ? "bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/40"
-                          : "bg-emerald-500/20 text-emerald-400"
-                      }`}
-                    >
-                      {(admin.name ?? admin.userId ?? "?")
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-white font-medium">
-                          {admin.name || admin.userId}
-                        </span>
-                        {admin.isSuperAdmin ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                            Супер админ
+                return (
+                  <motion.div
+                    key={admin.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"
+                  >
+                    <div className="p-4 flex items-center gap-4">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                          admin.isSuperAdmin
+                            ? "bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/40"
+                            : "bg-emerald-500/20 text-emerald-400"
+                        }`}
+                      >
+                        {(admin.name ?? admin.userId ?? "?")
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-white font-medium">
+                            {admin.name || admin.userId}
                           </span>
-                        ) : (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            Саб админ
-                          </span>
-                        )}
-                        {isSelf && (
-                          <span className="bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">
-                            Та
-                          </span>
+                          {admin.isSuperAdmin ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              Супер админ
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              Саб админ
+                            </span>
+                          )}
+                          {isSelf && (
+                            <span className="bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">
+                              Та
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-slate-400 text-sm truncate">
+                          {admin.userId}
+                        </p>
+                        {!admin.isSuperAdmin && (
+                          <button
+                            onClick={() =>
+                              setExpandedAdmin(isExpanded ? null : admin.id)
+                            }
+                            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 mt-0.5 transition-colors"
+                          >
+                            {toolNames.length > 0
+                              ? `${toolNames.length} хэрэгсэл олгох эрхтэй`
+                              : "Хэрэгсэл тохируулаагүй"}
+                            {isExpanded ? (
+                              <ChevronUp className="w-3 h-3" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3" />
+                            )}
+                          </button>
                         )}
                       </div>
-                      <p className="text-slate-400 text-sm truncate">
-                        {admin.userId}
-                      </p>
-                      {!admin.isSuperAdmin && (
-                        <button
-                          onClick={() => setExpandedAdmin(isExpanded ? null : admin.id)}
-                          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 mt-0.5 transition-colors"
-                        >
-                          {toolNames.length > 0
-                            ? `${toolNames.length} хэрэгсэл олгох эрхтэй`
-                            : "Хэрэгсэл тохируулаагүй"}
-                          {isExpanded ? (
-                            <ChevronUp className="w-3 h-3" />
-                          ) : (
-                            <ChevronDown className="w-3 h-3" />
+                      {isSuperAdmin && !isSelf && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {!admin.isSuperAdmin && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                setEditTarget(admin);
+                                setEditTools(admin.grantableTools ?? []);
+                              }}
+                              className="text-xs text-slate-400 hover:text-emerald-400 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition-colors border border-slate-800"
+                            >
+                              Эрх
+                            </motion.button>
                           )}
-                        </button>
-                      )}
-                    </div>
-                    {isSuperAdmin && !isSelf && (
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {!admin.isSuperAdmin && (
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => { setEditTarget(admin); setEditTools(admin.grantableTools ?? []); }}
-                            className="text-xs text-slate-400 hover:text-emerald-400 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition-colors border border-slate-800"
+                            onClick={() => handleToggleSuperAdmin(admin)}
+                            className={`text-xs px-2 py-1 rounded-lg transition-colors border ${
+                              admin.isSuperAdmin
+                                ? "text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                                : "text-slate-400 border-slate-800 hover:text-amber-400 hover:border-amber-500/30"
+                            }`}
                           >
-                            Эрх
+                            {admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
                           </motion.button>
-                        )}
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleToggleSuperAdmin(admin)}
-                          className={`text-xs px-2 py-1 rounded-lg transition-colors border ${
-                            admin.isSuperAdmin
-                              ? "text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                              : "text-slate-400 border-slate-800 hover:text-amber-400 hover:border-amber-500/30"
-                          }`}
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setRemoveTarget(admin)}
+                            className="text-xs text-slate-400 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-slate-800"
+                          >
+                            Хасах
+                          </motion.button>
+                        </div>
+                      )}
+                    </div>
+                    <AnimatePresence>
+                      {isExpanded && !admin.isSuperAdmin && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="border-t border-slate-800 px-4 pb-3 overflow-hidden"
                         >
-                          {admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setRemoveTarget(admin)}
-                          className="text-xs text-slate-400 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-slate-800"
-                        >
-                          Хасах
-                        </motion.button>
-                      </div>
-                    )}
-                  </div>
-                  <AnimatePresence>
-                    {isExpanded && !admin.isSuperAdmin && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-slate-800 px-4 pb-3 overflow-hidden"
-                      >
-                        {toolNames.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5 pt-3">
-                            {toolNames.map((name) => (
-                              <span
-                                key={name}
-                                className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full"
-                              >
-                                {name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-slate-600 text-xs pt-3">
-                            Ямар ч хэрэгсэл тохируулаагүй байна.
-                          </p>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-          {admins.length === 0 && (
-            <div className="text-center py-16 text-slate-600 text-sm">
-              Одоогоор админ бүртгэгдээгүй байна
-            </div>
-          )}
-        </div>
-      )}
-
-      </div>{/* /p-6 */}
+                          {toolNames.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5 pt-3">
+                              {toolNames.map((name) => (
+                                <span
+                                  key={name}
+                                  className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full"
+                                >
+                                  {name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-slate-600 text-xs pt-3">
+                              Ямар ч хэрэгсэл тохируулаагүй байна.
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+            {admins.length === 0 && (
+              <div className="text-center py-16 text-slate-600 text-sm">
+                Одоогоор админ бүртгэгдээгүй байна
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {/* /p-6 */}
 
       {/* Add Admin Sheet */}
       <AnimatePresence>
@@ -523,10 +546,7 @@ export default function AdminsPage() {
                     Роль
                   </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {([
-                      "sub",
-                      "super",
-                    ] as const).map((role) => (
+                    {(["sub", "super"] as const).map((role) => (
                       <button
                         key={role}
                         onClick={() => setSelectedRole(role)}
@@ -623,7 +643,9 @@ export default function AdminsPage() {
                   disabled={editLoading}
                   className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-colors"
                 >
-                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {editLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : null}
                   Хадгалах
                 </motion.button>
               </div>

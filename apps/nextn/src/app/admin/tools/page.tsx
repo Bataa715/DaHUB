@@ -2,12 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Select,
@@ -174,7 +169,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "alert_box",
     name: "Alert Box",
-    description: "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, улаан тугийн мэдэгдэл",
+    description:
+      "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, улаан тугийн мэдэгдэл",
     icon: BellDot,
     color: "from-red-500 to-rose-500",
     gradient: "bg-gradient-to-br from-red-500/20 to-rose-500/20",
@@ -396,7 +392,9 @@ export default function AdminToolsPage() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <Shield className="w-10 h-10 mx-auto text-slate-600 mb-3" />
-          <p className="text-slate-500 text-sm">Та энэ хуудсыг үзэх эрхгүй байна.</p>
+          <p className="text-slate-500 text-sm">
+            Та энэ хуудсыг үзэх эрхгүй байна.
+          </p>
         </div>
       </div>
     );
@@ -405,7 +403,11 @@ export default function AdminToolsPage() {
   return (
     <div className="min-h-screen bg-slate-950">
       <AdminPageHeader
-        icon={<div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-md"><Wrench className="w-3.5 h-3.5 text-white" /></div>}
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-md">
+            <Wrench className="w-3.5 h-3.5 text-white" />
+          </div>
+        }
         title="Хэрэгсэл - Эрх удирдах"
       />
 
@@ -433,7 +435,9 @@ export default function AdminToolsPage() {
           {/* ── Чөлөөт хэрэгслүүд ── */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Чөлөөт</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                Чөлөөт
+              </span>
               <div className="flex-1 h-px bg-slate-800" />
             </div>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
@@ -441,21 +445,35 @@ export default function AdminToolsPage() {
                 .filter((t) => t.category === "free")
                 .map((tool) => {
                   const usersWithAccess = getUsersWithAccess(tool.id);
-                  const pct = users.length > 0 ? Math.round((usersWithAccess.length / users.length) * 100) : 0;
+                  const pct =
+                    users.length > 0
+                      ? Math.round(
+                          (usersWithAccess.length / users.length) * 100,
+                        )
+                      : 0;
                   return (
                     <button
                       key={tool.id}
                       onClick={() => handleToolSelect(tool)}
                       className="group text-left bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-xl p-4 transition-colors"
                     >
-                      <p className="text-sm font-medium text-white mb-1 leading-snug">{tool.name}</p>
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">{tool.description}</p>
+                      <p className="text-sm font-medium text-white mb-1 leading-snug">
+                        {tool.name}
+                      </p>
+                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">
+                        {tool.description}
+                      </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">{usersWithAccess.length} хэрэглэгч</span>
+                        <span className="text-xs text-slate-500">
+                          {usersWithAccess.length} хэрэглэгч
+                        </span>
                         <span className="text-xs text-slate-600">{pct}%</span>
                       </div>
                       <div className="mt-2 h-0.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-slate-600 transition-all" style={{ width: `${pct}%` }} />
+                        <div
+                          className="h-full bg-slate-600 transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                     </button>
                   );
@@ -466,7 +484,9 @@ export default function AdminToolsPage() {
           {/* ── Ажлын хэрэгслүүд ── */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ажлын</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                Ажлын
+              </span>
               <div className="flex-1 h-px bg-slate-800" />
             </div>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
@@ -474,17 +494,28 @@ export default function AdminToolsPage() {
                 .filter((t) => t.category === "work")
                 .map((tool) => {
                   const usersWithAccess = getUsersWithAccess(tool.id);
-                  const pct = users.length > 0 ? Math.round((usersWithAccess.length / users.length) * 100) : 0;
+                  const pct =
+                    users.length > 0
+                      ? Math.round(
+                          (usersWithAccess.length / users.length) * 100,
+                        )
+                      : 0;
                   return (
                     <button
                       key={tool.id}
                       onClick={() => handleToolSelect(tool)}
                       className="group text-left bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-xl p-4 transition-colors"
                     >
-                      <p className="text-sm font-medium text-white mb-1 leading-snug">{tool.name}</p>
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">{tool.description}</p>
+                      <p className="text-sm font-medium text-white mb-1 leading-snug">
+                        {tool.name}
+                      </p>
+                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">
+                        {tool.description}
+                      </p>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-slate-500">{usersWithAccess.length} хэрэглэгч</span>
+                        <span className="text-xs text-slate-500">
+                          {usersWithAccess.length} хэрэглэгч
+                        </span>
                         {tool.adminPath ? (
                           <Link
                             href={tool.adminPath}
@@ -498,7 +529,10 @@ export default function AdminToolsPage() {
                         )}
                       </div>
                       <div className="mt-2 h-0.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-slate-600 transition-all" style={{ width: `${pct}%` }} />
+                        <div
+                          className="h-full bg-slate-600 transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                     </button>
                   );
@@ -566,12 +600,17 @@ export default function AdminToolsPage() {
                 </TabsList>
 
                 {/* Эрхтэй хэрэглэгчид */}
-                <TabsContent value="current" className="flex-1 overflow-hidden mt-0">
+                <TabsContent
+                  value="current"
+                  className="flex-1 overflow-hidden mt-0"
+                >
                   <ScrollArea className="h-[calc(100vh-260px)]">
                     {getUsersWithAccess(selectedTool.id).length === 0 ? (
                       <div className="text-center py-16 text-slate-600">
                         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">Одоогоор эрхтэй хэрэглэгч байхгүй</p>
+                        <p className="text-sm">
+                          Одоогоор эрхтэй хэрэглэгч байхгүй
+                        </p>
                         <button
                           onClick={() => setActiveTab("grant")}
                           className="mt-3 text-xs text-slate-400 hover:text-white transition-colors underline underline-offset-2"
@@ -582,32 +621,40 @@ export default function AdminToolsPage() {
                     ) : (
                       <div className="divide-y divide-slate-800/60">
                         <AnimatePresence>
-                          {getUsersWithAccess(selectedTool.id).map((user, index) => (
-                            <motion.div
-                              key={user.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ delay: index * 0.03 }}
-                              className="flex items-center justify-between px-5 py-3 group hover:bg-slate-900/60 transition-colors"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-                                  {user.name.charAt(0)}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                                  <p className="text-xs text-slate-500 truncate">{user.department}</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => revokeAccess(user.id)}
-                                className="text-xs text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2"
+                          {getUsersWithAccess(selectedTool.id).map(
+                            (user, index) => (
+                              <motion.div
+                                key={user.id}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ delay: index * 0.03 }}
+                                className="flex items-center justify-between px-5 py-3 group hover:bg-slate-900/60 transition-colors"
                               >
-                                Хасах
-                              </button>
-                            </motion.div>
-                          ))}
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div
+                                    className={`w-8 h-8 rounded-lg bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}
+                                  >
+                                    {user.name.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">
+                                      {user.name}
+                                    </p>
+                                    <p className="text-xs text-slate-500 truncate">
+                                      {user.department}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => revokeAccess(user.id)}
+                                  className="text-xs text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2"
+                                >
+                                  Хасах
+                                </button>
+                              </motion.div>
+                            ),
+                          )}
                         </AnimatePresence>
                       </div>
                     )}
@@ -615,13 +662,18 @@ export default function AdminToolsPage() {
                 </TabsContent>
 
                 {/* Эрх олгох */}
-                <TabsContent value="grant" className="flex-1 overflow-hidden mt-0 flex flex-col">
+                <TabsContent
+                  value="grant"
+                  className="flex-1 overflow-hidden mt-0 flex flex-col"
+                >
                   {/* Quick actions */}
                   <div className="px-5 py-3 border-b border-slate-800 space-y-2">
                     <div className="flex gap-2">
                       <button
                         onClick={selectAllUsers}
-                        disabled={getUsersWithoutAccess(selectedTool.id).length === 0}
+                        disabled={
+                          getUsersWithoutAccess(selectedTool.id).length === 0
+                        }
                         className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Бүгдийг сонгох
@@ -667,33 +719,41 @@ export default function AdminToolsPage() {
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-800/60">
-                        {getUsersWithoutAccess(selectedTool.id).map((user, index) => (
-                          <motion.div
-                            key={user.id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: index * 0.02 }}
-                            className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-                              selectedUsers.has(user.id)
-                                ? "bg-slate-800"
-                                : "hover:bg-slate-900/60"
-                            }`}
-                            onClick={() => toggleUserSelection(user.id)}
-                          >
-                            <Checkbox
-                              checked={selectedUsers.has(user.id)}
-                              onCheckedChange={() => toggleUserSelection(user.id)}
-                              className="border-slate-700 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-slate-900 shrink-0"
-                            />
-                            <div className="w-7 h-7 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-medium shrink-0">
-                              {user.name.charAt(0)}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm text-white truncate">{user.name}</p>
-                              <p className="text-xs text-slate-500 truncate">{user.department}</p>
-                            </div>
-                          </motion.div>
-                        ))}
+                        {getUsersWithoutAccess(selectedTool.id).map(
+                          (user, index) => (
+                            <motion.div
+                              key={user.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: index * 0.02 }}
+                              className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
+                                selectedUsers.has(user.id)
+                                  ? "bg-slate-800"
+                                  : "hover:bg-slate-900/60"
+                              }`}
+                              onClick={() => toggleUserSelection(user.id)}
+                            >
+                              <Checkbox
+                                checked={selectedUsers.has(user.id)}
+                                onCheckedChange={() =>
+                                  toggleUserSelection(user.id)
+                                }
+                                className="border-slate-700 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-slate-900 shrink-0"
+                              />
+                              <div className="w-7 h-7 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-medium shrink-0">
+                                {user.name.charAt(0)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm text-white truncate">
+                                  {user.name}
+                                </p>
+                                <p className="text-xs text-slate-500 truncate">
+                                  {user.department}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ),
+                        )}
                       </div>
                     )}
                   </ScrollArea>

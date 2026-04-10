@@ -75,17 +75,29 @@ export default function SettingsPage() {
     e.preventDefault();
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast({ title: t("error"), description: t("passwordFillAll"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("passwordFillAll"),
+        variant: "destructive",
+      });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast({ title: t("error"), description: t("passwordMismatch"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("passwordMismatch"),
+        variant: "destructive",
+      });
       return;
     }
 
     if (!validatePassword(newPassword)) {
-      toast({ title: t("error"), description: t("passwordInvalid"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("passwordInvalid"),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -197,12 +209,19 @@ export default function SettingsPage() {
     } catch (error: any) {
       console.error("Error uploading profile image:", error);
       let errorMessage = t("imageError");
-      if (error.response?.status === 413 || error.message?.includes("too large")) {
+      if (
+        error.response?.status === 413 ||
+        error.message?.includes("too large")
+      ) {
         errorMessage = t("imageTooBig");
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
-      toast({ title: t("error"), description: errorMessage, variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsUploadingImage(false);
     }
@@ -220,7 +239,11 @@ export default function SettingsPage() {
       await refreshUser();
     } catch (error: any) {
       console.error("Error removing profile image:", error);
-      toast({ title: t("error"), description: t("imageError"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("imageError"),
+        variant: "destructive",
+      });
     } finally {
       setIsUploadingImage(false);
     }
@@ -247,7 +270,6 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-
       <div className="relative z-10 container mx-auto px-4 py-8">
         <div className="mb-6">
           <BackButton />
@@ -262,7 +284,9 @@ export default function SettingsPage() {
             <SettingsIcon className="w-8 h-8 text-foreground" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{t("settingsTitle")}</h1>
+            <h1 className="text-3xl font-bold text-foreground">
+              {t("settingsTitle")}
+            </h1>
             <p className="text-muted-foreground flex items-center gap-2">
               <Star className="w-4 h-4 text-purple-500" />
               {t("settingsSubtitle")}
@@ -306,8 +330,12 @@ export default function SettingsPage() {
                       )}
                       {user.name}
                     </p>
-                    <p className="text-sm text-muted-foreground">{user.userId}</p>
-                    <p className="text-xs text-muted-foreground/70">{user.department}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {user.userId}
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      {user.department}
+                    </p>
                   </div>
                 </div>
 
@@ -404,7 +432,10 @@ export default function SettingsPage() {
                 <form onSubmit={handlePasswordChange} className="space-y-4">
                   {/* Current Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword" className="text-foreground/80">
+                    <Label
+                      htmlFor="currentPassword"
+                      className="text-foreground/80"
+                    >
                       {t("currentPassword")}
                     </Label>
                     <div className="relative">
@@ -462,7 +493,10 @@ export default function SettingsPage() {
 
                   {/* Confirm Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-foreground/80">
+                    <Label
+                      htmlFor="confirmPassword"
+                      className="text-foreground/80"
+                    >
                       {t("confirmPassword")}
                     </Label>
                     <div className="relative">
@@ -498,7 +532,9 @@ export default function SettingsPage() {
                     {passwordRequirements.map((req, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span className="text-xs text-muted-foreground">{req}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {req}
+                        </span>
                       </div>
                     ))}
                   </div>

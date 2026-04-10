@@ -76,7 +76,12 @@ const Header = () => {
   // Үндсэн menu
   const regularLinks = [
     { href: "/", label: t("navHome"), icon: Home, public: true },
-    { href: "/departments", label: t("navDepartments"), icon: Building2, public: true },
+    {
+      href: "/departments",
+      label: t("navDepartments"),
+      icon: Building2,
+      public: true,
+    },
     { href: "/news", label: t("navNews"), icon: Newspaper, public: true },
     { href: "/tools", label: t("navTools"), icon: Wrench, public: true },
   ];
@@ -274,14 +279,28 @@ const Header = () => {
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
                       <Globe className="mr-2 h-4 w-4" />
-                      <span>{language === "mn" ? "🇲🇳 Монгол" : "🇺🇸 English"}</span>
+                      <span>
+                        {language === "mn" ? "🇲🇳 Монгол" : "🇺🇸 English"}
+                      </span>
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => setLanguage("mn")} className={language === "mn" ? "bg-primary/15" : ""}>
-                        🇲🇳 Монгол {language === "mn" && <Check className="ml-auto h-4 w-4 text-primary" />}
+                      <DropdownMenuItem
+                        onClick={() => setLanguage("mn")}
+                        className={language === "mn" ? "bg-primary/15" : ""}
+                      >
+                        🇲🇳 Монгол{" "}
+                        {language === "mn" && (
+                          <Check className="ml-auto h-4 w-4 text-primary" />
+                        )}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setLanguage("en")} className={language === "en" ? "bg-primary/15" : ""}>
-                        🇺🇸 English {language === "en" && <Check className="ml-auto h-4 w-4 text-primary" />}
+                      <DropdownMenuItem
+                        onClick={() => setLanguage("en")}
+                        className={language === "en" ? "bg-primary/15" : ""}
+                      >
+                        🇺🇸 English{" "}
+                        {language === "en" && (
+                          <Check className="ml-auto h-4 w-4 text-primary" />
+                        )}
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>

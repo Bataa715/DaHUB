@@ -31,34 +31,62 @@ export default function AdminChangePasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast({ title: "Алдаа", description: "Бүх талбарыг бөглөнэ үү", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Бүх талбарыг бөглөнэ үү",
+        variant: "destructive",
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast({ title: "Алдаа", description: "Шинэ нууц үг таарахгүй байна", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Шинэ нууц үг таарахгүй байна",
+        variant: "destructive",
+      });
       return;
     }
     if (!isValid) {
-      toast({ title: "Алдаа", description: "Нууц үг шаардлагыг хангахгүй байна", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Нууц үг шаардлагыг хангахгүй байна",
+        variant: "destructive",
+      });
       return;
     }
     setIsLoading(true);
     try {
       await api.post("/auth/change-password", { currentPassword, newPassword });
       toast({ title: "Амжилттай", description: "Нууц үг амжилттай солигдлоо" });
-      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (error: any) {
-      toast({ title: "Алдаа", description: error.response?.data?.message || "Нууц үг солихоор алдаа гарлаа", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description:
+          error.response?.data?.message || "Нууц үг солихоор алдаа гарлаа",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const PasswordInput = ({
-    id, value, show, onToggle, onChange, placeholder,
+    id,
+    value,
+    show,
+    onToggle,
+    onChange,
+    placeholder,
   }: {
-    id: string; value: string; show: boolean;
-    onToggle: () => void; onChange: (v: string) => void; placeholder: string;
+    id: string;
+    value: string;
+    show: boolean;
+    onToggle: () => void;
+    onChange: (v: string) => void;
+    placeholder: string;
   }) => (
     <div className="relative">
       <Input
@@ -88,43 +116,75 @@ export default function AdminChangePasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="currentPassword" className="text-slate-400 text-xs">Одоогийн нууц үг</Label>
+              <Label
+                htmlFor="currentPassword"
+                className="text-slate-400 text-xs"
+              >
+                Одоогийн нууц үг
+              </Label>
               <PasswordInput
-                id="currentPassword" value={currentPassword} show={showCurrentPassword}
+                id="currentPassword"
+                value={currentPassword}
+                show={showCurrentPassword}
                 onToggle={() => setShowCurrentPassword(!showCurrentPassword)}
-                onChange={setCurrentPassword} placeholder="Одоогийн нууц үг"
+                onChange={setCurrentPassword}
+                placeholder="Одоогийн нууц үг"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="newPassword" className="text-slate-400 text-xs">Шинэ нууц үг</Label>
+              <Label htmlFor="newPassword" className="text-slate-400 text-xs">
+                Шинэ нууц үг
+              </Label>
               <PasswordInput
-                id="newPassword" value={newPassword} show={showNewPassword}
+                id="newPassword"
+                value={newPassword}
+                show={showNewPassword}
                 onToggle={() => setShowNewPassword(!showNewPassword)}
-                onChange={setNewPassword} placeholder="Шинэ нууц үг"
+                onChange={setNewPassword}
+                placeholder="Шинэ нууц үг"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-slate-400 text-xs">Нууц үг давтах</Label>
+              <Label
+                htmlFor="confirmPassword"
+                className="text-slate-400 text-xs"
+              >
+                Нууц үг давтах
+              </Label>
               <PasswordInput
-                id="confirmPassword" value={confirmPassword} show={showConfirmPassword}
+                id="confirmPassword"
+                value={confirmPassword}
+                show={showConfirmPassword}
                 onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                onChange={setConfirmPassword} placeholder="Нууц үг давтах"
+                onChange={setConfirmPassword}
+                placeholder="Нууц үг давтах"
               />
-              {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-                <p className="text-xs text-red-400">Нууц үг таарахгүй байна</p>
-              )}
+              {confirmPassword.length > 0 &&
+                newPassword !== confirmPassword && (
+                  <p className="text-xs text-red-400">
+                    Нууц үг таарахгүй байна
+                  </p>
+                )}
             </div>
           </div>
 
           {newPassword.length > 0 && (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-              <p className="text-xs text-slate-500 font-medium mb-2">Шаардлага</p>
+              <p className="text-xs text-slate-500 font-medium mb-2">
+                Шаардлага
+              </p>
               {requirements.map((r) => (
                 <div key={r.label} className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${r.ok ? "bg-emerald-400" : "bg-slate-700"}`} />
-                  <span className={`text-xs ${r.ok ? "text-emerald-400" : "text-slate-500"}`}>{r.label}</span>
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${r.ok ? "bg-emerald-400" : "bg-slate-700"}`}
+                  />
+                  <span
+                    className={`text-xs ${r.ok ? "text-emerald-400" : "text-slate-500"}`}
+                  >
+                    {r.label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -133,7 +193,11 @@ export default function AdminChangePasswordPage() {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => { setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); }}
+              onClick={() => {
+                setCurrentPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
+              }}
               className="flex-1 py-2.5 text-sm text-slate-400 hover:text-white border border-slate-800 rounded-xl hover:bg-slate-900 transition-colors"
             >
               Цэвэрлэх

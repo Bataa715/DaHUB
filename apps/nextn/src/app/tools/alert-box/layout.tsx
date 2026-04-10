@@ -1,7 +1,11 @@
-import './alert-box.css';
-import ABSidebar from './_components/ABSidebar';
+import "./alert-box.css";
+import ABSidebar from "./_components/ABSidebar";
 
-export default function AlertBoxLayout({ children }: { children: React.ReactNode }) {
+export default function AlertBoxLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="ab-theme flex min-h-screen">
       <ABSidebar />

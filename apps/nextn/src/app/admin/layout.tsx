@@ -8,11 +8,36 @@ import { Shield, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const BASE_NAV = [
-  { href: "/admin/users", label: "Хэрэглэгчид", superOnly: false, section: "main" },
-  { href: "/admin/departments", label: "Хэлтсүүд", superOnly: false, section: "main" },
-  { href: "/admin/tools", label: "Хэрэгслүүд", superOnly: false, section: "main" },
-  { href: "/admin/change-password", label: "Нууц үг солих", superOnly: false, section: "mgmt" },
-  { href: "/admin/admins", label: "Админ удирдлага", superOnly: true, section: "mgmt" },
+  {
+    href: "/admin/users",
+    label: "Хэрэглэгчид",
+    superOnly: false,
+    section: "main",
+  },
+  {
+    href: "/admin/departments",
+    label: "Хэлтсүүд",
+    superOnly: false,
+    section: "main",
+  },
+  {
+    href: "/admin/tools",
+    label: "Хэрэгслүүд",
+    superOnly: false,
+    section: "main",
+  },
+  {
+    href: "/admin/change-password",
+    label: "Нууц үг солих",
+    superOnly: false,
+    section: "mgmt",
+  },
+  {
+    href: "/admin/admins",
+    label: "Админ удирдлага",
+    superOnly: true,
+    section: "mgmt",
+  },
 ];
 
 function AdminSidebar({
@@ -75,9 +100,7 @@ function AdminSidebar({
 
         {/* Удирдлага section */}
         <div className="pt-3 pb-1">
-          <div className="flex items-center gap-2 px-3 mb-1">
-
-          </div>
+          <div className="flex items-center gap-2 px-3 mb-1"></div>
         </div>
         {mgmtNav.map((item) => (
           <NavItem key={item.href} item={item} />

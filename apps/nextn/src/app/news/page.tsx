@@ -283,7 +283,8 @@ function ChatItem({
             {item.authorName || t("newsDefaultAuthor")}
           </p>
           <p className="text-muted-foreground/70 text-xs whitespace-nowrap">
-            {formatDate(item.createdAt)} · {calcReadTime(item.content)} {t("minRead")}
+            {formatDate(item.createdAt)} · {calcReadTime(item.content)}{" "}
+            {t("minRead")}
           </p>
         </div>
       </div>
@@ -354,7 +355,12 @@ export default function NewsPage() {
 
   // Create modal state
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ title: "", content: "", category: "Ерөнхий", imageUrl: "" });
+  const [createForm, setCreateForm] = useState({
+    title: "",
+    content: "",
+    category: "Ерөнхий",
+    imageUrl: "",
+  });
   const [createLoading, setCreateLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -366,7 +372,9 @@ export default function NewsPage() {
   useEffect(() => {
     setMounted(true);
     fetchNews();
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   const fetchNews = async () => {
@@ -385,7 +393,10 @@ export default function NewsPage() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert("Max 2MB"); return; }
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Max 2MB");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
@@ -401,7 +412,12 @@ export default function NewsPage() {
     try {
       await api.post("/news", createForm);
       setShowCreate(false);
-      setCreateForm({ title: "", content: "", category: "Ерөнхий", imageUrl: "" });
+      setCreateForm({
+        title: "",
+        content: "",
+        category: "Ерөнхий",
+        imageUrl: "",
+      });
       setImagePreview(null);
       fetchNews();
     } catch (err) {
@@ -419,8 +435,11 @@ export default function NewsPage() {
     try {
       const res = await api.get("/news/stats/top-publishers");
       setTopPublishers(res.data);
-    } catch { setTopPublishers([]); }
-    finally { setStatsLoading(false); }
+    } catch {
+      setTopPublishers([]);
+    } finally {
+      setStatsLoading(false);
+    }
   };
 
   // --- Delete own news ---
@@ -496,9 +515,7 @@ export default function NewsPage() {
         <h1 className="text-3xl font-black text-foreground tracking-tight">
           {t("newsTitle")}
         </h1>
-        <p className="text-muted-foreground text-sm">
-          {t("newsSubtitle")}
-        </p>
+        <p className="text-muted-foreground text-sm">{t("newsSubtitle")}</p>
       </motion.div>
 
       {/* Hero */}
@@ -507,7 +524,9 @@ export default function NewsPage() {
       {carousel.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-foreground font-bold text-xl">{t("latestNews")}</h2>
+            <h2 className="text-foreground font-bold text-xl">
+              {t("latestNews")}
+            </h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => scroll("left")}
@@ -552,7 +571,9 @@ export default function NewsPage() {
       {/* Chat Feed */}
       {feed.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-foreground font-bold text-xl">{t("otherNews")}</h2>
+          <h2 className="text-foreground font-bold text-xl">
+            {t("otherNews")}
+          </h2>
           <div className="space-y-5">
             {feed.map((item, i) => (
               <ChatItem
@@ -580,7 +601,10 @@ export default function NewsPage() {
           whileTap={{ scale: 0.95 }}
           onClick={openStats}
           className="w-11 h-11 rounded-full shadow-lg flex items-center justify-center transition-colors"
-          style={{ background: "rgba(99,102,241,0.8)", backdropFilter: "blur(8px)" }}
+          style={{
+            background: "rgba(99,102,241,0.8)",
+            backdropFilter: "blur(8px)",
+          }}
           title={t("newsStatsTitle")}
         >
           <BarChart3 className="w-5 h-5 text-white" />
@@ -591,7 +615,10 @@ export default function NewsPage() {
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowCreate(true)}
           className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-colors"
-          style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)", boxShadow: "0 4px 20px rgba(99,102,241,0.4)" }}
+          style={{
+            background: "linear-gradient(135deg, #6366f1, #a855f7)",
+            boxShadow: "0 4px 20px rgba(99,102,241,0.4)",
+          }}
           title={t("newsCreateTitle")}
         >
           <Plus className="w-7 h-7 text-white" />
@@ -599,313 +626,445 @@ export default function NewsPage() {
       </div>
 
       {/* ─── Create News Modal ─── */}
-      {mounted && showCreate && createPortal(
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}
-        >
+      {mounted &&
+        showCreate &&
+        createPortal(
           <motion.div
-            initial={{ scale: 0.95, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            className="w-full max-w-lg rounded-2xl overflow-hidden"
-            style={{ background: "rgba(15,18,35,0.97)", border: "1px solid rgba(99,102,241,0.2)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(6px)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowCreate(false);
+            }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
-              <h2 className="text-white font-bold text-lg">{t("newsCreateTitle")}</h2>
-              <button onClick={() => setShowCreate(false)} className="text-white/40 hover:text-white transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            {/* Body */}
-            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-              {/* Title */}
-              <div>
-                <label className="text-white/60 text-xs font-semibold block mb-1.5">{t("newsFormTitle")}</label>
-                <input
-                  type="text"
-                  value={createForm.title}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
-                  className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}
-                  placeholder={t("newsFormTitle")}
-                />
-              </div>
-              {/* Category */}
-              <div>
-                <label className="text-white/60 text-xs font-semibold block mb-1.5">{t("newsFormCategory")}</label>
-                <select
-                  value={createForm.category}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, category: e.target.value }))}
-                  className="w-full rounded-lg px-3 py-2 text-sm text-white"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}
-                >
-                  <option value="Ерөнхий">Ерөнхий</option>
-                  <option value="Мэдэгдэл">Мэдэгдэл</option>
-                  <option value="Үйл явдал">Үйл явдал</option>
-                  <option value="Танилцуулга">Танилцуулга</option>
-                </select>
-              </div>
-              {/* Image upload */}
-              <div>
-                <label className="text-white/60 text-xs font-semibold block mb-1.5">{t("newsFormImage")}</label>
-                {imagePreview ? (
-                  <div className="relative w-full h-40 rounded-lg overflow-hidden mb-2">
-                    <Image src={imagePreview} alt="preview" fill className="object-cover" unoptimized />
-                    <button
-                      onClick={() => { setImagePreview(null); setCreateForm((f) => ({ ...f, imageUrl: "" })); }}
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <label
-                    className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-lg cursor-pointer transition-colors hover:bg-white/5"
-                    style={{ border: "1px dashed rgba(99,102,241,0.3)" }}
-                  >
-                    <Upload className="w-6 h-6 text-white/30" />
-                    <span className="text-white/30 text-xs">{t("newsFormImageHint")}</span>
-                    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleImageUpload} />
-                  </label>
-                )}
-              </div>
-              {/* Content */}
-              <div>
-                <label className="text-white/60 text-xs font-semibold block mb-1.5">{t("newsFormContent")}</label>
-                <textarea
-                  value={createForm.content}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, content: e.target.value }))}
-                  rows={6}
-                  className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}
-                  placeholder={t("newsFormContent")}
-                />
-              </div>
-            </div>
-            {/* Footer */}
-            <div className="px-6 py-4 flex justify-end" style={{ borderTop: "1px solid rgba(99,102,241,0.15)" }}>
-              <button
-                onClick={handleCreate}
-                disabled={createLoading || !createForm.title.trim() || !createForm.content.trim()}
-                className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-all"
-                style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}
-              >
-                {createLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("newsCreateBtn")}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>,
-        document.body
-      )}
-
-      {/* ─── Stats / Leaderboard Modal ─── */}
-      {mounted && showStats && createPortal(
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowStats(false); }}
-        >
-          <motion.div
-            initial={{ scale: 0.95, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            className="w-full max-w-md rounded-2xl overflow-hidden"
-            style={{ background: "rgba(15,18,35,0.97)", border: "1px solid rgba(99,102,241,0.2)" }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-400" />
-                <h2 className="text-white font-bold text-lg">{t("newsStatsTitle")}</h2>
-              </div>
-              <button onClick={() => setShowStats(false)} className="text-white/40 hover:text-white transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            {/* Body */}
-            <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
-              {statsLoading ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
-                </div>
-              ) : topPublishers.length === 0 ? (
-                <p className="text-white/40 text-center py-10 text-sm">{t("newsStatsEmpty")}</p>
-              ) : (
-                <div className="space-y-2">
-                  {topPublishers.map((p: any) => {
-                    const isTop3 = p.rank <= 3;
-                    const medals = ["", "🥇", "🥈", "🥉"];
-                    return (
-                      <div
-                        key={p.authorId}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
-                        style={{
-                          background: isTop3 ? "rgba(99,102,241,0.1)" : "transparent",
-                          border: isTop3 ? "1px solid rgba(99,102,241,0.15)" : "1px solid transparent",
-                        }}
-                      >
-                        <span className="w-8 text-center text-sm font-bold" style={{ color: isTop3 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>
-                          {isTop3 ? medals[p.rank] : p.rank}
-                        </span>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                          <User className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-semibold truncate">{p.authorName}</p>
-                          <p className="text-white/40 text-xs">{p.newsCount} {t("newsStatsCount").toLowerCase()}</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-white/80 text-sm font-bold">{p.totalViews.toLocaleString()}</p>
-                          <p className="text-white/30 text-xs">{t("newsStatsViews").toLowerCase()}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>,
-        document.body
-      )}
-
-      {/* Detail — book/magazine spread (portal to body, AnimatePresence inside) */}
-      {mounted && createPortal(
-        <AnimatePresence>
-          {selectedNews && (
             <motion.div
-              key="news-detail"
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="fixed inset-0 z-[9999] flex"
-            style={{ background: "rgba(4,6,15,1)" }}
-          >
-            {/* ─── LEFT PAGE — Cover image + title ───────────────── */}
-            <motion.div
-              initial={{ x: -30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
-              className="relative hidden md:block w-[44%] flex-shrink-0 h-full overflow-hidden"
-              style={{ borderRight: "1px solid rgba(99,102,241,0.22)" }}
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-lg rounded-2xl overflow-hidden"
+              style={{
+                background: "rgba(15,18,35,0.97)",
+                border: "1px solid rgba(99,102,241,0.2)",
+              }}
             >
-              {/* Background */}
-              {getImageUrl(selectedNews.imageUrl) ? (
-                <Image
-                  src={getImageUrl(selectedNews.imageUrl)!}
-                  alt={selectedNews.title}
-                  fill
-                  unoptimized
-                  className="object-contain"
-                  sizes="50vw"
-                  priority
-                />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 to-slate-900" />
-              )}
-              {/* Overlays — only bottom gradient for text readability */}
-              <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
-
-              {/* Brand label */}
-              <div className="absolute top-6 left-7 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-70" />
-                <span className="text-white/25 text-xs font-mono uppercase tracking-widest">DaHUB News</span>
+              {/* Header */}
+              <div
+                className="flex items-center justify-between px-6 py-4"
+                style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}
+              >
+                <h2 className="text-white font-bold text-lg">
+                  {t("newsCreateTitle")}
+                </h2>
+                <button
+                  onClick={() => setShowCreate(false)}
+                  className="text-white/40 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-
-              {/* Bottom: category + title */}
-              <div className="absolute bottom-0 left-0 right-0 p-8 space-y-3">
-                {(() => {
-                  const cat = getCat(selectedNews.category);
-                  return (
-                    <span className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${cat.bg} ${cat.text}`}>
-                      {selectedNews.category}
-                    </span>
-                  );
-                })()}
-                <h1 className="text-white text-2xl lg:text-3xl font-black leading-tight">
-                  {selectedNews.title}
-                </h1>
+              {/* Body */}
+              <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Title */}
+                <div>
+                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                    {t("newsFormTitle")}
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.title}
+                    onChange={(e) =>
+                      setCreateForm((f) => ({ ...f, title: e.target.value }))
+                    }
+                    className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(99,102,241,0.2)",
+                    }}
+                    placeholder={t("newsFormTitle")}
+                  />
+                </div>
+                {/* Category */}
+                <div>
+                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                    {t("newsFormCategory")}
+                  </label>
+                  <select
+                    value={createForm.category}
+                    onChange={(e) =>
+                      setCreateForm((f) => ({ ...f, category: e.target.value }))
+                    }
+                    className="w-full rounded-lg px-3 py-2 text-sm text-white"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(99,102,241,0.2)",
+                    }}
+                  >
+                    <option value="Ерөнхий">Ерөнхий</option>
+                    <option value="Мэдэгдэл">Мэдэгдэл</option>
+                    <option value="Үйл явдал">Үйл явдал</option>
+                    <option value="Танилцуулга">Танилцуулга</option>
+                  </select>
+                </div>
+                {/* Image upload */}
+                <div>
+                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                    {t("newsFormImage")}
+                  </label>
+                  {imagePreview ? (
+                    <div className="relative w-full h-40 rounded-lg overflow-hidden mb-2">
+                      <Image
+                        src={imagePreview}
+                        alt="preview"
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <button
+                        onClick={() => {
+                          setImagePreview(null);
+                          setCreateForm((f) => ({ ...f, imageUrl: "" }));
+                        }}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-lg cursor-pointer transition-colors hover:bg-white/5"
+                      style={{ border: "1px dashed rgba(99,102,241,0.3)" }}
+                    >
+                      <Upload className="w-6 h-6 text-white/30" />
+                      <span className="text-white/30 text-xs">
+                        {t("newsFormImageHint")}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  )}
+                </div>
+                {/* Content */}
+                <div>
+                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                    {t("newsFormContent")}
+                  </label>
+                  <textarea
+                    value={createForm.content}
+                    onChange={(e) =>
+                      setCreateForm((f) => ({ ...f, content: e.target.value }))
+                    }
+                    rows={6}
+                    className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(99,102,241,0.2)",
+                    }}
+                    placeholder={t("newsFormContent")}
+                  />
+                </div>
+              </div>
+              {/* Footer */}
+              <div
+                className="px-6 py-4 flex justify-end"
+                style={{ borderTop: "1px solid rgba(99,102,241,0.15)" }}
+              >
+                <button
+                  onClick={handleCreate}
+                  disabled={
+                    createLoading ||
+                    !createForm.title.trim() ||
+                    !createForm.content.trim()
+                  }
+                  className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, #6366f1, #a855f7)",
+                  }}
+                >
+                  {createLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    t("newsCreateBtn")
+                  )}
+                </button>
               </div>
             </motion.div>
+          </motion.div>,
+          document.body,
+        )}
 
-            {/* ─── RIGHT PAGE — Article content ──────────────── */}
+      {/* ─── Stats / Leaderboard Modal ─── */}
+      {mounted &&
+        showStats &&
+        createPortal(
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(6px)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowStats(false);
+            }}
+          >
             <motion.div
-              initial={{ x: 30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}
-              className="flex-1 flex flex-col h-full min-w-0"
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-md rounded-2xl overflow-hidden"
+              style={{
+                background: "rgba(15,18,35,0.97)",
+                border: "1px solid rgba(99,102,241,0.2)",
+              }}
             >
-              {/* Nav bar */}
+              {/* Header */}
               <div
-                className="flex-shrink-0 flex items-center gap-3 px-6 h-12 border-b"
-                style={{ borderColor: "rgba(99,102,241,0.18)", background: "rgba(4,6,15,0.95)" }}
+                className="flex items-center justify-between px-6 py-4"
+                style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}
               >
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-400" />
+                  <h2 className="text-white font-bold text-lg">
+                    {t("newsStatsTitle")}
+                  </h2>
+                </div>
                 <button
-                  onClick={closeDetail}
-                  className="flex items-center gap-1.5 text-white/50 hover:text-white transition-colors text-sm"
+                  onClick={() => setShowStats(false)}
+                  className="text-white/40 hover:text-white transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>{t("back") || "Буцах"}</span>
-                </button>
-                <div className="flex-1" />
-                <span className="text-white/20 text-xs hidden sm:block">
-                  {calcReadTime(selectedNews.content)} {t("minuteRead")}
-                </span>
-                {/* Delete button — only if user owns this news */}
-                {user && selectedNews.authorId === user.id && (
-                  <>
-                    <div className="w-px h-4 mx-2" style={{ background: "rgba(99,102,241,0.2)" }} />
-                    <button
-                      onClick={() => handleDelete(selectedNews.id)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      title={t("newsDelete")}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-                <div className="w-px h-4 mx-2" style={{ background: "rgba(99,102,241,0.2)" }} />
-                <button
-                  onClick={closeDetail}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
+              {/* Body */}
+              <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+                {statsLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                  </div>
+                ) : topPublishers.length === 0 ? (
+                  <p className="text-white/40 text-center py-10 text-sm">
+                    {t("newsStatsEmpty")}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {topPublishers.map((p: any) => {
+                      const isTop3 = p.rank <= 3;
+                      const medals = ["", "🥇", "🥈", "🥉"];
+                      return (
+                        <div
+                          key={p.authorId}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
+                          style={{
+                            background: isTop3
+                              ? "rgba(99,102,241,0.1)"
+                              : "transparent",
+                            border: isTop3
+                              ? "1px solid rgba(99,102,241,0.15)"
+                              : "1px solid transparent",
+                          }}
+                        >
+                          <span
+                            className="w-8 text-center text-sm font-bold"
+                            style={{
+                              color: isTop3
+                                ? "#fbbf24"
+                                : "rgba(255,255,255,0.3)",
+                            }}
+                          >
+                            {isTop3 ? medals[p.rank] : p.rank}
+                          </span>
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                            <User className="w-3.5 h-3.5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-semibold truncate">
+                              {p.authorName}
+                            </p>
+                            <p className="text-white/40 text-xs">
+                              {p.newsCount} {t("newsStatsCount").toLowerCase()}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-white/80 text-sm font-bold">
+                              {p.totalViews.toLocaleString()}
+                            </p>
+                            <p className="text-white/30 text-xs">
+                              {t("newsStatsViews").toLowerCase()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>,
+          document.body,
+        )}
 
-              {/* Scrollable content */}
-              <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* Detail — book/magazine spread (portal to body, AnimatePresence inside) */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {selectedNews && (
+              <motion.div
+                key="news-detail"
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="fixed inset-0 z-[9999] flex"
+                style={{ background: "rgba(4,6,15,1)" }}
+              >
+                {/* ─── LEFT PAGE — Cover image + title ───────────────── */}
+                <motion.div
+                  initial={{ x: -30, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
+                  className="relative hidden md:block w-[44%] flex-shrink-0 h-full overflow-hidden"
+                  style={{ borderRight: "1px solid rgba(99,102,241,0.22)" }}
+                >
+                  {/* Background */}
+                  {getImageUrl(selectedNews.imageUrl) ? (
+                    <Image
+                      src={getImageUrl(selectedNews.imageUrl)!}
+                      alt={selectedNews.title}
+                      fill
+                      unoptimized
+                      className="object-contain"
+                      sizes="50vw"
+                      priority
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 to-slate-900" />
+                  )}
+                  {/* Overlays — only bottom gradient for text readability */}
+                  <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
 
-
-
-                {/* Article body */}
-                <div className="max-w-2xl mx-auto px-6 sm:px-10 py-8 pb-16">
-
-                  {/* Desktop: article header on right page */}
-                  <div className="hidden md:block mb-8 pb-8" style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
-                    <div className="flex items-center gap-3 mb-3">
-                      {(() => {
-                        const cat = getCat(selectedNews.category);
-                        return <span className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${cat.bg} ${cat.text}`}>{selectedNews.category}</span>;
-                      })()}
-                      <span className="text-white/30 text-xs flex items-center gap-1">
-                        <Eye className="w-3 h-3" /> {selectedNews.views}
-                      </span>
-                    </div>
-                    <h2 className="text-white/90 text-xl font-bold leading-snug">{selectedNews.title}</h2>
+                  {/* Brand label */}
+                  <div className="absolute top-6 left-7 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-70" />
+                    <span className="text-white/25 text-xs font-mono uppercase tracking-widest">
+                      DaHUB News
+                    </span>
                   </div>
 
-                  {/* Full article content */}
+                  {/* Bottom: category + title */}
+                  <div className="absolute bottom-0 left-0 right-0 p-8 space-y-3">
+                    {(() => {
+                      const cat = getCat(selectedNews.category);
+                      return (
+                        <span
+                          className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${cat.bg} ${cat.text}`}
+                        >
+                          {selectedNews.category}
+                        </span>
+                      );
+                    })()}
+                    <h1 className="text-white text-2xl lg:text-3xl font-black leading-tight">
+                      {selectedNews.title}
+                    </h1>
+                  </div>
+                </motion.div>
+
+                {/* ─── RIGHT PAGE — Article content ──────────────── */}
+                <motion.div
+                  initial={{ x: 30, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}
+                  className="flex-1 flex flex-col h-full min-w-0"
+                >
+                  {/* Nav bar */}
                   <div
-                    className="prose prose-invert prose-sm sm:prose-base max-w-none text-white/70 leading-relaxed
+                    className="flex-shrink-0 flex items-center gap-3 px-6 h-12 border-b"
+                    style={{
+                      borderColor: "rgba(99,102,241,0.18)",
+                      background: "rgba(4,6,15,0.95)",
+                    }}
+                  >
+                    <button
+                      onClick={closeDetail}
+                      className="flex items-center gap-1.5 text-white/50 hover:text-white transition-colors text-sm"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>{t("back") || "Буцах"}</span>
+                    </button>
+                    <div className="flex-1" />
+                    <span className="text-white/20 text-xs hidden sm:block">
+                      {calcReadTime(selectedNews.content)} {t("minuteRead")}
+                    </span>
+                    {/* Delete button — only if user owns this news */}
+                    {user && selectedNews.authorId === user.id && (
+                      <>
+                        <div
+                          className="w-px h-4 mx-2"
+                          style={{ background: "rgba(99,102,241,0.2)" }}
+                        />
+                        <button
+                          onClick={() => handleDelete(selectedNews.id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          title={t("newsDelete")}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    <div
+                      className="w-px h-4 mx-2"
+                      style={{ background: "rgba(99,102,241,0.2)" }}
+                    />
+                    <button
+                      onClick={closeDetail}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Scrollable content */}
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    {/* Article body */}
+                    <div className="max-w-2xl mx-auto px-6 sm:px-10 py-8 pb-16">
+                      {/* Desktop: article header on right page */}
+                      <div
+                        className="hidden md:block mb-8 pb-8"
+                        style={{
+                          borderBottom: "1px solid rgba(99,102,241,0.15)",
+                        }}
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          {(() => {
+                            const cat = getCat(selectedNews.category);
+                            return (
+                              <span
+                                className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${cat.bg} ${cat.text}`}
+                              >
+                                {selectedNews.category}
+                              </span>
+                            );
+                          })()}
+                          <span className="text-white/30 text-xs flex items-center gap-1">
+                            <Eye className="w-3 h-3" /> {selectedNews.views}
+                          </span>
+                        </div>
+                        <h2 className="text-white/90 text-xl font-bold leading-snug">
+                          {selectedNews.title}
+                        </h2>
+                      </div>
+
+                      {/* Full article content */}
+                      <div
+                        className="prose prose-invert prose-sm sm:prose-base max-w-none text-white/70 leading-relaxed
                       prose-headings:text-white prose-headings:font-bold
                       prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
                       prose-strong:text-white/90
@@ -914,16 +1073,18 @@ export default function NewsPage() {
                       prose-blockquote:border-l-purple-500 prose-blockquote:text-white/50
                       prose-img:rounded-xl prose-img:mx-auto prose-img:w-full
                       prose-table:text-sm prose-th:text-white/80 prose-td:text-white/60"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedNews.content) }}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeHtml(selectedNews.content),
+                        }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </div>
   );
 }

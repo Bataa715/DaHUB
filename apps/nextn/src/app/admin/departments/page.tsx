@@ -16,11 +16,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,14 +45,21 @@ export default function AdminDepartmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
-  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentData | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<DepartmentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ name: "", description: "", employeeCount: 0 });
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    employeeCount: 0,
+  });
 
-  useEffect(() => { loadDepartments(); }, []);
+  useEffect(() => {
+    loadDepartments();
+  }, []);
 
   const loadDepartments = async () => {
     try {
@@ -67,17 +70,28 @@ export default function AdminDepartmentsPage() {
       }));
       setDepartments(filteredData);
     } catch {
-      toast({ title: "Алдаа", description: "Хэлтсүүдийг ачаалахад алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэлтсүүдийг ачаалахад алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleViewDepartment = (dept: DepartmentData) => { setSelectedDepartment(dept); setIsViewOpen(true); };
+  const handleViewDepartment = (dept: DepartmentData) => {
+    setSelectedDepartment(dept);
+    setIsViewOpen(true);
+  };
 
   const handleEditDepartment = (dept: DepartmentData) => {
     setSelectedDepartment(dept);
-    setFormData({ name: dept.name || "", description: dept.description || "", employeeCount: dept.employeeCount || 0 });
+    setFormData({
+      name: dept.name || "",
+      description: dept.description || "",
+      employeeCount: dept.employeeCount || 0,
+    });
     setIsEditOpen(true);
   };
 
@@ -86,30 +100,53 @@ export default function AdminDepartmentsPage() {
     setIsSaving(true);
     try {
       await departmentsApi.update(selectedDepartment.id, formData);
-      toast({ title: "Амжилттай", description: "Хэлтсийн мэдээлэл шинэчлэгдлээ." });
+      toast({
+        title: "Амжилттай",
+        description: "Хэлтсийн мэдээлэл шинэчлэгдлээ.",
+      });
       setIsEditOpen(false);
       loadDepartments();
     } catch {
-      toast({ title: "Алдаа", description: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteDepartment = async (e: React.MouseEvent, dept: DepartmentData) => {
+  const handleDeleteDepartment = async (
+    e: React.MouseEvent,
+    dept: DepartmentData,
+  ) => {
     e.stopPropagation();
-    if (!confirm(`"${dept.name}" хэлтсийг устгахдаа итгэлтэй байна уу?`)) return;
+    if (!confirm(`"${dept.name}" хэлтсийг устгахдаа итгэлтэй байна уу?`))
+      return;
     try {
       await departmentsApi.delete(dept.id);
       toast({ title: "Амжилттай", description: "Хэлтэс устгагдлаа." });
       loadDepartments();
     } catch (error: any) {
-      toast({ title: "Алдаа", description: error.response?.data?.message || "Хэлтсийг устгахад алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description:
+          error.response?.data?.message || "Хэлтсийг устгахад алдаа гарлаа.",
+        variant: "destructive",
+      });
     }
   };
 
-  const totalEmployees = departments.reduce((sum, d) => sum + (d.users?.length || 0), 0);
-  const activeEmployees = departments.reduce((sum, d) => sum + (d.users?.filter((u) => u.isActive !== false).length || 0), 0);
+  const totalEmployees = departments.reduce(
+    (sum, d) => sum + (d.users?.length || 0),
+    0,
+  );
+  const activeEmployees = departments.reduce(
+    (sum, d) =>
+      sum + (d.users?.filter((u) => u.isActive !== false).length || 0),
+    0,
+  );
 
   if (authLoading || isLoading) {
     return (
@@ -138,9 +175,17 @@ export default function AdminDepartmentsPage() {
             { label: "Нийт хэлтэс", value: departments.length },
             { label: "Нийт ажилтан", value: totalEmployees },
             { label: "Идэвхтэй", value: activeEmployees },
-            { label: "Дундаж", value: Math.round(totalEmployees / Math.max(departments.length, 1)) },
+            {
+              label: "Дундаж",
+              value: Math.round(
+                totalEmployees / Math.max(departments.length, 1),
+              ),
+            },
           ].map((s) => (
-            <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+            <div
+              key={s.label}
+              className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3"
+            >
               <p className="text-xs text-slate-500 mb-1">{s.label}</p>
               <p className="text-xl font-bold text-white">{s.value}</p>
             </div>
@@ -156,8 +201,12 @@ export default function AdminDepartmentsPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence>
               {departments.map((dept, index) => {
-                const activeCount = dept.users?.filter((u) => u.isActive !== false).length || 0;
-                const pct = totalEmployees > 0 ? ((dept.users?.length || 0) / totalEmployees) * 100 : 0;
+                const activeCount =
+                  dept.users?.filter((u) => u.isActive !== false).length || 0;
+                const pct =
+                  totalEmployees > 0
+                    ? ((dept.users?.length || 0) / totalEmployees) * 100
+                    : 0;
 
                 return (
                   <motion.div
@@ -170,10 +219,18 @@ export default function AdminDepartmentsPage() {
                     onClick={() => handleViewDepartment(dept)}
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <p className="font-semibold text-white text-sm leading-snug group-hover:text-slate-100">{dept.name}</p>
-                      <div className="flex gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+                      <p className="font-semibold text-white text-sm leading-snug group-hover:text-slate-100">
+                        {dept.name}
+                      </p>
+                      <div
+                        className="flex gap-1 shrink-0 ml-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleEditDepartment(dept); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditDepartment(dept);
+                          }}
                           className="text-[10px] text-slate-500 hover:text-white px-2 py-0.5 rounded hover:bg-slate-800 transition-colors"
                         >
                           Засах
@@ -188,19 +245,28 @@ export default function AdminDepartmentsPage() {
                     </div>
 
                     {dept.description && (
-                      <p className="text-xs text-slate-500 mb-3 line-clamp-2">{dept.description}</p>
+                      <p className="text-xs text-slate-500 mb-3 line-clamp-2">
+                        {dept.description}
+                      </p>
                     )}
 
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
                       <span>{dept.users?.length || 0} ажилтан</span>
-                      {activeCount > 0 && <span className="text-emerald-500">{activeCount} идэвхтэй</span>}
+                      {activeCount > 0 && (
+                        <span className="text-emerald-500">
+                          {activeCount} идэвхтэй
+                        </span>
+                      )}
                     </div>
                     <div className="h-0.5 bg-slate-800 rounded-full overflow-hidden">
                       <motion.div
                         className="h-full bg-slate-500"
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.8, delay: 0.3 + index * 0.05 }}
+                        transition={{
+                          duration: 0.8,
+                          delay: 0.3 + index * 0.05,
+                        }}
                       />
                     </div>
                   </motion.div>
@@ -214,24 +280,36 @@ export default function AdminDepartmentsPage() {
       {/* View Sheet */}
       <Sheet open={isViewOpen} onOpenChange={setIsViewOpen}>
         <SheetContent className="sm:max-w-md bg-slate-950 border-slate-800 p-0 flex flex-col">
-          <SheetTitle className="sr-only">{selectedDepartment?.name ?? "Хэлтэс"}</SheetTitle>
+          <SheetTitle className="sr-only">
+            {selectedDepartment?.name ?? "Хэлтэс"}
+          </SheetTitle>
           {selectedDepartment && (
             <>
               <div className="border-b border-slate-800 px-5 py-4">
-                <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-widest">Хэлтэс</p>
-                <p className="text-lg font-semibold text-white">{selectedDepartment.name}</p>
+                <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-widest">
+                  Хэлтэс
+                </p>
+                <p className="text-lg font-semibold text-white">
+                  {selectedDepartment.name}
+                </p>
                 {selectedDepartment.description && (
-                  <p className="text-xs text-slate-500 mt-1">{selectedDepartment.description}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {selectedDepartment.description}
+                  </p>
                 )}
                 <div className="flex gap-4 mt-3">
                   <div>
-                    <p className="text-lg font-bold text-white leading-none">{selectedDepartment.users?.length || 0}</p>
+                    <p className="text-lg font-bold text-white leading-none">
+                      {selectedDepartment.users?.length || 0}
+                    </p>
                     <p className="text-xs text-slate-500">нийт</p>
                   </div>
                   <div className="w-px bg-slate-800" />
                   <div>
                     <p className="text-lg font-bold text-emerald-400 leading-none">
-                      {selectedDepartment.users?.filter((u) => u.isActive !== false).length || 0}
+                      {selectedDepartment.users?.filter(
+                        (u) => u.isActive !== false,
+                      ).length || 0}
                     </p>
                     <p className="text-xs text-slate-500">идэвхтэй</p>
                   </div>
@@ -239,7 +317,8 @@ export default function AdminDepartmentsPage() {
               </div>
 
               <ScrollArea className="flex-1">
-                {selectedDepartment.users && selectedDepartment.users.length > 0 ? (
+                {selectedDepartment.users &&
+                selectedDepartment.users.length > 0 ? (
                   <div className="divide-y divide-slate-800/60">
                     {selectedDepartment.users.map((u, i) => (
                       <motion.div
@@ -255,23 +334,34 @@ export default function AdminDepartmentsPage() {
                           </div>
                           <div>
                             <p className="text-sm text-white">{u.name}</p>
-                            {u.position && <p className="text-xs text-slate-500">{u.position}</p>}
+                            {u.position && (
+                              <p className="text-xs text-slate-500">
+                                {u.position}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${u.isActive !== false ? "text-emerald-400 bg-emerald-500/10" : "text-slate-500 bg-slate-800"}`}>
+                        <span
+                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${u.isActive !== false ? "text-emerald-400 bg-emerald-500/10" : "text-slate-500 bg-slate-800"}`}
+                        >
                           {u.isActive !== false ? "Идэвхтэй" : "Идэвхгүй"}
                         </span>
                       </motion.div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16 text-slate-600 text-sm">Ажилтан бүртгэгдээгүй</div>
+                  <div className="text-center py-16 text-slate-600 text-sm">
+                    Ажилтан бүртгэгдээгүй
+                  </div>
                 )}
               </ScrollArea>
 
               <div className="border-t border-slate-800 p-4">
                 <button
-                  onClick={() => { setIsViewOpen(false); handleEditDepartment(selectedDepartment); }}
+                  onClick={() => {
+                    setIsViewOpen(false);
+                    handleEditDepartment(selectedDepartment);
+                  }}
                   className="w-full py-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors"
                 >
                   Засах
@@ -287,14 +377,18 @@ export default function AdminDepartmentsPage() {
         <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-white">Хэлтэс засах</DialogTitle>
-            <DialogDescription className="text-slate-400">Хэлтсийн мэдээллийг шинэчлэх</DialogDescription>
+            <DialogDescription className="text-slate-400">
+              Хэлтсийн мэдээллийг шинэчлэх
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-slate-400 text-xs">Хэлтсийн нэр</Label>
               <Input
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className="bg-slate-800 border-slate-700 text-white"
               />
             </div>
@@ -302,7 +396,9 @@ export default function AdminDepartmentsPage() {
               <Label className="text-slate-400 text-xs">Тайлбар</Label>
               <Textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 rows={3}
                 placeholder="Хэлтсийн чиг үүрэг..."
                 className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 resize-none"
@@ -310,11 +406,21 @@ export default function AdminDepartmentsPage() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="border border-slate-700 text-slate-300 hover:bg-slate-800">
+            <Button
+              variant="ghost"
+              onClick={() => setIsEditOpen(false)}
+              className="border border-slate-700 text-slate-300 hover:bg-slate-800"
+            >
               Цуцлах
             </Button>
-            <Button onClick={handleSaveEdit} disabled={isSaving} className="bg-white text-slate-950 hover:bg-slate-200 border-0">
-              {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+            <Button
+              onClick={handleSaveEdit}
+              disabled={isSaving}
+              className="bg-white text-slate-950 hover:bg-slate-200 border-0"
+            >
+              {isSaving && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              )}
               Хадгалах
             </Button>
           </DialogFooter>

@@ -433,7 +433,7 @@ export default function Hero() {
                 }}
               />
               <div className="flex items-center gap-3 mb-3"></div>
-                <p className="text-4xl font-black text-foreground tracking-tight font-mono">
+              <p className="text-4xl font-black text-foreground tracking-tight font-mono">
                 {currentTime}
               </p>
             </motion.div>
@@ -444,7 +444,8 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
               className="relative overflow-hidden rounded-3xl p-5 bg-card/60 backdrop-blur-xl border border-border/15"
-              style={{}}>
+              style={{}}
+            >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-purple-500/15">
                   <Calendar className="h-4 w-4 text-purple-400" />
