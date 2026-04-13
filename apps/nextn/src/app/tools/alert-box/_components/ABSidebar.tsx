@@ -10,6 +10,7 @@ import {
   Flag,
   BellDot,
   ChevronLeft,
+  LayoutDashboard,
 } from "lucide-react";
 import { abFetchNotifications } from "../_lib/api";
 
@@ -19,6 +20,7 @@ const navItems = [
   { href: `${BASE}/alerts`, icon: AlertTriangle, label: "Alert" },
   { href: `${BASE}/search`, icon: Search, label: "Search" },
   { href: `${BASE}/redflag`, icon: Flag, label: "Red Flag" },
+  { href: `${BASE}/dashboards`, icon: LayoutDashboard, label: "Dashboards" },
 ];
 
 export default function ABSidebar() {

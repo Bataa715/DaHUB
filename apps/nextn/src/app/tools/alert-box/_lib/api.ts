@@ -49,6 +49,18 @@ export async function abFetchRedFlags() {
   return req("/oracle/search/redflag");
 }
 
+export async function abFetchDashboards(): Promise<{
+  id: number;
+  name: string;
+  tableName: string;
+  cifColumn: string;
+  dateColumn: string | null;
+  amountColumn: string | null;
+  enabled: boolean;
+}[]> {
+  return req("/oracle/search/dashboards");
+}
+
 export async function abFetchNotifications(limit = 20) {
   return req(`/oracle/search/alerts?min_dashboards=2&limit=${limit}`);
 }

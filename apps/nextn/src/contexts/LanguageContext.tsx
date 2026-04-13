@@ -134,7 +134,7 @@ export const translations = {
       "Англи үгийн санг бүрдүүлж, flash card болон тест горимоор цээжлэх",
     toolExcelTitle: "Excel тайлан",
     toolExcelDesc:
-      "Системийн мэдээллээс динамик Python кодоор Excel тайлан үүсгэж татах",
+      "Системийн мэдээллээс Excel тайлан үүсгэж татах",
     toolPdfTitle: "PDF → Текст",
     toolPdfDesc:
       "PDF файлыг текст болгон хөрвүүлж, хуулж авах боломжтой хэрэгсэл",
@@ -605,7 +605,7 @@ export const translations = {
       "Build your English vocabulary and memorize with flashcards and tests",
     toolExcelTitle: "Excel report",
     toolExcelDesc:
-      "Generate and download Excel reports from system data using dynamic Python code",
+      "Generate and download Excel reports from system data",
     toolPdfTitle: "PDF → Text",
     toolPdfDesc: "Convert PDF files to text and copy the content",
     toolDataDocTitle: "Data dictionary",

@@ -9,7 +9,7 @@ export default function AlertBoxLayout({
   return (
     <div className="ab-theme flex min-h-screen">
       <ABSidebar />
-      <main className="flex-1 ml-[220px] min-w-0 overflow-hidden">
+      <main className="flex-1 ml-[220px] min-w-0 overflow-y-auto py-6">
         {children}
       </main>
     </div>

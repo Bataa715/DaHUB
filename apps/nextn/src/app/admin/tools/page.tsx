@@ -139,7 +139,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     id: "excel_report",
     name: "Excel тайлан",
     description:
-      "Системийн мэдээллээс динамик Python кодоор Excel тайлан үүсгэж татах",
+      "Системийн мэдээллээс Excel тайлан үүсгэж татах",
     icon: FileSpreadsheet,
     color: "from-green-500 to-emerald-500",
     gradient: "bg-gradient-to-br from-green-500/20 to-emerald-500/20",

@@ -23,7 +23,7 @@ export interface EventChainConfig {
   enabled: boolean;
 }
 
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data', 'oracle');
+const DATA_DIR = path.join(process.cwd(), 'data', 'oracle');
 const DASHBOARDS_PATH = path.join(DATA_DIR, 'oracle-dashboards.json');
 const CHAINS_PATH = path.join(DATA_DIR, 'event-chains.json');
 

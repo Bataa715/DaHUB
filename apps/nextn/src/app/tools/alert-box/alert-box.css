@@ -35,3 +35,19 @@
   background: #18181f;
   color: #e4e4ec;
 }
+
+/* Force dark background + light text on all inputs (browser overrides default to white) */
+.ab-theme input[type="text"],
+.ab-theme input[type="search"],
+.ab-theme input[type="date"],
+.ab-theme input[type="number"],
+.ab-theme input[type="email"],
+.ab-theme input[type="password"],
+.ab-theme input {
+  background-color: var(--surface-elevated) !important;
+  color: var(--txt) !important;
+  color-scheme: dark;
+}
+.ab-theme input::placeholder {
+  color: var(--txt-dim);
+}

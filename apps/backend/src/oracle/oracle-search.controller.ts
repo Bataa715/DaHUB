@@ -22,6 +22,20 @@ export class OracleSearchController {
     }
   }
 
+  /** GET /oracle/search/dashboards — all dashboard configs (id, name, table, enabled) */
+  @Get('dashboards')
+  getDashboards() {
+    return this.config.loadDashboards().map(d => ({
+      id: d.id,
+      name: d.name,
+      tableName: d.tableName,
+      cifColumn: d.cifColumn,
+      dateColumn: d.dateColumn,
+      amountColumn: d.amountColumn,
+      enabled: d.enabled,
+    }));
+  }
+
   /**
    * GET /api/oracle/search/cif?cif=R12345&from=2025-01-01&to=2026-04-09
    */
