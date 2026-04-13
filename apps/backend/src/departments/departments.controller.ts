@@ -67,7 +67,6 @@ export class DepartmentsController {
     return this.departmentsService.getPhotoData(photoId);
   }
 
-  @UseGuards(AdminGuard)
   @Post(":id/photos")
   async uploadPhoto(
     @Param("id") id: string,
@@ -85,7 +84,6 @@ export class DepartmentsController {
     );
   }
 
-  @UseGuards(AdminGuard)
   @Delete(":id/photos/:photoId")
   deletePhoto(@Param("photoId") photoId: string) {
     return this.departmentsService.deletePhoto(photoId);

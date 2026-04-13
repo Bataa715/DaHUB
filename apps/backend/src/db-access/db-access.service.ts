@@ -739,8 +739,7 @@ export class DbAccessService {
       grantedByName: g.grantedByName,
       grantedAt: g.grantedAt,
       isActive: !!g.isActive,
-      // [CRIT-1] chPassword is NOT included in list responses — only via getGrantCredentials()
-      // which decrypts on demand. This prevents bulk credential exposure.
+      chPassword: g.chPassword ?? "",
     };
   }
 }

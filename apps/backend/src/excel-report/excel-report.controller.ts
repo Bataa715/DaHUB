@@ -77,6 +77,19 @@ export class ExcelReportController {
     return this.service.getActiveTemplates();
   }
 
+  /** POST /excel-report/run-csv — stream CSV directly (no Excel formatting, much faster) */
+  @Post("run-csv")
+  async runReportCsv(@Body() dto: RunReportDto, @Res() res: Response) {
+    const { csv, fileName } = await this.service.runReportCsv(dto);
+    const encodedName = encodeURIComponent(fileName);
+    res.set({
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="report.csv"; filename*=UTF-8''${encodedName}`,
+      "Content-Length": csv.length,
+    });
+    res.end(csv);
+  }
+
   /** POST /excel-report/run — execute python and download xlsx (sync, small datasets) */
   @Post("run")
   async runReport(@Body() dto: RunReportDto, @Res() res: Response) {

@@ -453,10 +453,25 @@ export class ChessService {
   }
 
   async getRankings() {
-    const registeredUsers = await this.clickhouse.query<{ id: string }>(
-      `SELECT id FROM users WHERE isActive = 1`,
+    // All users with "chess" tool permission — they appear in standings even with 0 games
+    const chessUsers = await this.clickhouse.query<{
+      id: string;
+      name: string;
+    }>(
+      `SELECT id, name FROM users
+       WHERE isActive = 1
+         AND has(JSONExtractArrayRaw(allowedTools), '"chess"')`,
     );
-    const registeredIds = new Set((registeredUsers || []).map((u) => u.id));
+    const allowedIds = new Set((chessUsers || []).map((u) => u.id));
+
+    // Pre-populate all chess users with 0 stats
+    const stats: Record<
+      string,
+      { id: string; name: string; wins: number; losses: number; draws: number }
+    > = {};
+    for (const u of chessUsers) {
+      stats[u.id] = { id: u.id, name: u.name, wins: 0, losses: 0, draws: 0 };
+    }
 
     const games = await this.clickhouse.query<any>(
       `SELECT *
@@ -473,17 +488,15 @@ export class ChessService {
        )
        WHERE status IN ('white_won', 'black_won', 'draw')`,
     );
-    const stats: Record<
-      string,
-      { id: string; name: string; wins: number; losses: number; draws: number }
-    > = {};
     const ensure = (id: string, name: string) => {
-      if (!registeredIds.has(id)) return;
+      if (!allowedIds.has(id)) return;
       if (!stats[id]) stats[id] = { id, name, wins: 0, losses: 0, draws: 0 };
     };
     for (const g of games) {
       ensure(g.whiteUserId, g.whiteUserName);
       ensure(g.blackUserId, g.blackUserName);
+      if (!allowedIds.has(g.whiteUserId) || !allowedIds.has(g.blackUserId))
+        continue;
       if (g.status === "white_won") {
         stats[g.whiteUserId].wins++;
         stats[g.blackUserId].losses++;

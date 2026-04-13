@@ -21,12 +21,18 @@ import {
   Calculator,
   Shuffle,
   Loader2,
+  Search,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { DESIGN_LABELS, type DesignType } from "./_lib/sampling";
 import { useSampling } from "./_hooks/useSampling";
+import { useState } from "react";
 
 export default function SanamsarguiTuuwerPage() {
   const s = useSampling();
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterExpanded, setFilterExpanded] = useState(false);
 
   const confLabel = (s.confidence * 100).toFixed(0) + "%";
 
@@ -329,6 +335,8 @@ export default function SanamsarguiTuuwerPage() {
                                 s.setFilterCol(v === "__none__" ? "" : v);
                                 s.setSelectedFilterValue("all");
                                 s.setCoverAllValues(false);
+                                setFilterSearch("");
+                                setFilterExpanded(false);
                               }}
                             >
                               <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
@@ -358,34 +366,90 @@ export default function SanamsarguiTuuwerPage() {
                             <div className="space-y-2">
                               <Label className="text-slate-300">
                                 Утгын шүүлтүүр
+                                <span className="ml-1 text-xs text-slate-500 font-normal">
+                                  ({s.availableFilterValues.length} утга)
+                                </span>
                               </Label>
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  onClick={() =>
-                                    s.setSelectedFilterValue("all")
-                                  }
-                                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                    s.selectedFilterValue === "all"
-                                      ? "bg-violet-500 border-violet-400 text-white"
-                                      : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
-                                  }`}
-                                >
-                                  Бүх утга
-                                </button>
-                                {s.availableFilterValues.map((v) => (
-                                  <button
-                                    key={v}
-                                    onClick={() => s.setSelectedFilterValue(v)}
-                                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                      s.selectedFilterValue === v
-                                        ? "bg-violet-500 border-violet-400 text-white"
-                                        : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
-                                    }`}
-                                  >
-                                    {v}
-                                  </button>
-                                ))}
+                              {/* Search input */}
+                              <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                <input
+                                  type="text"
+                                  value={filterSearch}
+                                  onChange={(e) => {
+                                    setFilterSearch(e.target.value);
+                                    setFilterExpanded(true);
+                                  }}
+                                  placeholder="Утга хайх..."
+                                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-600 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60"
+                                />
                               </div>
+                              {(() => {
+                                const filtered = filterSearch
+                                  ? s.availableFilterValues.filter((v) =>
+                                      v.toLowerCase().includes(filterSearch.toLowerCase())
+                                    )
+                                  : s.availableFilterValues;
+                                const COLLAPSED_LIMIT = 10;
+                                const showAll = filterExpanded || filterSearch;
+                                const visible = showAll ? filtered : filtered.slice(0, COLLAPSED_LIMIT);
+                                const hiddenCount = filtered.length - COLLAPSED_LIMIT;
+                                return (
+                                  <>
+                                    <div className="flex flex-wrap gap-2">
+                                      <button
+                                        onClick={() => {
+                                          s.setSelectedFilterValue("all");
+                                          setFilterSearch("");
+                                        }}
+                                        className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                                          s.selectedFilterValue === "all"
+                                            ? "bg-violet-500 border-violet-400 text-white"
+                                            : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
+                                        }`}
+                                      >
+                                        Бүх утга
+                                      </button>
+                                      {visible.map((v) => (
+                                        <button
+                                          key={v}
+                                          onClick={() => s.setSelectedFilterValue(v)}
+                                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                                            s.selectedFilterValue === v
+                                              ? "bg-violet-500 border-violet-400 text-white"
+                                              : "bg-slate-800 border-slate-600 text-slate-300 hover:border-violet-500/60"
+                                          }`}
+                                        >
+                                          {v}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    {!filterSearch && filtered.length > COLLAPSED_LIMIT && (
+                                      <button
+                                        onClick={() => setFilterExpanded((p) => !p)}
+                                        className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors mt-1"
+                                      >
+                                        {filterExpanded ? (
+                                          <>
+                                            <ChevronUp className="w-3.5 h-3.5" />
+                                            Хураах
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ChevronDown className="w-3.5 h-3.5" />
+                                            Бүгдийг харах (+{hiddenCount})
+                                          </>
+                                        )}
+                                      </button>
+                                    )}
+                                    {filterSearch && filtered.length === 0 && (
+                                      <p className="text-xs text-slate-500">
+                                        &ldquo;{filterSearch}&rdquo; илэрц олдсонгүй
+                                      </p>
+                                    )}
+                                  </>
+                                );
+                              })()}
 
                               <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none mt-2">
                                 <input

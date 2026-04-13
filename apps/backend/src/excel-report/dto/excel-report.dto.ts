@@ -19,6 +19,10 @@ export class CreateReportTemplateDto {
   @IsString()
   @IsOptional()
   color?: string;
+
+  @IsString()
+  @IsOptional()
+  filters?: string;
 }
 
 export class UpdateReportTemplateDto {
@@ -41,6 +45,10 @@ export class UpdateReportTemplateDto {
   @IsString()
   @IsOptional()
   color?: string;
+
+  @IsString()
+  @IsOptional()
+  filters?: string;
 }
 
 export class RunReportDto {
@@ -55,6 +63,9 @@ export class RunReportDto {
   @IsString()
   @IsOptional()
   endDate?: string;
+
+  @IsOptional()
+  filters?: Record<string, string>;
 }
 
 export class QueryToExcelDto {

@@ -378,14 +378,14 @@ export default function LobbyView(props: LobbyViewProps) {
       )}
 
       {/* Rankings table */}
-      {rankings.length > 0 && (
+      {(
         <div className="md:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-3">
           <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />
             Байрлал
           </h2>
           <div className="space-y-1.5">
-            {rankings.slice(0, 15).map((r, i) => {
+            {rankings.map((r, i) => {
               const t = getTitle(r.wins, maxWins);
               const isMe = r.id === myId;
               return (

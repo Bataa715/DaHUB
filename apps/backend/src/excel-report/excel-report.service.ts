@@ -14,10 +14,15 @@ import {
   QueryToExcelDto,
 } from "./dto/excel-report.dto";
 import { randomUUID } from "crypto";
-import { spawn } from "child_process";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
+import * as http from "http";
+import { PassThrough } from "stream";
+import ExcelJS from "exceljs";
+
+export interface FilterDef {
+  key: string;
+  label: string;
+  placeholder?: string;
+}
 
 export interface ReportTemplate {
   id: string;
@@ -26,6 +31,7 @@ export interface ReportTemplate {
   pythonCode: string;
   dateMode: "none" | "single" | "range";
   color: string;
+  filters: string; // JSON string of FilterDef[]
   isActive: number;
   createdAt: string;
   updatedAt: string;
@@ -51,213 +57,6 @@ export class ExcelReportService implements OnModuleInit {
   // In-memory job store — single-instance singleton is fine
   private readonly jobs = new Map<string, ReportJob>();
 
-  // ── Security preamble injected before every Python execution ──────────────
-  // Wraps urllib.request.urlopen so that every ClickHouse HTTP call is
-  // validated: only SELECT queries are permitted. Any INSERT/UPDATE/DELETE/
-  // ALTER/DROP/CREATE/TRUNCATE attempt raises PermissionError at runtime.
-  private static readonly PYTHON_SECURITY_PREAMBLE =
-    "# === SECURITY PREAMBLE (auto-injected) ===\n" +
-    "import urllib.request as _urllib_req\n" +
-    "import re as _re\n" +
-    "from urllib.parse import urlparse as _urlparse, parse_qs as _parse_qs, unquote_plus as _unquote_plus\n" +
-    "\n" +
-    "_orig_urlopen = _urllib_req.urlopen\n" +
-    "\n" +
-    "def _check_select_only(sql, source):\n" +
-    "    cleaned = _re.sub(r'/\\*.*?\\*/', '', sql, flags=_re.DOTALL)\n" +
-    "    cleaned = _re.sub(r'--[^\\n]*', '', cleaned).strip()\n" +
-    "    if not _re.match(r'(?i)^\\s*SELECT\\b', cleaned):\n" +
-    "        raise PermissionError('[SECURITY] Зөвхөн SELECT query зөвшөөрөгдөнө (' + source + '). Олдсон: ' + sql[:120])\n" +
-    "\n" +
-    "def _safe_urlopen(url, data=None, **kwargs):\n" +
-    "    url_str = url.full_url if hasattr(url, 'full_url') else str(url)\n" +
-    "    body = (url.data if hasattr(url, 'data') else None) or data\n" +
-    "    parsed = _urlparse(url_str)\n" +
-    "    params = _parse_qs(parsed.query)\n" +
-    "    if 'query' in params:\n" +
-    "        _check_select_only(_unquote_plus(params['query'][0]), 'URL param')\n" +
-    "    if body is not None:\n" +
-    "        try:\n" +
-    "            raw = body.decode('utf-8') if isinstance(body, (bytes, bytearray)) else str(body)\n" +
-    "        except Exception:\n" +
-    "            raw = repr(body)\n" +
-    "        sql = _unquote_plus(raw[6:].split('&')[0]) if raw.startswith('query=') else raw\n" +
-    "        _check_select_only(sql, 'POST body')\n" +
-    "    return _orig_urlopen(url, data=data, **kwargs)\n" +
-    "\n" +
-    "_urllib_req.urlopen = _safe_urlopen\n" +
-    "# === END SECURITY PREAMBLE ===\n\n";
-
-  // ── DataFrame mode preamble: injected before user code when # __DF_MODE__ is detected ─
-  // Provides: ch_query(), START_DATE, END_DATE, OUTPUT_FILE, CLICKHOUSE_* env vars
-  private static readonly PYTHON_DF_PREAMBLE = [
-    "# === DATAFRAME PREAMBLE (auto-injected) ===",
-    "import sys, os, json, warnings",
-    "sys.stdout.reconfigure(encoding='utf-8', errors='replace')",
-    "sys.stderr.reconfigure(encoding='utf-8', errors='replace')",
-    "import pandas as pd",
-    "import urllib.request",
-    "from urllib.parse import urlencode",
-    "warnings.filterwarnings('ignore')",
-    "",
-    "CLICKHOUSE_HOST = os.environ.get('CLICKHOUSE_HOST', 'localhost')",
-    "CLICKHOUSE_PORT = os.environ.get('CLICKHOUSE_PORT', '8123')",
-    "CLICKHOUSE_USER = os.environ.get('CLICKHOUSE_USER', 'default')",
-    "CLICKHOUSE_PASSWORD = os.environ.get('CLICKHOUSE_PASSWORD', '')",
-    "CLICKHOUSE_DATABASE = os.environ.get('CLICKHOUSE_DATABASE', 'audit_db')",
-    "START_DATE = os.environ.get('START_DATE', '')",
-    "END_DATE   = os.environ.get('END_DATE', '')",
-    "OUTPUT_FILE = os.environ['OUTPUT_FILE']",
-    "",
-    "def ch_query(sql, **kw):",
-    "    \"\"\"ClickHouse-аас DataFrame буцаана. {start_date}/{end_date} автоматаар орлуулна.\"\"\"",
-    "    sql = sql.replace('{start_date}', START_DATE).replace('{end_date}', END_DATE)",
-    "    for k, v in kw.items():",
-    "        sql = sql.replace('{' + k + '}', str(v))",
-    "    params = urlencode({'user': CLICKHOUSE_USER, 'password': CLICKHOUSE_PASSWORD,",
-    "                        'database': CLICKHOUSE_DATABASE, 'default_format': 'JSONCompact'})",
-    "    url = 'http://' + CLICKHOUSE_HOST + ':' + CLICKHOUSE_PORT + '/?' + params",
-    "    req = urllib.request.Request(url, data=sql.encode('utf-8'), method='POST')",
-    "    with urllib.request.urlopen(req) as resp:",
-    "        result = json.loads(resp.read().decode('utf-8'))",
-    "    cols = [m['name'] for m in result.get('meta', [])]",
-    "    return pd.DataFrame(result.get('data', []), columns=cols)",
-    "",
-    "# === END DATAFRAME PREAMBLE ===",
-    "",
-  ].join("\n");
-
-  // ── DataFrame mode postamble: auto-exports df (or sheets dict) to Excel (no styling) ──
-  private static readonly PYTHON_DF_POSTAMBLE = [
-    "",
-    "# === DATAFRAME POSTAMBLE (auto-injected) ===",
-    "_lc = vars()",
-    "if 'sheets' in _lc and isinstance(_lc['sheets'], dict):",
-    "    _sheets = _lc['sheets']",
-    "elif 'df' in _lc and hasattr(_lc['df'], 'to_excel'):",
-    "    _sheets = {'Тайлан': _lc['df']}",
-    "else:",
-    "    raise RuntimeError(",
-    "        \"'df' (pandas.DataFrame) эсвэл 'sheets' (dict) хувьсагч тодорхойлогдоогүй байна.\\n\"",
-    "        \"Жишээ: df = ch_query(sql)\"",
-    "    )",
-    "import xlsxwriter as _xlw",
-    "_wb = _xlw.Workbook(OUTPUT_FILE, {'constant_memory': True})",
-    "for _sn, _sdf in _sheets.items():",
-    "    _ws = _wb.add_worksheet(_sn)",
-    "    _ws.freeze_panes(1, 0)",
-    "    for _ci, _cn in enumerate(_sdf.columns):",
-    "        _ws.write(0, _ci, str(_cn))",
-    "    for _ri, _row in enumerate(_sdf.itertuples(index=False, name=None), 1):",
-    "        for _ci, _val in enumerate(_row):",
-    "            try:",
-    "                if _val is None or _val != _val:",
-    "                    _ws.write_blank(_ri, _ci, None)",
-    "                elif isinstance(_val, (int, float)):",
-    "                    _ws.write_number(_ri, _ci, _val)",
-    "                else:",
-    "                    _ws.write_string(_ri, _ci, str(_val))",
-    "            except Exception:",
-    "                try: _ws.write_string(_ri, _ci, str(_val))",
-    "                except Exception: _ws.write_blank(_ri, _ci, None)",
-    "_wb.close()",
-    "_tot = sum(len(d) for d in _sheets.values())",
-    "print('Done: ' + str(_tot) + ' rows | ' + str(len(_sheets)) + ' sheet(s)')",
-    "# === END DATAFRAME POSTAMBLE ===",
-  ].join("\n");
-
-  // ── Fixed Python template for direct SQL → Excel (server-controlled, no user code, no styling) ──
-  private static readonly SQL_TO_EXCEL_PYTHON = [
-    "import os, json, urllib.request, xlsxwriter",
-    "from urllib.parse import urlencode",
-    "",
-    "CH_HOST = os.environ.get('CLICKHOUSE_HOST', 'localhost')",
-    "CH_PORT = os.environ.get('CLICKHOUSE_PORT', '8123')",
-    "CH_USER = os.environ.get('CLICKHOUSE_USER', 'default')",
-    "CH_PASS = os.environ.get('CLICKHOUSE_PASSWORD', '')",
-    "CH_DB   = os.environ.get('CLICKHOUSE_DATABASE', 'audit_db')",
-    "SQL     = os.environ['QUERY_SQL']",
-    "OUTPUT  = os.environ['OUTPUT_FILE']",
-    "",
-    "params = urlencode({'user': CH_USER, 'password': CH_PASS, 'database': CH_DB, 'default_format': 'JSONCompact'})",
-    "url = 'http://' + CH_HOST + ':' + CH_PORT + '/?' + params",
-    "req = urllib.request.Request(url, data=SQL.encode('utf-8'), method='POST')",
-    "with urllib.request.urlopen(req) as resp:",
-    "    result = json.loads(resp.read().decode('utf-8'))",
-    "",
-    "headers = [col['name'] for col in result.get('meta', [])]",
-    "rows = result.get('data', [])",
-    "",
-    "wb = xlsxwriter.Workbook(OUTPUT, {'constant_memory': True})",
-    "ws = wb.add_worksheet('Result')",
-    "ws.freeze_panes(1, 0)",
-    "for ci, h in enumerate(headers):",
-    "    ws.write(0, ci, h)",
-    "",
-    "for ri, row in enumerate(rows, 1):",
-    "    for ci, val in enumerate(row):",
-    "        try:",
-    "            if val is None: ws.write_blank(ri, ci, None)",
-    "            elif isinstance(val, (int, float)): ws.write_number(ri, ci, val)",
-    "            else: ws.write_string(ri, ci, str(val))",
-    "        except Exception:",
-    "            try: ws.write_string(ri, ci, str(val))",
-    "            except Exception: ws.write_blank(ri, ci, None)",
-    "",
-    "wb.close()",
-    "print('Done: ' + str(len(rows)) + ' rows, ' + str(len(headers)) + ' columns')",
-  ].join("\n");
-
-  // ── Forbidden patterns for static analysis at save time ───────────────────
-  private static readonly FORBIDDEN_PATTERNS: Array<{
-    re: RegExp;
-    label: string;
-  }> = [
-    {
-      re: /\bimport\s+subprocess\b|\bfrom\s+subprocess\b/,
-      label: "subprocess",
-    },
-    { re: /\bimport\s+socket\b|\bfrom\s+socket\b/, label: "socket" },
-    { re: /\bimport\s+ctypes\b|\bfrom\s+ctypes\b/, label: "ctypes" },
-    {
-      re: /\bimport\s+multiprocessing\b|\bfrom\s+multiprocessing\b/,
-      label: "multiprocessing",
-    },
-    { re: /\bimport\s+pickle\b|\bfrom\s+pickle\b/, label: "pickle" },
-    { re: /\bimport\s+shutil\b|\bfrom\s+shutil\b/, label: "shutil" },
-    { re: /\beval\s*\(/, label: "eval()" },
-    { re: /\bexec\s*\(/, label: "exec()" },
-    { re: /\bcompile\s*\(/, label: "compile()" },
-    { re: /\b__import__\s*\(/, label: "__import__()" },
-    { re: /\bos\.system\s*\(/, label: "os.system()" },
-    { re: /\bos\.popen\s*\(/, label: "os.popen()" },
-    { re: /\bos\.exec[a-z]+\s*\(/, label: "os.exec*()" },
-    { re: /\bos\.fork\s*\(/, label: "os.fork()" },
-    { re: /\bos\.spawn[a-z]+\s*\(/, label: "os.spawn*()" },
-    {
-      re: /\bos\.remove\s*\(|\bos\.unlink\s*\(|\bos\.rmdir\s*\(/,
-      label: "os file deletion",
-    },
-    {
-      re: /open\s*\([^)]*['"]\s*(?:w|a|wb|ab|w\+|a\+)\s*['"]/,
-      label: "open() in write mode",
-    },
-  ];
-
-  private validatePythonCode(code: string): void {
-    for (const { re, label } of ExcelReportService.FORBIDDEN_PATTERNS) {
-      if (re.test(code)) {
-        throw new BadRequestException(
-          `Python код аюултай үйлдэл агуулж байна: "${label}". Зөвхөн SELECT query-тэй ClickHouse уншилт зөвшөөрөгдөнө.`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Parse CLICKHOUSE_HOST which may be a full URL like "http://localhost:8123"
-   * or a bare hostname like "localhost". Returns clean { host, port } for Python.
-   */
   private static parseCHHostPort(): { host: string; port: string } {
     const raw = process.env.CLICKHOUSE_HOST ?? "localhost";
     try {
@@ -273,38 +72,6 @@ export class ExcelReportService implements OnModuleInit {
         port: process.env.CLICKHOUSE_PORT ?? "8123",
       };
     }
-  }
-
-  private buildPythonEnv(
-    extra: Record<string, string> = {},
-  ): Record<string, string> {
-    const { host, port } = ExcelReportService.parseCHHostPort();
-    return {
-      ...process.env,
-      CLICKHOUSE_HOST: host,
-      CLICKHOUSE_PORT: port,
-      CLICKHOUSE_USER: process.env.CLICKHOUSE_USER ?? "default",
-      CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD ?? "",
-      CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE ?? "audit_db",
-      ...extra,
-    };
-  }
-
-  // ── Assemble executable script for a template ─────────────────────────────
-  private buildScript(pythonCode: string): string {
-    if (pythonCode.startsWith("# __DF_MODE__")) {
-      // Strip the marker line, wrap user code with preamble + postamble
-      const userCode = pythonCode.replace(/^#\s*__DF_MODE__[^\n]*\n?/, "");
-      return (
-        ExcelReportService.PYTHON_SECURITY_PREAMBLE +
-        ExcelReportService.PYTHON_DF_PREAMBLE +
-        userCode +
-        "\n" +
-        ExcelReportService.PYTHON_DF_POSTAMBLE
-      );
-    }
-    // Legacy full-Python mode: security preamble only
-    return ExcelReportService.PYTHON_SECURITY_PREAMBLE + pythonCode;
   }
 
   constructor(private clickhouse: ClickHouseService) {}
@@ -323,6 +90,7 @@ export class ExcelReportService implements OnModuleInit {
           pythonCode  String,
           dateMode    String DEFAULT 'range',
           color       String DEFAULT 'from-blue-500 to-cyan-500',
+          filters     String DEFAULT '[]',
           isActive    UInt8  DEFAULT 1,
           seq         UInt64,
           createdAt   DateTime DEFAULT now(),
@@ -331,6 +99,14 @@ export class ExcelReportService implements OnModuleInit {
       `);
     } catch (e) {
       this.logger.error("Failed to ensure excel_report_templates table:", e);
+    }
+    // Migrate: add filters column if it doesn't exist (for tables created before this column)
+    try {
+      await this.clickhouse.exec(
+        `ALTER TABLE excel_report_templates ADD COLUMN IF NOT EXISTS filters String DEFAULT '[]'`,
+      );
+    } catch {
+      // ignore — column already exists or unsupported
     }
   }
 
@@ -350,6 +126,7 @@ export class ExcelReportService implements OnModuleInit {
            argMax(pythonCode, seq)  AS pythonCode,
            argMax(dateMode, seq)    AS dateMode,
            argMax(color, seq)       AS color,
+           argMax(filters, seq)     AS filters,
            argMax(isActive, seq)    AS isActive,
            argMax(updatedAt, seq)   AS updatedAt,
            min(createdAt)           AS createdAt
@@ -371,6 +148,7 @@ export class ExcelReportService implements OnModuleInit {
          argMax(pythonCode, seq)  AS pythonCode,
          argMax(dateMode, seq)    AS dateMode,
          argMax(color, seq)       AS color,
+         argMax(filters, seq)     AS filters,
          argMax(isActive, seq)    AS isActive,
          argMax(updatedAt, seq)   AS updatedAt,
          min(createdAt)           AS createdAt
@@ -392,7 +170,6 @@ export class ExcelReportService implements OnModuleInit {
   }
 
   async createTemplate(dto: CreateReportTemplateDto): Promise<ReportTemplate> {
-    this.validatePythonCode(dto.pythonCode);
     const id = randomUUID();
     const seq = Date.now();
     const now = nowCH();
@@ -404,6 +181,7 @@ export class ExcelReportService implements OnModuleInit {
         pythonCode: dto.pythonCode,
         dateMode: dto.dateMode,
         color: dto.color ?? "from-blue-500 to-cyan-500",
+        filters: dto.filters ?? "[]",
         isActive: 1,
         seq,
         createdAt: now,
@@ -417,9 +195,6 @@ export class ExcelReportService implements OnModuleInit {
     id: string,
     dto: UpdateReportTemplateDto,
   ): Promise<ReportTemplate> {
-    if (dto.pythonCode !== undefined) {
-      this.validatePythonCode(dto.pythonCode);
-    }
     const existing = await this.getTemplateById(id);
     const seq = Date.now();
     const now = nowCH();
@@ -431,6 +206,7 @@ export class ExcelReportService implements OnModuleInit {
         pythonCode: dto.pythonCode ?? existing.pythonCode,
         dateMode: dto.dateMode ?? existing.dateMode,
         color: dto.color ?? existing.color,
+        filters: dto.filters ?? existing.filters,
         isActive: existing.isActive,
         seq,
         createdAt: existing.createdAt,
@@ -452,6 +228,7 @@ export class ExcelReportService implements OnModuleInit {
         pythonCode: existing.pythonCode,
         dateMode: existing.dateMode,
         color: existing.color,
+        filters: existing.filters,
         isActive: isActive ? 1 : 0,
         seq,
         createdAt: existing.createdAt,
@@ -501,127 +278,116 @@ export class ExcelReportService implements OnModuleInit {
       }
     }
 
-    // Write python code to a temp file
-    const tmpDir = os.tmpdir();
-    const scriptPath = path.join(tmpDir, `excel_report_${randomUUID()}.py`);
-    const outputPath = path.join(tmpDir, `excel_report_${randomUUID()}.xlsx`);
-
-    try {
-      const securedCode = this.buildScript(template.pythonCode);
-      fs.writeFileSync(scriptPath, securedCode, "utf8");
-
-      // Build env — pass ClickHouse connection + date params
-      const env: Record<string, string> = this.buildPythonEnv({
-        OUTPUT_FILE: outputPath,
-        START_DATE: dto.startDate ?? "",
-        END_DATE: dto.endDate ?? dto.startDate ?? "",
-        REPORT_NAME: template.name,
-      });
-
-      const stdout1 = await this.executePython(scriptPath, env);
-
-      if (!fs.existsSync(outputPath)) {
-        throw new InternalServerErrorException(
-          `Python скрипт Excel файл үүсгээгүй байна. OUTPUT_FILE замд файл хадгалах шаардлагтай.${stdout1.trim() ? "\nStdout: " + stdout1.trim().slice(0, 400) : ""}`,
-        );
-      }
-
-      const buffer = fs.readFileSync(outputPath);
-      return buffer;
-    } finally {
-      // Cleanup temp files
-      try {
-        fs.unlinkSync(scriptPath);
-      } catch {}
-      try {
-        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-      } catch {}
+    const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
+    if (!sql) {
+      throw new BadRequestException(
+        "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
+      );
     }
+    return this.generateExcelFromSql(
+      sql,
+      dto.filters ?? {},
+      dto.startDate ?? "",
+      dto.endDate ?? dto.startDate ?? "",
+      template.name,
+    );
   }
 
-  private executePython(
-    scriptPath: string,
-    env: Record<string, string>,
-  ): Promise<string> {
-    // Try 'python', then 'py' (Windows Store alias), then 'python3' (Linux/Mac)
-    const candidates =
-      process.platform === "win32"
-        ? ["python", "py", "python3"]
-        : ["python3", "python"];
+  // ── SQL-mode → Excel directly in Node.js (no Python, no temp file) ──
+  private async generateExcelFromSql(
+    sql: string,
+    filterVals: Record<string, string>,
+    startDate: string,
+    endDate: string,
+    sheetName = "Тайлан",
+  ): Promise<Buffer> {
+    // Resolve {IF}...{/IF} blocks and placeholders
+    let resolved = sql.replace(
+      /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
+      (_, k, content) => (filterVals[k] ? content : ""),
+    );
+    resolved = resolved.replace(/\{start_date\}/g, startDate).replace(/\{end_date\}/g, endDate);
+    for (const [k, v] of Object.entries(filterVals)) {
+      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+    }
 
-    const tryNext = (
-      remaining: string[],
-      resolve: (out: string) => void,
-      reject: (e: Error) => void,
-    ) => {
-      if (remaining.length === 0) {
-        reject(
-          new InternalServerErrorException(
-            "Python олдсонгүй. 'python', 'py', эсвэл 'python3' командын аль нэг нь PATH-д байх ёстой.",
-          ) as unknown as Error,
-        );
-        return;
-      }
-      const [cmd, ...rest] = remaining;
-      const proc = spawn(cmd, [scriptPath], {
-        env,
-        timeout: 600000,
-      });
+    const { host, port } = ExcelReportService.parseCHHostPort();
+    const query = resolved.trim() + " FORMAT TSVWithNames";
+    const password = process.env.CLICKHOUSE_PASSWORD ?? "";
+    const user = process.env.CLICKHOUSE_USER ?? "default";
+    const database = process.env.CLICKHOUSE_DATABASE ?? "audit_db";
+    const urlPath = `/?user=${encodeURIComponent(user)}&password=${encodeURIComponent(password)}&database=${encodeURIComponent(database)}`;
 
-      let stderr = "";
-      let stdout = "";
-      proc.stderr.on("data", (data: Buffer) => {
-        stderr += data.toString();
-      });
-      proc.stdout.on("data", (data: Buffer) => {
-        stdout += data.toString();
-      });
-
-      proc.on("close", (code: number) => {
-        if (code !== 0) {
-          // Windows App Execution Alias for Python exits with 9009 and prints
-          // "Python was not found; run without arguments to install from the
-          // Microsoft Store …" — treat this as "not found" and try next.
-          const isStoreAlias =
-            code === 9009 ||
-            stderr.includes("Microsoft Store") ||
-            stderr.includes("was not found");
-          if (isStoreAlias && rest.length > 0) {
-            tryNext(rest, resolve, reject);
-          } else {
-            const detail = [stderr, stdout]
-              .map((s) => s.trim())
-              .filter(Boolean)
-              .join("\n")
-              .slice(0, 800);
-            reject(
-              new InternalServerErrorException(
-                `Python скрипт алдаатай дуусгав (code ${code}):\n${detail}`,
-              ) as unknown as Error,
+    // Stream ClickHouse TSV response → ExcelJS streaming workbook → Buffer
+    const buf = await new Promise<Buffer>((resolve, reject) => {
+      const req = http.request(
+        { hostname: host, port: Number(port) || 8123, path: urlPath, method: "POST" },
+        (res) => {
+          if (res.statusCode !== 200) {
+            const chunks: Buffer[] = [];
+            res.on("data", (c: Buffer) => chunks.push(c));
+            res.on("end", () =>
+              reject(new InternalServerErrorException(
+                "ClickHouse алдаа: " + Buffer.concat(chunks).toString("utf-8").slice(0, 300),
+              )),
             );
+            return;
           }
-        } else {
-          resolve(stdout);
-        }
-      });
 
-      proc.on("error", (err: Error) => {
-        // ENOENT = command not found → try next candidate
-        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-          tryNext(rest, resolve, reject);
-        } else {
-          reject(
-            new InternalServerErrorException(
-              `Python ажиллуулах боломжгүй (${cmd}): ${err.message}`,
-            ) as unknown as Error,
-          );
-        }
-      });
-    };
+          const outputStream = new PassThrough();
+          const chunks: Buffer[] = [];
+          outputStream.on("data", (c: Buffer) => chunks.push(c));
+          outputStream.on("end", () => resolve(Buffer.concat(chunks)));
+          outputStream.on("error", reject);
 
-    return new Promise((resolve, reject) => {
-      tryNext(candidates, resolve, reject);
+          const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: outputStream, useSharedStrings: false });
+          const ws = wb.addWorksheet(sheetName);
+
+          let headerParsed = false;
+          let remainder = "";
+
+          res.on("data", (chunk: Buffer) => {
+            const text = remainder + chunk.toString("utf-8");
+            const lines = text.split("\n");
+            remainder = lines.pop() ?? "";
+
+            for (const line of lines) {
+              if (!line) continue;
+              const cells = line.split("\t");
+              if (!headerParsed) {
+                ws.addRow(cells).commit();
+                headerParsed = true;
+              } else {
+                ws.addRow(cells.map((v) => {
+                  const n = Number(v);
+                  return v !== "" && !isNaN(n) ? n : v;
+                })).commit();
+              }
+            }
+          });
+
+          res.on("end", async () => {
+            if (remainder) {
+              const cells = remainder.split("\t");
+              if (cells.some((c) => c !== "")) {
+                ws.addRow(cells.map((v) => { const n = Number(v); return v !== "" && !isNaN(n) ? n : v; })).commit();
+              }
+            }
+            await ws.commit();
+            await wb.commit();
+          });
+
+          res.on("error", reject);
+        },
+      );
+      req.on("error", (e: Error) =>
+        reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)),
+      );
+      req.write(Buffer.from(query, "utf-8"));
+      req.end();
     });
+
+    return buf;
   }
 
   // ── Async job API ──────────────────────────────────────────────────────────
@@ -664,32 +430,23 @@ export class ExcelReportService implements OnModuleInit {
     const job = this.jobs.get(jobId)!;
     job.status = "running";
 
-    const tmpDir = os.tmpdir();
-    const scriptPath = path.join(tmpDir, `excel_job_${jobId}.py`);
-    const outputPath = path.join(tmpDir, `excel_job_${jobId}.xlsx`);
-
     try {
-      const securedCode = this.buildScript(template.pythonCode);
-      fs.writeFileSync(scriptPath, securedCode, "utf8");
-
-      const env: Record<string, string> = this.buildPythonEnv({
-        OUTPUT_FILE: outputPath,
-        START_DATE: dto.startDate ?? "",
-        END_DATE: dto.endDate ?? dto.startDate ?? "",
-        REPORT_NAME: template.name,
-      });
-
-      const jobStdout = await this.executePython(scriptPath, env);
-
-      if (!fs.existsSync(outputPath)) {
-        throw new InternalServerErrorException(
-          `Python скрипт Excel файл үүсгээгүй байна.${jobStdout.trim() ? "\nStdout: " + jobStdout.trim().slice(0, 400) : ""}`,
-        );
-      }
-
-      job.buffer = fs.readFileSync(outputPath);
       const date = new Date().toISOString().slice(0, 10);
       job.fileName = `${template.name}_${date}.xlsx`;
+
+      const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
+      if (!sql) {
+        throw new BadRequestException(
+          "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
+        );
+      }
+      job.buffer = await this.generateExcelFromSql(
+        sql,
+        dto.filters ?? {},
+        dto.startDate ?? "",
+        dto.endDate ?? dto.startDate ?? "",
+        template.name,
+      );
       job.status = "done";
       job.finishedAt = Date.now();
     } catch (err: any) {
@@ -697,13 +454,6 @@ export class ExcelReportService implements OnModuleInit {
       job.finishedAt = Date.now();
       job.error = err?.message ?? "Тайлан үүсгэхэд тодорхойгүй алдаа гарлаа";
       this.logger.error(`Job ${jobId} failed: ${job.error}`);
-    } finally {
-      try {
-        fs.unlinkSync(scriptPath);
-      } catch {}
-      try {
-        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-      } catch {}
     }
   }
 
@@ -743,54 +493,57 @@ export class ExcelReportService implements OnModuleInit {
       );
     }
 
-    // Substitute date placeholders
+    // Substitute date placeholders and filter values
     const start = dto.startDate ?? "";
     const end = dto.endDate ?? dto.startDate ?? "";
-    const resolvedSql = sql
-      .replace(/\{start_date\}/g, start)
-      .replace(/\{end_date\}/g, end);
-
-    // Inject LIMIT 100 as outer query for safety
-    const previewSql = `SELECT * FROM (\n${resolvedSql}\n) LIMIT 100`;
-
-    // Run directly via ClickHouse HTTP (JSONCompact → meta + data)
-    const { host, port } = ExcelReportService.parseCHHostPort();
-    const url = `http://${host}:${port}/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&default_format=JSONCompact`;
-
-    const result = await new Promise<{ meta: {name:string}[]; data: any[][] }>(
-      (resolve, reject) => {
-        const http = require("http") as typeof import("http");
-        const body = Buffer.from(previewSql, "utf-8");
-        const parsed = new URL(url);
-        const req = http.request(
-          { hostname: parsed.hostname, port: Number(parsed.port) || 8123, path: parsed.pathname + parsed.search, method: "POST" },
-          (res) => {
-            const chunks: Buffer[] = [];
-            res.on("data", (c: Buffer) => chunks.push(c));
-            res.on("end", () => {
-              const text = Buffer.concat(chunks).toString("utf-8");
-              try {
-                resolve(JSON.parse(text));
-              } catch {
-                reject(new InternalServerErrorException("ClickHouse хариу буруу: " + text.slice(0, 200)));
-              }
-            });
-          },
-        );
-        req.on("error", (e: Error) => reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)));
-        req.write(body);
-        req.end();
-      },
+    const filterVals: Record<string, string> = dto.filters ?? {};
+    let resolved = sql.replace(
+      /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
+      (_, name, content) => (filterVals[name] ? content : ""),
     );
-
-    if (!result?.meta) {
-      throw new InternalServerErrorException("ClickHouse meta мэдээлэл ирсэнгүй");
+    resolved = resolved.replace(/\{start_date\}/g, start).replace(/\{end_date\}/g, end);
+    for (const [k, v] of Object.entries(filterVals)) {
+      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
     }
 
-    return {
-      columns: result.meta.map((m) => m.name),
-      rows: result.data ?? [],
-    };
+    const previewSql = `SELECT * FROM (\n${resolved}\n) LIMIT 50 FORMAT TSVWithNames`;
+
+    const { host, port } = ExcelReportService.parseCHHostPort();
+    const urlPath = `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}`;
+
+    const tsv = await new Promise<string>((resolve, reject) => {
+      const body = Buffer.from(previewSql, "utf-8");
+      const req = http.request(
+        { hostname: host, port: Number(port) || 8123, path: urlPath, method: "POST" },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on("data", (c: Buffer) => chunks.push(c));
+          res.on("end", () => {
+            const text = Buffer.concat(chunks).toString("utf-8");
+            if ((res.statusCode ?? 0) !== 200) {
+              reject(new InternalServerErrorException("ClickHouse алдаа: " + text.slice(0, 300)));
+            } else {
+              resolve(text);
+            }
+          });
+        },
+      );
+      req.on("error", (e: Error) => reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)));
+      req.write(body);
+      req.end();
+    });
+
+    // Parse TSVWithNames: first line = headers, remaining = data rows
+    const lines = tsv.split("\n");
+    const columns = lines[0] ? lines[0].split("\t") : [];
+    const rows: any[][] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      rows.push(line.split("\t"));
+    }
+
+    return { columns, rows };
   }
 
   /** Extract SQL string from SQL-mode pythonCode, or null if not SQL mode. */
@@ -799,6 +552,77 @@ export class ExcelReportService implements OnModuleInit {
     const m = pythonCode.match(/^SQL = r'''\n([\s\S]*?)\n'''\.strip\(\)/m);
     if (m) return m[1].replace(/''\\'''/g, "'''");
     return null;
+  }
+
+  // ── SQL-mode → CSV directly from ClickHouse (no format conversion) ────────
+
+  /** Stream ClickHouse CSVWithNames bytes directly — zero ExcelJS overhead. */
+  private async generateCsvFromSql(
+    sql: string,
+    filterVals: Record<string, string>,
+    startDate: string,
+    endDate: string,
+  ): Promise<Buffer> {
+    let resolved = sql.replace(
+      /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
+      (_, k, content) => (filterVals[k] ? content : ""),
+    );
+    resolved = resolved.replace(/\{start_date\}/g, startDate).replace(/\{end_date\}/g, endDate);
+    for (const [k, v] of Object.entries(filterVals)) {
+      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+    }
+
+    const { host, port } = ExcelReportService.parseCHHostPort();
+    const query = resolved.trim() + " FORMAT CSVWithNames";
+    const urlPath = `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}`;
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const req = http.request(
+        { hostname: host, port: Number(port) || 8123, path: urlPath, method: "POST" },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on("data", (c: Buffer) => chunks.push(c));
+          res.on("end", () => {
+            const buf = Buffer.concat(chunks);
+            if ((res.statusCode ?? 0) !== 200) {
+              reject(new InternalServerErrorException(
+                "ClickHouse алдаа: " + buf.toString("utf-8").slice(0, 300),
+              ));
+            } else {
+              // UTF-8 BOM — Excel-д Кирилл тэмдэгт зөв харагдана
+              resolve(Buffer.concat([Buffer.from("\xEF\xBB\xBF"), buf]));
+            }
+          });
+          res.on("error", reject);
+        },
+      );
+      req.on("error", (e: Error) =>
+        reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)),
+      );
+      req.write(Buffer.from(query, "utf-8"));
+      req.end();
+    });
+  }
+
+  async runReportCsv(dto: RunReportDto): Promise<{ csv: Buffer; fileName: string }> {
+    const template = await this.getTemplateById(dto.templateId);
+    if (!template.isActive) throw new BadRequestException("Энэ тайлан идэвхгүй байна");
+    if (template.dateMode === "range" && (!dto.startDate || !dto.endDate)) {
+      throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
+    }
+    if (template.dateMode === "single" && !dto.startDate) {
+      throw new BadRequestException("Огноо шаардлагатай");
+    }
+    const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
+    if (!sql) throw new BadRequestException("Зөвхөн SQL горимын тайлан дэмжигдэнэ.");
+    const csv = await this.generateCsvFromSql(
+      sql,
+      dto.filters ?? {},
+      dto.startDate ?? "",
+      dto.endDate ?? dto.startDate ?? "",
+    );
+    const date = new Date().toISOString().slice(0, 10);
+    return { csv, fileName: `${template.name}_${date}.csv` };
   }
 
   // ── Direct SQL → Excel ────────────────────────────────────────────────────
@@ -814,35 +638,6 @@ export class ExcelReportService implements OnModuleInit {
         "Зөвхөн SELECT query зөвшөөрөгдөнө. INSERT/UPDATE/DELETE/DROP зэрэг үйлдэл хориглоно.",
       );
     }
-
-    const tmpDir = os.tmpdir();
-    const scriptPath = path.join(tmpDir, `sql_excel_${randomUUID()}.py`);
-    const outputPath = path.join(tmpDir, `sql_excel_${randomUUID()}.xlsx`);
-
-    try {
-      fs.writeFileSync(scriptPath, ExcelReportService.SQL_TO_EXCEL_PYTHON, "utf8");
-
-      const env: Record<string, string> = this.buildPythonEnv({
-        QUERY_SQL: dto.sql,
-        OUTPUT_FILE: outputPath,
-      });
-
-      const sqlStdout = await this.executePython(scriptPath, env);
-
-      if (!fs.existsSync(outputPath)) {
-        throw new InternalServerErrorException(
-          `Python скрипт Excel файл үүсгээгүй байна.${sqlStdout.trim() ? "\nStdout: " + sqlStdout.trim().slice(0, 400) : ""}`,
-        );
-      }
-
-      return fs.readFileSync(outputPath);
-    } finally {
-      try {
-        fs.unlinkSync(scriptPath);
-      } catch {}
-      try {
-        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-      } catch {}
-    }
+    return this.generateExcelFromSql(dto.sql, {}, "", "", "Result");
   }
 }

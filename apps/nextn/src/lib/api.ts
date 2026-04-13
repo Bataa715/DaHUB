@@ -743,12 +743,19 @@ interface ChessGame {
 
 // ── Excel Report API ──────────────────────────────────────────────────────────
 
+export interface FilterDef {
+  key: string;
+  label: string;
+  placeholder?: string;
+}
+
 export interface ReportTemplate {
   id: string;
   name: string;
   description: string;
   dateMode: "none" | "single" | "range";
   color: string;
+  filters: string; // JSON string of FilterDef[]
   createdAt: string;
   updatedAt: string;
   isSqlMode: boolean;
@@ -784,11 +791,13 @@ export const excelReportApi = {
     templateId: string,
     startDate?: string,
     endDate?: string,
+    filters?: Record<string, string>,
   ): Promise<string> => {
     const res = await api.post("/excel-report/run-async", {
       templateId,
       startDate,
       endDate,
+      filters,
     });
     return res.data.jobId as string;
   },
@@ -814,16 +823,33 @@ export const excelReportApi = {
     return res.data as Blob;
   },
 
+  /** POST /excel-report/run-csv — download CSV directly (fast, no Excel formatting overhead) */
+  runReportCsv: async (
+    templateId: string,
+    startDate?: string,
+    endDate?: string,
+    filters?: Record<string, string>,
+  ): Promise<Blob> => {
+    const res = await api.post(
+      "/excel-report/run-csv",
+      { templateId, startDate, endDate, filters },
+      { responseType: "blob" },
+    );
+    return res.data as Blob;
+  },
+
   /** Preview: run SQL-mode report and return first 100 rows as JSON */
   previewReport: async (
     templateId: string,
     startDate?: string,
     endDate?: string,
+    filters?: Record<string, string>,
   ): Promise<{ columns: string[]; rows: any[][] }> => {
     const res = await api.post("/excel-report/preview", {
       templateId,
       startDate,
       endDate,
+      filters,
     });
     return res.data as { columns: string[]; rows: any[][] };
   },
@@ -840,6 +866,7 @@ export const excelReportApi = {
     pythonCode: string;
     dateMode: "none" | "single" | "range";
     color?: string;
+    filters?: string;
   }): Promise<ReportTemplateAdmin> => {
     const res = await api.post("/excel-report/admin/templates", data);
     return res.data;
@@ -853,6 +880,7 @@ export const excelReportApi = {
       pythonCode: string;
       dateMode: "none" | "single" | "range";
       color: string;
+      filters: string;
     }>,
   ): Promise<ReportTemplateAdmin> => {
     const res = await api.patch(`/excel-report/admin/templates/${id}`, data);
