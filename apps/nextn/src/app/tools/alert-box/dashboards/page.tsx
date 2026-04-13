@@ -39,7 +39,9 @@ export default function DashboardsPage() {
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={20} className="animate-spin text-golomt-400" />
-            <span className="text-[12px] text-txt-dim ml-3">Уншиж байна...</span>
+            <span className="text-[12px] text-txt-dim ml-3">
+              Уншиж байна...
+            </span>
           </div>
         )}
 
@@ -52,11 +54,16 @@ export default function DashboardsPage() {
         {!loading && !error && (
           <div className="bg-surface-card rounded-xl border border-surface-border overflow-hidden divide-y divide-surface-border/50">
             {dashboards.map((d) => (
-              <div key={d.id} className="flex items-start gap-4 px-4 py-3 hover:bg-surface-hover transition-colors">
+              <div
+                key={d.id}
+                className="flex items-start gap-4 px-4 py-3 hover:bg-surface-hover transition-colors"
+              >
                 <span className="flex-shrink-0 inline-flex items-center justify-center w-11 h-6 mt-0.5 rounded-md bg-golomt-500/10 border border-golomt-500/20 text-golomt-400 font-bold text-[11px]">
                   DB{d.id}
                 </span>
-                <span className="text-[12px] text-txt font-medium leading-relaxed">{d.name}</span>
+                <span className="text-[12px] text-txt font-medium leading-relaxed">
+                  {d.name}
+                </span>
               </div>
             ))}
           </div>

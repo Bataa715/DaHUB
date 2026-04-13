@@ -378,7 +378,7 @@ export default function LobbyView(props: LobbyViewProps) {
       )}
 
       {/* Rankings table */}
-      {(
+      {
         <div className="md:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-3">
           <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />
@@ -444,7 +444,7 @@ export default function LobbyView(props: LobbyViewProps) {
             })}
           </div>
         </div>
-      )}
+      }
     </motion.div>
   );
 }

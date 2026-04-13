@@ -747,6 +747,7 @@ export interface FilterDef {
   key: string;
   label: string;
   placeholder?: string;
+  required?: boolean;
 }
 
 export interface ReportTemplate {
@@ -756,9 +757,13 @@ export interface ReportTemplate {
   dateMode: "none" | "single" | "range";
   color: string;
   filters: string; // JSON string of FilterDef[]
+  stagingTable: string;
+  stagingInsertSql: string;
   createdAt: string;
   updatedAt: string;
   isSqlMode: boolean;
+  isStaging: boolean;
+  sqlCode?: string;
 }
 
 export interface ReportTemplateAdmin extends ReportTemplate {
@@ -829,12 +834,26 @@ export const excelReportApi = {
     startDate?: string,
     endDate?: string,
     filters?: Record<string, string>,
+    columns?: string[],
+    onProgress?: (percent: number) => void,
   ): Promise<Blob> => {
     const res = await api.post(
       "/excel-report/run-csv",
-      { templateId, startDate, endDate, filters },
-      { responseType: "blob" },
+      { templateId, startDate, endDate, filters, columns },
+      {
+        responseType: "blob",
+        onDownloadProgress: (e) => {
+          if (!onProgress) return;
+          // e.total is set only when Content-Length header is present
+          const pct =
+            e.total && e.total > 0
+              ? Math.min(99, Math.round((e.loaded / e.total) * 100))
+              : 0;
+          onProgress(pct);
+        },
+      },
     );
+    onProgress?.(100);
     return res.data as Blob;
   },
 
@@ -844,14 +863,24 @@ export const excelReportApi = {
     startDate?: string,
     endDate?: string,
     filters?: Record<string, string>,
+    columns?: string[],
   ): Promise<{ columns: string[]; rows: any[][] }> => {
     const res = await api.post("/excel-report/preview", {
       templateId,
       startDate,
       endDate,
       filters,
+      columns,
     });
     return res.data as { columns: string[]; rows: any[][] };
+  },
+
+  /** POST /excel-report/columns — detect available columns from SQL (fast, LIMIT 0) */
+  getReportColumns: async (
+    templateId: string,
+  ): Promise<{ columns: string[] }> => {
+    const res = await api.post("/excel-report/columns", { templateId });
+    return res.data as { columns: string[] };
   },
 
   // Admin

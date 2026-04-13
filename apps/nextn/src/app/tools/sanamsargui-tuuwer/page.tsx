@@ -387,13 +387,18 @@ export default function SanamsarguiTuuwerPage() {
                               {(() => {
                                 const filtered = filterSearch
                                   ? s.availableFilterValues.filter((v) =>
-                                      v.toLowerCase().includes(filterSearch.toLowerCase())
+                                      v
+                                        .toLowerCase()
+                                        .includes(filterSearch.toLowerCase()),
                                     )
                                   : s.availableFilterValues;
                                 const COLLAPSED_LIMIT = 10;
                                 const showAll = filterExpanded || filterSearch;
-                                const visible = showAll ? filtered : filtered.slice(0, COLLAPSED_LIMIT);
-                                const hiddenCount = filtered.length - COLLAPSED_LIMIT;
+                                const visible = showAll
+                                  ? filtered
+                                  : filtered.slice(0, COLLAPSED_LIMIT);
+                                const hiddenCount =
+                                  filtered.length - COLLAPSED_LIMIT;
                                 return (
                                   <>
                                     <div className="flex flex-wrap gap-2">
@@ -413,7 +418,9 @@ export default function SanamsarguiTuuwerPage() {
                                       {visible.map((v) => (
                                         <button
                                           key={v}
-                                          onClick={() => s.setSelectedFilterValue(v)}
+                                          onClick={() =>
+                                            s.setSelectedFilterValue(v)
+                                          }
                                           className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                                             s.selectedFilterValue === v
                                               ? "bg-violet-500 border-violet-400 text-white"
@@ -424,27 +431,31 @@ export default function SanamsarguiTuuwerPage() {
                                         </button>
                                       ))}
                                     </div>
-                                    {!filterSearch && filtered.length > COLLAPSED_LIMIT && (
-                                      <button
-                                        onClick={() => setFilterExpanded((p) => !p)}
-                                        className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors mt-1"
-                                      >
-                                        {filterExpanded ? (
-                                          <>
-                                            <ChevronUp className="w-3.5 h-3.5" />
-                                            Хураах
-                                          </>
-                                        ) : (
-                                          <>
-                                            <ChevronDown className="w-3.5 h-3.5" />
-                                            Бүгдийг харах (+{hiddenCount})
-                                          </>
-                                        )}
-                                      </button>
-                                    )}
+                                    {!filterSearch &&
+                                      filtered.length > COLLAPSED_LIMIT && (
+                                        <button
+                                          onClick={() =>
+                                            setFilterExpanded((p) => !p)
+                                          }
+                                          className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors mt-1"
+                                        >
+                                          {filterExpanded ? (
+                                            <>
+                                              <ChevronUp className="w-3.5 h-3.5" />
+                                              Хураах
+                                            </>
+                                          ) : (
+                                            <>
+                                              <ChevronDown className="w-3.5 h-3.5" />
+                                              Бүгдийг харах (+{hiddenCount})
+                                            </>
+                                          )}
+                                        </button>
+                                      )}
                                     {filterSearch && filtered.length === 0 && (
                                       <p className="text-xs text-slate-500">
-                                        &ldquo;{filterSearch}&rdquo; илэрц олдсонгүй
+                                        &ldquo;{filterSearch}&rdquo; илэрц
+                                        олдсонгүй
                                       </p>
                                     )}
                                   </>

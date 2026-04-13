@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Injectable, Logger } from "@nestjs/common";
+import * as fs from "fs";
+import * as path from "path";
 
 export interface OracleDashboardConfig {
   id: number;
@@ -23,9 +23,9 @@ export interface EventChainConfig {
   enabled: boolean;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data', 'oracle');
-const DASHBOARDS_PATH = path.join(DATA_DIR, 'oracle-dashboards.json');
-const CHAINS_PATH = path.join(DATA_DIR, 'event-chains.json');
+const DATA_DIR = path.join(process.cwd(), "data", "oracle");
+const DASHBOARDS_PATH = path.join(DATA_DIR, "oracle-dashboards.json");
+const CHAINS_PATH = path.join(DATA_DIR, "event-chains.json");
 
 const IDENT_RE = /^[A-Z_][A-Z0-9_.]*$/i;
 
@@ -35,20 +35,22 @@ export class OracleConfigService {
 
   loadDashboards(): OracleDashboardConfig[] {
     try {
-      return JSON.parse(fs.readFileSync(DASHBOARDS_PATH, 'utf-8'));
+      return JSON.parse(fs.readFileSync(DASHBOARDS_PATH, "utf-8"));
     } catch {
-      this.logger.warn(`oracle-dashboards.json унших боломжгүй: ${DASHBOARDS_PATH}`);
+      this.logger.warn(
+        `oracle-dashboards.json унших боломжгүй: ${DASHBOARDS_PATH}`,
+      );
       return [];
     }
   }
 
   getEnabledDashboards(): OracleDashboardConfig[] {
-    return this.loadDashboards().filter(d => d.enabled);
+    return this.loadDashboards().filter((d) => d.enabled);
   }
 
   loadChains(): EventChainConfig[] {
     try {
-      return JSON.parse(fs.readFileSync(CHAINS_PATH, 'utf-8'));
+      return JSON.parse(fs.readFileSync(CHAINS_PATH, "utf-8"));
     } catch {
       this.logger.warn(`event-chains.json унших боломжгүй: ${CHAINS_PATH}`);
       return [];
@@ -56,7 +58,7 @@ export class OracleConfigService {
   }
 
   getEnabledChains(): EventChainConfig[] {
-    return this.loadChains().filter(c => c.enabled);
+    return this.loadChains().filter((c) => c.enabled);
   }
 
   validateIdentifier(name: string, value: string) {

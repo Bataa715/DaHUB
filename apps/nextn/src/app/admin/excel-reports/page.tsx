@@ -27,20 +27,19 @@ import {
   AlertTriangle,
   Check,
   Database,
+  Wand2,
 } from "lucide-react";
 import Link from "next/link";
 import { excelReportApi, ReportTemplateAdmin, FilterDef } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const COLOR_OPTIONS = [
-  { label: "Ногоон → Тэнгэр", value: "from-emerald-500 to-teal-500" },
-  { label: "Цэнхэр → Ногоон", value: "from-blue-500 to-cyan-500" },
-  { label: "Нил ягаан → Индиго", value: "from-violet-500 to-indigo-500" },
-  { label: "Улаан → Ягаан", value: "from-rose-500 to-pink-500" },
-  { label: "Шар → Улбар шар", value: "from-amber-500 to-orange-500" },
-  { label: "Нил → Цэнхэр нил", value: "from-purple-500 to-violet-500" },
-  { label: "Тэнгэр → Цэнхэр", value: "from-sky-500 to-blue-500" },
-  { label: "Ягаан → Улаан", value: "from-pink-500 to-rose-500" },
+  { label: "Ногоон", value: "from-emerald-500 to-teal-500" },
+  { label: "Цэнхэр", value: "from-blue-500 to-cyan-500" },
+  { label: "Нил ягаан", value: "from-violet-500 to-indigo-500" },
+  { label: "Улаан", value: "from-rose-500 to-pink-500" },
+  { label: "Шар", value: "from-amber-500 to-orange-500" },
+  { label: "Ягаан", value: "from-pink-500 to-rose-500" },
 ];
 
 const DATE_MODE_META = {
@@ -71,11 +70,12 @@ const EMPTY_FORM = {
   dateMode: "range" as "none" | "single" | "range",
   color: "from-emerald-500 to-teal-500",
   filters: "[]" as string,
+  stagingTable: "",
+  stagingInsertSql: "",
 };
 
 // ── SQL_MARKER prefix so we can detect + extract SQL when editing ─────────────
 const SQL_MARKER = "# __SQL_MODE__\n";
-
 
 function sqlToPython(sql: string): string {
   // Generate minimal SQL-mode code — buildScript() on the backend
@@ -174,6 +174,66 @@ function CodeEditor({
   );
 }
 
+// ── SQL Code Generator component ─────────────────────────────────────────────
+
+interface ColInfo {
+  alias: string; // e.g. CIF_ID
+  expr: string; // e.g. GAM.CIF_ID
+  filterKey: string; // editable, e.g. cif_ids
+  selected: boolean;
+}
+
+interface StagingColInfo extends ColInfo {
+  required: boolean;
+}
+
+function parseCols(sql: string): ColInfo[] {
+  const selectMatch = sql.match(/SELECT\s+([\s\S]+?)\s+FROM\s/i);
+  if (!selectMatch) return [];
+  const selectPart = selectMatch[1];
+  const rawCols = splitTopLevel(selectPart);
+  return rawCols
+    .map((raw) => {
+      const trimmed = raw.trim();
+      const asMatch = trimmed.match(/^([\s\S]+?)\s+AS\s+(\w+)\s*$/i);
+      if (asMatch) {
+        const expr = asMatch[1].trim();
+        const alias = asMatch[2].trim();
+        return { alias, expr, filterKey: alias.toLowerCase(), selected: false };
+      }
+      // bare col or table.col
+      const dotParts = trimmed.split(".");
+      const alias = dotParts[dotParts.length - 1].trim();
+      return {
+        alias,
+        expr: trimmed,
+        filterKey: alias.toLowerCase(),
+        selected: false,
+      };
+    })
+    .filter((c) => c.alias && !/[()*/+\-]/.test(c.alias));
+}
+
+function splitTopLevel(s: string): string[] {
+  const result: string[] = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of s) {
+    if (ch === "(" || ch === "[") depth++;
+    else if (ch === ")" || ch === "]") depth--;
+    else if (ch === "," && depth === 0) {
+      result.push(cur);
+      cur = "";
+      continue;
+    }
+    cur += ch;
+  }
+  if (cur.trim()) result.push(cur);
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function AdminExcelReportsPage() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<ReportTemplateAdmin[]>([]);
@@ -187,9 +247,10 @@ export default function AdminExcelReportsPage() {
   );
   const [toggling, setToggling] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
   const [sqlCode, setSqlCode] = useState("");
-  const [filterDefs, setFilterDefs] = useState<FilterDef[]>([]);
+  const [parsedCols, setParsedCols] = useState<ColInfo[]>([]);
+  const [showStagingFields, setShowStagingFields] = useState(false);
+  const [stagingCols, setStagingCols] = useState<StagingColInfo[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -197,11 +258,7 @@ export default function AdminExcelReportsPage() {
       const data = await excelReportApi.adminGetAll();
       setTemplates(data);
     } catch {
-      toast({
-        title: "Алдаа",
-        description: "Мэдээлэл татахад алдаа гарлаа",
-        variant: "destructive",
-      });
+      toast({ title: "Ачаалалтын алдаа", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -211,23 +268,50 @@ export default function AdminExcelReportsPage() {
     load();
   }, [load]);
 
+  const closePanel = () => {
+    setPanelOpen(false);
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setSqlCode("");
+    setParsedCols([]);
+    setStagingCols([]);
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
     setSqlCode("");
-    setFilterDefs([]);
+    setParsedCols([]);
+    setStagingCols([]);
+    setShowStagingFields(false);
     setPanelOpen(true);
   };
 
   const openEdit = (t: ReportTemplateAdmin) => {
     setEditing(t);
     const extracted = extractSqlFromPython(t.pythonCode);
-    setSqlCode(extracted ?? "");
+    // Strip stored {IF}...{/IF} filter blocks to show clean SQL in the editor
+    const cleanSql = (extracted ?? "")
+      .replace(/\n?\{IF \w+\}[^{]*\{\/IF\}/g, "")
+      .trim();
+    setSqlCode(cleanSql);
+    // Restore chip selections from stored filterDefs
+    let storedFilters: FilterDef[] = [];
     try {
-      setFilterDefs(JSON.parse(t.filters || "[]"));
+      storedFilters = JSON.parse(t.filters || "[]");
     } catch {
-      setFilterDefs([]);
+      /* */
     }
+    const cols = parseCols(cleanSql);
+    const selectedKeys = new Set<string>(storedFilters.map((f) => f.key));
+    setParsedCols(
+      cols.map((c) => ({
+        ...c,
+        selected: selectedKeys.has(c.filterKey),
+        filterKey:
+          storedFilters.find((f) => f.label === c.alias)?.key ?? c.filterKey,
+      })),
+    );
     setForm({
       name: t.name,
       description: t.description,
@@ -235,13 +319,31 @@ export default function AdminExcelReportsPage() {
       dateMode: t.dateMode,
       color: t.color,
       filters: t.filters || "[]",
+      stagingTable: t.stagingTable ?? "",
+      stagingInsertSql: t.stagingInsertSql ?? "",
     });
+    const isStg = !!t.stagingTable?.trim();
+    setShowStagingFields(isStg);
+    if (isStg) {
+      const stgCols = parseCols(t.stagingInsertSql ?? "");
+      const selectedKeys = new Set(storedFilters.map((f) => f.key));
+      setStagingCols(
+        stgCols.map((c) => {
+          const stored = storedFilters.find(
+            (f) => f.label === c.alias || f.key === c.filterKey,
+          );
+          return {
+            ...c,
+            selected: selectedKeys.has(c.filterKey) || storedFilters.some((f) => f.label === c.alias),
+            filterKey: stored?.key ?? c.filterKey,
+            required: !!stored?.required,
+          };
+        }),
+      );
+    } else {
+      setStagingCols([]);
+    }
     setPanelOpen(true);
-  };
-
-  const closePanel = () => {
-    setPanelOpen(false);
-    setEditing(null);
   };
 
   const handleSave = async () => {
@@ -249,15 +351,46 @@ export default function AdminExcelReportsPage() {
       toast({ title: "Нэр оруулна уу", variant: "destructive" });
       return;
     }
-    if (!sqlCode.trim()) {
+    const isStaging = showStagingFields;
+    if (!isStaging && !sqlCode.trim()) {
       toast({ title: "SQL query оруулна уу", variant: "destructive" });
       return;
     }
-    const finalPythonCode = sqlToPython(sqlCode.trim());
-    const finalFilters = JSON.stringify(filterDefs);
+    // Append {IF key}AND expr IN ({key}){/IF} blocks for each selected filter column
+    const selectedCols = parsedCols.filter((c) => c.selected);
+    let sqlWithFilters = sqlCode.trim();
+    for (const col of selectedCols) {
+      sqlWithFilters += `\n{IF ${col.filterKey}}AND ${col.expr} IN ({${col.filterKey}}){/IF}`;
+    }
+    const finalPythonCode = isStaging
+      ? "# __STAGING_MODE__"
+      : sqlToPython(sqlWithFilters);
+    const finalFilters = isStaging
+      ? JSON.stringify(
+          stagingCols
+            .filter((c) => c.selected)
+            .map((c) => ({
+              key: c.filterKey,
+              label: c.alias,
+              placeholder: "",
+              required: c.required,
+            })),
+        )
+      : JSON.stringify(
+          selectedCols.map((c) => ({
+            key: c.filterKey,
+            label: c.alias,
+            placeholder: "",
+          })),
+        );
     setSaving(true);
     try {
-      const payload = { ...form, pythonCode: finalPythonCode, filters: finalFilters };
+      const payload = {
+        ...form,
+        pythonCode: finalPythonCode,
+        filters: finalFilters,
+        stagingInsertSql: isStaging ? form.stagingInsertSql.trim() : "",
+      };
       if (editing) {
         await excelReportApi.adminUpdate(editing.id, payload);
         toast({ title: "Амжилттай шинэчлэгдлээ" });
@@ -325,6 +458,7 @@ export default function AdminExcelReportsPage() {
               Excel тайлан удирдах
             </span>
           </div>
+
           <div className="ml-auto">
             <button
               onClick={openCreate}
@@ -621,120 +755,356 @@ export default function AdminExcelReportsPage() {
                   className={`h-1.5 w-full rounded-full bg-gradient-to-r ${form.color}`}
                 />
 
-                <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs font-medium">
-                    SQL Query *
-                  </Label>
-                  <CodeEditor
-                    value={sqlCode}
-                    onChange={setSqlCode}
-                    placeholder={
-                      "SELECT *\nFROM your_table\nWHERE date >= '{start_date}'\n  AND date <= '{end_date}'"
-                    }
-                  />
-                  <p className="text-xs text-slate-600">
-                    Хадгалахад автоматаар Python код үүснэ.{" "}
-                    <code className="text-slate-400">
-                      {"'{start_date}'"}
-                    </code>
-                    ,{" "}
-                    <code className="text-slate-400">{"'{end_date}'"}</code>{" "}
-                    placeholder ашиглаж болно.
-                  </p>
-                </div>
-
-                {/* ── Dynamic Filters Config ── */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-slate-300 text-xs font-medium">
-                      Хайлтын шүүлтүүр (Filters)
-                    </Label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFilterDefs((prev) => [
-                          ...prev,
-                          { key: "", label: "", placeholder: "" },
-                        ])
+                {/* Staging mode fields */}
+                <div
+                  className={`rounded-xl border ${showStagingFields ? "border-amber-500/30 bg-amber-500/5" : "border-slate-700/40 bg-slate-800/20"} overflow-hidden transition-colors`}
+                >
+                  {/* Toggle header */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !showStagingFields;
+                      setShowStagingFields(next);
+                      if (!next) {
+                        setForm((f) => ({
+                          ...f,
+                          stagingTable: "",
+                          stagingInsertSql: "",
+                        }));
+                        setStagingCols([]);
                       }
-                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Шүүлтүүр нэмэх
-                    </button>
-                  </div>
-                  {filterDefs.length === 0 && (
-                    <p className="text-xs text-slate-600 text-center py-2">
-                      Шүүлтүүр байхгүй. Хэрэглэгч зөвхөн огноогоор шүүнэ.
-                    </p>
-                  )}
-                  {filterDefs.map((f, i) => (
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:opacity-80 transition-opacity"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full ${showStagingFields ? "bg-amber-400" : "bg-slate-600"}`}
+                      />
+                      <span
+                        className={`text-xs font-semibold ${showStagingFields ? "text-amber-400" : "text-slate-500"}`}
+                      >
+                        Стейжинг горим
+                      </span>
+                    </div>
                     <div
-                      key={i}
-                      className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/50"
+                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${showStagingFields ? "bg-amber-500" : "bg-slate-700"}`}
                     >
-                      <div className="flex-1 grid grid-cols-3 gap-2">
-                        <input
-                          value={f.key}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase();
-                            setFilterDefs((prev) =>
-                              prev.map((fd, j) =>
-                                j === i ? { ...fd, key: val } : fd,
-                              ),
-                            );
-                          }}
-                          placeholder="key (жиш: cif_ids)"
-                          className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
-                        />
-                        <input
-                          value={f.label}
+                      <span
+                        className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow transition-transform ${showStagingFields ? "translate-x-3.5" : "translate-x-0.5"}`}
+                      />
+                    </div>
+                  </button>
+
+                  {/* Collapsible content */}
+                  {showStagingFields && (
+                    <div className="px-4 pb-4 space-y-3 border-t border-amber-500/20">
+                      <p className="text-[11px] text-slate-500 leading-relaxed pt-3">
+                        Тавар оруулсан: INSERT SQL ажиллана → стейжинг хүснээсээ
+                        ашиглана → CSV татагдана → TRUNCATE. INSERT SQL-д{" "}
+                        {"{start_date}"}, {"{end_date}"} placeholder ашиглаж
+                        болно.
+                      </p>
+                      <div className="space-y-1.5">
+                        <Label className="text-slate-400 text-xs">
+                          Стейжинг хүснэгтэйн нэр (schema.table)
+                        </Label>
+                        <Input
+                          placeholder="Жиш: BRANCH.AUDIT_S1_FINAL"
+                          value={form.stagingTable}
                           onChange={(e) =>
-                            setFilterDefs((prev) =>
-                              prev.map((fd, j) =>
-                                j === i ? { ...fd, label: e.target.value } : fd,
-                              ),
-                            )
+                            setForm((f) => ({
+                              ...f,
+                              stagingTable: e.target.value,
+                            }))
                           }
-                          placeholder="Label (жиш: CIF ID)"
-                          className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
-                        />
-                        <input
-                          value={f.placeholder ?? ""}
-                          onChange={(e) =>
-                            setFilterDefs((prev) =>
-                              prev.map((fd, j) =>
-                                j === i
-                                  ? { ...fd, placeholder: e.target.value }
-                                  : fd,
-                              ),
-                            )
-                          }
-                          placeholder="Placeholder (сонголтот)"
-                          className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+                          className="bg-slate-800/60 border-slate-700 text-slate-100 placeholder-slate-600 focus:border-amber-500 focus:ring-amber-500/20 font-mono text-xs"
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFilterDefs((prev) => prev.filter((_, j) => j !== i))
-                        }
-                        className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0 mt-0.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="space-y-1.5">
+                        <Label className="text-slate-400 text-xs">
+                          INSERT INTO ... SELECT ... SQL
+                        </Label>
+                        <CodeEditor
+                          value={form.stagingInsertSql}
+                          onChange={(v) =>
+                            setForm((f) => ({ ...f, stagingInsertSql: v }))
+                          }
+                          placeholder={`INSERT INTO BRANCH.AUDIT_S1_FINAL\nSELECT ...\nFROM FINACLE.GAM_LAM\nWHERE toDate(B_TXNDATE) BETWEEN toDate('{start_date}') AND toDate('{end_date}')`}
+                        />
+                      </div>
+
+                      {/* ── Staging filter chip selector ── */}
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-400 text-xs">
+                            Шүүлтүүр баганууд (сонголтот)
+                          </Label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStagingCols(
+                                parseCols(form.stagingInsertSql).map((c) => ({
+                                  ...c,
+                                  required: false,
+                                })),
+                              )
+                            }
+                            disabled={!form.stagingInsertSql.trim()}
+                            className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-40"
+                          >
+                            <Wand2 className="w-3 h-3" />
+                            Баганууд задлах
+                          </button>
+                        </div>
+                        {stagingCols.length === 0 ? (
+                          <p className="text-xs text-slate-600 text-center py-1">
+                            INSERT SQL бичсэний дараа &ldquo;Баганууд
+                            задлах&rdquo; товчийг дарна уу
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-[11px] text-slate-500">
+                              Фильтр болгох баганаа сонгох — шар = сонгогдсон
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {stagingCols.map((c, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() =>
+                                    setStagingCols((prev) => {
+                                      const next = [...prev];
+                                      next[i] = {
+                                        ...next[i],
+                                        selected: !next[i].selected,
+                                      };
+                                      return next;
+                                    })
+                                  }
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+                                    c.selected
+                                      ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                                      : "bg-slate-800/60 border-slate-700/50 text-slate-400 hover:border-slate-500"
+                                  }`}
+                                >
+                                  {c.alias}
+                                </button>
+                              ))}
+                            </div>
+                            {stagingCols.some((c) => c.selected) && (
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] text-slate-500">
+                                  Filter key болон &ldquo;Заавал&rdquo;
+                                  тохируулах
+                                </p>
+                                <div className="grid gap-1.5">
+                                  {stagingCols
+                                    .filter((c) => c.selected)
+                                    .map((c) => {
+                                      const realIdx = stagingCols.indexOf(c);
+                                      return (
+                                        <div
+                                          key={realIdx}
+                                          className="flex items-center gap-2 rounded-lg bg-slate-800/40 border border-amber-500/20 px-2.5 py-1.5"
+                                        >
+                                          <span className="text-xs text-amber-400 font-mono flex-shrink-0 w-28 truncate">
+                                            {c.alias}
+                                          </span>
+                                          <span className="text-slate-600 text-[10px]">
+                                            →
+                                          </span>
+                                          <input
+                                            value={c.filterKey}
+                                            onChange={(e) =>
+                                              setStagingCols((prev) =>
+                                                prev.map((x, j) =>
+                                                  j === realIdx
+                                                    ? {
+                                                        ...x,
+                                                        filterKey:
+                                                          e.target.value
+                                                            .replace(
+                                                              /[^a-z0-9_]/gi,
+                                                              "",
+                                                            )
+                                                            .toLowerCase(),
+                                                      }
+                                                    : x,
+                                                ),
+                                              )
+                                            }
+                                            className="flex-1 min-w-0 bg-transparent text-xs font-mono text-sky-300 outline-none border-b border-slate-600 focus:border-amber-500"
+                                          />
+                                          <label className="flex items-center gap-1.5 cursor-pointer flex-shrink-0">
+                                            <input
+                                              type="checkbox"
+                                              checked={c.required}
+                                              onChange={(e) =>
+                                                setStagingCols((prev) =>
+                                                  prev.map((x, j) =>
+                                                    j === realIdx
+                                                      ? {
+                                                          ...x,
+                                                          required:
+                                                            e.target.checked,
+                                                        }
+                                                      : x,
+                                                  ),
+                                                )
+                                              }
+                                              className="w-3 h-3 accent-amber-500"
+                                            />
+                                            <span className="text-[10px] text-amber-400 whitespace-nowrap">
+                                              Заавал
+                                            </span>
+                                          </label>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                  {filterDefs.length > 0 && (
-                    <p className="text-xs text-slate-600">
-                      SQL-д <code className="text-slate-400">{"{IF key}"}...{"{/IF}"}</code> блок
-                      бичвэл хэрэглэгч утга оруулсан үед л шүүлт хийнэ.
-                      Жиш: <code className="text-slate-400">
-                        {"{IF cif_ids}"}AND CIF_ID IN ({"{cif_ids}"}){"{/IF}"}
-                      </code>
-                    </p>
                   )}
                 </div>
+
+                {!showStagingFields && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="text-slate-300 text-xs font-medium">
+                        SQL Query *
+                      </Label>
+                      <CodeEditor
+                        value={sqlCode}
+                        onChange={setSqlCode}
+                        placeholder={
+                          "SELECT *\nFROM your_table\nWHERE date >= '{start_date}'\n  AND date <= '{end_date}'"
+                        }
+                      />
+                      <p className="text-xs text-slate-600">
+                        Хадгалахад автоматаар Python код үүснэ.{" "}
+                        <code className="text-slate-400">
+                          {"'{start_date}'"}
+                        </code>
+                        ,{" "}
+                        <code className="text-slate-400">{"'{end_date}'"}</code>{" "}
+                        placeholder ашиглаж болно.
+                      </p>
+                    </div>
+
+                    {/* ── Filter column chip selector ── */}
+                    {!form.stagingTable && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-xs font-medium">
+                            Шүүлтүүр баганууд
+                          </Label>
+                          <button
+                            type="button"
+                            onClick={() => setParsedCols(parseCols(sqlCode))}
+                            disabled={!sqlCode.trim()}
+                            className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 transition-colors disabled:opacity-40"
+                          >
+                            <Wand2 className="w-3 h-3" />
+                            Баганууд задлах
+                          </button>
+                        </div>
+                        {parsedCols.length === 0 ? (
+                          <p className="text-xs text-slate-600 text-center py-2">
+                            SQL бичсэний дараа &ldquo;Баганууд задлах&rdquo;
+                            товчийг дарж фильтр баганаа сонгоно уу
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            <p className="text-[11px] text-slate-500">
+                              Фильтр болгох баганаа сонгох — ногоон = сонгогдсон
+                              → хадгалахад автоматаар {"{IF key}"}...{"{/IF}"}{" "}
+                              блок үүснэ
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {parsedCols.map((c, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() =>
+                                    setParsedCols((prev) => {
+                                      const next = [...prev];
+                                      next[i] = {
+                                        ...next[i],
+                                        selected: !next[i].selected,
+                                      };
+                                      return next;
+                                    })
+                                  }
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+                                    c.selected
+                                      ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
+                                      : "bg-slate-800/60 border-slate-700/50 text-slate-400 hover:border-slate-500"
+                                  }`}
+                                >
+                                  {c.alias}
+                                </button>
+                              ))}
+                            </div>
+                            {parsedCols.some((c) => c.selected) && (
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] text-slate-500">
+                                  Filter key нэрсийг засвар болох — хадгалахад
+                                  автоматаар SQL-д нэмэгдэнэ
+                                </p>
+                                <div className="grid gap-1.5 sm:grid-cols-2">
+                                  {parsedCols
+                                    .filter((c) => c.selected)
+                                    .map((c) => {
+                                      const realIdx = parsedCols.indexOf(c);
+                                      return (
+                                        <div
+                                          key={realIdx}
+                                          className="flex items-center gap-2 rounded-lg bg-slate-800/40 border border-slate-700/40 px-2.5 py-1.5"
+                                        >
+                                          <span className="text-xs text-emerald-400 font-mono flex-shrink-0 w-28 truncate">
+                                            {c.alias}
+                                          </span>
+                                          <span className="text-slate-600 text-[10px]">
+                                            →
+                                          </span>
+                                          <input
+                                            value={c.filterKey}
+                                            onChange={(e) =>
+                                              setParsedCols((prev) =>
+                                                prev.map((x, j) =>
+                                                  j === realIdx
+                                                    ? {
+                                                        ...x,
+                                                        filterKey:
+                                                          e.target.value
+                                                            .replace(
+                                                              /[^a-z0-9_]/gi,
+                                                              "",
+                                                            )
+                                                            .toLowerCase(),
+                                                      }
+                                                    : x,
+                                                ),
+                                              )
+                                            }
+                                            className="flex-1 min-w-0 bg-transparent text-xs font-mono text-sky-300 outline-none border-b border-slate-600 focus:border-sky-500"
+                                          />
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div className="flex gap-3 px-6 py-4 border-t border-slate-800 flex-shrink-0">

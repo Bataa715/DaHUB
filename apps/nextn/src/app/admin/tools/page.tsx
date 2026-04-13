@@ -129,7 +129,7 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "english",
     name: "Англи үгс",
-    description: "Англи үгсийн сан хүн, флэшкард хэлбээрийн суралцах хэрэгсэл",
+    description: "Англи үгсийн сан хүн, флэшкард хэлбэрийн суралцах хэрэгсэл",
     icon: BookOpen,
     color: "from-sky-500 to-blue-500",
     gradient: "bg-gradient-to-br from-sky-500/20 to-blue-500/20",
@@ -138,8 +138,7 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "excel_report",
     name: "Excel тайлан",
-    description:
-      "Системийн мэдээллээс Excel тайлан үүсгэж татах",
+    description: "Системийн мэдээллээс Excel тайлан үүсгэж татах",
     icon: FileSpreadsheet,
     color: "from-green-500 to-emerald-500",
     gradient: "bg-gradient-to-br from-green-500/20 to-emerald-500/20",

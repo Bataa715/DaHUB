@@ -49,15 +49,17 @@ export async function abFetchRedFlags() {
   return req("/oracle/search/redflag");
 }
 
-export async function abFetchDashboards(): Promise<{
-  id: number;
-  name: string;
-  tableName: string;
-  cifColumn: string;
-  dateColumn: string | null;
-  amountColumn: string | null;
-  enabled: boolean;
-}[]> {
+export async function abFetchDashboards(): Promise<
+  {
+    id: number;
+    name: string;
+    tableName: string;
+    cifColumn: string;
+    dateColumn: string | null;
+    amountColumn: string | null;
+    enabled: boolean;
+  }[]
+> {
   return req("/oracle/search/dashboards");
 }
 

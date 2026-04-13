@@ -23,6 +23,16 @@ export class CreateReportTemplateDto {
   @IsString()
   @IsOptional()
   filters?: string;
+
+  /** Staging table: INSERT INTO this table, export from it, then TRUNCATE (e.g. BRANCH.AUDIT_S1_FINAL) */
+  @IsString()
+  @IsOptional()
+  stagingTable?: string;
+
+  /** Full INSERT INTO ... SELECT ... SQL for staging mode. Leave empty for normal SQL mode. */
+  @IsString()
+  @IsOptional()
+  stagingInsertSql?: string;
 }
 
 export class UpdateReportTemplateDto {
@@ -49,6 +59,14 @@ export class UpdateReportTemplateDto {
   @IsString()
   @IsOptional()
   filters?: string;
+
+  @IsString()
+  @IsOptional()
+  stagingTable?: string;
+
+  @IsString()
+  @IsOptional()
+  stagingInsertSql?: string;
 }
 
 export class RunReportDto {

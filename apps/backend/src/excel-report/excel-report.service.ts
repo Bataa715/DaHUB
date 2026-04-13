@@ -22,6 +22,7 @@ export interface FilterDef {
   key: string;
   label: string;
   placeholder?: string;
+  required?: boolean;
 }
 
 export interface ReportTemplate {
@@ -32,6 +33,8 @@ export interface ReportTemplate {
   dateMode: "none" | "single" | "range";
   color: string;
   filters: string; // JSON string of FilterDef[]
+  stagingTable: string;
+  stagingInsertSql: string;
   isActive: number;
   createdAt: string;
   updatedAt: string;
@@ -100,13 +103,18 @@ export class ExcelReportService implements OnModuleInit {
     } catch (e) {
       this.logger.error("Failed to ensure excel_report_templates table:", e);
     }
-    // Migrate: add filters column if it doesn't exist (for tables created before this column)
-    try {
-      await this.clickhouse.exec(
-        `ALTER TABLE excel_report_templates ADD COLUMN IF NOT EXISTS filters String DEFAULT '[]'`,
-      );
-    } catch {
-      // ignore — column already exists or unsupported
+    // Column migrations — each ALTER is idempotent
+    const migrations = [
+      `ALTER TABLE excel_report_templates ADD COLUMN IF NOT EXISTS filters         String DEFAULT '[]'`,
+      `ALTER TABLE excel_report_templates ADD COLUMN IF NOT EXISTS stagingTable    String DEFAULT ''`,
+      `ALTER TABLE excel_report_templates ADD COLUMN IF NOT EXISTS stagingInsertSql String DEFAULT ''`,
+    ];
+    for (const sql of migrations) {
+      try {
+        await this.clickhouse.exec(sql);
+      } catch {
+        /* already exists */
+      }
     }
   }
 
@@ -121,15 +129,17 @@ export class ExcelReportService implements OnModuleInit {
        FROM (
          SELECT
            id,
-           argMax(name, seq)        AS name,
-           argMax(description, seq) AS description,
-           argMax(pythonCode, seq)  AS pythonCode,
-           argMax(dateMode, seq)    AS dateMode,
-           argMax(color, seq)       AS color,
-           argMax(filters, seq)     AS filters,
-           argMax(isActive, seq)    AS isActive,
-           argMax(updatedAt, seq)   AS updatedAt,
-           min(createdAt)           AS createdAt
+           argMax(name, seq)             AS name,
+           argMax(description, seq)      AS description,
+           argMax(pythonCode, seq)       AS pythonCode,
+           argMax(dateMode, seq)         AS dateMode,
+           argMax(color, seq)            AS color,
+           argMax(filters, seq)          AS filters,
+           argMax(isActive, seq)         AS isActive,
+           argMax(stagingTable, seq)     AS stagingTable,
+           argMax(stagingInsertSql, seq) AS stagingInsertSql,
+           argMax(updatedAt, seq)        AS updatedAt,
+           min(createdAt)               AS createdAt
          FROM excel_report_templates
          GROUP BY id
        )
@@ -143,15 +153,17 @@ export class ExcelReportService implements OnModuleInit {
     const rows = await this.clickhouse.query<ReportTemplate>(
       `SELECT
          id,
-         argMax(name, seq)        AS name,
-         argMax(description, seq) AS description,
-         argMax(pythonCode, seq)  AS pythonCode,
-         argMax(dateMode, seq)    AS dateMode,
-         argMax(color, seq)       AS color,
-         argMax(filters, seq)     AS filters,
-         argMax(isActive, seq)    AS isActive,
-         argMax(updatedAt, seq)   AS updatedAt,
-         min(createdAt)           AS createdAt
+         argMax(name, seq)             AS name,
+         argMax(description, seq)      AS description,
+         argMax(pythonCode, seq)       AS pythonCode,
+         argMax(dateMode, seq)         AS dateMode,
+         argMax(color, seq)            AS color,
+         argMax(filters, seq)          AS filters,
+         argMax(isActive, seq)         AS isActive,
+         argMax(stagingTable, seq)     AS stagingTable,
+         argMax(stagingInsertSql, seq) AS stagingInsertSql,
+         argMax(updatedAt, seq)        AS updatedAt,
+         min(createdAt)               AS createdAt
        FROM excel_report_templates
        WHERE id = {id:String}
        GROUP BY id`,
@@ -182,6 +194,8 @@ export class ExcelReportService implements OnModuleInit {
         dateMode: dto.dateMode,
         color: dto.color ?? "from-blue-500 to-cyan-500",
         filters: dto.filters ?? "[]",
+        stagingTable: dto.stagingTable ?? "",
+        stagingInsertSql: dto.stagingInsertSql ?? "",
         isActive: 1,
         seq,
         createdAt: now,
@@ -207,6 +221,9 @@ export class ExcelReportService implements OnModuleInit {
         dateMode: dto.dateMode ?? existing.dateMode,
         color: dto.color ?? existing.color,
         filters: dto.filters ?? existing.filters,
+        stagingTable: dto.stagingTable ?? existing.stagingTable ?? "",
+        stagingInsertSql:
+          dto.stagingInsertSql ?? existing.stagingInsertSql ?? "",
         isActive: existing.isActive,
         seq,
         createdAt: existing.createdAt,
@@ -229,6 +246,8 @@ export class ExcelReportService implements OnModuleInit {
         dateMode: existing.dateMode,
         color: existing.color,
         filters: existing.filters,
+        stagingTable: existing.stagingTable ?? "",
+        stagingInsertSql: existing.stagingInsertSql ?? "",
         isActive: isActive ? 1 : 0,
         seq,
         createdAt: existing.createdAt,
@@ -249,12 +268,21 @@ export class ExcelReportService implements OnModuleInit {
   // ── User: list active templates ────────────────────────────────────────────
 
   async getActiveTemplates(): Promise<
-    (Omit<ReportTemplate, "pythonCode" | "isActive"> & { isSqlMode: boolean })[]
+    (Omit<ReportTemplate, "pythonCode" | "isActive"> & {
+      isSqlMode: boolean;
+      isStaging: boolean;
+      sqlCode?: string;
+    })[]
   > {
     const all = await this.getLatestTemplates(true);
     return all.map(({ pythonCode, isActive: _a, ...rest }) => ({
       ...rest,
-      isSqlMode: pythonCode.startsWith("# __SQL_MODE__"),
+      isSqlMode: pythonCode.startsWith("# __SQL_MODE__") || !!rest.stagingTable,
+      isStaging: !!rest.stagingTable,
+      sqlCode: rest.stagingTable
+        ? rest.stagingInsertSql
+        : (ExcelReportService.extractSqlFromPythonCode(pythonCode) ??
+          undefined),
     }));
   }
 
@@ -278,7 +306,9 @@ export class ExcelReportService implements OnModuleInit {
       }
     }
 
-    const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
+    const sql = ExcelReportService.extractSqlFromPythonCode(
+      template.pythonCode,
+    );
     if (!sql) {
       throw new BadRequestException(
         "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
@@ -294,6 +324,121 @@ export class ExcelReportService implements OnModuleInit {
   }
 
   // ── SQL-mode → Excel directly in Node.js (no Python, no temp file) ──
+
+  /**
+   * Core TSV→Excel pipe: reads ClickHouse TSV stream row-by-row and feeds
+   * ExcelJS StreamWorkbookWriter.  The writer flushes zip chunks to `outStream`
+   * as they are produced — no full-buffer step.
+   */
+  private processChStreamToExcel(
+    chStream: import("http").IncomingMessage,
+    outStream: NodeJS.WritableStream,
+    sheetName: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      outStream.on("error", reject);
+
+      const wb = new ExcelJS.stream.xlsx.WorkbookWriter({
+        stream: outStream as any,
+        useSharedStrings: false,
+      });
+      const ws = wb.addWorksheet(sheetName);
+
+      let headerParsed = false;
+      let remainder = "";
+
+      const parseRow = (v: string) => {
+        const n = Number(v);
+        return v !== "" && !isNaN(n) ? n : v;
+      };
+
+      chStream.on("data", (chunk: Buffer) => {
+        const text = remainder + chunk.toString("utf-8");
+        const lines = text.split("\n");
+        remainder = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line) continue;
+          const cells = line.split("\t");
+          if (!headerParsed) {
+            ws.addRow(cells).commit();
+            headerParsed = true;
+          } else {
+            ws.addRow(cells.map(parseRow)).commit();
+          }
+        }
+      });
+
+      chStream.on("end", async () => {
+        try {
+          if (remainder) {
+            const cells = remainder.split("\t");
+            if (cells.some((c) => c !== ""))
+              ws.addRow(cells.map(parseRow)).commit();
+          }
+          await ws.commit();
+          await wb.commit();
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      });
+
+      chStream.on("error", reject);
+    });
+  }
+
+  /** Validate dto, build TSV query, return query string + file metadata (no HTTP call yet). */
+  async prepareRunReport(
+    dto: RunReportDto,
+  ): Promise<{ query: string; fileName: string; sheetName: string }> {
+    const template = await this.getTemplateById(dto.templateId);
+    if (!template.isActive)
+      throw new BadRequestException("Энэ тайлан идэвхгүй байна");
+    if (template.dateMode === "range" && (!dto.startDate || !dto.endDate))
+      throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
+    if (template.dateMode === "single" && !dto.startDate)
+      throw new BadRequestException("Огноо шаардлагатай");
+
+    const sql = ExcelReportService.extractSqlFromPythonCode(
+      template.pythonCode,
+    );
+    if (!sql)
+      throw new BadRequestException(
+        "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
+      );
+
+    const filterVals = dto.filters ?? {};
+    let resolved = sql.replace(/\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g, (_, k, c) =>
+      filterVals[k] ? c : "",
+    );
+    resolved = resolved
+      .replace(/\{start_date\}/g, dto.startDate ?? "")
+      .replace(/\{end_date\}/g, dto.endDate ?? dto.startDate ?? "");
+    for (const [k, v] of Object.entries(filterVals))
+      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+
+    const date = new Date().toISOString().slice(0, 10);
+    return {
+      query: resolved.trim() + " FORMAT TSVWithNames",
+      fileName: `${template.name}_${date}.xlsx`,
+      sheetName: template.name,
+    };
+  }
+
+  /** Stream Excel directly to any writable stream (no RAM buffering). */
+  async writeExcelToStream(
+    query: string,
+    sheetName: string,
+    outStream: NodeJS.WritableStream,
+  ): Promise<void> {
+    const chStream = await this.streamFromClickHouse(query);
+    await this.processChStreamToExcel(chStream, outStream, sheetName);
+  }
+
+  /**
+   * Buffered Excel generation — for background jobs and queryToExcel where the
+   * buffer must be stored / returned.  Uses the same streaming core internally.
+   */
   private async generateExcelFromSql(
     sql: string,
     filterVals: Record<string, string>,
@@ -301,93 +446,27 @@ export class ExcelReportService implements OnModuleInit {
     endDate: string,
     sheetName = "Тайлан",
   ): Promise<Buffer> {
-    // Resolve {IF}...{/IF} blocks and placeholders
-    let resolved = sql.replace(
-      /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
-      (_, k, content) => (filterVals[k] ? content : ""),
+    let resolved = sql.replace(/\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g, (_, k, c) =>
+      filterVals[k] ? c : "",
     );
-    resolved = resolved.replace(/\{start_date\}/g, startDate).replace(/\{end_date\}/g, endDate);
-    for (const [k, v] of Object.entries(filterVals)) {
+    resolved = resolved
+      .replace(/\{start_date\}/g, startDate)
+      .replace(/\{end_date\}/g, endDate);
+    for (const [k, v] of Object.entries(filterVals))
       resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
-    }
 
-    const { host, port } = ExcelReportService.parseCHHostPort();
     const query = resolved.trim() + " FORMAT TSVWithNames";
-    const password = process.env.CLICKHOUSE_PASSWORD ?? "";
-    const user = process.env.CLICKHOUSE_USER ?? "default";
-    const database = process.env.CLICKHOUSE_DATABASE ?? "audit_db";
-    const urlPath = `/?user=${encodeURIComponent(user)}&password=${encodeURIComponent(password)}&database=${encodeURIComponent(database)}`;
+    const chStream = await this.streamFromClickHouse(query);
 
-    // Stream ClickHouse TSV response → ExcelJS streaming workbook → Buffer
-    const buf = await new Promise<Buffer>((resolve, reject) => {
-      const req = http.request(
-        { hostname: host, port: Number(port) || 8123, path: urlPath, method: "POST" },
-        (res) => {
-          if (res.statusCode !== 200) {
-            const chunks: Buffer[] = [];
-            res.on("data", (c: Buffer) => chunks.push(c));
-            res.on("end", () =>
-              reject(new InternalServerErrorException(
-                "ClickHouse алдаа: " + Buffer.concat(chunks).toString("utf-8").slice(0, 300),
-              )),
-            );
-            return;
-          }
-
-          const outputStream = new PassThrough();
-          const chunks: Buffer[] = [];
-          outputStream.on("data", (c: Buffer) => chunks.push(c));
-          outputStream.on("end", () => resolve(Buffer.concat(chunks)));
-          outputStream.on("error", reject);
-
-          const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: outputStream, useSharedStrings: false });
-          const ws = wb.addWorksheet(sheetName);
-
-          let headerParsed = false;
-          let remainder = "";
-
-          res.on("data", (chunk: Buffer) => {
-            const text = remainder + chunk.toString("utf-8");
-            const lines = text.split("\n");
-            remainder = lines.pop() ?? "";
-
-            for (const line of lines) {
-              if (!line) continue;
-              const cells = line.split("\t");
-              if (!headerParsed) {
-                ws.addRow(cells).commit();
-                headerParsed = true;
-              } else {
-                ws.addRow(cells.map((v) => {
-                  const n = Number(v);
-                  return v !== "" && !isNaN(n) ? n : v;
-                })).commit();
-              }
-            }
-          });
-
-          res.on("end", async () => {
-            if (remainder) {
-              const cells = remainder.split("\t");
-              if (cells.some((c) => c !== "")) {
-                ws.addRow(cells.map((v) => { const n = Number(v); return v !== "" && !isNaN(n) ? n : v; })).commit();
-              }
-            }
-            await ws.commit();
-            await wb.commit();
-          });
-
-          res.on("error", reject);
-        },
-      );
-      req.on("error", (e: Error) =>
-        reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)),
-      );
-      req.write(Buffer.from(query, "utf-8"));
-      req.end();
+    const pt = new PassThrough();
+    const chunks: Buffer[] = [];
+    const bufferReady = new Promise<Buffer>((resolve, reject) => {
+      pt.on("data", (c: Buffer) => chunks.push(c));
+      pt.on("end", () => resolve(Buffer.concat(chunks)));
+      pt.on("error", reject);
     });
-
-    return buf;
+    await this.processChStreamToExcel(chStream, pt, sheetName);
+    return bufferReady;
   }
 
   // ── Async job API ──────────────────────────────────────────────────────────
@@ -434,7 +513,9 @@ export class ExcelReportService implements OnModuleInit {
       const date = new Date().toISOString().slice(0, 10);
       job.fileName = `${template.name}_${date}.xlsx`;
 
-      const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
+      const sql = ExcelReportService.extractSqlFromPythonCode(
+        template.pythonCode,
+      );
       if (!sql) {
         throw new BadRequestException(
           "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
@@ -484,9 +565,49 @@ export class ExcelReportService implements OnModuleInit {
 
   // ── Preview: run SQL-mode report against ClickHouse directly, return JSON ─
 
-  async previewReport(dto: RunReportDto): Promise<{ columns: string[]; rows: any[][] }> {
+  async previewReport(
+    dto: RunReportDto,
+  ): Promise<{ columns: string[]; rows: any[][] }> {
     const template = await this.getTemplateById(dto.templateId);
-    const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
+
+    // ── STAGING MODE PREVIEW ──────────────────────────────────────────────────
+    if (template.stagingTable && template.stagingInsertSql) {
+      const filterVals: Record<string, string> = dto.filters ?? {};
+      let insertSql = template.stagingInsertSql.replace(
+        /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
+        (_, k, c) => (filterVals[k] ? c : ""),
+      );
+      insertSql = insertSql
+        .replace(/\{start_date\}/g, dto.startDate ?? "")
+        .replace(/\{end_date\}/g, dto.endDate ?? dto.startDate ?? "");
+      for (const [k, v] of Object.entries(filterVals))
+        insertSql = insertSql.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+
+      // Step 1: INSERT
+      await this.httpQueryText(insertSql.trim());
+
+      // Step 2: SELECT preview
+      const previewSql = `SELECT * FROM ${template.stagingTable} LIMIT 50 FORMAT TSVWithNames`;
+      const tsv = await this.httpQueryText(previewSql);
+
+      // Step 3: TRUNCATE cleanup
+      this.httpQueryText(`TRUNCATE TABLE ${template.stagingTable}`).catch((e) =>
+        this.logger.warn("Preview TRUNCATE failed:", e),
+      );
+
+      const lines = tsv.split("\n");
+      const columns = lines[0] ? lines[0].split("\t") : [];
+      const rows: any[][] = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i]) rows.push(lines[i].split("\t"));
+      }
+      return { columns, rows };
+    }
+
+    // ── NORMAL SQL MODE ──────────────────────────────────────────────────────
+    const sql = ExcelReportService.extractSqlFromPythonCode(
+      template.pythonCode,
+    );
     if (!sql) {
       throw new BadRequestException(
         "Энэ тайлан preview дэмжихгүй (SQL горим биш). Зөвхөн SQL горимын тайлан урьдчилан харагдана.",
@@ -501,7 +622,9 @@ export class ExcelReportService implements OnModuleInit {
       /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
       (_, name, content) => (filterVals[name] ? content : ""),
     );
-    resolved = resolved.replace(/\{start_date\}/g, start).replace(/\{end_date\}/g, end);
+    resolved = resolved
+      .replace(/\{start_date\}/g, start)
+      .replace(/\{end_date\}/g, end);
     for (const [k, v] of Object.entries(filterVals)) {
       resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
     }
@@ -509,26 +632,41 @@ export class ExcelReportService implements OnModuleInit {
     const previewSql = `SELECT * FROM (\n${resolved}\n) LIMIT 50 FORMAT TSVWithNames`;
 
     const { host, port } = ExcelReportService.parseCHHostPort();
-    const urlPath = `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}`;
+    const urlPath = `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}&format_tsv_null_representation=NULL&format_csv_null_representation=NULL`;
 
     const tsv = await new Promise<string>((resolve, reject) => {
       const body = Buffer.from(previewSql, "utf-8");
       const req = http.request(
-        { hostname: host, port: Number(port) || 8123, path: urlPath, method: "POST" },
+        {
+          hostname: host,
+          port: Number(port) || 8123,
+          path: urlPath,
+          method: "POST",
+        },
         (res) => {
           const chunks: Buffer[] = [];
           res.on("data", (c: Buffer) => chunks.push(c));
           res.on("end", () => {
             const text = Buffer.concat(chunks).toString("utf-8");
             if ((res.statusCode ?? 0) !== 200) {
-              reject(new InternalServerErrorException("ClickHouse алдаа: " + text.slice(0, 300)));
+              reject(
+                new InternalServerErrorException(
+                  "ClickHouse алдаа: " + text.slice(0, 300),
+                ),
+              );
             } else {
               resolve(text);
             }
           });
         },
       );
-      req.on("error", (e: Error) => reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)));
+      req.on("error", (e: Error) =>
+        reject(
+          new InternalServerErrorException(
+            "ClickHouse холболт алдаа: " + e.message,
+          ),
+        ),
+      );
       req.write(body);
       req.end();
     });
@@ -554,75 +692,236 @@ export class ExcelReportService implements OnModuleInit {
     return null;
   }
 
-  // ── SQL-mode → CSV directly from ClickHouse (no format conversion) ────────
+  // ── SQL-mode → CSV streaming directly from ClickHouse ───────────────────
 
-  /** Stream ClickHouse CSVWithNames bytes directly — zero ExcelJS overhead. */
-  private async generateCsvFromSql(
-    sql: string,
-    filterVals: Record<string, string>,
-    startDate: string,
-    endDate: string,
-  ): Promise<Buffer> {
-    let resolved = sql.replace(
-      /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
-      (_, k, content) => (filterVals[k] ? content : ""),
-    );
-    resolved = resolved.replace(/\{start_date\}/g, startDate).replace(/\{end_date\}/g, endDate);
-    for (const [k, v] of Object.entries(filterVals)) {
-      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
-    }
-
+  /** Buffered HTTP query — for small metadata lookups (COUNT, LIMIT 1 sample). */
+  private async httpQueryText(query: string): Promise<string> {
     const { host, port } = ExcelReportService.parseCHHostPort();
-    const query = resolved.trim() + " FORMAT CSVWithNames";
-    const urlPath = `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}`;
-
-    return new Promise<Buffer>((resolve, reject) => {
+    const urlPath =
+      `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}` +
+      `&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}` +
+      `&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}` +
+      `&format_tsv_null_representation=NULL&format_csv_null_representation=NULL`;
+    return new Promise((resolve, reject) => {
       const req = http.request(
-        { hostname: host, port: Number(port) || 8123, path: urlPath, method: "POST" },
+        {
+          hostname: host,
+          port: Number(port) || 8123,
+          path: urlPath,
+          method: "POST",
+        },
         (res) => {
           const chunks: Buffer[] = [];
           res.on("data", (c: Buffer) => chunks.push(c));
           res.on("end", () => {
-            const buf = Buffer.concat(chunks);
-            if ((res.statusCode ?? 0) !== 200) {
-              reject(new InternalServerErrorException(
-                "ClickHouse алдаа: " + buf.toString("utf-8").slice(0, 300),
-              ));
-            } else {
-              // UTF-8 BOM — Excel-д Кирилл тэмдэгт зөв харагдана
-              resolve(Buffer.concat([Buffer.from("\xEF\xBB\xBF"), buf]));
-            }
+            const text = Buffer.concat(chunks).toString("utf-8");
+            if ((res.statusCode ?? 0) !== 200)
+              reject(new Error(text.slice(0, 200)));
+            else resolve(text);
           });
-          res.on("error", reject);
+        },
+      );
+      req.on("error", reject);
+      req.write(Buffer.from(query, "utf-8"));
+      req.end();
+    });
+  }
+
+  /**
+   * Estimate uncompressed CSV byte size: runs COUNT() and LIMIT-1 sample in
+   * parallel.  Returns 0 on any error or timeout (no Content-Length header).
+   */
+  private async estimateCsvByteSize(resolvedSql: string): Promise<number> {
+    try {
+      const work = Promise.all([
+        this.httpQueryText(
+          `SELECT count() FROM (\n${resolvedSql}\n) FORMAT TSV`,
+        ),
+        this.httpQueryText(
+          `SELECT * FROM (\n${resolvedSql}\n) LIMIT 1 FORMAT CSVWithNames`,
+        ),
+      ]);
+      // Don't block the main stream for more than 4 s
+      const guard = new Promise<never>((_, r) =>
+        setTimeout(() => r(new Error("timeout")), 4000),
+      );
+      const [countText, sampleText] = await Promise.race([work, guard]);
+      const count = parseInt(countText.trim(), 10) || 0;
+      const lines = sampleText.split("\n").filter(Boolean);
+      const headerBytes = lines[0]
+        ? Buffer.byteLength(lines[0] + "\n", "utf8")
+        : 50;
+      const rowBytes = lines[1]
+        ? Buffer.byteLength(lines[1] + "\n", "utf8")
+        : 150;
+      return 3 /* BOM */ + headerBytes + count * rowBytes;
+    } catch {
+      return 0; // fall back to indeterminate (no Content-Length)
+    }
+  }
+
+  /**
+   * Open a streaming HTTP connection to ClickHouse and resolve with the
+   * IncomingMessage (readable stream) on 200, or reject with a descriptive
+   * error on any other status code.  The caller is responsible for piping
+   * or consuming the returned stream.
+   */
+  private streamFromClickHouse(
+    query: string,
+  ): Promise<import("http").IncomingMessage> {
+    const { host, port } = ExcelReportService.parseCHHostPort();
+    const urlPath =
+      `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}` +
+      `&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}` +
+      `&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}` +
+      `&format_tsv_null_representation=NULL&format_csv_null_representation=NULL`;
+
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: host,
+          port: Number(port) || 8123,
+          path: urlPath,
+          method: "POST",
+        },
+        (chRes) => {
+          if ((chRes.statusCode ?? 0) !== 200) {
+            // Drain the error body before rejecting
+            const errChunks: Buffer[] = [];
+            chRes.on("data", (c: Buffer) => errChunks.push(c));
+            chRes.on("end", () =>
+              reject(
+                new InternalServerErrorException(
+                  "ClickHouse алдаа: " +
+                    Buffer.concat(errChunks).toString("utf-8").slice(0, 300),
+                ),
+              ),
+            );
+          } else {
+            resolve(chRes); // caller owns the stream
+          }
         },
       );
       req.on("error", (e: Error) =>
-        reject(new InternalServerErrorException("ClickHouse холболт алдаа: " + e.message)),
+        reject(
+          new InternalServerErrorException(
+            "ClickHouse холболт алдаа: " + e.message,
+          ),
+        ),
       );
       req.write(Buffer.from(query, "utf-8"));
       req.end();
     });
   }
 
-  async runReportCsv(dto: RunReportDto): Promise<{ csv: Buffer; fileName: string }> {
+  /** Validate dto, build query, return a live stream + fileName + estimated byte count for Content-Length. */
+  async runReportCsv(
+    dto: RunReportDto,
+  ): Promise<{
+    stream: import("http").IncomingMessage;
+    fileName: string;
+    estimatedBytes: number;
+    onDone?: () => void;
+  }> {
     const template = await this.getTemplateById(dto.templateId);
-    if (!template.isActive) throw new BadRequestException("Энэ тайлан идэвхгүй байна");
-    if (template.dateMode === "range" && (!dto.startDate || !dto.endDate)) {
+    if (!template.isActive)
+      throw new BadRequestException("Энэ тайлан идэвхгүй байна");
+    if (template.dateMode === "range" && (!dto.startDate || !dto.endDate))
       throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
-    }
-    if (template.dateMode === "single" && !dto.startDate) {
+    if (template.dateMode === "single" && !dto.startDate)
       throw new BadRequestException("Огноо шаардлагатай");
-    }
-    const sql = ExcelReportService.extractSqlFromPythonCode(template.pythonCode);
-    if (!sql) throw new BadRequestException("Зөвхөн SQL горимын тайлан дэмжигдэнэ.");
-    const csv = await this.generateCsvFromSql(
-      sql,
-      dto.filters ?? {},
-      dto.startDate ?? "",
-      dto.endDate ?? dto.startDate ?? "",
-    );
+
     const date = new Date().toISOString().slice(0, 10);
-    return { csv, fileName: `${template.name}_${date}.csv` };
+
+    // ── STAGING MODE ──────────────────────────────────────────────────────────
+    // Template has stagingTable + stagingInsertSql:
+    //   1. Run INSERT INTO staging_table SELECT ... (ClickHouse processes everything)
+    //   2. Stream SELECT * FROM staging_table FORMAT CSVWithNames
+    //   3. After stream ends → TRUNCATE TABLE staging_table  (cleanup)
+    if (template.stagingTable && template.stagingInsertSql) {
+      // Resolve placeholders in the INSERT SQL
+      const filterVals = dto.filters ?? {};
+      let insertSql = template.stagingInsertSql.replace(
+        /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
+        (_, k, c) => (filterVals[k] ? c : ""),
+      );
+      insertSql = insertSql
+        .replace(/\{start_date\}/g, dto.startDate ?? "")
+        .replace(/\{end_date\}/g, dto.endDate ?? dto.startDate ?? "");
+      for (const [k, v] of Object.entries(filterVals))
+        insertSql = insertSql.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+
+      // Step 1 — INSERT (blocking; ClickHouse does all heavy lifting here)
+      await this.httpQueryText(insertSql.trim());
+
+      // Step 2 — export query
+      const exportQuery = `SELECT * FROM ${template.stagingTable} FORMAT CSVWithNames`;
+
+      const [stream, estimatedBytes] = await Promise.all([
+        this.streamFromClickHouse(exportQuery),
+        this.httpQueryText(
+          `SELECT count() FROM ${template.stagingTable} FORMAT TSV`,
+        )
+          .then(async (cnt) => {
+            const count = parseInt(cnt.trim(), 10) || 0;
+            if (count === 0) return 0;
+            const sample = await this.httpQueryText(
+              `SELECT * FROM ${template.stagingTable} LIMIT 1 FORMAT CSVWithNames`,
+            );
+            const lines = sample.split("\n").filter(Boolean);
+            const hdr = lines[0]
+              ? Buffer.byteLength(lines[0] + "\n", "utf8")
+              : 50;
+            const row = lines[1]
+              ? Buffer.byteLength(lines[1] + "\n", "utf8")
+              : 150;
+            return 3 + hdr + count * row;
+          })
+          .catch(() => 0),
+      ]);
+
+      // Step 3 — cleanup after stream is fully consumed
+      const onDone = () => {
+        this.httpQueryText(`TRUNCATE TABLE ${template.stagingTable}`).catch(
+          (e) => this.logger.warn("TRUNCATE failed:", e),
+        );
+      };
+
+      return {
+        stream,
+        fileName: `${template.name}_${date}.csv`,
+        estimatedBytes,
+        onDone,
+      };
+    }
+
+    // ── NORMAL SQL MODE ───────────────────────────────────────────────────────
+    const sql = ExcelReportService.extractSqlFromPythonCode(
+      template.pythonCode,
+    );
+    if (!sql)
+      throw new BadRequestException("Зөвхөн SQL горимын тайлан дэмжигдэнэ.");
+
+    // Resolve placeholders once for both the CSV query and the size estimate
+    const filterVals = dto.filters ?? {};
+    let resolved = sql.replace(/\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g, (_, k, c) =>
+      filterVals[k] ? c : "",
+    );
+    resolved = resolved
+      .replace(/\{start_date\}/g, dto.startDate ?? "")
+      .replace(/\{end_date\}/g, dto.endDate ?? dto.startDate ?? "");
+    for (const [k, v] of Object.entries(filterVals))
+      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+    resolved = resolved.trim();
+
+    const csvQuery = resolved + " FORMAT CSVWithNames";
+
+    // Start main stream and size estimation in parallel — both run against ClickHouse simultaneously
+    const [stream, estimatedBytes] = await Promise.all([
+      this.streamFromClickHouse(csvQuery),
+      this.estimateCsvByteSize(resolved),
+    ]);
+    return { stream, fileName: `${template.name}_${date}.csv`, estimatedBytes };
   }
 
   // ── Direct SQL → Excel ────────────────────────────────────────────────────

@@ -77,32 +77,42 @@ export class ExcelReportController {
     return this.service.getActiveTemplates();
   }
 
-  /** POST /excel-report/run-csv — stream CSV directly (no Excel formatting, much faster) */
+  /** POST /excel-report/run-csv — stream CSV directly from ClickHouse to the browser */
   @Post("run-csv")
   async runReportCsv(@Body() dto: RunReportDto, @Res() res: Response) {
-    const { csv, fileName } = await this.service.runReportCsv(dto);
+    const { stream, fileName, estimatedBytes, onDone } =
+      await this.service.runReportCsv(dto);
     const encodedName = encodeURIComponent(fileName);
-    res.set({
+    const headers: Record<string, string> = {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="report.csv"; filename*=UTF-8''${encodedName}`,
-      "Content-Length": csv.length,
-    });
-    res.end(csv);
+      // Expose Content-Length so the browser can compute download progress
+      "Access-Control-Expose-Headers": "Content-Length",
+    };
+    if (estimatedBytes > 0) headers["Content-Length"] = String(estimatedBytes);
+    res.set(headers);
+    // Prepend UTF-8 BOM so Excel renders Cyrillic correctly
+    res.write(Buffer.from([0xef, 0xbb, 0xbf]));
+    stream.pipe(res);
+    // Staging mode: TRUNCATE staging table after the client has received everything
+    if (onDone) res.on("finish", onDone);
   }
 
-  /** POST /excel-report/run — execute python and download xlsx (sync, small datasets) */
+  /** POST /excel-report/run — stream xlsx directly from ClickHouse → browser (no full-buffer step) */
   @Post("run")
   async runReport(@Body() dto: RunReportDto, @Res() res: Response) {
-    const buffer = await this.service.runReport(dto);
-    const safeName = dto.templateId.replace(/[^a-z0-9]/gi, "_");
-    const date = new Date().toISOString().slice(0, 10);
+    // Validation + query building — throws before touching the response if invalid
+    const { query, fileName, sheetName } =
+      await this.service.prepareRunReport(dto);
+    // ClickHouse connection verified (status 200) before headers are sent
+    const encodedName = encodeURIComponent(fileName);
     res.set({
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="report_${safeName}_${date}.xlsx"`,
-      "Content-Length": buffer.length,
+      "Content-Disposition": `attachment; filename="report.xlsx"; filename*=UTF-8''${encodedName}`,
+      // No Content-Length — chunked transfer; ExcelJS flushes zip entries as it goes
     });
-    res.end(buffer);
+    await this.service.writeExcelToStream(query, sheetName, res);
   }
 
   /** POST /excel-report/run-async — start job, return jobId immediately */
