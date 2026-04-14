@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Param,
   Query,
   UseGuards,
   Logger,
@@ -131,11 +132,17 @@ export class OracleSearchController {
   async getAlerts(
     @Query("min_dashboards") minDash: string,
     @Query("limit") limitStr: string,
+    @Query("cif") cifFilter: string,
   ) {
     this.requireOracle();
 
     const minDashboards = Math.max(2, parseInt(minDash) || 2);
     const limit = Math.min(Math.max(parseInt(limitStr) || 100, 1), 500);
+
+    // If a specific CIF is requested, search only for that CIF across all dashboards
+    const safeCifFilter = cifFilter
+      ? cifFilter.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30)
+      : null;
 
     const cifMap: Record<
       string,
@@ -149,18 +156,29 @@ export class OracleSearchController {
       }
     > = {};
     const dashboards = this.config.getEnabledDashboards();
+    const failedDashboards: { id: number; name: string; error: string }[] = [];
 
     for (const dash of dashboards) {
       try {
-        const sql = dash.amountColumn
-          ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${dash.tableName} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`
-          : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${dash.tableName} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`;
+        let sql: string;
+        let params: any[] = [];
+        if (safeCifFilter) {
+          // Single CIF lookup — exact match
+          sql = dash.amountColumn
+            ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${dash.tableName} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`
+            : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${dash.tableName} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`;
+          params = [safeCifFilter];
+        } else {
+          sql = dash.amountColumn
+            ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${dash.tableName} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`
+            : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${dash.tableName} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`;
+        }
 
         const rows = await this.oracle.query<{
           CIF_VAL: string;
           CNT: number;
           TOTAL_AMT: number;
-        }>(sql);
+        }>(sql, params);
         for (const row of rows) {
           const cifVal = String(row.CIF_VAL || "").trim();
           if (!cifVal) continue;
@@ -173,14 +191,14 @@ export class OracleSearchController {
           });
         }
       } catch (err) {
-        this.logger.warn(
-          `DB${dash.id} alerts query failed: ${(err as Error).message}`,
-        );
+        const msg = (err as Error)?.message || String(err);
+        this.logger.warn(`DB${dash.id} alerts query failed: ${msg}`);
+        failedDashboards.push({ id: dash.id, name: dash.name, error: msg });
       }
     }
 
     const alerts = Object.entries(cifMap)
-      .filter(([, v]) => v.dashboards.length >= minDashboards)
+      .filter(([, v]) => v.dashboards.length >= (safeCifFilter ? 1 : minDashboards))
       .map(([cif, v]) => ({
         cif,
         dashboardCount: v.dashboards.length,
@@ -192,9 +210,95 @@ export class OracleSearchController {
         (a, b) =>
           b.dashboardCount - a.dashboardCount || b.totalAmount - a.totalAmount,
       )
-      .slice(0, limit);
+      .slice(0, safeCifFilter ? 1 : limit);
 
-    return { minDashboards, totalAlerts: alerts.length, alerts };
+    return { minDashboards, totalAlerts: alerts.length, alerts, failedDashboards, searchedCif: safeCifFilter || null };
+  }
+
+  /**
+   * GET /oracle/search/dashboard/:id/top?limit=10&search=
+   * Top CIFs by count/amount for a single dashboard
+   */
+  @Get("dashboard/:id/top")
+  async getDashboardTop(
+    @Param("id") idStr: string,
+    @Query("limit") limitStr: string,
+    @Query("search") search: string,
+  ) {
+    this.requireOracle();
+
+    // id comes from path param via @Param but since NestJS uses @Query here we
+    // read it from query.  Accept it from both to be flexible.
+    // (Controller path is "dashboard/:id/top" so :id is a path param)
+    const id = parseInt(idStr);
+    if (isNaN(id)) throw new HttpException("id буруу байна", HttpStatus.BAD_REQUEST);
+
+    const dashboards = this.config.loadDashboards();
+    const dash = dashboards.find((d) => d.id === id);
+    if (!dash) throw new HttpException("Dashboard олдсонгүй", HttpStatus.NOT_FOUND);
+    if (!dash.enabled) throw new HttpException("Dashboard идэвхгүй", HttpStatus.BAD_REQUEST);
+
+    const limit = Math.min(Math.max(parseInt(limitStr) || 10, 1), 100);
+
+    let sql: string;
+    const params: any[] = [];
+    const safeCif = dash.cifColumn;
+    const safeAmt = dash.amountColumn;
+
+    if (safeAmt) {
+      sql = `SELECT * FROM (
+        SELECT ${safeCif} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${safeAmt}, 0)) AS TOTAL_AMT
+        FROM ${dash.tableName}
+        WHERE ${safeCif} IS NOT NULL`;
+      if (search && search.trim()) {
+        const s = search.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30);
+        if (s) { sql += ` AND UPPER(${safeCif}) LIKE UPPER(:srch)`; params.push(`%${s}%`); }
+      }
+      sql += ` GROUP BY ${safeCif} ORDER BY TOTAL_AMT DESC) WHERE ROWNUM <= :lmt`;
+      params.push(limit);
+    } else {
+      sql = `SELECT * FROM (
+        SELECT ${safeCif} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT
+        FROM ${dash.tableName}
+        WHERE ${safeCif} IS NOT NULL`;
+      if (search && search.trim()) {
+        const s = search.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30);
+        if (s) { sql += ` AND UPPER(${safeCif}) LIKE UPPER(:srch)`; params.push(`%${s}%`); }
+      }
+      sql += ` GROUP BY ${safeCif} ORDER BY CNT DESC) WHERE ROWNUM <= :lmt`;
+      params.push(limit);
+    }
+
+    let rows: { CIF_VAL: string; CNT: number; TOTAL_AMT: number }[];
+    try {
+      rows = await this.oracle.query<{
+        CIF_VAL: string;
+        CNT: number;
+        TOTAL_AMT: number;
+      }>(sql, params);
+    } catch (err: any) {
+      // Oracle ORA-????? мессежийг шууд frontend-д явуулна
+      const oraMsg: string =
+        err?.message || err?.errorNum
+          ? `ORA алдаа: ${err?.message || String(err)}`
+          : String(err);
+      throw new HttpException(
+        { message: oraMsg, table: dash.tableName, sql: sql.substring(0, 200) },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    return {
+      dashboardId: dash.id,
+      dashboardName: dash.name,
+      tableName: dash.tableName,
+      hasAmount: !!dash.amountColumn,
+      rows: rows.map((r) => ({
+        cif: String(r.CIF_VAL || ""),
+        count: Number(r.CNT) || 0,
+        totalAmount: Number(r.TOTAL_AMT) || 0,
+      })),
+    };
   }
 
   /**

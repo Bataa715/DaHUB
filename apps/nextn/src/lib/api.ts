@@ -778,57 +778,7 @@ export const excelReportApi = {
     return res.data;
   },
 
-  runReport: async (
-    templateId: string,
-    startDate?: string,
-    endDate?: string,
-  ): Promise<Blob> => {
-    const res = await api.post(
-      "/excel-report/run",
-      { templateId, startDate, endDate },
-      { responseType: "blob" },
-    );
-    return res.data as Blob;
-  },
-
-  /** Start async job, returns jobId immediately */
-  runReportAsync: async (
-    templateId: string,
-    startDate?: string,
-    endDate?: string,
-    filters?: Record<string, string>,
-  ): Promise<string> => {
-    const res = await api.post("/excel-report/run-async", {
-      templateId,
-      startDate,
-      endDate,
-      filters,
-    });
-    return res.data.jobId as string;
-  },
-
-  /** Poll job status */
-  getJobStatus: async (
-    jobId: string,
-  ): Promise<{
-    status: "pending" | "running" | "done" | "error";
-    elapsedMs: number;
-    error?: string;
-    fileName?: string;
-  }> => {
-    const res = await api.get(`/excel-report/jobs/${jobId}`);
-    return res.data;
-  },
-
-  /** Download finished job file */
-  downloadJob: async (jobId: string): Promise<Blob> => {
-    const res = await api.get(`/excel-report/jobs/${jobId}/download`, {
-      responseType: "blob",
-    });
-    return res.data as Blob;
-  },
-
-  /** POST /excel-report/run-csv — download CSV directly (fast, no Excel formatting overhead) */
+  /** POST /excel-report/run-csv — download CSV directly */
   runReportCsv: async (
     templateId: string,
     startDate?: string,
@@ -864,7 +814,7 @@ export const excelReportApi = {
     endDate?: string,
     filters?: Record<string, string>,
     columns?: string[],
-  ): Promise<{ columns: string[]; rows: any[][] }> => {
+  ): Promise<{ columns: string[]; rows: any[][]; totalCount: number }> => {
     const res = await api.post("/excel-report/preview", {
       templateId,
       startDate,
@@ -872,7 +822,7 @@ export const excelReportApi = {
       filters,
       columns,
     });
-    return res.data as { columns: string[]; rows: any[][] };
+    return res.data as { columns: string[]; rows: any[][]; totalCount: number };
   },
 
   /** POST /excel-report/columns — detect available columns from SQL (fast, LIMIT 0) */
@@ -930,13 +880,4 @@ export const excelReportApi = {
     await api.delete(`/excel-report/admin/templates/${id}`);
   },
 
-  /** POST /excel-report/query-to-excel — run a custom SELECT query and download xlsx */
-  queryToExcel: async (sql: string, fileName?: string): Promise<Blob> => {
-    const res = await api.post(
-      "/excel-report/query-to-excel",
-      { sql, fileName },
-      { responseType: "blob" },
-    );
-    return res.data as Blob;
-  },
 };

@@ -249,8 +249,10 @@ export default function AdminExcelReportsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sqlCode, setSqlCode] = useState("");
   const [parsedCols, setParsedCols] = useState<ColInfo[]>([]);
+  const [whereFilters, setWhereFilters] = useState<{ key: string; label: string }[]>([]);
   const [showStagingFields, setShowStagingFields] = useState(false);
   const [stagingCols, setStagingCols] = useState<StagingColInfo[]>([]);
+  const [stagingWhereFilters, setStagingWhereFilters] = useState<{ key: string; label: string }[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -274,7 +276,9 @@ export default function AdminExcelReportsPage() {
     setForm(EMPTY_FORM);
     setSqlCode("");
     setParsedCols([]);
+    setWhereFilters([]);
     setStagingCols([]);
+    setStagingWhereFilters([]);
   };
 
   const openCreate = () => {
@@ -282,7 +286,9 @@ export default function AdminExcelReportsPage() {
     setForm(EMPTY_FORM);
     setSqlCode("");
     setParsedCols([]);
+    setWhereFilters([]);
     setStagingCols([]);
+    setStagingWhereFilters([]);
     setShowStagingFields(false);
     setPanelOpen(true);
   };
@@ -312,6 +318,25 @@ export default function AdminExcelReportsPage() {
           storedFilters.find((f) => f.label === c.alias)?.key ?? c.filterKey,
       })),
     );
+    // Restore WHERE-only filters: stored filters whose key doesn't match any SELECT chip
+    const chipKeys = new Set(cols.map((c) => c.filterKey));
+    const whereKeys = [...(extracted ?? "").matchAll(/\{IF\s+(\w+)\}/g)].map(
+      (m) => m[1],
+    );
+    const uniqueWhereKeys = [...new Set(whereKeys)];
+    setWhereFilters(
+      uniqueWhereKeys
+        .filter((k) => !chipKeys.has(k))
+        .map((k) => ({
+          key: k,
+          label: storedFilters.find((f) => f.key === k)?.label ?? "",
+        })),
+    );
+    // Strip chip-appended {IF}...{/IF} blocks from stagingInsertSql so the
+    // editor shows clean SQL; chips are restored from storedFilters below.
+    const cleanStgSql = (t.stagingInsertSql ?? "")
+      .replace(/\n?\{IF \w+\}[^{]*\{\/IF\}/g, "")
+      .trim();
     setForm({
       name: t.name,
       description: t.description,
@@ -320,12 +345,12 @@ export default function AdminExcelReportsPage() {
       color: t.color,
       filters: t.filters || "[]",
       stagingTable: t.stagingTable ?? "",
-      stagingInsertSql: t.stagingInsertSql ?? "",
+      stagingInsertSql: cleanStgSql,
     });
     const isStg = !!t.stagingTable?.trim();
     setShowStagingFields(isStg);
     if (isStg) {
-      const stgCols = parseCols(t.stagingInsertSql ?? "");
+      const stgCols = parseCols(cleanStgSql);
       const selectedKeys = new Set(storedFilters.map((f) => f.key));
       setStagingCols(
         stgCols.map((c) => {
@@ -340,8 +365,23 @@ export default function AdminExcelReportsPage() {
           };
         }),
       );
+      // Restore WHERE-only filters for staging mode
+      const stgChipKeys = new Set(stgCols.map((c) => c.filterKey));
+      const stgWhereKeys = [
+        ...(t.stagingInsertSql ?? "").matchAll(/\{IF\s+(\w+)\}/g),
+      ].map((m) => m[1]);
+      const uniqueStgWhereKeys = [...new Set(stgWhereKeys)];
+      setStagingWhereFilters(
+        uniqueStgWhereKeys
+          .filter((k) => !stgChipKeys.has(k))
+          .map((k) => ({
+            key: k,
+            label: storedFilters.find((f) => f.key === k)?.label ?? "",
+          })),
+      );
     } else {
       setStagingCols([]);
+      setStagingWhereFilters([]);
     }
     setPanelOpen(true);
   };
@@ -356,18 +396,21 @@ export default function AdminExcelReportsPage() {
       toast({ title: "SQL query оруулна уу", variant: "destructive" });
       return;
     }
-    // Append {IF key}AND expr IN ({key}){/IF} blocks for each selected filter column
+    // Append {IF key}AND expr IN ({key}){/IF} blocks for each selected chip,
+    // but skip if {IF key} already exists in the SQL (user wrote it manually)
     const selectedCols = parsedCols.filter((c) => c.selected);
     let sqlWithFilters = sqlCode.trim();
     for (const col of selectedCols) {
-      sqlWithFilters += `\n{IF ${col.filterKey}}AND ${col.expr} IN ({${col.filterKey}}){/IF}`;
+      if (!sqlWithFilters.includes(`{IF ${col.filterKey}}`)) {
+        sqlWithFilters += `\n{IF ${col.filterKey}}AND ${col.expr} IN ({${col.filterKey}}){/IF}`;
+      }
     }
     const finalPythonCode = isStaging
       ? "# __STAGING_MODE__"
       : sqlToPython(sqlWithFilters);
     const finalFilters = isStaging
-      ? JSON.stringify(
-          stagingCols
+      ? JSON.stringify([
+          ...stagingCols
             .filter((c) => c.selected)
             .map((c) => ({
               key: c.filterKey,
@@ -375,21 +418,45 @@ export default function AdminExcelReportsPage() {
               placeholder: "",
               required: c.required,
             })),
-        )
-      : JSON.stringify(
-          selectedCols.map((c) => ({
+          ...stagingWhereFilters
+            .filter((w) => w.key)
+            .map((w) => ({
+              key: w.key,
+              label: w.label || w.key,
+              placeholder: "",
+            })),
+        ])
+      : JSON.stringify([
+          ...selectedCols.map((c) => ({
             key: c.filterKey,
             label: c.alias,
             placeholder: "",
           })),
-        );
+          ...whereFilters
+            .filter((w) => w.key)
+            .map((w) => ({
+              key: w.key,
+              label: w.label || w.key,
+              placeholder: "",
+            })),
+        ]);
     setSaving(true);
+    // For staging mode, append {IF key}AND expr IN ({key}){/IF} for selected chips
+    let stagingInsertSqlFinal = "";
+    if (isStaging) {
+      stagingInsertSqlFinal = form.stagingInsertSql.trim();
+      for (const col of stagingCols.filter((c) => c.selected)) {
+        if (!stagingInsertSqlFinal.includes(`{IF ${col.filterKey}}`)) {
+          stagingInsertSqlFinal += `\n{IF ${col.filterKey}}AND ${col.expr} IN ({${col.filterKey}}){/IF}`;
+        }
+      }
+    }
     try {
       const payload = {
         ...form,
         pythonCode: finalPythonCode,
         filters: finalFilters,
-        stagingInsertSql: isStaging ? form.stagingInsertSql.trim() : "",
+        stagingInsertSql: stagingInsertSqlFinal,
       };
       if (editing) {
         await excelReportApi.adminUpdate(editing.id, payload);
@@ -841,14 +908,28 @@ export default function AdminExcelReportsPage() {
                           </Label>
                           <button
                             type="button"
-                            onClick={() =>
-                              setStagingCols(
-                                parseCols(form.stagingInsertSql).map((c) => ({
-                                  ...c,
-                                  required: false,
-                                })),
-                              )
-                            }
+                            onClick={() => {
+                              const cols = parseCols(form.stagingInsertSql).map(
+                                (c) => ({ ...c, required: false }),
+                              );
+                              setStagingCols(cols);
+                              // Auto-detect {IF key} placeholders in WHERE clause
+                              const chipKeys = new Set(cols.map((c) => c.filterKey));
+                              const found = [
+                                ...form.stagingInsertSql.matchAll(/\{IF\s+(\w+)\}/g),
+                              ].map((m) => m[1]);
+                              const unique = [...new Set(found)];
+                              setStagingWhereFilters(
+                                unique
+                                  .filter((k) => !chipKeys.has(k))
+                                  .map((k) => ({
+                                    key: k,
+                                    label:
+                                      stagingWhereFilters.find((w) => w.key === k)
+                                        ?.label ?? "",
+                                  })),
+                              );
+                            }}
                             disabled={!form.stagingInsertSql.trim()}
                             className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-40"
                           >
@@ -967,6 +1048,54 @@ export default function AdminExcelReportsPage() {
                           </div>
                         )}
                       </div>
+
+                      {/* ── WHERE-clause {IF key} filters already in staging INSERT SQL ── */}
+                      {stagingWhereFilters.length > 0 && (
+                        <div className="space-y-2 pt-1 border-t border-amber-500/10">
+                          <div className="flex items-center gap-2 pt-1">
+                            <Label className="text-amber-400/80 text-xs font-medium">
+                              WHERE-д байгаа шүүлтүүрүүд
+                            </Label>
+                            <span className="text-[10px] text-slate-600">
+                              (автоматаар илэрсэн)
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-600 leading-relaxed">
+                            INSERT SQL WHERE хэсэгт{" "}
+                            <code className="text-amber-600/80">&#123;IF key&#125;</code>{" "}
+                            блок байгаа — доор Label нэрсийг оруулна уу
+                          </p>
+                          <div className="grid gap-1.5">
+                            {stagingWhereFilters.map((w, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-1.5"
+                              >
+                                <code className="text-xs text-amber-400 font-mono flex-shrink-0">
+                                  &#123;IF {w.key}&#125;
+                                </code>
+                                <span className="text-slate-600 text-[10px]">
+                                  →
+                                </span>
+                                <input
+                                  value={w.label}
+                                  onChange={(e) =>
+                                    setStagingWhereFilters((prev) =>
+                                      prev.map((x, j) =>
+                                        j === i
+                                          ? { ...x, label: e.target.value }
+                                          : x,
+                                      ),
+                                    )
+                                  }
+                                  placeholder="Харуулах нэр (жишх: SOL ID)"
+                                  className="flex-1 bg-transparent text-xs text-slate-200 outline-none border-b border-slate-600 focus:border-amber-500 placeholder:text-slate-600"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1004,7 +1133,26 @@ export default function AdminExcelReportsPage() {
                           </Label>
                           <button
                             type="button"
-                            onClick={() => setParsedCols(parseCols(sqlCode))}
+                            onClick={() => {
+                              const cols = parseCols(sqlCode);
+                              setParsedCols(cols);
+                              // Auto-detect {IF key} placeholders already in SQL
+                              const chipKeys = new Set(cols.map((c) => c.filterKey));
+                              const found = [
+                                ...sqlCode.matchAll(/\{IF\s+(\w+)\}/g),
+                              ].map((m) => m[1]);
+                              const unique = [...new Set(found)];
+                              setWhereFilters(
+                                unique
+                                  .filter((k) => !chipKeys.has(k))
+                                  .map((k) => ({
+                                    key: k,
+                                    label:
+                                      whereFilters.find((w) => w.key === k)
+                                        ?.label ?? "",
+                                  })),
+                              );
+                            }}
                             disabled={!sqlCode.trim()}
                             className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 transition-colors disabled:opacity-40"
                           >
@@ -1101,8 +1249,56 @@ export default function AdminExcelReportsPage() {
                             )}
                           </div>
                         )}
+
+                      {/* ── WHERE-clause {IF key} filters already in SQL ── */}
+                      {whereFilters.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-amber-400/80 text-xs font-medium">
+                              SQL-д аль хэдийн байгаа шүүлтүүрүүд
+                            </Label>
+                            <span className="text-[10px] text-slate-600">
+                              (автоматаар илэрсэн)
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-600 leading-relaxed">
+                            SQL WHERE хэсэгт{" "}
+                            <code className="text-amber-600/80">&#123;IF key&#125;</code>{" "}
+                            блок байгаа — доор Label нэрсийг оруулна уу
+                          </p>
+                          <div className="grid gap-1.5">
+                            {whereFilters.map((w, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-1.5"
+                              >
+                                <code className="text-xs text-amber-400 font-mono flex-shrink-0">
+                                  &#123;IF {w.key}&#125;
+                                </code>
+                                <span className="text-slate-600 text-[10px]">
+                                  →
+                                </span>
+                                <input
+                                  value={w.label}
+                                  onChange={(e) =>
+                                    setWhereFilters((prev) =>
+                                      prev.map((x, j) =>
+                                        j === i
+                                          ? { ...x, label: e.target.value }
+                                          : x,
+                                      ),
+                                    )
+                                  }
+                                  placeholder="Харуулах нэр (жишх: SOL ID)"
+                                  className="flex-1 bg-transparent text-xs text-slate-200 outline-none border-b border-slate-600 focus:border-amber-500 placeholder:text-slate-600"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       </div>
-                    )}
+                  )}
                   </>
                 )}
               </div>

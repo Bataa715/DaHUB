@@ -23,14 +23,23 @@ async function req(path: string, opts?: RequestInit) {
     headers,
   });
   const data = await res.json();
-  if (!res.ok || data?.error)
-    throw new Error(data?.error || data?.message || "Request failed");
+  if (!res.ok || data?.error) {
+    let msg = data?.message || data?.error || "Request failed";
+    if (data?.table) msg += ` [хүснэгт: ${data.table}]`;
+    throw new Error(msg);
+  }
   return data;
 }
 
 export async function abFetchAlerts(minDashboards = 2, limit = 200) {
   return req(
     `/oracle/search/alerts?min_dashboards=${minDashboards}&limit=${limit}`,
+  );
+}
+
+export async function abSearchAlertByCif(cif: string, minDashboards = 1) {
+  return req(
+    `/oracle/search/alerts?min_dashboards=${minDashboards}&cif=${encodeURIComponent(cif.trim())}`,
   );
 }
 
@@ -65,4 +74,20 @@ export async function abFetchDashboards(): Promise<
 
 export async function abFetchNotifications(limit = 20) {
   return req(`/oracle/search/alerts?min_dashboards=2&limit=${limit}`);
+}
+
+export async function abFetchDashboardTop(
+  id: number,
+  limit = 10,
+  search = "",
+): Promise<{
+  dashboardId: number;
+  dashboardName: string;
+  tableName: string;
+  hasAmount: boolean;
+  rows: { cif: string; count: number; totalAmount: number }[];
+}> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (search) params.set("search", search);
+  return req(`/oracle/search/dashboard/${id}/top?${params}`);
 }

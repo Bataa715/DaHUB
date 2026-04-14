@@ -20,7 +20,6 @@ import {
   CreateReportTemplateDto,
   UpdateReportTemplateDto,
   RunReportDto,
-  QueryToExcelDto,
 } from "./dto/excel-report.dto";
 
 @Controller("excel-report")
@@ -98,73 +97,10 @@ export class ExcelReportController {
     if (onDone) res.on("finish", onDone);
   }
 
-  /** POST /excel-report/run — stream xlsx directly from ClickHouse → browser (no full-buffer step) */
-  @Post("run")
-  async runReport(@Body() dto: RunReportDto, @Res() res: Response) {
-    // Validation + query building — throws before touching the response if invalid
-    const { query, fileName, sheetName } =
-      await this.service.prepareRunReport(dto);
-    // ClickHouse connection verified (status 200) before headers are sent
-    const encodedName = encodeURIComponent(fileName);
-    res.set({
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="report.xlsx"; filename*=UTF-8''${encodedName}`,
-      // No Content-Length — chunked transfer; ExcelJS flushes zip entries as it goes
-    });
-    await this.service.writeExcelToStream(query, sheetName, res);
-  }
-
-  /** POST /excel-report/run-async — start job, return jobId immediately */
-  @Post("run-async")
-  async runReportAsync(@Body() dto: RunReportDto) {
-    const jobId = await this.service.runReportAsync(dto);
-    return { jobId };
-  }
-
-  /** GET /excel-report/jobs/:jobId — poll job status */
-  @Get("jobs/:jobId")
-  getJobStatus(@Param("jobId") jobId: string) {
-    return this.service.getJobStatus(jobId);
-  }
-
-  /** GET /excel-report/jobs/:jobId/download — download finished file */
-  @Get("jobs/:jobId/download")
-  downloadJob(@Param("jobId") jobId: string, @Res() res: Response) {
-    const { buffer, fileName } = this.service.getJobFile(jobId);
-    // RFC 5987: encode non-ASCII filename (e.g. Mongolian/Cyrillic chars)
-    const encodedName = encodeURIComponent(fileName);
-    res.set({
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="report.xlsx"; filename*=UTF-8''${encodedName}`,
-      "Content-Length": buffer.length,
-    });
-    res.end(buffer);
-  }
-
   /** POST /excel-report/preview — run SQL-mode report, return first 100 rows as JSON */
   @Post("preview")
   previewReport(@Body() dto: RunReportDto) {
     return this.service.previewReport(dto);
   }
 
-  /** POST /excel-report/query-to-excel — run custom SELECT → download xlsx */
-  @Post("query-to-excel")
-  async queryToExcel(@Body() dto: QueryToExcelDto, @Res() res: Response) {
-    const buffer = await this.service.queryToExcel(dto);
-    const baseName = (dto.fileName ?? "query_result").replace(
-      /[^a-z0-9_\-\u0400-\u04FF]/gi,
-      "_",
-    );
-    const date = new Date().toISOString().slice(0, 10);
-    const encodedName = encodeURIComponent(`${baseName}_${date}.xlsx`);
-    res.set({
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="query_result.xlsx"; filename*=UTF-8''${encodedName}`,
-      "Content-Length": buffer.length,
-    });
-    res.end(buffer);
-  }
 }

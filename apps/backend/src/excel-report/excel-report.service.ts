@@ -11,12 +11,9 @@ import {
   CreateReportTemplateDto,
   UpdateReportTemplateDto,
   RunReportDto,
-  QueryToExcelDto,
 } from "./dto/excel-report.dto";
 import { randomUUID } from "crypto";
 import * as http from "http";
-import { PassThrough } from "stream";
-import ExcelJS from "exceljs";
 
 export interface FilterDef {
   key: string;
@@ -40,25 +37,9 @@ export interface ReportTemplate {
   updatedAt: string;
 }
 
-// ── Async job types ────────────────────────────────────────────────────────
-type JobStatus = "pending" | "running" | "done" | "error";
-
-interface ReportJob {
-  id: string;
-  status: JobStatus;
-  startedAt: number;
-  finishedAt?: number;
-  fileName?: string;
-  error?: string;
-  buffer?: Buffer;
-}
-
 @Injectable()
 export class ExcelReportService implements OnModuleInit {
   private readonly logger = new Logger(ExcelReportService.name);
-
-  // In-memory job store — single-instance singleton is fine
-  private readonly jobs = new Map<string, ReportJob>();
 
   private static parseCHHostPort(): { host: string; port: string } {
     const raw = process.env.CLICKHOUSE_HOST ?? "localhost";
@@ -286,291 +267,15 @@ export class ExcelReportService implements OnModuleInit {
     }));
   }
 
-  // ── Run report ─────────────────────────────────────────────────────────────
-
-  async runReport(dto: RunReportDto): Promise<Buffer> {
-    const template = await this.getTemplateById(dto.templateId);
-    if (!template.isActive) {
-      throw new BadRequestException("Энэ тайлан идэвхгүй байна");
-    }
-
-    // Validate date inputs
-    if (template.dateMode === "range") {
-      if (!dto.startDate || !dto.endDate) {
-        throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
-      }
-    }
-    if (template.dateMode === "single") {
-      if (!dto.startDate) {
-        throw new BadRequestException("Огноо шаардлагатай");
-      }
-    }
-
-    const sql = ExcelReportService.extractSqlFromPythonCode(
-      template.pythonCode,
-    );
-    if (!sql) {
-      throw new BadRequestException(
-        "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
-      );
-    }
-    return this.generateExcelFromSql(
-      sql,
-      dto.filters ?? {},
-      dto.startDate ?? "",
-      dto.endDate ?? dto.startDate ?? "",
-      template.name,
-    );
-  }
-
-  // ── SQL-mode → Excel directly in Node.js (no Python, no temp file) ──
-
-  /**
-   * Core TSV→Excel pipe: reads ClickHouse TSV stream row-by-row and feeds
-   * ExcelJS StreamWorkbookWriter.  The writer flushes zip chunks to `outStream`
-   * as they are produced — no full-buffer step.
-   */
-  private processChStreamToExcel(
-    chStream: import("http").IncomingMessage,
-    outStream: NodeJS.WritableStream,
-    sheetName: string,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      outStream.on("error", reject);
-
-      const wb = new ExcelJS.stream.xlsx.WorkbookWriter({
-        stream: outStream as any,
-        useSharedStrings: false,
-      });
-      const ws = wb.addWorksheet(sheetName);
-
-      let headerParsed = false;
-      let remainder = "";
-
-      const parseRow = (v: string) => {
-        const n = Number(v);
-        return v !== "" && !isNaN(n) ? n : v;
-      };
-
-      chStream.on("data", (chunk: Buffer) => {
-        const text = remainder + chunk.toString("utf-8");
-        const lines = text.split("\n");
-        remainder = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line) continue;
-          const cells = line.split("\t");
-          if (!headerParsed) {
-            ws.addRow(cells).commit();
-            headerParsed = true;
-          } else {
-            ws.addRow(cells.map(parseRow)).commit();
-          }
-        }
-      });
-
-      chStream.on("end", async () => {
-        try {
-          if (remainder) {
-            const cells = remainder.split("\t");
-            if (cells.some((c) => c !== ""))
-              ws.addRow(cells.map(parseRow)).commit();
-          }
-          await ws.commit();
-          await wb.commit();
-          resolve();
-        } catch (e) {
-          reject(e);
-        }
-      });
-
-      chStream.on("error", reject);
-    });
-  }
-
-  /** Validate dto, build TSV query, return query string + file metadata (no HTTP call yet). */
-  async prepareRunReport(
-    dto: RunReportDto,
-  ): Promise<{ query: string; fileName: string; sheetName: string }> {
-    const template = await this.getTemplateById(dto.templateId);
-    if (!template.isActive)
-      throw new BadRequestException("Энэ тайлан идэвхгүй байна");
-    if (template.dateMode === "range" && (!dto.startDate || !dto.endDate))
-      throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
-    if (template.dateMode === "single" && !dto.startDate)
-      throw new BadRequestException("Огноо шаардлагатай");
-
-    const sql = ExcelReportService.extractSqlFromPythonCode(
-      template.pythonCode,
-    );
-    if (!sql)
-      throw new BadRequestException(
-        "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
-      );
-
-    const filterVals = dto.filters ?? {};
-    let resolved = sql.replace(/\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g, (_, k, c) =>
-      filterVals[k] ? c : "",
-    );
-    resolved = resolved
-      .replace(/\{start_date\}/g, dto.startDate ?? "")
-      .replace(/\{end_date\}/g, dto.endDate ?? dto.startDate ?? "");
-    for (const [k, v] of Object.entries(filterVals))
-      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
-
-    const date = new Date().toISOString().slice(0, 10);
-    return {
-      query: resolved.trim() + " FORMAT TSVWithNames",
-      fileName: `${template.name}_${date}.xlsx`,
-      sheetName: template.name,
-    };
-  }
-
-  /** Stream Excel directly to any writable stream (no RAM buffering). */
-  async writeExcelToStream(
-    query: string,
-    sheetName: string,
-    outStream: NodeJS.WritableStream,
-  ): Promise<void> {
-    const chStream = await this.streamFromClickHouse(query);
-    await this.processChStreamToExcel(chStream, outStream, sheetName);
-  }
-
-  /**
-   * Buffered Excel generation — for background jobs and queryToExcel where the
-   * buffer must be stored / returned.  Uses the same streaming core internally.
-   */
-  private async generateExcelFromSql(
-    sql: string,
-    filterVals: Record<string, string>,
-    startDate: string,
-    endDate: string,
-    sheetName = "Тайлан",
-  ): Promise<Buffer> {
-    let resolved = sql.replace(/\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g, (_, k, c) =>
-      filterVals[k] ? c : "",
-    );
-    resolved = resolved
-      .replace(/\{start_date\}/g, startDate)
-      .replace(/\{end_date\}/g, endDate);
-    for (const [k, v] of Object.entries(filterVals))
-      resolved = resolved.replace(new RegExp(`\\{${k}\\}`, "g"), v);
-
-    const query = resolved.trim() + " FORMAT TSVWithNames";
-    const chStream = await this.streamFromClickHouse(query);
-
-    const pt = new PassThrough();
-    const chunks: Buffer[] = [];
-    const bufferReady = new Promise<Buffer>((resolve, reject) => {
-      pt.on("data", (c: Buffer) => chunks.push(c));
-      pt.on("end", () => resolve(Buffer.concat(chunks)));
-      pt.on("error", reject);
-    });
-    await this.processChStreamToExcel(chStream, pt, sheetName);
-    return bufferReady;
-  }
-
-  // ── Async job API ──────────────────────────────────────────────────────────
-
-  /** Start report generation in background, return jobId immediately */
-  async runReportAsync(dto: RunReportDto): Promise<string> {
-    const template = await this.getTemplateById(dto.templateId);
-    if (!template.isActive) {
-      throw new BadRequestException("Энэ тайлан идэвхгүй байна");
-    }
-    if (template.dateMode === "range" && (!dto.startDate || !dto.endDate)) {
-      throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
-    }
-    if (template.dateMode === "single" && !dto.startDate) {
-      throw new BadRequestException("Огноо шаардлагатай");
-    }
-
-    const jobId = randomUUID();
-    const job: ReportJob = {
-      id: jobId,
-      status: "pending",
-      startedAt: Date.now(),
-    };
-    this.jobs.set(jobId, job);
-
-    // Fire-and-forget — runs in background
-    this.processJob(jobId, dto, template).catch(() => {});
-
-    // Cleanup old finished jobs after 30 min
-    setTimeout(() => this.jobs.delete(jobId), 30 * 60 * 1000);
-
-    return jobId;
-  }
-
-  private async processJob(
-    jobId: string,
-    dto: RunReportDto,
-    template: ReportTemplate,
-  ): Promise<void> {
-    const job = this.jobs.get(jobId)!;
-    job.status = "running";
-
-    try {
-      const date = new Date().toISOString().slice(0, 10);
-      job.fileName = `${template.name}_${date}.xlsx`;
-
-      const sql = ExcelReportService.extractSqlFromPythonCode(
-        template.pythonCode,
-      );
-      if (!sql) {
-        throw new BadRequestException(
-          "Зөвхөн SQL горимын тайлан дэмжигдэнэ. Admin хэсгээс тайланг шинэчилнэ үү.",
-        );
-      }
-      job.buffer = await this.generateExcelFromSql(
-        sql,
-        dto.filters ?? {},
-        dto.startDate ?? "",
-        dto.endDate ?? dto.startDate ?? "",
-        template.name,
-      );
-      job.status = "done";
-      job.finishedAt = Date.now();
-    } catch (err: any) {
-      job.status = "error";
-      job.finishedAt = Date.now();
-      job.error = err?.message ?? "Тайлан үүсгэхэд тодорхойгүй алдаа гарлаа";
-      this.logger.error(`Job ${jobId} failed: ${job.error}`);
-    }
-  }
-
-  getJobStatus(jobId: string): {
-    status: JobStatus;
-    elapsedMs: number;
-    error?: string;
-    fileName?: string;
-  } {
-    const job = this.jobs.get(jobId);
-    if (!job) throw new NotFoundException("Ажил олдсонгүй");
-    return {
-      status: job.status,
-      elapsedMs: (job.finishedAt ?? Date.now()) - job.startedAt,
-      error: job.error,
-      fileName: job.fileName,
-    };
-  }
-
-  getJobFile(jobId: string): { buffer: Buffer; fileName: string } {
-    const job = this.jobs.get(jobId);
-    if (!job) throw new NotFoundException("Ажил олдсонгүй");
-    if (job.status !== "done" || !job.buffer) {
-      throw new BadRequestException("Тайлан бэлэн болоогүй байна");
-    }
-    return { buffer: job.buffer, fileName: job.fileName! };
-  }
-
   // ── Preview: run SQL-mode report against ClickHouse directly, return JSON ─
 
   async previewReport(
     dto: RunReportDto,
-  ): Promise<{ columns: string[]; rows: any[][] }> {
+  ): Promise<{ columns: string[]; rows: any[][]; totalCount: number }> {
     const template = await this.getTemplateById(dto.templateId);
 
     // ── STAGING MODE PREVIEW ──────────────────────────────────────────────────
+    // Run only the SELECT part of INSERT...SELECT — no INSERT privilege needed
     if (template.stagingTable && template.stagingInsertSql) {
       const filterVals: Record<string, string> = dto.filters ?? {};
       let insertSql = template.stagingInsertSql.replace(
@@ -583,17 +288,25 @@ export class ExcelReportService implements OnModuleInit {
       for (const [k, v] of Object.entries(filterVals))
         insertSql = insertSql.replace(new RegExp(`\\{${k}\\}`, "g"), v);
 
-      // Step 1: INSERT
-      await this.httpQueryText(insertSql.trim());
+      // Extract just the SELECT portion from INSERT INTO ... SELECT ...
+      const selectMatch = insertSql.match(/\bSELECT\b[\s\S]*/i);
+      if (!selectMatch) {
+        throw new BadRequestException(
+          "Staging SQL-д SELECT олдсонгүй. INSERT INTO ... SELECT ... хэлбэртэй байх шаардлагатай.",
+        );
+      }
 
-      // Step 2: SELECT preview
-      const previewSql = `SELECT * FROM ${template.stagingTable} LIMIT 50 FORMAT TSVWithNames`;
-      const tsv = await this.httpQueryText(previewSql);
-
-      // Step 3: TRUNCATE cleanup
-      this.httpQueryText(`TRUNCATE TABLE ${template.stagingTable}`).catch((e) =>
-        this.logger.warn("Preview TRUNCATE failed:", e),
-      );
+      // Extract just the SELECT portion; strip any trailing FORMAT clause
+      const selectSql = selectMatch[0].trim().replace(/\s+FORMAT\s+\w+\s*$/i, "");
+      const [tsv, countText] = await Promise.all([
+        this.httpQueryText(
+          `SELECT * FROM (\n${selectSql}\n) LIMIT 50 FORMAT TSVWithNames`,
+        ),
+        this.httpQueryText(
+          `SELECT count() FROM (\n${selectSql}\n) FORMAT TSV`,
+        ).catch(() => "0"),
+      ]);
+      const totalCount = parseInt(countText.trim(), 10) || 0;
 
       const lines = tsv.split("\n");
       const columns = lines[0] ? lines[0].split("\t") : [];
@@ -601,7 +314,7 @@ export class ExcelReportService implements OnModuleInit {
       for (let i = 1; i < lines.length; i++) {
         if (lines[i]) rows.push(lines[i].split("\t"));
       }
-      return { columns, rows };
+      return { columns, rows, totalCount };
     }
 
     // ── NORMAL SQL MODE ──────────────────────────────────────────────────────
@@ -630,46 +343,13 @@ export class ExcelReportService implements OnModuleInit {
     }
 
     const previewSql = `SELECT * FROM (\n${resolved}\n) LIMIT 50 FORMAT TSVWithNames`;
+    const countSql = `SELECT count() FROM (\n${resolved}\n) FORMAT TSV`;
 
-    const { host, port } = ExcelReportService.parseCHHostPort();
-    const urlPath = `/?user=${encodeURIComponent(process.env.CLICKHOUSE_USER ?? "default")}&password=${encodeURIComponent(process.env.CLICKHOUSE_PASSWORD ?? "")}&database=${encodeURIComponent(process.env.CLICKHOUSE_DATABASE ?? "audit_db")}&format_tsv_null_representation=NULL&format_csv_null_representation=NULL`;
-
-    const tsv = await new Promise<string>((resolve, reject) => {
-      const body = Buffer.from(previewSql, "utf-8");
-      const req = http.request(
-        {
-          hostname: host,
-          port: Number(port) || 8123,
-          path: urlPath,
-          method: "POST",
-        },
-        (res) => {
-          const chunks: Buffer[] = [];
-          res.on("data", (c: Buffer) => chunks.push(c));
-          res.on("end", () => {
-            const text = Buffer.concat(chunks).toString("utf-8");
-            if ((res.statusCode ?? 0) !== 200) {
-              reject(
-                new InternalServerErrorException(
-                  "ClickHouse алдаа: " + text.slice(0, 300),
-                ),
-              );
-            } else {
-              resolve(text);
-            }
-          });
-        },
-      );
-      req.on("error", (e: Error) =>
-        reject(
-          new InternalServerErrorException(
-            "ClickHouse холболт алдаа: " + e.message,
-          ),
-        ),
-      );
-      req.write(body);
-      req.end();
-    });
+    const [tsv, countText] = await Promise.all([
+      this.httpQueryText(previewSql),
+      this.httpQueryText(countSql).catch(() => "0"),
+    ]);
+    const totalCount = parseInt(countText.trim(), 10) || 0;
 
     // Parse TSVWithNames: first line = headers, remaining = data rows
     const lines = tsv.split("\n");
@@ -681,7 +361,7 @@ export class ExcelReportService implements OnModuleInit {
       rows.push(line.split("\t"));
     }
 
-    return { columns, rows };
+    return { columns, rows, totalCount };
   }
 
   /** Extract SQL string from SQL-mode pythonCode, or null if not SQL mode. */
@@ -834,12 +514,11 @@ export class ExcelReportService implements OnModuleInit {
     const date = new Date().toISOString().slice(0, 10);
 
     // ── STAGING MODE ──────────────────────────────────────────────────────────
-    // Template has stagingTable + stagingInsertSql:
-    //   1. Run INSERT INTO staging_table SELECT ... (ClickHouse processes everything)
-    //   2. Stream SELECT * FROM staging_table FORMAT CSVWithNames
-    //   3. After stream ends → TRUNCATE TABLE staging_table  (cleanup)
+    // 1. Fire the INSERT in the background — does NOT block the HTTP response
+    // 2. Stream the SELECT portion immediately as CSV
+    //    (avoids needing SELECT on the staging table AND avoids proxy/browser timeouts
+    //     caused by blocking the connection while a long INSERT runs)
     if (template.stagingTable && template.stagingInsertSql) {
-      // Resolve placeholders in the INSERT SQL
       const filterVals = dto.filters ?? {};
       let insertSql = template.stagingInsertSql.replace(
         /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
@@ -851,47 +530,47 @@ export class ExcelReportService implements OnModuleInit {
       for (const [k, v] of Object.entries(filterVals))
         insertSql = insertSql.replace(new RegExp(`\\{${k}\\}`, "g"), v);
 
-      // Step 1 — INSERT (blocking; ClickHouse does all heavy lifting here)
-      await this.httpQueryText(insertSql.trim());
-
-      // Step 2 — export query
-      const exportQuery = `SELECT * FROM ${template.stagingTable} FORMAT CSVWithNames`;
-
-      const [stream, estimatedBytes] = await Promise.all([
-        this.streamFromClickHouse(exportQuery),
-        this.httpQueryText(
-          `SELECT count() FROM ${template.stagingTable} FORMAT TSV`,
-        )
-          .then(async (cnt) => {
-            const count = parseInt(cnt.trim(), 10) || 0;
-            if (count === 0) return 0;
-            const sample = await this.httpQueryText(
-              `SELECT * FROM ${template.stagingTable} LIMIT 1 FORMAT CSVWithNames`,
-            );
-            const lines = sample.split("\n").filter(Boolean);
-            const hdr = lines[0]
-              ? Buffer.byteLength(lines[0] + "\n", "utf8")
-              : 50;
-            const row = lines[1]
-              ? Buffer.byteLength(lines[1] + "\n", "utf8")
-              : 150;
-            return 3 + hdr + count * row;
-          })
-          .catch(() => 0),
-      ]);
-
-      // Step 3 — cleanup after stream is fully consumed
-      const onDone = () => {
-        this.httpQueryText(`TRUNCATE TABLE ${template.stagingTable}`).catch(
-          (e) => this.logger.warn("TRUNCATE failed:", e),
+      // Extract SELECT portion before firing the INSERT
+      const selectMatch = insertSql.match(/\bSELECT\b[\s\S]*/i);
+      if (!selectMatch) {
+        throw new BadRequestException(
+          "Staging SQL-д SELECT олдсонгүй. INSERT INTO ... SELECT ... хэлбэртэй байх шаардлагатай.",
         );
-      };
+      }
+      const selectSql = selectMatch[0].trim().replace(/\s+FORMAT\s+\w+\s*$/i, "");
+
+      // Check if the staging table already has data — skip INSERT if it does,
+      // run INSERT only when the table is empty.  Runs in the background so the
+      // HTTP connection is never blocked (long INSERT → proxy timeout → GET 404).
+      this.httpQueryText(
+        `SELECT count() FROM ${template.stagingTable} FORMAT TSV`,
+      )
+        .then((countText) => {
+          const existing = parseInt(countText.trim(), 10) || 0;
+          if (existing > 0) {
+            // Data already present — nothing to do
+            this.logger.log(
+              `Staging INSERT алгасав: ${template.stagingTable} дотор ${existing} мөр байна`,
+            );
+            return;
+          }
+          // Table is empty — insert fresh data
+          return this.httpQueryText(insertSql.trim());
+        })
+        .catch((err: Error) => {
+          this.logger.error(`Staging INSERT алдаа: ${err?.message ?? err}`);
+        });
+
+      // Stream SELECT immediately — reads from source table (no SELECT on staging needed)
+      // estimatedBytes = 0 → no Content-Length header → avoids ERR_CONTENT_LENGTH_MISMATCH
+      const stream = await this.streamFromClickHouse(
+        `${selectSql} FORMAT CSVWithNames`,
+      );
 
       return {
         stream,
         fileName: `${template.name}_${date}.csv`,
-        estimatedBytes,
-        onDone,
+        estimatedBytes: 0,
       };
     }
 
@@ -924,19 +603,4 @@ export class ExcelReportService implements OnModuleInit {
     return { stream, fileName: `${template.name}_${date}.csv`, estimatedBytes };
   }
 
-  // ── Direct SQL → Excel ────────────────────────────────────────────────────
-
-  async queryToExcel(dto: QueryToExcelDto): Promise<Buffer> {
-    // Validate SELECT-only before executing
-    const cleaned = dto.sql
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/--[^\n]*/g, "")
-      .trim();
-    if (!/^\s*SELECT\b/i.test(cleaned)) {
-      throw new BadRequestException(
-        "Зөвхөн SELECT query зөвшөөрөгдөнө. INSERT/UPDATE/DELETE/DROP зэрэг үйлдэл хориглоно.",
-      );
-    }
-    return this.generateExcelFromSql(dto.sql, {}, "", "", "Result");
-  }
 }

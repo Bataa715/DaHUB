@@ -85,13 +85,3 @@ export class RunReportDto {
   @IsOptional()
   filters?: Record<string, string>;
 }
-
-export class QueryToExcelDto {
-  @IsString()
-  @IsNotEmpty()
-  sql: string;
-
-  @IsString()
-  @IsOptional()
-  fileName?: string;
-}
