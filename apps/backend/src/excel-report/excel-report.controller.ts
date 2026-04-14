@@ -6,11 +6,13 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   Res,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from "@nestjs/common";
 import { Response } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -68,32 +70,88 @@ export class ExcelReportController {
     return this.service.deleteTemplate(id);
   }
 
+  // ── Admin: permission management ───────────────────────────────────────────
+
+  /** GET /excel-report/admin/permissions — all granted permissions */
+  @Get("admin/permissions")
+  @UseGuards(AdminGuard)
+  getAllPermissions() {
+    return this.service.getAllPermissions();
+  }
+
+  /** POST /excel-report/admin/permissions — grant a user access to a template */
+  @Post("admin/permissions")
+  @UseGuards(AdminGuard)
+  async grantPermission(
+    @Body() body: { userId: string; templateId: string },
+    @Request() req: any,
+  ) {
+    if (!body.userId || !body.templateId)
+      throw new BadRequestException("userId болон templateId шаардлагатай");
+    await this.service.grantPermission(body.userId, body.templateId, req.user?.id ?? "");
+    return { ok: true };
+  }
+
+  /** DELETE /excel-report/admin/permissions — revoke a user's access to a template */
+  @Delete("admin/permissions")
+  @UseGuards(AdminGuard)
+  async revokePermission(@Body() body: { userId: string; templateId: string }) {
+    if (!body.userId || !body.templateId)
+      throw new BadRequestException("userId болон templateId шаардлагатай");
+    await this.service.revokePermission(body.userId, body.templateId);
+    return { ok: true };
+  }
+
+  /** GET /excel-report/admin/download-logs — download history */
+  @Get("admin/download-logs")
+  @UseGuards(AdminGuard)
+  getDownloadLogs(@Query("limit") limit?: string) {
+    return this.service.getDownloadLogs(limit ? Math.min(Number(limit), 1000) : 200);
+  }
+
   // ── User routes ────────────────────────────────────────────────────────────
 
-  /** GET /excel-report/templates — active templates (no pythonCode) */
+  /** GET /excel-report/templates — active templates filtered by permission */
   @Get("templates")
-  getActiveTemplates() {
-    return this.service.getActiveTemplates();
+  getActiveTemplates(@Request() req: any) {
+    return this.service.getActiveTemplates(req.user?.id, req.user?.isAdmin);
+  }
+
+  /** POST /excel-report/run-insert — fire staging INSERT in background, return immediately */
+  @Post("run-insert")
+  @HttpCode(HttpStatus.ACCEPTED)
+  async runInsert(@Body() dto: RunReportDto) {
+    // Do NOT await — fire and forget. Returns 202 immediately.
+    this.service.runInsertBackground(dto).catch(() => {});
+    return { ok: true };
   }
 
   /** POST /excel-report/run-csv — stream CSV directly from ClickHouse to the browser */
   @Post("run-csv")
-  async runReportCsv(@Body() dto: RunReportDto, @Res() res: Response) {
+  async runReportCsv(@Body() dto: RunReportDto, @Res() res: Response, @Request() req: any) {
+    const caller = req.user
+      ? { userId: req.user.id, userName: req.user.name ?? req.user.userId ?? "", isAdmin: !!req.user.isAdmin }
+      : undefined;
     const { stream, fileName, estimatedBytes, onDone } =
-      await this.service.runReportCsv(dto);
+      await this.service.runReportCsv(dto, caller);
     const encodedName = encodeURIComponent(fileName);
     const headers: Record<string, string> = {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="report.csv"; filename*=UTF-8''${encodedName}`,
-      // Expose Content-Length so the browser can compute download progress
-      "Access-Control-Expose-Headers": "Content-Length",
+      "Transfer-Encoding": "chunked",
+      "X-Accel-Buffering": "no",
     };
-    if (estimatedBytes > 0) headers["Content-Length"] = String(estimatedBytes);
+    if (estimatedBytes > 0) {
+      headers["Content-Length"] = String(estimatedBytes);
+      delete headers["Transfer-Encoding"];
+    }
     res.set(headers);
-    // Prepend UTF-8 BOM so Excel renders Cyrillic correctly
     res.write(Buffer.from([0xef, 0xbb, 0xbf]));
+    stream.on("error", (err) => {
+      if (!res.headersSent) res.status(500).end("Stream error");
+      else res.end();
+    });
     stream.pipe(res);
-    // Staging mode: TRUNCATE staging table after the client has received everything
     if (onDone) res.on("finish", onDone);
   }
 
@@ -102,5 +160,5 @@ export class ExcelReportController {
   previewReport(@Body() dto: RunReportDto) {
     return this.service.previewReport(dto);
   }
-
 }
+

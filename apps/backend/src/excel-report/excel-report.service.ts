@@ -62,6 +62,123 @@ export class ExcelReportService implements OnModuleInit {
 
   async onModuleInit() {
     await this.ensureTableExists();
+    await this.ensurePermissionTables();
+  }
+
+  // ── Permission & Log tables ───────────────────────────────────────────────
+
+  private async ensurePermissionTables() {
+    try {
+      await this.clickhouse.exec(`
+        CREATE TABLE IF NOT EXISTS excel_report_permissions (
+          userId      String,
+          templateId  String,
+          grantedBy   String DEFAULT '',
+          grantedAt   DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(grantedAt)
+          ORDER BY (userId, templateId)
+      `);
+    } catch (e) {
+      this.logger.error("Failed to ensure excel_report_permissions table:", e);
+    }
+    try {
+      await this.clickhouse.exec(`
+        CREATE TABLE IF NOT EXISTS excel_report_download_logs (
+          id           String,
+          userId       String,
+          userName     String DEFAULT '',
+          templateId   String,
+          templateName String DEFAULT '',
+          downloadedAt DateTime DEFAULT now()
+        ) ENGINE = MergeTree()
+          ORDER BY (downloadedAt, userId)
+      `);
+    } catch (e) {
+      this.logger.error("Failed to ensure excel_report_download_logs table:", e);
+    }
+  }
+
+  // ── Permission CRUD ───────────────────────────────────────────────────────
+
+  async grantPermission(userId: string, templateId: string, grantedBy: string) {
+    await this.clickhouse.insert("excel_report_permissions", [
+      { userId, templateId, grantedBy, grantedAt: nowCH() },
+    ]);
+  }
+
+  async revokePermission(userId: string, templateId: string) {
+    await this.clickhouse.exec(
+      `ALTER TABLE excel_report_permissions DELETE WHERE userId = {uid:String} AND templateId = {tid:String}`,
+      { uid: userId, tid: templateId },
+    );
+  }
+
+  /** All (userId, templateId) pairs that currently have permission */
+  async getAllPermissions(): Promise<{ userId: string; templateId: string; grantedBy: string; grantedAt: string }[]> {
+    // LIMIT 1 BY deduplicates per (userId, templateId) — no GROUP BY, no FINAL, no nested aggregates
+    return this.clickhouse.query(
+      `SELECT userId, templateId, grantedBy, grantedAt
+       FROM excel_report_permissions
+       ORDER BY grantedAt DESC
+       LIMIT 1 BY userId, templateId`,
+    );
+  }
+
+  /** Template IDs that a specific user has access to */
+  async getUserPermittedTemplateIds(userId: string): Promise<string[]> {
+    const rows = await this.clickhouse.query<{ templateId: string }>(
+      `SELECT DISTINCT templateId
+       FROM excel_report_permissions
+       WHERE userId = {uid:String}
+       ORDER BY grantedAt DESC
+       LIMIT 1 BY templateId`,
+      { uid: userId },
+    );
+    return rows.map((r) => r.templateId);
+  }
+
+  async hasPermission(userId: string, templateId: string): Promise<boolean> {
+    // Single query: count distinct users with permissions for this template,
+    // and whether this specific user is among them.
+    const rows = await this.clickhouse.query<{ total: number; hasUser: number }>(
+      `SELECT
+         countDistinct(userId) AS total,
+         countDistinctIf(userId, userId = {uid:String}) AS hasUser
+       FROM (
+         SELECT userId FROM excel_report_permissions
+         WHERE templateId = {tid:String}
+         ORDER BY grantedAt DESC
+         LIMIT 1 BY userId
+       )`,
+      { uid: userId, tid: templateId },
+    );
+    const hasUser = Number(rows[0]?.hasUser ?? 0);
+    return hasUser > 0;
+  }
+
+  // ── Download log ──────────────────────────────────────────────────────────
+
+  async logDownload(userId: string, userName: string, templateId: string, templateName: string) {
+    try {
+      await this.clickhouse.insert("excel_report_download_logs", [
+        { id: randomUUID(), userId, userName, templateId, templateName, downloadedAt: nowCH() },
+      ]);
+    } catch (e) {
+      this.logger.warn("Failed to log download:", e);
+    }
+  }
+
+  async getDownloadLogs(limit = 200): Promise<{
+    id: string; userId: string; userName: string;
+    templateId: string; templateName: string; downloadedAt: string;
+  }[]> {
+    return this.clickhouse.query(
+      `SELECT id, userId, userName, templateId, templateName, downloadedAt
+       FROM excel_report_download_logs
+       ORDER BY downloadedAt DESC
+       LIMIT {limit:UInt32}`,
+      { limit },
+    );
   }
 
   private async ensureTableExists() {
@@ -248,7 +365,7 @@ export class ExcelReportService implements OnModuleInit {
 
   // ── User: list active templates ────────────────────────────────────────────
 
-  async getActiveTemplates(): Promise<
+  async getActiveTemplates(userId?: string, isAdmin = false): Promise<
     (Omit<ReportTemplate, "pythonCode" | "isActive"> & {
       isSqlMode: boolean;
       isStaging: boolean;
@@ -256,7 +373,23 @@ export class ExcelReportService implements OnModuleInit {
     })[]
   > {
     const all = await this.getLatestTemplates(true);
-    return all.map(({ pythonCode, isActive: _a, ...rest }) => ({
+    let filtered = all;
+    // Non-admin: filter by permission only for templates that have *any* permission row.
+    // Templates with no permission rows are treated as public (default allow).
+    // If permissions table query fails, fall back to showing all templates (don't block user).
+    if (!isAdmin && userId) {
+      try {
+        const allPerms = await this.getAllPermissions();
+        const userIds = new Set(
+          allPerms.filter((p) => p.userId === userId).map((p) => p.templateId),
+        );
+        // No explicit permission row → no access (not public)
+        filtered = all.filter((t) => userIds.has(t.id));
+      } catch (e) {
+        this.logger.warn(`Permission filter failed, showing all templates: ${(e as any)?.message ?? e}`);
+      }
+    }
+    return filtered.map(({ pythonCode, isActive: _a, ...rest }) => ({
       ...rest,
       isSqlMode: pythonCode.startsWith("# __SQL_MODE__") || !!rest.stagingTable,
       isStaging: !!rest.stagingTable,
@@ -265,6 +398,29 @@ export class ExcelReportService implements OnModuleInit {
         : (ExcelReportService.extractSqlFromPythonCode(pythonCode) ??
           undefined),
     }));
+  }
+
+  // ── Background INSERT (staging mode) — called separately from CSV download ─
+
+  async runInsertBackground(dto: RunReportDto): Promise<void> {
+    const template = await this.getTemplateById(dto.templateId);
+    if (!template.isActive || !template.stagingTable || !template.stagingInsertSql) return;
+
+    const filterVals = dto.filters ?? {};
+    let insertSql = template.stagingInsertSql.replace(
+      /\{IF (\w+)\}([\s\S]*?)\{\/IF\}/g,
+      (_, k, c) => (filterVals[k] ? c : ""),
+    );
+    insertSql = insertSql
+      .replace(/\{start_date\}/g, dto.startDate ?? "")
+      .replace(/\{end_date\}/g, dto.endDate ?? dto.startDate ?? "");
+    for (const [k, v] of Object.entries(filterVals))
+      insertSql = insertSql.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+
+    // Fire and forget — intentionally NOT awaited by the controller
+    this.httpQueryText(insertSql.trim()).catch((err: Error) => {
+      this.logger.error(`Staging INSERT алдаа [${template.stagingTable}]: ${err?.message ?? err}`);
+    });
   }
 
   // ── Preview: run SQL-mode report against ClickHouse directly, return JSON ─
@@ -408,39 +564,6 @@ export class ExcelReportService implements OnModuleInit {
   }
 
   /**
-   * Estimate uncompressed CSV byte size: runs COUNT() and LIMIT-1 sample in
-   * parallel.  Returns 0 on any error or timeout (no Content-Length header).
-   */
-  private async estimateCsvByteSize(resolvedSql: string): Promise<number> {
-    try {
-      const work = Promise.all([
-        this.httpQueryText(
-          `SELECT count() FROM (\n${resolvedSql}\n) FORMAT TSV`,
-        ),
-        this.httpQueryText(
-          `SELECT * FROM (\n${resolvedSql}\n) LIMIT 1 FORMAT CSVWithNames`,
-        ),
-      ]);
-      // Don't block the main stream for more than 4 s
-      const guard = new Promise<never>((_, r) =>
-        setTimeout(() => r(new Error("timeout")), 4000),
-      );
-      const [countText, sampleText] = await Promise.race([work, guard]);
-      const count = parseInt(countText.trim(), 10) || 0;
-      const lines = sampleText.split("\n").filter(Boolean);
-      const headerBytes = lines[0]
-        ? Buffer.byteLength(lines[0] + "\n", "utf8")
-        : 50;
-      const rowBytes = lines[1]
-        ? Buffer.byteLength(lines[1] + "\n", "utf8")
-        : 150;
-      return 3 /* BOM */ + headerBytes + count * rowBytes;
-    } catch {
-      return 0; // fall back to indeterminate (no Content-Length)
-    }
-  }
-
-  /**
    * Open a streaming HTTP connection to ClickHouse and resolve with the
    * IncomingMessage (readable stream) on 200, or reject with a descriptive
    * error on any other status code.  The caller is responsible for piping
@@ -497,6 +620,7 @@ export class ExcelReportService implements OnModuleInit {
   /** Validate dto, build query, return a live stream + fileName + estimated byte count for Content-Length. */
   async runReportCsv(
     dto: RunReportDto,
+    caller?: { userId: string; userName: string; isAdmin: boolean },
   ): Promise<{
     stream: import("http").IncomingMessage;
     fileName: string;
@@ -506,18 +630,29 @@ export class ExcelReportService implements OnModuleInit {
     const template = await this.getTemplateById(dto.templateId);
     if (!template.isActive)
       throw new BadRequestException("Энэ тайлан идэвхгүй байна");
+
+    // Permission check — admins bypass
+    if (caller && !caller.isAdmin) {
+      const allowed = await this.hasPermission(caller.userId, dto.templateId);
+      if (!allowed)
+        throw new BadRequestException("Энэ тайлан татах эрх байхгүй байна");
+    }
+
     if (template.dateMode === "range" && (!dto.startDate || !dto.endDate))
       throw new BadRequestException("Эхлэх болон дуусах огноо шаардлагатай");
     if (template.dateMode === "single" && !dto.startDate)
       throw new BadRequestException("Огноо шаардлагатай");
 
+    // Log download (fire-and-forget)
+    if (caller) {
+      this.logDownload(caller.userId, caller.userName, dto.templateId, template.name);
+    }
+
     const date = new Date().toISOString().slice(0, 10);
 
     // ── STAGING MODE ──────────────────────────────────────────────────────────
-    // 1. Fire the INSERT in the background — does NOT block the HTTP response
-    // 2. Stream the SELECT portion immediately as CSV
-    //    (avoids needing SELECT on the staging table AND avoids proxy/browser timeouts
-    //     caused by blocking the connection while a long INSERT runs)
+    // INSERT is fired separately via POST /run-insert (called in parallel by frontend).
+    // Here we ONLY stream the SELECT portion directly from the source tables.
     if (template.stagingTable && template.stagingInsertSql) {
       const filterVals = dto.filters ?? {};
       let insertSql = template.stagingInsertSql.replace(
@@ -530,7 +665,7 @@ export class ExcelReportService implements OnModuleInit {
       for (const [k, v] of Object.entries(filterVals))
         insertSql = insertSql.replace(new RegExp(`\\{${k}\\}`, "g"), v);
 
-      // Extract SELECT portion before firing the INSERT
+      // Extract SELECT portion (reads from source tables, not the staging table)
       const selectMatch = insertSql.match(/\bSELECT\b[\s\S]*/i);
       if (!selectMatch) {
         throw new BadRequestException(
@@ -539,30 +674,6 @@ export class ExcelReportService implements OnModuleInit {
       }
       const selectSql = selectMatch[0].trim().replace(/\s+FORMAT\s+\w+\s*$/i, "");
 
-      // Check if the staging table already has data — skip INSERT if it does,
-      // run INSERT only when the table is empty.  Runs in the background so the
-      // HTTP connection is never blocked (long INSERT → proxy timeout → GET 404).
-      this.httpQueryText(
-        `SELECT count() FROM ${template.stagingTable} FORMAT TSV`,
-      )
-        .then((countText) => {
-          const existing = parseInt(countText.trim(), 10) || 0;
-          if (existing > 0) {
-            // Data already present — nothing to do
-            this.logger.log(
-              `Staging INSERT алгасав: ${template.stagingTable} дотор ${existing} мөр байна`,
-            );
-            return;
-          }
-          // Table is empty — insert fresh data
-          return this.httpQueryText(insertSql.trim());
-        })
-        .catch((err: Error) => {
-          this.logger.error(`Staging INSERT алдаа: ${err?.message ?? err}`);
-        });
-
-      // Stream SELECT immediately — reads from source table (no SELECT on staging needed)
-      // estimatedBytes = 0 → no Content-Length header → avoids ERR_CONTENT_LENGTH_MISMATCH
       const stream = await this.streamFromClickHouse(
         `${selectSql} FORMAT CSVWithNames`,
       );
@@ -595,12 +706,8 @@ export class ExcelReportService implements OnModuleInit {
 
     const csvQuery = resolved + " FORMAT CSVWithNames";
 
-    // Start main stream and size estimation in parallel — both run against ClickHouse simultaneously
-    const [stream, estimatedBytes] = await Promise.all([
-      this.streamFromClickHouse(csvQuery),
-      this.estimateCsvByteSize(resolved),
-    ]);
-    return { stream, fileName: `${template.name}_${date}.csv`, estimatedBytes };
+    const stream = await this.streamFromClickHouse(csvQuery);
+    return { stream, fileName: `${template.name}_${date}.csv`, estimatedBytes: 0 };
   }
 
 }

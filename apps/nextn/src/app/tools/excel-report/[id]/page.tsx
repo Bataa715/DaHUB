@@ -124,6 +124,20 @@ export default function ExcelReportDetailPage() {
     setCsvError("");
     setCsvLoading(true);
     setDownloadProgress(0);
+
+    // If staging mode: fire INSERT in background simultaneously (no await)
+    // CSV download starts immediately in parallel.
+    if (template.isStaging) {
+      excelReportApi
+        .runInsert(
+          template.id,
+          startDate || undefined,
+          endDate || startDate || undefined,
+          buildFilterObj(),
+        )
+        .catch(() => {}); // fire-and-forget, ignore errors on client side
+    }
+
     try {
       const blob = await excelReportApi.runReportCsv(
         template.id,
@@ -376,17 +390,25 @@ export default function ExcelReportDetailPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-slate-400">
-                        {downloadProgress < 100 ? "Татаж байна..." : "Дууслаа ✓"}
+                        {downloadProgress === 100 ? "Дууслаа ✓" : "Татаж байна..."}
                       </span>
-                      <span className="text-xs font-mono font-bold text-emerald-400">
-                        {downloadProgress}%
-                      </span>
+                      {downloadProgress > 0 && downloadProgress < 100 && (
+                        <span className="text-xs font-mono font-bold text-emerald-400">
+                          {downloadProgress}%
+                        </span>
+                      )}
                     </div>
                     <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className={`h-1.5 rounded-full bg-gradient-to-r ${template.color} transition-all duration-300 ease-out`}
-                        style={{ width: `${downloadProgress}%` }}
-                      />
+                      {downloadProgress > 0 ? (
+                        <div
+                          className={`h-1.5 rounded-full bg-gradient-to-r ${template.color} transition-all duration-300 ease-out`}
+                          style={{ width: `${downloadProgress}%` }}
+                        />
+                      ) : (
+                        <div
+                          className={`h-1.5 rounded-full bg-gradient-to-r ${template.color} animate-pulse w-full opacity-60`}
+                        />
+                      )}
                     </div>
                   </div>
                 </>

@@ -8,7 +8,7 @@ import {
   Param,
   Query,
 } from "@nestjs/common";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerGuard, SkipThrottle } from "@nestjs/throttler";
 import {
   ApiTags,
   ApiOperation,
@@ -225,7 +225,7 @@ export class AuthController {
     return this.authService.changePassword(req.user.id, changePasswordDto);
   }
 
-  @UseGuards(ThrottlerGuard)
+  @SkipThrottle()
   @Post("refresh")
   @ApiOperation({
     summary: "Refresh access token",

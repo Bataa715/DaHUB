@@ -12,6 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
   FileSpreadsheet,
   Plus,
   Pencil,
@@ -28,9 +34,15 @@ import {
   Check,
   Database,
   Wand2,
+  Users,
+  KeyRound,
+  History,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import Link from "next/link";
 import { excelReportApi, ReportTemplateAdmin, FilterDef } from "@/lib/api";
+import { usersApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const COLOR_OPTIONS = [
@@ -236,6 +248,7 @@ function splitTopLevel(s: string): string[] {
 
 export default function AdminExcelReportsPage() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"templates" | "permissions" | "logs">("templates");
   const [templates, setTemplates] = useState<ReportTemplateAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -254,6 +267,105 @@ export default function AdminExcelReportsPage() {
   const [stagingCols, setStagingCols] = useState<StagingColInfo[]>([]);
   const [stagingWhereFilters, setStagingWhereFilters] = useState<{ key: string; label: string }[]>([]);
 
+  // ── Permissions tab state ─────────────────────────────────────────────────
+  const [pUsers, setPUsers] = useState<any[]>([]);
+  const [pPermissions, setPPermissions] = useState<{ userId: string; templateId: string }[]>([]);
+  const [pLoading, setPLoading] = useState(false);
+  const [pSaving, setPSaving] = useState<string | null>(null); // "userId:templateId"
+  const [pSelectedTemplate, setPSelectedTemplate] = useState<ReportTemplateAdmin | null>(null);
+  const [pSheetTab, setPSheetTab] = useState<"with" | "without">("with");
+  const [pGranting, setPGranting] = useState(false);
+  const [pSelectedUsers, setPSelectedUsers] = useState<Set<string>>(new Set());
+
+  // ── Logs tab state ────────────────────────────────────────────────────────
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  const loadPermissions = useCallback(async () => {
+    setPLoading(true);
+    try {
+      const [users, perms] = await Promise.all([
+        usersApi.getAll(),
+        excelReportApi.adminGetPermissions(),
+      ]);
+      setPUsers(users.filter((u: any) => u.isActive !== false));
+      setPPermissions(perms);
+    } catch {
+      toast({ title: "Эрхийн мэдээлэл татахад алдаа гарлаа", variant: "destructive" });
+    } finally {
+      setPLoading(false);
+    }
+  }, [toast]);
+
+  const loadLogs = useCallback(async () => {
+    setLogsLoading(true);
+    try {
+      const data = await excelReportApi.adminGetDownloadLogs(500);
+      setLogs(data);
+    } catch {
+      toast({ title: "Лог татахад алдаа гарлаа", variant: "destructive" });
+    } finally {
+      setLogsLoading(false);
+    }
+  }, [toast]);
+
+  const hasPermission = (userId: string, templateId: string) =>
+    pPermissions.some((p) => p.userId === userId && p.templateId === templateId);
+
+  const togglePermission = async (userId: string, templateId: string) => {
+    const key = `${userId}:${templateId}`;
+    setPSaving(key);
+    try {
+      if (hasPermission(userId, templateId)) {
+        await excelReportApi.adminRevokePermission(userId, templateId);
+        setPPermissions((prev) => prev.filter((p) => !(p.userId === userId && p.templateId === templateId)));
+      } else {
+        await excelReportApi.adminGrantPermission(userId, templateId);
+        setPPermissions((prev) => [...prev, { userId, templateId }]);
+      }
+    } catch {
+      toast({ title: "Алдаа гарлаа", variant: "destructive" });
+    } finally {
+      setPSaving(null);
+    }
+  };
+
+  // ── Sheet: open template permission panel ─────────────────────────────────
+  const openPermSheet = (t: ReportTemplateAdmin) => {
+    setPSelectedTemplate(t);
+    setPSheetTab("with");
+    setPSelectedUsers(new Set());
+  };
+
+  const getUsersWithAccess = (templateId: string) =>
+    pUsers.filter((u) => u.isAdmin || hasPermission(u.id, templateId));
+
+  const getUsersWithoutAccess = (templateId: string) =>
+    pUsers.filter((u) => !u.isAdmin && !hasPermission(u.id, templateId));
+
+  const grantSelected = async () => {
+    if (!pSelectedTemplate || pSelectedUsers.size === 0) return;
+    setPGranting(true);
+    try {
+      for (const uid of Array.from(pSelectedUsers)) {
+        await excelReportApi.adminGrantPermission(uid, pSelectedTemplate.id);
+        setPPermissions((prev) => [...prev, { userId: uid, templateId: pSelectedTemplate.id }]);
+      }
+      setPSelectedUsers(new Set());
+      setPSheetTab("with");
+      toast({ title: `${pSelectedUsers.size} хэрэглэгчид эрх олголоо` });
+    } catch {
+      toast({ title: "Алдаа гарлаа", variant: "destructive" });
+    } finally {
+      setPGranting(false);
+    }
+  };
+
+  const revokeUser = async (userId: string) => {
+    if (!pSelectedTemplate) return;
+    await togglePermission(userId, pSelectedTemplate.id);
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -269,6 +381,11 @@ export default function AdminExcelReportsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (activeTab === "permissions" && pUsers.length === 0 && !pLoading) loadPermissions();
+    if (activeTab === "logs" && logs.length === 0 && !logsLoading) loadLogs();
+  }, [activeTab]); // eslint-disable-line
 
   const closePanel = () => {
     setPanelOpen(false);
@@ -526,20 +643,56 @@ export default function AdminExcelReportsPage() {
             </span>
           </div>
 
-          <div className="ml-auto">
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-medium transition-all shadow-lg shadow-emerald-500/20"
-            >
-              <Plus className="w-4 h-4" />
-              Шинэ тайлан нэмэх
-            </button>
+          <div className="ml-auto flex items-center gap-2">
+            {activeTab === "templates" && (
+              <button
+                onClick={openCreate}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-medium transition-all shadow-lg shadow-emerald-500/20"
+              >
+                <Plus className="w-4 h-4" />
+                Шинэ тайлан нэмэх
+              </button>
+            )}
+            {activeTab === "permissions" && (
+              <button onClick={loadPermissions} disabled={pLoading} className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-50">
+                <History className="w-4 h-4" />
+              </button>
+            )}
+            {activeTab === "logs" && (
+              <button onClick={loadLogs} disabled={logsLoading} className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-50">
+                <History className="w-4 h-4" />
+              </button>
+            )}
           </div>
+        </div>
+        {/* Tab bar */}
+        <div className="max-w-[1400px] mx-auto px-4 flex gap-1 pb-0">
+          {([
+            { id: "templates", label: "Тайлангууд", icon: FileSpreadsheet },
+            { id: "permissions", label: "Тайлангийн эрх", icon: KeyRound },
+            { id: "logs", label: "Татах лог", icon: History },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                activeTab === id
+                  ? "border-emerald-400 text-emerald-300"
+                  : "border-transparent text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* ── Body ── */}
       <div className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8">
+
+        {/* ═══════════ TEMPLATES TAB ═══════════ */}
+        {activeTab === "templates" && (<>
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <div className="relative">
@@ -675,6 +828,280 @@ export default function AdminExcelReportsPage() {
             </AnimatePresence>
           </div>
         )}
+        </>)}
+
+        {/* ═══════════ PERMISSIONS TAB ═══════════ */}
+        {activeTab === "permissions" && (
+          <div className="space-y-4">
+            {pLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+                <span className="ml-3 text-sm text-slate-400">Ачаалж байна...</span>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-slate-500">
+                  Тайлан дарж хэрэглэгчдэд эрх олгох, хасах.
+                  Эрх олгоогүй тайланг хэн ч үзэх боломжгүй.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {templates.filter((t) => t.isActive).map((t) => {
+                    const permCount = pPermissions.filter((p) => p.templateId === t.id).length;
+                    const nonAdminTotal = pUsers.filter((u) => !u.isAdmin).length;
+                    const pct = nonAdminTotal > 0 ? Math.round((permCount / nonAdminTotal) * 100) : 0;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => openPermSheet(t)}
+                        className="group text-left bg-slate-900/60 border border-slate-700/50 hover:border-slate-500/60 rounded-xl p-4 transition-all hover:bg-slate-800/40"
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${t.color} flex items-center justify-center shrink-0`}>
+                            <FileSpreadsheet className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-200 text-sm truncate">{t.name}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              {`${permCount} / ${nonAdminTotal} хэрэглэгч`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full bg-gradient-to-r ${t.color} transition-all`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] shrink-0 text-slate-400">
+                            {permCount} эрх
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 mt-2 group-hover:text-slate-400 transition-colors">
+                          Эрх удирдах →
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Permission Sheet */}
+        <Sheet open={!!pSelectedTemplate} onOpenChange={(o) => !o && setPSelectedTemplate(null)}>
+          <SheetContent className="w-full sm:max-w-md bg-slate-950 border-slate-800 p-0 flex flex-col">
+            <SheetTitle className="sr-only">{pSelectedTemplate?.name ?? "Эрх удирдах"}</SheetTitle>
+            {pSelectedTemplate && (() => {
+              const withAccess = getUsersWithAccess(pSelectedTemplate.id);
+              const withoutAccess = getUsersWithoutAccess(pSelectedTemplate.id);
+              return (
+                <>
+                  {/* Header */}
+                  <div className={`bg-gradient-to-br ${pSelectedTemplate.color} p-5`}>
+                    <p className="text-white/70 text-xs font-medium uppercase tracking-widest mb-1">Эрх удирдах</p>
+                    <p className="text-white text-lg font-semibold leading-snug">{pSelectedTemplate.name}</p>
+                    <div className="flex gap-4 mt-3">
+                      <div className="text-center">
+                        <p className="text-white text-xl font-bold leading-none">{withAccess.length}</p>
+                        <p className="text-white/60 text-xs mt-0.5">эрхтэй</p>
+                      </div>
+                      <div className="w-px bg-white/20" />
+                      <div className="text-center">
+                        <p className="text-white text-xl font-bold leading-none">{withoutAccess.length}</p>
+                        <p className="text-white/60 text-xs mt-0.5">эрхгүй</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="grid grid-cols-2 border-b border-slate-800 bg-slate-900">
+                    {(["with", "without"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => { setPSheetTab(tab); setPSelectedUsers(new Set()); }}
+                        className={`py-2.5 text-xs font-medium transition-colors border-b-2 ${
+                          pSheetTab === tab
+                            ? "border-white text-white"
+                            : "border-transparent text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        {tab === "with"
+                          ? `Эрхтэй (${withAccess.length})`
+                          : `Эрх олгох (${withoutAccess.length})`}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Эрхтэй хэрэглэгчид */}
+                  {pSheetTab === "with" && (
+                    <ScrollArea className="flex-1">
+                      {withAccess.length === 0 ? (
+                        <div className="text-center py-16 text-slate-600">
+                          <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                          <p className="text-sm">Эрхтэй хэрэглэгч байхгүй</p>
+                          <button onClick={() => setPSheetTab("without")} className="mt-2 text-xs text-slate-400 hover:text-white underline underline-offset-2">
+                            Эрх олгох
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-800/60">
+                          {withAccess.map((u) => {
+                            const busy = pSaving === `${u.id}:${pSelectedTemplate.id}`;
+                            return (
+                              <div key={u.id} className="flex items-center justify-between px-5 py-3 group hover:bg-slate-900/60">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${pSelectedTemplate.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                                    {(u.name || u.userId || "?").charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">{u.name || u.userId}</p>
+                                    <p className="text-xs text-slate-500 truncate">{u.department}</p>
+                                  </div>
+                                  {u.isAdmin && <span className="text-[9px] text-amber-400 bg-amber-500/10 rounded px-1.5 py-0.5 shrink-0">Admin</span>}
+                                </div>
+                                {!u.isAdmin && (
+                                  <button
+                                    onClick={() => revokeUser(u.id)}
+                                    disabled={busy}
+                                    className="text-xs text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2 disabled:opacity-40"
+                                  >
+                                    {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : "Хасах"}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  )}
+
+                  {/* Эрх олгох */}
+                  {pSheetTab === "without" && (
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                      {/* Quick actions */}
+                      <div className="px-5 py-3 border-b border-slate-800 flex gap-2">
+                        <button
+                          onClick={() => setPSelectedUsers(new Set(withoutAccess.map((u) => u.id)))}
+                          disabled={withoutAccess.length === 0}
+                          className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40"
+                        >
+                          Бүгдийг сонгох
+                        </button>
+                        <button
+                          onClick={() => setPSelectedUsers(new Set())}
+                          disabled={pSelectedUsers.size === 0}
+                          className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40"
+                        >
+                          Цэвэрлэх
+                        </button>
+                      </div>
+                      <ScrollArea className="flex-1">
+                        {withoutAccess.length === 0 ? (
+                          <div className="text-center py-16 text-slate-600">
+                            <UserCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                            <p className="text-sm">Бүх хэрэглэгч эрхтэй байна</p>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-800/60">
+                            {withoutAccess.map((u) => {
+                              const selected = pSelectedUsers.has(u.id);
+                              return (
+                                <button
+                                  key={u.id}
+                                  onClick={() => {
+                                    const next = new Set(pSelectedUsers);
+                                    selected ? next.delete(u.id) : next.add(u.id);
+                                    setPSelectedUsers(next);
+                                  }}
+                                  className={`w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-900/60 transition-colors ${selected ? "bg-slate-800/40" : ""}`}
+                                >
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${selected ? "bg-emerald-500 border-emerald-500" : "border-slate-600"}`}>
+                                    {selected && <Check className="w-2.5 h-2.5 text-white" />}
+                                  </div>
+                                  <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                    {(u.name || u.userId || "?").charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0 text-left">
+                                    <p className="text-sm font-medium text-white truncate">{u.name || u.userId}</p>
+                                    <p className="text-xs text-slate-500 truncate">{u.department}</p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </ScrollArea>
+                      {/* Grant button */}
+                      {pSelectedUsers.size > 0 && (
+                        <div className="px-5 py-4 border-t border-slate-800">
+                          <button
+                            onClick={grantSelected}
+                            disabled={pGranting}
+                            className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                          >
+                            {pGranting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                            {pSelectedUsers.size} хэрэглэгчид эрх олгох
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </SheetContent>
+        </Sheet>
+
+        {/* ═══════════ LOGS TAB ═══════════ */}
+        {activeTab === "logs" && (
+          <div className="space-y-4">
+            {logsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+                <span className="ml-3 text-sm text-slate-400">Ачаалж байна...</span>
+              </div>
+            ) : logs.length === 0 ? (
+              <div className="text-center py-20">
+                <History className="w-10 h-10 mx-auto text-slate-600 mb-3" />
+                <p className="text-sm text-slate-500">Татсан тайлангийн лог байхгүй байна</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-700/50">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-800/60">
+                      <th className="px-4 py-3 text-left text-slate-400 font-medium">#</th>
+                      <th className="px-4 py-3 text-left text-slate-400 font-medium">Хэрэглэгч</th>
+                      <th className="px-4 py-3 text-left text-slate-400 font-medium">Тайлан</th>
+                      <th className="px-4 py-3 text-left text-slate-400 font-medium">Татсан огноо</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log, i) => (
+                      <tr key={log.id ?? i} className="border-t border-slate-800/60 hover:bg-slate-800/20">
+                        <td className="px-4 py-2.5 text-slate-600">{i + 1}</td>
+                        <td className="px-4 py-2.5">
+                          <p className="font-medium text-slate-200">{log.userId}</p>
+                          {log.userName && <p className="text-[10px] text-slate-500">{log.userName}</p>}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <p className="text-slate-300">{log.templateName || log.templateId}</p>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap">
+                          {log.downloadedAt ? new Date(log.downloadedAt).toLocaleString("mn-MN") : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* ── Create / Edit side panel ── */}

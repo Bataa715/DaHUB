@@ -122,10 +122,10 @@ export default function ExcelReportPage() {
             </div>
             <div className="text-center">
               <p className="text-slate-300 font-medium text-lg">
-                Тайлан байхгүй байна
+                Эрхтэй тайлан байхгүй байна
               </p>
               <p className="text-slate-500 text-sm mt-1">
-                Удахгүй тайлангуудыг нэмэх болно
+                Тайлан татах эрх авахын тулд администратортай холбогдоно уу
               </p>
             </div>
           </div>

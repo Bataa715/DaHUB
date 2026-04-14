@@ -779,6 +779,21 @@ export const excelReportApi = {
   },
 
   /** POST /excel-report/run-csv — download CSV directly */
+  /** POST /excel-report/run-insert — kick off staging INSERT in background (fire-and-forget) */
+  runInsert: async (
+    templateId: string,
+    startDate?: string,
+    endDate?: string,
+    filters?: Record<string, string>,
+  ): Promise<void> => {
+    await api.post("/excel-report/run-insert", {
+      templateId,
+      startDate,
+      endDate,
+      filters,
+    });
+  },
+
   runReportCsv: async (
     templateId: string,
     startDate?: string,
@@ -878,6 +893,33 @@ export const excelReportApi = {
 
   adminDelete: async (id: string): Promise<void> => {
     await api.delete(`/excel-report/admin/templates/${id}`);
+  },
+
+  // ── Report permissions ──────────────────────────────────────────────────────
+
+  adminGetPermissions: async (): Promise<{
+    userId: string; templateId: string; grantedBy: string; grantedAt: string;
+  }[]> => {
+    const res = await api.get("/excel-report/admin/permissions");
+    return res.data;
+  },
+
+  adminGrantPermission: async (userId: string, templateId: string): Promise<void> => {
+    await api.post("/excel-report/admin/permissions", { userId, templateId });
+  },
+
+  adminRevokePermission: async (userId: string, templateId: string): Promise<void> => {
+    await api.delete("/excel-report/admin/permissions", { data: { userId, templateId } });
+  },
+
+  // ── Download logs ───────────────────────────────────────────────────────────
+
+  adminGetDownloadLogs: async (limit = 200): Promise<{
+    id: string; userId: string; userName: string;
+    templateId: string; templateName: string; downloadedAt: string;
+  }[]> => {
+    const res = await api.get(`/excel-report/admin/download-logs?limit=${limit}`);
+    return res.data;
   },
 
 };
