@@ -79,7 +79,8 @@ export class OracleSearchController {
 
     for (const dash of dashboards) {
       try {
-        let sql = `SELECT * FROM ${dash.tableName} WHERE ${dash.cifColumn} = :cif`;
+        const fromExpr = dash.fromClause ?? dash.tableName;
+        let sql = `SELECT * FROM ${fromExpr} WHERE ${dash.cifColumn} = :cif`;
         const params: any[] = [safeCif];
 
         if (dateFrom && dash.dateColumn) {
@@ -162,16 +163,17 @@ export class OracleSearchController {
       try {
         let sql: string;
         let params: any[] = [];
+        const fromExpr = dash.fromClause ?? dash.tableName;
         if (safeCifFilter) {
           // Single CIF lookup — exact match
           sql = dash.amountColumn
-            ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${dash.tableName} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`
-            : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${dash.tableName} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`;
+            ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${fromExpr} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`
+            : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${fromExpr} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`;
           params = [safeCifFilter];
         } else {
           sql = dash.amountColumn
-            ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${dash.tableName} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`
-            : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${dash.tableName} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`;
+            ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${fromExpr} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`
+            : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${fromExpr} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`;
         }
 
         const rows = await this.oracle.query<{
@@ -244,11 +246,12 @@ export class OracleSearchController {
     const params: any[] = [];
     const safeCif = dash.cifColumn;
     const safeAmt = dash.amountColumn;
+    const fromExpr = dash.fromClause ?? dash.tableName;
 
     if (safeAmt) {
       sql = `SELECT * FROM (
         SELECT ${safeCif} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${safeAmt}, 0)) AS TOTAL_AMT
-        FROM ${dash.tableName}
+        FROM ${fromExpr}
         WHERE ${safeCif} IS NOT NULL`;
       if (search && search.trim()) {
         const s = search.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30);
@@ -259,7 +262,7 @@ export class OracleSearchController {
     } else {
       sql = `SELECT * FROM (
         SELECT ${safeCif} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT
-        FROM ${dash.tableName}
+        FROM ${fromExpr}
         WHERE ${safeCif} IS NOT NULL`;
       if (search && search.trim()) {
         const s = search.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30);
@@ -313,7 +316,8 @@ export class OracleSearchController {
 
     for (const dash of dashboards) {
       try {
-        const sql = `SELECT DISTINCT ${dash.cifColumn} AS CIF_VAL FROM ${dash.tableName} WHERE ${dash.cifColumn} IS NOT NULL AND ROWNUM <= 50000`;
+        const fromExpr = dash.fromClause ?? dash.tableName;
+        const sql = `SELECT DISTINCT ${dash.cifColumn} AS CIF_VAL FROM ${fromExpr} WHERE ${dash.cifColumn} IS NOT NULL AND ROWNUM <= 50000`;
         const rows = await this.oracle.query<{ CIF_VAL: string }>(sql);
         cifSets[dash.id] = new Set(
           rows.map((r) => String(r.CIF_VAL || "").trim()).filter(Boolean),

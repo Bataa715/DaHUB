@@ -6,6 +6,9 @@ export interface OracleDashboardConfig {
   id: number;
   name: string;
   tableName: string;
+  /** Optional JOIN expression that replaces `tableName` in FROM clauses.
+   *  Example: "DATA_ANALYST.EAH_PHONE_MAIL M JOIN DATA_ANALYST.SUS_EMP_INFO E ON E.EMPLOYEE_CODE = M.MODIFIED_BY" */
+  fromClause?: string;
   cifColumn: string;
   dateColumn: string | null;
   amountColumn: string | null;

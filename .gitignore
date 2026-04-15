@@ -18,6 +18,7 @@ build
 
 # Notebooks with sensitive data
 Data/riskemployeescore.ipynb
+Data/Salbar_Audit_SQL.ipynb
 
 # Docker local data
 .docker/
