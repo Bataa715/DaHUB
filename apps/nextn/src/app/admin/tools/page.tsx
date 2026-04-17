@@ -31,6 +31,8 @@ import {
   FileSpreadsheet,
   FileSearch,
   BellDot,
+  Search,
+  UserMinus,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -211,6 +213,12 @@ export default function AdminToolsPage() {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("current");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  // Revoke tab state
+  const [revokeSelectedUsers, setRevokeSelectedUsers] = useState<Set<string>>(new Set());
+  const [revokeSearch, setRevokeSearch] = useState("");
+  const [revokeDepartment, setRevokeDepartment] = useState<string>("");
+  // Grant tab search
+  const [grantSearch, setGrantSearch] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -244,6 +252,10 @@ export default function AdminToolsPage() {
     setActiveTab("current");
     setSelectedUsers(new Set());
     setSelectedDepartment("");
+    setRevokeSelectedUsers(new Set());
+    setRevokeSearch("");
+    setRevokeDepartment("");
+    setGrantSearch("");
   };
 
   // Тухайн tool-д эрхтэй хэрэглэгчид
@@ -341,25 +353,45 @@ export default function AdminToolsPage() {
     }
   };
 
-  // Эрх хасах
-  const revokeAccess = async (userId: string) => {
-    if (!selectedTool) return;
+  // Bulk эрх хасах
+  const bulkRevokeAccess = async () => {
+    if (!selectedTool || revokeSelectedUsers.size === 0) return;
+
+    setIsSaving(true);
+    let successCount = 0;
+    const errors: string[] = [];
 
     try {
-      const user = users.find((u) => u.id === userId);
-      if (user) {
-        const newTools = (user.allowedTools || []).filter(
-          (t) => t !== selectedTool.id,
-        );
-        await usersApi.updateTools(userId, newTools);
+      for (const userId of Array.from(revokeSelectedUsers)) {
+        const targetUser = users.find((u) => u.id === userId);
+        if (!targetUser) continue;
+        try {
+          const fresh = await usersApi.getOne(userId);
+          const currentTools: string[] = fresh.allowedTools || [];
+          const newTools = currentTools.filter((t) => t !== selectedTool.id);
+          await usersApi.updateTools(userId, newTools);
+          successCount++;
+        } catch (err) {
+          console.error(`Error revoking access from ${targetUser.name}:`, err);
+          errors.push(targetUser.name);
+        }
+      }
 
+      if (errors.length === 0) {
         toast({
           title: "Амжилттай",
-          description: `${user.name}-с ${selectedTool.name} эрхийг хаслаа`,
+          description: `${successCount} хэрэглэгчээс ${selectedTool.name} эрхийг хаслаа`,
         });
-
-        await loadUsers();
+      } else {
+        toast({
+          title: "Хэсэгчлэн амжилттай",
+          description: `${successCount} амжилттай, ${errors.length} алдаа: ${errors.join(", ")}`,
+          variant: "destructive",
+        });
       }
+
+      await loadUsers();
+      setRevokeSelectedUsers(new Set());
     } catch (error) {
       console.error("Error revoking access:", error);
       toast({
@@ -367,7 +399,63 @@ export default function AdminToolsPage() {
         description: "Эрх хасахад алдаа гарлаа",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  // Revoke tab: toggle selection
+  const toggleRevokeSelection = (userId: string) => {
+    const newSet = new Set(revokeSelectedUsers);
+    if (newSet.has(userId)) newSet.delete(userId);
+    else newSet.add(userId);
+    setRevokeSelectedUsers(newSet);
+  };
+
+  // Revoke tab: select all visible
+  const selectAllRevokeUsers = () => {
+    if (!selectedTool) return;
+    const filtered = getFilteredUsersWithAccess();
+    setRevokeSelectedUsers(new Set(filtered.map((u) => u.id)));
+  };
+
+  // Revoke tab: select department
+  const selectRevokeDepartmentUsers = (dept: string) => {
+    if (!selectedTool) return;
+    const deptUsers = getUsersWithAccess(selectedTool.id).filter(
+      (u) => u.department === dept,
+    );
+    setRevokeSelectedUsers(new Set(deptUsers.map((u) => u.id)));
+  };
+
+  // Revoke tab: filtered list
+  const getFilteredUsersWithAccess = () => {
+    if (!selectedTool) return [];
+    let list = getUsersWithAccess(selectedTool.id);
+    if (revokeSearch.trim()) {
+      const q = revokeSearch.toLowerCase();
+      list = list.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.department?.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  };
+
+  // Grant tab: filtered list
+  const getFilteredUsersWithoutAccess = () => {
+    if (!selectedTool) return [];
+    let list = getUsersWithoutAccess(selectedTool.id);
+    if (grantSearch.trim()) {
+      const q = grantSearch.toLowerCase();
+      list = list.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.department?.toLowerCase().includes(q),
+      );
+    }
+    return list;
   };
 
   // Нийт эрхийн статистик
@@ -602,9 +690,64 @@ export default function AdminToolsPage() {
                 {/* Эрхтэй хэрэглэгчид */}
                 <TabsContent
                   value="current"
-                  className="flex-1 overflow-hidden mt-0"
+                  className="flex-1 overflow-hidden mt-0 flex flex-col"
                 >
-                  <ScrollArea className="h-[calc(100vh-260px)]">
+                  {/* Quick actions */}
+                  <div className="px-5 py-3 border-b border-slate-800 space-y-2">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={selectAllRevokeUsers}
+                        disabled={
+                          getUsersWithAccess(selectedTool.id).length === 0
+                        }
+                        className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Бүгдийг сонгох
+                      </button>
+                      <button
+                        onClick={() => setRevokeSelectedUsers(new Set())}
+                        disabled={revokeSelectedUsers.size === 0}
+                        className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Цэвэрлэх
+                      </button>
+                    </div>
+                    <Select
+                      value={revokeDepartment}
+                      onValueChange={(value) => {
+                        setRevokeDepartment(value);
+                        selectRevokeDepartmentUsers(value);
+                      }}
+                    >
+                      <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-400 text-xs h-8 focus:ring-0">
+                        <SelectValue placeholder="Хэлтсээр сонгох..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800">
+                        {DEPARTMENTS.map((dept) => (
+                          <SelectItem
+                            key={dept}
+                            value={dept}
+                            className="text-slate-300 text-xs focus:bg-slate-800 focus:text-white"
+                          >
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <input
+                        type="text"
+                        value={revokeSearch}
+                        onChange={(e) => setRevokeSearch(e.target.value)}
+                        placeholder="Нэр, хэлтсээр хайх..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder:text-slate-600 pl-8 pr-3 py-1.5 focus:outline-none focus:border-slate-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* User list */}
+                  <ScrollArea className="flex-1">
                     {getUsersWithAccess(selectedTool.id).length === 0 ? (
                       <div className="text-center py-16 text-slate-600">
                         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
@@ -618,47 +761,83 @@ export default function AdminToolsPage() {
                           Эрх олгох
                         </button>
                       </div>
+                    ) : getFilteredUsersWithAccess().length === 0 ? (
+                      <div className="text-center py-16 text-slate-600">
+                        <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-sm">Хайлтад тохирох хэрэглэгч олдсонгүй</p>
+                      </div>
                     ) : (
                       <div className="divide-y divide-slate-800/60">
-                        <AnimatePresence>
-                          {getUsersWithAccess(selectedTool.id).map(
-                            (user, index) => (
-                              <motion.div
-                                key={user.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ delay: index * 0.03 }}
-                                className="flex items-center justify-between px-5 py-3 group hover:bg-slate-900/60 transition-colors"
+                        {getFilteredUsersWithAccess().map(
+                          (user, index) => (
+                            <motion.div
+                              key={user.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: index * 0.02 }}
+                              className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
+                                revokeSelectedUsers.has(user.id)
+                                  ? "bg-slate-800"
+                                  : "hover:bg-slate-900/60"
+                              }`}
+                              onClick={() => toggleRevokeSelection(user.id)}
+                            >
+                              <Checkbox
+                                checked={revokeSelectedUsers.has(user.id)}
+                                onCheckedChange={() =>
+                                  toggleRevokeSelection(user.id)
+                                }
+                                className="border-slate-700 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-white shrink-0"
+                              />
+                              <div
+                                className={`w-7 h-7 rounded-md bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}
                               >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div
-                                    className={`w-8 h-8 rounded-lg bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}
-                                  >
-                                    {user.name.charAt(0)}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium text-white truncate">
-                                      {user.name}
-                                    </p>
-                                    <p className="text-xs text-slate-500 truncate">
-                                      {user.department}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => revokeAccess(user.id)}
-                                  className="text-xs text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2"
-                                >
-                                  Хасах
-                                </button>
-                              </motion.div>
-                            ),
-                          )}
-                        </AnimatePresence>
+                                {user.name.charAt(0)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm text-white truncate">
+                                  {user.name}
+                                </p>
+                                <p className="text-xs text-slate-500 truncate">
+                                  {user.department}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ),
+                        )}
                       </div>
                     )}
                   </ScrollArea>
+
+                  {/* Revoke button */}
+                  <AnimatePresence>
+                    {revokeSelectedUsers.size > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className="p-4 border-t border-slate-800"
+                      >
+                        <button
+                          onClick={bulkRevokeAccess}
+                          disabled={isSaving}
+                          className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Хасаж байна...
+                            </>
+                          ) : (
+                            <>
+                              <UserMinus className="w-4 h-4" />
+                              {revokeSelectedUsers.size} хэрэглэгчээс эрх хасах
+                            </>
+                          )}
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </TabsContent>
 
                 {/* Эрх олгох */}
@@ -708,18 +887,33 @@ export default function AdminToolsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <input
+                        type="text"
+                        value={grantSearch}
+                        onChange={(e) => setGrantSearch(e.target.value)}
+                        placeholder="Нэр, хэлтсээр хайх..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder:text-slate-600 pl-8 pr-3 py-1.5 focus:outline-none focus:border-slate-600"
+                      />
+                    </div>
                   </div>
 
                   {/* User list */}
-                  <ScrollArea className="flex-1 h-[calc(100vh-440px)]">
+                  <ScrollArea className="flex-1">
                     {getUsersWithoutAccess(selectedTool.id).length === 0 ? (
                       <div className="text-center py-16 text-slate-600">
                         <Check className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">Бүх хэрэглэгчид эрхтэй байна</p>
                       </div>
+                    ) : getFilteredUsersWithoutAccess().length === 0 ? (
+                      <div className="text-center py-16 text-slate-600">
+                        <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-sm">Хайлтад тохирох хэрэглэгч олдсонгүй</p>
+                      </div>
                     ) : (
                       <div className="divide-y divide-slate-800/60">
-                        {getUsersWithoutAccess(selectedTool.id).map(
+                        {getFilteredUsersWithoutAccess().map(
                           (user, index) => (
                             <motion.div
                               key={user.id}

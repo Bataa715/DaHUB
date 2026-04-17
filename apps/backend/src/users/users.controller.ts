@@ -50,8 +50,8 @@ export class UsersController {
   /** Admin: full user list with details */
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Get()
-  findAll(@Query("page") page = 1, @Query("limit") limit = 200) {
-    const take = Math.min(Number(limit), 500);
+  findAll(@Query("page") page = 1, @Query("limit") limit = 1000) {
+    const take = Math.min(Number(limit), 5000);
     const skip = (Number(page) - 1) * take;
     return this.usersService.findAll(take, skip);
   }

@@ -35,7 +35,10 @@ from loguru import logger
 from pydantic import BaseModel
 
 # .env файлаас орчны хувьсагчдыг уншина (NestJS-тэй нэг .env ашиглана)
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
+_env_root = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
+_env_backend = os.path.join(os.path.dirname(__file__), "..", ".env")
+load_dotenv(dotenv_path=_env_root)
+load_dotenv(dotenv_path=_env_backend, override=False)  # root .env байхгүй бол backend/.env-г уншина
 
 # ── ClickHouse singleton холболт ──────────────────────────────────────────────
 
@@ -81,22 +84,32 @@ def _make_connection(connection_type: str, cfg: dict | None) -> Any:
 
     if connection_type == "oracle":
         try:
-            import cx_Oracle  # type: ignore[import]
+            import oracledb  # type: ignore[import]
         except ImportError:
             raise HTTPException(
                 status_code=500,
-                detail="cx_Oracle суулгаагүй байна. pip install cx_Oracle",
+                detail="oracledb суулгаагүй байна. pip install oracledb",
             )
-        dsn = cfg.get("dsn") or cx_Oracle.makedsn(
-            cfg.get("host", "localhost"),
-            int(cfg.get("port", 1521)),
-            service_name=cfg.get("serviceName") or cfg.get("database", ""),
-        )
-        return cx_Oracle.connect(
-            user=cfg.get("user", ""),
-            password=cfg.get("password", ""),
-            dsn=dsn,
-        )
+
+        def _single_oracle(sub_cfg: dict) -> Any:
+            dsn = sub_cfg.get("dsn") or oracledb.makedsn(
+                sub_cfg.get("host", "localhost"),
+                int(sub_cfg.get("port", 1521)),
+                service_name=sub_cfg.get("serviceName") or sub_cfg.get("database", ""),
+            )
+            return oracledb.connect(
+                user=sub_cfg.get("user", ""),
+                password=sub_cfg.get("password", ""),
+                dsn=dsn,
+            )
+
+        # Олон connection: бүх value нь dict бол нэрлэсэн холболтуудын dict буцаана
+        # { "finacle": {...}, "erp": {...} }  →  conn["finacle"], conn["erp"]
+        if cfg and all(isinstance(v, dict) for v in cfg.values()):
+            return {name: _single_oracle(sub) for name, sub in cfg.items()}
+
+        # Нэг connection (хуучин формат): conn нь шууд oracledb.Connection
+        return _single_oracle(cfg)
 
     if connection_type == "mssql":
         try:
@@ -464,8 +477,17 @@ def _result_to_csv_bytes(result: Any) -> bytes:
     return output.read()
 
 
+def _sanitize_df_for_json(df: pd.DataFrame) -> pd.DataFrame:
+    """datetime/Timestamp баганыг string болгоно."""
+    df = df.copy()
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S").where(df[col].notna(), None)
+    return df
+
+
 def _df_to_preview(df: pd.DataFrame, limit: int) -> dict:
-    sample = df.head(limit)
+    sample = _sanitize_df_for_json(df.head(limit))
     clean = sample.astype(object).where(pd.notna(sample), None)
     return {
         "columns": list(sample.columns),
@@ -534,6 +556,7 @@ def run_tool(req: RunToolRequest) -> Response:
     if fmt == "json":
         # JSON output: single DataFrame -> {columns, rows}; list -> {sheets: [{name, columns, rows}]}
         if isinstance(result, pd.DataFrame):
+            result = _sanitize_df_for_json(result)
             clean = result.astype(object).where(pd.notna(result), None)
             return JSONResponse(
                 {"columns": list(result.columns), "rows": clean.values.tolist()}
@@ -541,6 +564,7 @@ def run_tool(req: RunToolRequest) -> Response:
         elif isinstance(result, list):
             sheets = []
             for name, df in result:
+                df = _sanitize_df_for_json(df)
                 clean = df.astype(object).where(pd.notna(df), None)
                 sheets.append(
                     {"name": str(name), "columns": list(df.columns), "rows": clean.values.tolist()}

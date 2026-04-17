@@ -42,7 +42,12 @@ import configuration from "./config/configuration";
       {
         name: "reports",
         ttl: 60000, // 1 минут
-        limit: 10, // Нэг хэрэглэгч 1 минутад 10 тайлан татах боломжтой
+        limit: 60, // Нэг хэрэглэгч 1 минутад 60 тайлан татах боломжтой
+      },
+      {
+        name: "preview",
+        ttl: 60000, // 1 минут
+        limit: 120, // Preview 1 минутад 120 хүсэлт
       },
     ]),
     ScheduleModule.forRoot(),

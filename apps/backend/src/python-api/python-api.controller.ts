@@ -114,7 +114,7 @@ export class PythonApiController {
   /** POST /python-api/run — файл татах (Excel / CSV) */
   @Post("run")
   @UseGuards(ThrottlerGuard)
-  @Throttle({ reports: { limit: 10, ttl: 60000 } })
+  @Throttle({ reports: { limit: 60, ttl: 60000 } })
   async runTool(
     @Body() dto: RunToolDto,
     @Res() res: Response,
@@ -157,7 +157,7 @@ export class PythonApiController {
   /** POST /python-api/preview — эхний 50 мөрийг JSON-оор буцаана */
   @Post("preview")
   @UseGuards(ThrottlerGuard)
-  @Throttle({ reports: { limit: 10, ttl: 60000 } })
+  @Throttle({ preview: { limit: 120, ttl: 60000 } })
   async previewTool(@Body() dto: RunToolDto, @Request() req: any) {
     if (!dto.toolId) throw new BadRequestException("toolId шаардлагатай");
     // ── Permission check ──────────────────────────────────────────────────

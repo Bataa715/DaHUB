@@ -30,7 +30,6 @@ import {
   Database,
   FileText,
   Code2,
-  Globe,
   KeyRound,
   History,
   UserCheck,
@@ -83,8 +82,7 @@ const DATE_MODE_META = {
 const CONNECTION_META = {
   clickhouse: { label: "ClickHouse", color: "text-yellow-400", icon: Database },
   oracle: { label: "Oracle DB", color: "text-red-400", icon: Database },
-  mssql: { label: "MS SQL Server", color: "text-blue-400", icon: Database },
-  none: { label: "Холболтгүй", color: "text-slate-400", icon: Globe },
+  clickhouse_oracle: { label: "ClickHouse + Oracle", color: "text-violet-400", icon: Database },
 };
 
 const OUTPUT_META = {
@@ -98,19 +96,59 @@ const OUTPUT_META = {
 
 const DEFAULT_CONN_CONFIG: Record<string, string> = {
   clickhouse: `{}`,
-  oracle: `{\n  "host": "localhost",\n  "port": 1521,\n  "serviceName": "ORCL",\n  "user": "",\n  "password": ""\n}`,
-  mssql: `{\n  "host": "localhost",\n  "port": 1433,\n  "database": "",\n  "user": "",\n  "password": ""\n}`,
-  none: "{}",
+  oracle: `{
+  "host": "localhost",
+  "port": 1521,
+  "serviceName": "ORCL",
+  "user": "",
+  "password": ""
+}`,
+  oracle_multi: `{
+  "finacle": {
+    "host": "localhost",
+    "port": 1521,
+    "serviceName": "ORCL",
+    "user": "",
+    "password": ""
+  },
+  "erp": {
+    "host": "localhost",
+    "port": 1521,
+    "serviceName": "ERPPRD",
+    "user": "",
+    "password": ""
+  }
+}`,
+  clickhouse_oracle: `{
+  "oracle": {
+    "host": "localhost",
+    "port": 1521,
+    "serviceName": "ORCL",
+    "user": "",
+    "password": ""
+  }
+}`,
 };
 
 const DEFAULT_PY_CODE = `# Энд Python кодоо бичнэ үү.
 # Боломжит хувьсагчид:
-#   conn        - ClickHouse/Oracle/MSSQL клиент эсвэл None
+#   conn        - ClickHouse клиент эсвэл Oracle Connection эсвэл
+#                 Oracle олон connection бол dict: conn["finacle"], conn["erp"]
+#   ch          - ClickHouse+Oracle хослолд ClickHouse клиент
+#   ora         - ClickHouse+Oracle хослолд Oracle connection dict
 #   pd          - pandas
 #   np          - numpy
 #   start_date  - эхлэх огноо (str)
 #   end_date    - дуусах огноо (str)
 #   filters     - нэмэлт шүүлтүүрүүд (dict)
+#
+# Oracle олон connection жишээ:
+#   cur1 = conn["finacle"].cursor()
+#   cur2 = conn["erp"].cursor()
+#
+# ClickHouse+Oracle хослолжишээ:
+#   df_ch = ch.query_df("SELECT ...")
+#   cur   = ora["oracle"].cursor()
 #
 # Заавал result оноох хэрэгтэй:
 #   result = df
@@ -260,7 +298,7 @@ interface PyFormState {
   apiPath: string;
   description: string;
   pythonCode: string;
-  connectionType: "clickhouse" | "oracle" | "mssql" | "none";
+  connectionType: "clickhouse" | "oracle" | "clickhouse_oracle";
   connectionConfig: string;
   outputFormat: "excel" | "csv";
   dateMode: "none" | "single" | "range";
@@ -659,8 +697,9 @@ export default function AdminReportsPage() {
               <div className="grid gap-3">
                 <AnimatePresence>
                   {pyTools.map((t) => {
+                    const connType = (t.connectionType ?? "clickhouse") as keyof typeof CONNECTION_META;
                     const ConnIcon =
-                      CONNECTION_META[t.connectionType ?? "clickhouse"].icon;
+                      CONNECTION_META[connType].icon;
                     const OutIcon =
                       OUTPUT_META[t.outputFormat ?? "excel"].icon;
                     const DateIcon =
@@ -702,13 +741,11 @@ export default function AdminReportsPage() {
                           )}
                           <div className="flex items-center gap-3 mt-1 flex-wrap">
                             <span
-                              className={`flex items-center gap-1 text-xs ${CONNECTION_META[t.connectionType ?? "clickhouse"].color}`}
+                              className={`flex items-center gap-1 text-xs ${CONNECTION_META[connType].color}`}
                             >
                               <ConnIcon className="w-3 h-3" />{" "}
                               {
-                                CONNECTION_META[
-                                  t.connectionType ?? "clickhouse"
-                                ].label
+                                CONNECTION_META[connType].label
                               }
                             </span>
                             <span
@@ -1129,7 +1166,15 @@ export default function AdminReportsPage() {
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
                           {log.ranAt
-                            ? new Date(log.ranAt).toLocaleString("mn-MN")
+                            ? new Date(log.ranAt).toLocaleString("mn-MN", {
+                                timeZone: "Asia/Ulaanbaatar",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })
                             : "-"}
                         </td>
                       </tr>
@@ -1423,20 +1468,18 @@ export default function AdminReportsPage() {
                 </div>
               </div>
 
-              {pyForm.connectionType !== "none" && (
-                <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">
-                    Connection Config (JSON)
-                  </Label>
-                  <CodeEditor
-                    value={pyForm.connectionConfig}
-                    onChange={(v) =>
-                      setPyForm((f) => ({ ...f, connectionConfig: v }))
-                    }
-                    minHeight={120}
-                  />
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <Label className="text-slate-300 text-xs">
+                  Connection Config (JSON)
+                </Label>
+                <CodeEditor
+                  value={pyForm.connectionConfig}
+                  onChange={(v) =>
+                    setPyForm((f) => ({ ...f, connectionConfig: v }))
+                  }
+                  minHeight={120}
+                />
+              </div>
 
               <div className="space-y-1.5">
                 <Label className="text-slate-300 text-xs">

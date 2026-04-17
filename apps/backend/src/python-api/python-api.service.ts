@@ -7,12 +7,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import * as http from "http";
-import {
-  randomUUID,
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-} from "crypto";
+import { randomUUID } from "crypto";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import {
   CreatePythonToolDto,
@@ -53,43 +48,18 @@ export class PythonApiService implements OnModuleInit {
     await this.ensureRunLogTable();
   }
 
-  // ── Encryption helpers (хадгалахадаа дэмжиглэл) ────────────────────────
-
+  // connectionConfig plaintext хадгалдаг (admin л хандана)
   private encryptConfig(plain: string): string {
-    const hexKey = process.env.ENCRYPTION_KEY ?? "";
-    if (hexKey.length < 64) return plain; // түлхүүр тохиргдоүгүй бол плайнтекстээр хадгална
-    const key = Buffer.from(hexKey.slice(0, 64), "hex"); // 32 байт
-    const iv = randomBytes(12);
-    const cipher = createCipheriv("aes-256-gcm", key, iv);
-    const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    return `enc:${iv.toString("hex")}.${ct.toString("hex")}.${tag.toString("hex")}`;
+    return plain;
   }
 
   private decryptConfig(value: string): string {
-    if (!value.startsWith("enc:")) return value;
-    const hexKey = process.env.ENCRYPTION_KEY ?? "";
-    if (hexKey.length < 64) {
-      this.logger.warn(
-        "ENCRYPTION_KEY тохиргдоүгүй — нууц үг тайлах боломжгүй",
-      );
+    // Хуучин enc: форматтай утгуудыг тайлах боломжгүй — хоосноор буцаана
+    if (value.startsWith("enc:")) {
+      this.logger.warn("Хуучин encrypt хийгдсэн connectionConfig олдлоо — admin дахин хадгалах шаардлагатай");
       return "{}";
     }
-    try {
-      const key = Buffer.from(hexKey.slice(0, 64), "hex");
-      const [ivHex, ctHex, tagHex] = value.slice(4).split(".");
-      const iv = Buffer.from(ivHex, "hex");
-      const ct = Buffer.from(ctHex, "hex");
-      const tag = Buffer.from(tagHex, "hex");
-      const decipher = createDecipheriv("aes-256-gcm", key, iv);
-      decipher.setAuthTag(tag);
-      return Buffer.concat([decipher.update(ct), decipher.final()]).toString(
-        "utf8",
-      );
-    } catch (e) {
-      this.logger.error("Тайлан тохиргоо \u0442айлахад алдаа гарлаа:", e);
-      return "{}";
-    }
+    return value;
   }
 
   // ── Run log table ─────────────────────────────────────────────────────────

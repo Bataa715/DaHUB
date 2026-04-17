@@ -130,7 +130,7 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
     },
     {
       id: "reports",
-      matchIds: ["reports", "excel_report", "python_api_tools"],
+      matchIds: ["reports"],
       title: t("toolReportsTitle"),
       description: t("toolReportsDesc"),
       icon: FileSpreadsheet,

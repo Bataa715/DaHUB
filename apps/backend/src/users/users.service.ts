@@ -42,7 +42,7 @@ export class UsersService {
 
   constructor(private clickhouse: ClickHouseService) {}
 
-  async findAll(limit = 200, offset = 0) {
+  async findAll(limit = 1000, offset = 0) {
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
@@ -218,7 +218,7 @@ export class UsersService {
 
       try {
         await this.clickhouse.exec(
-          `ALTER TABLE users UPDATE ${fields.join(", ")} WHERE id = {id:String}`,
+          `ALTER TABLE users UPDATE ${fields.join(", ")} WHERE id = {id:String} SETTINGS mutations_sync = 1`,
           params,
         );
       } catch (error: unknown) {
@@ -320,7 +320,7 @@ export class UsersService {
     }
 
     await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE allowedTools = {allowedTools:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
+      "ALTER TABLE users UPDATE allowedTools = {allowedTools:String}, updatedAt = {updatedAt:String} WHERE id = {id:String} SETTINGS mutations_sync = 1",
       {
         id,
         allowedTools: JSON.stringify(allowedTools),

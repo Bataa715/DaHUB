@@ -203,21 +203,21 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
     items: DeptPhoto[];
     startIdx?: number;
   }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <div className="columns-2 sm:columns-3 gap-3">
       {items.map((photo, i) => (
         <motion.div
           key={photo.id}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: i * 0.05 }}
-          className="group relative rounded-2xl overflow-hidden aspect-[4/3] cursor-pointer bg-slate-800"
+          className="group relative rounded-2xl overflow-hidden cursor-pointer bg-slate-800 break-inside-avoid mb-3"
           onClick={() => setLightbox(startIdx + i)}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={photo.imageData}
             alt={photo.caption || "Зураг"}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-auto block transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           {photo.caption && (
@@ -359,25 +359,30 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center"
             onClick={() => setLightbox(null)}
           >
+            {/* Blurred backdrop */}
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" />
+
             {/* Close */}
             <button
               onClick={() => setLightbox(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-foreground transition-all z-10"
+              className="absolute top-5 right-5 z-20 p-2.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition-all border border-white/10"
             >
               <X className="w-5 h-5" />
             </button>
 
+            {/* Counter pill */}
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-black/50 border border-white/10 text-white/70 text-xs font-medium">
+              {lightbox + 1} / {photos.length}
+            </div>
+
             {/* Prev */}
             {lightbox > 0 && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightbox((i) => (i as number) - 1);
-                }}
-                className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-foreground transition-all z-10"
+                onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i as number) - 1); }}
+                className="absolute left-4 z-20 p-3 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/10 transition-all hover:scale-110"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -386,51 +391,56 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
             {/* Next */}
             {lightbox < photos.length - 1 && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightbox((i) => (i as number) + 1);
-                }}
-                className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-foreground transition-all z-10"
+                onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i as number) + 1); }}
+                className="absolute right-4 z-20 p-3 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/10 transition-all hover:scale-110"
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
             )}
 
-            {/* Image */}
+            {/* Image card */}
             <motion.div
               key={lightbox}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="relative max-w-4xl max-h-[85vh] flex flex-col items-center"
+              initial={{ scale: 0.88, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.88, opacity: 0, y: 16 }}
+              transition={{ type: "spring", stiffness: 320, damping: 28 }}
+              className="relative z-10 flex flex-col items-center mx-16 max-w-5xl w-full"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photos[lightbox].imageData}
-                alt={photos[lightbox].caption || "Зураг"}
-                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
-              />
-              <div className="mt-3 text-center">
-                {photos[lightbox].caption && (
-                  <p className="text-foreground font-medium">
-                    {photos[lightbox].caption}
-                  </p>
+              {/* Frame */}
+              <div className="relative rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.7)] border border-white/10 bg-slate-900">
+                {/* Top gradient line */}
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent z-10" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photos[lightbox].imageData}
+                  alt={photos[lightbox].caption || "Зураг"}
+                  className="block max-h-[78vh] max-w-full w-auto object-contain"
+                />
+                {/* Bottom info overlay */}
+                {(photos[lightbox].caption || photos[lightbox].uploadedByName) && (
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-5 pt-10 pb-4">
+                    {photos[lightbox].caption && (
+                      <p className="text-white font-semibold text-sm leading-snug">
+                        {photos[lightbox].caption}
+                      </p>
+                    )}
+                    <p className="text-white/50 text-xs mt-1">
+                      {photos[lightbox].uploadedByName} ·{" "}
+                      {new Date(photos[lightbox].uploadedAt).toLocaleDateString("mn-MN", {
+                        timeZone: "Asia/Ulaanbaatar",
+                        year: "numeric", month: "long", day: "numeric",
+                      })}
+                    </p>
+                  </div>
                 )}
-                <p className="text-muted-foreground text-xs mt-1">
-                  {photos[lightbox].uploadedByName} ·{" "}
-                  {new Date(photos[lightbox].uploadedAt).toLocaleDateString(
-                    "mn-MN",
-                  )}
-                </p>
-                <p className="text-muted-foreground/60 text-xs mt-1">
-                  {lightbox + 1} / {photos.length}
-                </p>
               </div>
+
+              {/* Delete button below frame */}
               <button
                 onClick={() => handleDelete(photos[lightbox].id)}
-                className="mt-3 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs flex items-center gap-1.5 transition-all"
+                className="mt-4 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs font-medium flex items-center gap-2 border border-red-500/20 transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Устгах
               </button>

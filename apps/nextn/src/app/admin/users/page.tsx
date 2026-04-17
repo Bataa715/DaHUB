@@ -479,7 +479,15 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-xs text-slate-500">
                       {userData.lastLoginAt ? (
-                        new Date(userData.lastLoginAt).toLocaleString("mn-MN")
+                        new Date(userData.lastLoginAt).toLocaleString("mn-MN", {
+                          timeZone: "Asia/Ulaanbaatar",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        })
                       ) : (
                         <span className="text-slate-600">Хэзээ ч үгүй</span>
                       )}
