@@ -8,7 +8,7 @@ import {
   Param,
   Query,
 } from "@nestjs/common";
-import { ThrottlerGuard, SkipThrottle } from "@nestjs/throttler";
+import { ThrottlerGuard, SkipThrottle, Throttle } from "@nestjs/throttler";
 import {
   ApiTags,
   ApiOperation,
@@ -67,6 +67,7 @@ export class AuthController {
 
   // Register new user — public self-registration (employee registers, then sets own password)
   @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 3600000 } })
   @Post("register")
   @ApiOperation({
     summary: "Register new user",

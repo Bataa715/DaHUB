@@ -143,6 +143,12 @@ export const translations = {
     toolAlertBoxTitle: "Alert Box",
     toolAlertBoxDesc:
       "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, улаан тугийн мэдэгдэл",
+    toolPythonApiTitle: "Python API Tools",
+    toolPythonApiDesc:
+      "FastAPI дээр ажилладаг pandas/Python тайлан — ClickHouse, Oracle, MSSQL холболттой",
+    toolReportsTitle: "Тайлан татах",
+    toolReportsDesc:
+      "SQL болон Python горимын тайлангуудыг нэг дороос татаж авах хэрэгсэл",
 
     // Departments page
     albumTitle: "Альбом",
@@ -612,6 +618,12 @@ export const translations = {
     toolAlertBoxTitle: "Alert Box",
     toolAlertBoxDesc:
       "Transaction risk analysis, CIF search, and red-flag alerts",
+    toolPythonApiTitle: "Python API Tools",
+    toolPythonApiDesc:
+      "Pandas/Python reports powered by FastAPI — supports ClickHouse, Oracle, MSSQL",
+    toolReportsTitle: "Reports",
+    toolReportsDesc:
+      "Download SQL and Python reports from a single unified tool",
 
     // Departments page
     albumTitle: "Album",

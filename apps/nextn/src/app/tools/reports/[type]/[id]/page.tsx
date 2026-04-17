@@ -1,0 +1,420 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { pythonToolApi, PythonTool, FilterDef } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { FileSpreadsheet, FileText, Code2, Download } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+function currentMonthStart() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+const OUTPUT_META = {
+  excel: {
+    icon: FileSpreadsheet,
+    label: "Excel татах",
+    ext: ".xlsx",
+    color: "from-emerald-600 to-teal-600",
+  },
+  csv: {
+    icon: FileText,
+    label: "CSV татах",
+    ext: ".csv",
+    color: "from-sky-600 to-blue-600",
+  },
+};
+
+interface PreviewState {
+  status: "idle" | "loading" | "done" | "error";
+  columns: string[];
+  rows: any[][];
+  totalCount: number;
+  error?: string;
+}
+
+// ── page ───────────────────────────────────────────────────────────────────────
+
+export default function ReportDetailPage() {
+  const { id } = useParams<{ type: string; id: string }>();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const [item, setItem] = useState<PythonTool | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState(currentMonthStart());
+  const [endDate, setEndDate] = useState(today());
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+  const [downloadError, setDownloadError] = useState("");
+  const [preview, setPreview] = useState<PreviewState>({
+    status: "idle",
+    columns: [],
+    rows: [],
+    totalCount: 0,
+  });
+
+  const load = useCallback(async () => {
+    try {
+      const all = await pythonToolApi.getTools();
+      const found = all.find((t) => t.id === id);
+      if (!found) {
+        toast({ title: "Tool олдсонгүй", variant: "destructive" });
+        router.replace("/tools/reports");
+        return;
+      }
+      setItem(found);
+    } catch {
+      toast({ title: "Мэдээлэл татахад алдаа гарлаа", variant: "destructive" });
+      router.replace("/tools/reports");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router, toast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const parsedFilters: FilterDef[] = (() => {
+    try {
+      return JSON.parse(item?.filters || "[]") as FilterDef[];
+    } catch {
+      return [];
+    }
+  })();
+
+  const dateMode = item?.dateMode ?? "none";
+
+  const handleDownload = async () => {
+    if (!item) return;
+    if (dateMode === "range" && (!startDate || !endDate))
+      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+    if (dateMode === "single" && !startDate)
+      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+    const missing = parsedFilters.filter(
+      (f) => f.required && !filterValues[f.key],
+    );
+    if (missing.length)
+      return toast({
+        title: "Заавал шүүлтүүр бөглөнө үү",
+        description: missing.map((f) => f.label).join(", "),
+        variant: "destructive",
+      });
+
+    setDownloadError("");
+    setDownloading(true);
+    setDownloadProgress(0);
+
+    try {
+      const blob = await pythonToolApi.runTool(
+        item.id,
+        dateMode !== "none" ? startDate : undefined,
+        dateMode === "range" ? endDate : undefined,
+        filterValues,
+        (pct) => setDownloadProgress(pct),
+      );
+      const outMeta = OUTPUT_META[item.outputFormat ?? "excel"];
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${item.name}_${today()}${outMeta.ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Амжилттай татлаа" });
+    } catch (e: any) {
+      const msg =
+        e?.response?.data instanceof Blob
+          ? await (e.response.data as Blob).text().catch(() => e.message)
+          : (e?.response?.data?.message ?? e?.message ?? "Алдаа гарлаа");
+      setDownloadError(msg.slice(0, 300));
+    } finally {
+      setDownloading(false);
+      setDownloadProgress(null);
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!item) return;
+    if (dateMode === "range" && (!startDate || !endDate))
+      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+    if (dateMode === "single" && !startDate)
+      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+
+    setPreview({ status: "loading", columns: [], rows: [], totalCount: 0 });
+    try {
+      const data = await pythonToolApi.previewTool(
+        item.id,
+        dateMode !== "none" ? startDate : undefined,
+        dateMode === "range" ? endDate : undefined,
+        filterValues,
+      );
+      setPreview({ status: "done", ...data });
+    } catch (e: any) {
+      setPreview({
+        status: "error",
+        columns: [],
+        rows: [],
+        totalCount: 0,
+        error: e?.response?.data?.message ?? e?.message ?? "Preview алдаа",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#080d14]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
+          <p className="text-slate-500 text-sm">Уншиж байна...</p>
+        </div>
+      </div>
+    );
+  }
+  if (!item) return null;
+
+  const color = item.color ?? "from-violet-500 to-indigo-500";
+  const outMeta =
+    OUTPUT_META[item.outputFormat as keyof typeof OUTPUT_META] ??
+    OUTPUT_META.excel;
+  const previewLoading = preview.status === "loading";
+
+  return (
+    <div className="min-h-screen bg-[#080d14] text-slate-100 flex flex-col">
+      <div className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#080d14]/90 backdrop-blur-xl">
+        <div className="max-w-[1440px] mx-auto px-6 h-14 flex items-center gap-3">
+          <Link
+            href="/tools/reports"
+            className="text-slate-500 hover:text-slate-200 transition-colors text-sm flex items-center gap-1"
+          >
+            ← Буцах
+          </Link>
+          <span className="text-slate-700">/</span>
+          <div className="flex items-center gap-2.5">
+            <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${color}`} />
+            <span className="font-semibold text-slate-100 text-sm">{item.name}</span>
+          </div>
+          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-mono border bg-violet-500/10 text-violet-400 border-violet-500/20">
+            Python
+          </span>
+        </div>
+      </div>
+
+      <div className="flex-1 max-w-[1440px] mx-auto w-full px-6 py-6 flex flex-col lg:flex-row gap-6">
+        <aside className="w-full lg:w-80 flex-shrink-0">
+          <div className="sticky top-20 rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+            <div className={`h-0.5 w-full bg-gradient-to-r ${color}`} />
+            <div className="p-5 space-y-5">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center shadow`}>
+                    <Code2 className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="font-bold text-slate-100">{item.name}</p>
+                </div>
+                {item.description && (
+                  <p className="text-slate-500 text-xs mt-1 leading-relaxed">{item.description}</p>
+                )}
+              </div>
+
+              <div className="border-t border-white/[0.06]" />
+
+              {dateMode === "range" && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Огнооны интервал</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-600">Эхлэх</label>
+                      <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={downloading} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-600">Дуусах</label>
+                      <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} disabled={downloading} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {dateMode === "single" && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Огноо</p>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={downloading} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition" />
+                </div>
+              )}
+
+              {dateMode === "none" && (
+                <p className="text-xs text-slate-600 text-center py-0.5">Огноо шаардлагагүй</p>
+              )}
+
+              {parsedFilters.length > 0 && (
+                <>
+                  <div className="border-t border-white/[0.06]" />
+                  <div className="space-y-4">
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Шүүлтүүрүүд</p>
+                    {parsedFilters.map((f) => {
+                      const raw = filterValues[f.key] ?? "";
+                      const filled = !!raw.trim();
+                      const missing = f.required && !filled;
+                      return (
+                        <div key={f.key} className="space-y-1.5">
+                          <label className="text-xs font-medium text-slate-300">
+                            {f.label}
+                            {f.required && <span className="text-rose-400 ml-0.5">*</span>}
+                          </label>
+                          <input
+                            value={raw}
+                            onChange={(e) => setFilterValues((p) => ({ ...p, [f.key]: e.target.value }))}
+                            disabled={downloading}
+                            placeholder={f.placeholder ?? ""}
+                            className={`w-full rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none disabled:opacity-40 placeholder:text-slate-600 transition ${missing ? "bg-rose-950/60 border border-rose-500/40" : filled ? "bg-emerald-950/40 border border-emerald-500/30" : "bg-[#0d1520] border border-white/[0.08] focus:border-white/20"}`}
+                          />
+                          {missing && <p className="text-[10px] text-rose-400">Заавал шаардлагатай</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {downloadProgress !== null && (
+                <>
+                  <div className="border-t border-white/[0.06]" />
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-400">{downloadProgress === 100 ? "Дууслаа ✓" : "Татаж байна..."}</span>
+                      {downloadProgress > 0 && downloadProgress < 100 && (
+                        <span className="text-xs font-mono font-bold text-violet-400">{downloadProgress}%</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                      {downloadProgress > 0 ? (
+                        <div className={`h-1.5 rounded-full bg-gradient-to-r ${color} transition-all duration-300`} style={{ width: `${downloadProgress}%` }} />
+                      ) : (
+                        <div className={`h-1.5 rounded-full bg-gradient-to-r ${color} animate-pulse w-full opacity-60`} />
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {downloadError && (
+                <div className="rounded-xl px-3 py-2.5 text-xs bg-rose-500/8 border border-rose-500/25 text-rose-300 leading-relaxed">
+                  {downloadError}
+                </div>
+              )}
+
+              <div className="border-t border-white/[0.06]" />
+              <div className="flex gap-2">
+                <button onClick={handlePreview} disabled={downloading || previewLoading} className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 hover:border-white/20 transition-all disabled:opacity-40 font-medium">
+                  {previewLoading ? "..." : "Preview"}
+                </button>
+                <button onClick={handleDownload} disabled={downloading} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-gradient-to-r ${outMeta.color} hover:opacity-90 text-white font-bold transition-all disabled:opacity-50 shadow-lg`}>
+                  {downloading ? (downloadProgress !== null && downloadProgress > 0 ? `${downloadProgress}%` : "Боловсруулж байна...") : (<><Download className="w-3.5 h-3.5" />{outMeta.label}</>)}
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
+          {preview.status === "done" && (() => {
+            const sampleAvg = preview.rows.length > 0 ? preview.rows.slice(0, 10).reduce((s, r) => s + r.join(",").length + 2, 0) / Math.min(10, preview.rows.length) : 200;
+            const estBytes = preview.totalCount * sampleAvg;
+            const estMB = estBytes / 1024 / 1024;
+            const sizeLabel = estMB < 0.1 ? `~${(estMB * 1024).toFixed(0)} KB` : estMB < 100 ? `~${estMB.toFixed(1)} MB` : `~${(estMB / 1024).toFixed(2)} GB`;
+            return (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "Нийт мөр", value: preview.totalCount.toLocaleString(), cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-300", lCls: "text-emerald-500" },
+                  { label: "Preview", value: `${preview.rows.length} мөр`, cls: "bg-white/[0.03] border-white/[0.07] text-slate-300", lCls: "text-slate-500" },
+                  { label: "Багана", value: String(preview.columns.length), cls: "bg-white/[0.03] border-white/[0.07] text-slate-300", lCls: "text-slate-500" },
+                  ...(preview.totalCount > 0 ? [{ label: "Хэмжээ", value: sizeLabel, cls: "bg-sky-500/10 border-sky-500/20 text-sky-300", lCls: "text-sky-500" }] : []),
+                ].map((s) => (
+                  <div key={s.label} className={`rounded-xl border px-3 py-2 ${s.cls}`}>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold ${s.lCls}`}>{s.label}</p>
+                    <p className="text-sm font-bold mt-0.5">{s.value}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {preview.status === "idle" && (
+            <div className="flex-1 h-80 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.06] text-slate-700 gap-3">
+              <div className="w-12 h-12 rounded-full bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
+                <span className="text-xl text-slate-600">◈</span>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-slate-500">Preview хоосон байна</p>
+                <p className="text-xs text-slate-700 mt-1">{dateMode !== "none" ? "Огноо сонгоод Preview дарна уу" : "Preview товч дарна уу"}</p>
+              </div>
+            </div>
+          )}
+
+          {preview.status === "loading" && (
+            <div className="h-80 flex items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+              <div className="flex flex-col items-center gap-3 text-slate-500">
+                <div className="w-6 h-6 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
+                <p className="text-sm">Татаж байна...</p>
+              </div>
+            </div>
+          )}
+
+          {preview.status === "error" && (
+            <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
+              <p className="text-sm text-rose-300 font-semibold">Preview алдаа</p>
+              <p className="text-xs text-rose-400/70 mt-1 leading-relaxed font-mono">{preview.error}</p>
+            </div>
+          )}
+
+          <AnimatePresence>
+            {preview.status === "done" && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+                  <span className="text-xs text-slate-400 font-medium">Preview — эхний {preview.rows.length} мөр</span>
+                  <span className="text-[10px] text-slate-600">{preview.columns.length} багана · нийт {preview.totalCount.toLocaleString()} мөр</span>
+                </div>
+                <div className="overflow-auto max-h-[70vh]">
+                  <table className="w-full text-xs border-collapse min-w-max">
+                    <thead className="sticky top-0 z-10 bg-[#0d1520]">
+                      <tr>
+                        <th className="px-3 py-2.5 text-left text-slate-600 font-medium border-b border-white/[0.06] w-8 text-[10px]">№</th>
+                        {preview.columns.map((col) => (
+                          <th key={col} className="px-3 py-2.5 text-left text-slate-300 font-semibold border-b border-white/[0.06] whitespace-nowrap border-r border-white/[0.04] last:border-r-0 text-[11px] tracking-wide">{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.rows.map((row, ri) => (
+                        <tr key={ri} className="hover:bg-white/[0.03] transition-colors">
+                          <td className="px-3 py-1.5 text-slate-700 border-b border-white/[0.04] text-[10px]">{ri + 1}</td>
+                          {row.map((cell: any, ci: number) => (
+                            <td key={ci} className="px-3 py-1.5 text-slate-300 border-b border-white/[0.04] border-r border-white/[0.03] last:border-r-0 whitespace-nowrap max-w-xs truncate" title={cell == null ? "" : String(cell)}>
+                              {cell == null ? <span className="text-slate-700 italic text-[10px]">null</span> : typeof cell === "number" ? <span className="font-mono text-sky-300/80">{cell.toLocaleString()}</span> : String(cell)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      {preview.rows.length === 0 && (
+                        <tr><td colSpan={preview.columns.length + 1} className="px-4 py-8 text-center text-slate-600 text-xs">Өгөгдөл байхгүй</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -8,7 +8,7 @@ const PUBLIC_ROUTES = ["/login", "/admin/login"];
 // Admin routes that additionally require isSuperAdmin
 const SUPERADMIN_ROUTES = [
   "/admin/admins",
-  "/admin/excel-reports",
+  "/admin/reports",
   "/admin/db",
   "/admin/system",
 ];
@@ -28,6 +28,7 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/english": ["english"],
   "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],
+  "/tools/reports": ["reports", "excel_report", "python_api_tools"],
 };
 
 async function getTokenPayload(token: string | undefined) {

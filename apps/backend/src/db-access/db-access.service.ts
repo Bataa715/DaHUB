@@ -650,7 +650,10 @@ export class DbAccessService {
 
     return {
       username: grant.userUserId,
-      chPassword: grant.chPassword ?? "",
+      chPassword: grant.chPassword
+        ? grant.chPassword.slice(0, 4) + "****" + grant.chPassword.slice(-4)
+        : "",
+      chPasswordFull: grant.chPassword ?? "",
       tableName: grant.tableName,
       host: process.env.CLICKHOUSE_EXTERNAL_HOST ?? "localhost",
       port: parseInt(process.env.CLICKHOUSE_EXTERNAL_PORT ?? "8123", 10),

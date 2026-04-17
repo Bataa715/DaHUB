@@ -13,8 +13,8 @@ import { TailanModule } from "./tailan/tailan.module";
 import { TuuwerModule } from "./tuuwer/tuuwer.module";
 import { ChessModule } from "./chess/chess.module";
 import { EnglishModule } from "./english/english.module";
-import { ExcelReportModule } from "./excel-report/excel-report.module";
 import { OracleModule } from "./oracle/oracle.module";
+import { PythonApiModule } from "./python-api/python-api.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 
@@ -39,6 +39,11 @@ import configuration from "./config/configuration";
         ttl: 300000, // 5 минут
         limit: 5, // Дээд тал нь 5 оролдлого / 5 минут
       },
+      {
+        name: "reports",
+        ttl: 60000, // 1 минут
+        limit: 10, // Нэг хэрэглэгч 1 минутад 10 тайлан татах боломжтой
+      },
     ]),
     ScheduleModule.forRoot(),
     ClickHouseModule,
@@ -52,8 +57,8 @@ import configuration from "./config/configuration";
     TuuwerModule,
     ChessModule,
     EnglishModule,
-    ExcelReportModule,
     OracleModule,
+    PythonApiModule,
   ],
   controllers: [HealthController],
 })

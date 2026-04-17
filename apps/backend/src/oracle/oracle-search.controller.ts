@@ -91,7 +91,6 @@ export class OracleSearchController {
           sql += ` AND ${dash.dateColumn} <= TO_DATE(:dto, 'YYYY-MM-DD')`;
           params.push(dateTo.substring(0, 10));
         }
-        sql += ` AND ROWNUM <= 200`;
 
         const rows = await this.oracle.query(sql, params);
         if (rows.length > 0) {
@@ -138,11 +137,14 @@ export class OracleSearchController {
     this.requireOracle();
 
     const minDashboards = Math.max(2, parseInt(minDash) || 2);
-    const limit = Math.min(Math.max(parseInt(limitStr) || 100, 1), 500);
+    const limit = Math.max(parseInt(limitStr) || 10000, 1);
 
     // If a specific CIF is requested, search only for that CIF across all dashboards
     const safeCifFilter = cifFilter
-      ? cifFilter.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30)
+      ? cifFilter
+          .trim()
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .substring(0, 30)
       : null;
 
     const cifMap: Record<
@@ -200,7 +202,9 @@ export class OracleSearchController {
     }
 
     const alerts = Object.entries(cifMap)
-      .filter(([, v]) => v.dashboards.length >= (safeCifFilter ? 1 : minDashboards))
+      .filter(
+        ([, v]) => v.dashboards.length >= (safeCifFilter ? 1 : minDashboards),
+      )
       .map(([cif, v]) => ({
         cif,
         dashboardCount: v.dashboards.length,
@@ -214,7 +218,13 @@ export class OracleSearchController {
       )
       .slice(0, safeCifFilter ? 1 : limit);
 
-    return { minDashboards, totalAlerts: alerts.length, alerts, failedDashboards, searchedCif: safeCifFilter || null };
+    return {
+      minDashboards,
+      totalAlerts: alerts.length,
+      alerts,
+      failedDashboards,
+      searchedCif: safeCifFilter || null,
+    };
   }
 
   /**
@@ -233,12 +243,15 @@ export class OracleSearchController {
     // read it from query.  Accept it from both to be flexible.
     // (Controller path is "dashboard/:id/top" so :id is a path param)
     const id = parseInt(idStr);
-    if (isNaN(id)) throw new HttpException("id буруу байна", HttpStatus.BAD_REQUEST);
+    if (isNaN(id))
+      throw new HttpException("id буруу байна", HttpStatus.BAD_REQUEST);
 
     const dashboards = this.config.loadDashboards();
     const dash = dashboards.find((d) => d.id === id);
-    if (!dash) throw new HttpException("Dashboard олдсонгүй", HttpStatus.NOT_FOUND);
-    if (!dash.enabled) throw new HttpException("Dashboard идэвхгүй", HttpStatus.BAD_REQUEST);
+    if (!dash)
+      throw new HttpException("Dashboard олдсонгүй", HttpStatus.NOT_FOUND);
+    if (!dash.enabled)
+      throw new HttpException("Dashboard идэвхгүй", HttpStatus.BAD_REQUEST);
 
     const limit = Math.min(Math.max(parseInt(limitStr) || 10, 1), 100);
 
@@ -254,8 +267,14 @@ export class OracleSearchController {
         FROM ${fromExpr}
         WHERE ${safeCif} IS NOT NULL`;
       if (search && search.trim()) {
-        const s = search.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30);
-        if (s) { sql += ` AND UPPER(${safeCif}) LIKE UPPER(:srch)`; params.push(`%${s}%`); }
+        const s = search
+          .trim()
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .substring(0, 30);
+        if (s) {
+          sql += ` AND UPPER(${safeCif}) LIKE UPPER(:srch)`;
+          params.push(`%${s}%`);
+        }
       }
       sql += ` GROUP BY ${safeCif} ORDER BY TOTAL_AMT DESC) WHERE ROWNUM <= :lmt`;
       params.push(limit);
@@ -265,8 +284,14 @@ export class OracleSearchController {
         FROM ${fromExpr}
         WHERE ${safeCif} IS NOT NULL`;
       if (search && search.trim()) {
-        const s = search.trim().replace(/[^a-zA-Z0-9]/g, "").substring(0, 30);
-        if (s) { sql += ` AND UPPER(${safeCif}) LIKE UPPER(:srch)`; params.push(`%${s}%`); }
+        const s = search
+          .trim()
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .substring(0, 30);
+        if (s) {
+          sql += ` AND UPPER(${safeCif}) LIKE UPPER(:srch)`;
+          params.push(`%${s}%`);
+        }
       }
       sql += ` GROUP BY ${safeCif} ORDER BY CNT DESC) WHERE ROWNUM <= :lmt`;
       params.push(limit);

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,21 +16,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Lock,
   ArrowRight,
   Loader2,
   UserCog,
-  ShieldCheck,
-  Search,
   Shield,
   Eye,
   EyeOff,
 } from "lucide-react";
 import Image from "next/image";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 export const dynamic = "force-dynamic";
 
@@ -59,48 +55,11 @@ export default function AdminLoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [userSuggestions, setUserSuggestions] = useState<
-    Array<{ userId: string; name: string; department: string }>
-  >([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { userId: "", password: "" },
   });
-
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const searchAdminUsers = useCallback(async (query: string) => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    if (!query || query.length < 2) {
-      setUserSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-    setIsSearching(true);
-    searchDebounceRef.current = setTimeout(async () => {
-      try {
-        const response = await fetch(
-          `${API_URL}/auth/search?q=${encodeURIComponent(query)}&adminOnly=true`,
-        );
-        const data = await response.json();
-        if (data.users && data.users.length > 0) {
-          setUserSuggestions(data.users);
-          setShowSuggestions(true);
-        } else {
-          setUserSuggestions([]);
-          setShowSuggestions(false);
-        }
-      } catch {
-        setUserSuggestions([]);
-        setShowSuggestions(false);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 400);
-  }, []);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -323,86 +282,19 @@ export default function AdminLoginPage() {
                           Админы ID
                         </FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Input
-                              placeholder="Админы ID-ээ оруулна уу"
-                              className="h-12 bg-slate-800/60 border-slate-700 rounded-xl pl-4 pr-11
-                                         text-white placeholder:text-slate-500
-                                         focus:border-blue-500/60 focus:ring-blue-500/20 transition-all"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                searchAdminUsers(e.target.value);
-                              }}
-                              onFocus={() => {
-                                if (userSuggestions.length > 0)
-                                  setShowSuggestions(true);
-                              }}
-                              autoComplete="off"
-                            />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              {isSearching ? (
-                                <Loader2 className="w-5 h-5 text-slate-500 animate-spin" />
-                              ) : field.value ? (
-                                <Search className="w-4 h-4 text-slate-500" />
-                              ) : null}
-                            </div>
-                          </div>
+                          <Input
+                            placeholder="Админы ID-ээ оруулна уу"
+                            className="h-12 bg-slate-800/60 border-slate-700 rounded-xl pl-4 pr-4
+                                       text-white placeholder:text-slate-500
+                                       focus:border-blue-500/60 focus:ring-blue-500/20 transition-all"
+                            {...field}
+                            autoComplete="off"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
-                  {/* Suggestions dropdown */}
-                  <AnimatePresence>
-                    {showSuggestions && userSuggestions.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        className="absolute z-50 w-full mt-2 bg-slate-800/95 backdrop-blur-xl
-                                   border border-blue-500/20 rounded-2xl shadow-2xl overflow-hidden"
-                      >
-                        <div className="max-h-56 overflow-y-auto divide-y divide-slate-700/50">
-                          {userSuggestions.map((user, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => {
-                                form.setValue("userId", user.userId);
-                                setShowSuggestions(false);
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-blue-500/10 transition-colors flex items-center gap-3"
-                            >
-                              <div
-                                className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600
-                                              flex items-center justify-center text-white text-sm font-semibold shrink-0"
-                              >
-                                {user.name.charAt(0)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <p className="text-sm font-medium text-white truncate">
-                                    {user.name}
-                                  </p>
-                                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                                  <span className="font-mono bg-slate-700/60 px-1.5 py-0.5 rounded text-[10px]">
-                                    {user.userId}
-                                  </span>
-                                  <span className="truncate">
-                                    {user.department}
-                                  </span>
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </motion.div>
 
                 {/* Password */}

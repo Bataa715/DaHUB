@@ -361,7 +361,7 @@ export class UsersService {
       { id },
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
-    const hashed = await bcrypt.hash(newPassword, 12); // [LOW-3] cost 12
+    const hashed = await bcrypt.hash(newPassword, 13);
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
       { id, password: hashed, updatedAt: nowCH() },

@@ -136,14 +136,15 @@ const AVAILABLE_TOOLS: Tool[] = [
     category: "free",
   },
   {
-    id: "excel_report",
-    name: "Excel тайлан",
-    description: "Системийн мэдээллээс Excel тайлан үүсгэж татах",
+    id: "reports",
+    name: "Тайлан татах",
+    description:
+      "SQL болон Python горимын тайлангуудыг нэг дороос татах хэрэгсэл",
     icon: FileSpreadsheet,
-    color: "from-green-500 to-emerald-500",
-    gradient: "bg-gradient-to-br from-green-500/20 to-emerald-500/20",
+    color: "from-emerald-500 to-violet-500",
+    gradient: "bg-gradient-to-br from-emerald-500/20 to-violet-500/20",
     category: "work",
-    adminPath: "/admin/excel-reports",
+    adminPath: "/admin/reports",
   },
   {
     id: "pdf_to_text",

@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsNotEmpty, Matches } from "class-validator";
+import { IsString, MinLength, MaxLength, IsNotEmpty, Matches } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class SignupDto {
@@ -106,6 +106,8 @@ export class CheckUserDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
+  @Matches(/^[A-Za-z0-9._\-]+$/, { message: "userId формат буруу байна" })
   userId: string;
 }
 
@@ -113,16 +115,19 @@ export class RegisterUserDto {
   @ApiProperty({ example: "Удирдлага", description: "Department name" })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   department: string;
 
   @ApiProperty({ example: "Менежер", description: "Job position" })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   position: string;
 
   @ApiProperty({ example: "Болд-Эрдэнэ", description: "Full name" })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   name: string;
 }
 

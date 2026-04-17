@@ -23,6 +23,11 @@ async function bootstrap() {
       crossOriginEmbedderPolicy: false,
       // Allow cross-origin image/resource loading (frontend & backend on different ports)
       crossOriginResourcePolicy: false,
+      // Strict-Transport-Security header
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+      },
     }),
   );
 

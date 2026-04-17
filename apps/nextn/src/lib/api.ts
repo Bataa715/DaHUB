@@ -741,7 +741,7 @@ interface ChessGame {
   createdAt: string;
 }
 
-// ── Excel Report API ──────────────────────────────────────────────────────────
+// ── Python API Tools ──────────────────────────────────────────────────────────
 
 export interface FilterDef {
   key: string;
@@ -750,66 +750,47 @@ export interface FilterDef {
   required?: boolean;
 }
 
-export interface ReportTemplate {
+export interface PythonTool {
   id: string;
   name: string;
+  apiPath: string;
   description: string;
+  connectionType: "clickhouse" | "oracle" | "mssql" | "none";
+  outputFormat: "excel" | "csv";
   dateMode: "none" | "single" | "range";
   color: string;
   filters: string; // JSON string of FilterDef[]
-  stagingTable: string;
-  stagingInsertSql: string;
   createdAt: string;
   updatedAt: string;
-  isSqlMode: boolean;
-  isStaging: boolean;
-  sqlCode?: string;
-}
-
-export interface ReportTemplateAdmin extends ReportTemplate {
-  pythonCode: string;
   isActive: number;
 }
 
-export const excelReportApi = {
-  // User
-  getTemplates: async (): Promise<ReportTemplate[]> => {
-    const res = await api.get("/excel-report/templates");
+export interface PythonToolAdmin extends PythonTool {
+  pythonCode: string;
+  connectionConfig: string; // JSON string (ClickHouse/Oracle/MSSQL параметрүүд)
+}
+
+export const pythonToolApi = {
+  // ── User ──────────────────────────────────────────────────────────────────
+  getTools: async (): Promise<PythonTool[]> => {
+    const res = await api.get("/python-api/tools");
     return res.data;
   },
 
-  /** POST /excel-report/run-csv — download CSV directly */
-  /** POST /excel-report/run-insert — kick off staging INSERT in background (fire-and-forget) */
-  runInsert: async (
-    templateId: string,
+  runTool: async (
+    toolId: string,
     startDate?: string,
     endDate?: string,
     filters?: Record<string, string>,
-  ): Promise<void> => {
-    await api.post("/excel-report/run-insert", {
-      templateId,
-      startDate,
-      endDate,
-      filters,
-    });
-  },
-
-  runReportCsv: async (
-    templateId: string,
-    startDate?: string,
-    endDate?: string,
-    filters?: Record<string, string>,
-    columns?: string[],
-    onProgress?: (percent: number) => void,
+    onProgress?: (pct: number) => void,
   ): Promise<Blob> => {
     const res = await api.post(
-      "/excel-report/run-csv",
-      { templateId, startDate, endDate, filters, columns },
+      "/python-api/run",
+      { toolId, startDate, endDate, filters },
       {
         responseType: "blob",
         onDownloadProgress: (e) => {
           if (!onProgress) return;
-          // e.total is set only when Content-Length header is present
           const pct =
             e.total && e.total > 0
               ? Math.min(99, Math.round((e.loaded / e.total) * 100))
@@ -822,47 +803,40 @@ export const excelReportApi = {
     return res.data as Blob;
   },
 
-  /** Preview: run SQL-mode report and return first 100 rows as JSON */
-  previewReport: async (
-    templateId: string,
+  previewTool: async (
+    toolId: string,
     startDate?: string,
     endDate?: string,
     filters?: Record<string, string>,
-    columns?: string[],
   ): Promise<{ columns: string[]; rows: any[][]; totalCount: number }> => {
-    const res = await api.post("/excel-report/preview", {
-      templateId,
+    const res = await api.post("/python-api/preview", {
+      toolId,
       startDate,
       endDate,
       filters,
-      columns,
     });
     return res.data as { columns: string[]; rows: any[][]; totalCount: number };
   },
 
-  /** POST /excel-report/columns — detect available columns from SQL (fast, LIMIT 0) */
-  getReportColumns: async (
-    templateId: string,
-  ): Promise<{ columns: string[] }> => {
-    const res = await api.post("/excel-report/columns", { templateId });
-    return res.data as { columns: string[] };
-  },
-
-  // Admin
-  adminGetAll: async (): Promise<ReportTemplateAdmin[]> => {
-    const res = await api.get("/excel-report/admin/templates");
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  adminGetAll: async (): Promise<PythonToolAdmin[]> => {
+    const res = await api.get("/python-api/admin/tools");
     return res.data;
   },
 
   adminCreate: async (data: {
     name: string;
+    apiPath: string;
     description?: string;
     pythonCode: string;
-    dateMode: "none" | "single" | "range";
+    connectionType?: "clickhouse" | "oracle" | "mssql" | "none";
+    connectionConfig?: string;
+    outputFormat?: "excel" | "csv";
+    dateMode?: "none" | "single" | "range";
     color?: string;
     filters?: string;
-  }): Promise<ReportTemplateAdmin> => {
-    const res = await api.post("/excel-report/admin/templates", data);
+  }): Promise<PythonToolAdmin> => {
+    const res = await api.post("/python-api/admin/tools", data);
     return res.data;
   },
 
@@ -870,56 +844,69 @@ export const excelReportApi = {
     id: string,
     data: Partial<{
       name: string;
+      apiPath: string;
       description: string;
       pythonCode: string;
+      connectionType: "clickhouse" | "oracle" | "mssql" | "none";
+      connectionConfig: string;
+      outputFormat: "excel" | "csv";
       dateMode: "none" | "single" | "range";
       color: string;
       filters: string;
     }>,
-  ): Promise<ReportTemplateAdmin> => {
-    const res = await api.patch(`/excel-report/admin/templates/${id}`, data);
+  ): Promise<PythonToolAdmin> => {
+    const res = await api.patch(`/python-api/admin/tools/${id}`, data);
     return res.data;
   },
 
   adminToggle: async (
     id: string,
     isActive: boolean,
-  ): Promise<ReportTemplateAdmin> => {
-    const res = await api.patch(`/excel-report/admin/templates/${id}/toggle`, {
+  ): Promise<PythonToolAdmin> => {
+    const res = await api.patch(`/python-api/admin/tools/${id}/toggle`, {
       isActive,
     });
     return res.data;
   },
 
   adminDelete: async (id: string): Promise<void> => {
-    await api.delete(`/excel-report/admin/templates/${id}`);
+    await api.delete(`/python-api/admin/tools/${id}`);
   },
 
-  // ── Report permissions ──────────────────────────────────────────────────────
+  // ── Permissions ────────────────────────────────────────────────────────────
 
-  adminGetPermissions: async (): Promise<{
-    userId: string; templateId: string; grantedBy: string; grantedAt: string;
-  }[]> => {
-    const res = await api.get("/excel-report/admin/permissions");
+  adminGetPermissions: async (): Promise<
+    { userId: string; templateId: string; grantedBy: string; grantedAt: string }[]
+  > => {
+    const res = await api.get("/python-api/admin/permissions");
     return res.data;
   },
 
   adminGrantPermission: async (userId: string, templateId: string): Promise<void> => {
-    await api.post("/excel-report/admin/permissions", { userId, templateId });
+    await api.post("/python-api/admin/permissions", { userId, templateId });
   },
 
   adminRevokePermission: async (userId: string, templateId: string): Promise<void> => {
-    await api.delete("/excel-report/admin/permissions", { data: { userId, templateId } });
+    await api.delete("/python-api/admin/permissions", {
+      data: { userId, templateId },
+    });
   },
 
-  // ── Download logs ───────────────────────────────────────────────────────────
+  // ── Run logs ──────────────────────────────────────────────────────────────
 
-  adminGetDownloadLogs: async (limit = 200): Promise<{
-    id: string; userId: string; userName: string;
-    templateId: string; templateName: string; downloadedAt: string;
-  }[]> => {
-    const res = await api.get(`/excel-report/admin/download-logs?limit=${limit}`);
+  adminGetRunLogs: async (
+    limit = 200,
+  ): Promise<
+    {
+      id: string;
+      userId: string;
+      userName: string;
+      toolId: string;
+      toolName: string;
+      ranAt: string;
+    }[]
+  > => {
+    const res = await api.get(`/python-api/admin/run-logs?limit=${limit}`);
     return res.data;
   },
-
 };

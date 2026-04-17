@@ -61,24 +61,21 @@ export default function DashboardsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const loadDetail = useCallback(
-    (id: number, s = "") => {
-      setDetail({ status: "loading", hasAmount: false, rows: [] });
-      abFetchDashboardTop(id, 10, s)
-        .then((res) =>
-          setDetail({ status: "done", hasAmount: res.hasAmount, rows: res.rows }),
-        )
-        .catch((e) =>
-          setDetail({
-            status: "error",
-            hasAmount: false,
-            rows: [],
-            error: e?.message || "Алдаа гарлаа",
-          }),
-        );
-    },
-    [],
-  );
+  const loadDetail = useCallback((id: number, s = "") => {
+    setDetail({ status: "loading", hasAmount: false, rows: [] });
+    abFetchDashboardTop(id, 10, s)
+      .then((res) =>
+        setDetail({ status: "done", hasAmount: res.hasAmount, rows: res.rows }),
+      )
+      .catch((e) =>
+        setDetail({
+          status: "error",
+          hasAmount: false,
+          rows: [],
+          error: e?.message || "Алдаа гарлаа",
+        }),
+      );
+  }, []);
 
   const handleOpen = (id: number) => {
     if (openId === id) {
@@ -99,10 +96,11 @@ export default function DashboardsPage() {
     }, 400);
   };
 
-  const filtered = dashboards.filter((d) =>
-    listSearch === "" ||
-    d.name.toLowerCase().includes(listSearch.toLowerCase()) ||
-    String(d.id).includes(listSearch),
+  const filtered = dashboards.filter(
+    (d) =>
+      listSearch === "" ||
+      d.name.toLowerCase().includes(listSearch.toLowerCase()) ||
+      String(d.id).includes(listSearch),
   );
 
   return (
@@ -117,7 +115,10 @@ export default function DashboardsPage() {
       <div className="px-6 space-y-4">
         {/* List search */}
         <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-dim" />
+          <Search
+            size={13}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-dim"
+          />
           <input
             value={listSearch}
             onChange={(e) => setListSearch(e.target.value)}
@@ -125,7 +126,10 @@ export default function DashboardsPage() {
             className="w-full bg-surface-card border border-surface-border rounded-xl pl-8 pr-4 py-2 text-[12px] text-txt placeholder:text-txt-dim outline-none focus:border-golomt-500/50"
           />
           {listSearch && (
-            <button onClick={() => setListSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-txt-dim hover:text-txt">
+            <button
+              onClick={() => setListSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-txt-dim hover:text-txt"
+            >
               <X size={12} />
             </button>
           )}
@@ -134,7 +138,9 @@ export default function DashboardsPage() {
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={20} className="animate-spin text-golomt-400" />
-            <span className="text-[12px] text-txt-dim ml-3">Уншиж байна...</span>
+            <span className="text-[12px] text-txt-dim ml-3">
+              Уншиж байна...
+            </span>
           </div>
         )}
 
@@ -162,9 +168,15 @@ export default function DashboardsPage() {
                       {d.name}
                     </span>
                     {isOpen ? (
-                      <ChevronDown size={14} className="text-txt-dim flex-shrink-0" />
+                      <ChevronDown
+                        size={14}
+                        className="text-txt-dim flex-shrink-0"
+                      />
                     ) : (
-                      <ChevronRight size={14} className="text-txt-dim flex-shrink-0" />
+                      <ChevronRight
+                        size={14}
+                        className="text-txt-dim flex-shrink-0"
+                      />
                     )}
                   </button>
 
@@ -173,7 +185,10 @@ export default function DashboardsPage() {
                     <div className="border-t border-surface-border/50 bg-surface-hover/40 px-4 py-3 space-y-3">
                       {/* Sub-search */}
                       <div className="relative">
-                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-txt-dim" />
+                        <Search
+                          size={12}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-txt-dim"
+                        />
                         <input
                           value={search}
                           onChange={(e) => handleSearch(e.target.value)}
@@ -182,7 +197,10 @@ export default function DashboardsPage() {
                         />
                         {search && (
                           <button
-                            onClick={() => { setSearch(""); loadDetail(d.id, ""); }}
+                            onClick={() => {
+                              setSearch("");
+                              loadDetail(d.id, "");
+                            }}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-txt-dim hover:text-txt"
                           >
                             <X size={11} />
@@ -193,8 +211,13 @@ export default function DashboardsPage() {
                       {/* Loading */}
                       {detail.status === "loading" && (
                         <div className="flex items-center gap-2 py-4 justify-center">
-                          <Loader2 size={14} className="animate-spin text-golomt-400" />
-                          <span className="text-[11px] text-txt-dim">Oracle-с татаж байна...</span>
+                          <Loader2
+                            size={14}
+                            className="animate-spin text-golomt-400"
+                          />
+                          <span className="text-[11px] text-txt-dim">
+                            Oracle-с татаж байна...
+                          </span>
                         </div>
                       )}
 
@@ -229,8 +252,12 @@ export default function DashboardsPage() {
                               <table className="w-full text-[11px] border-collapse">
                                 <thead>
                                   <tr className="bg-surface-card border-b border-surface-border">
-                                    <th className="px-3 py-2 text-left text-txt-dim font-semibold w-6">#</th>
-                                    <th className="px-3 py-2 text-left text-txt-dim font-semibold">CIF</th>
+                                    <th className="px-3 py-2 text-left text-txt-dim font-semibold w-6">
+                                      #
+                                    </th>
+                                    <th className="px-3 py-2 text-left text-txt-dim font-semibold">
+                                      CIF
+                                    </th>
                                     <th className="px-3 py-2 text-right text-txt-dim font-semibold">
                                       <span className="flex items-center justify-end gap-1">
                                         <Hash size={10} /> Тоо
@@ -251,7 +278,9 @@ export default function DashboardsPage() {
                                       key={i}
                                       className="border-b border-surface-border/40 hover:bg-surface-hover transition-colors last:border-0"
                                     >
-                                      <td className="px-3 py-2 text-txt-dim">{i + 1}</td>
+                                      <td className="px-3 py-2 text-txt-dim">
+                                        {i + 1}
+                                      </td>
                                       <td className="px-3 py-2 font-mono text-golomt-300 font-medium">
                                         {row.cif}
                                       </td>

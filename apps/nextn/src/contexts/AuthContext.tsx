@@ -97,12 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             secure,
           });
           Cookies.set(refreshKey, newRefreshToken, {
-            expires: 7,
+            expires: 3,
             sameSite: "strict",
             secure,
           });
           Cookies.set(userKey, JSON.stringify(freshUser), {
-            expires: 7,
+            expires: 3,
             sameSite: "strict",
             secure,
           });
@@ -162,12 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       secure,
     });
     Cookies.set("refreshToken", refreshToken, {
-      expires: 7,
+      expires: 3,
       sameSite: "strict",
       secure,
     });
     Cookies.set("user", JSON.stringify(userData), {
-      expires: 7,
+      expires: 3,
       sameSite: "strict",
       secure,
     });
@@ -187,12 +187,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       secure,
     });
     Cookies.set("adminRefreshToken", refreshToken, {
-      expires: 30,
+      expires: 3,
       sameSite: "strict",
       secure,
     });
     Cookies.set("adminUser", JSON.stringify(userData), {
-      expires: 30,
+      expires: 3,
       sameSite: "strict",
       secure,
     });
@@ -287,12 +287,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             secure,
           });
           Cookies.set(refreshKey, newRefreshToken, {
-            expires: 7,
+            expires: 3,
             sameSite: "strict",
             secure,
           });
           Cookies.set(userKey, JSON.stringify(freshUser), {
-            expires: 7,
+            expires: 3,
             sameSite: "strict",
             secure,
           });

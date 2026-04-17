@@ -36,6 +36,8 @@ const VALID_TOOLS = [
   "pdf_to_text",
   "data_doc",
   "alert_box",
+  "python_api_tools",
+  "reports",
 ] as const;
 
 @Controller("users")

@@ -155,7 +155,7 @@ export class AuthService {
   private async generateRefreshToken(userId: string): Promise<string> {
     const refreshToken = randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // [MED-1] Refresh token valid for 7 days (was 30)
+    expiresAt.setDate(expiresAt.getDate() + 3); // [MED-1] Refresh token valid for 3 days
 
     const now = nowCH();
     const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace("T", " ");
@@ -354,7 +354,7 @@ export class AuthService {
     position: string,
     usrId: string,
   ) {
-    const hashedPassword = await bcrypt.hash(password, 12); // [LOW-3] cost 12
+    const hashedPassword = await bcrypt.hash(password, 13);
     const dept = await this.ensureDepartment(department);
     const id = randomUUID();
     const now = nowCH();
@@ -538,7 +538,8 @@ export class AuthService {
   async adminLogin(adminLoginDto: AdminLoginDto) {
     const { username, password } = adminLoginDto;
     const lockKey = `admin-login:${username}`;
-    this.logger.debug(`Admin login attempt for userId: ${username}`);
+    // [L-3] admin username removed from log to prevent credential exposure
+    this.logger.debug('Admin login attempt received');
 
     // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
     await this.guardLogin(lockKey); // [CRIT-2] now async
@@ -757,7 +758,7 @@ export class AuthService {
       throw new BadRequestException("Нууц үг аль хэдийн тохируулагдсан байна");
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12); // [LOW-3] cost 12
+    const hashedPassword = await bcrypt.hash(password, 13);
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE password = {password:String} WHERE id = {id:String}",
       {
@@ -803,7 +804,7 @@ export class AuthService {
     if (!isPasswordValid)
       throw new UnauthorizedException("Одоогийн нууц үг буруу байна");
 
-    const hashedPassword = await bcrypt.hash(newPassword, 12); // [LOW-3] cost 12
+    const hashedPassword = await bcrypt.hash(newPassword, 13);
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
       {
