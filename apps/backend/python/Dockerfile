@@ -4,7 +4,7 @@ WORKDIR /app
 # Oracle Instant Client 21.13 for Linux x86-64 + system deps
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        libaio1 \
+        libaio1t64 \
         wget \
         unzip \
         ca-certificates && \
