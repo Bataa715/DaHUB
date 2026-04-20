@@ -11,7 +11,7 @@ build:
     - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - echo "=== Building Docker images ==="
-    - docker compose -f docker-compose.yml build --no-cache
+    - docker compose -f docker-compose.yml build
     - echo "=== Build complete ==="
 
 # ── 2. DEPLOY: Шинэ container-уудаар солих ──────────────────────────────────
