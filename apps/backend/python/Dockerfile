@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS runner
+FROM python:3.10-slim AS runner
 WORKDIR /app
 
 # Oracle Instant Client 21.13 for Linux x86-64 + system deps

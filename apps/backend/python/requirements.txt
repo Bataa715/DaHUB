@@ -33,3 +33,4 @@ sqlalchemy>=2.0.0
 
 # Oracle
 oracledb>=2.0.0
+cx_Oracle>=8.3.0
