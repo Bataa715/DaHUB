@@ -1,0 +1,28 @@
+image: docker:24
+
+stages:
+  - deploy
+
+deploy_job:
+  stage: deploy
+  only:
+    - main
+
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login http://192.168.203.175:80 -u "$CI_REGISTRY_USER" --password-stdin
+    - apk add --no-cache openssh-client
+    - eval "$(ssh-agent -s)"
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+
+  script:
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+        cd /opt/myproject/DaHUB-main &&
+        git fetch origin &&
+        git reset --hard origin/main &&
+        docker compose up -d --build
+      "
+
+
