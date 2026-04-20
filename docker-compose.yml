@@ -38,10 +38,6 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
-      args:
-        HTTP_PROXY: http://103.51.60.125:3128
-        HTTPS_PROXY: http://103.51.60.125:3128
-
     env_file:
       - ./apps/backend/.env
 
@@ -58,9 +54,6 @@ services:
 
       PYTHON_SERVICE_URL: http://python-api:8001
       PYTHON_API_KEY: ${PYTHON_API_KEY}
-
-      HTTP_PROXY: http://103.51.60.125:3128
-      HTTPS_PROXY: http://103.51.60.125:3128
     volumes:
       - ./apps/backend/data/oracle:/data/oracle
     ports:
@@ -86,10 +79,6 @@ services:
     build:
       context: .
       dockerfile: apps/nextn/Dockerfile
-      args:
-        HTTP_PROXY: http://103.51.60.125:3128
-        HTTPS_PROXY: http://103.51.60.125:3128
-
     env_file:
       - .env
 
@@ -97,9 +86,6 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${BACKEND_URL}
       JWT_SECRET: ${JWT_SECRET}
-
-      HTTP_PROXY: http://103.51.60.125:3128
-      HTTPS_PROXY: http://103.51.60.125:3128
 
     ports:
       - "9002:9002"
