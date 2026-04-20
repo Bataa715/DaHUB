@@ -1,0 +1,41 @@
+# Dependencies - дахин суулгана
+node_modules
+**/node_modules
+
+# Build outputs
+**/dist
+**/.next
+**/build
+
+# Git
+.git
+.gitignore
+.gitlab-ci.yml
+
+# Dev files
+*.md
+.env*
+!.env.example
+docker-compose.dev.yml
+Dockerfile.dev
+**/Dockerfile.dev
+
+# Cache & temp
+**/.cache
+**/*.log
+**/coverage
+**/.turbo
+
+# Python
+**/__pycache__
+**/*.pyc
+**/.venv
+**/venv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data & notebooks
+Data/
+apps/backend/python/

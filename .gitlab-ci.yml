@@ -2,23 +2,27 @@ stages:
   - build
   - deploy
 
+variables:
+  DOCKER_BUILDKIT: "1"
+  COMPOSE_DOCKER_CLI_BUILD: "1"
+
 # ── 1. BUILD: Docker image-уудыг build хийнэ ────────────────────────────────
 build:
   stage: build
   tags:
-    - local          # Таны PC дээрх runner
+    - local
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - echo "=== Building Docker images ==="
-    - docker compose -f docker-compose.yml build
+    - docker compose -f docker-compose.yml build --parallel
     - echo "=== Build complete ==="
 
 # ── 2. DEPLOY: Шинэ container-уудаар солих ──────────────────────────────────
 deploy:
   stage: deploy
   tags:
-    - local          # Таны PC дээрх runner
+    - local
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   environment:
@@ -27,9 +31,7 @@ deploy:
   script:
     - echo "=== Deploying to local production ==="
     - docker compose -f docker-compose.yml up -d --remove-orphans
-    - echo "=== Waiting for health checks ==="
     - docker compose -f docker-compose.yml ps
     - echo "=== Deploy complete — http://localhost:9002 ==="
   needs:
     - build
-
