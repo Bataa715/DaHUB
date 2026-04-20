@@ -690,7 +690,7 @@ export default function AdminToolsPage() {
                 {/* Эрхтэй хэрэглэгчид */}
                 <TabsContent
                   value="current"
-                  className="flex-1 overflow-hidden mt-0 flex flex-col"
+                  className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex flex-col"
                 >
                   {/* Quick actions */}
                   <div className="px-5 py-3 border-b border-slate-800 space-y-2">
@@ -843,7 +843,7 @@ export default function AdminToolsPage() {
                 {/* Эрх олгох */}
                 <TabsContent
                   value="grant"
-                  className="flex-1 overflow-hidden mt-0 flex flex-col"
+                  className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex flex-col"
                 >
                   {/* Quick actions */}
                   <div className="px-5 py-3 border-b border-slate-800 space-y-2">

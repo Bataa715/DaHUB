@@ -18,9 +18,9 @@ export class CreatePythonToolDto {
   @IsNotEmpty()
   pythonCode: string;
 
-  @IsIn(["clickhouse", "oracle", "mssql", "none"])
+  @IsIn(["clickhouse", "oracle", "clickhouse_oracle"])
   @IsOptional()
-  connectionType?: "clickhouse" | "oracle" | "mssql" | "none";
+  connectionType?: "clickhouse" | "oracle" | "clickhouse_oracle";
 
   /** JSON string — { host, port, user, password, database, dsn, serviceName, ... } */
   @IsString()
@@ -62,9 +62,9 @@ export class UpdatePythonToolDto {
   @IsOptional()
   pythonCode?: string;
 
-  @IsIn(["clickhouse", "oracle", "mssql", "none"])
+  @IsIn(["clickhouse", "oracle", "clickhouse_oracle"])
   @IsOptional()
-  connectionType?: "clickhouse" | "oracle" | "mssql" | "none";
+  connectionType?: "clickhouse" | "oracle" | "clickhouse_oracle";
 
   @IsString()
   @IsOptional()

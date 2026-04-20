@@ -755,7 +755,7 @@ export interface PythonTool {
   name: string;
   apiPath: string;
   description: string;
-  connectionType: "clickhouse" | "oracle" | "mssql" | "none";
+  connectionType: "clickhouse" | "oracle" | "clickhouse_oracle";
   outputFormat: "excel" | "csv";
   dateMode: "none" | "single" | "range";
   color: string;
@@ -829,7 +829,7 @@ export const pythonToolApi = {
     apiPath: string;
     description?: string;
     pythonCode: string;
-    connectionType?: "clickhouse" | "oracle" | "mssql" | "none";
+    connectionType?: "clickhouse" | "oracle" | "clickhouse_oracle";
     connectionConfig?: string;
     outputFormat?: "excel" | "csv";
     dateMode?: "none" | "single" | "range";
@@ -847,7 +847,7 @@ export const pythonToolApi = {
       apiPath: string;
       description: string;
       pythonCode: string;
-      connectionType: "clickhouse" | "oracle" | "mssql" | "none";
+      connectionType: "clickhouse" | "oracle" | "clickhouse_oracle";
       connectionConfig: string;
       outputFormat: "excel" | "csv";
       dateMode: "none" | "single" | "range";

@@ -30,3 +30,7 @@ tqdm>=4.66.0
 loguru>=0.7.0
 requests>=2.31.0
 sqlalchemy>=2.0.0
+
+# Oracle
+oracledb>=2.0.0
+cx_Oracle>=8.3.0

@@ -68,6 +68,38 @@ def _get_ch_client() -> Any:
     return _ch_client
 
 
+def _ora_connect_one(sub_cfg: dict, label: str = "") -> Any:
+    """
+    Нэг Oracle connection үүсгэнэ.
+    1. oracledb thin mode
+    2. cx_Oracle fallback (хуучин сервер, DPY-3010 гарвал)
+    """
+    host = sub_cfg.get("host", "localhost")
+    port = int(sub_cfg.get("port", 1521))
+    svc = sub_cfg.get("serviceName") or sub_cfg.get("database", "")
+    user = sub_cfg.get("user", "")
+    password = sub_cfg.get("password", "")
+    tag = f" [{label}]" if label else ""
+
+    # cx_Oracle (startup дээр init_oracle_client() дуудагдсан тул Instant Client ачаалагдсан)
+    try:
+        import cx_Oracle  # type: ignore[import]
+        dsn = sub_cfg.get("dsn") or cx_Oracle.makedsn(host, port, service_name=svc)
+        conn = cx_Oracle.connect(user=user, password=password, dsn=dsn)
+        logger.info("Oracle{} холбогдлоо ({}/{})", tag, host, svc)
+        return conn
+    except ImportError:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Oracle{tag}: cx_Oracle суулгаагүй байна. pip install cx_Oracle",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Oracle{tag} холболт амжилтгүй ({host}/{svc}): {exc}",
+        )
+
+
 def _make_connection(connection_type: str, cfg: dict | None) -> Any:
     """
     connectionType болон connectionConfig-оос DB холболт үүсгэнэ.
@@ -83,58 +115,32 @@ def _make_connection(connection_type: str, cfg: dict | None) -> Any:
         )
 
     if connection_type == "oracle":
-        try:
-            import oracledb  # type: ignore[import]
-        except ImportError:
-            raise HTTPException(
-                status_code=500,
-                detail="oracledb суулгаагүй байна. pip install oracledb",
-            )
-
-        def _single_oracle(sub_cfg: dict) -> Any:
-            dsn = sub_cfg.get("dsn") or oracledb.makedsn(
-                sub_cfg.get("host", "localhost"),
-                int(sub_cfg.get("port", 1521)),
-                service_name=sub_cfg.get("serviceName") or sub_cfg.get("database", ""),
-            )
-            return oracledb.connect(
-                user=sub_cfg.get("user", ""),
-                password=sub_cfg.get("password", ""),
-                dsn=dsn,
-            )
+        def _single_oracle(sub_cfg: dict, label: str = "") -> Any:
+            return _ora_connect_one(sub_cfg, label)
 
         # Олон connection: бүх value нь dict бол нэрлэсэн холболтуудын dict буцаана
         # { "finacle": {...}, "erp": {...} }  →  conn["finacle"], conn["erp"]
         if cfg and all(isinstance(v, dict) for v in cfg.values()):
-            return {name: _single_oracle(sub) for name, sub in cfg.items()}
+            return {name: _ora_connect_one(sub, name) for name, sub in cfg.items()}
 
         # Нэг connection (хуучин формат): conn нь шууд oracledb.Connection
-        return _single_oracle(cfg)
+        return _ora_connect_one(cfg)
 
-    if connection_type == "mssql":
-        try:
-            import pyodbc  # type: ignore[import]
-        except ImportError:
-            raise HTTPException(
-                status_code=500,
-                detail="pyodbc суулгаагүй байна. pip install pyodbc",
-            )
-        dsn = cfg.get("dsn") or (
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={cfg.get('host','localhost')},{cfg.get('port',1433)};"
-            f"DATABASE={cfg.get('database','')};"
-            f"UID={cfg.get('user','')};"
-            f"PWD={cfg.get('password','')};"
-        )
-        return pyodbc.connect(dsn)
+    if connection_type == "clickhouse_oracle":
+        # ClickHouse болон Oracle-г хослуулан нэгэн зэрэг холбоно.
+        # cfg нь Oracle connection(s)-ийн тохиргоо байна.
+        # Буцаах: { "ch": <ClickHouse client>, "ora": <oracle conn эсвэл dict> }
+        if cfg and all(isinstance(v, dict) for v in cfg.values()):
+            ora_conn = {name: _ora_connect_one(sub, name) for name, sub in cfg.items()}
+        else:
+            ora_conn = _ora_connect_one(cfg) if cfg else None
 
-    if connection_type == "none":
-        return None
+        return {"ch": _get_ch_client(), "ora": ora_conn}
 
     raise HTTPException(
         status_code=400,
         detail=f"Дэмжигдээгүй connectionType: '{connection_type}'. "
-               "Зөвшөөрөгдсөн утгууд: clickhouse | oracle | mssql | none",
+               "Зөвшөөрөгдсөн утгууд: clickhouse | oracle | clickhouse_oracle",
     )
 
 
@@ -190,6 +196,15 @@ def _exec_with_timeout(code: str, namespace: dict, timeout: int = _EXEC_TIMEOUT_
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Oracle Instant Client (cx_Oracle) ────────────────────────────────────
+    try:
+        import cx_Oracle  # type: ignore[import]
+        lib_dir = os.environ.get("ORACLE_CLIENT_LIB", r"D:\ORACLE\instantclient_21_13")
+        cx_Oracle.init_oracle_client(lib_dir=lib_dir)
+        logger.info("Oracle Instant Client ачааллаа ({})", lib_dir)
+    except Exception as exc:
+        logger.warning("Oracle Instant Client ачаалж чадсангүй (Oracle шаардлагагүй бол хэвийн): {}", exc)
+    # ── ClickHouse ───────────────────────────────────────────────────────────
     try:
         _get_ch_client().ping()
         logger.info("ClickHouse холболт амжилттай")
@@ -234,7 +249,7 @@ class RunReportRequest(BaseModel):
 class RunToolRequest(BaseModel):
     """Python API Tools ажиллуулах request."""
     code: str
-    connection_type: str = "clickhouse"  # clickhouse | oracle | mssql | none
+    connection_type: str = "clickhouse"  # clickhouse | oracle | clickhouse_oracle
     connection_config: Optional[dict[str, Any]] = None  # host,port,user,password,database,dsn,...
     start_date: Optional[str] = None
     end_date: Optional[str] = None
@@ -309,7 +324,7 @@ def _check_code_safety(code: str) -> None:
         r"__\w+__",          # any dunder attribute access
         r"chr\s*\(",         # chr() can build arbitrary strings
         r"ord\s*\(",         # ord() helper for chr bypass
-        r"type\s*\(",        # type() can create classes dynamically
+        r"\btype\s*\(",      # type() can create classes dynamically (word boundary to allow astype)
         r"breakpoint\s*\(",  # debugger access
     ]
     for pat in BLOCKED_PATTERNS:
@@ -317,6 +332,28 @@ def _check_code_safety(code: str) -> None:
             raise HTTPException(
                 status_code=400,
                 detail=f"Аюулгүй байдлын хязгаарлалт: '{pat}' загвар ашиглах боломжгүй.",
+            )
+
+    # SQL mutation хориглох: зөвхөн SELECT зөвшөөрнө
+    SQL_MUTATE_PATTERNS = [
+        r"\bINSERT\s+INTO\b",
+        r"\bUPDATE\s+\w",
+        r"\bDELETE\s+FROM\b",
+        r"\bDROP\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b",
+        r"\bTRUNCATE\s+",
+        r"\bALTER\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b",
+        r"\bCREATE\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b",
+        r"\bGRANT\s+",
+        r"\bREVOKE\s+",
+        r"\bMERGE\s+INTO\b",
+        r"\bEXECUTE\s+",
+        r"\bCALL\s+",
+    ]
+    for pat in SQL_MUTATE_PATTERNS:
+        if _re.search(pat, code, _re.IGNORECASE):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Зөвхөн SELECT query зөвшөөрөгдөнө. '{pat}' ашиглах боломжгүй.",
             )
 
 
