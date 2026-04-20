@@ -1,28 +1,35 @@
-image: docker:24
-
 stages:
+  - build
   - deploy
 
-deploy_job:
-  stage: deploy
-  only:
-    - main
-
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login http://192.168.203.175:80 -u "$CI_REGISTRY_USER" --password-stdin
-    - apk add --no-cache openssh-client
-    - eval "$(ssh-agent -s)"
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
-
+# ── 1. BUILD: Docker image-уудыг build хийнэ ────────────────────────────────
+build:
+  stage: build
+  tags:
+    - local          # Таны PC дээрх runner
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
   script:
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
-        cd /opt/myproject/DaHUB-main &&
-        git fetch origin &&
-        git reset --hard origin/main &&
-        docker compose up -d --build
-      "
+    - echo "=== Building Docker images ==="
+    - docker compose -f docker-compose.yml build --no-cache
+    - echo "=== Build complete ==="
 
+# ── 2. DEPLOY: Шинэ container-уудаар солих ──────────────────────────────────
+deploy:
+  stage: deploy
+  tags:
+    - local          # Таны PC дээрх runner
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  environment:
+    name: production
+    url: http://localhost:9002
+  script:
+    - echo "=== Deploying to local production ==="
+    - docker compose -f docker-compose.yml up -d --remove-orphans
+    - echo "=== Waiting for health checks ==="
+    - docker compose -f docker-compose.yml ps
+    - echo "=== Deploy complete — http://localhost:9002 ==="
+  needs:
+    - build
 
