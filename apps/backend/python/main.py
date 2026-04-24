@@ -161,7 +161,7 @@ async def _verify_api_key(request: Request) -> None:
 
 # ── Exec() timeout helper ─────────────────────────────────────────────────────
 
-_EXEC_TIMEOUT_SEC = int(os.environ.get("PYTHON_EXEC_TIMEOUT", "30"))
+_EXEC_TIMEOUT_SEC = int(os.environ.get("PYTHON_EXEC_TIMEOUT", "600"))
 
 
 class _ExecTimeoutError(Exception):
@@ -515,20 +515,42 @@ def _result_to_csv_bytes(result: Any) -> bytes:
 
 
 def _sanitize_df_for_json(df: pd.DataFrame) -> pd.DataFrame:
-    """datetime/Timestamp баганыг string болгоно."""
+    """datetime/Timestamp/date баганыг string болгоно."""
+    import datetime
     df = df.copy()
     for col in df.columns:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
             df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S").where(df[col].notna(), None)
+        elif df[col].dtype == object:
+            def _conv(v):
+                if v is None or (isinstance(v, float) and pd.isna(v)):
+                    return None
+                try:
+                    if pd.isna(v):
+                        return None
+                except Exception:
+                    pass
+                if isinstance(v, pd.Timestamp):
+                    return v.strftime("%Y-%m-%d %H:%M:%S")
+                if isinstance(v, datetime.datetime):
+                    return v.strftime("%Y-%m-%d %H:%M:%S")
+                if isinstance(v, datetime.date):
+                    return v.strftime("%Y-%m-%d")
+                return v
+            df[col] = df[col].map(_conv)
     return df
 
 
 def _df_to_preview(df: pd.DataFrame, limit: int) -> dict:
-    sample = _sanitize_df_for_json(df.head(limit))
-    clean = sample.astype(object).where(pd.notna(sample), None)
+    import json
+    sample = df.head(limit)
+    # pandas to_json нь Timestamp/date/NaT/NaN бүгдийг зөв хөрвүүлнэ
+    rows = json.loads(
+        sample.to_json(orient="records", date_format="iso", default_handler=str, force_ascii=False)
+    )
     return {
         "columns": list(sample.columns),
-        "rows": clean.values.tolist(),
+        "rows": [[row.get(col) for col in sample.columns] for row in rows],
         "totalCount": len(df),
     }
 
@@ -649,7 +671,7 @@ def health() -> dict:
 if __name__ == "__main__":
     import uvicorn
 
-    host = os.environ.get("PYTHON_SERVICE_HOST", "127.0.0.1")
+    host = os.environ.get("PYTHON_SERVICE_HOST", "0.0.0.0")
     port = int(os.environ.get("PYTHON_SERVICE_PORT", "8001"))
     is_dev = os.environ.get("PYTHON_ENV", "development") == "development"
     uvicorn.run(

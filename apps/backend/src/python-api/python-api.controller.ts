@@ -16,7 +16,7 @@ import {
   ForbiddenException,
 } from "@nestjs/common";
 import { Response } from "express";
-import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
+import { SkipThrottle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { PythonApiService } from "./python-api.service";
@@ -113,8 +113,7 @@ export class PythonApiController {
 
   /** POST /python-api/run — файл татах (Excel / CSV) */
   @Post("run")
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ reports: { limit: 60, ttl: 60000 } })
+  @SkipThrottle()
   async runTool(
     @Body() dto: RunToolDto,
     @Res() res: Response,
@@ -156,8 +155,7 @@ export class PythonApiController {
 
   /** POST /python-api/preview — эхний 50 мөрийг JSON-оор буцаана */
   @Post("preview")
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ preview: { limit: 120, ttl: 60000 } })
+  @SkipThrottle()
   async previewTool(@Body() dto: RunToolDto, @Request() req: any) {
     if (!dto.toolId) throw new BadRequestException("toolId шаардлагатай");
     // ── Permission check ──────────────────────────────────────────────────
