@@ -127,4 +127,64 @@ export class RiskAssessmentController {
   async branchRiskassLast(@Request() req) {
     return this.service.getLastBranchRiskass(req.user.id);
   }
+
+  // ── Snapshots (хадгалсан тайлангийн түүх) ─────────────────────────────────
+  @Post("snapshots")
+  async saveSnapshot(
+    @Body()
+    body: {
+      name: string;
+      payload: any;
+      pDate?: string;
+      pDateBeg?: string;
+      branchCount?: number;
+    },
+    @Request() req,
+  ) {
+    return this.service.saveSnapshot({
+      ...body,
+      userId: req.user.id,
+      userName: req.user.name ?? req.user.username ?? "",
+    });
+  }
+
+  @Get("snapshots")
+  async listSnapshots() {
+    return this.service.listSnapshots();
+  }
+
+  @Get("snapshots/:id")
+  async getSnapshot(@Param("id") id: string) {
+    return this.service.getSnapshot(id);
+  }
+
+  @Delete("snapshots/:id")
+  async deleteSnapshot(@Param("id") id: string) {
+    await this.service.deleteSnapshot(id);
+    return { ok: true };
+  }
+
+  // ── Manual indicator values (per-branch × per-indicator) ──────────────────
+  @Get("manual-indicators")
+  async listManualIndicators() {
+    return this.service.listManualIndicators();
+  }
+
+  @Put("manual-indicators")
+  async upsertManualIndicator(
+    @Body()
+    body: {
+      branchId: string;
+      indicatorId: string;
+      value: number;
+      branchName?: string;
+    },
+    @Request() req,
+  ) {
+    await this.service.upsertManualIndicator({
+      ...body,
+      userId: req.user.id,
+    });
+    return { ok: true };
+  }
 }

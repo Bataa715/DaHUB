@@ -1106,6 +1106,74 @@ export const riskApi = {
     const res = await api.get(`/risk-assessment/branch-riskass/last`);
     return res.data;
   },
+
+  // ── Snapshots (нэр өгч хадгалсан тайлангийн түүх) ───────────────────────
+  saveSnapshot: async (args: {
+    name: string;
+    payload: any;
+    pDate?: string;
+    pDateBeg?: string;
+    branchCount?: number;
+  }): Promise<{ id: string; name: string; createdAt: string }> => {
+    const res = await api.post(`/risk-assessment/snapshots`, args);
+    return res.data;
+  },
+
+  listSnapshots: async (): Promise<
+    Array<{
+      id: string;
+      name: string;
+      createdBy: string;
+      createdByName: string;
+      pDate: string;
+      pDateBeg: string;
+      branchCount: number;
+      createdAt: string;
+    }>
+  > => {
+    const res = await api.get(`/risk-assessment/snapshots`);
+    return res.data;
+  },
+
+  getSnapshot: async (
+    id: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    createdBy: string;
+    createdByName: string;
+    pDate: string;
+    pDateBeg: string;
+    branchCount: number;
+    createdAt: string;
+    payload: Record<string, { total: number; level: string }>;
+  }> => {
+    const res = await api.get(`/risk-assessment/snapshots/${id}`);
+    return res.data;
+  },
+
+  deleteSnapshot: async (id: string): Promise<void> => {
+    await api.delete(`/risk-assessment/snapshots/${id}`);
+  },
+
+  // ── Manual indicators (per-branch × per-indicator) ──────────────────────
+  // Гарын үзүүлэлтийн утгыг localStorage биш, ClickHouse-н risk_scores
+  // хүснэгтэд period='manual' гэж хадгална. Snapshot-аас тусдаа.
+  listManualIndicators: async (): Promise<
+    Record<string, Record<string, number>>
+  > => {
+    const res = await api.get(`/risk-assessment/manual-indicators`);
+    return res.data ?? {};
+  },
+
+  upsertManualIndicator: async (args: {
+    branchId: string;
+    indicatorId: string;
+    value: number;
+    branchName?: string;
+  }): Promise<void> => {
+    await api.put(`/risk-assessment/manual-indicators`, args);
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

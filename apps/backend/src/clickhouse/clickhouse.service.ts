@@ -251,46 +251,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
-      // Create exercises table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS exercises (
-          id String,
-          name String,
-          category String,
-          description String,
-          userId String,
-          createdAt DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (userId, id)
-      `);
-
-      // Create workout_logs table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS workout_logs (
-          id String,
-          exerciseId String,
-          userId String,
-          sets UInt16,
-          repetitions UInt16,
-          weight Float32,
-          notes String,
-          date DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (userId, date)
-      `);
-
-      // Create body_stats table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS body_stats (
-          id String,
-          userId String,
-          weight Float32,
-          height Float32,
-          date DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (userId, date)
-      `);
-
       // Create news table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS news (
@@ -511,21 +471,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         TTL attemptedAt + INTERVAL 1 DAY
       `);
 
-      // Create rag_chunks table for RAG vector store
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS rag_chunks (
-          id String,
-          content String,
-          source String,
-          chunk_index UInt32,
-          document_name String,
-          page UInt32 DEFAULT 0,
-          embedding Array(Float32),
-          created_at DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (source, chunk_index)
-      `);
-
       // Create dept_bsc_reports table (department BSC/ТҮЗ quarterly reports)
       await this.exec(`
         CREATE TABLE IF NOT EXISTS dept_bsc_reports (
@@ -582,7 +527,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.logger.log(
-        "Schema tables initialized (departments, users, exercises, workout_logs, body_stats, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words, rag_chunks, login_attempts)",
+        "Schema tables initialized (departments, users, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words, login_attempts)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);

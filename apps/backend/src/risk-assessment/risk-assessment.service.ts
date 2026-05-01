@@ -166,6 +166,22 @@ export class RiskAssessmentService implements OnModuleInit {
       ) ENGINE = ReplacingMergeTree(fetchedAt)
         ORDER BY (userId, rowKey)
     `);
+
+    // Эцсийн тайлангийн snapshot (нэр өгч хадгалсан түүх)
+    await this.clickhouse.exec(`
+      CREATE TABLE IF NOT EXISTS risk_assessment_snapshots (
+        id              String,
+        name            String,
+        createdBy       String,
+        createdByName   String,
+        pDate           String DEFAULT '',
+        pDateBeg        String DEFAULT '',
+        branchCount     UInt32 DEFAULT 0,
+        payload         String,
+        createdAt       DateTime DEFAULT now()
+      ) ENGINE = ReplacingMergeTree(createdAt)
+        ORDER BY id
+    `);
   }
 
   private async seedDefaultIndicators() {
@@ -923,5 +939,174 @@ export class RiskAssessmentService implements OnModuleInit {
     if (d instanceof Date) return d.toISOString().slice(0, 10);
     const s = String(d);
     return s.length >= 10 ? s.slice(0, 10) : s;
+  }
+
+  // ── Snapshots (нэр өгч хадгалсан тайлангийн түүх) ─────────────────────────
+  async saveSnapshot(args: {
+    name: string;
+    payload: any;
+    pDate?: string;
+    pDateBeg?: string;
+    branchCount?: number;
+    userId: string;
+    userName?: string;
+  }): Promise<{ id: string; name: string; createdAt: string }> {
+    const id = randomUUID();
+    const createdAt = nowCH();
+    const json = JSON.stringify(args.payload ?? {});
+    await this.clickhouse.insert("risk_assessment_snapshots", [
+      {
+        id,
+        name: args.name,
+        createdBy: args.userId,
+        createdByName: args.userName ?? "",
+        pDate: args.pDate ?? "",
+        pDateBeg: args.pDateBeg ?? "",
+        branchCount: args.branchCount ?? 0,
+        payload: json,
+        createdAt,
+      },
+    ]);
+    return { id, name: args.name, createdAt };
+  }
+
+  async listSnapshots(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      createdBy: string;
+      createdByName: string;
+      pDate: string;
+      pDateBeg: string;
+      branchCount: number;
+      createdAt: string;
+    }>
+  > {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT id, name, createdBy, createdByName, pDate, pDateBeg, branchCount, toString(createdAt) AS createdAt
+       FROM risk_assessment_snapshots FINAL
+       ORDER BY createdAt DESC
+       LIMIT 200`,
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      createdBy: r.createdBy,
+      createdByName: r.createdByName,
+      pDate: r.pDate,
+      pDateBeg: r.pDateBeg,
+      branchCount: Number(r.branchCount ?? 0),
+      createdAt: r.createdAt,
+    }));
+  }
+
+  async getSnapshot(id: string): Promise<{
+    id: string;
+    name: string;
+    createdBy: string;
+    createdByName: string;
+    pDate: string;
+    pDateBeg: string;
+    branchCount: number;
+    createdAt: string;
+    payload: any;
+  }> {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT id, name, createdBy, createdByName, pDate, pDateBeg, branchCount, toString(createdAt) AS createdAt, payload
+       FROM risk_assessment_snapshots FINAL
+       WHERE id = {id:String}
+       LIMIT 1`,
+      { id },
+    );
+    if (!rows[0]) throw new NotFoundException("Snapshot олдсонгүй");
+    const r = rows[0];
+    let payload: any = {};
+    try {
+      payload = JSON.parse(r.payload || "{}");
+    } catch {}
+    return {
+      id: r.id,
+      name: r.name,
+      createdBy: r.createdBy,
+      createdByName: r.createdByName,
+      pDate: r.pDate,
+      pDateBeg: r.pDateBeg,
+      branchCount: Number(r.branchCount ?? 0),
+      createdAt: r.createdAt,
+      payload,
+    };
+  }
+
+  async deleteSnapshot(id: string): Promise<void> {
+    await this.clickhouse.exec(
+      `ALTER TABLE risk_assessment_snapshots DELETE WHERE id = '${id.replace(/'/g, "''")}'`,
+    );
+  }
+
+  // ── Manual indicator values (per-branch × per-indicator) ──────────────────
+  // Шинэ хүснэгт үүсгэхгүйгээр одоо байгаа `risk_scores` хүснэгтийг
+  // ашиглана. period='manual' гэсэн нэрс орон зайд хадгалж, isManual=1
+  // тэмдэглэнэ. Ингэснээр snapshot биш, тогтмол гар оруулсан үнэлгээ
+  // хадгалагдана.
+  private static readonly MANUAL_PERIOD = "manual";
+
+  async listManualIndicators(): Promise<
+    Record<string, Record<string, number>>
+  > {
+    const rows = await this.clickhouse.query<{
+      branchId: string;
+      indicatorId: string;
+      score: number;
+    }>(
+      `SELECT branchId, indicatorId, score
+       FROM risk_scores FINAL
+       WHERE period = {period:String} AND isManual = 1 AND score > 0
+       ORDER BY branchId, indicatorId`,
+      { period: RiskAssessmentService.MANUAL_PERIOD },
+    );
+    const out: Record<string, Record<string, number>> = {};
+    for (const r of rows) {
+      if (!r.branchId || !r.indicatorId) continue;
+      const bucket = out[r.branchId] ?? (out[r.branchId] = {});
+      bucket[r.indicatorId] = Number(r.score) || 0;
+    }
+    return out;
+  }
+
+  async upsertManualIndicator(args: {
+    branchId: string;
+    indicatorId: string;
+    value: number;
+    branchName?: string;
+    userId: string;
+  }): Promise<void> {
+    const { branchId, indicatorId, value, branchName = "", userId } = args;
+    if (!branchId || !indicatorId) return;
+    if (!value || value <= 0) {
+      // Устгах
+      await this.clickhouse.exec(
+        `ALTER TABLE risk_scores DELETE WHERE period = '${RiskAssessmentService.MANUAL_PERIOD}'
+           AND branchId = '${branchId.replace(/'/g, "''")}'
+           AND indicatorId = '${indicatorId.replace(/'/g, "''")}'`,
+      );
+      return;
+    }
+    // ReplacingMergeTree-ийн ORDER BY (period, branchId, indicatorId) тул
+    // ижил товчтой шинэ мөрийг оруулахад өмнөх утгыг орлоно.
+    await this.clickhouse.insert("risk_scores", [
+      {
+        id: randomUUID(),
+        period: RiskAssessmentService.MANUAL_PERIOD,
+        branchId,
+        branchName,
+        indicatorId,
+        rawValue: null,
+        score: Math.min(5, Math.max(0, value)),
+        isManual: 1,
+        note: "",
+        updatedBy: userId,
+        updatedAt: nowCH(),
+      },
+    ]);
   }
 }

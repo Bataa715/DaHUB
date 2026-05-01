@@ -14,13 +14,43 @@ import {
   Download,
   LayoutGrid,
   Table as TableIcon,
+  ClipboardList,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  computeScore,
+  getGroup,
+  scoreColorClass,
+  scoreDisplay,
+  aggregateBranch,
+  computeTotal,
+  riskLevel,
+  riskLevelClass,
+  WEIGHTS,
+  type BranchAggregate,
+  type RiskLevel,
+  type ScoreGroup,
+  type ScoreResult,
+} from "./scoring-rules";
+import ReportView from "./report-view";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
 type RiskRow = Awaited<ReturnType<typeof riskApi.branchRiskass>>["rows"][number];
+
+type ScoredRow = RiskRow & {
+  __score: ScoreResult;
+  __scoreLabel: string | null;
+  __group: ScoreGroup | null;
+};
+
+const GROUP_OPTIONS: { key: "all" | ScoreGroup; label: string; cls: string }[] = [
+  { key: "all", label: "Бүгд", cls: "text-foreground" },
+  { key: "Score 1", label: "Score 1", cls: "text-rose-600" },
+  { key: "Score 2", label: "Score 2", cls: "text-amber-600" },
+  { key: "Score 3", label: "Score 3", cls: "text-blue-600" },
+];
 
 // ── main page ──────────────────────────────────────────────────────────────
 export default function RiskAssessmentPage() {
@@ -34,10 +64,39 @@ export default function RiskAssessmentPage() {
   const [branchCount, setBranchCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
+  const [viewMode, setViewMode] = useState<"grouped" | "table" | "report">(
+    "grouped",
+  );
   const [search, setSearch] = useState("");
   const [cacheLoading, setCacheLoading] = useState(true);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [groupFilter, setGroupFilter] = useState<"all" | ScoreGroup>("all");
+  // Judgement Score (гараар оруулах) — localStorage-д salbar bvr-eer
+  const [judgement, setJudgement] = useState<Record<string, number>>({});
+  // Score 4 (одоохондоо 0)
+  const [score4, setScore4] = useState<Record<string, number>>({});
+  // Эрсдэлийн түвшний filter
+  const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
+
+  // localStorage-аас judgement/score4 сэргээх
+  useEffect(() => {
+    try {
+      const j = localStorage.getItem("riskass_judgement");
+      if (j) setJudgement(JSON.parse(j));
+      const s4 = localStorage.getItem("riskass_score4");
+      if (s4) setScore4(JSON.parse(s4));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("riskass_judgement", JSON.stringify(judgement));
+    } catch {}
+  }, [judgement]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("riskass_score4", JSON.stringify(score4));
+    } catch {}
+  }, [score4]);
 
   // Mount хийх үед сүүлд хадгалсан үр дүнг ClickHouse-аас сэргээнэ
   useEffect(() => {
@@ -94,12 +153,26 @@ export default function RiskAssessmentPage() {
     }
   }, [pDate, pDateBeg, datesValid]);
 
-  // Хайлтын filter
+  // Эхлээд бүх мөрд оноо тооцоолно
+  const scoredRows: ScoredRow[] = useMemo(() => {
+    return rows.map((r) => {
+      const sr = computeScore(r.SUBID as any, r.RESULT, r.RESULT_TYPE);
+      return {
+        ...r,
+        __score: sr.score,
+        __scoreLabel: sr.label,
+        __group: getGroup(r.SUBID as any),
+      };
+    });
+  }, [rows]);
+
+  // Score бүлгийн filter + хайлт
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
-      [
+    return scoredRows.filter((r) => {
+      if (groupFilter !== "all" && r.__group !== groupFilter) return false;
+      if (!q) return true;
+      return [
         r.SOLID,
         r.BRANCHNAME,
         r.BRANCHID,
@@ -109,11 +182,12 @@ export default function RiskAssessmentPage() {
         r.ID,
         r.SUBID,
         r.OPERATION_TYPE,
+        r.__score,
       ]
         .map((v) => String(v ?? "").toLowerCase())
-        .some((s) => s.includes(q)),
-    );
-  }, [rows, search]);
+        .some((s) => s.includes(q));
+    });
+  }, [scoredRows, search, groupFilter]);
 
   // CSV татах
   const downloadCsv = useCallback(() => {
@@ -130,6 +204,9 @@ export default function RiskAssessmentPage() {
       "ID",
       "SUBID",
       "OPERATION_TYPE",
+      "SCORE_GROUP",
+      "SCORE",
+      "SCORE_LABEL",
     ] as const;
     const escape = (v: any) => {
       const s = String(v ?? "");
@@ -137,7 +214,16 @@ export default function RiskAssessmentPage() {
     };
     const csv = [
       cols.join(","),
-      ...filteredRows.map((r) => cols.map((c) => escape((r as any)[c])).join(",")),
+      ...filteredRows.map((r) =>
+        cols
+          .map((c) => {
+            if (c === "SCORE_GROUP") return escape(r.__group ?? "");
+            if (c === "SCORE") return escape(r.__score ?? "");
+            if (c === "SCORE_LABEL") return escape(r.__scoreLabel ?? "");
+            return escape((r as any)[c]);
+          })
+          .join(","),
+      ),
     ].join("\n");
     const blob = new Blob(["\uFEFF" + csv], {
       type: "text/csv;charset=utf-8;",
@@ -154,7 +240,7 @@ export default function RiskAssessmentPage() {
   const grouped = useMemo(() => {
     const m = new Map<
       string,
-      { branchId: string; branchName: string; solid: string; rows: RiskRow[] }
+      { branchId: string; branchName: string; solid: string; rows: ScoredRow[] }
     >();
     for (const r of filteredRows) {
       const key = String(r.BRANCHID ?? r.SOLID ?? "");
@@ -317,6 +403,22 @@ export default function RiskAssessmentPage() {
               )
             </h2>
             <div className="flex items-center gap-2">
+              {/* Score бүлгийн filter */}
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {GROUP_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setGroupFilter(opt.key)}
+                    className={`px-2 py-1.5 text-xs border-r last:border-r-0 border-border ${
+                      groupFilter === opt.key
+                        ? "bg-blue-500/10 text-blue-600 font-semibold"
+                        : `hover:bg-accent/40 ${opt.cls}`
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               {/* Хайлт */}
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -354,6 +456,18 @@ export default function RiskAssessmentPage() {
                   <TableIcon className="w-3.5 h-3.5" />
                   Хүснэгт
                 </button>
+                <button
+                  onClick={() => setViewMode("report")}
+                  className={`px-2 py-1.5 text-xs flex items-center gap-1 border-l border-border ${
+                    viewMode === "report"
+                      ? "bg-blue-500/10 text-blue-600"
+                      : "hover:bg-accent/40"
+                  }`}
+                  title="Final тайлан"
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  Тайлан
+                </button>
               </div>
               {/* CSV */}
               <button
@@ -367,7 +481,7 @@ export default function RiskAssessmentPage() {
               </button>
             </div>
           </div>
-          {filteredRows.length === 0 ? (
+          {filteredRows.length === 0 && viewMode !== "report" ? (
             <div className="px-4 py-12 text-center text-muted-foreground">
               <Database className="w-8 h-8 mx-auto mb-2 opacity-40" />
               {!hasFetched ? (
@@ -404,6 +518,7 @@ export default function RiskAssessmentPage() {
                     <th className="px-2 py-2 text-center whitespace-nowrap">P_DATE</th>
                     <th className="px-2 py-2 text-left">ID</th>
                     <th className="px-2 py-2 text-center">SUBID</th>
+                    <th className="px-2 py-2 text-center">Score</th>
                     <th className="px-2 py-2 text-left">OP_TYPE</th>
                   </tr>
                 </thead>
@@ -424,13 +539,14 @@ export default function RiskAssessmentPage() {
                       <td className="px-2 py-1.5 text-center text-muted-foreground tabular-nums whitespace-nowrap">{r.P_DATE}</td>
                       <td className="px-2 py-1.5 max-w-xs truncate" title={r.ID}>{r.ID}</td>
                       <td className="px-2 py-1.5 text-center tabular-nums">{r.SUBID}</td>
+                      <td className="px-2 py-1.5 text-center"><ScoreBadge row={r} /></td>
                       <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{r.OPERATION_TYPE}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : (
+          ) : viewMode === "grouped" ? (
             <div className="divide-y divide-border">
               {grouped.map((g) => {
                 const key = g.branchId || g.solid;
@@ -472,6 +588,7 @@ export default function RiskAssessmentPage() {
                               <th className="px-2 py-1.5 text-center whitespace-nowrap">P_DATE</th>
                               <th className="px-2 py-1.5 text-left">ID</th>
                               <th className="px-2 py-1.5 text-center">SUBID</th>
+                              <th className="px-2 py-1.5 text-center">Score</th>
                               <th className="px-2 py-1.5 text-left">OP_TYPE</th>
                             </tr>
                           </thead>
@@ -497,6 +614,7 @@ export default function RiskAssessmentPage() {
                                   <td className="px-2 py-1.5 text-center text-muted-foreground tabular-nums whitespace-nowrap">{r.P_DATE}</td>
                                   <td className="px-2 py-1.5 max-w-xs truncate" title={r.ID}>{r.ID}</td>
                                   <td className="px-2 py-1.5 text-center tabular-nums">{r.SUBID}</td>
+                                  <td className="px-2 py-1.5 text-center"><ScoreBadge row={r} /></td>
                                   <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{r.OPERATION_TYPE}</td>
                                 </tr>
                               ))}
@@ -508,6 +626,16 @@ export default function RiskAssessmentPage() {
                 );
               })}
             </div>
+          ) : (
+            <ReportView
+              scoredRows={scoredRows}
+              judgement={judgement}
+              setJudgement={setJudgement}
+              score4={score4}
+              setScore4={setScore4}
+              riskFilter={riskFilter}
+              setRiskFilter={setRiskFilter}
+            />
           )}
         </div>
 
@@ -546,5 +674,21 @@ function Stat({
         {value}
       </div>
     </div>
+  );
+}
+
+function ScoreBadge({ row }: { row: ScoredRow }) {
+  if (row.__score == null) {
+    return <span className="text-muted-foreground/50 text-xs">—</span>;
+  }
+  return (
+    <span
+      className={`inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded border text-[11px] font-bold ${scoreColorClass(
+        row.__score,
+      )}`}
+      title={row.__scoreLabel ? `${row.__group} · ${row.__scoreLabel}` : row.__group ?? ""}
+    >
+      {scoreDisplay(row.__score)}
+    </span>
   );
 }
