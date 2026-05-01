@@ -1079,6 +1079,33 @@ export const riskApi = {
     const res = await api.post(`/risk-assessment/branch-riskass`, args);
     return res.data;
   },
+
+  /** Хэрэглэгчийн сүүлд хадгалсан BranchRiskass үр дүнг ClickHouse-аас унших */
+  branchRiskassLast: async (): Promise<{
+    pDate: string;
+    pDateBeg: string;
+    branchCount: number;
+    rowCount: number;
+    failed: { branchId: number; error: string }[];
+    rows: Array<{
+      SOLID: number | string;
+      BRANCHNAME: string;
+      BRANCHID: string;
+      PARENTBRANCH: string;
+      RESULT: string;
+      RESULT_TYPE: string;
+      DESCRIPTION_TEXT: string;
+      P_DATEBEG: string;
+      P_DATE: string;
+      ID: string;
+      SUBID: string;
+      OPERATION_TYPE: string;
+    }>;
+    fetchedAt: string;
+  } | null> => {
+    const res = await api.get(`/risk-assessment/branch-riskass/last`);
+    return res.data;
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

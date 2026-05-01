@@ -114,7 +114,17 @@ export class RiskAssessmentController {
       pDateBeg: string;
       branchIds?: number[];
     },
+    @Request() req,
   ) {
-    return this.service.runBranchRiskass(body);
+    return this.service.runBranchRiskass({ ...body, userId: req.user.id });
+  }
+
+  /**
+   * Хэрэглэгчийн сүүлд хадгалсан BranchRiskass үр дүнг ClickHouse-аас унших.
+   * Web ачаалах болгонд Oracle-аас дахин татахгүйн тулд ашиглана.
+   */
+  @Get("branch-riskass/last")
+  async branchRiskassLast(@Request() req) {
+    return this.service.getLastBranchRiskass(req.user.id);
   }
 }

@@ -131,6 +131,41 @@ export class RiskAssessmentService implements OnModuleInit {
       ) ENGINE = MergeTree()
         ORDER BY (changedAt, branchId)
     `);
+
+    // BranchRiskass-н сүүлийн үр дүнг хэрэглэгч тус бүрт кэшлэнэ
+    await this.clickhouse.exec(`
+      CREATE TABLE IF NOT EXISTS risk_branch_riskass_runs (
+        userId       String,
+        pDate        String,
+        pDateBeg     String,
+        branchCount  UInt32,
+        rowCount     UInt32,
+        failed       String DEFAULT '[]',
+        fetchedAt    DateTime DEFAULT now()
+      ) ENGINE = ReplacingMergeTree(fetchedAt)
+        ORDER BY userId
+    `);
+
+    await this.clickhouse.exec(`
+      CREATE TABLE IF NOT EXISTS risk_branch_riskass_rows (
+        userId           String,
+        rowKey           String,
+        SOLID            String,
+        BRANCHNAME       String,
+        BRANCHID         String,
+        PARENTBRANCH     String,
+        RESULT           String,
+        RESULT_TYPE      String,
+        DESCRIPTION_TEXT String,
+        P_DATEBEG        String,
+        P_DATE           String,
+        ID               String,
+        SUBID            String,
+        OPERATION_TYPE   String,
+        fetchedAt        DateTime DEFAULT now()
+      ) ENGINE = ReplacingMergeTree(fetchedAt)
+        ORDER BY (userId, rowKey)
+    `);
   }
 
   private async seedDefaultIndicators() {
@@ -627,6 +662,7 @@ export class RiskAssessmentService implements OnModuleInit {
     pDate: string; // 'YYYY-MM-DD'
     pDateBeg: string; // 'YYYY-MM-DD'
     branchIds?: number[];
+    userId?: string;
   }): Promise<{
     pDate: string;
     pDateBeg: string;
@@ -723,13 +759,154 @@ export class RiskAssessmentService implements OnModuleInit {
       );
     }
 
-    return {
+    const result = {
       pDate: args.pDate,
       pDateBeg: args.pDateBeg,
       branchCount: ids.length,
       rowCount: allRows.length,
       failed,
       rows: allRows,
+    };
+
+    // ClickHouse-д хадгалах (хэрэглэгч тус бүрт сүүлийн үр дүн)
+    if (args.userId && allRows.length > 0) {
+      try {
+        await this.saveBranchRiskassCache(args.userId, result);
+      } catch (e: any) {
+        this.logger.warn(
+          `BranchRiskass cache хадгалахад алдаа: ${e?.message || e}`,
+        );
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Хэрэглэгчийн өмнөх дуудлагын үр дүнг ClickHouse-д хадгална.
+   * Хуучин кэшийг устгаад шинээр оруулна.
+   */
+  private async saveBranchRiskassCache(
+    userId: string,
+    result: {
+      pDate: string;
+      pDateBeg: string;
+      branchCount: number;
+      rowCount: number;
+      failed: { branchId: number; error: string }[];
+      rows: any[];
+    },
+  ): Promise<void> {
+    // Хуучин кэшийг устгах
+    await this.clickhouse.exec(
+      `ALTER TABLE risk_branch_riskass_rows DELETE WHERE userId = {u:String}`,
+      { u: userId },
+    );
+    await this.clickhouse.exec(
+      `ALTER TABLE risk_branch_riskass_runs DELETE WHERE userId = {u:String}`,
+      { u: userId },
+    );
+
+    // Run metadata
+    await this.clickhouse.insert("risk_branch_riskass_runs", [
+      {
+        userId,
+        pDate: result.pDate,
+        pDateBeg: result.pDateBeg,
+        branchCount: result.branchCount,
+        rowCount: result.rowCount,
+        failed: JSON.stringify(result.failed ?? []),
+        fetchedAt: nowCH(),
+      },
+    ]);
+
+    // Мөрүүд (1000-аар хэсэгчилж insert)
+    if (result.rows.length === 0) return;
+    const fetchedAt = nowCH();
+    const batch = result.rows.map((r, i) => ({
+      userId,
+      rowKey: `${r.BRANCHID ?? ""}|${r.SUBID ?? ""}|${i}`,
+      SOLID: String(r.SOLID ?? ""),
+      BRANCHNAME: String(r.BRANCHNAME ?? ""),
+      BRANCHID: String(r.BRANCHID ?? ""),
+      PARENTBRANCH: String(r.PARENTBRANCH ?? ""),
+      RESULT: String(r.RESULT ?? ""),
+      RESULT_TYPE: String(r.RESULT_TYPE ?? ""),
+      DESCRIPTION_TEXT: String(r.DESCRIPTION_TEXT ?? ""),
+      P_DATEBEG: String(r.P_DATEBEG ?? ""),
+      P_DATE: String(r.P_DATE ?? ""),
+      ID: String(r.ID ?? ""),
+      SUBID: String(r.SUBID ?? ""),
+      OPERATION_TYPE: String(r.OPERATION_TYPE ?? ""),
+      fetchedAt,
+    }));
+    const CHUNK = 1000;
+    for (let i = 0; i < batch.length; i += CHUNK) {
+      await this.clickhouse.insert(
+        "risk_branch_riskass_rows",
+        batch.slice(i, i + CHUNK),
+      );
+    }
+    this.logger.log(
+      `BranchRiskass cache: userId=${userId}, ${batch.length} мөр хадгалав`,
+    );
+  }
+
+  /**
+   * Хэрэглэгчийн сүүлд хадгалсан BranchRiskass үр дүнг буцаана.
+   * Хэрэв байхгүй бол null.
+   */
+  async getLastBranchRiskass(userId: string): Promise<{
+    pDate: string;
+    pDateBeg: string;
+    branchCount: number;
+    rowCount: number;
+    failed: { branchId: number; error: string }[];
+    rows: any[];
+    fetchedAt: string;
+  } | null> {
+    const runs = await this.clickhouse.query<{
+      pDate: string;
+      pDateBeg: string;
+      branchCount: number;
+      rowCount: number;
+      failed: string;
+      fetchedAt: string;
+    }>(
+      `SELECT pDate, pDateBeg, branchCount, rowCount, failed,
+              toString(fetchedAt) AS fetchedAt
+       FROM risk_branch_riskass_runs FINAL
+       WHERE userId = {u:String}
+       LIMIT 1`,
+      { u: userId },
+    );
+    if (runs.length === 0) return null;
+    const run = runs[0];
+
+    const rows = await this.clickhouse.query<any>(
+      `SELECT SOLID, BRANCHNAME, BRANCHID, PARENTBRANCH, RESULT, RESULT_TYPE,
+              DESCRIPTION_TEXT, P_DATEBEG, P_DATE, ID, SUBID, OPERATION_TYPE
+       FROM risk_branch_riskass_rows FINAL
+       WHERE userId = {u:String}
+       ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
+      { u: userId },
+    );
+
+    let failed: { branchId: number; error: string }[] = [];
+    try {
+      failed = JSON.parse(run.failed || "[]");
+    } catch {
+      failed = [];
+    }
+
+    return {
+      pDate: run.pDate,
+      pDateBeg: run.pDateBeg,
+      branchCount: Number(run.branchCount ?? 0),
+      rowCount: Number(run.rowCount ?? 0),
+      failed,
+      rows,
+      fetchedAt: run.fetchedAt,
     };
   }
 

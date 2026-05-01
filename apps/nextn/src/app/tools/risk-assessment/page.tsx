@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { riskApi } from "@/lib/api";
 import {
   Loader2,
@@ -36,6 +36,33 @@ export default function RiskAssessmentPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
   const [search, setSearch] = useState("");
+  const [cacheLoading, setCacheLoading] = useState(true);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+
+  // Mount хийх үед сүүлд хадгалсан үр дүнг ClickHouse-аас сэргээнэ
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cached = await riskApi.branchRiskassLast();
+        if (cancelled || !cached) return;
+        setRows(cached.rows as RiskRow[]);
+        setFailed(cached.failed);
+        setBranchCount(cached.branchCount);
+        setPDate(cached.pDate);
+        setPDateBeg(cached.pDateBeg);
+        setHasFetched(true);
+        setCachedAt(cached.fetchedAt);
+      } catch {
+        // кэш байхгүй бол чимээгүй өнгөрнө
+      } finally {
+        if (!cancelled) setCacheLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const datesValid =
     /^\d{4}-\d{2}-\d{2}$/.test(pDate) &&
@@ -57,6 +84,7 @@ export default function RiskAssessmentPage() {
       setFailed(res.failed);
       setBranchCount(res.branchCount);
       setHasFetched(true);
+      setCachedAt(new Date().toISOString());
     } catch (e: any) {
       setErrorMsg(e?.response?.data?.message ?? e.message ?? "Алдаа");
       setRows([]);
@@ -212,6 +240,14 @@ export default function RiskAssessmentPage() {
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
             Эхлэх ба дуусах огноог оруулаад «Татах» товчийг дарж Oracle-аас үнэлгээг ачаална уу.
+            {cachedAt && (
+              <span className="ml-2 text-emerald-600">
+                · Сүүлд татсан: {new Date(cachedAt).toLocaleString("mn-MN")}
+              </span>
+            )}
+            {cacheLoading && (
+              <span className="ml-2">· Сүүлийн үр дүнг сэргээж байна…</span>
+            )}
           </div>
         </div>
         {/* Алдааны banner */}
