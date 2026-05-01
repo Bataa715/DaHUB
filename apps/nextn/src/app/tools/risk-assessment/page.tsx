@@ -1,139 +1,158 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
-import {
-  riskApi,
-  type RiskIndicator,
-  type RiskScore,
-  type BranchSummary,
-} from "@/lib/api";
+import { useMemo, useState, useCallback } from "react";
+import { riskApi } from "@/lib/api";
 import {
   Loader2,
   ShieldAlert,
-  ShieldCheck,
-  ShieldQuestion,
-  Save,
-  History,
-  X,
   RefreshCw,
   Database,
-  Settings,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Download,
+  LayoutGrid,
+  Table as TableIcon,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 
 // ── helpers ────────────────────────────────────────────────────────────────
-function currentPeriod(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
-function levelStyles(level: BranchSummary["level"]) {
-  if (level === "high")
-    return {
-      icon: ShieldAlert,
-      label: "Өндөр",
-      cls: "bg-red-500/15 text-red-500 border-red-500/30",
-      bar: "bg-red-500",
-    };
-  if (level === "medium")
-    return {
-      icon: ShieldQuestion,
-      label: "Дунд",
-      cls: "bg-amber-500/15 text-amber-500 border-amber-500/30",
-      bar: "bg-amber-500",
-    };
-  return {
-    icon: ShieldCheck,
-    label: "Бага",
-    cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
-    bar: "bg-emerald-500",
-  };
-}
-
-interface Branch {
-  id: string;
-  name: string;
-}
+type RiskRow = Awaited<ReturnType<typeof riskApi.branchRiskass>>["rows"][number];
 
 // ── main page ──────────────────────────────────────────────────────────────
 export default function RiskAssessmentPage() {
   const { user } = useAuth();
-  const [period, setPeriod] = useState<string>(currentPeriod());
-  const [loading, setLoading] = useState(true);
+  const [pDate, setPDate] = useState<string>("");
+  const [pDateBeg, setPDateBeg] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
+  const [rows, setRows] = useState<RiskRow[]>([]);
+  const [failed, setFailed] = useState<{ branchId: number; error: string }[]>([]);
+  const [branchCount, setBranchCount] = useState(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
+  const [search, setSearch] = useState("");
 
-  const [indicators, setIndicators] = useState<RiskIndicator[]>([]);
-  const [scores, setScores] = useState<RiskScore[]>([]);
-  const [summary, setSummary] = useState<BranchSummary[]>([]);
-
-  const [selectedBranch, setSelectedBranch] = useState<BranchSummary | null>(null);
-  const [auditCell, setAuditCell] = useState<{
-    branchId: string;
-    indicatorId: string;
-    indicatorName: string;
-  } | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<
-    Awaited<ReturnType<typeof riskApi.syncOracle>> | null
-  >(null);
+  const datesValid =
+    /^\d{4}-\d{2}-\d{2}$/.test(pDate) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(pDateBeg) &&
+    pDateBeg <= pDate;
 
   const loadAll = useCallback(async () => {
+    if (!datesValid) {
+      setErrorMsg(
+        "Эхлэх болон дуусах огноог зөв оруулна уу (YYYY-MM-DD, эхлэх ≤ дуусах).",
+      );
+      return;
+    }
     setRefreshing(true);
+    setErrorMsg(null);
     try {
-      const [inds, scs, sum] = await Promise.all([
-        riskApi.listIndicators(),
-        riskApi.listScores(period),
-        riskApi.getSummary(period),
-      ]);
-      setIndicators(inds);
-      setScores(scs);
-      setSummary(sum);
+      const res = await riskApi.branchRiskass({ pDate, pDateBeg });
+      setRows(res.rows);
+      setFailed(res.failed);
+      setBranchCount(res.branchCount);
+      setHasFetched(true);
+    } catch (e: any) {
+      setErrorMsg(e?.response?.data?.message ?? e.message ?? "Алдаа");
+      setRows([]);
+      setFailed([]);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  }, [period]);
+  }, [pDate, pDateBeg, datesValid]);
 
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
-
-  const runOracleSync = async () => {
-    setSyncing(true);
-    setSyncResult(null);
-    try {
-      const res = await riskApi.syncOracle(period);
-      setSyncResult(res);
-      await loadAll();
-    } catch (e: any) {
-      setSyncResult({
-        period,
-        ok: false,
-        upserted: 0,
-        skippedManual: 0,
-        perIndicator: [
-          { code: "ERROR", name: e?.response?.data?.message ?? e.message, rows: 0 },
-        ],
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const sortedBranches = useMemo(
-    () => [...summary].sort((a, b) => b.totalScore - a.totalScore),
-    [summary],
-  );
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
+  // Хайлтын filter
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [
+        r.SOLID,
+        r.BRANCHNAME,
+        r.BRANCHID,
+        r.PARENTBRANCH,
+        r.RESULT,
+        r.DESCRIPTION_TEXT,
+        r.ID,
+        r.SUBID,
+        r.OPERATION_TYPE,
+      ]
+        .map((v) => String(v ?? "").toLowerCase())
+        .some((s) => s.includes(q)),
     );
-  }
+  }, [rows, search]);
+
+  // CSV татах
+  const downloadCsv = useCallback(() => {
+    const cols = [
+      "SOLID",
+      "BRANCHNAME",
+      "BRANCHID",
+      "PARENTBRANCH",
+      "RESULT",
+      "RESULT_TYPE",
+      "DESCRIPTION_TEXT",
+      "P_DATEBEG",
+      "P_DATE",
+      "ID",
+      "SUBID",
+      "OPERATION_TYPE",
+    ] as const;
+    const escape = (v: any) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [
+      cols.join(","),
+      ...filteredRows.map((r) => cols.map((c) => escape((r as any)[c])).join(",")),
+    ].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `branch-riskass-${pDateBeg}_${pDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filteredRows, pDate, pDateBeg]);
+
+  // Салбараар бүлэглэх
+  const grouped = useMemo(() => {
+    const m = new Map<
+      string,
+      { branchId: string; branchName: string; solid: string; rows: RiskRow[] }
+    >();
+    for (const r of filteredRows) {
+      const key = String(r.BRANCHID ?? r.SOLID ?? "");
+      if (!m.has(key)) {
+        m.set(key, {
+          branchId: String(r.BRANCHID ?? ""),
+          branchName: String(r.BRANCHNAME ?? ""),
+          solid: String(r.SOLID ?? ""),
+          rows: [],
+        });
+      }
+      m.get(key)!.rows.push(r);
+    }
+    return Array.from(m.values()).sort((a, b) =>
+      a.branchName.localeCompare(b.branchName, "mn"),
+    );
+  }, [filteredRows]);
+
+  const toggle = (k: string) => {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
+      return n;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -141,656 +160,354 @@ export default function RiskAssessmentPage() {
         href="/tools"
         icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
         title="Эрсдэлийн үнэлгээ"
-        subtitle="Сар тутмын салбарын эрсдэлийн оноо"
-        rightContent={
-          <div className="flex items-center gap-2">
-            <input
-              type="month"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm"
-            />
-            <button
-              onClick={runOracleSync}
-              disabled={syncing}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-sm disabled:opacity-50"
-              title="Oracle-аас өгөгдөл татах"
-            >
-              {syncing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Database className="w-4 h-4" />
-              )}
-              Oracle‑аас татах
-            </button>
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-sm"
-              title="Индикатор тохиргоо"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => loadAll()}
-              disabled={refreshing}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-sm disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-              Сэргээх
-            </button>
-          </div>
-        }
+        subtitle="RISKASSESSMENT.BranchRiskass — салбарын үнэлгээ"
       />
       <div className="container mx-auto px-4 py-5 space-y-5 flex-1">
-
-      {/* Oracle sync result banner */}
-      {syncResult && (
-        <div
-          className={`rounded-lg border p-3 text-sm ${
-            syncResult.ok
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600"
-              : "bg-amber-500/10 border-amber-500/30 text-amber-600"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span>
-              Oracle sync: <b>{syncResult.upserted}</b> мөр шинэчлэв, гараар
-              засагдсан <b>{syncResult.skippedManual}</b> мөр хэвээрээ үлдээв.
-            </span>
-            <button onClick={() => setSyncResult(null)}>
-              <X className="w-4 h-4" />
+        {/* Хугацааны муж сонгогч */}
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <Database className="w-4 h-4 text-blue-500" />
+              Хугацааны муж
+            </h2>
+            <button
+              onClick={() => loadAll()}
+              disabled={refreshing || !datesValid}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title={datesValid ? "Oracle-аас татаж рендерлэх" : "Эхлэх ба дуусах огноог оруулна уу"}
+            >
+              {refreshing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {hasFetched ? "Дахин татах" : "Татах"}
             </button>
           </div>
-          {syncResult.perIndicator.length > 0 && (
-            <ul className="mt-2 text-xs space-y-0.5">
-              {syncResult.perIndicator.map((p) => (
-                <li key={p.code}>
-                  · {p.code} — {p.name}: {p.rows} мөр
-                  {p.error && (
-                    <span className="text-red-500"> — {p.error}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">
+                Эхлэх огноо (p_DATEBEG)
+              </label>
+              <input
+                type="date"
+                value={pDateBeg}
+                max={pDate}
+                onChange={(e) => setPDateBeg(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">
+                Дуусах огноо (p_DATE)
+              </label>
+              <input
+                type="date"
+                value={pDate}
+                min={pDateBeg}
+                onChange={(e) => setPDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+              />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            Эхлэх ба дуусах огноог оруулаад «Татах» товчийг дарж Oracle-аас үнэлгээг ачаална уу.
+          </div>
         </div>
-      )}
-
-      {/* Summary cards */}
-      <SummaryHeader summary={summary} />
-
-      {/* Branch list */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-semibold">
-            Oracle-аас татсан салбарууд ({sortedBranches.length})
-          </h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 text-left">Салбар</th>
-                <th className="px-4 py-2 text-right">Нийт оноо</th>
-                <th className="px-4 py-2 text-center">Түвшин</th>
-                <th className="px-4 py-2 text-center">Indicator</th>
-                <th className="px-4 py-2 text-center">Гараар</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedBranches.map((b) => {
-                const lv = levelStyles(b.level);
-                const Icon = lv.icon;
-                return (
-                  <tr
-                    key={b.branchId}
-                    className="border-t border-border hover:bg-accent/40 transition-colors"
-                  >
-                    <td className="px-4 py-2 font-medium">{b.branchName}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {b.totalScore.toFixed(1)}
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${lv.cls}`}
-                      >
-                        <Icon className="w-3 h-3" />
-                        {lv.label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-center text-muted-foreground">
-                      {b.indicatorCount}
-                    </td>
-                    <td className="px-4 py-2 text-center text-muted-foreground">
-                      {b.manualCount}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <button
-                        onClick={() => setSelectedBranch(b)}
-                        className="px-3 py-1 rounded-md text-xs bg-primary/10 text-primary hover:bg-primary/20"
-                      >
-                        Засах →
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {sortedBranches.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-12 text-center text-muted-foreground"
-                  >
-                    <Database className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    <div>Oracle-аас өгөгдөл байхгүй байна</div>
-                    <div className="text-xs mt-1 opacity-60">"Oracle-аас татах" товч дарж өгөгдөл татна уу</div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Editor drawer */}
-      {selectedBranch && (
-        <BranchEditor
-          period={period}
-          branch={{ id: selectedBranch.branchId, name: selectedBranch.branchName }}
-          indicators={indicators}
-          scores={scores.filter((s) => s.branchId === selectedBranch.branchId)}
-          onClose={() => setSelectedBranch(null)}
-          onSaved={() => loadAll()}
-          onShowAudit={(indicator) =>
-            setAuditCell({
-              branchId: selectedBranch.branchId,
-              indicatorId: indicator.id,
-              indicatorName: indicator.name,
-            })
-          }
-        />
-      )}
-
-      {/* Audit log modal */}
-      {auditCell && (
-        <AuditLogModal
-          period={period}
-          branchId={auditCell.branchId}
-          indicatorId={auditCell.indicatorId}
-          indicatorName={auditCell.indicatorName}
-          onClose={() => setAuditCell(null)}
-        />
-      )}
-
-      {/* Indicator settings modal */}
-      {settingsOpen && (
-        <IndicatorSettingsModal
-          indicators={indicators}
-          onClose={() => setSettingsOpen(false)}
-          onSaved={() => loadAll()}
-        />
-      )}
-
-      {/* Footer */}
-      <p className="text-center text-slate-500 text-xs py-6">
-        {user?.name && (
-          <>
-            <span>{user.name}</span>
-            {" · "}
-          </>
+        {/* Алдааны banner */}
+        {errorMsg && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="font-semibold">Oracle-аас татахад алдаа гарлаа</div>
+              <div className="text-xs mt-1">{errorMsg}</div>
+            </div>
+          </div>
         )}
-        {(user as any)?.department ?? ""}
-      </p>
-    </div>
-  </div>
-  );
-}
 
-// ── Summary header ──────────────────────────────────────────────────────────
-function SummaryHeader({ summary }: { summary: BranchSummary[] }) {
-  const counts = useMemo(() => {
-    const c = { high: 0, medium: 0, low: 0 };
-    summary.forEach((s) => c[s.level]++);
-    return c;
-  }, [summary]);
-  const avg =
-    summary.length > 0
-      ? summary.reduce((a, b) => a + b.totalScore, 0) / summary.length
-      : 0;
-
-  const cards = [
-    {
-      label: "Хамрагдсан салбар",
-      value: summary.length.toString(),
-      cls: "from-blue-500/10 to-cyan-500/10 border-blue-500/20",
-    },
-    {
-      label: "Дундаж оноо",
-      value: avg.toFixed(1),
-      cls: "from-violet-500/10 to-indigo-500/10 border-violet-500/20",
-    },
-    {
-      label: "Өндөр эрсдэлтэй",
-      value: counts.high.toString(),
-      cls: "from-red-500/10 to-rose-500/10 border-red-500/20",
-    },
-    {
-      label: "Дунд эрсдэлтэй",
-      value: counts.medium.toString(),
-      cls: "from-amber-500/10 to-orange-500/10 border-amber-500/20",
-    },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {cards.map((c) => (
-        <div
-          key={c.label}
-          className={`rounded-xl border bg-gradient-to-br p-4 ${c.cls}`}
-        >
-          <div className="text-xs text-muted-foreground">{c.label}</div>
-          <div className="text-2xl font-bold mt-1 tabular-nums">{c.value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Branch editor drawer ───────────────────────────────────────────────────
-function BranchEditor({
-  period,
-  branch,
-  indicators,
-  scores,
-  onClose,
-  onSaved,
-  onShowAudit,
-}: {
-  period: string;
-  branch: Branch;
-  indicators: RiskIndicator[];
-  scores: RiskScore[];
-  onClose: () => void;
-  onSaved: () => void;
-  onShowAudit: (indicator: RiskIndicator) => void;
-}) {
-  // Local edits keyed by indicator id
-  type Edit = { rawValue: string; score: string; reason: string };
-  const initial: Record<string, Edit> = {};
-  indicators.forEach((ind) => {
-    const existing = scores.find((s) => s.indicatorId === ind.id);
-    initial[ind.id] = {
-      rawValue: existing?.rawValue?.toString() ?? "",
-      score: existing?.score?.toString() ?? "",
-      reason: "",
-    };
-  });
-  const [edits, setEdits] = useState<Record<string, Edit>>(initial);
-  const [saving, setSaving] = useState<string | null>(null);
-
-  const updateField = (id: string, field: keyof Edit, value: string) => {
-    setEdits((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
-  };
-
-  const saveOne = async (ind: RiskIndicator) => {
-    setSaving(ind.id);
-    const e = edits[ind.id];
-    try {
-      await riskApi.upsertScore({
-        period,
-        branchId: branch.id,
-        branchName: branch.name,
-        indicatorId: ind.id,
-        rawValue: e.rawValue === "" ? null : Number(e.rawValue),
-        score: Number(e.score) || 0,
-        reason: e.reason || "Гар оруулга",
-      });
-      onSaved();
-      // Reset reason after successful save
-      setEdits((prev) => ({ ...prev, [ind.id]: { ...prev[ind.id], reason: "" } }));
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-end bg-black/50 backdrop-blur-sm">
-      <div className="bg-card border-l border-border w-full max-w-2xl h-full overflow-y-auto shadow-2xl">
-        {/* Header */}
-        <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center justify-between z-10">
-          <div>
-            <div className="text-xs text-muted-foreground">{period}</div>
-            <h3 className="text-lg font-semibold">{branch.name}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-accent"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {/* Тоон үзүүлэлт */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat
+            label="Хамрагдсан салбар"
+            value={`${grouped.length} / ${branchCount}`}
+            cls="from-blue-500/10 to-cyan-500/10 border-blue-500/20"
+          />
+          <Stat
+            label="Нийт мөр"
+            value={`${filteredRows.length}${
+              search && filteredRows.length !== rows.length
+                ? ` / ${rows.length}`
+                : ""
+            }`}
+            cls="from-violet-500/10 to-indigo-500/10 border-violet-500/20"
+          />
+          <Stat
+            label="Алдаа гарсан салбар"
+            value={failed.length.toString()}
+            cls="from-amber-500/10 to-orange-500/10 border-amber-500/20"
+          />
+          <Stat
+            label="Огнооны муж"
+            value={`${pDateBeg} → ${pDate}`}
+            cls="from-emerald-500/10 to-teal-500/10 border-emerald-500/20"
+            small
+          />
         </div>
 
-        {/* Indicator list */}
-        <div className="p-4 space-y-3">
-          {indicators.map((ind) => {
-            const existing = scores.find((s) => s.indicatorId === ind.id);
-            const e = edits[ind.id];
-            return (
-              <div
-                key={ind.id}
-                className="rounded-lg border border-border bg-background p-3 space-y-2"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold flex items-center gap-2">
-                      {ind.name}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                        {ind.code}
-                      </span>
-                      {ind.sourceType === "auto" && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-500">
-                          AUTO
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {ind.category} · Жин: {(ind.weight * 100).toFixed(0)}%
-                      {existing?.isManual ? " · Гараар засагдсан" : ""}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => onShowAudit(ind)}
-                    className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                  >
-                    <History className="w-3 h-3" /> Түүх
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground">
-                      Утга ({ind.unit})
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={e.rawValue}
-                      onChange={(ev) =>
-                        updateField(ind.id, "rawValue", ev.target.value)
-                      }
-                      className="w-full px-2 py-1 rounded-md border border-border bg-background text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">
-                      Оноо (0-100)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step="0.1"
-                      value={e.score}
-                      onChange={(ev) =>
-                        updateField(ind.id, "score", ev.target.value)
-                      }
-                      className="w-full px-2 py-1 rounded-md border border-border bg-background text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">
-                      Шалтгаан
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Засах шалтгаан..."
-                      value={e.reason}
-                      onChange={(ev) =>
-                        updateField(ind.id, "reason", ev.target.value)
-                      }
-                      className="w-full px-2 py-1 rounded-md border border-border bg-background text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => saveOne(ind)}
-                    disabled={saving === ind.id}
-                    className="flex items-center gap-1 px-3 py-1 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {saving === ind.id ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Save className="w-3 h-3" />
-                    )}
-                    Хадгалах
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Audit log modal ─────────────────────────────────────────────────────────
-function AuditLogModal({
-  period,
-  branchId,
-  indicatorId,
-  indicatorName,
-  onClose,
-}: {
-  period: string;
-  branchId: string;
-  indicatorId: string;
-  indicatorName: string;
-  onClose: () => void;
-}) {
-  const [rows, setRows] = useState<
-    Awaited<ReturnType<typeof riskApi.getAuditLog>>
-  >([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    void riskApi
-      .getAuditLog(period, branchId, indicatorId)
-      .then(setRows)
-      .finally(() => setLoading(false));
-  }, [period, branchId, indicatorId]);
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border rounded-xl w-full max-w-xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <div>
-            <div className="text-xs text-muted-foreground">{period}</div>
-            <h3 className="text-sm font-semibold">{indicatorName}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-accent"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="overflow-y-auto p-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="text-center text-sm text-muted-foreground py-6">
-              Түүх алга
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {rows.map((r) => (
-                <li
-                  key={r.id}
-                  className="rounded-md border border-border bg-background p-2 text-xs"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium">{r.changedBy}</span>
-                    <span className="text-muted-foreground">{r.changedAt}</span>
-                  </div>
-                  <div className="text-muted-foreground">
-                    Утга: {r.oldValue ?? "—"} → {r.newValue ?? "—"} · Оноо:{" "}
-                    {r.oldScore ?? "—"} → {r.newScore ?? "—"}
-                  </div>
-                  {r.reason && (
-                    <div className="mt-1 italic text-muted-foreground">
-                      “{r.reason}”
-                    </div>
-                  )}
+        {/* Алдаа гарсан салбарын жагсаалт */}
+        {failed.length > 0 && (
+          <details className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+            <summary className="cursor-pointer font-semibold text-amber-600">
+              Алдаа гарсан салбар ({failed.length})
+            </summary>
+            <ul className="mt-2 space-y-1 text-xs">
+              {failed.map((f) => (
+                <li key={f.branchId}>
+                  · <b>{f.branchId}</b> — {f.error}
                 </li>
               ))}
             </ul>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+          </details>
+        )}
 
-// ── Indicator settings modal (Oracle query / scale) ─────────────────────────
-function IndicatorSettingsModal({
-  indicators,
-  onClose,
-  onSaved,
-}: {
-  indicators: RiskIndicator[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  type Edit = { oracleQuery: string; scoreScale: string; weight: string };
-  const initial: Record<string, Edit> = {};
-  indicators.forEach((i) => {
-    initial[i.id] = {
-      oracleQuery: i.oracleQuery ?? "",
-      scoreScale: (i.scoreScale ?? 1).toString(),
-      weight: (i.weight ?? 0).toString(),
-    };
-  });
-  const [edits, setEdits] = useState<Record<string, Edit>>(initial);
-  const [saving, setSaving] = useState<string | null>(null);
-
-  const update = (id: string, field: keyof Edit, value: string) => {
-    setEdits((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
-  };
-
-  const save = async (ind: RiskIndicator) => {
-    setSaving(ind.id);
-    const e = edits[ind.id];
-    try {
-      await riskApi.updateIndicator(ind.id, {
-        oracleQuery: e.oracleQuery,
-        scoreScale: Number(e.scoreScale) || 1,
-        weight: Number(e.weight) || 0,
-      });
-      onSaved();
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border rounded-xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold">Индикаторын тохиргоо</h3>
-            <p className="text-xs text-muted-foreground">
-              Oracle SELECT нь <code>BRANCH_ID, BRANCH_NAME, RAW_VALUE</code>{" "}
-              баганатай байх ёстой. Bind: <code>:1</code>=period (YYYY-MM),{" "}
-              <code>:2</code>=period_start, <code>:3</code>=period_end.
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-accent"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="overflow-y-auto p-3 space-y-3">
-          {indicators.map((ind) => {
-            const e = edits[ind.id];
-            return (
-              <div
-                key={ind.id}
-                className="rounded-lg border border-border bg-background p-3"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold">
-                    {ind.name}{" "}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                      {ind.code}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => save(ind)}
-                    disabled={saving === ind.id}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {saving === ind.id ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Save className="w-3 h-3" />
-                    )}
-                    Хадгалах
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground">
-                      Жин (0..1)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      max={1}
-                      value={e.weight}
-                      onChange={(ev) => update(ind.id, "weight", ev.target.value)}
-                      className="w-full px-2 py-1 rounded-md border border-border bg-background text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">
-                      Score scale (raw × scale → score 0..100)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={e.scoreScale}
-                      onChange={(ev) =>
-                        update(ind.id, "scoreScale", ev.target.value)
-                      }
-                      className="w-full px-2 py-1 rounded-md border border-border bg-background text-sm"
-                    />
-                  </div>
-                </div>
-                <label className="text-xs text-muted-foreground">
-                  Oracle SELECT (хоосон бол алгасна)
-                </label>
-                <textarea
-                  rows={4}
-                  value={e.oracleQuery}
-                  onChange={(ev) =>
-                    update(ind.id, "oracleQuery", ev.target.value)
-                  }
-                  placeholder={`SELECT BRANCH_ID, BRANCH_NAME, COUNT(*) AS RAW_VALUE\nFROM DATA_ANALYST.SOME_TABLE\nWHERE H_TRAN_DATE >= :2 AND H_TRAN_DATE < :3\nGROUP BY BRANCH_ID, BRANCH_NAME`}
-                  className="w-full px-2 py-1 rounded-md border border-border bg-background text-xs font-mono"
+        {/* Салбар бүлэг */}
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold">
+              Үнэлгээний дэлгэрэнгүй (
+              {viewMode === "grouped"
+                ? `${grouped.length} салбар`
+                : `${filteredRows.length} мөр`}
+              )
+            </h2>
+            <div className="flex items-center gap-2">
+              {/* Хайлт */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Хайх..."
+                  className="pl-7 pr-2 py-1.5 rounded-lg border border-border bg-background text-xs w-44"
                 />
               </div>
-            );
-          })}
+              {/* View toggle */}
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  onClick={() => setViewMode("grouped")}
+                  className={`px-2 py-1.5 text-xs flex items-center gap-1 ${
+                    viewMode === "grouped"
+                      ? "bg-blue-500/10 text-blue-600"
+                      : "hover:bg-accent/40"
+                  }`}
+                  title="Салбараар бүлэглэх"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  Бүлэг
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`px-2 py-1.5 text-xs flex items-center gap-1 border-l border-border ${
+                    viewMode === "table"
+                      ? "bg-blue-500/10 text-blue-600"
+                      : "hover:bg-accent/40"
+                  }`}
+                  title="Бүх багана"
+                >
+                  <TableIcon className="w-3.5 h-3.5" />
+                  Хүснэгт
+                </button>
+              </div>
+              {/* CSV */}
+              <button
+                onClick={downloadCsv}
+                disabled={filteredRows.length === 0}
+                className="px-2 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-xs flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="CSV файл татах"
+              >
+                <Download className="w-3.5 h-3.5" />
+                CSV
+              </button>
+            </div>
+          </div>
+          {filteredRows.length === 0 ? (
+            <div className="px-4 py-12 text-center text-muted-foreground">
+              <Database className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              {!hasFetched ? (
+                <>
+                  <div>Огноогоо оруулаад «Татах» товчийг дарна уу</div>
+                  <div className="text-xs mt-1 opacity-60">
+                    Эхлэх ба дуусах огноо (YYYY-MM-DD) оруулсны дараа Oracle-аас
+                    үнэлгээг ачаална
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>Oracle-аас өгөгдөл олдсонгүй</div>
+                  <div className="text-xs mt-1 opacity-60">
+                    Огнооны муж эсвэл салбарын ID-г шалгана уу
+                  </div>
+                </>
+              )}
+            </div>
+          ) : viewMode === "table" ? (
+            // ── Бүх 12 баганатай хүснэгт ──────────────────────────────────
+            <div className="overflow-x-auto max-h-[70vh]">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="px-2 py-2 text-left">SOLID</th>
+                    <th className="px-2 py-2 text-left">BRANCHNAME</th>
+                    <th className="px-2 py-2 text-left">BRANCHID</th>
+                    <th className="px-2 py-2 text-left">PARENT</th>
+                    <th className="px-2 py-2 text-right">RESULT</th>
+                    <th className="px-2 py-2 text-center">TYPE</th>
+                    <th className="px-2 py-2 text-left">DESCRIPTION</th>
+                    <th className="px-2 py-2 text-center whitespace-nowrap">P_DATEBEG</th>
+                    <th className="px-2 py-2 text-center whitespace-nowrap">P_DATE</th>
+                    <th className="px-2 py-2 text-left">ID</th>
+                    <th className="px-2 py-2 text-center">SUBID</th>
+                    <th className="px-2 py-2 text-left">OP_TYPE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((r, i) => (
+                    <tr
+                      key={`${r.BRANCHID}-${r.SUBID}-${i}`}
+                      className="border-t border-border hover:bg-accent/30"
+                    >
+                      <td className="px-2 py-1.5 tabular-nums">{r.SOLID}</td>
+                      <td className="px-2 py-1.5 font-medium">{r.BRANCHNAME}</td>
+                      <td className="px-2 py-1.5 tabular-nums">{r.BRANCHID}</td>
+                      <td className="px-2 py-1.5 text-muted-foreground">{r.PARENTBRANCH}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums font-medium">{r.RESULT}</td>
+                      <td className="px-2 py-1.5 text-center text-[10px] text-muted-foreground">{r.RESULT_TYPE}</td>
+                      <td className="px-2 py-1.5 max-w-md truncate" title={r.DESCRIPTION_TEXT}>{r.DESCRIPTION_TEXT}</td>
+                      <td className="px-2 py-1.5 text-center text-muted-foreground tabular-nums whitespace-nowrap">{r.P_DATEBEG}</td>
+                      <td className="px-2 py-1.5 text-center text-muted-foreground tabular-nums whitespace-nowrap">{r.P_DATE}</td>
+                      <td className="px-2 py-1.5 max-w-xs truncate" title={r.ID}>{r.ID}</td>
+                      <td className="px-2 py-1.5 text-center tabular-nums">{r.SUBID}</td>
+                      <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{r.OPERATION_TYPE}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {grouped.map((g) => {
+                const key = g.branchId || g.solid;
+                const isOpen = expanded.has(key);
+                return (
+                  <div key={key}>
+                    <button
+                      onClick={() => toggle(key)}
+                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-accent/40 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        {isOpen ? (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        )}
+                        <span className="font-medium">{g.branchName}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          ID {g.branchId}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {g.rows.length} үнэлгээ
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="overflow-x-auto bg-background/50">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/40 text-[10px] uppercase text-muted-foreground">
+                            <tr>
+                              <th className="px-2 py-1.5 text-left">SOLID</th>
+                              <th className="px-2 py-1.5 text-left">BRANCHNAME</th>
+                              <th className="px-2 py-1.5 text-left">BRANCHID</th>
+                              <th className="px-2 py-1.5 text-left">PARENT</th>
+                              <th className="px-2 py-1.5 text-right">RESULT</th>
+                              <th className="px-2 py-1.5 text-center">TYPE</th>
+                              <th className="px-2 py-1.5 text-left">DESCRIPTION</th>
+                              <th className="px-2 py-1.5 text-center whitespace-nowrap">P_DATEBEG</th>
+                              <th className="px-2 py-1.5 text-center whitespace-nowrap">P_DATE</th>
+                              <th className="px-2 py-1.5 text-left">ID</th>
+                              <th className="px-2 py-1.5 text-center">SUBID</th>
+                              <th className="px-2 py-1.5 text-left">OP_TYPE</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...g.rows]
+                              .sort(
+                                (a, b) =>
+                                  Number(a.SUBID ?? 0) - Number(b.SUBID ?? 0),
+                              )
+                              .map((r, i) => (
+                                <tr
+                                  key={`${r.SUBID}-${i}`}
+                                  className="border-t border-border hover:bg-accent/30"
+                                >
+                                  <td className="px-2 py-1.5 tabular-nums">{r.SOLID}</td>
+                                  <td className="px-2 py-1.5 font-medium">{r.BRANCHNAME}</td>
+                                  <td className="px-2 py-1.5 tabular-nums">{r.BRANCHID}</td>
+                                  <td className="px-2 py-1.5 text-muted-foreground">{r.PARENTBRANCH}</td>
+                                  <td className="px-2 py-1.5 text-right tabular-nums font-medium">{r.RESULT}</td>
+                                  <td className="px-2 py-1.5 text-center text-[10px] text-muted-foreground">{r.RESULT_TYPE}</td>
+                                  <td className="px-2 py-1.5 max-w-md truncate" title={r.DESCRIPTION_TEXT}>{r.DESCRIPTION_TEXT}</td>
+                                  <td className="px-2 py-1.5 text-center text-muted-foreground tabular-nums whitespace-nowrap">{r.P_DATEBEG}</td>
+                                  <td className="px-2 py-1.5 text-center text-muted-foreground tabular-nums whitespace-nowrap">{r.P_DATE}</td>
+                                  <td className="px-2 py-1.5 max-w-xs truncate" title={r.ID}>{r.ID}</td>
+                                  <td className="px-2 py-1.5 text-center tabular-nums">{r.SUBID}</td>
+                                  <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{r.OPERATION_TYPE}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-slate-500 text-xs py-6">
+          {user?.name && (
+            <>
+              <span>{user.name}</span>
+              {" · "}
+            </>
+          )}
+          {(user as any)?.department ?? ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  cls,
+  small,
+}: {
+  label: string;
+  value: string;
+  cls: string;
+  small?: boolean;
+}) {
+  return (
+    <div className={`rounded-xl border bg-gradient-to-br p-4 ${cls}`}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div
+        className={`${small ? "text-sm" : "text-2xl"} font-bold mt-1 tabular-nums`}
+      >
+        {value}
       </div>
     </div>
   );

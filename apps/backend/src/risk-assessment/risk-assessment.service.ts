@@ -8,12 +8,6 @@ import { randomUUID } from "crypto";
 import * as oracledb from "oracledb";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { OracleService } from "../oracle/oracle.service";
-import {
-  SQL_BRANCH_RISKASS,
-  SQL_LAST_AUDIT_DATE,
-  SQL_AVG_FOLLOWUP_ADD,
-  SQL_AVG_FOLLOWUP_RESULT,
-} from "./branch-riskass.sql";
 
 export interface RiskIndicator {
   id: string;
@@ -456,12 +450,34 @@ export class RiskAssessmentService implements OnModuleInit {
     }
 
     const { startDate, endDate } = this.periodRange(period);
-    const indicators = (await this.listIndicators()).filter(
+    const allIndicators = await this.listIndicators();
+    const indicators = allIndicators.filter(
       (i) =>
         (i.sourceType === "auto" || i.sourceType === "hybrid") &&
         i.oracleQuery &&
         i.oracleQuery.trim().length > 0,
     );
+
+    this.logger.log(
+      `[syncFromOracle] period=${period} range=${startDate.toISOString()}..${endDate.toISOString()} ` +
+        `totalIndicators=${allIndicators.length} eligible=${indicators.length}`,
+    );
+    if (indicators.length === 0) {
+      const reasons = allIndicators.map((i) => {
+        if (i.sourceType !== "auto" && i.sourceType !== "hybrid")
+          return `${i.code}: sourceType=${i.sourceType} (manual)`;
+        if (!i.oracleQuery || !i.oracleQuery.trim())
+          return `${i.code}: oracleQuery хоосон`;
+        return `${i.code}: OK`;
+      });
+      this.logger.warn(
+        `[syncFromOracle] Татах индикатор олдсонгүй. Шалтгаан:\n  - ${reasons.join("\n  - ")}`,
+      );
+    } else {
+      this.logger.log(
+        `[syncFromOracle] Eligible indicators: ${indicators.map((i) => i.code).join(", ")}`,
+      );
+    }
 
     // Cache: existing manual rows for the period
     const existing = await this.clickhouse.query<{
@@ -494,17 +510,31 @@ export class RiskAssessmentService implements OnModuleInit {
 
     for (const ind of indicators) {
       try {
+        this.logger.log(
+          `[syncFromOracle] ${ind.code} → query ажиллуулж байна... (binds: period=${period}, start=${startDate.toISOString()}, end=${endDate.toISOString()})`,
+        );
         const rows = await this.oracle.query<{
           BRANCH_ID: string | number;
           BRANCH_NAME: string;
           RAW_VALUE: number | null;
         }>(ind.oracleQuery!, [period, startDate, endDate]);
 
+        this.logger.log(
+          `[syncFromOracle] ${ind.code} → Oracle буцаасан мөр: ${rows.length}` +
+            (rows.length > 0
+              ? ` (sample: ${JSON.stringify(rows[0])})`
+              : " (хоосон үр дүн)"),
+        );
+
         let inserted = 0;
+        let skippedNoBranch = 0;
         for (const r of rows) {
           const branchId = String(r.BRANCH_ID ?? "").trim();
           const branchName = String(r.BRANCH_NAME ?? "").trim();
-          if (!branchId) continue;
+          if (!branchId) {
+            skippedNoBranch++;
+            continue;
+          }
 
           const key = `${branchId}::${ind.id}`;
           if (manualSet.has(key)) {
@@ -533,6 +563,15 @@ export class RiskAssessmentService implements OnModuleInit {
           inserted++;
         }
 
+        if (skippedNoBranch > 0) {
+          this.logger.warn(
+            `[syncFromOracle] ${ind.code} → ${skippedNoBranch} мөр BRANCH_ID хоосон тул алгассан`,
+          );
+        }
+        this.logger.log(
+          `[syncFromOracle] ${ind.code} → upserted=${inserted}`,
+        );
+
         result.upserted += inserted;
         result.perIndicator.push({
           code: ind.code,
@@ -541,7 +580,7 @@ export class RiskAssessmentService implements OnModuleInit {
         });
       } catch (e: any) {
         this.logger.error(
-          `Oracle sync failed for ${ind.code}: ${e.message}`,
+          `[syncFromOracle] ${ind.code} FAILED: ${e.message}\nQuery:\n${ind.oracleQuery}`,
         );
         result.ok = false;
         result.perIndicator.push({
@@ -553,6 +592,9 @@ export class RiskAssessmentService implements OnModuleInit {
       }
     }
 
+    this.logger.log(
+      `[syncFromOracle] DONE period=${period} upserted=${result.upserted} skippedManual=${result.skippedManual} ok=${result.ok}`,
+    );
     return result;
   }
 
@@ -621,82 +663,64 @@ export class RiskAssessmentService implements OnModuleInit {
     const failed: { branchId: number; error: string }[] = [];
     const allRows: any[] = [];
     const seen = new Set<string>(); // dedup like pandas .drop_duplicates()
+    let firstError: string | null = null;
 
-    for (const branchId of ids) {
-      try {
-        // Procedure-ийн PL/SQL хувьсагчуудыг урьдчилан тооцоолно
-        // (хэрэглэгчийн Oracle account дээр EXECUTE эрх байхгүй тул)
-        const lastAuditRes = await this.oracle.query<{ V: any }>(
-          SQL_LAST_AUDIT_DATE,
-          { p_SOLIDINPUT: branchId },
-        );
-        const vLastAuditDate: Date | null =
-          (lastAuditRes[0]?.V as Date | null | undefined) ?? null;
-
-        let vAvgFollowupAddTotal: number | null = null;
-        let vAvgPercent: number | null = null;
-        let vAvgFollowupResultTotal: number | null = null;
-
-        if (vLastAuditDate) {
-          const addRes = await this.oracle.query<{ V: number | null }>(
-            SQL_AVG_FOLLOWUP_ADD,
-            { p_SOLIDINPUT: branchId, v_lastAuditDate: vLastAuditDate },
+    // Параллел дуудна (Oracle pool poolMax=10 тул 8-аар хязгаарлав)
+    const CONCURRENCY = 8;
+    const t0 = Date.now();
+    let cursor = 0;
+    const worker = async () => {
+      while (true) {
+        const i = cursor++;
+        if (i >= ids.length) return;
+        const branchId = ids[i];
+        try {
+          const rows = await this.oracle.callRefCursorProc<any>(
+            "RISKASSESSMENT.BRANCHRISKASS",
+            [branchId, pDate, pDateBeg],
+            ["RISKASSESSMENT.BRANCHRISKASS"],
           );
-          vAvgFollowupAddTotal = (addRes[0]?.V as number | null) ?? null;
-
-          const resRes = await this.oracle.query<{
-            PCT: number | null;
-            TOT: number | null;
-          }>(SQL_AVG_FOLLOWUP_RESULT, {
-            p_SOLIDINPUT: branchId,
-            v_lastAuditDate: vLastAuditDate,
-          });
-          vAvgPercent = (resRes[0]?.PCT as number | null) ?? null;
-          vAvgFollowupResultTotal = (resRes[0]?.TOT as number | null) ?? null;
+          for (const r of rows) {
+            const norm = {
+              ...r,
+              P_DATEBEG: this.toYmd(r.P_DATEBEG ?? r.p_DATEBEG ?? r.BEGINDATE),
+              P_DATE: this.toYmd(r.P_DATE ?? r.p_DATE ?? r.ENDDATE),
+            };
+            const key = [
+              norm.SOLID,
+              norm.BRANCHID,
+              norm.SUBID,
+              norm.RESULT,
+              norm.DESCRIPTION_TEXT,
+            ].join("||");
+            if (seen.has(key)) continue;
+            seen.add(key);
+            allRows.push(norm);
+          }
+        } catch (e: any) {
+          const msg = e?.message || String(e);
+          if (!firstError) firstError = msg;
+          this.logger.warn(
+            `BranchRiskass failed for branchId=${branchId}: ${msg}`,
+          );
+          failed.push({ branchId, error: msg });
         }
-
-        const rows = await this.oracle.query<any>(SQL_BRANCH_RISKASS, {
-          p_SOLIDINPUT: branchId,
-          p_DATE: pDate,
-          p_DATEBEG: pDateBeg,
-          v_lastAuditDate:
-            vLastAuditDate ??
-            ({ val: null, type: oracledb.DB_TYPE_DATE } as any),
-          v_avgFollowupAddTotal:
-            vAvgFollowupAddTotal ??
-            ({ val: null, type: oracledb.DB_TYPE_NUMBER } as any),
-          v_avgPercent:
-            vAvgPercent ??
-            ({ val: null, type: oracledb.DB_TYPE_NUMBER } as any),
-          v_avgFollowupResultTotal:
-            vAvgFollowupResultTotal ??
-            ({ val: null, type: oracledb.DB_TYPE_NUMBER } as any),
-        });
-        for (const r of rows) {
-          // Oracle returns DATEs as JS Date — normalize to YYYY-MM-DD
-          const norm = {
-            ...r,
-            P_DATEBEG: this.toYmd(r.P_DATEBEG ?? r.p_DATEBEG),
-            P_DATE: this.toYmd(r.P_DATE ?? r.p_DATE),
-          };
-          const key = [
-            norm.SOLID,
-            norm.BRANCHID,
-            norm.SUBID,
-            norm.RESULT,
-            norm.DESCRIPTION_TEXT,
-          ].join("||");
-          if (seen.has(key)) continue;
-          seen.add(key);
-          allRows.push(norm);
-        }
-      } catch (e: any) {
-        const msg = e?.message || String(e);
-        this.logger.warn(
-          `BranchRiskass failed for branchId=${branchId}: ${msg}`,
-        );
-        failed.push({ branchId, error: msg });
       }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker()),
+    );
+    const elapsedMs = Date.now() - t0;
+    this.logger.log(
+      `BranchRiskass DONE: ${ids.length} салбар, ${allRows.length} мөр, ` +
+        `${failed.length} алдаа, ${(elapsedMs / 1000).toFixed(1)}s ` +
+        `(p_DATE=${pDate.toString()}, p_DATEBEG=${pDateBeg.toString()})`,
+    );
+
+    if (allRows.length === 0 && firstError) {
+      this.logger.error(
+        `BranchRiskass бүх салбар алдажээ. Анхны алдаа: ${firstError}`,
+      );
     }
 
     return {
@@ -712,9 +736,9 @@ export class RiskAssessmentService implements OnModuleInit {
   private parseYmd(s: string): Date {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s ?? "");
     if (!m) throw new Error(`Огноо буруу формат (YYYY-MM-DD шаардлагатай): ${s}`);
-    return new Date(
-      Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0),
-    );
+    // Python cx_Oracle.Timestamp шиг локал TZ-аар үүсгэнэ (UTC биш) —
+    // Oracle сервер локал time-аар TDATE хадгалдаг тул өдрийн шилжилтээс зайлсхийнэ.
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0);
   }
 
   private toYmd(d: any): string {

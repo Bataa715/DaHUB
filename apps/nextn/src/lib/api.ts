@@ -1049,6 +1049,36 @@ export const riskApi = {
     );
     return res.data;
   },
+
+  /** RISKASSESSMENT.BranchRiskass procedure-ийн үр дүн (35 SUBID × салбар) */
+  branchRiskass: async (args: {
+    pDate: string; // 'YYYY-MM-DD'
+    pDateBeg: string; // 'YYYY-MM-DD'
+    branchIds?: number[];
+  }): Promise<{
+    pDate: string;
+    pDateBeg: string;
+    branchCount: number;
+    rowCount: number;
+    failed: { branchId: number; error: string }[];
+    rows: Array<{
+      SOLID: number | string;
+      BRANCHNAME: string;
+      BRANCHID: string;
+      PARENTBRANCH: string;
+      RESULT: string;
+      RESULT_TYPE: string;
+      DESCRIPTION_TEXT: string;
+      P_DATEBEG: string;
+      P_DATE: string;
+      ID: string;
+      SUBID: string;
+      OPERATION_TYPE: string;
+    }>;
+  }> => {
+    const res = await api.post(`/risk-assessment/branch-riskass`, args);
+    return res.data;
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

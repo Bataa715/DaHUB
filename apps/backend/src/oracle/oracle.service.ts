@@ -50,7 +50,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
         password,
         connectString,
         poolMin: 0,
-        poolMax: 5,
+        poolMax: 10,
         poolIncrement: 1,
         poolTimeout: 60,
         connectTimeout: 10,
@@ -92,7 +92,11 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       throw new Error("Oracle холболт тохируулагдаагүй байна");
     }
 
-    const trimmed = sql.replace(/\s+/g, " ").trim();
+    // Эхлээд SQL comment-уудыг арилгана: -- мөрийн төгсгөл хүртэл, /* ... */ блок
+    const noComments = sql
+      .replace(/--[^\n]*/g, " ")
+      .replace(/\/\*[\s\S]*?\*\//g, " ");
+    const trimmed = noComments.replace(/\s+/g, " ").trim();
 
     const startsWithSelect = /^(WITH\s+|SELECT\s)/i.test(trimmed);
     if (!startsWithSelect) {
