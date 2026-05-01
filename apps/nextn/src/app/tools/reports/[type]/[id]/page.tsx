@@ -57,6 +57,7 @@ export default function ReportDetailPage() {
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [downloadError, setDownloadError] = useState("");
   const downloadAbortRef = useRef<AbortController | null>(null);
+  const previewAbortRef = useRef<AbortController | null>(null);
   const [preview, setPreview] = useState<PreviewState>({
     status: "idle",
     columns: [],
@@ -161,12 +162,21 @@ export default function ReportDetailPage() {
     downloadAbortRef.current?.abort();
   };
 
+  const handleCancelPreview = () => {
+    previewAbortRef.current?.abort();
+  };
+
   const handlePreview = async () => {
     if (!item) return;
     if (dateMode === "range" && (!startDate || !endDate))
       return toast({ title: "Огноо оруулна уу", variant: "destructive" });
     if (dateMode === "single" && !startDate)
       return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+
+    // Өмнөх preview ажиллаж байвал болиулна
+    previewAbortRef.current?.abort();
+    const controller = new AbortController();
+    previewAbortRef.current = controller;
 
     setPreview({ status: "loading", columns: [], rows: [], totalCount: 0 });
     try {
@@ -175,9 +185,19 @@ export default function ReportDetailPage() {
         dateMode !== "none" ? startDate : undefined,
         dateMode === "range" ? endDate : undefined,
         filterValues,
+        controller.signal,
       );
       setPreview({ status: "done", ...data });
     } catch (e: any) {
+      if (
+        controller.signal.aborted ||
+        e?.name === "CanceledError" ||
+        e?.code === "ERR_CANCELED"
+      ) {
+        setPreview({ status: "idle", columns: [], rows: [], totalCount: 0 });
+        toast({ title: "Preview-г зогсооллоо" });
+        return;
+      }
       setPreview({
         status: "error",
         columns: [],
@@ -185,6 +205,8 @@ export default function ReportDetailPage() {
         totalCount: 0,
         error: e?.response?.data?.message ?? e?.message ?? "Preview алдаа",
       });
+    } finally {
+      if (previewAbortRef.current === controller) previewAbortRef.current = null;
     }
   };
 
@@ -332,9 +354,21 @@ export default function ReportDetailPage() {
 
               <div className="border-t border-white/[0.06]" />
               <div className="flex gap-2">
-                <button onClick={handlePreview} disabled={downloading || previewLoading} className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 hover:border-white/20 transition-all disabled:opacity-40 font-medium">
-                  {previewLoading ? "..." : "Preview"}
-                </button>
+                {previewLoading ? (
+                  <button
+                    type="button"
+                    onClick={handleCancelPreview}
+                    className="px-4 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold transition-all flex items-center gap-1.5"
+                    title="Preview-г зогсоох"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Зогсоох
+                  </button>
+                ) : (
+                  <button onClick={handlePreview} disabled={downloading} className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 hover:border-white/20 transition-all disabled:opacity-40 font-medium">
+                    Preview
+                  </button>
+                )}
                 {downloading ? (
                   <button
                     type="button"

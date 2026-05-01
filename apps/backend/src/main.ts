@@ -11,15 +11,12 @@ import helmet from "helmet";
 // or fail mysteriously) when deployed without proper configuration.
 function validateProductionEnv() {
   if (process.env.NODE_ENV !== "production") return;
-  const required = [
-    "PYTHON_SERVICE_URL",
-    "CLICKHOUSE_EXTERNAL_HOST",
-    "CLICKHOUSE_EXTERNAL_PORT",
-    "CLICKHOUSE_PLAY_URL",
-    "JWT_SECRET",
-    "CORS_ORIGINS",
-  ];
+  // PYTHON_SERVICE_URL or PYTHON_API_URL (accepts either of the two names)
+  const hasPython =
+    !!process.env.PYTHON_SERVICE_URL || !!process.env.PYTHON_API_URL;
+  const required = ["CLICKHOUSE_HOST", "JWT_SECRET", "CORS_ORIGINS"];
   const missing = required.filter((k) => !process.env[k]);
+  if (!hasPython) missing.unshift("PYTHON_SERVICE_URL (or PYTHON_API_URL)");
   if (missing.length > 0) {
     throw new Error(
       `Production startup blocked: missing required environment variables: ${missing.join(", ")}`,
@@ -27,7 +24,7 @@ function validateProductionEnv() {
   }
   // Warn if any of them still point at localhost (deployment misconfig)
   const localish = /(localhost|127\.0\.0\.1)/i;
-  for (const key of ["PYTHON_SERVICE_URL", "CLICKHOUSE_EXTERNAL_HOST", "CLICKHOUSE_PLAY_URL"]) {
+  for (const key of ["PYTHON_SERVICE_URL", "PYTHON_API_URL", "CLICKHOUSE_HOST"]) {
     const v = process.env[key];
     if (v && localish.test(v)) {
       // eslint-disable-next-line no-console

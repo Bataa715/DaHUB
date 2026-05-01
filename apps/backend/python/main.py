@@ -79,42 +79,63 @@ _EXEC_TIMEOUT_SEC = int(os.environ.get("PYTHON_EXEC_TIMEOUT", "0"))
 _PYTHON_API_KEY = os.environ.get("PYTHON_API_KEY", "")
 
 
-# ── ClickHouse singleton ──────────────────────────────────────────────────────
+# ── ClickHouse client (per-thread) ────────────────────────────────────────────
+# clickhouse_connect.Client нь session-тэй: нэг client дээр хоёр thread зэрэг
+# query явуулбал "concurrent queries within the same session" алдаа гарна.
+# Тиймээс thread бүрд тусдаа client үүсгэнэ.
 
-_ch_client: Any = None
-_ch_lock = threading.Lock()
+_ch_local = threading.local()
+_ch_clients: list = []  # бүх thread-ийн client-уудыг shutdown-д хаах
+_ch_clients_lock = threading.Lock()
+
+
+def _new_ch_client() -> Any:
+    raw_host = os.environ.get("CLICKHOUSE_HOST", "localhost")
+    host = (
+        raw_host.replace("https://", "")
+        .replace("http://", "")
+        .split(":")[0]
+        .strip()
+    )
+    # Port: CLICKHOUSE_PORT > CLICKHOUSE_HOST URL-ээс salgah > 8123
+    port_env = os.environ.get("CLICKHOUSE_PORT")
+    if port_env:
+        port = int(port_env)
+    else:
+        m = re.search(r":(\d+)(?:/|$)", raw_host)
+        port = int(m.group(1)) if m else 8123
+    return clickhouse_connect.get_client(
+        host=host,
+        port=port,
+        username=os.environ.get("CLICKHOUSE_USER", "default"),
+        password=os.environ.get("CLICKHOUSE_PASSWORD", ""),
+        database=os.environ.get("CLICKHOUSE_DATABASE", "audit_db"),
+        compress=True,
+        connect_timeout=10,
+        send_receive_timeout=600,
+    )
 
 
 def _get_ch_client() -> Any:
-    """ClickHouse client-ийг нэг удаа үүсгэж дахин ашиглана. Тасарвал дахин холбоно."""
-    global _ch_client
-    with _ch_lock:
-        if _ch_client is not None:
+    """Thread-local ClickHouse client. Thread бүрд тусдаа session."""
+    client = getattr(_ch_local, "client", None)
+    if client is not None:
+        try:
+            client.ping()
+            return client
+        except Exception:
+            logger.warning("ClickHouse ping амжилтгүй — thread-local client-ыг дахин үүсгэнэ")
             try:
-                _ch_client.ping()
-                return _ch_client
+                client.close()
             except Exception:
-                logger.warning("ClickHouse ping амжилтгүй — дахин холбоно")
-                _ch_client = None
+                pass
+            _ch_local.client = None
 
-        raw_host = os.environ.get("CLICKHOUSE_HOST", "localhost")
-        host = (
-            raw_host.replace("https://", "")
-            .replace("http://", "")
-            .split(":")[0]
-            .strip()
-        )
-        _ch_client = clickhouse_connect.get_client(
-            host=host,
-            port=int(os.environ.get("CLICKHOUSE_PORT", "8123")),
-            username=os.environ.get("CLICKHOUSE_USER", "default"),
-            password=os.environ.get("CLICKHOUSE_PASSWORD", ""),
-            database=os.environ.get("CLICKHOUSE_DATABASE", "audit_db"),
-            compress=True,
-            connect_timeout=10,
-            send_receive_timeout=600,
-        )
-        return _ch_client
+    new_client = _new_ch_client()
+    _ch_local.client = new_client
+    with _ch_clients_lock:
+        _ch_clients.append(new_client)
+    return new_client
 
 
 # ── Oracle helpers ────────────────────────────────────────────────────────────
@@ -364,15 +385,14 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    global _ch_client
-    with _ch_lock:
-        if _ch_client is not None:
+    with _ch_clients_lock:
+        for c in _ch_clients:
             try:
-                _ch_client.close()
-                logger.info("ClickHouse холболт хаалаа")
+                c.close()
             except Exception:
                 pass
-            _ch_client = None
+        _ch_clients.clear()
+    logger.info("Бүх ClickHouse client хаагдлаа")
 
 
 app = FastAPI(

@@ -86,7 +86,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
 
   async query<T = Record<string, any>>(
     sql: string,
-    params: any[] = [],
+    params: any[] | Record<string, any> = [],
   ): Promise<T[]> {
     if (!this.pool) {
       throw new Error("Oracle холболт тохируулагдаагүй байна");
@@ -134,7 +134,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
 
     const conn = await this.pool.getConnection();
     try {
-      const result = await conn.execute(sql, params, {
+      const result = await conn.execute(sql, params as any, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
         fetchArraySize: 1000,
       });

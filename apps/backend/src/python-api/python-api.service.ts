@@ -44,7 +44,9 @@ export class PythonApiService implements OnModuleInit {
   private readonly logger = new Logger(PythonApiService.name);
 
   private readonly pythonServiceUrl =
-    process.env.PYTHON_SERVICE_URL ?? "http://127.0.0.1:8001";
+    process.env.PYTHON_SERVICE_URL ??
+    process.env.PYTHON_API_URL ??
+    "http://127.0.0.1:8001";
 
   private readonly pythonApiKey = process.env.PYTHON_API_KEY ?? "";
 

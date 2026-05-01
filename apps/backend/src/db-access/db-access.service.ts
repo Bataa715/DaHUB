@@ -49,6 +49,39 @@ export class DbAccessService {
     return createHash("sha256").update("db-access:ch-pwd:" + secret).digest();
   })();
 
+  /** Resolve ClickHouse host: prefer CLICKHOUSE_EXTERNAL_HOST, else parse from CLICKHOUSE_HOST URL. */
+  private resolveChHost(): string {
+    if (process.env.CLICKHOUSE_EXTERNAL_HOST) return process.env.CLICKHOUSE_EXTERNAL_HOST;
+    const raw = process.env.CLICKHOUSE_HOST;
+    if (raw) {
+      try {
+        return new URL(raw).hostname || "localhost";
+      } catch {
+        return raw.replace(/^https?:\/\//, "").split(":")[0] || "localhost";
+      }
+    }
+    return "localhost";
+  }
+
+  /** Resolve ClickHouse HTTP port: prefer CLICKHOUSE_EXTERNAL_PORT, else parse from CLICKHOUSE_HOST URL. */
+  private resolveChPort(): number {
+    if (process.env.CLICKHOUSE_EXTERNAL_PORT) {
+      return parseInt(process.env.CLICKHOUSE_EXTERNAL_PORT, 10) || 8123;
+    }
+    const raw = process.env.CLICKHOUSE_HOST;
+    if (raw) {
+      try {
+        const u = new URL(raw);
+        if (u.port) return parseInt(u.port, 10);
+        return u.protocol === "https:" ? 8443 : 8123;
+      } catch {
+        const m = raw.match(/:(\d+)(?:\/|$)/);
+        if (m) return parseInt(m[1], 10);
+      }
+    }
+    return 8123;
+  }
+
   private encryptPwd(plain: string): string {
     if (!plain) return "";
     const iv = randomBytes(12);
@@ -703,9 +736,11 @@ export class DbAccessService {
       })(),
       chPasswordFull: this.decryptPwd(grant.chPassword),
       tableName: grant.tableName,
-      host: process.env.CLICKHOUSE_EXTERNAL_HOST ?? "localhost",
-      port: parseInt(process.env.CLICKHOUSE_EXTERNAL_PORT ?? "8123", 10),
-      playUrl: process.env.CLICKHOUSE_PLAY_URL ?? "http://localhost:8123/play",
+      host: this.resolveChHost(),
+      port: this.resolveChPort(),
+      playUrl:
+        process.env.CLICKHOUSE_PLAY_URL ??
+        `${process.env.CLICKHOUSE_HOST ?? "http://localhost:8123"}/play`,
     };
   }
 

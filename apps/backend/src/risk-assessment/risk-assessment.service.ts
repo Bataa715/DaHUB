@@ -5,8 +5,15 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import * as oracledb from "oracledb";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { OracleService } from "../oracle/oracle.service";
+import {
+  SQL_BRANCH_RISKASS,
+  SQL_LAST_AUDIT_DATE,
+  SQL_AVG_FOLLOWUP_ADD,
+  SQL_AVG_FOLLOWUP_RESULT,
+} from "./branch-riskass.sql";
 
 export interface RiskIndicator {
   id: string;
@@ -574,10 +581,6 @@ export class RiskAssessmentService implements OnModuleInit {
     540, 541, 550, 560, 561, 563, 580, 581, 590, 600, 610, 620, 625, 626,
   ];
 
-  private static readonly ALLOWED_PROCS = [
-    "RISKASSESSMENT.BRANCHRISKASS",
-  ] as const;
-
   async runBranchRiskass(args: {
     pDate: string; // 'YYYY-MM-DD'
     pDateBeg: string; // 'YYYY-MM-DD'
@@ -621,11 +624,54 @@ export class RiskAssessmentService implements OnModuleInit {
 
     for (const branchId of ids) {
       try {
-        const rows = await this.oracle.callRefCursorProc<any>(
-          "RISKASSESSMENT.BranchRiskass",
-          [branchId, pDate, pDateBeg],
-          RiskAssessmentService.ALLOWED_PROCS,
+        // Procedure-ийн PL/SQL хувьсагчуудыг урьдчилан тооцоолно
+        // (хэрэглэгчийн Oracle account дээр EXECUTE эрх байхгүй тул)
+        const lastAuditRes = await this.oracle.query<{ V: any }>(
+          SQL_LAST_AUDIT_DATE,
+          { p_SOLIDINPUT: branchId },
         );
+        const vLastAuditDate: Date | null =
+          (lastAuditRes[0]?.V as Date | null | undefined) ?? null;
+
+        let vAvgFollowupAddTotal: number | null = null;
+        let vAvgPercent: number | null = null;
+        let vAvgFollowupResultTotal: number | null = null;
+
+        if (vLastAuditDate) {
+          const addRes = await this.oracle.query<{ V: number | null }>(
+            SQL_AVG_FOLLOWUP_ADD,
+            { p_SOLIDINPUT: branchId, v_lastAuditDate: vLastAuditDate },
+          );
+          vAvgFollowupAddTotal = (addRes[0]?.V as number | null) ?? null;
+
+          const resRes = await this.oracle.query<{
+            PCT: number | null;
+            TOT: number | null;
+          }>(SQL_AVG_FOLLOWUP_RESULT, {
+            p_SOLIDINPUT: branchId,
+            v_lastAuditDate: vLastAuditDate,
+          });
+          vAvgPercent = (resRes[0]?.PCT as number | null) ?? null;
+          vAvgFollowupResultTotal = (resRes[0]?.TOT as number | null) ?? null;
+        }
+
+        const rows = await this.oracle.query<any>(SQL_BRANCH_RISKASS, {
+          p_SOLIDINPUT: branchId,
+          p_DATE: pDate,
+          p_DATEBEG: pDateBeg,
+          v_lastAuditDate:
+            vLastAuditDate ??
+            ({ val: null, type: oracledb.DB_TYPE_DATE } as any),
+          v_avgFollowupAddTotal:
+            vAvgFollowupAddTotal ??
+            ({ val: null, type: oracledb.DB_TYPE_NUMBER } as any),
+          v_avgPercent:
+            vAvgPercent ??
+            ({ val: null, type: oracledb.DB_TYPE_NUMBER } as any),
+          v_avgFollowupResultTotal:
+            vAvgFollowupResultTotal ??
+            ({ val: null, type: oracledb.DB_TYPE_NUMBER } as any),
+        });
         for (const r of rows) {
           // Oracle returns DATEs as JS Date — normalize to YYYY-MM-DD
           const norm = {

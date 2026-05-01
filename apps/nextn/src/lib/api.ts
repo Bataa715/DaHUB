@@ -810,13 +810,18 @@ export const pythonToolApi = {
     startDate?: string,
     endDate?: string,
     filters?: Record<string, string>,
+    signal?: AbortSignal,
   ): Promise<{ columns: string[]; rows: any[][]; totalCount: number }> => {
-    const res = await api.post("/python-api/preview", {
-      toolId,
-      startDate,
-      endDate,
-      filters,
-    });
+    const res = await api.post(
+      "/python-api/preview",
+      {
+        toolId,
+        startDate,
+        endDate,
+        filters,
+      },
+      { signal },
+    );
     return res.data as { columns: string[]; rows: any[][]; totalCount: number };
   },
 

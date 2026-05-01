@@ -1616,7 +1616,7 @@ export default function WeeklyReportPage() {
             {!isDirector && (
               <>
                 <button
-                  disabled={saving || submitting || status === "submitted"}
+                  disabled={saving || submitting}
                   onClick={() => handleSave(false)}
                   className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted/70 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
@@ -1628,7 +1628,7 @@ export default function WeeklyReportPage() {
                   Хадгалах
                 </button>
                 <button
-                  disabled={saving || submitting || status === "submitted"}
+                  disabled={saving || submitting}
                   onClick={() => handleSave(true)}
                   className="px-3 py-1.5 rounded-md bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium inline-flex items-center gap-1.5 shadow-md shadow-indigo-500/30 disabled:opacity-50"
                 >
@@ -1694,20 +1694,18 @@ export default function WeeklyReportPage() {
             {status === "submitted" && (
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-sm mb-5">
                 <CheckCircle2 className="w-4 h-4" />
-                Энэ долоо хоногийн тайлан илгээгдсэн байна. Засах боломжгүй.
+                Энэ долоо хоногийн тайлан илгээгдсэн байна. Шаардлагатай бол засаж, дахин «Илгээх» дарна уу.
               </div>
             )}
             {roleInfo.role === "audit" ? (
               <AuditEditor
                 data={auditData}
                 onChange={setAuditData}
-                readOnly={status === "submitted"}
               />
             ) : (
               <DaaEditor
                 data={daaData}
                 onChange={setDaaData}
-                readOnly={status === "submitted"}
               />
             )}
             <p className="text-center text-slate-500 text-xs py-6 print:hidden">
