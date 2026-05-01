@@ -7,7 +7,13 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import * as http from "http";
-import { randomUUID } from "crypto";
+import {
+  randomUUID,
+  randomBytes,
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+} from "crypto";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import {
   CreatePythonToolDto,
@@ -28,6 +34,7 @@ export interface PythonApiTool {
   color: string;
   filters: string; // JSON string of FilterDef[]
   isActive: number;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,20 +53,74 @@ export class PythonApiService implements OnModuleInit {
   async onModuleInit() {
     await this.ensureTable();
     await this.ensureRunLogTable();
+    await this.ensurePermissionsTable();
   }
 
-  // connectionConfig plaintext хадгалдаг (admin л хандана)
+  private async ensurePermissionsTable() {
+    try {
+      await this.clickhouse.exec(`
+        CREATE TABLE IF NOT EXISTS excel_report_permissions (
+          userId       String,
+          templateId   String,
+          grantedBy    String,
+          grantedAt    DateTime DEFAULT now()
+        ) ENGINE = MergeTree()
+          ORDER BY (userId, templateId)
+      `);
+    } catch (e) {
+      this.logger.error("excel_report_permissions таблиц үүсгэхэд алдаа:", e);
+    }
+  }
+
+  // [C-3] AES-256-GCM encryption for connectionConfig at rest in ClickHouse.
+  // Key derived from JWT_SECRET via SHA-256 — reuses an already-required secret
+  // so no extra env var is needed. Format: enc:v1:<base64(iv|tag|ciphertext)>
+  private readonly encKey: Buffer = (() => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret || secret.length < 16) {
+      throw new Error(
+        "JWT_SECRET (>=16 chars) is required — it is reused for python-api config encryption",
+      );
+    }
+    return createHash("sha256").update("py-tool-cfg:" + secret).digest();
+  })();
+
   private encryptConfig(plain: string): string {
-    return plain;
+    if (!plain || plain === "{}") return plain;
+    try {
+      const iv = randomBytes(12);
+      const cipher = createCipheriv("aes-256-gcm", this.encKey, iv);
+      const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+      const tag = cipher.getAuthTag();
+      return "enc:v1:" + Buffer.concat([iv, tag, ct]).toString("base64");
+    } catch (e) {
+      this.logger.error("connectionConfig encrypt failed", e);
+      throw new InternalServerErrorException(
+        "Тохиргоо шифрлэхэд алдаа гарлаа",
+      );
+    }
   }
 
   private decryptConfig(value: string): string {
-    // Хуучин enc: форматтай утгуудыг тайлах боломжгүй — хоосноор буцаана
-    if (value.startsWith("enc:")) {
-      this.logger.warn("Хуучин encrypt хийгдсэн connectionConfig олдлоо — admin дахин хадгалах шаардлагатай");
+    if (!value) return "{}";
+    if (!value.startsWith("enc:v1:")) {
+      // Backward-compat: legacy plaintext rows. Re-encrypted on next save.
+      return value;
+    }
+    try {
+      const buf = Buffer.from(value.slice("enc:v1:".length), "base64");
+      const iv = buf.subarray(0, 12);
+      const tag = buf.subarray(12, 28);
+      const ct = buf.subarray(28);
+      const decipher = createDecipheriv("aes-256-gcm", this.encKey, iv);
+      decipher.setAuthTag(tag);
+      return Buffer.concat([decipher.update(ct), decipher.final()]).toString("utf8");
+    } catch (e) {
+      this.logger.warn(
+        "connectionConfig decrypt failed — admin must re-save the tool config",
+      );
       return "{}";
     }
-    return value;
   }
 
   // ── Run log table ─────────────────────────────────────────────────────────
@@ -141,11 +202,18 @@ export class PythonApiService implements OnModuleInit {
           color            String DEFAULT 'from-blue-500 to-cyan-500',
           filters          String DEFAULT '[]',
           isActive         UInt8  DEFAULT 1,
+          sortOrder        Int32  DEFAULT 1000000,
           seq              UInt64,
           createdAt        DateTime DEFAULT now(),
           updatedAt        String DEFAULT ''
         ) ENGINE = MergeTree() ORDER BY (id, seq)
       `);
+      // Backward-compat: add sortOrder if upgrading an older deployment
+      await this.clickhouse
+        .exec(
+          `ALTER TABLE python_api_tools ADD COLUMN IF NOT EXISTS sortOrder Int32 DEFAULT 1000000`,
+        )
+        .catch(() => {});
     } catch (e) {
       this.logger.error("python_api_tools table үүсгэхэд алдаа:", e);
     }
@@ -171,13 +239,14 @@ export class PythonApiService implements OnModuleInit {
            argMax(color, seq)            AS color,
            argMax(filters, seq)          AS filters,
            argMax(isActive, seq)         AS isActive,
+           argMax(sortOrder, seq)        AS sortOrder,
            argMax(updatedAt, seq)        AS updatedAt,
            min(createdAt)               AS createdAt
          FROM python_api_tools
          GROUP BY id
        )
        ${where}
-       ORDER BY createdAt ASC`,
+       ORDER BY sortOrder ASC, createdAt ASC`,
     );
     return raw.map((t) => ({
       ...t,
@@ -200,6 +269,7 @@ export class PythonApiService implements OnModuleInit {
          argMax(color, seq)            AS color,
          argMax(filters, seq)          AS filters,
          argMax(isActive, seq)         AS isActive,
+         argMax(sortOrder, seq)        AS sortOrder,
          argMax(updatedAt, seq)        AS updatedAt,
          min(createdAt)               AS createdAt
        FROM python_api_tools
@@ -291,6 +361,8 @@ export class PythonApiService implements OnModuleInit {
     const id = randomUUID();
     const seq = Date.now();
     const now = nowCH();
+    // [SORT] New tools default to a high sortOrder so they appear at the end
+    // until an admin reorders them; tail-of-list semantics.
     await this.clickhouse.insert("python_api_tools", [
       {
         id,
@@ -305,6 +377,7 @@ export class PythonApiService implements OnModuleInit {
         color: dto.color ?? "from-blue-500 to-cyan-500",
         filters: dto.filters ?? "[]",
         isActive: 1,
+        sortOrder: 1000000,
         seq,
         createdAt: now,
         updatedAt: now,
@@ -337,6 +410,7 @@ export class PythonApiService implements OnModuleInit {
         color: dto.color ?? existing.color,
         filters: dto.filters ?? existing.filters,
         isActive: existing.isActive,
+        sortOrder: existing.sortOrder ?? 1000000,
         seq,
         createdAt: existing.createdAt,
         updatedAt: now,
@@ -355,6 +429,37 @@ export class PythonApiService implements OnModuleInit {
     return this.getToolById(id);
   }
 
+  /** [SORT] Reorder tools. Accepts an array of tool ids in desired display
+   * order; assigns sortOrder = index * 10 to each so subsequent partial
+   * reorders can squeeze items between without rewriting everything.
+   * Tools not present in the list keep their current sortOrder. */
+  async reorderTools(ids: string[]): Promise<void> {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const uniq = Array.from(new Set(ids.filter((s) => typeof s === "string" && s.length > 0)));
+    const now = nowCH();
+    const baseSeq = Date.now();
+    const rows: any[] = [];
+    for (let i = 0; i < uniq.length; i++) {
+      const id = uniq[i];
+      let existing: PythonApiTool;
+      try {
+        existing = await this.getToolById(id);
+      } catch {
+        continue; // skip missing ids silently
+      }
+      rows.push({
+        ...existing,
+        connectionConfig: this.encryptConfig(existing.connectionConfig),
+        sortOrder: i * 10,
+        seq: baseSeq + i,
+        updatedAt: now,
+      });
+    }
+    if (rows.length > 0) {
+      await this.clickhouse.insert("python_api_tools", rows);
+    }
+  }
+
   async deleteTool(id: string): Promise<void> {
     await this.getToolById(id);
     await this.clickhouse.exec(
@@ -365,13 +470,16 @@ export class PythonApiService implements OnModuleInit {
 
   // ── FastAPI proxy helper ──────────────────────────────────────────────────
 
-  private callFastApi(path: string, body: object): Promise<Buffer> {
+  private callFastApi(path: string, body: object, signal?: AbortSignal): Promise<Buffer> {
     const payload = Buffer.from(JSON.stringify(body), "utf-8");
     const url = new URL(path, this.pythonServiceUrl);
     const isHttps = url.protocol === "https:";
     const transport: typeof http = isHttps
       ? (require("https") as typeof http)
       : http;
+
+    // [M-2] Том тайлан хязгааргүй ажиллах боломжтой. 0 = no timeout.
+    const reqTimeoutMs = 0;
 
     return new Promise((resolve, reject) => {
       const req = transport.request(
@@ -408,7 +516,29 @@ export class PythonApiService implements OnModuleInit {
           });
         },
       );
+
+      // Client disconnect/cancel → upstream socket-ийг таслана
+      const onAbort = () => {
+        req.destroy();
+        reject(Object.assign(new Error("Таталтыг зогсоолоо"), { code: "CLIENT_CANCELED" }));
+      };
+      if (signal) {
+        if (signal.aborted) {
+          req.destroy();
+          reject(Object.assign(new Error("Таталтыг зогсоолоо"), { code: "CLIENT_CANCELED" }));
+          return;
+        }
+        signal.addEventListener("abort", onAbort, { once: true });
+      }
+      // [M-2] Hard timeout to prevent hung sockets exhausting the connection pool
+      if (reqTimeoutMs > 0) {
+        req.setTimeout(reqTimeoutMs, () => {
+          req.destroy(new Error(`Python сервис ${reqTimeoutMs}ms timeout`));
+        });
+      }
       req.on("error", (e: Error) => {
+        signal?.removeEventListener("abort", onAbort);
+        if ((e as any).code === "CLIENT_CANCELED" || signal?.aborted) return; // suppress
         this.logger.error(`Python сервис холбогдохд алдаа: ${e.message}`);
         reject(
           new InternalServerErrorException(
@@ -426,6 +556,7 @@ export class PythonApiService implements OnModuleInit {
   async runTool(
     dto: RunToolDto,
     caller?: { userId: string; userName: string; isAdmin: boolean },
+    signal?: AbortSignal,
   ): Promise<{ buffer: Buffer; fileName: string; contentType: string }> {
     const tool = await this.getToolById(dto.toolId);
     if (!tool.isActive) throw new BadRequestException("Tool идэвхгүй байна");
@@ -453,7 +584,7 @@ export class PythonApiService implements OnModuleInit {
       end_date: dto.endDate ?? dto.startDate ?? null,
       filters: dto.filters ?? {},
       output_format: tool.outputFormat ?? "excel",
-    });
+    }, signal);
 
     const date = new Date().toISOString().slice(0, 10);
     const ext = tool.outputFormat === "csv" ? "csv" : "xlsx";
@@ -477,7 +608,12 @@ export class PythonApiService implements OnModuleInit {
 
   async previewTool(
     dto: RunToolDto,
-  ): Promise<{ columns: string[]; rows: any[][]; totalCount: number }> {
+  ): Promise<{
+    columns: string[];
+    rows: any[][];
+    totalCount: number;
+    cacheKey?: string;
+  }> {
     const tool = await this.getToolById(dto.toolId);
     if (!tool.isActive) throw new BadRequestException("Tool идэвхгүй байна");
 
@@ -506,6 +642,7 @@ export class PythonApiService implements OnModuleInit {
       columns: string[];
       rows: any[][];
       totalCount: number;
+      cacheKey?: string;
     };
   }
 }

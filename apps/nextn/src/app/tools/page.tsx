@@ -22,6 +22,8 @@ import {
   Crown,
   BookOpen,
   BellDot,
+  ShieldAlert,
+  CalendarRange,
 } from "lucide-react";
 
 interface Tool {
@@ -171,6 +173,35 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-red-500 to-rose-500",
       glow: "shadow-red-500/20 group-hover:shadow-red-500/40",
       tag: "Audit",
+      category: "work",
+    },
+    {
+      id: "risk_assessment",
+      title: "Эрсдэлийн үнэлгээ",
+      description:
+        "Сар бүрийн эрсдэлийн үнэлгээ — салбаруудын оноо, гар засвар, аудит лог",
+      icon: ShieldAlert,
+      href: "/tools/risk-assessment",
+      gradient: "from-rose-500 to-orange-500",
+      glow: "shadow-rose-500/20 group-hover:shadow-rose-500/40",
+      tag: "Risk",
+      category: "work",
+    },
+    {
+      id: "weekly_report",
+      matchIds: [
+        "weekly_report_audit",
+        "weekly_report_daa",
+        "weekly_report_director",
+      ],
+      title: "Долоо хоногийн тайлан",
+      description:
+        "Хэлтсүүдийн долоо хоногийн ажлын тайлан — бөглөх, илгээх, нэгдсэн харагдац",
+      icon: CalendarRange,
+      href: "/tools/weekly-report",
+      gradient: "from-indigo-500 to-purple-500",
+      glow: "shadow-indigo-500/20 group-hover:shadow-indigo-500/40",
+      tag: "Report",
       category: "work",
     },
   ];

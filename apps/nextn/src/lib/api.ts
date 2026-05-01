@@ -783,12 +783,14 @@ export const pythonToolApi = {
     endDate?: string,
     filters?: Record<string, string>,
     onProgress?: (pct: number) => void,
+    signal?: AbortSignal,
   ): Promise<Blob> => {
     const res = await api.post(
       "/python-api/run",
       { toolId, startDate, endDate, filters },
       {
         responseType: "blob",
+        signal,
         onDownloadProgress: (e) => {
           if (!onProgress) return;
           const pct =
@@ -873,6 +875,10 @@ export const pythonToolApi = {
     await api.delete(`/python-api/admin/tools/${id}`);
   },
 
+  adminReorder: async (ids: string[]): Promise<void> => {
+    await api.post("/python-api/admin/tools/reorder", { ids });
+  },
+
   // ── Permissions ────────────────────────────────────────────────────────────
 
   adminGetPermissions: async (): Promise<
@@ -910,3 +916,247 @@ export const pythonToolApi = {
     return res.data;
   },
 };
+
+// ── Risk Assessment ─────────────────────────────────────────────────────────
+
+export interface RiskIndicator {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  weight: number;
+  sourceType: "auto" | "manual" | "hybrid";
+  unit: string;
+  isActive: number;
+  createdAt: string;
+  oracleQuery?: string;
+  scoreScale?: number;
+}
+
+export interface RiskScore {
+  id: string;
+  period: string;
+  branchId: string;
+  branchName: string;
+  indicatorId: string;
+  rawValue: number | null;
+  score: number;
+  isManual: number;
+  note: string;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface BranchSummary {
+  period: string;
+  branchId: string;
+  branchName: string;
+  totalScore: number;
+  level: "low" | "medium" | "high";
+  indicatorCount: number;
+  manualCount: number;
+}
+
+export const riskApi = {
+  listIndicators: async (): Promise<RiskIndicator[]> => {
+    const res = await api.get("/risk-assessment/indicators");
+    return res.data;
+  },
+
+  createIndicator: async (data: {
+    code: string;
+    name: string;
+    category: string;
+    weight: number;
+    sourceType: "auto" | "manual" | "hybrid";
+    unit: string;
+  }): Promise<RiskIndicator> => {
+    const res = await api.post("/risk-assessment/indicators", data);
+    return res.data;
+  },
+
+  deleteIndicator: async (id: string): Promise<void> => {
+    await api.delete(`/risk-assessment/indicators/${id}`);
+  },
+
+  updateIndicator: async (
+    id: string,
+    patch: { oracleQuery?: string; scoreScale?: number; weight?: number },
+  ): Promise<void> => {
+    await api.patch(`/risk-assessment/indicators/${id}`, patch);
+  },
+
+  syncOracle: async (
+    period: string,
+  ): Promise<{
+    period: string;
+    ok: boolean;
+    upserted: number;
+    skippedManual: number;
+    perIndicator: { code: string; name: string; rows: number; error?: string }[];
+  }> => {
+    const res = await api.post(`/risk-assessment/sync-oracle?period=${period}`);
+    return res.data;
+  },
+
+  listScores: async (period: string): Promise<RiskScore[]> => {
+    const res = await api.get(`/risk-assessment/scores?period=${period}`);
+    return res.data;
+  },
+
+  upsertScore: async (data: {
+    period: string;
+    branchId: string;
+    branchName: string;
+    indicatorId: string;
+    rawValue: number | null;
+    score: number;
+    note?: string;
+    reason?: string;
+  }): Promise<RiskScore> => {
+    const res = await api.put("/risk-assessment/scores", data);
+    return res.data;
+  },
+
+  getSummary: async (period: string): Promise<BranchSummary[]> => {
+    const res = await api.get(`/risk-assessment/summary?period=${period}`);
+    return res.data;
+  },
+
+  getAuditLog: async (
+    period: string,
+    branchId: string,
+    indicatorId: string,
+  ): Promise<
+    {
+      id: string;
+      oldValue: number | null;
+      newValue: number | null;
+      oldScore: number | null;
+      newScore: number | null;
+      reason: string;
+      changedBy: string;
+      changedAt: string;
+    }[]
+  > => {
+    const res = await api.get(
+      `/risk-assessment/audit-log?period=${period}&branchId=${branchId}&indicatorId=${indicatorId}`,
+    );
+    return res.data;
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Weekly Report API
+// ─────────────────────────────────────────────────────────────────────────────
+export type WeeklyReportRole = "audit" | "daa" | "director" | "none";
+
+export interface WeeklyReportRoleInfo {
+  role: WeeklyReportRole;
+  departmentId: string;
+  departmentName: string;
+  canWrite: boolean;
+  canViewAll: boolean;
+}
+
+export interface WeeklyReport {
+  id: string;
+  userId: string;
+  userName: string;
+  departmentId: string;
+  departmentName: string;
+  role: string;
+  year: number;
+  weekNumber: number;
+  weekStart: string;
+  weekEnd: string;
+  status: "draft" | "submitted";
+  sections: Record<string, unknown>;
+  submittedAt?: string;
+  updatedAt?: string;
+}
+
+export const weeklyReportApi = {
+  getRole: async (): Promise<WeeklyReportRoleInfo> => {
+    const res = await api.get("/weekly-report/role");
+    return res.data;
+  },
+
+  save: async (data: {
+    year: number;
+    weekNumber: number;
+    weekStart: string;
+    weekEnd: string;
+    role: "audit" | "daa";
+    sections: Record<string, unknown>;
+    status?: "draft" | "submitted";
+  }) => {
+    const res = await api.post("/weekly-report/save", data);
+    return res.data as { id: string; status: string; savedAt: string };
+  },
+
+  submit: async (year: number, weekNumber: number) => {
+    const res = await api.post("/weekly-report/submit", { year, weekNumber });
+    return res.data;
+  },
+
+  listMine: async (): Promise<WeeklyReport[]> => {
+    const res = await api.get("/weekly-report/my");
+    return res.data;
+  },
+
+  getMine: async (
+    year: number,
+    weekNumber: number,
+  ): Promise<WeeklyReport | null> => {
+    const res = await api.get(`/weekly-report/my/${year}/${weekNumber}`);
+    return res.data;
+  },
+
+  listWeeks: async (): Promise<
+    {
+      year: number;
+      weekNumber: number;
+      weekStart: string;
+      weekEnd: string;
+      cnt: number;
+    }[]
+  > => {
+    const res = await api.get("/weekly-report/weeks");
+    return res.data;
+  },
+
+  consolidated: async (
+    year: number,
+    weekNumber: number,
+  ): Promise<WeeklyReport[]> => {
+    const res = await api.get(
+      `/weekly-report/consolidated?year=${year}&week=${weekNumber}`,
+    );
+    return res.data;
+  },
+
+  getMember: async (
+    userId: string,
+    year: number,
+    weekNumber: number,
+  ): Promise<WeeklyReport> => {
+    const res = await api.get(
+      `/weekly-report/member/${userId}/${year}/${weekNumber}`,
+    );
+    return res.data;
+  },
+
+  directorEdit: async (
+    reportId: string,
+    sections: Record<string, unknown>,
+  ): Promise<{ id: string; savedAt: string }> => {
+    const res = await api.post(`/weekly-report/director-edit/${reportId}`, {
+      sections,
+    });
+    return res.data;
+  },
+};
+
+
+

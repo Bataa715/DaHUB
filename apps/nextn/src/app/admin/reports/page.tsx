@@ -35,6 +35,8 @@ import {
   UserCheck,
   Users,
   RefreshCw,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -597,6 +599,26 @@ export default function AdminReportsPage() {
     }
   };
 
+  // [SORT] Move tool up/down in display order; persists via /admin/tools/reorder
+  const movePy = async (id: string, dir: -1 | 1) => {
+    const idx = pyTools.findIndex((t) => t.id === id);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= pyTools.length) return;
+    const reordered = [...pyTools];
+    [reordered[idx], reordered[target]] = [reordered[target], reordered[idx]];
+    setPyTools(reordered); // optimistic
+    try {
+      await pythonToolApi.adminReorder(reordered.map((t) => t.id));
+    } catch (e: any) {
+      toast({
+        title: "Дарааллыг хадгалж чадсангүй",
+        description: e?.response?.data?.message ?? e?.message,
+        variant: "destructive",
+      });
+      loadPy(); // restore from server
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Header ── */}
@@ -696,7 +718,7 @@ export default function AdminReportsPage() {
             ) : (
               <div className="grid gap-3">
                 <AnimatePresence>
-                  {pyTools.map((t) => {
+                  {pyTools.map((t, idx) => {
                     const connType = (t.connectionType ?? "clickhouse") as keyof typeof CONNECTION_META;
                     const ConnIcon =
                       CONNECTION_META[connType].icon;
@@ -763,6 +785,24 @@ export default function AdminReportsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex flex-col gap-0.5 mr-1">
+                            <button
+                              onClick={() => movePy(t.id, -1)}
+                              disabled={idx === 0}
+                              title="Дээш"
+                              className="p-1 rounded text-slate-400 hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => movePy(t.id, 1)}
+                              disabled={idx === pyTools.length - 1}
+                              title="Доош"
+                              className="p-1 rounded text-slate-400 hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                           <button
                             onClick={() => handleTogglePy(t)}
                             disabled={toggling === t.id}

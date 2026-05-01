@@ -601,6 +601,22 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   private async provisionServiceUsers(): Promise<void> {
     const appPw = process.env.CLICKHOUSE_PASSWORD || "";
 
+    // [C-2] Defence-in-depth: reject passwords containing characters that would
+    // break SQL string escaping (control chars, NUL). The escape() below is correct
+    // ClickHouse C-style escaping, but a strict format also prevents accidental
+    // mis-configuration. Empty password skips provisioning entirely.
+    if (!appPw) {
+      this.logger.warn(
+        "CLICKHOUSE_PASSWORD empty — skipping audit_app/audit_acl provisioning",
+      );
+      return;
+    }
+    if (!/^[\x21-\x7E]{8,128}$/.test(appPw)) {
+      throw new Error(
+        "CLICKHOUSE_PASSWORD must be 8–128 printable ASCII chars (no spaces / control chars)",
+      );
+    }
+
     const esc = (pw: string): string =>
       pw.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     const p = esc(appPw);

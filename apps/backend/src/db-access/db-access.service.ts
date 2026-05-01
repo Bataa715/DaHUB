@@ -7,7 +7,13 @@ import {
 } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { ClickHouseAccessService } from "./clickhouse-access.service";
-import { randomUUID, randomBytes } from "crypto";
+import {
+  randomUUID,
+  randomBytes,
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+} from "crypto";
 import {
   CreateAccessRequestDto,
   ReviewRequestDto,
@@ -28,6 +34,47 @@ const EXCLUDED_TABLES = [
 @Injectable()
 export class DbAccessService {
   private readonly logger = new Logger(DbAccessService.name);
+
+  // [SEC-5] AES-256-GCM encryption-at-rest for ClickHouse user passwords
+  // stored in access_grants.chPassword. Key derived from JWT_SECRET so no
+  // extra env var is required. Format: enc:v1:<base64(iv|tag|ciphertext)>.
+  // Old plaintext rows are still readable (auto-detected by missing prefix).
+  private readonly encKey: Buffer = (() => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret || secret.length < 16) {
+      throw new Error(
+        "JWT_SECRET (>=16 chars) is required for chPassword encryption-at-rest",
+      );
+    }
+    return createHash("sha256").update("db-access:ch-pwd:" + secret).digest();
+  })();
+
+  private encryptPwd(plain: string): string {
+    if (!plain) return "";
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", this.encKey, iv);
+    const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return "enc:v1:" + Buffer.concat([iv, tag, ct]).toString("base64");
+  }
+
+  private decryptPwd(stored: string | null | undefined): string {
+    if (!stored) return "";
+    if (!stored.startsWith("enc:v1:")) return stored; // legacy plaintext
+    try {
+      const buf = Buffer.from(stored.slice("enc:v1:".length), "base64");
+      const iv = buf.subarray(0, 12);
+      const tag = buf.subarray(12, 28);
+      const ct = buf.subarray(28);
+      const decipher = createDecipheriv("aes-256-gcm", this.encKey, iv);
+      decipher.setAuthTag(tag);
+      const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
+      return pt.toString("utf8");
+    } catch (e) {
+      this.logger.error("chPassword decrypt failed", e);
+      return "";
+    }
+  }
 
   constructor(
     private clickhouse: ClickHouseService,
@@ -475,7 +522,7 @@ export class DbAccessService {
         isActive: 1,
         revokedAt: "1970-01-01 00:00:00",
         revokeReason: "",
-        chPassword: sharedPassword,
+        chPassword: this.encryptPwd(sharedPassword),
       }));
 
       await this.clickhouse.insert("access_grants", grants);
@@ -650,10 +697,11 @@ export class DbAccessService {
 
     return {
       username: grant.userUserId,
-      chPassword: grant.chPassword
-        ? grant.chPassword.slice(0, 4) + "****" + grant.chPassword.slice(-4)
-        : "",
-      chPasswordFull: grant.chPassword ?? "",
+      chPassword: (() => {
+        const pwd = this.decryptPwd(grant.chPassword);
+        return pwd ? pwd.slice(0, 4) + "****" + pwd.slice(-4) : "";
+      })(),
+      chPasswordFull: this.decryptPwd(grant.chPassword),
       tableName: grant.tableName,
       host: process.env.CLICKHOUSE_EXTERNAL_HOST ?? "localhost",
       port: parseInt(process.env.CLICKHOUSE_EXTERNAL_PORT ?? "8123", 10),
@@ -716,7 +764,7 @@ export class DbAccessService {
     };
   }
 
-  private formatGrant(g: any) {
+  private formatGrant = (g: any) => {
     const toArr = (v: any): string[] => {
       if (Array.isArray(v)) return v;
       if (typeof v === "string") {
@@ -742,7 +790,7 @@ export class DbAccessService {
       grantedByName: g.grantedByName,
       grantedAt: g.grantedAt,
       isActive: !!g.isActive,
-      chPassword: g.chPassword ?? "",
+      chPassword: this.decryptPwd(g.chPassword),
     };
   }
 }

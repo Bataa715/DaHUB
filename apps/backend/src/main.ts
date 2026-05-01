@@ -6,9 +6,45 @@ import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 import * as express from "express";
 import helmet from "helmet";
 
+// [SEC-3] Validate required env vars for external services in production.
+// Prevents silent fallback to localhost (which could leak data to wrong host
+// or fail mysteriously) when deployed without proper configuration.
+function validateProductionEnv() {
+  if (process.env.NODE_ENV !== "production") return;
+  const required = [
+    "PYTHON_SERVICE_URL",
+    "CLICKHOUSE_EXTERNAL_HOST",
+    "CLICKHOUSE_EXTERNAL_PORT",
+    "CLICKHOUSE_PLAY_URL",
+    "JWT_SECRET",
+    "CORS_ORIGINS",
+  ];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Production startup blocked: missing required environment variables: ${missing.join(", ")}`,
+    );
+  }
+  // Warn if any of them still point at localhost (deployment misconfig)
+  const localish = /(localhost|127\.0\.0\.1)/i;
+  for (const key of ["PYTHON_SERVICE_URL", "CLICKHOUSE_EXTERNAL_HOST", "CLICKHOUSE_PLAY_URL"]) {
+    const v = process.env[key];
+    if (v && localish.test(v)) {
+      // eslint-disable-next-line no-console
+      console.warn(`[SEC-3] WARNING: ${key} contains localhost in production: ${v}`);
+    }
+  }
+}
+
 async function bootstrap() {
+  validateProductionEnv();
   const app = await NestFactory.create(AppModule);
   const logger = new Logger("Bootstrap");
+
+  // [H-4] Always trust the first reverse-proxy hop so req.ip / X-Forwarded-For
+  // resolves to the real client IP for brute-force lockout keys. Safe even when
+  // running directly without a proxy — falls back to socket.remoteAddress.
+  app.getHttpAdapter().getInstance().set("trust proxy", 1);
 
   // Security headers
   app.use(
@@ -31,13 +67,13 @@ async function bootstrap() {
     }),
   );
 
-  // Large limit for /users (profile image base64), reduced /tailan limit [MED-4]
-  app.use("/users", express.json({ limit: "10mb" }));
-  app.use("/users", express.urlencoded({ limit: "10mb", extended: true }));
-  app.use("/tailan", express.json({ limit: "10mb" })); // [MED-4] Reduced from 50mb to 10mb
+  // [M-5] Reduced /users from 10mb to 6mb (profile image limit is 5MB after base64 overhead)
+  app.use("/users", express.json({ limit: "6mb" }));
+  app.use("/users", express.urlencoded({ limit: "6mb", extended: true }));
+  app.use("/tailan", express.json({ limit: "10mb" }));
   app.use("/tailan", express.urlencoded({ limit: "10mb", extended: true }));
-  app.use("/news", express.json({ limit: "10mb" }));
-  app.use("/news", express.urlencoded({ limit: "10mb", extended: true }));
+  app.use("/news", express.json({ limit: "6mb" }));
+  app.use("/news", express.urlencoded({ limit: "6mb", extended: true }));
   // Tight default limit for all other endpoints
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));

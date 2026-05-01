@@ -122,8 +122,8 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   @ApiResponse({ status: 429, description: "Too many requests" })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Request() req: any) {
+    return this.authService.login(loginDto, this.clientIp(req));
   }
 
   @UseGuards(ThrottlerGuard)
@@ -138,8 +138,8 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   @ApiResponse({ status: 429, description: "Too many requests" })
-  async loginById(@Body() loginByIdDto: LoginByIdDto) {
-    return this.authService.loginById(loginByIdDto);
+  async loginById(@Body() loginByIdDto: LoginByIdDto, @Request() req: any) {
+    return this.authService.loginById(loginByIdDto, this.clientIp(req));
   }
 
   @UseGuards(ThrottlerGuard)
@@ -157,8 +157,15 @@ export class AuthController {
     description: "Invalid credentials or not an admin",
   })
   @ApiResponse({ status: 429, description: "Too many requests" })
-  async adminLogin(@Body() adminLoginDto: AdminLoginDto) {
-    return this.authService.adminLogin(adminLoginDto);
+  async adminLogin(@Body() adminLoginDto: AdminLoginDto, @Request() req: any) {
+    return this.authService.adminLogin(adminLoginDto, this.clientIp(req));
+  }
+
+  // [H-4] Extract caller IP for brute-force lockout key. Honours X-Forwarded-For
+  // when behind a trusted reverse proxy (set TRUST_PROXY=1 + app.set('trust proxy')).
+  private clientIp(req: any): string {
+    const xff = (req.headers?.["x-forwarded-for"] || "").toString().split(",")[0].trim();
+    return xff || req.ip || req.socket?.remoteAddress || "unknown";
   }
 
   @UseGuards(JwtAuthGuard)

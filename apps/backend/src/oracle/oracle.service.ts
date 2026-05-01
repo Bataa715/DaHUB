@@ -143,4 +143,65 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       await conn.close();
     }
   }
+
+  /**
+   * Stored procedure-ийг SYS_REFCURSOR гаралттайгаар дуудна.
+   * Зөвхөн whitelist-д орсон procedure нэрсийг зөвшөөрнө (SQL-injection-аас хамгаална).
+   *
+   * @param procName "SCHEMA.PROC_NAME" формат
+   * @param inParams Дараалсан IN параметрүүд (proc-ийн дарааллаар)
+   * @param allowList Зөвшөөрөгдсөн procedure нэрсийн жагсаалт
+   */
+  async callRefCursorProc<T = Record<string, any>>(
+    procName: string,
+    inParams: any[],
+    allowList: readonly string[],
+  ): Promise<T[]> {
+    if (!this.pool) {
+      throw new Error("Oracle холболт тохируулагдаагүй байна");
+    }
+    const normalized = procName.trim().toUpperCase();
+    if (!allowList.map((s) => s.toUpperCase()).includes(normalized)) {
+      this.logger.error(`BLOCKED procedure call: ${procName}`);
+      throw new Error(`Procedure "${procName}" зөвшөөрөгдөөгүй.`);
+    }
+    if (!/^[A-Z0-9_]+(\.[A-Z0-9_]+)?$/.test(normalized)) {
+      throw new Error("Procedure нэр буруу формат");
+    }
+
+    const conn = await this.pool.getConnection();
+    try {
+      const placeholders = inParams.map((_, i) => `:p${i}`).join(", ");
+      const sql = `BEGIN ${normalized}(${placeholders}${
+        inParams.length ? ", " : ""
+      }:cur); END;`;
+
+      const binds: Record<string, any> = {
+        cur: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT },
+      };
+      inParams.forEach((v, i) => {
+        binds[`p${i}`] = v;
+      });
+
+      const result = await conn.execute(sql, binds, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
+      });
+
+      const cursor = (result.outBinds as any)?.cur as oracledb.ResultSet<T>;
+      if (!cursor) return [];
+      const rows: T[] = [];
+      try {
+        while (true) {
+          const batch = await cursor.getRows(1000);
+          if (!batch.length) break;
+          rows.push(...batch);
+        }
+      } finally {
+        await cursor.close();
+      }
+      return rows;
+    } finally {
+      await conn.close();
+    }
+  }
 }

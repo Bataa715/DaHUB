@@ -112,7 +112,7 @@ export default function ReportsPage() {
       {/* ── Body ── */}
       <div className="flex-1 max-w-[1400px] w-full mx-auto px-6 py-8">
         {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-fr">
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
@@ -157,7 +157,7 @@ export default function ReportsPage() {
               )}
             </motion.div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-fr">
               <AnimatePresence>
                 {filtered.map((t, i) => {
                   const dm =
@@ -182,14 +182,14 @@ export default function ReportsPage() {
                         damping: 24,
                       }}
                       whileHover={{ y: -4 }}
-                      className="group cursor-pointer"
+                      className="group cursor-pointer h-full"
                       onClick={() => router.push(href)}
                     >
-                      <div className="relative rounded-2xl border border-white/[0.07] bg-white/[0.03] overflow-hidden transition-all duration-200 group-hover:border-white/[0.15] group-hover:bg-white/[0.05] group-hover:shadow-xl group-hover:shadow-black/40">
+                      <div className="relative h-full flex flex-col rounded-2xl border border-white/[0.07] bg-white/[0.03] overflow-hidden transition-all duration-200 group-hover:border-white/[0.15] group-hover:bg-white/[0.05] group-hover:shadow-xl group-hover:shadow-black/40">
                         <div
                           className={`h-1 w-full bg-gradient-to-r ${t.color}`}
                         />
-                        <div className="p-5">
+                        <div className="p-5 flex flex-col flex-1">
                           <div className="flex items-start justify-between mb-4">
                             <div
                               className={`w-12 h-12 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center shadow-lg`}
@@ -200,15 +200,13 @@ export default function ReportsPage() {
                               Python
                             </span>
                           </div>
-                          <p className="font-semibold text-slate-100 text-sm leading-snug">
+                          <p className="font-semibold text-slate-100 text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
                             {t.name}
                           </p>
-                          {t.description && (
-                            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
-                              {t.description}
-                            </p>
-                          )}
-                          <div className="mt-4 flex flex-wrap gap-1.5">
+                          <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed min-h-[2rem]">
+                            {t.description || "\u00a0"}
+                          </p>
+                          <div className="mt-auto pt-4 flex flex-wrap gap-1.5">
                             <span
                               className={`inline-flex items-center gap-1 text-xs rounded-full border px-2.5 py-0.5 ${dm.cls}`}
                             >

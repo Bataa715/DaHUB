@@ -13,6 +13,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { Response } from "express";
 import { UsersService } from "./users.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -38,6 +39,10 @@ const VALID_TOOLS = [
   "alert_box",
   "python_api_tools",
   "reports",
+  "risk_assessment",
+  "weekly_report_audit",
+  "weekly_report_daa",
+  "weekly_report_director",
 ] as const;
 
 @Controller("users")
@@ -159,7 +164,9 @@ export class UsersController {
   }
 
   /** SuperAdmin only: reset a user's password */
-  @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  // [H-6] Throttle administrative password resets to prevent brute-force/abuse.
+  @UseGuards(JwtAuthGuard, SuperAdminGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 3600000 } })
   @Patch(":id/reset-password")
   resetPassword(
     @Param("id") id: string,

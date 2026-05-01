@@ -155,7 +155,8 @@ export class AuthService {
   private async generateRefreshToken(userId: string): Promise<string> {
     const refreshToken = randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 3); // [MED-1] Refresh token valid for 3 days
+    // [M-1] Reduced from 3 days to 1 day for financial-system security posture
+    expiresAt.setDate(expiresAt.getDate() + 1);
 
     const now = nowCH();
     const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace("T", " ");
@@ -210,15 +211,16 @@ export class AuthService {
       throw new UnauthorizedException("User not found or inactive");
     }
 
-    // Generate new tokens
-    const accessToken = this.generateTokenForUser(user);
-    const newRefreshToken = await this.generateRefreshToken(user.id);
-
-    // Revoke the old refresh token (single-use)
+    // [H-3] Revoke the old refresh token FIRST (single-use) before issuing a new one
+    // to close the replay window if the rotation request is replayed concurrently.
     await this.clickhouse.exec(
       "ALTER TABLE refresh_tokens UPDATE isRevoked = 1 WHERE token = {token:String}",
       { token: refreshToken },
     );
+
+    // Generate new tokens after old token is revoked
+    const accessToken = this.generateTokenForUser(user);
+    const newRefreshToken = await this.generateRefreshToken(user.id);
 
     return {
       user: this.formatUserResponse(user),
@@ -395,9 +397,12 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, clientIp = "unknown") {
     const { department, username, password } = loginDto;
-    const lockKey = `login:${department}:${username}`;
+    // [H-4] Lock by username AND IP so an attacker rotating IPs cannot keep
+    // a victim's account locked, and an attacker cannot brute-force from one IP
+    // by rotating usernames either.
+    const lockKey = `login:${department}:${username}:${clientIp}`;
 
     // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
     await this.guardLogin(lockKey);
@@ -472,9 +477,9 @@ export class AuthService {
     }
   }
 
-  async loginById(loginByIdDto: LoginByIdDto) {
+  async loginById(loginByIdDto: LoginByIdDto, clientIp = "unknown") {
     const { userId, password } = loginByIdDto;
-    const lockKey = `login:${userId}`;
+    const lockKey = `login:${userId}:${clientIp}`; // [H-4] IP-aware
 
     // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
     await this.guardLogin(lockKey); // [CRIT-2] now async
@@ -535,9 +540,9 @@ export class AuthService {
     }
   }
 
-  async adminLogin(adminLoginDto: AdminLoginDto) {
+  async adminLogin(adminLoginDto: AdminLoginDto, clientIp = "unknown") {
     const { username, password } = adminLoginDto;
-    const lockKey = `admin-login:${username}`;
+    const lockKey = `admin-login:${username}:${clientIp}`; // [H-4] IP-aware
     // [L-3] admin username removed from log to prevent credential exposure
     this.logger.debug('Admin login attempt received');
 
@@ -556,7 +561,9 @@ export class AuthService {
 
       await this.validateCredentials(user, password, `admin-login:${username}`);
       await this.clearFailedLogins(lockKey); // [CRIT-2] async
-      this.logger.log(`Admin login successful: ${username}`);
+      // [SEC-4] admin username removed from success log to prevent credential
+      // enumeration if log files are compromised. Audit log keeps full record.
+      this.logger.log('Admin authentication successful');
       await this.updateLastLogin(user.id);
 
       const accessToken = this.generateTokenForUser(user);

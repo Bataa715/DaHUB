@@ -18,12 +18,23 @@ export class NewsService {
     let imageData = "";
     let imageMime = "";
     if (createNewsDto.imageUrl?.startsWith("data:")) {
+      // [M-6] Server-side MIME whitelist — reject SVG (XSS via embedded <script>)
+      // and any non-raster format.
       const matches = createNewsDto.imageUrl.match(
-        /^data:([^;]+);base64,(.+)$/,
+        /^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/,
       );
-      if (matches) {
-        imageMime = matches[1];
-        imageData = matches[2];
+      if (!matches) {
+        throw new BadRequestException(
+          "Зөвхөн jpeg|png|webp|gif форматын зураг хүлээн авна",
+        );
+      }
+      imageMime = matches[1];
+      imageData = matches[2];
+      // ~5MB limit on raw base64 payload
+      if (imageData.length > 7_000_000) {
+        throw new BadRequestException(
+          "Зургийн хэмжээ хэт их байна (дээд тал 5MB)",
+        );
       }
     }
 

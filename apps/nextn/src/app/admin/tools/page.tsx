@@ -33,6 +33,8 @@ import {
   BellDot,
   Search,
   UserMinus,
+  ShieldAlert,
+  CalendarRange,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -176,6 +178,46 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: BellDot,
     color: "from-red-500 to-rose-500",
     gradient: "bg-gradient-to-br from-red-500/20 to-rose-500/20",
+    category: "work",
+  },
+  {
+    id: "risk_assessment",
+    name: "Эрсдэлийн үнэлгээ",
+    description:
+      "Сар бүрийн эрсдэлийн үнэлгээ — салбаруудын оноо, гар засвар, аудит лог",
+    icon: ShieldAlert,
+    color: "from-rose-500 to-orange-500",
+    gradient: "bg-gradient-to-br from-rose-500/20 to-orange-500/20",
+    category: "work",
+  },
+  {
+    id: "weekly_report_audit",
+    name: "7 хоногийн тайлан (аудит хэлтэс)",
+    description:
+      "ЕАХ / МТАХ / ЗАЧБХ-н долоо хоногийн тайлан бичих эрх",
+    icon: CalendarRange,
+    color: "from-indigo-500 to-purple-500",
+    gradient: "bg-gradient-to-br from-indigo-500/20 to-purple-500/20",
+    category: "work",
+  },
+  {
+    id: "weekly_report_daa",
+    name: "7 хоногийн тайлан (ДАА)",
+    description:
+      "Дата анализийн алба — долоо хоногийн тайлан бичих эрх",
+    icon: CalendarRange,
+    color: "from-sky-500 to-indigo-500",
+    gradient: "bg-gradient-to-br from-sky-500/20 to-indigo-500/20",
+    category: "work",
+  },
+  {
+    id: "weekly_report_director",
+    name: "7 хоногийн тайлан (захирал)",
+    description:
+      "Газрын захирал — бүх хэлтсийн нэгдсэн тайлан харах, засах эрх",
+    icon: CalendarRange,
+    color: "from-violet-500 to-purple-500",
+    gradient: "bg-gradient-to-br from-violet-500/20 to-purple-500/20",
     category: "work",
   },
 ];

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { pythonToolApi, PythonTool, FilterDef } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { FileSpreadsheet, FileText, Code2, Download } from "lucide-react";
+import { FileSpreadsheet, FileText, Code2, Download, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -56,6 +56,7 @@ export default function ReportDetailPage() {
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [downloadError, setDownloadError] = useState("");
+  const downloadAbortRef = useRef<AbortController | null>(null);
   const [preview, setPreview] = useState<PreviewState>({
     status: "idle",
     columns: [],
@@ -114,6 +115,8 @@ export default function ReportDetailPage() {
     setDownloadError("");
     setDownloading(true);
     setDownloadProgress(0);
+    const controller = new AbortController();
+    downloadAbortRef.current = controller;
 
     try {
       const blob = await pythonToolApi.runTool(
@@ -122,6 +125,7 @@ export default function ReportDetailPage() {
         dateMode === "range" ? endDate : undefined,
         filterValues,
         (pct) => setDownloadProgress(pct),
+        controller.signal,
       );
       const outMeta = OUTPUT_META[item.outputFormat ?? "excel"];
       const url = URL.createObjectURL(blob);
@@ -132,15 +136,29 @@ export default function ReportDetailPage() {
       URL.revokeObjectURL(url);
       toast({ title: "Амжилттай татлаа" });
     } catch (e: any) {
-      const msg =
-        e?.response?.data instanceof Blob
-          ? await (e.response.data as Blob).text().catch(() => e.message)
-          : (e?.response?.data?.message ?? e?.message ?? "Алдаа гарлаа");
-      setDownloadError(msg.slice(0, 300));
+      // Кэнсэлэхд алдаа биш
+      if (
+        controller.signal.aborted ||
+        e?.name === "CanceledError" ||
+        e?.code === "ERR_CANCELED"
+      ) {
+        toast({ title: "Таталтыг зогсооллоо" });
+      } else {
+        const msg =
+          e?.response?.data instanceof Blob
+            ? await (e.response.data as Blob).text().catch(() => e.message)
+            : (e?.response?.data?.message ?? e?.message ?? "Алдаа гарлаа");
+        setDownloadError(msg.slice(0, 300));
+      }
     } finally {
+      downloadAbortRef.current = null;
       setDownloading(false);
       setDownloadProgress(null);
     }
+  };
+
+  const handleCancelDownload = () => {
+    downloadAbortRef.current?.abort();
   };
 
   const handlePreview = async () => {
@@ -317,9 +335,23 @@ export default function ReportDetailPage() {
                 <button onClick={handlePreview} disabled={downloading || previewLoading} className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 hover:border-white/20 transition-all disabled:opacity-40 font-medium">
                   {previewLoading ? "..." : "Preview"}
                 </button>
-                <button onClick={handleDownload} disabled={downloading} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-gradient-to-r ${outMeta.color} hover:opacity-90 text-white font-bold transition-all disabled:opacity-50 shadow-lg`}>
-                  {downloading ? (downloadProgress !== null && downloadProgress > 0 ? `${downloadProgress}%` : "Боловсруулж байна...") : (<><Download className="w-3.5 h-3.5" />{outMeta.label}</>)}
-                </button>
+                {downloading ? (
+                  <button
+                    type="button"
+                    onClick={handleCancelDownload}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold transition-all"
+                    title="Татаж байгааг зогсоох"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    {downloadProgress !== null && downloadProgress > 0
+                      ? `Зогсоох (${downloadProgress}%)`
+                      : "Зогсоох"}
+                  </button>
+                ) : (
+                  <button onClick={handleDownload} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-gradient-to-r ${outMeta.color} hover:opacity-90 text-white font-bold transition-all disabled:opacity-50 shadow-lg`}>
+                    <Download className="w-3.5 h-3.5" />{outMeta.label}
+                  </button>
+                )}
               </div>
             </div>
           </div>

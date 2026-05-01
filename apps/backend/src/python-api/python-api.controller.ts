@@ -64,6 +64,16 @@ export class PythonApiController {
     return this.service.deleteTool(id);
   }
 
+  // [SORT] Persist user-side display order — body: { ids: string[] }
+  @Post("admin/tools/reorder")
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async reorderTools(@Body() body: { ids: string[] }) {
+    if (!body || !Array.isArray(body.ids))
+      throw new BadRequestException("ids массив шаардлагатай");
+    await this.service.reorderTools(body.ids);
+  }
+
   @Get("admin/run-logs")
   @UseGuards(AdminGuard)
   getRunLogs(@Query("limit") limit?: string) {
@@ -135,10 +145,24 @@ export class PythonApiController {
           isAdmin: !!req.user.isAdmin,
         }
       : undefined;
-    const { buffer, fileName, contentType } = await this.service.runTool(
-      dto,
-      caller,
-    );
+
+    // Client disconnect (browser cancel) → upstream Python socket-ийг таслана
+    const abort = new AbortController();
+    const onClose = () => abort.abort();
+    req.on("close", onClose);
+
+    let buffer: Buffer, fileName: string, contentType: string;
+    try {
+      ({ buffer, fileName, contentType } = await this.service.runTool(
+        dto,
+        caller,
+        abort.signal,
+      ));
+    } finally {
+      req.off("close", onClose);
+    }
+
+    if (abort.signal.aborted) return;
     const encodedName = encodeURIComponent(fileName);
     const isAttachment = !contentType.startsWith("application/json");
     res.set({

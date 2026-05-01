@@ -1,56 +1,103 @@
 # -*- coding: utf-8 -*-
 """
-Excel Report Python Runner - FastAPI microservice
+Excel Report Python Runner — FastAPI microservice
 =================================================
-NestJS backend энэ сервисийг дуудаж pandas-д суурилсан тайланг ажиллуулна.
+Олон concurrent хэрэглэгчдэд тогтвортой ажиллахаар оптимизаци хийсэн хувилбар.
 
-АНХААРУУЛГА: Энэ сервис ДОТООД хэрэглээнд зориулагдсан бөгөөд
-             гадаад интернетэд нээлттэй байж болохгүй.
+Гол сайжруулалт:
+  * Result cache (input hash-ээр)        — preview хийсний дараа excel/csv татах
+                                            үед дахин экзекут хийхгүй.
+  * Inflight dedup lock                  — ижил параметртэй request олон ирвэл
+                                            нэг л экзекут болж бусад нь хүлээнэ.
+  * Concurrency semaphore                — нэг дор N exec()-аас илүү ажиллахгүй.
+  * Disconnect-safe                      — клиент refresh хийж салсан ч
+                                            таамаглалт thread үргэлжилж дуусаад
+                                            cache-д орно. Дараа татах үед
+                                            кэшээс шууд өгнө.
+  * Async handler-ууд                    — exec() blocking үйлдлийг threadpool-д
+                                            шилжүүлж event loop хариулсан хэвээр.
+  * Streaming downloads                  — Том файлыг chunk-аар стрим хийнэ.
 
 Ажиллуулах:
-    uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+    uvicorn main:app --host 127.0.0.1 --port 8001 --workers 2
 
-Орчны хувьсагчид (.env-с уншина):
-    CLICKHOUSE_HOST, CLICKHOUSE_PORT, CLICKHOUSE_USER,
-    CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE, PYTHON_SERVICE_PORT
+Орчны хувьсагч:
+    PYTHON_MAX_CONCURRENT     = 6      # exec()-ийн max concurrent
+    PYTHON_CACHE_TTL_SEC      = 900    # кэшийн TTL (15 минут)
+    PYTHON_CACHE_MAX_ENTRIES  = 32     # max кэш entry
+    PYTHON_DEDUP_WAIT_SEC     = 1800   # ижил inflight хүлээх max хугацаа
+    PYTHON_EXEC_TIMEOUT       = 1800   # нэг exec()-ийн max хугацаа (0 = unlimited)
 """
 
-import _strptime  # Python 3.13 thread-safety: strptime-г урьдчилан ачаална
+import _strptime  # noqa: F401  Python 3.13 thread-safety
+import ast
+import builtins as _builtins
+import datetime
+import gc
+import hashlib
 import io
+import json
 import os
+import re
 import secrets
-import signal
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import Any, Callable, Optional
 
 import clickhouse_connect
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from loguru import logger
 from pydantic import BaseModel
 
-# .env файлаас орчны хувьсагчдыг уншина (NestJS-тэй нэг .env ашиглана)
+_APP_START = time.monotonic()
+
+# .env (NestJS-тэй ижил)
 _env_root = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
 _env_backend = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(dotenv_path=_env_root)
-load_dotenv(dotenv_path=_env_backend, override=False)  # root .env байхгүй бол backend/.env-г уншина
+load_dotenv(dotenv_path=_env_backend, override=False)
 
-# ── ClickHouse singleton холболт ──────────────────────────────────────────────
+
+# ── Tunables ──────────────────────────────────────────────────────────────────
+
+_MAX_CONCURRENT = int(os.environ.get("PYTHON_MAX_CONCURRENT", "6"))
+_CACHE_TTL_SEC = int(os.environ.get("PYTHON_CACHE_TTL_SEC", "900"))
+_CACHE_MAX_ENTRIES = int(os.environ.get("PYTHON_CACHE_MAX_ENTRIES", "32"))
+# 0 = no timeout (том тайлангийн хувьд хязгааргүй оркив)
+_DEDUP_WAIT_SEC = int(os.environ.get("PYTHON_DEDUP_WAIT_SEC", "0"))
+_EXEC_TIMEOUT_SEC = int(os.environ.get("PYTHON_EXEC_TIMEOUT", "0"))
+_PYTHON_API_KEY = os.environ.get("PYTHON_API_KEY", "")
+
+
+# ── ClickHouse singleton ──────────────────────────────────────────────────────
 
 _ch_client: Any = None
+_ch_lock = threading.Lock()
 
 
 def _get_ch_client() -> Any:
-    """ClickHouse client-ийг нэг удаа үүсгэж, дараа нь дахин ашиглана."""
+    """ClickHouse client-ийг нэг удаа үүсгэж дахин ашиглана. Тасарвал дахин холбоно."""
     global _ch_client
-    if _ch_client is None:
+    with _ch_lock:
+        if _ch_client is not None:
+            try:
+                _ch_client.ping()
+                return _ch_client
+            except Exception:
+                logger.warning("ClickHouse ping амжилтгүй — дахин холбоно")
+                _ch_client = None
+
         raw_host = os.environ.get("CLICKHOUSE_HOST", "localhost")
-        # http:// эсвэл https:// угтвар байвал хасна
         host = (
             raw_host.replace("https://", "")
             .replace("http://", "")
@@ -63,17 +110,16 @@ def _get_ch_client() -> Any:
             username=os.environ.get("CLICKHOUSE_USER", "default"),
             password=os.environ.get("CLICKHOUSE_PASSWORD", ""),
             database=os.environ.get("CLICKHOUSE_DATABASE", "audit_db"),
-            compress=True,  # сүлжээний ачааллыг бууруулна
+            compress=True,
+            connect_timeout=10,
+            send_receive_timeout=600,
         )
-    return _ch_client
+        return _ch_client
 
+
+# ── Oracle helpers ────────────────────────────────────────────────────────────
 
 def _ora_connect_one(sub_cfg: dict, label: str = "") -> Any:
-    """
-    Нэг Oracle connection үүсгэнэ.
-    1. oracledb thin mode
-    2. cx_Oracle fallback (хуучин сервер, DPY-3010 гарвал)
-    """
     host = sub_cfg.get("host", "localhost")
     port = int(sub_cfg.get("port", 1521))
     svc = sub_cfg.get("serviceName") or sub_cfg.get("database", "")
@@ -81,7 +127,6 @@ def _ora_connect_one(sub_cfg: dict, label: str = "") -> Any:
     password = sub_cfg.get("password", "")
     tag = f" [{label}]" if label else ""
 
-    # cx_Oracle (startup дээр init_oracle_client() дуудагдсан тул Instant Client ачаалагдсан)
     try:
         import cx_Oracle  # type: ignore[import]
         dsn = sub_cfg.get("dsn") or cx_Oracle.makedsn(host, port, service_name=svc)
@@ -101,77 +146,51 @@ def _ora_connect_one(sub_cfg: dict, label: str = "") -> Any:
 
 
 def _make_connection(connection_type: str, cfg: dict | None) -> Any:
-    """
-    connectionType болон connectionConfig-оос DB холболт үүсгэнэ.
-    Буцаах утга нь кодын дотор `conn` нэрээр ашиглагдана.
-    """
     if not connection_type or connection_type == "clickhouse":
         return _get_ch_client()
-
     if not cfg:
         raise HTTPException(
             status_code=400,
             detail=f"'{connection_type}' холболтод connectionConfig шаардлагатай.",
         )
-
     if connection_type == "oracle":
-        def _single_oracle(sub_cfg: dict, label: str = "") -> Any:
-            return _ora_connect_one(sub_cfg, label)
-
-        # Олон connection: бүх value нь dict бол нэрлэсэн холболтуудын dict буцаана
-        # { "finacle": {...}, "erp": {...} }  →  conn["finacle"], conn["erp"]
         if cfg and all(isinstance(v, dict) for v in cfg.values()):
             return {name: _ora_connect_one(sub, name) for name, sub in cfg.items()}
-
-        # Нэг connection (хуучин формат): conn нь шууд oracledb.Connection
         return _ora_connect_one(cfg)
-
     if connection_type == "clickhouse_oracle":
-        # ClickHouse болон Oracle-г хослуулан нэгэн зэрэг холбоно.
-        # cfg нь Oracle connection(s)-ийн тохиргоо байна.
-        # Буцаах: { "ch": <ClickHouse client>, "ora": <oracle conn эсвэл dict> }
         if cfg and all(isinstance(v, dict) for v in cfg.values()):
             ora_conn = {name: _ora_connect_one(sub, name) for name, sub in cfg.items()}
         else:
             ora_conn = _ora_connect_one(cfg) if cfg else None
-
         return {"ch": _get_ch_client(), "ora": ora_conn}
-
     raise HTTPException(
         status_code=400,
-        detail=f"Дэмжигдээгүй connectionType: '{connection_type}'. "
-               "Зөвшөөрөгдсөн утгууд: clickhouse | oracle | clickhouse_oracle",
+        detail=(
+            f"Дэмжигдээгүй connectionType: '{connection_type}'. "
+            "Зөвшөөрөгдсөн утгууд: clickhouse | oracle | clickhouse_oracle"
+        ),
     )
 
 
-# ── API Key Authentication ─────────────────────────────────────────────────────
-
-_PYTHON_API_KEY = os.environ.get("PYTHON_API_KEY", "")
-
+# ── API Key ──────────────────────────────────────────────────────────────────
 
 async def _verify_api_key(request: Request) -> None:
-    """NestJS-ээс ирсэн API key шалгана."""
     if not _PYTHON_API_KEY:
-        return  # key тохируулаагүй бол шалгахгүй (dev mode)
+        return
     key = request.headers.get("x-api-key", "")
     if not secrets.compare_digest(key, _PYTHON_API_KEY):
-        logger.warning("Зөвшөөрөлгүй хандалт: буруу API key, IP={}", request.client.host if request.client else "unknown")
+        ip = request.client.host if request.client else "unknown"
+        logger.warning("Зөвшөөрөлгүй хандалт: буруу API key, IP={}", ip)
         raise HTTPException(status_code=401, detail="Зөвшөөрөлгүй хандалт.")
 
 
-# ── Exec() timeout helper ─────────────────────────────────────────────────────
-
-_EXEC_TIMEOUT_SEC = int(os.environ.get("PYTHON_EXEC_TIMEOUT", "600"))
-
+# ── exec() timeout helper ─────────────────────────────────────────────────────
 
 class _ExecTimeoutError(Exception):
     pass
 
 
 def _exec_with_timeout(code: str, namespace: dict, timeout: int = _EXEC_TIMEOUT_SEC) -> None:
-    """
-    exec()-г тусдаа thread дээр ажиллуулж, timeout хязгаарлана.
-    """
     exc_info: list = [None]
 
     def _target():
@@ -180,9 +199,10 @@ def _exec_with_timeout(code: str, namespace: dict, timeout: int = _EXEC_TIMEOUT_
         except Exception as e:
             exc_info[0] = e
 
-    thread = threading.Thread(target=_target, daemon=True)
+    thread = threading.Thread(target=_target, daemon=True, name="exec-runner")
     thread.start()
-    thread.join(timeout=timeout)
+    # timeout=0 → хязгааргүй (том тайлан асуудалгүй ажиллана)
+    thread.join(timeout=timeout if timeout and timeout > 0 else None)
 
     if thread.is_alive():
         logger.error("exec() timeout: {}с хүрлээ", timeout)
@@ -192,40 +212,183 @@ def _exec_with_timeout(code: str, namespace: dict, timeout: int = _EXEC_TIMEOUT_
         raise exc_info[0]
 
 
-# ── Lifespan: startup дээр ClickHouse-г дулааруулна ──────────────────────────
+# ── Result cache (TTL + LRU + dedup) ──────────────────────────────────────────
+
+@dataclass
+class _CacheEntry:
+    result: Any
+    created_at: float
+    last_used: float
+
+
+@dataclass
+class _Inflight:
+    event: threading.Event = field(default_factory=threading.Event)
+    result: Any = None
+    error: Optional[BaseException] = None
+    started_at: float = field(default_factory=time.monotonic)
+
+
+class _ResultCache:
+    """Thread-safe TTL+LRU cache with per-key inflight deduplication."""
+
+    def __init__(self, max_entries: int, ttl_seconds: int) -> None:
+        self.max_entries = max_entries
+        self.ttl = ttl_seconds
+        self._entries: dict[str, _CacheEntry] = {}
+        self._inflight: dict[str, _Inflight] = {}
+        self._lock = threading.RLock()
+        self._sem = threading.BoundedSemaphore(_MAX_CONCURRENT)
+
+    def get(self, key: str) -> Optional[Any]:
+        with self._lock:
+            self._evict_expired_locked()
+            entry = self._entries.get(key)
+            if entry is None:
+                return None
+            entry.last_used = time.monotonic()
+            return entry.result
+
+    def compute(self, key: str, runner: Callable[[], Any]) -> Any:
+        """Cache-аас унш. Байхгүй бол нэг л thread-д runner ажиллуулна. Бусад
+        thread үр дүнг хүлээнэ. Inflight нь client disconnect хийсэн ч ажиллаж
+        дуусаад кэшэд орно."""
+        cached = self.get(key)
+        if cached is not None:
+            return cached
+
+        owner = False
+        with self._lock:
+            inflight = self._inflight.get(key)
+            if inflight is None:
+                inflight = _Inflight()
+                self._inflight[key] = inflight
+                owner = True
+
+        if not owner:
+            # Inflight үр дүн хүлээх. _DEDUP_WAIT_SEC=0 → хязгааргүй хүлэнэ.
+            ok = inflight.event.wait(
+                timeout=_DEDUP_WAIT_SEC if _DEDUP_WAIT_SEC > 0 else None
+            )
+            if not ok:
+                raise HTTPException(
+                    status_code=504,
+                    detail="Урьд ажиллаж буй ижил хүсэлт хугацаандаа дуусаагүй.",
+                )
+            if inflight.error is not None:
+                raise inflight.error
+            return inflight.result
+
+        try:
+            with self._sem:
+                result = runner()
+            self._put(key, result)
+            inflight.result = result
+            return result
+        except BaseException as exc:
+            inflight.error = exc
+            raise
+        finally:
+            inflight.event.set()
+            with self._lock:
+                self._inflight.pop(key, None)
+
+    def invalidate(self, key: str) -> bool:
+        with self._lock:
+            return self._entries.pop(key, None) is not None
+
+    def _put(self, key: str, result: Any) -> None:
+        with self._lock:
+            self._entries[key] = _CacheEntry(
+                result=result,
+                created_at=time.monotonic(),
+                last_used=time.monotonic(),
+            )
+            self._evict_expired_locked()
+            self._evict_lru_locked()
+
+    def _evict_expired_locked(self) -> None:
+        now = time.monotonic()
+        expired = [k for k, e in self._entries.items() if now - e.created_at > self.ttl]
+        for k in expired:
+            self._entries.pop(k, None)
+
+    def _evict_lru_locked(self) -> None:
+        if len(self._entries) <= self.max_entries:
+            return
+        sorted_keys = sorted(self._entries.items(), key=lambda kv: kv[1].last_used)
+        for k, _ in sorted_keys[: len(self._entries) - self.max_entries]:
+            self._entries.pop(k, None)
+
+    def stats(self) -> dict:
+        with self._lock:
+            return {
+                "entries": len(self._entries),
+                "inflight": len(self._inflight),
+                "max_entries": self.max_entries,
+                "ttl_sec": self.ttl,
+                "max_concurrent": _MAX_CONCURRENT,
+            }
+
+
+_CACHE = _ResultCache(_CACHE_MAX_ENTRIES, _CACHE_TTL_SEC)
+
+
+def _make_cache_key(payload: dict[str, Any]) -> str:
+    blob = json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:32]
+
+
+# ── Lifespan ──────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Oracle Instant Client (cx_Oracle) ────────────────────────────────────
     try:
         import cx_Oracle  # type: ignore[import]
         lib_dir = os.environ.get("ORACLE_CLIENT_LIB", r"D:\ORACLE\instantclient_21_13")
         cx_Oracle.init_oracle_client(lib_dir=lib_dir)
         logger.info("Oracle Instant Client ачааллаа ({})", lib_dir)
     except Exception as exc:
-        logger.warning("Oracle Instant Client ачаалж чадсангүй (Oracle шаардлагагүй бол хэвийн): {}", exc)
-    # ── ClickHouse ───────────────────────────────────────────────────────────
+        logger.warning("Oracle Instant Client ачаалж чадсангүй: {}", exc)
+
     try:
         _get_ch_client().ping()
         logger.info("ClickHouse холболт амжилттай")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("ClickHouse холболт алдаа (дараа дахин оролдоно): {}", exc)
+    except Exception as exc:
+        logger.warning("ClickHouse холболт алдаа: {}", exc)
+
+    logger.info(
+        "Config: max_concurrent={} cache_ttl={}s cache_max={} dedup_wait={}s exec_timeout={}s",
+        _MAX_CONCURRENT, _CACHE_TTL_SEC, _CACHE_MAX_ENTRIES, _DEDUP_WAIT_SEC, _EXEC_TIMEOUT_SEC,
+    )
+
     yield
+
+    global _ch_client
+    with _ch_lock:
+        if _ch_client is not None:
+            try:
+                _ch_client.close()
+                logger.info("ClickHouse холболт хаалаа")
+            except Exception:
+                pass
+            _ch_client = None
 
 
 app = FastAPI(
     title="Excel Report Python Runner",
-    description="NestJS-ийн Excel тайлангийн pandas кодыг ажиллуулдаг дотоод FastAPI сервис.",
-    version="1.0.0",
+    description="NestJS-ийн pandas-д суурилсан тайлангуудыг ажиллуулах дотоод FastAPI сервис.",
+    version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs" if os.environ.get("PYTHON_ENV", "development") == "development" else None,
     redoc_url=None,
 )
 
-# ── CORS: зөвхөн дотоод сервисүүд зөвшөөрнө ──────────────────────────────────
 _cors_origins = [
     o.strip()
-    for o in os.environ.get("PYTHON_CORS_ORIGINS", "http://localhost:3001,http://127.0.0.1:3001").split(",")
+    for o in os.environ.get(
+        "PYTHON_CORS_ORIGINS", "http://localhost:3001,http://127.0.0.1:3001"
+    ).split(",")
     if o.strip()
 ]
 app.add_middleware(
@@ -243,122 +406,119 @@ class RunReportRequest(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     filters: Optional[dict[str, Any]] = None
-    preview_limit: int = 50  # зөвхөн /preview endpoint ашиглана
-
-
-class RunToolRequest(BaseModel):
-    """Python API Tools ажиллуулах request."""
-    code: str
-    connection_type: str = "clickhouse"  # clickhouse | oracle | clickhouse_oracle
-    connection_config: Optional[dict[str, Any]] = None  # host,port,user,password,database,dsn,...
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    filters: Optional[dict[str, Any]] = None
-    output_format: str = "excel"  # excel | json | csv
     preview_limit: int = 50
 
 
-# ── Код гүйцэтгэх helper ──────────────────────────────────────────────────────
+class RunToolRequest(BaseModel):
+    code: str
+    connection_type: str = "clickhouse"
+    connection_config: Optional[dict[str, Any]] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    filters: Optional[dict[str, Any]] = None
+    output_format: str = "excel"
+    preview_limit: int = 50
+
+
+# ── Code safety ───────────────────────────────────────────────────────────────
+
+_BLOCKED_STRINGS = [
+    "import subprocess", "from subprocess",
+    "import socket", "from socket",
+    "import shutil", "from shutil",
+    "__import__", "importlib", "builtins", "__builtins__",
+    "__dict__", "__class__", "__subclasses__", "__globals__", "__getattr__",
+    "getattr(", "setattr(", "delattr(",
+    "globals(", "locals(", "vars(", "dir(",
+    "exec(", "eval(", "compile(",
+    "os.system", "os.popen", "os.execv", "os.spawn", "os.environ",
+    "os.path", "os.remove", "os.unlink", "os.rmdir", "os.listdir",
+    "open(", "pickle", "marshal", "shelve",
+    "yaml.load", "yaml.unsafe_load",
+]
+
+_BLOCKED_PATTERNS = [
+    re.compile(r"__\w+__"),
+    re.compile(r"chr\s*\("),
+    re.compile(r"ord\s*\("),
+    re.compile(r"\btype\s*\("),
+    re.compile(r"breakpoint\s*\("),
+]
+
+_SQL_MUTATE_PATTERNS = [
+    re.compile(r"\bINSERT\s+INTO\b", re.IGNORECASE),
+    re.compile(r"\bUPDATE\s+\w", re.IGNORECASE),
+    re.compile(r"\bDELETE\s+FROM\b", re.IGNORECASE),
+    re.compile(r"\bDROP\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b", re.IGNORECASE),
+    re.compile(r"\bTRUNCATE\s+", re.IGNORECASE),
+    re.compile(r"\bALTER\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b", re.IGNORECASE),
+    re.compile(r"\bCREATE\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b", re.IGNORECASE),
+    re.compile(r"\bGRANT\s+", re.IGNORECASE),
+    re.compile(r"\bREVOKE\s+", re.IGNORECASE),
+    re.compile(r"\bMERGE\s+INTO\b", re.IGNORECASE),
+    re.compile(r"\bEXECUTE\s+", re.IGNORECASE),
+    re.compile(r"\bCALL\s+", re.IGNORECASE),
+]
+
 
 def _check_code_safety(code: str) -> None:
-    """
-    Аюултай Python кодын загварыг хаана.
-    Admin хэрэглэгч л бичдэг ч дотоод сүлжээнд хамгаалалт хэрэгтэй.
-    """
-    import re as _re
-
-    BLOCKED = [
-        "import subprocess",
-        "from subprocess",
-        "import socket",
-        "from socket",
-        "import shutil",
-        "from shutil",
-        "__import__",
-        "importlib",
-        "builtins",
-        "__builtins__",
-        "__dict__",
-        "__class__",
-        "__subclasses__",
-        "__globals__",
-        "__getattr__",
-        "getattr(",
-        "setattr(",
-        "delattr(",
-        "globals(",
-        "locals(",
-        "vars(",
-        "dir(",
-        "exec(",
-        "eval(",
-        "compile(",
-        "os.system",
-        "os.popen",
-        "os.execv",
-        "os.spawn",
-        "os.environ",
-        "os.path",
-        "os.remove",
-        "os.unlink",
-        "os.rmdir",
-        "os.listdir",
-        "open(",
-        "pickle",
-        "marshal",
-        "shelve",
-        "yaml.load",
-        "yaml.unsafe_load",
-    ]
     code_lower = code.lower()
-    for pattern in BLOCKED:
+    for pattern in _BLOCKED_STRINGS:
         if pattern.lower() in code_lower:
             raise HTTPException(
                 status_code=400,
                 detail=f"Аюулгүй байдлын хязгаарлалт: '{pattern}' ашиглах боломжгүй.",
             )
-
-    # Regex-based checks to catch concatenation bypass attempts like 'ex'+'ec'
-    # and import via __dict__, chr() construction, etc.
-    BLOCKED_PATTERNS = [
-        r"__\w+__",          # any dunder attribute access
-        r"chr\s*\(",         # chr() can build arbitrary strings
-        r"ord\s*\(",         # ord() helper for chr bypass
-        r"\btype\s*\(",      # type() can create classes dynamically (word boundary to allow astype)
-        r"breakpoint\s*\(",  # debugger access
-    ]
-    for pat in BLOCKED_PATTERNS:
-        if _re.search(pat, code):
+    for pat in _BLOCKED_PATTERNS:
+        if pat.search(code):
             raise HTTPException(
                 status_code=400,
-                detail=f"Аюулгүй байдлын хязгаарлалт: '{pat}' загвар ашиглах боломжгүй.",
+                detail=f"Аюулгүй байдлын хязгаарлалт: '{pat.pattern}' загвар ашиглах боломжгүй.",
             )
-
-    # SQL mutation хориглох: зөвхөн SELECT зөвшөөрнө
-    SQL_MUTATE_PATTERNS = [
-        r"\bINSERT\s+INTO\b",
-        r"\bUPDATE\s+\w",
-        r"\bDELETE\s+FROM\b",
-        r"\bDROP\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b",
-        r"\bTRUNCATE\s+",
-        r"\bALTER\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b",
-        r"\bCREATE\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA|USER|SEQUENCE|TRIGGER|PROCEDURE|FUNCTION)\b",
-        r"\bGRANT\s+",
-        r"\bREVOKE\s+",
-        r"\bMERGE\s+INTO\b",
-        r"\bEXECUTE\s+",
-        r"\bCALL\s+",
-    ]
-    for pat in SQL_MUTATE_PATTERNS:
-        if _re.search(pat, code, _re.IGNORECASE):
+    for pat in _SQL_MUTATE_PATTERNS:
+        if pat.search(code):
             raise HTTPException(
                 status_code=400,
-                detail=f"Зөвхөн SELECT query зөвшөөрөгдөнө. '{pat}' ашиглах боломжгүй.",
+                detail=f"Зөвхөн SELECT query зөвшөөрөгдөнө. '{pat.pattern}' ашиглах боломжгүй.",
+            )
+
+    # AST-based defence-in-depth: reject any access to dunder attributes,
+    # `import` / `from import` statements, lambda + obfuscation tricks that the
+    # string blocklist may miss (e.g. `getattr(o, '__cl' + 'ass__')`).
+    try:
+        tree = ast.parse(code, mode="exec")
+    except SyntaxError as exc:
+        raise HTTPException(status_code=400, detail=f"Python syntax алдаа: {exc}")
+
+    forbidden_names = {
+        "eval", "exec", "compile", "__import__", "globals", "locals",
+        "vars", "getattr", "setattr", "delattr", "open", "input",
+        "breakpoint", "help", "memoryview", "object", "type", "super",
+    }
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            raise HTTPException(
+                status_code=400,
+                detail="Аюулгүй байдлын хязгаарлалт: import зөвшөөрөгдөхгүй.",
+            )
+        if isinstance(node, ast.Attribute) and node.attr.startswith("__") and node.attr.endswith("__"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Аюулгүй байдлын хязгаарлалт: dunder attribute '{node.attr}' ашиглах боломжгүй.",
+            )
+        if isinstance(node, ast.Name) and node.id in forbidden_names:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Аюулгүй байдлын хязгаарлалт: '{node.id}' нэрийг ашиглах боломжгүй.",
+            )
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in forbidden_names:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Аюулгүй байдлын хязгаарлалт: '{node.func.id}()' дуудах боломжгүй.",
             )
 
 
-# ── Restricted builtins for exec() sandbox ─────────────────────────────────────
-import builtins as _builtins
+# ── Restricted builtins ──────────────────────────────────────────────────────
 
 _SAFE_BUILTINS = {
     name: getattr(_builtins, name)
@@ -374,112 +534,158 @@ _SAFE_BUILTINS = {
 }
 
 
-def _execute_code(req: RunReportRequest) -> Any:
-    """
-    Загварын Python кодыг аюулгүй namespace-д ажиллуулна.
+# ── Exec helpers ──────────────────────────────────────────────────────────────
 
-    Кодын доторх нэрс:
-        conn        - clickhouse_connect клиент (conn.query_df(...) ашиглана)
-        pd          - pandas
-        np          - numpy
-        start_date  - огноо мөр (жишээ: '2024-01-01')
-        end_date    - огноо мөр
-        filters     - dict (нэмэлт шүүлтүүрүүд)
-        result      - КОД ЗААВАЛ ЭНД ДҮН ОНООХ ЁСТОЙ
+def _build_namespace(conn: Any, start_date: str, end_date: str, filters: dict) -> dict[str, Any]:
+    return {
+        "__builtins__": _SAFE_BUILTINS,
+        "conn": conn,
+        "pd": pd,
+        "np": np,
+        "ThreadPoolExecutor": ThreadPoolExecutor,
+        "start_date": start_date or "",
+        "end_date": end_date or start_date or "",
+        "filters": filters or {},
+        "result": None,
+    }
 
-    Хүлээгдэж буй result:
-        pd.DataFrame       - нэг sheet
-        [(нэр, df), ...]    - олон sheet
-    """
+
+def _run_exec(code: str, namespace: dict, label: str = "код") -> Any:
+    try:
+        _exec_with_timeout(code, namespace)
+    except _ExecTimeoutError as exc:
+        raise HTTPException(status_code=408, detail=str(exc))
+    except MemoryError:
+        gc.collect()
+        logger.error("{} OOM: санах ой дүүрсэн", label)
+        raise HTTPException(status_code=503, detail="Санах ой дүүрсэн (OOM). Хугацааг богиносгоно уу.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("{} алдаа: {}: {}", label, type(exc).__name__, exc)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Python код алдаа: {type(exc).__name__}: {exc}",
+        )
+
+    result = namespace.get("result")
+    if result is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Python код 'result' утга өгсөнгүй.\n"
+                "`result = df` эсвэл `result = [('Sheet1', df1), ('Sheet2', df2)]` гэж бичнэ үү."
+            ),
+        )
+    return _sanitize_result(result)
+
+
+def _execute_report_uncached(req: RunReportRequest) -> Any:
     _check_code_safety(req.code)
     conn = _get_ch_client()
-    namespace: dict[str, Any] = {
-        "__builtins__": _SAFE_BUILTINS,
-        "conn": conn,
-        "pd": pd,
-        "np": np,
-        "start_date": req.start_date or "",
-        "end_date": req.end_date or req.start_date or "",
-        "filters": req.filters or {},
-        "result": None,
-    }
-    try:
-        _exec_with_timeout(req.code, namespace)
-    except _ExecTimeoutError as exc:
-        raise HTTPException(status_code=408, detail=str(exc))
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Report код алдаа: {}: {}", type(exc).__name__, exc)
-        raise HTTPException(
-            status_code=400,
-            detail=f"Python код алдаа: {type(exc).__name__}: {exc}",
-        )
-
-    result = namespace.get("result")
-    if result is None:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Python код 'result' утга өгсөнгүй.\n"
-                "Код доторхоо заавал `result = df` эсвэл "
-                "`result = [('Sheet1', df1), ('Sheet2', df2)]` гэж бичнэ үү."
-            ),
-        )
-    return result
+    ns = _build_namespace(conn, req.start_date, req.end_date, req.filters or {})
+    return _run_exec(req.code, ns, label="Тайлан")
 
 
-def _execute_tool_code(req: RunToolRequest) -> Any:
-    """
-    Python API Tool-ийн кодыг ажиллуулна.
-    conn нь connectionType-оос хамааран ClickHouse/Oracle/MSSQL/None байна.
-    """
+def _execute_tool_uncached(req: RunToolRequest) -> Any:
     _check_code_safety(req.code)
     conn = _make_connection(req.connection_type, req.connection_config)
-    namespace: dict[str, Any] = {
-        "__builtins__": _SAFE_BUILTINS,
-        "conn": conn,
-        "pd": pd,
-        "np": np,
-        "start_date": req.start_date or "",
-        "end_date": req.end_date or req.start_date or "",
-        "filters": req.filters or {},
-        "result": None,
-    }
-    try:
-        _exec_with_timeout(req.code, namespace)
-    except _ExecTimeoutError as exc:
-        raise HTTPException(status_code=408, detail=str(exc))
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Tool код алдаа: {}: {}", type(exc).__name__, exc)
-        raise HTTPException(
-            status_code=400,
-            detail=f"Python код алдаа: {type(exc).__name__}: {exc}",
-        )
+    ns = _build_namespace(conn, req.start_date, req.end_date, req.filters or {})
+    return _run_exec(req.code, ns, label="Tool")
 
-    result = namespace.get("result")
-    if result is None:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Python код 'result' утга өгсөнгүй.\n"
-                "`result = df` эсвэл `result = [('Sheet1', df1)]` гэж бичнэ үү."
-            ),
-        )
+
+def _tool_cache_key(req: RunToolRequest) -> str:
+    return _make_cache_key(
+        {
+            "kind": "tool",
+            "code": req.code,
+            "ct": req.connection_type,
+            "cc": req.connection_config or {},
+            "sd": req.start_date,
+            "ed": req.end_date,
+            "f": req.filters or {},
+        }
+    )
+
+
+def _report_cache_key(req: RunReportRequest) -> str:
+    return _make_cache_key(
+        {
+            "kind": "report",
+            "code": req.code,
+            "sd": req.start_date,
+            "ed": req.end_date,
+            "f": req.filters or {},
+        }
+    )
+
+
+# ── DataFrame sanitization ───────────────────────────────────────────────────
+
+def _deep_sanitize_df(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            try:
+                if df[col].dt.tz is not None:
+                    df[col] = df[col].dt.tz_convert(None)
+            except Exception:
+                pass
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+            df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+        elif df[col].dtype == object:
+            def _fix(v):
+                if v is None:
+                    return None
+                if isinstance(v, Decimal):
+                    return float(v)
+                if isinstance(v, pd.Timestamp):
+                    return v.isoformat()
+                if isinstance(v, datetime.datetime):
+                    return v.isoformat()
+                if isinstance(v, datetime.date):
+                    return v.isoformat()
+                return v
+            df[col] = df[col].map(_fix)
+    return df
+
+
+def _sanitize_result(result: Any) -> Any:
+    if isinstance(result, pd.DataFrame):
+        return _deep_sanitize_df(result)
+    if isinstance(result, list):
+        return [
+            (name, _deep_sanitize_df(df) if isinstance(df, pd.DataFrame) else df)
+            for name, df in result
+        ]
     return result
 
 
+# ── Output formatters ─────────────────────────────────────────────────────────
+
 def _result_to_excel_bytes(result: Any) -> bytes:
-    """result (DataFrame эсвэл жагсаалт) -> Excel bytes."""
+    if isinstance(result, list) and not result:
+        raise HTTPException(status_code=400, detail="result жагсаалт хоосон байна.")
+    if not isinstance(result, (pd.DataFrame, list)):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "result нь pd.DataFrame эсвэл [(sheet_name, df), ...] байх ёстой. "
+                f"Одоогийн төрөл: {type(result).__name__}"
+            ),
+        )
+
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+    # constant_memory=True: маш том DataFrame-д санах ойгоор хэмнэлттэй
+    with pd.ExcelWriter(
+        output,
+        engine="xlsxwriter",
+        engine_kwargs={"options": {"constant_memory": True}},
+    ) as writer:
         if isinstance(result, pd.DataFrame):
             result.to_excel(writer, sheet_name="Sheet1", index=False)
-        elif isinstance(result, list):
-            if not result:
-                raise HTTPException(status_code=400, detail="result жагсаалт хоосон байна.")
+        else:
             for sheet_name, df in result:
                 if not isinstance(df, pd.DataFrame):
                     raise HTTPException(
@@ -487,20 +693,11 @@ def _result_to_excel_bytes(result: Any) -> bytes:
                         detail=f"'{sheet_name}' sheet-ийн утга DataFrame биш байна.",
                     )
                 df.to_excel(writer, sheet_name=str(sheet_name)[:31], index=False)
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "result нь pd.DataFrame эсвэл [(sheet_name, df), ...] байх ёстой. "
-                    f"Одоогийн төрөл: {type(result).__name__}"
-                ),
-            )
     output.seek(0)
     return output.read()
 
 
 def _result_to_csv_bytes(result: Any) -> bytes:
-    """result -> CSV bytes (UTF-8 BOM)."""
     if isinstance(result, pd.DataFrame):
         df = result
     elif isinstance(result, list) and result:
@@ -514,39 +711,34 @@ def _result_to_csv_bytes(result: Any) -> bytes:
     return output.read()
 
 
-def _sanitize_df_for_json(df: pd.DataFrame) -> pd.DataFrame:
-    """datetime/Timestamp/date баганыг string болгоно."""
-    import datetime
-    df = df.copy()
-    for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S").where(df[col].notna(), None)
-        elif df[col].dtype == object:
-            def _conv(v):
-                if v is None or (isinstance(v, float) and pd.isna(v)):
-                    return None
-                try:
-                    if pd.isna(v):
-                        return None
-                except Exception:
-                    pass
-                if isinstance(v, pd.Timestamp):
-                    return v.strftime("%Y-%m-%d %H:%M:%S")
-                if isinstance(v, datetime.datetime):
-                    return v.strftime("%Y-%m-%d %H:%M:%S")
-                if isinstance(v, datetime.date):
-                    return v.strftime("%Y-%m-%d")
-                return v
-            df[col] = df[col].map(_conv)
-    return df
+def _result_to_json_payload(result: Any) -> Any:
+    if isinstance(result, pd.DataFrame):
+        rows = json.loads(
+            result.to_json(orient="records", date_format="iso",
+                           default_handler=str, force_ascii=False)
+        )
+        return {"columns": list(result.columns), "rows": rows}
+    if isinstance(result, list):
+        sheets = []
+        for name, df in result:
+            rows = json.loads(
+                df.to_json(orient="records", date_format="iso",
+                           default_handler=str, force_ascii=False)
+            )
+            sheets.append({"name": str(name), "columns": list(df.columns), "rows": rows})
+        return {"sheets": sheets}
+    raise HTTPException(status_code=400, detail="result нь DataFrame байх ёстой.")
 
 
 def _df_to_preview(df: pd.DataFrame, limit: int) -> dict:
-    import json
     sample = df.head(limit)
-    # pandas to_json нь Timestamp/date/NaT/NaN бүгдийг зөв хөрвүүлнэ
     rows = json.loads(
-        sample.to_json(orient="records", date_format="iso", default_handler=str, force_ascii=False)
+        sample.to_json(
+            orient="records",
+            date_format="iso",
+            default_handler=str,
+            force_ascii=False,
+        )
     )
     return {
         "columns": list(sample.columns),
@@ -555,7 +747,42 @@ def _df_to_preview(df: pd.DataFrame, limit: int) -> dict:
     }
 
 
-# ── POST /run-report - Excel файл буцаана ─────────────────────────────────────
+def _result_preview_payload(result: Any, limit: int) -> dict:
+    if isinstance(result, pd.DataFrame):
+        return _df_to_preview(result, limit)
+    if isinstance(result, list) and result:
+        sheet_name, df = result[0]
+        return {**_df_to_preview(df, limit), "sheet": str(sheet_name)}
+    raise HTTPException(status_code=400, detail="result нь DataFrame байх ёстой.")
+
+
+def _stream_bytes(payload: bytes, chunk_size: int = 64 * 1024):
+    pos = 0
+    n = len(payload)
+    while pos < n:
+        yield payload[pos : pos + chunk_size]
+        pos += chunk_size
+
+
+# ── Async wrappers ────────────────────────────────────────────────────────────
+
+async def _compute_tool_async(req: RunToolRequest) -> tuple[str, Any]:
+    key = _tool_cache_key(req)
+    result = await run_in_threadpool(
+        _CACHE.compute, key, lambda: _execute_tool_uncached(req)
+    )
+    return key, result
+
+
+async def _compute_report_async(req: RunReportRequest) -> tuple[str, Any]:
+    key = _report_cache_key(req)
+    result = await run_in_threadpool(
+        _CACHE.compute, key, lambda: _execute_report_uncached(req)
+    )
+    return key, result
+
+
+# ── POST /run-report ──────────────────────────────────────────────────────────
 
 @app.post(
     "/run-report",
@@ -563,107 +790,140 @@ def _df_to_preview(df: pd.DataFrame, limit: int) -> dict:
     response_class=Response,
     dependencies=[Depends(_verify_api_key)],
 )
-def run_report(req: RunReportRequest) -> Response:
-    result = _execute_code(req)
-    excel_bytes = _result_to_excel_bytes(result)
-    return Response(
-        content=excel_bytes,
+async def run_report(req: RunReportRequest) -> Response:
+    key, result = await _compute_report_async(req)
+    body = await run_in_threadpool(_result_to_excel_bytes, result)
+    return StreamingResponse(
+        _stream_bytes(body),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"X-Cache-Key": key, "Content-Length": str(len(body))},
     )
 
 
-# ── POST /preview - эхний N мөрийг JSON-оор буцаана ──────────────────────────
+# ── POST /preview ─────────────────────────────────────────────────────────────
 
 @app.post(
     "/preview",
     summary="Pandas код ажиллуулж эхний N мөрийг JSON-оор буцаана",
     dependencies=[Depends(_verify_api_key)],
 )
-def preview_report(req: RunReportRequest) -> JSONResponse:
-    result = _execute_code(req)
+async def preview_report(req: RunReportRequest) -> JSONResponse:
+    key, result = await _compute_report_async(req)
     limit = max(1, min(req.preview_limit, 500))
-
-    if isinstance(result, pd.DataFrame):
-        return JSONResponse(_df_to_preview(result, limit))
-    elif isinstance(result, list) and result:
-        sheet_name, df = result[0]
-        return JSONResponse({**_df_to_preview(df, limit), "sheet": str(sheet_name)})
-    else:
-        raise HTTPException(status_code=400, detail="result нь DataFrame байх ёстой.")
+    payload = await run_in_threadpool(_result_preview_payload, result, limit)
+    payload["cacheKey"] = key
+    return JSONResponse(payload)
 
 
-# ── POST /run-tool - Python API Tool: outputFormat-оос хамааран буцаана ───────
+# ── POST /run-tool ────────────────────────────────────────────────────────────
 
 @app.post(
     "/run-tool",
-    summary="Python API Tool ажиллуулна (excel | json | csv буцааж болно)",
+    summary="Python API Tool ажиллуулна (excel | json | csv)",
     dependencies=[Depends(_verify_api_key)],
 )
-def run_tool(req: RunToolRequest) -> Response:
-    result = _execute_tool_code(req)
+async def run_tool(req: RunToolRequest) -> Response:
+    key, result = await _compute_tool_async(req)
     fmt = (req.output_format or "excel").lower()
 
     if fmt == "excel":
-        content = _result_to_excel_bytes(result)
-        return Response(
-            content=content,
+        body = await run_in_threadpool(_result_to_excel_bytes, result)
+        return StreamingResponse(
+            _stream_bytes(body),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"X-Cache-Key": key, "Content-Length": str(len(body))},
         )
     if fmt == "csv":
-        content = _result_to_csv_bytes(result)
-        return Response(content=content, media_type="text/csv; charset=utf-8")
+        body = await run_in_threadpool(_result_to_csv_bytes, result)
+        return StreamingResponse(
+            _stream_bytes(body),
+            media_type="text/csv; charset=utf-8",
+            headers={"X-Cache-Key": key, "Content-Length": str(len(body))},
+        )
     if fmt == "json":
-        # JSON output: single DataFrame -> {columns, rows}; list -> {sheets: [{name, columns, rows}]}
-        if isinstance(result, pd.DataFrame):
-            result = _sanitize_df_for_json(result)
-            clean = result.astype(object).where(pd.notna(result), None)
-            return JSONResponse(
-                {"columns": list(result.columns), "rows": clean.values.tolist()}
-            )
-        elif isinstance(result, list):
-            sheets = []
-            for name, df in result:
-                df = _sanitize_df_for_json(df)
-                clean = df.astype(object).where(pd.notna(df), None)
-                sheets.append(
-                    {"name": str(name), "columns": list(df.columns), "rows": clean.values.tolist()}
-                )
-            return JSONResponse({"sheets": sheets})
-        else:
-            raise HTTPException(status_code=400, detail="result нь DataFrame байх ёстой.")
-    raise HTTPException(status_code=400, detail=f"Дэмжигдээгүй outputFormat: '{fmt}'. excel | json | csv")
+        payload = await run_in_threadpool(_result_to_json_payload, result)
+        if isinstance(payload, dict):
+            payload["cacheKey"] = key
+        return JSONResponse(payload)
+    raise HTTPException(
+        status_code=400,
+        detail=f"Дэмжигдээгүй outputFormat: '{fmt}'. Зөвшөөрөгдсөн: excel | json | csv",
+    )
 
 
-# ── POST /preview-tool - Python API Tool preview (эхний N мөр JSON) ──────────
+# ── POST /preview-tool ────────────────────────────────────────────────────────
 
 @app.post(
     "/preview-tool",
-    summary="Python API Tool-ийн preview (эхний N мөр JSON)",
+    summary="Python API Tool-ийн preview (эхний N мөр JSON, кэшэд хадгална)",
     dependencies=[Depends(_verify_api_key)],
 )
-def preview_tool(req: RunToolRequest) -> JSONResponse:
-    result = _execute_tool_code(req)
+async def preview_tool(req: RunToolRequest) -> JSONResponse:
+    key, result = await _compute_tool_async(req)
     limit = max(1, min(req.preview_limit, 500))
-
-    if isinstance(result, pd.DataFrame):
-        return JSONResponse(_df_to_preview(result, limit))
-    elif isinstance(result, list) and result:
-        sheet_name, df = result[0]
-        return JSONResponse({**_df_to_preview(df, limit), "sheet": str(sheet_name)})
-    else:
-        raise HTTPException(status_code=400, detail="result нь DataFrame байх ёстой.")
+    payload = await run_in_threadpool(_result_preview_payload, result, limit)
+    payload["cacheKey"] = key
+    return JSONResponse(payload)
 
 
-# ── GET /health - NestJS startup-д шалгана ────────────────────────────────────
+# ── GET /download/{key} ───────────────────────────────────────────────────────
+
+@app.get(
+    "/download/{cache_key}",
+    summary="Кэшээс шууд татах (preview хийсний дараа excel/csv/json татна)",
+    dependencies=[Depends(_verify_api_key)],
+)
+async def download_cached(cache_key: str, format: str = "excel") -> Response:
+    result = _CACHE.get(cache_key)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Кэш олдсонгүй эсвэл хугацаа нь дууссан. Preview-г дахин хийнэ үү.",
+        )
+    fmt = (format or "excel").lower()
+    if fmt == "excel":
+        body = await run_in_threadpool(_result_to_excel_bytes, result)
+        return StreamingResponse(
+            _stream_bytes(body),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"X-Cache-Key": cache_key, "Content-Length": str(len(body))},
+        )
+    if fmt == "csv":
+        body = await run_in_threadpool(_result_to_csv_bytes, result)
+        return StreamingResponse(
+            _stream_bytes(body),
+            media_type="text/csv; charset=utf-8",
+            headers={"X-Cache-Key": cache_key, "Content-Length": str(len(body))},
+        )
+    if fmt == "json":
+        payload = await run_in_threadpool(_result_to_json_payload, result)
+        return JSONResponse(payload)
+    raise HTTPException(
+        status_code=400,
+        detail=f"Дэмжигдээгүй format: '{fmt}'. Зөвшөөрөгдсөн: excel | csv | json",
+    )
+
+
+# ── GET /health ───────────────────────────────────────────────────────────────
 
 @app.get("/health", summary="Сервис болон ClickHouse-ийн төлөв")
 def health() -> dict:
+    ch_ok = False
+    ch_latency_ms: Optional[int] = None
     try:
+        t0 = time.monotonic()
         _get_ch_client().ping()
+        ch_latency_ms = round((time.monotonic() - t0) * 1000)
         ch_ok = True
-    except Exception:  # noqa: BLE001
-        ch_ok = False
-    return {"status": "ok", "clickhouse": ch_ok}
+    except Exception:
+        pass
+    return {
+        "status": "ok",
+        "clickhouse": ch_ok,
+        "ch_latency_ms": ch_latency_ms,
+        "uptime_sec": round(time.monotonic() - _APP_START),
+        "cache": _CACHE.stats(),
+    }
 
 
 # ── Шууд ажиллуулах ──────────────────────────────────────────────────────────

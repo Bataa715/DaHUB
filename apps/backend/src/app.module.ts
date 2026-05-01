@@ -16,6 +16,8 @@ import { ChessModule } from "./chess/chess.module";
 import { EnglishModule } from "./english/english.module";
 import { OracleModule } from "./oracle/oracle.module";
 import { PythonApiModule } from "./python-api/python-api.module";
+import { RiskAssessmentModule } from "./risk-assessment/risk-assessment.module";
+import { WeeklyReportModule } from "./weekly-report/weekly-report.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 
@@ -31,25 +33,10 @@ import configuration from "./config/configuration";
     }),
     ThrottlerModule.forRoot([
       {
-        name: "short",
-        ttl: 1000, // 1 секунд
-        limit: 20, // Ерөнхий throttle
-      },
-      {
-        name: "login",
-        ttl: 300000, // 5 минут
-        limit: 5, // Дээд тал нь 5 оролдлого / 5 минут
-      },
-      {
-        name: "reports",
-        ttl: 60000, // 1 минут
-        limit: 60, // Нэг хэрэглэгч 1 минутад 60 тайлан татах боломжтой
-      },
-      {
-        name: "preview",
-        ttl: 60000, // 1 минут
-        limit: 120, // Preview 1 минутад 120 хүсэлт
-      },
+        name: "default",
+        ttl: 60000, // 1 minute
+        limit: 120, // 120 requests per minute
+      }
     ]),
     ScheduleModule.forRoot(),
     ClickHouseModule,
@@ -65,6 +52,8 @@ import configuration from "./config/configuration";
     EnglishModule,
     OracleModule,
     PythonApiModule,
+    RiskAssessmentModule,
+    WeeklyReportModule,
   ],
   controllers: [HealthController],
   providers: [
