@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { riskApi } from "@/lib/api";
 import {
   Loader2,
   ShieldAlert,
   ArrowLeft,
-  AlertTriangle,
-  Database,
-  RefreshCw,
   Search,
   Download,
   LayoutGrid,
@@ -18,7 +15,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
-import { useAuth } from "@/contexts/AuthContext";
 import {
   computeScore,
   getGroup,
@@ -26,6 +22,7 @@ import {
   scoreDisplay,
   type ScoreGroup,
 } from "../scoring-rules";
+import { CATALOG_BY_GROUP } from "../indicator-catalog";
 
 // ── types ──────────────────────────────────────────────────────────────────
 type RiskRow = Awaited<ReturnType<typeof riskApi.branchRiskass>>["rows"][number];
@@ -36,25 +33,29 @@ type ScoredRow = RiskRow & {
   __group: any;
 };
 
-const GROUP_OPTIONS: { key: "all" | ScoreGroup; label: string; cls: string }[] = [
+type FilterKey = "all" | ScoreGroup | "Score 4";
+
+// Score 4 catalog indicator-уудын autoSubid-уудын жагсаалт
+const SCORE4_SUBIDS = new Set(
+  CATALOG_BY_GROUP[4]
+    .filter((i) => i.autoSubid != null)
+    .map((i) => Number(i.autoSubid)),
+);
+
+const GROUP_OPTIONS: { key: FilterKey; label: string; cls: string }[] = [
   { key: "all", label: "Бүгд", cls: "text-foreground" },
   { key: "Score 1", label: "Score 1", cls: "text-rose-600" },
   { key: "Score 2", label: "Score 2", cls: "text-amber-600" },
   { key: "Score 3", label: "Score 3", cls: "text-blue-600" },
+  { key: "Score 4", label: "Score 4", cls: "text-violet-600" },
 ];
 
 // ── page ───────────────────────────────────────────────────────────────────
 export default function RiskAssessmentDetailPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   const [rows, setRows] = useState<RiskRow[]>([]);
-  const [failed, setFailed] = useState<{ branchId: number; error: string }[]>([]);
-  const [branchCount, setBranchCount] = useState(0);
   const [cacheLoading, setCacheLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [pDate, setPDate] = useState("");
   const [pDateBeg, setPDateBeg] = useState("");
@@ -62,7 +63,7 @@ export default function RiskAssessmentDetailPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
   const [search, setSearch] = useState("");
-  const [groupFilter, setGroupFilter] = useState<"all" | ScoreGroup>("all");
+  const [groupFilter, setGroupFilter] = useState<FilterKey>("all");
 
   // Mount хийх үед ClickHouse кэшийг ачаалах
   useEffect(() => {
@@ -72,12 +73,9 @@ export default function RiskAssessmentDetailPage() {
         const cached = await riskApi.branchRiskassLast();
         if (cancelled || !cached) return;
         setRows(cached.rows as RiskRow[]);
-        setFailed(cached.failed);
-        setBranchCount(cached.branchCount);
         setPDate(cached.pDate);
         setPDateBeg(cached.pDateBeg);
         setCachedAt(cached.fetchedAt);
-        setHasFetched(true);
       } catch {
         // кэш байхгүй бол чимээгүй өнгөрнө
       } finally {
@@ -86,34 +84,6 @@ export default function RiskAssessmentDetailPage() {
     })();
     return () => { cancelled = true; };
   }, []);
-
-  const datesValid =
-    /^\d{4}-\d{2}-\d{2}$/.test(pDate) &&
-    /^\d{4}-\d{2}-\d{2}$/.test(pDateBeg) &&
-    pDateBeg <= pDate;
-
-  const loadAll = useCallback(async () => {
-    if (!datesValid) {
-      setErrorMsg("Эхлэх болон дуусах огноог зөв оруулна уу (YYYY-MM-DD, эхлэх ≤ дуусах).");
-      return;
-    }
-    setRefreshing(true);
-    setErrorMsg(null);
-    try {
-      const res = await riskApi.branchRiskass({ pDate, pDateBeg });
-      setRows(res.rows);
-      setFailed(res.failed);
-      setBranchCount(res.branchCount);
-      setHasFetched(true);
-      setCachedAt(new Date().toISOString());
-    } catch (e: any) {
-      setErrorMsg(e?.response?.data?.message ?? e.message ?? "Алдаа");
-      setRows([]);
-      setFailed([]);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [pDate, pDateBeg, datesValid]);
 
   const scoredRows: ScoredRow[] = useMemo(() => {
     return rows.map((r) => {
@@ -125,7 +95,13 @@ export default function RiskAssessmentDetailPage() {
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return scoredRows.filter((r) => {
-      if (groupFilter !== "all" && r.__group !== groupFilter) return false;
+      if (groupFilter !== "all") {
+        if (groupFilter === "Score 4") {
+          if (!SCORE4_SUBIDS.has(Number(r.SUBID))) return false;
+        } else {
+          if (r.__group !== groupFilter) return false;
+        }
+      }
       if (!q) return true;
       return [r.SOLID, r.BRANCHNAME, r.BRANCHID, r.PARENTBRANCH, r.RESULT, r.DESCRIPTION_TEXT, r.ID, r.SUBID, r.OPERATION_TYPE, r.__score]
         .map((v) => String(v ?? "").toLowerCase())
@@ -169,91 +145,33 @@ export default function RiskAssessmentDetailPage() {
         href="/tools"
         icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
         title="Үнэлгээний дэлгэрэнгүй"
-        subtitle="RISKASSESSMENT.BranchRiskass — мөр бүрийн дэлгэрэнгүй"
+        subtitle="Мөр бүрийн дэлгэрэнгүй"
       />
       <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1600px]">
 
-        {/* Буцах + огноо + татах */}
-        <section className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="px-3 py-2.5 flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => router.push("/tools/risk-assessment")}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mr-1"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Буцах
-            </button>
-            <div className="w-px h-4 bg-border mx-1" />
-            <Database className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-            <span className="text-[11px] font-semibold text-muted-foreground hidden sm:inline">Хугацааны муж:</span>
-            <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] text-muted-foreground whitespace-nowrap">Эхлэх</label>
-                <input type="date" value={pDateBeg} max={pDate} onChange={(e) => setPDateBeg(e.target.value)}
-                  className="px-2 py-1 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/60 transition-all" />
-              </div>
-              <span className="text-muted-foreground/40 text-xs">→</span>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] text-muted-foreground whitespace-nowrap">Дуусах</label>
-                <input type="date" value={pDate} min={pDateBeg} onChange={(e) => setPDate(e.target.value)}
-                  className="px-2 py-1 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/60 transition-all" />
-              </div>
-            </div>
-            <button onClick={() => loadAll()} disabled={refreshing || !datesValid}
-              className="group flex items-center gap-1.5 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              title={datesValid ? "Oracle-аас татах" : "Огноог зөв оруулна уу"}>
-              {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />}
-              {hasFetched ? "Дахин татах" : "Татах"}
-            </button>
-            {(cacheLoading || cachedAt) && (
-              <div className="flex items-center gap-2 text-[10px] border-l border-border/50 pl-2 ml-1">
-                {cacheLoading && <span className="flex items-center gap-1 text-muted-foreground"><Loader2 className="w-3 h-3 animate-spin" /> Сэргээж байна…</span>}
-                {cachedAt && (
-                  <span className="flex items-center gap-1 text-emerald-600">
-                    <span className="relative flex w-1.5 h-1.5">
-                      <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
-                      <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    </span>
-                    {new Date(cachedAt).toLocaleString("mn-MN")}
-                  </span>
-                )}
-              </div>
+        {/* Буцах */}
+        <button
+          onClick={() => router.push("/tools/risk-assessment")}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Үндсэн хуудас руу буцах
+        </button>
+
+        {/* Кэш цаг */}
+        {(cacheLoading || cachedAt) && (
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            {cacheLoading && <><Loader2 className="w-3 h-3 animate-spin" /> Сэргээж байна…</>}
+            {cachedAt && (
+              <span className="flex items-center gap-1.5 text-emerald-600">
+                <span className="relative flex w-1.5 h-1.5">
+                  <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
+                  <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                </span>
+                Кэш: {new Date(cachedAt).toLocaleString("mn-MN")}
+              </span>
             )}
           </div>
-        </section>
-
-        {/* Алдааны banner */}
-        {errorMsg && (
-          <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-            </div>
-            <div>
-              <div className="font-semibold text-sm text-red-600">Oracle-аас татахад алдаа гарлаа</div>
-              <div className="text-xs mt-1 text-red-600/80 leading-relaxed">{errorMsg}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Алдаа гарсан салбар */}
-        {failed.length > 0 && (
-          <details className="group rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
-            <summary className="cursor-pointer px-4 py-2.5 font-medium text-xs text-amber-700 dark:text-amber-500 flex items-center gap-2 hover:bg-amber-500/10 transition-colors">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Алдаа гарсан салбар</span>
-              <span className="ml-auto px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] tabular-nums font-semibold">{failed.length}</span>
-            </summary>
-            <ul className="px-4 pb-3 space-y-1 text-xs text-muted-foreground border-t border-amber-500/20 pt-2">
-              {failed.map((f) => (
-                <li key={f.branchId} className="flex gap-2">
-                  <span className="text-amber-600">·</span>
-                  <b className="text-foreground tabular-nums">{f.branchId}</b>
-                  <span>—</span>
-                  <span>{f.error}</span>
-                </li>
-              ))}
-            </ul>
-          </details>
         )}
 
         {/* Үндсэн хүснэгт */}
@@ -325,21 +243,16 @@ export default function RiskAssessmentDetailPage() {
           {filteredRows.length === 0 ? (
             <div className="px-6 py-16 text-center">
               <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
-                <Database className="w-6 h-6 text-muted-foreground/60" />
+                <TableIcon className="w-6 h-6 text-muted-foreground/60" />
               </div>
-              {!hasFetched ? (
-                <>
-                  <div className="text-sm font-semibold text-foreground">Татах өгөгдөл байхгүй</div>
-                  <div className="text-xs mt-1.5 text-muted-foreground max-w-md mx-auto leading-relaxed">
-                    Дээрх хэсгээс эхлэх ба дуусах огноогоо сонгоод{" "}
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">«Татах»</span>{" "}
-                    товчийг дарж Oracle-аас үнэлгээг ачаалаарай.
-                  </div>
-                </>
+              {cacheLoading ? (
+                <div className="text-sm text-muted-foreground">Кэш ачаалж байна…</div>
               ) : (
                 <>
-                  <div className="text-sm font-semibold text-foreground">Oracle-аас өгөгдөл олдсонгүй</div>
-                  <div className="text-xs mt-1.5 text-muted-foreground max-w-md mx-auto leading-relaxed">Огнооны муж эсвэл хайлтын утгаа шалгана уу.</div>
+                  <div className="text-sm font-semibold text-foreground">Өгөгдөл олдсонгүй</div>
+                  <div className="text-xs mt-1.5 text-muted-foreground max-w-md mx-auto leading-relaxed">
+                    "Эрсдэлийн үнэлгээ" хуудаснаас Oracle-аас энх татсна уу.
+                  </div>
                 </>
               )}
             </div>
@@ -453,10 +366,7 @@ export default function RiskAssessmentDetailPage() {
           )}
         </section>
 
-        <p className="text-center text-muted-foreground text-xs py-6">
-          {user?.name && <><span>{user.name}</span>{" · "}</>}
-          {(user as any)?.department ?? ""}
-        </p>
+
       </div>
     </div>
   );

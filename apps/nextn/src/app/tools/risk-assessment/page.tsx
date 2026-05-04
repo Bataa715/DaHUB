@@ -2,11 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
-import { useAuth } from "@/contexts/AuthContext";
 import { ShieldAlert, ClipboardList, Table as TableIcon, ChevronRight } from "lucide-react";
 
 export default function RiskAssessmentPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   return (
@@ -15,7 +13,7 @@ export default function RiskAssessmentPage() {
         href="/tools"
         icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
         title="Эрсдэлийн үнэлгээ"
-        subtitle="RISKASSESSMENT.BranchRiskass — салбарын үнэлгээ"
+        subtitle="Салбарын үнэлгээ"
       />
       <div className="container mx-auto px-4 py-10 flex-1 max-w-[900px]">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -64,10 +62,7 @@ export default function RiskAssessmentPage() {
           </button>
         </div>
 
-        <p className="text-center text-muted-foreground text-xs py-10">
-          {user?.name && <><span>{user.name}</span>{" · "}</>}
-          {(user as any)?.department ?? ""}
-        </p>
+
       </div>
     </div>
   );

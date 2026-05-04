@@ -12,7 +12,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
-import { useAuth } from "@/contexts/AuthContext";
 import { computeScore, getGroup, type RiskLevel } from "../scoring-rules";
 import ReportView from "../report-view";
 
@@ -25,7 +24,6 @@ type ScoredRow = RiskRow & {
 };
 
 export default function RiskAssessmentReportPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   const [rows, setRows] = useState<RiskRow[]>([]);
@@ -219,10 +217,7 @@ export default function RiskAssessmentReportPage() {
           />
         )}
 
-        <p className="text-center text-muted-foreground text-xs py-4">
-          {user?.name && <><span>{user.name}</span>{" · "}</>}
-          {(user as any)?.department ?? ""}
-        </p>
+
       </div>
     </div>
   );

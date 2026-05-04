@@ -212,13 +212,11 @@ function downloadPreviewAsDoc(filename: string) {
 // ─── UI primitives ──────────────────────────────────────────────────────────
 function SectionTitle({ idx, title }: { idx: number | string; title: string }) {
   return (
-    <div className="flex items-center gap-3 mb-3">
-      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white text-sm font-bold flex items-center justify-center shadow-lg">
+    <div className="flex items-center gap-2.5 mb-3">
+      <span className="w-6 h-6 rounded-md bg-muted border border-border text-[11px] font-bold flex items-center justify-center text-muted-foreground tabular-nums flex-shrink-0">
         {idx}
-      </div>
-      <h3 className="text-base sm:text-lg font-semibold text-foreground">
-        {title}
-      </h3>
+      </span>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
     </div>
   );
 }
@@ -243,7 +241,7 @@ function Cell({
         readOnly={readOnly}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
-        className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-50 read-only:bg-muted/30"
+        className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20 focus:border-foreground/30 disabled:opacity-50 read-only:bg-muted/20 transition-colors resize-none"
       />
     );
   }
@@ -254,7 +252,7 @@ function Cell({
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
       min={type === "number" ? 0 : undefined}
-      className={`w-full px-2 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500/40 read-only:bg-muted/30${
+      className={`w-full px-2 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20 focus:border-foreground/30 read-only:bg-muted/20 transition-colors${
         type === "number" ? " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" : ""
       }`}
     />
@@ -265,9 +263,9 @@ function AddRowButton({ onClick, label }: { onClick: () => void; label: string }
   return (
     <button
       onClick={onClick}
-      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-dashed border-indigo-500/40 text-indigo-500 hover:bg-indigo-500/10 transition"
+      className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
     >
-      <Plus className="w-4 h-4" /> {label}
+      <Plus className="w-3.5 h-3.5" /> {label}
     </button>
   );
 }
@@ -360,15 +358,14 @@ function OtherInfoForm({
       {/* Dynamic extra rows */}
       <div className="rounded-lg border border-border bg-muted/20 p-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-foreground/80 inline-flex items-center gap-1.5">
-            <ClipboardList className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="text-xs font-semibold text-foreground">
             Нэмэлт мэдээлэл
           </span>
           {!readOnly && (
             <button
               type="button"
               onClick={addRow}
-              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Мөр нэмэх
             </button>
@@ -1066,7 +1063,7 @@ function DirectorReportCard({
           ) : (
             <ChevronRight className="w-4 h-4" />
           )}
-          <Building2 className="w-4 h-4 text-indigo-500" />
+          <Building2 className="w-4 h-4 text-muted-foreground" />
           <div className="flex-1">
             <div className="font-medium">{r.departmentName || "—"}</div>
             <div className="text-xs text-muted-foreground">
@@ -1074,13 +1071,13 @@ function DirectorReportCard({
             </div>
           </div>
         </button>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">
+        <span className="text-xs px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground font-medium">
           {r.role === "daa" ? "ДАА" : "Аудит"}
         </span>
         {!editing ? (
           <button
             onClick={startEdit}
-            className="p-1.5 rounded-md text-indigo-500 hover:bg-indigo-500/10 print:hidden"
+            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors print:hidden"
             title="Засах"
           >
             <Pencil className="w-4 h-4" />
@@ -1090,7 +1087,7 @@ function DirectorReportCard({
             <button
               onClick={save}
               disabled={saving}
-              className="px-2 py-1 rounded-md bg-indigo-500 text-white text-xs inline-flex items-center gap-1 disabled:opacity-50"
+              className="px-2.5 py-1 rounded-md bg-foreground text-background text-xs inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors"
             >
               {saving ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -1522,7 +1519,7 @@ export default function WeeklyReportPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -1611,14 +1608,14 @@ export default function WeeklyReportPage() {
               type="week"
               value={weekInputValue(year, week)}
               onChange={(e) => onWeekChange(e.target.value)}
-              className="px-3 py-1.5 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              className="px-3 py-1.5 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-foreground/20 focus:border-foreground/30 transition-colors"
             />
             {!isDirector && (
               <>
                 <button
                   disabled={saving || submitting}
                   onClick={() => handleSave(false)}
-                  className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted/70 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-md border border-border hover:bg-accent text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors"
                 >
                   {saving ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1630,7 +1627,7 @@ export default function WeeklyReportPage() {
                 <button
                   disabled={saving || submitting}
                   onClick={() => handleSave(true)}
-                  className="px-3 py-1.5 rounded-md bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium inline-flex items-center gap-1.5 shadow-md shadow-indigo-500/30 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-md bg-foreground text-background text-xs font-medium inline-flex items-center gap-1.5 shadow-sm disabled:opacity-50 transition-colors"
                 >
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1643,7 +1640,7 @@ export default function WeeklyReportPage() {
             )}
             <button
               onClick={() => downloadPreviewAsDoc(`Долоо-хоногийн-тайлан-${year}-W${week}`)}
-              className="px-3 py-1.5 rounded-md border border-border hover:bg-muted text-sm font-medium inline-flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-md border border-border hover:bg-accent text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
               title="Word (.doc) болгож татах"
             >
               <FileDown className="w-4 h-4" /> Word
@@ -1656,7 +1653,7 @@ export default function WeeklyReportPage() {
           <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
             {reportsLoading ? (
               <div className="py-12 flex justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : reports.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
