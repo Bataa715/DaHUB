@@ -4,7 +4,6 @@ import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 import type ExcelJS from "exceljs";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Select,
   SelectContent,
@@ -472,24 +471,10 @@ export default function PivotPage() {
   const prefixList = prefixGroups?.map((g) => g.prefix) ?? [];
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-background">
-        <motion.div
-          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-cyan-600/10 to-transparent rounded-full blur-3xl"
-          animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        />
-        <motion.div
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-teal-600/10 to-transparent rounded-full blur-3xl"
-          animate={{ x: [0, -80, 0], y: [0, -40, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        />
-      </div>
-
+    <div className="min-h-screen bg-background">
       <ToolPageHeader
         icon={
-          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md">
+          <div className="w-6 h-6 rounded-md bg-cyan-500 flex items-center justify-center">
             <Table2 className="w-3.5 h-3.5 text-white" />
           </div>
         }
@@ -497,483 +482,287 @@ export default function PivotPage() {
         subtitle="Кодоор бүлэглэж жилээр pivot хийн, түүвэр тооцоолж Excel татах"
       />
 
-      <div className="relative z-10 container mx-auto px-6 py-8 max-w-6xl">
+      <div className="container mx-auto px-6 py-6 max-w-6xl space-y-4">
         {/* File Upload */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6"
-        >
-          <Card className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl">
-            <CardContent className="pt-6 space-y-4">
-              <Label className="text-slate-300 text-base">
-                📎 Excel эсвэл CSV файл оруулах
-              </Label>
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                  isDragging
-                    ? "border-cyan-400 bg-cyan-500/10"
-                    : fileName
-                      ? "border-green-500/50 bg-green-500/5"
-                      : "border-slate-600 hover:border-cyan-500/50 hover:bg-cyan-500/5"
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                {fileName ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <FileSpreadsheet className="w-6 h-6 text-green-400" />
-                    <span className="text-green-400 font-medium">
-                      {fileName}
-                    </span>
-                    <span className="text-slate-400">
-                      ({fileData?.length} мөр, {headers.length} багана)
-                    </span>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-slate-300 font-medium">
-                      Drag and drop file here
-                    </p>
-                    <p className="text-slate-500 text-sm mt-1">
-                      Limit 200MB per file • XLSX, CSV
-                    </p>
-                  </>
-                )}
-              </div>
-              {error && <p className="text-red-400 text-sm">{error}</p>}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Config */}
-        <AnimatePresence>
-          {fileData && headers.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mb-6"
+        <Card className="border border-border shadow-sm">
+          <CardContent className="pt-5 space-y-3">
+            <Label className="text-sm font-medium">Excel эсвэл CSV файл оруулах</Label>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+                isDragging
+                  ? "border-cyan-400 bg-cyan-50 dark:bg-cyan-950/20"
+                  : fileName
+                    ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
+                    : "border-border hover:border-cyan-300 hover:bg-muted/40"
+              }`}
             >
-              <Card className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl">
-                <CardHeader>
-                  <CardTitle className="text-white">⚙️ Тохиргоо</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Year filter */}
-                    <div className="space-y-2 col-span-2 md:col-span-4">
-                      <Label className="text-slate-300">
-                        📅 Жилийн шүүлтүүр
-                      </Label>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => setSelectedYear("all")}
-                          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                            selectedYear === "all"
-                              ? "bg-cyan-500 border-cyan-400 text-white"
-                              : "bg-slate-800 border-slate-600 text-slate-300 hover:border-cyan-500/60"
-                          }`}
-                        >
-                          Бүх жил
-                        </button>
-                        {availableYears.map((y) => (
-                          <button
-                            key={y}
-                            onClick={() => setSelectedYear(y)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                              selectedYear === y
-                                ? "bg-cyan-500 border-cyan-400 text-white"
-                                : "bg-slate-800 border-slate-600 text-slate-300 hover:border-cyan-500/60"
-                            }`}
-                          >
-                            {y}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Date column */}
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">
-                        🗓️ Огноон баганаа сонгоно уу
-                      </Label>
-                      <Select value={dateCol} onValueChange={setDateCol}>
-                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-600">
-                          {headers.map((h) => (
-                            <SelectItem
-                              key={h}
-                              value={h}
-                              className="text-white focus:bg-slate-700"
-                            >
-                              {h}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {/* Code column */}
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">
-                        Бүлэглэх баганаа сонгоно
-                      </Label>
-                      <Select value={codeCol} onValueChange={setCodeCol}>
-                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-600">
-                          {headers.map((h) => (
-                            <SelectItem
-                              key={h}
-                              value={h}
-                              className="text-white focus:bg-slate-700"
-                            >
-                              {h}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {/* Prefix length */}
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">
-                        🔤 Prefix урт (тэмдэгт)
-                      </Label>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <button
-                            key={n}
-                            onClick={() => setPrefixLen(n)}
-                            className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
-                              prefixLen === n
-                                ? "bg-cyan-500 border-cyan-400 text-white"
-                                : "bg-slate-800 border-slate-600 text-slate-300 hover:border-cyan-500/60"
-                            }`}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                      </div>
-                      {codeCol && fileData && (
-                        <p className="text-xs text-slate-500 truncate">
-                          Жишээ: &quot;
-                          {String(
-                            (fileData[0] as unknown[])[
-                              headers.indexOf(codeCol)
-                            ] ?? "",
-                          )
-                            .slice(0, prefixLen)
-                            .toUpperCase()}
-                          &quot;,...
-                        </p>
-                      )}
-                    </div>
-                    {/* Confidence */}
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">
-                        Итгэлцлийн түвшин (%)
-                      </Label>
-                      <Select
-                        value={String(Math.round(confidence * 100))}
-                        onValueChange={(v) => setConfidence(Number(v) / 100)}
-                      >
-                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-600">
-                          {[80, 90, 95, 99].map((v) => (
-                            <SelectItem
-                              key={v}
-                              value={String(v)}
-                              className="text-white focus:bg-slate-700"
-                            >
-                              {v}%
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {/* Margin error */}
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">
-                        Алдааны маржин (%)
-                      </Label>
-                      <Select
-                        value={String(Math.round(marginError * 100))}
-                        onValueChange={(v) => setMarginError(Number(v) / 100)}
-                      >
-                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-600">
-                          {[5, 10, 15, 20].map((v) => (
-                            <SelectItem
-                              key={v}
-                              value={String(v)}
-                              className="text-white focus:bg-slate-700"
-                            >
-                              {v}%
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleBuild}
-                    className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white"
-                  >
-                    <Table2 className="w-4 h-4 mr-2" />
-                    Pivot үүсгэх
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Per-prefix Pivot Tables */}
-        <AnimatePresence>
-          {prefixGroups && prefixGroups.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mb-6 space-y-3"
-            >
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <h2 className="text-white text-lg font-semibold">
-                  📊 Кодын бүлгээр pivot
-                </h2>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Select
-                    value={selectedPrefix}
-                    onValueChange={setSelectedPrefix}
-                  >
-                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white w-36">
-                      <SelectValue placeholder="Prefix..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-600">
-                      {prefixList.map((p) => (
-                        <SelectItem
-                          key={p}
-                          value={p}
-                          className="text-white focus:bg-slate-700"
-                        >
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={exportFilename}
-                    onChange={(e) => setExportFilename(e.target.value)}
-                    className="bg-slate-800/50 border-slate-600 text-white w-56"
-                    placeholder="sample_result.xlsx"
-                  />
-                  <Button
-                    onClick={handleExport}
-                    disabled={!selectedPrefix}
-                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white disabled:opacity-40"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Excel татах
-                  </Button>
+              <input
+                ref={fileInputRef}
+                type="file" accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              {fileName ? (
+                <div className="flex items-center justify-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
+                  <span className="text-emerald-600 font-medium text-sm">{fileName}</span>
+                  <span className="text-muted-foreground text-sm">({fileData?.length} мөр, {headers.length} багана)</span>
                 </div>
-              </div>
-              {prefixGroups.map((group) => (
-                <Card
-                  key={group.prefix}
-                  className="bg-slate-900/80 border-slate-700/50 backdrop-blur-xl"
-                >
-                  <CardHeader
-                    className="py-3 cursor-pointer"
-                    onClick={() => toggleExpand(group.prefix)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-cyan-400 text-base flex items-center gap-2">
-                        {expandedPrefixes.has(group.prefix) ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
-                        )}
-                        <span className="font-mono bg-cyan-500/20 px-2 py-0.5 rounded text-cyan-300">
-                          {group.prefix}
-                        </span>
-                        <span className="text-slate-400 font-normal text-sm">
-                          бүлэг
-                        </span>
-                      </CardTitle>
-                      <span className="text-slate-400 text-sm">
-                        {group.rows.length} жил,{" "}
-                        {group.rows.reduce((s, r) => s + r.total, 0)} нийт
-                      </span>
-                    </div>
-                  </CardHeader>
-                  {expandedPrefixes.has(group.prefix) && (
-                    <CardContent>
-                      <ScrollArea className="max-h-80">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm border-collapse">
-                            <thead>
-                              <tr className="bg-slate-800">
-                                <th className="px-3 py-2 text-left text-slate-300 border border-slate-700">
-                                  Жил
-                                </th>
-                                {group.codes.map((c) => (
-                                  <th
-                                    key={c}
-                                    className="px-3 py-2 text-right text-cyan-400 border border-slate-700 whitespace-nowrap"
-                                  >
-                                    {c}
-                                  </th>
-                                ))}
-                                <th className="px-3 py-2 text-right text-white border border-slate-700 font-bold">
-                                  Нийт
-                                </th>
-                                <th className="px-3 py-2 text-right text-teal-400 border border-slate-700">
-                                  Хувь (%)
-                                </th>
-                                <th className="px-3 py-2 text-right text-yellow-400 border border-slate-700 whitespace-nowrap">
-                                  Түүвэр({Math.round(confidence * 100)},
-                                  {Math.round(marginError * 100)})
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {group.rows.map((row, i) => (
-                                <tr
-                                  key={row.year}
-                                  className={
-                                    i % 2 === 0
-                                      ? "bg-slate-900"
-                                      : "bg-slate-800/30"
-                                  }
-                                >
-                                  <td className="px-3 py-2 text-slate-200 border border-slate-700 font-medium">
-                                    {row.year}
-                                  </td>
-                                  {group.codes.map((c) => (
-                                    <td
-                                      key={c}
-                                      className="px-3 py-2 text-white text-right border border-slate-700"
-                                    >
-                                      {row.codeCounts[c] ?? 0}
-                                    </td>
-                                  ))}
-                                  <td className="px-3 py-2 text-white font-bold text-right border border-slate-700">
-                                    {row.total}
-                                  </td>
-                                  <td className="px-3 py-2 text-teal-400 text-right border border-slate-700">
-                                    {row.pct.toFixed(2)}%
-                                  </td>
-                                  <td className="px-3 py-2 text-yellow-400 font-bold text-right border border-slate-700">
-                                    {row.sampleSize}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr className="bg-slate-700/60 font-bold">
-                                <td className="px-3 py-2 text-white border border-slate-700">
-                                  Нийт
-                                </td>
-                                {group.codes.map((c) => (
-                                  <td
-                                    key={c}
-                                    className="px-3 py-2 text-white text-right border border-slate-700"
-                                  >
-                                    {group.rows.reduce(
-                                      (s, r) => s + (r.codeCounts[c] ?? 0),
-                                      0,
-                                    )}
-                                  </td>
-                                ))}
-                                <td className="px-3 py-2 text-cyan-400 text-right border border-slate-700">
-                                  {group.rows.reduce((s, r) => s + r.total, 0)}
-                                </td>
-                                <td className="px-3 py-2 text-teal-400 text-right border border-slate-700">
-                                  100%
-                                </td>
-                                <td className="px-3 py-2 text-yellow-400 text-right border border-slate-700">
-                                  {group.rows.reduce(
-                                    (s, r) => s + r.sampleSize,
-                                    0,
-                                  )}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              ) : (
+                <>
+                  <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-1.5" />
+                  <p className="text-sm font-medium text-foreground">Файл чирж оруулах буюу дарж сонгох</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">XLSX, XLS, CSV</p>
+                </>
+              )}
+            </div>
+            {error && <p className="text-destructive text-sm">{error}</p>}
+          </CardContent>
+        </Card>
 
-        {/* Info */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="bg-slate-900/60 border-slate-700/30 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <span>📋</span> Тайлбар:
+        {/* Config — shown when file is loaded */}
+        {fileData && headers.length > 0 && (
+          <Card className="border border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Table2 className="w-4 h-4 text-cyan-500" />
+                Тохиргоо
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-slate-300 space-y-3">
-              <p>
-                <strong>Огноон баганаа</strong> сонгоход жилийг автоматаар
-                гаргаж авна.
-              </p>
-              <p>
-                <strong>Бүлэглэх баганаа</strong> сонгоход{" "}
-                <code className="bg-slate-800 px-1 rounded text-cyan-400">
-                  [A-Z]&#123;2&#125;[0-9]&#123;3&#125;
-                </code>{" "}
-                хэлбэрийн кодуудыг эхний 3 тэмдэгтээр нь бүлэглэнэ (жишэ: CA602
-                → CA6).
-              </p>
-              <p>
-                Pivot хүснэгт бүр <strong>жилээр мөр</strong>,{" "}
-                <strong>код баганаар</strong> тоолно. Түүврийн хэмжээг
-                итгэлцлийн түвшин болон алдааны маржинг ашиглан тооцоолно.
-              </p>
-              <p>
-                <strong>Түүвэр гаргах</strong> хэсэгт prefix сонгоод товчийг
-                дарвал жил тус бүрийн санамсаргүй түүврийг Excel-ийн тусдаа
-                sheet-т хадгалж татна.
-              </p>
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm">
-                🔵 <strong className="text-blue-400">Ашиглах заавар:</strong>{" "}
-                Excel/CSV файл оруулаад огноон болон кодын багануудыг сонгоод{" "}
-                <strong>Pivot үүсгэх</strong> дарна уу.
+            <CardContent className="space-y-5">
+              {/* Year filter pills */}
+              <div className="space-y-2">
+                <Label className="text-sm">Жилийн шүүлтүүр</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setSelectedYear("all")}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      selectedYear === "all"
+                        ? "bg-cyan-500 border-cyan-500 text-white"
+                        : "border-border bg-background text-foreground hover:border-cyan-400"
+                    }`}
+                  >Бүх жил</button>
+                  {availableYears.map((y) => (
+                    <button
+                      key={y}
+                      onClick={() => setSelectedYear(y)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        selectedYear === y
+                          ? "bg-cyan-500 border-cyan-500 text-white"
+                          : "border-border bg-background text-foreground hover:border-cyan-400"
+                      }`}
+                    >{y}</button>
+                  ))}
+                </div>
               </div>
+
+              {/* Column selectors + prefix + confidence + margin */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Огноон багана</Label>
+                  <Select value={dateCol} onValueChange={setDateCol}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Бүлэглэх багана</Label>
+                  <Select value={codeCol} onValueChange={setCodeCol}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Prefix урт</Label>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setPrefixLen(n)}
+                        className={`flex-1 py-2 rounded-md text-xs font-bold border transition-colors ${
+                          prefixLen === n
+                            ? "bg-cyan-500 border-cyan-500 text-white"
+                            : "border-border bg-background text-foreground hover:border-cyan-400"
+                        }`}
+                      >{n}</button>
+                    ))}
+                  </div>
+                  {codeCol && fileData && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      Жишээ: &quot;{String((fileData[0] as unknown[])[headers.indexOf(codeCol)] ?? "").slice(0, prefixLen).toUpperCase()}&quot;,...
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Итгэлцэл / Алдаа</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={String(Math.round(confidence * 100))}
+                      onValueChange={(v) => setConfidence(Number(v) / 100)}
+                    >
+                      <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[80, 90, 95, 99].map((v) => <SelectItem key={v} value={String(v)}>{v}%</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={String(Math.round(marginError * 100))}
+                      onValueChange={(v) => setMarginError(Number(v) / 100)}
+                    >
+                      <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 15, 20].map((v) => <SelectItem key={v} value={String(v)}>{v}%</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Итгэлцлийн % / Алдааны %</p>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleBuild}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold"
+              >
+                <Table2 className="w-4 h-4 mr-2" />
+                Pivot үүсгэх
+              </Button>
             </CardContent>
           </Card>
-        </motion.div>
+        )}
+
+        {/* Pivot Tables */}
+        {prefixGroups && prefixGroups.length > 0 && (
+          <div className="space-y-3">
+            {/* Export toolbar */}
+            <div className="flex items-center justify-between flex-wrap gap-3 px-1">
+              <h2 className="text-base font-semibold text-foreground">Кодын бүлгээр pivot</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={selectedPrefix} onValueChange={setSelectedPrefix}>
+                  <SelectTrigger className="w-36"><SelectValue placeholder="Prefix..." /></SelectTrigger>
+                  <SelectContent>
+                    {prefixList.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={exportFilename}
+                  onChange={(e) => setExportFilename(e.target.value)}
+                  className="w-52"
+                  placeholder="sample_result.xlsx"
+                />
+                <Button
+                  onClick={handleExport}
+                  disabled={!selectedPrefix}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40"
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Excel татах
+                </Button>
+              </div>
+            </div>
+
+            {prefixGroups.map((group) => (
+              <Card key={group.prefix} className="border border-border shadow-sm">
+                <CardHeader
+                  className="py-3 cursor-pointer"
+                  onClick={() => toggleExpand(group.prefix)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      {expandedPrefixes.has(group.prefix)
+                        ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                      <span className="font-mono bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded text-xs">{group.prefix}</span>
+                      <span className="text-muted-foreground font-normal">бүлэг</span>
+                    </div>
+                    <span className="text-muted-foreground text-xs">{group.rows.length} жил · {group.rows.reduce((s, r) => s + r.total, 0)} нийт</span>
+                  </div>
+                </CardHeader>
+                {expandedPrefixes.has(group.prefix) && (
+                  <CardContent className="pt-0">
+                    <ScrollArea className="max-h-80">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-muted/60">
+                              <th className="px-3 py-2 text-left text-muted-foreground border border-border font-medium">Жил</th>
+                              {group.codes.map((c) => (
+                                <th key={c} className="px-3 py-2 text-right text-cyan-600 dark:text-cyan-400 border border-border whitespace-nowrap font-medium">{c}</th>
+                              ))}
+                              <th className="px-3 py-2 text-right text-foreground border border-border font-bold">Нийт</th>
+                              <th className="px-3 py-2 text-right text-muted-foreground border border-border font-medium">Хувь (%)</th>
+                              <th className="px-3 py-2 text-right text-amber-600 dark:text-amber-400 border border-border whitespace-nowrap font-medium">
+                                Түүвэр ({Math.round(confidence * 100)}/{Math.round(marginError * 100)})
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.rows.map((row, i) => (
+                              <tr key={row.year} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                                <td className="px-3 py-2 text-foreground border border-border font-medium">{row.year}</td>
+                                {group.codes.map((c) => (
+                                  <td key={c} className="px-3 py-2 text-foreground text-right border border-border">{row.codeCounts[c] ?? 0}</td>
+                                ))}
+                                <td className="px-3 py-2 text-foreground font-bold text-right border border-border">{row.total}</td>
+                                <td className="px-3 py-2 text-muted-foreground text-right border border-border">{row.pct.toFixed(2)}%</td>
+                                <td className="px-3 py-2 text-amber-600 dark:text-amber-400 font-bold text-right border border-border">{row.sampleSize}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-muted/50 font-bold">
+                              <td className="px-3 py-2 text-foreground border border-border">Нийт</td>
+                              {group.codes.map((c) => (
+                                <td key={c} className="px-3 py-2 text-foreground text-right border border-border">
+                                  {group.rows.reduce((s, r) => s + (r.codeCounts[c] ?? 0), 0)}
+                                </td>
+                              ))}
+                              <td className="px-3 py-2 text-cyan-600 dark:text-cyan-400 text-right border border-border">
+                                {group.rows.reduce((s, r) => s + r.total, 0)}
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground text-right border border-border">100%</td>
+                              <td className="px-3 py-2 text-amber-600 dark:text-amber-400 text-right border border-border">
+                                {group.rows.reduce((s, r) => s + r.sampleSize, 0)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Info */}
+        <Card className="border border-border shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Тайлбар</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2.5">
+            <p><strong className="text-foreground">Огноон баганаа</strong> сонгоход жилийг автоматаар гаргаж авна.</p>
+            <p>
+              <strong className="text-foreground">Бүлэглэх баганаа</strong> сонгоход кодуудыг эхний <em>prefix</em> тэмдэгтээр нь бүлэглэнэ
+              (жишэ: CA602 → CA6 [prefix=3]).
+            </p>
+            <p>
+              Pivot хүснэгт бүр <strong className="text-foreground">жилээр мөр</strong>,{" "}
+              <strong className="text-foreground">код баганаар</strong> тоолно. Түүврийн хэмжээг итгэлцлийн түвшин болон алдааны маржинг ашиглан тооцоолно.
+            </p>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
+              <strong>Ашиглах заавар:</strong> Excel/CSV файл оруулаад огноон болон кодын багануудыг сонгоод <strong>Pivot үүсгэх</strong> дарна уу. Дараа нь prefix сонгоод Excel татна уу.
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

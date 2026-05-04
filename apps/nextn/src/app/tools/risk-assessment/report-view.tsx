@@ -9,6 +9,7 @@ import {
   Loader2,
   X,
   Hand,
+  AlertTriangle,
 } from "lucide-react";
 import { riskApi } from "@/lib/api";
 import {
@@ -58,10 +59,6 @@ interface SnapshotMeta {
 
 interface Props {
   scoredRows: AnyRow[];
-  judgement: Record<string, number>;
-  setJudgement: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-  score4: Record<string, number>;
-  setScore4: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   riskFilter: "all" | RiskLevel;
   setRiskFilter: React.Dispatch<React.SetStateAction<"all" | RiskLevel>>;
 }
@@ -87,10 +84,6 @@ async function migrateFromLocalStorage(legacy: ManualMap) {
 
 export default function ReportView({
   scoredRows,
-  judgement,
-  setJudgement,
-  score4,
-  setScore4,
   riskFilter,
   setRiskFilter,
 }: Props) {
@@ -100,6 +93,10 @@ export default function ReportView({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveNameError, setSaveNameError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
@@ -111,6 +108,18 @@ export default function ReportView({
   } | null>(null);
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // ESC товчоор modal хаах
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (expanded) setExpanded(null);
+        else if (historyOpen) setHistoryOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded, historyOpen]);
 
   // ClickHouse-аас гарын утгуудыг ачаалах (нэг удаа)
   useEffect(() => {
@@ -177,8 +186,8 @@ export default function ReportView({
   // одоо байгаа auto Score 1/2/3 тооцоог хадгална — эдгээрийг үндсэн default
   // болгож ашиглана; харин catalog-аар тооцсон group score дээр override хийнэ)
   const baseAggregates = useMemo(
-    () => aggregateBranch(scoredRows, score4, judgement),
-    [scoredRows, score4, judgement],
+    () => aggregateBranch(scoredRows),
+    [scoredRows],
   );
 
   // Салбар бүрийн Oracle мөрнүүдийг branchId-аар бүлэглэх
@@ -260,13 +269,19 @@ export default function ReportView({
   const ub = filtered.filter((b) => b.region === "UB");
   const loc = filtered.filter((b) => b.region === "LOC");
 
-  // Snapshot хадгалах: одоогийн дүнг ClickHouse-д нэр өгч хадгална
-  const saveSnapshot = useCallback(async () => {
-    const name = window.prompt(
-      "Хадгалах тайлангийн нэр (жишээ нь: 2026Q1, 2025-12-31, эсвэл 'Сарын тайлан 04')",
-      new Date().toLocaleDateString("mn-MN"),
-    );
-    if (!name || !name.trim()) return;
+  // Snapshot хадгалах: модал нээх
+  const openSaveModal = useCallback(() => {
+    setSaveName(new Date().toLocaleDateString("mn-MN"));
+    setSaveNameError(null);
+    setSaveModalOpen(true);
+  }, []);
+
+  // Нэрийг баталгаажуулж ClickHouse-д хадгалах
+  const doSaveSnapshot = useCallback(async () => {
+    if (!saveName.trim()) {
+      setSaveNameError("Тайлангийн нэр хоосон байж болохгүй.");
+      return;
+    }
     const payload: Record<
       string,
       {
@@ -303,18 +318,20 @@ export default function ReportView({
     setSaving(true);
     try {
       const meta = await riskApi.saveSnapshot({
-        name: name.trim(),
+        name: saveName.trim(),
         payload,
         branchCount: Object.keys(payload).length,
       });
       await loadSnapshotList();
-      window.alert(`"${meta.name}" нэртэйгээр амжилттай хадгаллаа.`);
+      setSaveModalOpen(false);
+      setSaveSuccess(`"${meta.name}" нэртэйгээр амжилттай хадгаллаа.`);
+      setTimeout(() => setSaveSuccess(null), 4000);
     } catch (e: any) {
-      window.alert(`Хадгалахад алдаа гарлаа: ${e?.message ?? e}`);
+      setSaveNameError(`Хадгалахад алдаа гарлаа: ${e?.message ?? e}`);
     } finally {
       setSaving(false);
     }
-  }, [aggregates, loadSnapshotList]);
+  }, [saveName, aggregates, loadSnapshotList]);
 
   // Түүхээс сонгосон snapshot-ийг "өмнөх үе" болгон ашиглах
   const applySnapshot = useCallback(async (meta: SnapshotMeta) => {
@@ -440,114 +457,154 @@ export default function ReportView({
 
   if (scoredRows.length === 0) {
     return (
-      <div className="px-4 py-12 text-center text-muted-foreground text-sm">
-        Тайлан гаргахын тулд эхлээд Oracle-аас өгөгдөл татна уу.
+      <div className="px-6 py-16 text-center">
+        <div className="inline-flex w-12 h-12 rounded-2xl bg-muted border border-border items-center justify-center mb-3">
+          <History className="w-5 h-5 text-muted-foreground/60" />
+        </div>
+        <div className="text-sm font-semibold">Тайлан гаргах өгөгдөл алга</div>
+        <div className="text-xs mt-1 text-muted-foreground">
+          Эхлээд Oracle-аас үнэлгээг татна уу.
+        </div>
       </div>
     );
   }
 
-  const updateNum = (
-    setter: React.Dispatch<React.SetStateAction<Record<string, number>>>,
-    branchId: string,
-    val: number,
-  ) => setter((prev) => ({ ...prev, [branchId]: val }));
-
   return (
-    <div className="space-y-5 p-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-xs text-muted-foreground max-w-2xl space-y-1">
-          <div>
-            Score 4 ба Judgement-ийг гараар оруулна (0–5). Бичсэн утга localStorage-д
-            автомат хадгалагдана.
-          </div>
-          <div>
-            <b>Хадгалах</b> — одоогийн дүнг нэр өгч ClickHouse-д бэхэлнэ. <b>Түүх</b>{" "}
-            — өмнө хадгалсан тайлангаас сонгоход <i>Зөрүү</i>,{" "}
-            <i>Үнэлгээний өөрчлөлт</i>, <i>Түвшин өөрчлөлт</i> тооцогдоно.
-          </div>
-          {activeSnapshot && (
-            <div className="text-emerald-600 flex items-center gap-1.5">
+    <div className="space-y-5 p-4 sm:p-5">
+      {/* ── Toolbar ── */}
+      <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="text-[11px] text-muted-foreground max-w-2xl space-y-1.5 leading-relaxed">
+            <p className="flex items-start gap-1.5">
+              <span className="inline-block w-1 h-1 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
               <span>
-                Харьцуулж буй: <b>{activeSnapshot.name}</b>
-                <span className="text-muted-foreground/70 ml-1">
-                  ({new Date(activeSnapshot.createdAt).toLocaleString("mn-MN")})
-                </span>
+                <b className="text-foreground">Score 4</b> ба{" "}
+                <b className="text-foreground">Judgement</b>-ийг гараар оруулна
+                (0–5). Бичсэн утга автоматаар хадгалагдана.
               </span>
-              <button
-                onClick={clearActiveSnapshot}
-                className="text-rose-600 hover:underline ml-1"
-                title="Харьцуулалт цуцлах"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {/* Эрсдэлийн түвшний filter */}
-          <div className="flex rounded-lg border border-border overflow-hidden">
-            {(["all", "Өндөр", "Дунд", "Бага"] as const).map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setRiskFilter(opt)}
-                className={`px-2 py-1.5 text-xs border-r last:border-r-0 border-border ${
-                  riskFilter === opt
-                    ? "bg-blue-500/10 text-blue-600 font-semibold"
-                    : "hover:bg-accent/40"
-                }`}
-              >
-                {opt === "all" ? "Бүгд" : opt}
-              </button>
-            ))}
+            </p>
+            <p className="flex items-start gap-1.5">
+              <span className="inline-block w-1 h-1 rounded-full bg-violet-500 mt-1.5 flex-shrink-0" />
+              <span>
+                <b className="text-foreground">Хадгалах</b> — одоогийн дүнг нэр өгч
+                хадгална. <b className="text-foreground">Түүх</b> — өмнө хадгалснаас
+                сонгоход <i>Зөрүү</i>, <i>Үнэлгээний өөрчлөлт</i>,{" "}
+                <i>Түвшин өөрчлөлт</i> тооцогдоно.
+              </span>
+            </p>
           </div>
-          <button
-            onClick={saveSnapshot}
-            disabled={saving}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 text-xs disabled:opacity-50"
-          >
-            {saving ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Save className="w-3.5 h-3.5" />
-            )}
-            Хадгалах
-          </button>
-          <button
-            onClick={() => {
-              setHistoryOpen(true);
-              loadSnapshotList();
-            }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 text-xs"
-          >
-            <History className="w-3.5 h-3.5" /> Түүх
-            {snapshotList.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500/20 text-[10px] tabular-nums">
-                {snapshotList.length}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={openSaveModal}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-sm shadow-violet-500/20 disabled:opacity-50 transition-all"
+            >
+              {saving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+              Хадгалах
+            </button>
+            <button
+              onClick={() => {
+                setHistoryOpen(true);
+                loadSnapshotList();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold transition-all"
+            >
+              <History className="w-3.5 h-3.5" />
+              Түүх
+              {snapshotList.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-blue-500/20 text-[10px] tabular-nums font-bold">
+                  {snapshotList.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={downloadCsv}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-all"
+            >
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/40">
+          {/* Risk filter */}
+          <div className="flex rounded-lg border border-border overflow-hidden bg-background/60">
+            {(["all", "Өндөр", "Дунд", "Бага"] as const).map((opt) => {
+              const colors: Record<string, string> = {
+                all: "text-foreground",
+                Өндөр: "text-rose-600 dark:text-rose-400",
+                Дунд: "text-amber-600 dark:text-amber-400",
+                Бага: "text-emerald-600 dark:text-emerald-400",
+              };
+              const dot: Record<string, string> = {
+                all: "bg-muted-foreground",
+                Өндөр: "bg-rose-500",
+                Дунд: "bg-amber-500",
+                Бага: "bg-emerald-500",
+              };
+              return (
+                <button
+                  key={opt}
+                  onClick={() => setRiskFilter(opt)}
+                  className={`px-3 py-1.5 text-[11px] font-semibold border-r last:border-r-0 border-border flex items-center gap-1.5 transition-all ${
+                    riskFilter === opt
+                      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                      : `hover:bg-accent/60 ${colors[opt]}`
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${dot[opt]}`} />
+                  {opt === "all" ? "Бүгд" : opt}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap text-[11px]">
+            {manualLoading && (
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Гарын утга ачаалж байна…
               </span>
             )}
-          </button>
-          <button
-            onClick={downloadCsv}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-xs"
-          >
-            <Download className="w-3.5 h-3.5" /> CSV
-          </button>
-          {manualLoading && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Loader2 className="w-3 h-3 animate-spin" /> Гарын утга ачаалж байна…
-            </div>
-          )}
+            {activeSnapshot && (
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                  Харьцуулж буй:{" "}
+                  <b>{activeSnapshot.name}</b>
+                </span>
+                <button
+                  onClick={clearActiveSnapshot}
+                  className="text-rose-600 hover:text-rose-700 ml-1"
+                  title="Харьцуулалт цуцлах"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {saveSuccess && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+          {saveSuccess}
+          <button onClick={() => setSaveSuccess(null)} className="ml-auto p-1 rounded hover:bg-emerald-500/20">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
 
       <ReportTable
         title="Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд"
         region="UB"
         rows={ub}
         snapshot={snapshot}
-        onScore4={(id, v) => updateNum(setScore4, id, v)}
-        onJudgement={(id, v) => updateNum(setJudgement, id, v)}
         branchEvals={branchEvals}
         manualMap={manualMap}
         setManualValue={setManualValue}
@@ -560,8 +617,6 @@ export default function ReportView({
         region="LOC"
         rows={loc}
         snapshot={snapshot}
-        onScore4={(id, v) => updateNum(setScore4, id, v)}
-        onJudgement={(id, v) => updateNum(setJudgement, id, v)}
         branchEvals={branchEvals}
         manualMap={manualMap}
         setManualValue={setManualValue}
@@ -626,6 +681,84 @@ export default function ReportView({
           onRefresh={loadSnapshotList}
         />
       )}
+
+      {saveModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => { if (!saving) setSaveModalOpen(false); }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-violet-500/10 to-transparent flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
+                <Save className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold">Тайлан хадгалах</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                  Одоогийн дүнг нэрлэж хадгална. Дараа нь харьцуулахад ашиглана.
+                </p>
+              </div>
+              <button
+                onClick={() => setSaveModalOpen(false)}
+                disabled={saving}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                title="Хаах"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  Тайлангийн нэр
+                </label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={saveName}
+                  onChange={(e) => { setSaveName(e.target.value); setSaveNameError(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") doSaveSnapshot();
+                    if (e.key === "Escape") setSaveModalOpen(false);
+                  }}
+                  placeholder="жишээ нь: 2026Q1, 2025-12-31, Сарын тайлан 04"
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    saveNameError
+                      ? "border-red-500/50 focus:ring-red-500/40 focus:border-red-500/60"
+                      : "border-border focus:ring-violet-500/40 focus:border-violet-500/60"
+                  } bg-background text-sm focus:outline-none focus:ring-2 transition-all`}
+                />
+                {saveNameError && (
+                  <p className="text-[11px] text-red-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                    {saveNameError}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
+                <button
+                  onClick={() => setSaveModalOpen(false)}
+                  disabled={saving}
+                  className="px-3.5 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  Цуцлах
+                </button>
+                <button
+                  onClick={doSaveSnapshot}
+                  disabled={saving || !saveName.trim()}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-sm shadow-violet-500/20 disabled:opacity-50 transition-all"
+                >
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Хадгалах
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -650,32 +783,36 @@ function HistoryModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl max-h-[80vh] overflow-hidden rounded-xl border border-border bg-card flex flex-col"
+        className="w-full max-w-3xl max-h-[80vh] overflow-hidden rounded-2xl border border-border bg-card flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold">Хадгалсан тайлангийн түүх</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Сонгосон тайлан нь «өмнөх үе» болж Зөрүү/Үнэлгээний өөрчлөлт/Түвшин
-              өөрчлөлт тооцоонд хэрэглэгдэнэ.
-            </p>
+        <div className="px-5 py-3.5 border-b border-border bg-gradient-to-r from-blue-500/10 to-transparent flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+              <History className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold">Хадгалсан тайлангийн түүх</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Сонгосон тайлан «өмнөх үе» болж зөрүү тооцоонд орно.
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={onRefresh}
-              className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/40"
+              className="text-xs px-2 py-1.5 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               title="Шинэчлэх"
             >
               ↻
             </button>
             <button
               onClick={onClose}
-              className="p-1 rounded hover:bg-accent/40"
+              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               title="Хаах"
             >
               <X className="w-4 h-4" />
@@ -684,24 +821,29 @@ function HistoryModal({
         </div>
         <div className="flex-1 overflow-auto">
           {loading ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              <Loader2 className="w-5 h-5 mx-auto animate-spin mb-2" /> Уншиж
-              байна…
+            <div className="p-12 text-center text-muted-foreground text-sm">
+              <Loader2 className="w-6 h-6 mx-auto animate-spin mb-2 text-blue-500" />
+              Уншиж байна…
             </div>
           ) : list.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              Хадгалсан тайлан байхгүй. «Хадгалах» товчийг ашиглан эхний тайлангаа
-              үүсгээрэй.
+            <div className="p-12 text-center">
+              <div className="inline-flex w-12 h-12 rounded-2xl bg-muted border border-border items-center justify-center mb-3">
+                <History className="w-5 h-5 text-muted-foreground/60" />
+              </div>
+              <div className="text-sm font-semibold">Хадгалсан тайлан алга</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                «Хадгалах» товчоор эхний тайлангаа үүсгээрэй.
+              </div>
             </div>
           ) : (
             <table className="w-full text-xs">
-              <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground sticky top-0">
+              <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground sticky top-0 z-10">
                 <tr>
-                  <th className="px-3 py-2 text-left">Нэр</th>
-                  <th className="px-3 py-2 text-left">Хадгалсан</th>
-                  <th className="px-3 py-2 text-right">Салбар</th>
-                  <th className="px-3 py-2 text-left">Огноо</th>
-                  <th className="px-3 py-2"></th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Нэр</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Хадгалсан</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Салбар</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Огноо</th>
+                  <th className="px-3 py-2.5"></th>
                 </tr>
               </thead>
               <tbody>
@@ -710,42 +852,44 @@ function HistoryModal({
                   return (
                     <tr
                       key={s.id}
-                      className={`border-t border-border ${
-                        isActive ? "bg-emerald-500/5" : "hover:bg-accent/30"
+                      className={`border-t border-border transition-colors ${
+                        isActive ? "bg-emerald-500/8" : "hover:bg-accent/40"
                       }`}
                     >
-                      <td className="px-3 py-2 font-medium">
+                      <td className="px-3 py-2.5 font-medium">
                         {s.name}
                         {isActive && (
-                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">
+                          <span className="ml-2 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold">
+                            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                             Идэвхтэй
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="px-3 py-2.5 text-muted-foreground">
                         {new Date(s.createdAt).toLocaleString("mn-MN")}
                         {s.createdByName && (
-                          <span className="ml-1 text-[10px]">
+                          <div className="text-[10px] mt-0.5 opacity-70">
                             · {s.createdByName}
-                          </span>
+                          </div>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
+                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold">
                         {s.branchCount}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground tabular-nums">
+                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums text-[11px]">
                         {s.pDateBeg && s.pDate ? `${s.pDateBeg} → ${s.pDate}` : "—"}
                       </td>
-                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
                         <button
                           onClick={() => onApply(s)}
-                          className="text-blue-600 hover:underline mr-2"
+                          disabled={isActive}
+                          className="px-2.5 py-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 text-[11px] font-semibold mr-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                           Сонгох
                         </button>
                         <button
                           onClick={() => onDelete(s.id)}
-                          className="text-rose-600 hover:bg-rose-500/10 p-1 rounded"
+                          className="text-rose-600 hover:bg-rose-500/10 p-1.5 rounded-md transition-colors"
                           title="Устгах"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -769,8 +913,6 @@ function ReportTable({
   region,
   rows,
   snapshot,
-  onScore4,
-  onJudgement,
   branchEvals,
   manualMap,
   setManualValue,
@@ -781,8 +923,6 @@ function ReportTable({
   region: "UB" | "LOC";
   rows: BranchAggregate[];
   snapshot: Snapshot;
-  onScore4: (id: string, v: number) => void;
-  onJudgement: (id: string, v: number) => void;
   branchEvals: Map<string, BranchCatalogResult>;
   manualMap: ManualMap;
   setManualValue: (branchId: string, indicatorId: string, v: number) => void;
@@ -800,36 +940,51 @@ function ReportTable({
         : { branchId, group },
     );
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-4 py-2 border-b border-border bg-muted/40">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <div className="text-[10px] text-muted-foreground mt-0.5">
-          Жин: Score1 {(w.s1 * 100).toFixed(0)}% · Score2 {(w.s2 * 100).toFixed(0)}% · Score3{" "}
-          {(w.s3 * 100).toFixed(0)}% · Score4 {(w.s4 * 100).toFixed(0)}% · Judgement{" "}
-          {(w.j * 100).toFixed(0)}%
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span
+            className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold ${
+              region === "UB"
+                ? "bg-blue-500/15 text-blue-600 border border-blue-500/25"
+                : "bg-violet-500/15 text-violet-600 border border-violet-500/25"
+            }`}
+          >
+            {region}
+          </span>
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
+            {rows.length} салбар
+          </span>
         </div>
-        <div className="text-[10px] text-muted-foreground mt-0.5">
-          <Hand className="inline w-3 h-3 mr-1" />
-          товчийг дарж тухайн Score-н гарын үзүүлэлтүүдийг оруулна. Auto утгууд нь
-          Oracle-аас өөрөө гарна.
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+          <span className="font-semibold uppercase tracking-wider">Жин:</span>
+          <span>S1 <b className="text-foreground tabular-nums">{(w.s1 * 100).toFixed(0)}%</b></span>
+          <span>S2 <b className="text-foreground tabular-nums">{(w.s2 * 100).toFixed(0)}%</b></span>
+          <span>S3 <b className="text-foreground tabular-nums">{(w.s3 * 100).toFixed(0)}%</b></span>
+          <span>S4 <b className="text-foreground tabular-nums">{(w.s4 * 100).toFixed(0)}%</b></span>
+          <span>J <b className="text-foreground tabular-nums">{(w.j * 100).toFixed(0)}%</b></span>
+          <span className="ml-auto flex items-center gap-1 italic">
+            <Hand className="w-3 h-3" /> товчоор гарын үзүүлэлт оруулна
+          </span>
         </div>
       </div>
-      <div className="overflow-x-auto max-h-[60vh]">
+      <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground sticky top-0">
+          <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground sticky top-0 z-10">
             <tr>
-              <th className="px-2 py-2 text-left">№</th>
-              <th className="px-2 py-2 text-left">SOL</th>
-              <th className="px-2 py-2 text-left">Салбарын нэр</th>
-              <th className="px-2 py-2 text-center">Зэрэглэл</th>
-              <th className="px-2 py-2 text-right">Score 1</th>
-              <th className="px-2 py-2 text-right">Score 2</th>
-              <th className="px-2 py-2 text-right">Score 3</th>
-              <th className="px-2 py-2 text-right">Score 4</th>
-              <th className="px-2 py-2 text-right">Judgement</th>
-              <th className="px-2 py-2 text-right">Total</th>
-              <th className="px-2 py-2 text-center">Түвшин</th>
-              <th className="px-2 py-2 text-right">Зөрүү</th>
+              <th className="px-2 py-2 text-left font-semibold">№</th>
+              <th className="px-2 py-2 text-left font-semibold">SOL</th>
+              <th className="px-2 py-2 text-left font-semibold">Салбарын нэр</th>
+              <th className="px-2 py-2 text-center font-semibold">Зэрэглэл</th>
+              <th className="px-2 py-2 text-right font-semibold">Score 1</th>
+              <th className="px-2 py-2 text-right font-semibold">Score 2</th>
+              <th className="px-2 py-2 text-right font-semibold">Score 3</th>
+              <th className="px-2 py-2 text-right font-semibold">Score 4</th>
+              <th className="px-2 py-2 text-right font-semibold">Judgement</th>
+              <th className="px-2 py-2 text-right font-semibold">Total</th>
+              <th className="px-2 py-2 text-center font-semibold">Түвшин</th>
+              <th className="px-2 py-2 text-right font-semibold">Зөрүү</th>
             </tr>
           </thead>
           <tbody>
@@ -877,7 +1032,7 @@ function ReportTable({
                     />
                     <td className="px-2 py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <NumInput value={b.s4} onChange={(v) => onScore4(b.branchId, v)} />
+                        <span className="tabular-nums text-xs w-14 text-right inline-block">{fmt(b.s4 ?? null)}</span>
                         <HandBtn
                           open={openGroup === 4}
                           onClick={() => toggle(b.branchId, 4)}
@@ -887,7 +1042,7 @@ function ReportTable({
                     </td>
                     <td className="px-2 py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <NumInput value={b.j} onChange={(v) => onJudgement(b.branchId, v)} />
+                        <NumInput value={manualMap[b.branchId]?.["j-001"] ?? 0} onChange={(v) => setManualValue(b.branchId, "j-001", v)} />
                         <HandBtn
                           open={openGroup === 5}
                           onClick={() => toggle(b.branchId, 5)}
@@ -896,12 +1051,14 @@ function ReportTable({
                       </div>
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums font-bold">
-                      {fmt(b.total)}
+                      <span className={b.total != null && b.total >= 3.5 ? "text-rose-600 dark:text-rose-400" : b.total != null && b.total >= 2.5 ? "text-amber-600 dark:text-amber-400" : b.total != null ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>
+                        {fmt(b.total)}
+                      </span>
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {b.level && (
                         <span
-                          className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-semibold ${riskLevelClass(
+                          className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(
                             b.level,
                           )}`}
                         >
@@ -910,17 +1067,23 @@ function ReportTable({
                       )}
                     </td>
                     <td
-                      className={`px-2 py-1.5 text-right tabular-nums ${
+                      className={`px-2 py-1.5 text-right tabular-nums font-medium ${
                         diff == null
                           ? "text-muted-foreground/40"
                           : diff > 0
-                          ? "text-rose-600"
+                          ? "text-rose-600 dark:text-rose-400"
                           : diff < 0
-                          ? "text-emerald-600"
-                          : ""
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground"
                       }`}
                     >
-                      {diff == null ? "—" : (diff > 0 ? "+" : "") + diff.toFixed(2)}
+                      {diff == null
+                        ? "—"
+                        : diff === 0
+                        ? "0.00"
+                        : diff > 0
+                        ? `▲ +${diff.toFixed(2)}`
+                        : `▼ ${diff.toFixed(2)}`}
                     </td>
                   </tr>
 
@@ -929,8 +1092,8 @@ function ReportTable({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
-                  Энэ бүсэд салбар байхгүй
+                <td colSpan={12} className="px-4 py-10 text-center text-muted-foreground">
+                  <div className="text-xs">Энэ бүсэд тохирох салбар олдсонгүй</div>
                 </td>
               </tr>
             )}
@@ -962,15 +1125,17 @@ function HandBtn({
     <button
       onClick={onClick}
       title={`Гарын үзүүлэлт оруулах${count > 0 ? ` (${count} оруулсан)` : ""}`}
-      className={`relative p-1 rounded border text-[10px] transition-colors ${
+      className={`relative inline-flex items-center justify-center w-6 h-6 rounded-md border transition-all ${
         open
-          ? "bg-amber-500/20 border-amber-500/50 text-amber-700"
-          : "bg-background border-border hover:bg-accent/40 text-muted-foreground"
+          ? "bg-amber-500 border-amber-500 text-white shadow-sm shadow-amber-500/30"
+          : count > 0
+          ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
+          : "bg-background border-border text-muted-foreground hover:bg-accent hover:border-amber-500/30 hover:text-amber-600"
       }`}
     >
       <Hand className="w-3 h-3" />
       {count > 0 && (
-        <span className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full text-[8px] w-3.5 h-3.5 flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full text-[8px] w-3.5 h-3.5 flex items-center justify-center font-bold ring-1 ring-card">
           {count}
         </span>
       )}
@@ -1028,7 +1193,7 @@ function IndicatorPanelModal({
   const totalWeight = items.reduce((s: number, i: CatalogIndicator) => s + i.weight, 0);
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -1036,35 +1201,92 @@ function IndicatorPanelModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-muted/40 flex-shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <Hand className="w-4 h-4 text-amber-500" />
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent flex-shrink-0">
+          <div className="min-w-0 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+              <Hand className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground">
                 {GROUP_LABEL[group]} — үзүүлэлтийн задаргаа
               </h3>
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-foreground">{branchName}</span>
-              <span className="text-border">·</span>
-              <span>
-                Нийт жин:{" "}
-                <span className="font-semibold text-foreground">{totalWeight}%</span>
-              </span>
-              <span className="text-border">·</span>
-              <span>
-                Гарын үзүүлэлт:{" "}
-                <span className="font-semibold text-foreground">{MANUAL_COUNT_BY_GROUP[group]}</span>
-              </span>
+              <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-foreground truncate max-w-xs">{branchName}</span>
+                <span className="text-border">·</span>
+                <span>
+                  Нийт жин:{" "}
+                  <span className="font-semibold text-foreground tabular-nums">{totalWeight}%</span>
+                </span>
+                <span className="text-border">·</span>
+                <span>
+                  Гарын үзүүлэлт:{" "}
+                  <span className="font-semibold text-foreground tabular-nums">{MANUAL_COUNT_BY_GROUP[group]}</span>
+                </span>
+              </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-accent/60 text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+            title="Хаах (ESC)"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* ── Гараар оруулсан зүйлсийн хураангуй ── */}
+        {(() => {
+          const filled = items.filter(
+            (ind: CatalogIndicator) => ind.autoSubid == null && (manual[ind.id] ?? 0) > 0,
+          );
+          const empty = items.filter(
+            (ind: CatalogIndicator) => ind.autoSubid == null && !(manual[ind.id] ?? 0),
+          );
+          return (
+            <div className="px-5 py-3 border-b border-amber-500/20 bg-amber-500/5 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Hand className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+                  Гараар оруулах үзүүлэлтүүд
+                </span>
+                <span className="ml-auto text-[10px] tabular-nums text-amber-600 dark:text-amber-400 font-semibold">
+                  {filled.length} / {filled.length + empty.length} оруулсан
+                </span>
+              </div>
+              {filled.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground italic">
+                  Одоогоор ямар ч гарын утга оруулаагүй байна.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {filled.map((ind: CatalogIndicator) => (
+                    <span
+                      key={ind.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                    >
+                      {ind.name}
+                      <span className="font-bold tabular-nums">
+                        → {manual[ind.id]}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {empty.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {empty.map((ind: CatalogIndicator) => (
+                    <span
+                      key={ind.id}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-amber-400/40 text-[10px] text-muted-foreground"
+                    >
+                      {ind.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
@@ -1077,7 +1299,7 @@ function IndicatorPanelModal({
                 <th className="px-3 py-2.5 text-center w-24">Эх үүсвэр</th>
                 <th className="px-3 py-2.5 text-left">Auto утга</th>
                 <th className="px-3 py-2.5 text-right w-16">Оноо</th>
-                <th className="px-3 py-2.5 text-right w-24">Гарын оноо</th>
+                <th className="px-3 py-2.5 text-right w-28">Гарын оноо</th>
               </tr>
             </thead>
             <tbody>
@@ -1090,8 +1312,8 @@ function IndicatorPanelModal({
                     key={ind.id}
                     className={`border-t border-border/50 transition-colors ${
                       isManual
-                        ? "bg-amber-500/5 hover:bg-amber-500/10"
-                        : "hover:bg-accent/30"
+                        ? "bg-amber-500/5 hover:bg-amber-500/8"
+                        : "opacity-70 hover:opacity-90 hover:bg-accent/20"
                     }`}
                   >
                     <td className="px-3 py-2.5 text-muted-foreground tabular-nums">
@@ -1151,18 +1373,30 @@ function IndicatorPanelModal({
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min={0}
-                        max={5}
-                        value={manualV || ""}
-                        placeholder={isManual ? "0–5" : "override"}
-                        onChange={(e) =>
-                          setManualValue(branchId, ind.id, Number(e.target.value) || 0)
-                        }
-                        className="w-20 px-2 py-1.5 text-right text-xs rounded-lg border border-border bg-background text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 transition-colors"
-                      />
+                      {isManual ? (
+                        <input
+                          type="number"
+                          step="0.5"
+                          min={0}
+                          max={5}
+                          value={manualV || ""}
+                          placeholder="0–5"
+                          onChange={(e) =>
+                            setManualValue(branchId, ind.id, Number(e.target.value) || 0)
+                          }
+                          className="w-20 px-2 py-1.5 text-right text-xs rounded-lg border border-amber-500/40 bg-background text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 transition-colors"
+                        />
+                      ) : (
+                        <div
+                          className="w-20 inline-flex items-center justify-end gap-1 px-2 py-1.5 rounded-lg border border-border/40 bg-muted/40 text-muted-foreground/50 text-xs cursor-not-allowed select-none"
+                          title="Auto үзүүлэлтийг гараар засах боломжгүй"
+                        >
+                          <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          <span className="text-[10px]">auto</span>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -1172,18 +1406,18 @@ function IndicatorPanelModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-border bg-muted/20 flex-shrink-0">
-          <p className="text-[10px] text-muted-foreground">
-            <span className="font-semibold text-foreground">Auto</span> = Oracle
-            RESULT-аас тооцоологдсон{" "}
-            <span className="mx-1">·</span>
-            <span className="font-semibold text-foreground">Гар</span> = гараар
-            оруулах шаардлагатай{" "}
-            <span className="mx-1">·</span>
-            Гарын утга оруулсан бол auto-г дарж гарна{" "}
-            <span className="mx-1">·</span>
-            Score = Σ(оноо × жин) / Σ(оноотой жин)
-          </p>
+        <div className="px-5 py-3 border-t border-border bg-muted/20 flex-shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+          <span>
+            <span className="font-semibold text-amber-600 dark:text-amber-400">Гар</span>
+            {" "}— гараар оруулах, засах боломжтой
+          </span>
+          <span className="text-border">·</span>
+          <span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Auto</span>
+            {" "}— Oracle-аас автоматаар тооцоологдсон, засах боломжгүй
+          </span>
+          <span className="text-border">·</span>
+          <span>Score = Σ(оноо × жин) / Σ(оноотой жин)</span>
         </div>
       </div>
     </div>
@@ -1206,7 +1440,7 @@ function NumInput({
       value={value || ""}
       placeholder="0"
       onChange={(e) => onChange(Number(e.target.value) || 0)}
-      className="w-14 px-1 py-0.5 text-right text-xs rounded border border-border bg-background tabular-nums"
+      className="w-14 px-1.5 py-0.5 text-right text-xs rounded-md border border-border bg-background tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 transition-all"
     />
   );
 }
@@ -1221,15 +1455,15 @@ function SummaryBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-3 py-2 border-b border-border bg-muted/40 text-xs font-bold">
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="px-3.5 py-2.5 border-b border-border bg-gradient-to-r from-blue-500/5 to-transparent text-xs font-bold uppercase tracking-wider text-foreground">
         {title}
       </div>
       <table className="w-full text-xs">
         <thead className="bg-muted/30 text-[10px] uppercase text-muted-foreground">
           <tr>
             {cols.map((c, i) => (
-              <th key={c} className={`px-3 py-1.5 ${i === 0 ? "text-left" : "text-right"}`}>
+              <th key={c} className={`px-3 py-1.5 font-semibold ${i === 0 ? "text-left" : "text-right"}`}>
                 {c}
               </th>
             ))}
@@ -1252,13 +1486,19 @@ function SRow({
   prev?: number;
   bold?: boolean;
 }) {
+  const diff = prev !== undefined ? v - prev : null;
   return (
-    <tr className={`border-t border-border ${bold ? "font-bold bg-muted/30" : ""}`}>
+    <tr className={`border-t border-border transition-colors ${bold ? "font-bold bg-muted/30" : "hover:bg-accent/30"}`}>
       <td className="px-3 py-1.5">{label}</td>
       <td className="px-3 py-1.5 text-right tabular-nums">{v}</td>
       {prev !== undefined && (
         <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
-          {prev}
+          <span>{prev}</span>
+          {diff !== null && diff !== 0 && (
+            <span className={`ml-1.5 text-[10px] font-semibold ${diff > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              {diff > 0 ? `+${diff}` : diff}
+            </span>
+          )}
         </td>
       )}
     </tr>
