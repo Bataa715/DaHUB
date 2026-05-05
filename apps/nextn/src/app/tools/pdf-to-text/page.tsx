@@ -17,9 +17,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function PdfToTextPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState("");
@@ -35,8 +37,8 @@ export default function PdfToTextPage() {
     async (f: File) => {
       if (!f.type.includes("pdf") && !f.name.endsWith(".pdf")) {
         toast({
-          title: "Буруу файл",
-          description: "Зөвхөн PDF файл оруулна уу",
+          title: t("pdfWrongFile"),
+          description: t("pdfOnlyPdf"),
           variant: "destructive",
         });
         return;
@@ -107,11 +109,11 @@ export default function PdfToTextPage() {
           }
         }
 
-        setExtractedText(fullText.trim() || "(Текст олдсонгүй)");
+        setExtractedText(fullText.trim() || `(${t("pdfNoText")})`); 
         setCurrentPage(0);
       } catch (err) {
         console.error(err);
-        setError("PDF файл уншихад алдаа гарлаа. Файл гэмтсэн байж болзошгүй.");
+        setError(t("pdfReadError"));
         setExtractedText("");
       } finally {
         setLoading(false);
@@ -143,11 +145,11 @@ export default function PdfToTextPage() {
       await navigator.clipboard.writeText(extractedText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
-      toast({ title: "Хуулагдлаа", description: "Текст хуулбарлагдлаа" });
+      toast({ title: t("pdfCopied"), description: t("pdfTextCopied") });
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хуулах боломжгүй байна",
+        title: t("pdfCopyError"),
+        description: t("pdfCopyError"),
         variant: "destructive",
       });
     }
@@ -191,7 +193,7 @@ export default function PdfToTextPage() {
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
-            Буцах
+            {t("back")}
           </Link>
           <span className="text-border">/</span>
           <FileSearch className="w-4 h-4 text-pink-400" />
@@ -215,7 +217,7 @@ export default function PdfToTextPage() {
           {loading && currentPage > 0 && pageCount > 0 && (
             <span className="ml-auto text-xs text-pink-400 flex items-center gap-1.5">
               <Loader2 className="w-3 h-3 animate-spin" />
-              {currentPage} / {pageCount} хуудас уншиж байна...
+              {currentPage} / {pageCount} {t("pdfLoading")}...
             </span>
           )}
         </div>
@@ -259,13 +261,13 @@ export default function PdfToTextPage() {
                 </motion.div>
                 <div className="text-center">
                   <p className="text-xl font-semibold text-slate-200">
-                    PDF файл оруулна уу
+                    {t("pdfDropZone")}
                   </p>
                   <p className="text-sm text-slate-500 mt-2">
-                    Энд чирж хаях эсвэл дарж сонгох
+                    {t("pdfDropHint")}
                   </p>
                   <p className="text-xs text-slate-600 mt-1">
-                    .pdf формат дэмжигдэнэ
+                    {t("pdfFormat")}
                   </p>
                 </div>
                 <input
@@ -313,7 +315,7 @@ export default function PdfToTextPage() {
                     onClick={handleClear}
                   >
                     <X className="w-3.5 h-3.5 mr-1" />
-                    Хаах
+                    {t("back")}
                   </Button>
                 </div>
 
@@ -333,7 +335,7 @@ export default function PdfToTextPage() {
                 {/* Toolbar */}
                 <div className="flex items-center justify-between flex-shrink-0 px-1">
                   <span className="text-sm font-medium text-slate-300">
-                    Гаргаж авсан текст
+                    {t("pdfExtracted")}
                   </span>
                   <div className="flex items-center gap-2">
                     {extractedText && !loading && (
@@ -345,7 +347,7 @@ export default function PdfToTextPage() {
                           onClick={handleDownload}
                         >
                           <Download className="w-3 h-3 mr-1" />
-                          .txt татах
+                          {t("pdfDownloadTxt")}
                         </Button>
                         <Button
                           size="sm"
@@ -359,12 +361,12 @@ export default function PdfToTextPage() {
                           {copied ? (
                             <>
                               <Check className="w-3 h-3 mr-1" />
-                              Хуулагдлаа
+                              {t("pdfCopied")}
                             </>
                           ) : (
                             <>
                               <Copy className="w-3 h-3 mr-1" />
-                              Хуулах
+                              {t("pdfCopyBtn")}
                             </>
                           )}
                         </Button>
@@ -383,11 +385,11 @@ export default function PdfToTextPage() {
                       </div>
                       <div className="text-center">
                         <p className="text-sm text-slate-300 font-medium">
-                          Текст гаргаж авч байна...
+                          {t("pdfLoading")}
                         </p>
                         {currentPage > 0 && pageCount > 0 && (
                           <p className="text-xs text-slate-500 mt-1">
-                            {currentPage} / {pageCount} хуудас
+                            {currentPage} / {pageCount} {t("pdfPageCount")}
                           </p>
                         )}
                       </div>
@@ -415,7 +417,7 @@ export default function PdfToTextPage() {
                         className="border-slate-700 text-slate-300 hover:bg-slate-800"
                         onClick={handleClear}
                       >
-                        Дахин оролдох
+                        {t("back")}
                       </Button>
                     </div>
                   ) : extractedText ? (
@@ -426,7 +428,7 @@ export default function PdfToTextPage() {
                     </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-slate-600 text-sm">Текст олдсонгүй</p>
+                      <p className="text-slate-600 text-sm">{t("pdfNoText")}</p>
                     </div>
                   )}
                 </div>

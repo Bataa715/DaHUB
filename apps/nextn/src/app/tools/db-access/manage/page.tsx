@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Clock,
   CheckCircle2,
@@ -100,17 +101,17 @@ function groupByRequest(grants: ActiveGrant[]): GrantGroup[] {
 
 const STATUS_CONFIG = {
   pending: {
-    label: "Хүлээгдэж байна",
+    labelKey: "dbManageStatusPending",
     icon: Clock,
     color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   },
   approved: {
-    label: "Зөвшөөрөгдсөн",
+    labelKey: "dbManageStatusApproved",
     icon: CheckCircle2,
     color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   },
   rejected: {
-    label: "Татгалзсан",
+    labelKey: "dbManageStatusRejected",
     icon: XCircle,
     color: "bg-red-500/20 text-red-400 border-red-500/30",
   },
@@ -133,6 +134,7 @@ function fmt24(dateStr: string): string {
 export default function DbAccessManagePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -175,8 +177,8 @@ export default function DbAccessManagePage() {
       } catch (err: any) {
         if (err?.response?.status === 403) {
           toast({
-            title: "Эрх байхгүй",
-            description: "Та энэ хуудсыг үзэх эрхгүй байна",
+            title: t("accessDenied"),
+            description: t("accessDeniedMsg"),
             variant: "destructive",
           });
         }
@@ -219,14 +221,14 @@ export default function DbAccessManagePage() {
     try {
       setReviewLoading(true);
       await dbAccessApi.reviewRequest(id, action, reviewNote || undefined);
-      toast({ title: action === "approve" ? " Зөвшөөрлөө" : " Татгалзлаа" });
+      toast({ title: action === "approve" ? t("dbManageApproved") : t("dbManageRejected") });
       setReviewingId(null);
       setReviewNote("");
       loadRequests(tab === "all");
     } catch (err: any) {
       toast({
-        title: "Алдаа",
-        description: err?.response?.data?.message ?? "Үйлдэл амжилтгүй",
+        title: t("dbAccessValidationTitle"),
+        description: err?.response?.data?.message ?? t("dbManageActionError"),
         variant: "destructive",
       });
     } finally {
@@ -235,18 +237,18 @@ export default function DbAccessManagePage() {
   };
 
   const handleDeleteRequest = async (id: string) => {
-    if (!confirm("Энэ хүсэлтийг бүрмөсөн устгах уу?")) return;
+    if (!confirm(t("dbManageConfirmDelete"))) return;
     try {
       setDeletingId(id);
       await dbAccessApi.deleteRequest(id);
-      toast({ title: "✅ Устгагдлаа" });
+      toast({ title: t("dbManageHistoryDeleted") });
       setExpandedId(null);
       setReviewingId(null);
       loadRequests(tab === "all");
     } catch (err: any) {
       toast({
-        title: "Алдаа",
-        description: err?.response?.data?.message ?? "Устгахад алдаа гарлаа",
+        title: t("dbAccessValidationTitle"),
+        description: err?.response?.data?.message ?? t("dbManageDeleteError"),
         variant: "destructive",
       });
     } finally {
@@ -257,19 +259,19 @@ export default function DbAccessManagePage() {
   const handleDeleteHistory = async () => {
     if (
       !confirm(
-        "Бүх шийдвэрлэгдсэн хүсэлтийн түүхийг устгах уу? (Хүлээгдэж байгаа хүсэлтүүд хэвээр үлдэна)",
+        t("dbManageHistoryConfirm"),
       )
     )
       return;
     try {
       setDeletingHistory(true);
       await dbAccessApi.deleteRequestHistory();
-      toast({ title: "✅ Түүх устгагдлаа" });
+      toast({ title: t("dbManageHistoryDeleted") });
       loadRequests(tab === "all");
     } catch (err: any) {
       toast({
-        title: "Алдаа",
-        description: err?.response?.data?.message ?? "Устгахад алдаа гарлаа",
+        title: t("dbAccessValidationTitle"),
+        description: err?.response?.data?.message ?? t("dbManageDeleteError"),
         variant: "destructive",
       });
     } finally {
@@ -279,19 +281,19 @@ export default function DbAccessManagePage() {
 
   const handleRevoke = async (group: GrantGroup) => {
     const tblList = group.tables.join(", ");
-    if (!confirm(`"${tblList}" эрхийг цуцлах уу?`)) return;
+    if (!confirm(t("dbManageConfirmDelete"))) return;
     try {
       setRevokingId(group.requestId);
       await Promise.all(
         group.grantIds.map((id) => dbAccessApi.revokeGrant(id)),
       );
-      toast({ title: "✅ Устгагдлаа", description: "Эрх цуцлагдлаа" });
+      toast({ title: t("dbManageRevoked") });
       const all = await dbAccessApi.getAllGrants();
       setAllGrants(all);
     } catch (err: any) {
       toast({
-        title: "Алдаа",
-        description: err?.response?.data?.message ?? "Цуцлахад алдаа гарлаа",
+        title: t("dbAccessValidationTitle"),
+        description: err?.response?.data?.message ?? t("dbManageRevokeError"),
         variant: "destructive",
       });
     } finally {
@@ -302,9 +304,7 @@ export default function DbAccessManagePage() {
   const handleCleanupCh = async (group: GrantGroup) => {
     if (
       !confirm(
-        `"${group.userName}" (${group.userUserId}) хэрэглэгчийн ClickHouse хандалтын өгөгдлийг бүхэлд нь цэвэрлэх үү?\n\n` +
-          `Энэ үйлдэл нь ClickHouse-ын хэрэглэгч болон бүх role-ийг устгана. ` +
-          `Дараа нь шинэ эрх зөвшөөрөхөд хэрэглэгч дахин бүртгэгдэнэ.`,
+        t("dbManageHistoryConfirm"),
       )
     )
       return;
@@ -312,14 +312,14 @@ export default function DbAccessManagePage() {
       setCleaningChUser(group.userUserId);
       const result = await dbAccessApi.cleanupChUser(group.userUserId);
       toast({
-        title: "✅ CH хандалт цэвэрлэгдлээ",
+        title: t("dbManageCleaned"),
         description: result.message,
       });
     } catch (err: any) {
       toast({
-        title: "Алдаа",
+        title: t("dbAccessValidationTitle"),
         description:
-          err?.response?.data?.message ?? "CH цэвэрлэхэд алдаа гарлаа",
+          err?.response?.data?.message ?? t("dbManageCleanError"),
         variant: "destructive",
       });
     } finally {
@@ -341,8 +341,8 @@ export default function DbAccessManagePage() {
             <ShieldCheck className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Эрхийн Хүсэлт Шийдвэрлэх"
-        subtitle="ClickHouse хандалтын хүсэлтүүдийг хянах"
+        title={t("dbManageResolveBtn")}
+        subtitle={t("dbManageResolveBtn")}
         rightContent={
           <Button
             variant="ghost"
@@ -361,9 +361,9 @@ export default function DbAccessManagePage() {
         <div className="flex gap-0 border-b">
           {(
             [
-              { key: "pending" as Tab, label: "Хүлээгдэж буй" },
-              { key: "all" as Tab, label: "Бүх хүсэлт" },
-              { key: "grants" as Tab, label: "Хэрэглэгчийн эрхийн жагсаалт" },
+              { key: "pending" as Tab, label: t("dbManagePendingTab") },
+              { key: "all" as Tab, label: t("dbManageAllTab") },
+              { key: "grants" as Tab, label: t("dbManageGrantsTab") },
             ] as const
           ).map((t) => (
             <button
@@ -399,7 +399,7 @@ export default function DbAccessManagePage() {
                   <span className="font-semibold text-amber-400">
                     {pendingCount}
                   </span>{" "}
-                  хүсэлт хүлээгдэж байна
+                  {t("dbManagePendingTab")}
                 </p>
               </div>
             )}
@@ -413,8 +413,8 @@ export default function DbAccessManagePage() {
                 <CheckCircle2 className="h-10 w-10 opacity-20" />
                 <p className="font-medium">
                   {tab === "pending"
-                    ? " Одоогоор баталгаажаагүй хүсэлт алга."
-                    : "Хүсэлт байхгүй"}
+                    ? t("dbManageNoPending")
+                    : t("dbManageNoRequests")}
                 </p>
               </div>
             ) : (
@@ -459,9 +459,9 @@ export default function DbAccessManagePage() {
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Илгээсэн:{" "}
+                            {t("dbManageSentAt")}{" "}
                             {new Date(req.requestTime).toLocaleString("mn-MN")}{" "}
-                            Хүчинтэй:{" "}
+                            {t("dbManageValidUntil")}{" "}
                             {new Date(req.validUntil).toLocaleDateString(
                               "mn-MN",
                             )}
@@ -472,7 +472,7 @@ export default function DbAccessManagePage() {
                           className={`shrink-0 text-xs ${cfg.color}`}
                         >
                           <StatusIcon className="h-3 w-3 mr-1" />
-                          {cfg.label}
+                          {t(cfg.labelKey as any)}
                         </Badge>
                         <button
                           className="shrink-0 p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
@@ -481,7 +481,7 @@ export default function DbAccessManagePage() {
                             e.stopPropagation();
                             handleDeleteRequest(req.id);
                           }}
-                          title="Устгах"
+                          title={t("dbManageConfirmDelete")}
                         >
                           {deletingId === req.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -502,7 +502,7 @@ export default function DbAccessManagePage() {
                           <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5 font-medium">
-                                Хүснэгтүүд
+                                {t("dbManageTables")}
                               </p>
                               <div className="flex flex-wrap gap-1">
                                 {req.tables.map((t) => (
@@ -517,7 +517,7 @@ export default function DbAccessManagePage() {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5 font-medium">
-                                Эрхийн төрөл
+                                {t("dbManageGrantType")}
                               </p>
                               <div className="flex gap-1">
                                 {req.accessTypes.map((a) => (
@@ -530,7 +530,7 @@ export default function DbAccessManagePage() {
                             {req.reason && (
                               <div className="sm:col-span-2">
                                 <p className="text-xs text-muted-foreground mb-1 font-medium">
-                                  Шалтгаан
+                                  {t("dbManageReasonLabel")}
                                 </p>
                                 <p className="text-sm italic text-muted-foreground bg-muted/50 rounded px-3 py-2">
                                   "{req.reason}"
@@ -539,7 +539,7 @@ export default function DbAccessManagePage() {
                             )}
                             {req.reviewedByName && (
                               <div className="sm:col-span-2 text-xs text-muted-foreground">
-                                Шийдвэрлэсэн:{" "}
+                                {t("dbManageResolvedAt")}{" "}
                                 <span className="text-foreground">
                                   {req.reviewedByName}
                                 </span>
@@ -558,10 +558,10 @@ export default function DbAccessManagePage() {
                               "rejected" ? null : reviewingId === req.id ? (
                                 <div className="space-y-2">
                                   <Label className="text-xs">
-                                    Тайлбар (заавал)
+                                    {t("dbManageDecisionNote")}
                                   </Label>
                                   <Textarea
-                                    placeholder="Шийдвэрийн тайлбар..."
+                                    placeholder={t("dbManageDecisionPlaceholder")}
                                     value={reviewNote}
                                     onChange={(e) =>
                                       setReviewNote(e.target.value)
@@ -583,7 +583,7 @@ export default function DbAccessManagePage() {
                                       ) : (
                                         <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                                       )}
-                                      Батлах
+                                      {t("dbManageApprove")}
                                     </Button>
                                     <Button
                                       variant="destructive"
@@ -599,7 +599,7 @@ export default function DbAccessManagePage() {
                                       ) : (
                                         <XCircle className="h-3.5 w-3.5 mr-1" />
                                       )}
-                                      Татгалзах
+                                      {t("dbManageReject")}
                                     </Button>
                                     <Button
                                       variant="ghost"
@@ -609,7 +609,7 @@ export default function DbAccessManagePage() {
                                         setReviewNote("");
                                       }}
                                     >
-                                      Болих
+                                      {t("back")}
                                     </Button>
                                     <Button
                                       variant="ghost"
@@ -640,7 +640,7 @@ export default function DbAccessManagePage() {
                                     }}
                                   >
                                     <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
-                                    Шийдвэрлэх
+                                    {t("dbManageResolveBtn")}
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -651,7 +651,7 @@ export default function DbAccessManagePage() {
                                       e.stopPropagation();
                                       handleDeleteRequest(req.id);
                                     }}
-                                    title="Хүсэлтийг устгах"
+                                    title={t("dbManageConfirmDelete")}
                                   >
                                     {deletingId === req.id ? (
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -681,15 +681,15 @@ export default function DbAccessManagePage() {
               <div className="flex items-center gap-3 p-3 rounded-xl border bg-card text-sm">
                 <Users className="h-4 w-4 text-violet-400 shrink-0" />
                 <span className="flex-1 text-muted-foreground">
-                  Нийт{" "}
+                  {t("redflagTotalRules")}{" "}
                   <span className="font-semibold text-foreground">
                     {allGrants.length}
                   </span>{" "}
-                  идэвхтэй эрх,{" "}
+                  {t("dbManageGrantsTab")}{" "}
                   <span className="font-semibold text-foreground">
                     {uniqueUsers.length}
                   </span>{" "}
-                  хэрэглэгч
+                  {t("dbManageGrantsTab")}
                 </span>
               </div>
             )}
@@ -701,7 +701,7 @@ export default function DbAccessManagePage() {
             ) : allGrants.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground rounded-xl border bg-card">
                 <Database className="h-10 w-10 opacity-20" />
-                <p className="font-medium">Идэвхтэй эрх байхгүй</p>
+                <p className="font-medium">{t("dbManageNoPending")}</p>
               </div>
             ) : (
               uniqueUsers.map((u) => {
@@ -719,7 +719,7 @@ export default function DbAccessManagePage() {
                         ({u.code})
                       </span>
                       <Badge variant="secondary" className="text-xs ml-1">
-                        {groupByRequest(uGrants).length} хүсэлт
+                        {groupByRequest(uGrants).length} {t("dbManagePendingTab")}
                       </Badge>
                     </div>
 
@@ -755,7 +755,7 @@ export default function DbAccessManagePage() {
                           </div>
                           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                             <span>
-                              Олгосон:{" "}
+                              {t("dbManageSentAt")}{" "}
                               <span className="text-foreground">
                                 {grp.grantedByName}
                               </span>
@@ -764,7 +764,7 @@ export default function DbAccessManagePage() {
                               {fmt24(grp.grantedAt)}
                             </span>
                             <span suppressHydrationWarning>
-                              Хаагдах:{" "}
+                              {t("dbManageValidUntil")}{" "}
                               <span className="text-foreground">
                                 {fmt24(grp.validUntil)}
                               </span>
@@ -777,7 +777,7 @@ export default function DbAccessManagePage() {
                           className="text-amber-500 hover:bg-amber-500/10 shrink-0 gap-1.5"
                           disabled={cleaningChUser === grp.userUserId}
                           onClick={() => handleCleanupCh(grp)}
-                          title="ClickHouse хандалтын өгөгдлийг цэвэрлэх (гэмтсэн/зогссон эрхүүдэд хэрэглэнэ)"
+                          title={t("dbManageCleanError")}
                         >
                           {cleaningChUser === grp.userUserId ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -792,14 +792,14 @@ export default function DbAccessManagePage() {
                           className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
                           disabled={revokingId === grp.requestId}
                           onClick={() => handleRevoke(grp)}
-                          title="Энэ эрхийг устгах"
+                          title={t("dbManageConfirmDelete")}
                         >
                           {revokingId === grp.requestId ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
                             <Trash2 className="h-3.5 w-3.5" />
                           )}
-                          <span className="text-xs">Устгах</span>
+                          <span className="text-xs">{t("dbManageConfirmDelete")}</span>
                         </Button>
                       </div>
                     ))}

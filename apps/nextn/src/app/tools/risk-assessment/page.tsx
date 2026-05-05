@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ShieldAlert,
   ClipboardList,
@@ -11,14 +12,15 @@ import {
 
 export default function RiskAssessmentPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-rose-500/[0.02] text-foreground flex flex-col">
       <ToolPageHeader
         href="/tools"
         icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
-        title="Эрсдэлийн үнэлгээ"
-        subtitle="Салбарын үнэлгээ"
+        title={t("toolRiskAssessmentTitle")}
+        subtitle={t("riskBranchSubtitle")}
       />
       <div className="container mx-auto px-4 py-10 flex-1 max-w-[900px]">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -35,15 +37,11 @@ export default function RiskAssessmentPage() {
             </div>
             <div>
               <div className="text-base font-semibold text-foreground mb-1">
-                Эрсдэлийн үнэлгээ
-              </div>
-              <div className="text-xs text-muted-foreground leading-relaxed">
-                Салбаруудын нэгдсэн эрсдэлийн оноо, гарын үнэлэмж, хүснэгтэн
-                харагдац, тайлангийн хадгалалт
+                {t("toolRiskAssessmentTitle")}
               </div>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-              Нээх <ChevronRight className="w-3.5 h-3.5" />
+              {t("toolsOpen")} <ChevronRight className="w-3.5 h-3.5" />
             </span>
           </button>
 
@@ -60,15 +58,11 @@ export default function RiskAssessmentPage() {
             </div>
             <div>
               <div className="text-base font-semibold text-foreground mb-1">
-                Үнэлгээний дэлгэрэнгүй
-              </div>
-              <div className="text-xs text-muted-foreground leading-relaxed">
-                Oracle-аас татсан бүх үзүүлэлтийн мөрүүд, Score бүлгийн
-                шүүлтүүр, хайлт, CSV экспорт
+                {t("riskDetailTitle")}
               </div>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-              Нээх <ChevronRight className="w-3.5 h-3.5" />
+              {t("toolsOpen")} <ChevronRight className="w-3.5 h-3.5" />
             </span>
           </button>
         </div>

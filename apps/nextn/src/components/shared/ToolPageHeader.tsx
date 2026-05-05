@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ReactNode } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ToolPageHeaderProps {
   href?: string;
@@ -20,8 +21,7 @@ export default function ToolPageHeader({
   title,
   subtitle,
   rightContent,
-}: ToolPageHeaderProps) {
-  return (
+}: ToolPageHeaderProps) {  const { t } = useLanguage();  return (
     <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center gap-3">
         {onBack ? (
@@ -30,7 +30,7 @@ export default function ToolPageHeader({
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
-            Буцах
+            {t("back")}
           </button>
         ) : (
           <Link
@@ -38,7 +38,7 @@ export default function ToolPageHeader({
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
-            Буцах
+            {t("back")}
           </Link>
         )}
         <span className="text-border">/</span>

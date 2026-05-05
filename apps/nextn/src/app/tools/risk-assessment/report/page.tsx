@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { riskApi, type RiskHistoryEntry, type RiskCurrentRow } from "@/lib/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
   ShieldAlert,
@@ -41,6 +42,7 @@ function toScored(rows: RiskCurrentRow[]): ScoredRow[] {
 
 export default function RiskAssessmentReportPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [rows, setRows] = useState<RiskCurrentRow[]>([]);
   const [oracleFetchedAt, setOracleFetchedAt] = useState<string | null>(null);
@@ -99,7 +101,7 @@ export default function RiskAssessmentReportPage() {
 
   const loadAll = useCallback(async () => {
     if (!datesValid) {
-      setErrorMsg("Эхлэх болон дуусах огноог зөв оруулна уу.");
+      setErrorMsg(t("riskDateError"));
       return;
     }
     setRefreshing(true);
@@ -127,12 +129,12 @@ export default function RiskAssessmentReportPage() {
       setSaveName("");
     } catch (e: any) {
       setErrorMsg(
-        e?.response?.data?.message ?? e.message ?? "Хадгалахад алдаа",
+        e?.response?.data?.message ?? e.message ?? t("riskSaveError"),
       );
     } finally {
       setSaving(false);
     }
-  }, [saveName]);
+  }, [saveName, t]);
 
   const selectHistory = useCallback(
     async (id: string) => {
@@ -168,7 +170,7 @@ export default function RiskAssessmentReportPage() {
         }
       } catch (e: any) {
         setErrorMsg(
-          e?.response?.data?.message ?? e.message ?? "Устгахад алдаа",
+          e?.response?.data?.message ?? e.message ?? t("riskDeleteError"),
         );
       }
     },
@@ -187,8 +189,8 @@ export default function RiskAssessmentReportPage() {
       <ToolPageHeader
         href="/tools/risk-assessment"
         icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
-        title="Эрсдэлийн үнэлгээ — Тайлан"
-        subtitle="Эрсдэлийн тайлан харах, хадгалах, харьцуулах"
+        title={t("riskReportTitle")}
+        subtitle={t("riskReportSubtitle")}
       />
 
       <div className="container mx-auto px-4 py-6 space-y-4 flex-1 max-w-[1800px]">
@@ -197,14 +199,14 @@ export default function RiskAssessmentReportPage() {
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Үндсэн хуудас руу буцах
+          {t("backToMain")}
         </button>
 
         <section className="rounded-xl border border-border bg-card shadow-sm">
           <div className="px-3 py-2.5 flex flex-wrap items-center gap-2">
             <Database className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
             <div className="flex items-center gap-1.5">
-              <label className="text-[10px] text-muted-foreground">Эхлэх</label>
+              <label className="text-[10px] text-muted-foreground">{t("riskDateFrom")}</label>
               <input
                 type="date"
                 value={pDateBeg}
@@ -216,7 +218,7 @@ export default function RiskAssessmentReportPage() {
             <span className="text-muted-foreground/40 text-xs">→</span>
             <div className="flex items-center gap-1.5">
               <label className="text-[10px] text-muted-foreground">
-                Дуусах
+                {t("riskDateTo")}
               </label>
               <input
                 type="date"
@@ -236,7 +238,7 @@ export default function RiskAssessmentReportPage() {
               ) : (
                 <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
               )}
-              {hasFetched ? "Дахин татах" : "Татах"}
+              {hasFetched ? t("riskRefetch") : t("riskFetch")}
             </button>
 
             <div className="flex-1" />
@@ -247,7 +249,7 @@ export default function RiskAssessmentReportPage() {
                 className="flex items-center gap-1.5 px-3 py-1 rounded-md border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-semibold transition-all"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
-                Өмнөх улирал болгон хадгалах
+                {t("riskSaveQuarter")}
               </button>
             )}
 
@@ -263,7 +265,7 @@ export default function RiskAssessmentReportPage() {
                 {loadingHistory && (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 )}
-                {selectedEntry ? selectedEntry.name : "Өмнөх улирал сонгох"}
+                {selectedEntry ? selectedEntry.name : t("riskSelectQuarter")}
                 <ChevronDown
                   className={`w-3 h-3 transition-transform ${historyOpen ? "rotate-180" : ""}`}
                 />
@@ -276,12 +278,12 @@ export default function RiskAssessmentReportPage() {
                 >
                   <div className="px-3 py-2 border-b border-border bg-muted/30">
                     <p className="text-[11px] font-semibold text-muted-foreground">
-                      Хадгалсан улирлын үнэлгээнүүд
+                      {t("riskSavedQuarters")}
                     </p>
                   </div>
                   {historyList.length === 0 ? (
                     <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                      Хадгалсан үнэлгээ байхгүй
+                      {t("riskNoSaved")}
                     </div>
                   ) : (
                     <div className="max-h-60 overflow-y-auto">
@@ -294,7 +296,7 @@ export default function RiskAssessmentReportPage() {
                           }}
                           className="w-full px-3 py-2 text-left text-xs hover:bg-muted/40 text-muted-foreground flex items-center gap-2 border-b border-border/50"
                         >
-                          Харьцуулалт болиулах
+                          {t("riskStopCompare")}
                         </button>
                       )}
                       {historyList.map((h) => (
@@ -369,18 +371,16 @@ export default function RiskAssessmentReportPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
-            <p className="text-sm text-muted-foreground">Ачаалж байна…</p>
+            <p className="text-sm text-muted-foreground">{t("loading")}</p>
           </div>
         ) : !hasFetched ? (
           <div className="rounded-2xl border border-border bg-card shadow-sm px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
               <Database className="w-6 h-6 text-muted-foreground/60" />
             </div>
-            <div className="text-sm font-semibold">Oracle өгөгдөл байхгүй</div>
+            <div className="text-sm font-semibold">{t("riskNoOracleData")}</div>
             <div className="text-xs mt-1.5 text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Огноогоо сонгоод{" "}
-              <span className="font-semibold text-blue-600">«Татах»</span>{" "}
-              товчийг дарж Oracle-аас ачаалаарай.
+              {t("riskNoOracleHint")}
             </div>
           </div>
         ) : (
@@ -410,7 +410,7 @@ export default function RiskAssessmentReportPage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold">
-                  Өмнөх улирал болгон хадгалах
+                  {t("riskSaveQuarter")}
                 </h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {pDateBeg} → {pDate} · Oracle + гарын үзүүлэлтүүд
@@ -422,7 +422,7 @@ export default function RiskAssessmentReportPage() {
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doSaveHistory()}
-              placeholder="Жишээ: 2025 Q4 Улирал"
+              placeholder={t("riskSavePlaceholder")}
               autoFocus
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
             />

@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ import { useState } from "react";
 
 export default function SanamsarguiTuuwerPage() {
   const s = useSampling();
+  const { t } = useLanguage();
   const [filterSearch, setFilterSearch] = useState("");
   const [filterExpanded, setFilterExpanded] = useState(false);
 
@@ -43,9 +45,9 @@ export default function SanamsarguiTuuwerPage() {
           <div className="bg-card border border-border rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-xl">
             <Loader2 className="w-9 h-9 text-violet-500 animate-spin" />
             <p className="text-foreground font-semibold text-base">
-              Excel бэлтгэж байна...
+              {t("samplePreparing")}
             </p>
-            <p className="text-muted-foreground text-sm">Түр хүлээнэ үү</p>
+            <p className="text-muted-foreground text-sm">{t("sampleWait")}</p>
           </div>
         </div>
       )}
@@ -56,8 +58,8 @@ export default function SanamsarguiTuuwerPage() {
             <Calculator className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Санамсаргүй түүвэр"
-        subtitle="Аудитын түүврийн хэмжээ тооцоолох, санамсаргүй сонгон авах хэрэгсэл"
+        title={t("sampleTitle")}
+        subtitle={t("sampleSubtitle")}
       />
 
       <div className="container mx-auto px-6 py-6 max-w-4xl space-y-4">
@@ -73,7 +75,7 @@ export default function SanamsarguiTuuwerPage() {
             {/* Design + Confidence row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-sm">Түүврийн дизайн</Label>
+                <Label className="text-sm">{t("sampleDesign")}</Label>
                 <Select
                   value={s.design}
                   onValueChange={(v) => s.setDesign(v as DesignType)}
@@ -95,7 +97,7 @@ export default function SanamsarguiTuuwerPage() {
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">Итгэлийн түвшин</Label>
+                  <Label className="text-sm">{t("sampleConfidence")}</Label>
                   <span className="text-violet-600 font-bold text-sm tabular-nums">
                     {confLabel}
                   </span>
@@ -122,7 +124,7 @@ export default function SanamsarguiTuuwerPage() {
               className={`grid grid-cols-1 gap-4 ${!s.isStratified ? "md:grid-cols-3" : "md:grid-cols-2"}`}
             >
               <div className="space-y-1.5">
-                <Label className="text-sm">Алдааны марж (%)</Label>
+                <Label className="text-sm">{t("sampleErrorMargin")}</Label>
                 <div className="flex">
                   <button
                     onClick={() =>
@@ -158,7 +160,7 @@ export default function SanamsarguiTuuwerPage() {
 
               {!s.isStratified && (
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Стандарт хазайлт (σ)</Label>
+                  <Label className="text-sm">{t("sampleStdDev")}</Label>
                   <div className="flex">
                     <button
                       onClick={() =>
@@ -194,7 +196,7 @@ export default function SanamsarguiTuuwerPage() {
               )}
 
               <div className="space-y-1.5">
-                <Label className="text-sm">Хадгалах файлын нэр</Label>
+                <Label className="text-sm">{t("sampleFileName")}</Label>
                 <Input
                   value={s.exportFilename}
                   onChange={(e) => s.setExportFilename(e.target.value)}
@@ -207,7 +209,7 @@ export default function SanamsarguiTuuwerPage() {
                     onChange={(e) => s.setPreferSaveDialog(e.target.checked)}
                     className="w-3.5 h-3.5 rounded accent-violet-500 cursor-pointer"
                   />
-                  Хадгалах цонх ашиглах
+                  {t("sampleSaveDialog")}
                 </label>
               </div>
             </div>
@@ -215,7 +217,7 @@ export default function SanamsarguiTuuwerPage() {
             {/* File upload — SRSWR / SRSWOR only */}
             {!s.isStratified && (
               <div className="space-y-3">
-                <Label className="text-sm">Excel файл оруулах</Label>
+                <Label className="text-sm">{t("sampleUploadFile")}</Label>
                 <div
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -256,7 +258,7 @@ export default function SanamsarguiTuuwerPage() {
                     <>
                       <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-1.5" />
                       <p className="text-sm font-medium text-foreground">
-                        Файл чирж оруулах буюу дарж сонгох
+                        {t("sampleDropZone")}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         XLSX, XLS
@@ -285,7 +287,7 @@ export default function SanamsarguiTuuwerPage() {
                         }}
                         className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
                       />
-                      <span className="text-sm font-medium">Баганаар шүүх</span>
+                      <span className="text-sm font-medium">{t("sampleFilterByCol")}</span>
                       <span className="text-xs text-muted-foreground">
                         — жишээ: SOL баганаас 100/101/102
                       </span>
@@ -295,7 +297,7 @@ export default function SanamsarguiTuuwerPage() {
                       <>
                         <div className="space-y-1.5">
                           <Label className="text-sm">
-                            Шүүх багана
+                            {t("sampleFilterCol")}
                             <span className="ml-1 text-xs text-muted-foreground font-normal">
                               (дурын багана)
                             </span>
@@ -311,14 +313,14 @@ export default function SanamsarguiTuuwerPage() {
                             }}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="— Багана сонгоно —" />
+                              <SelectValue placeholder={t("sampleSelectCol")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem
                                 value="__none__"
                                 className="text-muted-foreground"
                               >
-                                — Багана сонгоно —
+                                {t("sampleSelectCol")}
                               </SelectItem>
                               {s.fileHeaders.map((h, hi) => (
                                 <SelectItem key={`${h}-${hi}`} value={h}>
@@ -332,7 +334,7 @@ export default function SanamsarguiTuuwerPage() {
                         {s.availableFilterValues.length > 0 && (
                           <div className="space-y-2">
                             <Label className="text-sm">
-                              Утгын шүүлтүүр
+                              {t("sampleFilterValues")}
                               <span className="ml-1 text-xs text-muted-foreground font-normal">
                                 ({s.availableFilterValues.length} утга)
                               </span>
@@ -346,7 +348,7 @@ export default function SanamsarguiTuuwerPage() {
                                   setFilterSearch(e.target.value);
                                   setFilterExpanded(true);
                                 }}
-                                placeholder="Утга хайх..."
+                                placeholder={t("sampleSearchValues")}
                                 className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-400"
                               />
                             </div>
@@ -378,7 +380,7 @@ export default function SanamsarguiTuuwerPage() {
                                           : "border-border bg-background text-foreground hover:border-violet-400"
                                       }`}
                                     >
-                                      Бүх утга
+                                      {t("sampleAllValues")}
                                     </button>
                                     {visible.map((v) => (
                                       <button
@@ -406,20 +408,19 @@ export default function SanamsarguiTuuwerPage() {
                                       {filterExpanded ? (
                                         <>
                                           <ChevronUp className="w-3 h-3" />{" "}
-                                          Хураах
+                                          {t("sampleCollapse")}
                                         </>
                                       ) : (
                                         <>
                                           <ChevronDown className="w-3 h-3" />{" "}
-                                          Бүгдийг харах (+{hiddenCount})
+                                          {t("sampleForceAll")} (+{hiddenCount})
                                         </>
                                       )}
                                     </button>
                                   )}
                                   {filterSearch && filtered.length === 0 && (
                                     <p className="text-xs text-muted-foreground">
-                                      &ldquo;{filterSearch}&rdquo; илэрц
-                                      олдсонгүй
+                                      &ldquo;{filterSearch}&rdquo; {t("sampleNoFilter")}
                                     </p>
                                   )}
                                 </>
@@ -436,7 +437,7 @@ export default function SanamsarguiTuuwerPage() {
                                 disabled={s.selectedFilterValue !== "all"}
                                 className="w-3.5 h-3.5 rounded accent-violet-500 cursor-pointer disabled:opacity-50"
                               />
-                              Бүх утгыг заавал хамруулах
+                              {t("sampleForceAll")}
                             </label>
                             <p className="text-xs text-muted-foreground">
                               Жишээ: <strong>SOL</strong> баганад 100, 101, 102
@@ -448,7 +449,7 @@ export default function SanamsarguiTuuwerPage() {
                         {s.filterCol &&
                           s.availableFilterValues.length === 0 && (
                             <p className="text-xs text-amber-500">
-                              ⚠️ Сонгосон баганад илэрц олдсонгүй.
+                              ⚠️ {t("sampleNoFilter")}
                             </p>
                           )}
                       </>
@@ -461,7 +462,7 @@ export default function SanamsarguiTuuwerPage() {
                     <span className="text-muted-foreground">
                       Тооцоологдсон түүврийн хэмжээ (
                       {!s.useColumnFilter || s.selectedFilterValue === "all"
-                        ? "Бүх өгөгдөл"
+                        ? t("sampleAllValues")
                         : `${s.filterCol}=${s.selectedFilterValue}`}
                       ):
                     </span>
@@ -478,7 +479,7 @@ export default function SanamsarguiTuuwerPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-sm">Эх олонлогийн тоо (N)</Label>
+                    <Label className="text-sm">{t("samplePopN")}</Label>
                     <Input
                       type="number"
                       min={30}
@@ -490,7 +491,7 @@ export default function SanamsarguiTuuwerPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-sm">Бүлгийн тоо (≥2)</Label>
+                    <Label className="text-sm">{t("sampleGroupN")}</Label>
                     <Input
                       type="number"
                       min={2}
@@ -550,7 +551,7 @@ export default function SanamsarguiTuuwerPage() {
               className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-5 text-base disabled:opacity-40"
             >
               <Shuffle className="w-4 h-4 mr-2" />
-              {s.isStratified ? "Стратифик түүвэр сонгох" : "Түүвэр сонгох"}
+              {s.isStratified ? "Стратифик түүвэр сонгох" : t("sampleSizeLabel")}
             </Button>
           </CardContent>
         </Card>
@@ -565,7 +566,7 @@ export default function SanamsarguiTuuwerPage() {
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      Түүвэр амжилттай
+                      {t("sampleSizeLabel")}
                     </CardTitle>
                     <Button
                       onClick={s.handleExport}
@@ -574,7 +575,7 @@ export default function SanamsarguiTuuwerPage() {
                       className="border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
                     >
                       <Download className="w-4 h-4 mr-1.5" />
-                      Excel татах
+                      {t("pivotExportBtn")}
                     </Button>
                   </div>
                 </CardHeader>
@@ -592,7 +593,7 @@ export default function SanamsarguiTuuwerPage() {
                         {result.n}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Түүврийн хэмжээ (n)
+                        {t("sampleSizeLabel")} (n)
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
@@ -600,7 +601,7 @@ export default function SanamsarguiTuuwerPage() {
                         {result.N}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Хүн ам (N)
+                        {t("samplePopN")} (N)
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
@@ -608,7 +609,7 @@ export default function SanamsarguiTuuwerPage() {
                         {result.Z}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Z утга
+                        Z {t("sampleStdDev")}
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
@@ -616,7 +617,7 @@ export default function SanamsarguiTuuwerPage() {
                         {(result.confidence * 100).toFixed(0)}%
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Итгэлийн түвшин
+                        {t("sampleConfidence")}
                       </div>
                     </div>
                   </div>
@@ -625,13 +626,13 @@ export default function SanamsarguiTuuwerPage() {
                   {result.groups.map((g, gi) => (
                     <div key={gi} className={gi > 0 ? "mt-5" : ""}>
                       <p className="text-sm font-medium text-foreground mb-2">
-                        {result.groups.length > 1 ? g.label : "Түүврийн үр дүн"}
+                        {result.groups.length > 1 ? g.label : t("sampleSizeLabel")}
                         {g.size !== undefined
                           ? ` (бүлгийн хэмжээ: ${g.size})`
                           : ""}
                         {" — "}
                         <span className="text-muted-foreground">
-                          {g.indices.length} мөр сонгогдлоо
+                          {g.indices.length} {t("alertRows")} {t("sampleSizeLabel")}
                           {g.indices.length > 50 && " (эхний 50)"}
                         </span>
                       </p>
@@ -640,11 +641,11 @@ export default function SanamsarguiTuuwerPage() {
                           <thead>
                             <tr className="bg-muted/60">
                               <th className="px-3 py-2 text-muted-foreground text-center whitespace-nowrap border-r border-border font-medium">
-                                Мөр №
+                                {t("alertRows")} №
                               </th>
                               {s.isStratified ? (
                                 <th className="px-3 py-2 text-muted-foreground text-left border-r border-border/50 font-medium">
-                                  Санамсаргүй хувьсагч
+                                  {t("sampleDesign")}
                                 </th>
                               ) : (
                                 result.headers.map((h, hi) => (

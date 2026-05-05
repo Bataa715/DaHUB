@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { riskApi } from "@/lib/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
   ShieldAlert,
@@ -58,6 +59,7 @@ const GROUP_OPTIONS: { key: FilterKey; label: string; cls: string }[] = [
 // ── page ───────────────────────────────────────────────────────────────────
 export default function RiskAssessmentDetailPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [rows, setRows] = useState<RiskRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -262,8 +264,8 @@ export default function RiskAssessmentDetailPage() {
       <ToolPageHeader
         href="/tools"
         icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
-        title="Үнэлгээний дэлгэрэнгүй"
-        subtitle="Мөр бүрийн дэлгэрэнгүй"
+        title={t("riskDetailTitle")}
+        subtitle={t("riskDetailSubtitle")}
       />
       <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1600px]">
         {/* Буцах */}
@@ -272,7 +274,7 @@ export default function RiskAssessmentDetailPage() {
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Үндсэн хуудас руу буцах
+          {t("backToMain")}
         </button>
 
         {/* ClickHouse-д хадгалсан огноо */}
@@ -280,7 +282,7 @@ export default function RiskAssessmentDetailPage() {
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             {loading && (
               <>
-                <Loader2 className="w-3 h-3 animate-spin" /> Ачаалж байна…
+                <Loader2 className="w-3 h-3 animate-spin" /> {t("loading")}
               </>
             )}
             {fetchedAt && (
@@ -289,7 +291,7 @@ export default function RiskAssessmentDetailPage() {
                   <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
                   <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 </span>
-                Татсан: {new Date(fetchedAt).toLocaleString("mn-MN")}
+                {t("fetchedAt")} {new Date(fetchedAt).toLocaleString("mn-MN")}
               </span>
             )}
           </div>
@@ -304,7 +306,7 @@ export default function RiskAssessmentDetailPage() {
                 <div className="w-7 h-7 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
                   <TableIcon className="w-3.5 h-3.5 text-blue-500" />
                 </div>
-                <span>Үнэлгээний дэлгэрэнгүй</span>
+                <span>{t("riskDetailTitle")}</span>
               </h2>
               <div className="flex items-center gap-1.5 text-[11px]">
                 <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 tabular-nums font-semibold">
@@ -343,14 +345,14 @@ export default function RiskAssessmentDetailPage() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Хайх..."
+                  placeholder={t("search") + "..."}
                   className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-xs w-44 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/60 transition-all"
                 />
                 {search && (
                   <button
                     onClick={() => setSearch("")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    title="Цэвэрлэх"
+                    title={t("clearSearch")}
                   >
                     ×
                   </button>
@@ -359,8 +361,8 @@ export default function RiskAssessmentDetailPage() {
               {/* View toggle */}
               <div className="flex rounded-lg border border-border overflow-hidden bg-background/60 p-0.5">
                 {[
-                  { key: "grouped" as const, icon: LayoutGrid, label: "Бүлэг" },
-                  { key: "table" as const, icon: TableIcon, label: "Хүснэгт" },
+                  { key: "grouped" as const, icon: LayoutGrid, label: t("viewGrouped") },
+                  { key: "table" as const, icon: TableIcon, label: t("viewTable") },
                 ].map(({ key, icon: Icon, label }) => (
                   <button
                     key={key}

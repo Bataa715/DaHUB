@@ -110,7 +110,7 @@ const Header = () => {
       window.location.href = isAdmin ? "/admin/login" : "/login";
     } catch (error) {
       console.error("Logout error:", error);
-      toast({ title: "Гарахад алдаа гарлаа.", variant: "destructive" });
+      toast({ title: t("logoutError"), variant: "destructive" });
     }
   };
 
@@ -147,7 +147,7 @@ const Header = () => {
                             className="rounded-md"
                           />
                           <span className="font-bold text-2xl">
-                            {isAdminPage ? "Админ самбар" : appName}
+                            {isAdminPage ? t("navAdminPanel") : appName}
                           </span>
                         </Link>
                       </SheetClose>
@@ -219,7 +219,7 @@ const Header = () => {
                 height={32}
                 className="rounded-md"
               />
-              {isAdminPage ? "Админ самбар" : appName}
+              {isAdminPage ? t("navAdminPanel") : appName}
             </Link>
           </div>
 

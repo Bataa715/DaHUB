@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 import type ExcelJS from "exceljs";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Select,
   SelectContent,
@@ -25,7 +26,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// ─── Inverse normal CDF (Abramowitz & Stegun) ────────────────────────────────
+// ─── Inverse normal CDF (Abramowitz & Stegun) 
 function getZ(cl: number): number {
   const p = 1 - (1 - cl) / 2;
   if (p >= 1) return 3.5;
@@ -151,6 +152,7 @@ function buildPrefixGroups(
 }
 
 export default function PivotPage() {
+  const { t } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const [fileData, setFileData] = useState<unknown[][] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -189,7 +191,7 @@ export default function PivotPage() {
 
   const processFile = useCallback((file: File) => {
     if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-      setError("Зөвхөн Excel (.xlsx, .xls) эсвэл CSV файл оруулна уу");
+      setError(t("pivotFileError"));
       return;
     }
     setError(null);
@@ -203,7 +205,7 @@ export default function PivotPage() {
         raw: true,
       });
       if (jsonRows.length < 2) {
-        setError("Файлд хангалттай мэдээлэл байхгүй");
+        setError(t("pivotNoData"));
         return;
       }
       const hdrs = (jsonRows[0] as string[]).map(String);
@@ -478,8 +480,8 @@ export default function PivotPage() {
             <Table2 className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Pivot түүвэр тооцоолох"
-        subtitle="Кодоор бүлэглэж жилээр pivot хийн, түүвэр тооцоолж Excel татах"
+        title={t("pivotTitle")}
+        subtitle={t("pivotSubtitle")}
       />
 
       <div className="container mx-auto px-6 py-6 max-w-6xl space-y-4">
@@ -487,7 +489,7 @@ export default function PivotPage() {
         <Card className="border border-border shadow-sm">
           <CardContent className="pt-5 space-y-3">
             <Label className="text-sm font-medium">
-              Excel эсвэл CSV файл оруулах
+              {t("pivotFileLabel")}
             </Label>
             <div
               onDragOver={(e) => {
@@ -526,7 +528,7 @@ export default function PivotPage() {
                 <>
                   <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-1.5" />
                   <p className="text-sm font-medium text-foreground">
-                    Файл чирж оруулах буюу дарж сонгох
+                    {t("pivotDropZone")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     XLSX, XLS, CSV
@@ -550,7 +552,7 @@ export default function PivotPage() {
             <CardContent className="space-y-5">
               {/* Year filter pills */}
               <div className="space-y-2">
-                <Label className="text-sm">Жилийн шүүлтүүр</Label>
+                <Label className="text-sm">{t("pivotYearFilter")}</Label>
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     onClick={() => setSelectedYear("all")}
@@ -560,7 +562,7 @@ export default function PivotPage() {
                         : "border-border bg-background text-foreground hover:border-cyan-400"
                     }`}
                   >
-                    Бүх жил
+                    {t("pivotAllYears")}
                   </button>
                   {availableYears.map((y) => (
                     <button
@@ -581,7 +583,7 @@ export default function PivotPage() {
               {/* Column selectors + prefix + confidence + margin */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Огноон багана</Label>
+                  <Label className="text-sm">{t("pivotDateCol")}</Label>
                   <Select value={dateCol} onValueChange={setDateCol}>
                     <SelectTrigger>
                       <SelectValue />
@@ -596,7 +598,7 @@ export default function PivotPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Бүлэглэх багана</Label>
+                  <Label className="text-sm">{t("pivotGroupCol")}</Label>
                   <Select value={codeCol} onValueChange={setCodeCol}>
                     <SelectTrigger>
                       <SelectValue />
@@ -611,7 +613,7 @@ export default function PivotPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Prefix урт</Label>
+                  <Label className="text-sm">{t("pivotPrefixLen")}</Label>
                   <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button
@@ -641,7 +643,7 @@ export default function PivotPage() {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Итгэлцэл / Алдаа</Label>
+                  <Label className="text-sm">{t("pivotConfError")}</Label>
                   <div className="flex gap-2">
                     <Select
                       value={String(Math.round(confidence * 100))}
@@ -685,7 +687,7 @@ export default function PivotPage() {
                 className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold"
               >
                 <Table2 className="w-4 h-4 mr-2" />
-                Pivot үүсгэх
+                {t("pivotCreateBtn")}
               </Button>
             </CardContent>
           </Card>
@@ -697,7 +699,7 @@ export default function PivotPage() {
             {/* Export toolbar */}
             <div className="flex items-center justify-between flex-wrap gap-3 px-1">
               <h2 className="text-base font-semibold text-foreground">
-                Кодын бүлгээр pivot
+                {t("pivotResultTitle")}
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
                 <Select
@@ -727,7 +729,7 @@ export default function PivotPage() {
                   className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40"
                 >
                   <Download className="w-4 h-4 mr-1.5" />
-                  Excel татах
+                  {t("pivotExportBtn")}
                 </Button>
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Link from "next/link";
 import {
   Search,
@@ -45,6 +46,7 @@ function getTypeColor(type: string): string {
 }
 
 export default function DataDocPage() {
+  const { t } = useLanguage();
   const [schema, setSchema] = useState<DatabaseSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDb, setSelectedDb] = useState("");
@@ -104,7 +106,7 @@ export default function DataDocPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Хадгалахад алдаа гарлаа");
+      if (!res.ok) throw new Error(data.error || t("dataDocSaveError"));
       const db = schema.databases.find((d) =>
         d.tables.some((t) => t.name === editingCol.table),
       );
@@ -188,10 +190,10 @@ export default function DataDocPage() {
             <Database className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Өгөгдлийн толь бичиг"
+        title={t("dataDocDbLabel")}
         subtitle={
           schema
-            ? `${schema.totalTables} хүснэгт · ${schema.describedColumns}/${schema.totalColumns} тайлбартай`
+            ? `${schema.totalTables} ${t("dataDocDbLabel")} · ${schema.describedColumns}/${schema.totalColumns} ${t("dataDocColDesc")}`
             : undefined
         }
         rightContent={
@@ -200,7 +202,7 @@ export default function DataDocPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 transition-colors"
           >
             <Code2 className="w-3.5 h-3.5" />
-            Код сан
+            {t("dataDocCodeLib")}
           </Link>
         }
       />
@@ -210,7 +212,7 @@ export default function DataDocPage() {
         <div className="w-44 shrink-0 bg-[#0a0f1e] border-r border-slate-800/60 flex flex-col">
           <div className="px-4 py-4 border-b border-slate-800/60">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-              Мэдээллийн сан
+              {t("dataDocDbLabel")}
             </span>
           </div>
           <div className="flex-1 overflow-y-auto py-2">
@@ -257,14 +259,14 @@ export default function DataDocPage() {
               className="text-[11px] font-bold uppercase tracking-widest"
               style={{ color: currentDb?.color || "#64748b" }}
             >
-              {selectedDb || "DB сонгох"}
+              {selectedDb || t("dataDocSelectDb")}
             </span>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-600" />
               <input
                 value={tableSearch}
                 onChange={(e) => setTableSearch(e.target.value)}
-                placeholder="Хүснэгт хайх…"
+                placeholder={t("dataDocSearchTable") + "…"}
                 className="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-800/60 border border-slate-700/40 rounded-lg text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
               />
             </div>
@@ -313,7 +315,7 @@ export default function DataDocPage() {
             })}
             {filteredTables.length === 0 && (
               <div className="px-4 py-6 text-xs text-slate-600 text-center">
-                Хүснэгт олдсонгүй
+                {t("dataDocNoTables")}
               </div>
             )}
           </div>
@@ -338,7 +340,7 @@ export default function DataDocPage() {
                     style={{ backgroundColor: currentDb?.color || "#06b6d4" }}
                   />
                   <span className="text-xs text-slate-400">
-                    {coverage}% · {describedCount}/{totalCount} багана
+                    {coverage}% · {describedCount}/{totalCount} {t("dataDocColName")}
                   </span>
                 </div>
                 <div className="flex-1" />
@@ -355,10 +357,10 @@ export default function DataDocPage() {
                         }`}
                       >
                         {f === "all"
-                          ? "Бүгд"
-                          : f === "described"
-                            ? "Тайлбартай"
-                            : "Тайлбаргүй"}
+                          ? t("dataDocFiltered")
+                          : filter === "described"
+                            ? t("dataDocFiltered")
+                            : t("dataDocUnfiltered")}
                       </button>
                     ),
                   )}
@@ -368,14 +370,14 @@ export default function DataDocPage() {
                   <input
                     value={colSearch}
                     onChange={(e) => setColSearch(e.target.value)}
-                    placeholder="Багана хайх…"
+                    placeholder={t("dataDocSearchCol") + "…"}
                     className="pl-8 pr-3 py-1.5 text-xs bg-slate-800 border border-slate-700/50 rounded-lg text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 w-44"
                   />
                 </div>
               </>
             ) : (
               <span className="text-sm text-slate-500">
-                ← Хүснэгт сонгоно уу
+                {t("dataDocSelectTableHint")}
               </span>
             )}
           </div>
@@ -386,13 +388,13 @@ export default function DataDocPage() {
                 <thead>
                   <tr className="bg-[#0b1120] sticky top-0 z-10 border-b border-slate-800/60">
                     <th className="text-left px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-[260px]">
-                      Баганын нэр
+                      {t("dataDocColName")}
                     </th>
                     <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-[220px]">
-                      Төрөл
+                      {t("dataDocColType")}
                     </th>
                     <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                      Тайлбар
+                      {t("dataDocColDesc")}
                     </th>
                   </tr>
                 </thead>
@@ -449,7 +451,7 @@ export default function DataDocPage() {
                                 if (e.key === "Escape") cancelEdit();
                               }}
                               className="w-full px-2.5 py-1.5 text-xs bg-slate-800 border border-cyan-500/50 rounded-lg text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
-                              placeholder="Тайлбар оруулах…"
+                              placeholder={t("dataDocDescPlaceholder") + "…"}
                             />
                             <div className="flex items-center gap-1.5">
                               <button
@@ -457,13 +459,13 @@ export default function DataDocPage() {
                                 disabled={saving}
                                 className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-50 transition-colors"
                               >
-                                {saving ? "Хадгалж байна…" : "Хадгалах"}
+                                {saving ? t("dataDocSaving") : t("back")}
                               </button>
                               <button
                                 onClick={cancelEdit}
                                 className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
                               >
-                                Болих
+                                {t("back")}
                               </button>
                               {saveError && (
                                 <span className="text-[11px] text-red-400">
@@ -506,7 +508,7 @@ export default function DataDocPage() {
                         colSpan={3}
                         className="px-5 py-12 text-center text-slate-600 text-sm"
                       >
-                        Тохирох багана олдсонгүй
+                        {t("dataDocNoTables")}
                       </td>
                     </tr>
                   )}
@@ -520,10 +522,10 @@ export default function DataDocPage() {
                   <Database className="w-8 h-8 text-slate-600" />
                 </div>
                 <h3 className="text-slate-400 font-medium mb-1">
-                  Хүснэгт сонгоогүй байна
+                  {t("dataDocSelectDb")}
                 </h3>
                 <p className="text-slate-600 text-sm">
-                  Зүүн талаас мэдээллийн сан болон хүснэгт сонгоно уу
+                  {t("dataDocSelectTableHint")}
                 </p>
               </div>
             </div>

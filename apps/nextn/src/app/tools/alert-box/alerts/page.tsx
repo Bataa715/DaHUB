@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AlertDashboard {
   id: number;
@@ -44,6 +45,7 @@ interface AlertData {
 
 export default function AlertsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [data, setData] = useState<AlertData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function AlertsPage() {
       const res = await abFetchAlerts(minDash, 10000);
       setData(res);
     } catch (e: any) {
-      setError(e?.message || "Алдаа гарлаа");
+      setError(e?.message || t("alertNoResult"));
     } finally {
       setLoading(false);
     }
@@ -143,11 +145,11 @@ export default function AlertsPage() {
         href="/tools"
         icon={<AlertTriangle size={16} className="text-red-400" />}
         title="Alert"
-        subtitle="2+ Dashboard-д илэрсэн CIF-үүд"
+        subtitle={t("alertSubtitle")}
         rightContent={
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-surface-card border border-surface-border rounded-lg px-3 py-1.5">
-              <span className="text-[10px] text-txt-dim">Хамгийн бага:</span>
+              <span className="text-[10px] text-txt-dim">{t("alertMinDash")}</span>
               <select
                 value={minDash}
                 onChange={(e) => setMinDash(Number(e.target.value))}
@@ -178,7 +180,7 @@ export default function AlertsPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-golomt-400" />
             <span className="text-[12px] text-txt-dim ml-3">
-              12 Dashboard шалгаж байна...
+              12 Dashboard {t("alertLoading")}
             </span>
           </div>
         )}
@@ -192,8 +194,7 @@ export default function AlertsPage() {
             <summary className="px-4 py-2.5 cursor-pointer flex items-center gap-2 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors">
               <span>⚠</span>
               <span>
-                {data.failedDashboards.length} dashboard ачаалагдаагүй — дарж
-                дэлгэрэнгүй харна уу
+                {data.failedDashboards.length} dashboard {t("alertNoResult")} —
               </span>
             </summary>
             <div className="px-4 pb-3 pt-1 space-y-2">
@@ -222,7 +223,7 @@ export default function AlertsPage() {
               <input
                 value={cifSearch}
                 onChange={(e) => handleCifSearch(e.target.value)}
-                placeholder="CIF хайх... (шууд Oracle-с хайна)"
+                placeholder={t("alertCifSearch")}
                 className="w-full bg-surface-card border border-surface-border rounded-xl pl-8 pr-9 py-2 text-[12px] text-txt placeholder:text-txt-dim outline-none focus:border-golomt-500/50"
               />
               {cifSearchResult.loading && (
@@ -247,7 +248,7 @@ export default function AlertsPage() {
                 <div className="flex items-center justify-center py-10">
                   <Loader2 size={16} className="animate-spin text-golomt-400" />
                   <span className="text-[12px] text-txt-dim ml-2">
-                    Oracle-с хайж байна...
+                    {t("alertOracleSearching")}
                   </span>
                 </div>
               ) : cifSearchResult.searched ? (
@@ -256,7 +257,7 @@ export default function AlertsPage() {
                     <span className="font-mono text-txt">
                       {cifSearch.trim()}
                     </span>{" "}
-                    — {minDash}+ dashboard-д давхардсан alert илэрсэнгүй
+                    — {minDash}+ {t("alertNoResult")}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -291,15 +292,13 @@ export default function AlertsPage() {
                               <p className="text-[13px] font-bold text-txt">
                                 {alert.totalTransactions}
                               </p>
-                              <p className="text-[9px] text-txt-dim">гүйлгээ</p>
+                              <p className="text-[9px] text-txt-dim">{t("alertTransactions")}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-[12px] font-bold text-amber-400">
                                 {formatAmount(alert.totalAmount)}₮
                               </p>
-                              <p className="text-[9px] text-txt-dim">
-                                нийт дүн
-                              </p>
+                              <p className="text-[9px] text-txt-dim">{t("alertTotalAmount")}</p>
                             </div>
                             {expandedCif === alert.cif ? (
                               <ChevronUp size={16} className="text-txt-dim" />
@@ -328,7 +327,7 @@ export default function AlertsPage() {
                                   <p className="text-[12px] font-bold text-txt">
                                     {d.count}{" "}
                                     <span className="text-[9px] text-txt-dim font-normal">
-                                      мөр
+                                      {t("alertRows")}
                                     </span>
                                   </p>
                                   <p className="text-[10px] text-amber-400">
@@ -344,7 +343,7 @@ export default function AlertsPage() {
                                   className="animate-spin text-golomt-400"
                                 />
                                 <span className="text-[11px] text-txt-dim">
-                                  Дэлгэрэнгүй ачааллаж байна...
+                                  {t("alertLoadingDetail")}
                                 </span>
                               </div>
                             )}
@@ -357,7 +356,7 @@ export default function AlertsPage() {
                                   >
                                     <summary className="px-3 py-2 cursor-pointer hover:bg-surface-elevated/50 text-[11px] font-semibold text-txt">
                                       DB{dr.dashboardId}: {dr.dashboardName} (
-                                      {dr.matchCount} мөр)
+                                      {dr.matchCount} {t("alertRows")})
                                     </summary>
                                     <div className="overflow-auto border-t border-surface-border max-h-[380px]">
                                       <table className="text-[10px] border-collapse">
@@ -440,7 +439,7 @@ export default function AlertsPage() {
                         {data.totalAlerts}
                       </p>
                       <p className="text-[10px] text-txt-dim">
-                        {minDash}+ dashboard-д давхардсан CIF
+                        {minDash}+ {t("alertTitle")}
                       </p>
                     </div>
                   </div>
@@ -452,7 +451,7 @@ export default function AlertsPage() {
                       size={32}
                       className="mx-auto text-txt-dim mb-2 opacity-50"
                     />
-                    <p className="text-[13px] text-txt-dim">Alert илэрсэнгүй</p>
+                    <p className="text-[13px] text-txt-dim">{t("alertNoResult")}</p>
                   </div>
                 )}
 
@@ -490,13 +489,13 @@ export default function AlertsPage() {
                           <p className="text-[13px] font-bold text-txt">
                             {alert.totalTransactions}
                           </p>
-                          <p className="text-[9px] text-txt-dim">гүйлгээ</p>
+                          <p className="text-[9px] text-txt-dim">{t("alertTransactions")}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-[12px] font-bold text-amber-400">
                             {formatAmount(alert.totalAmount)}₮
                           </p>
-                          <p className="text-[9px] text-txt-dim">нийт дүн</p>
+                          <p className="text-[9px] text-txt-dim">{t("alertTotalAmount")}</p>
                         </div>
                         {expandedCif === alert.cif ? (
                           <ChevronUp size={16} className="text-txt-dim" />
@@ -525,7 +524,7 @@ export default function AlertsPage() {
                               <p className="text-[12px] font-bold text-txt">
                                 {d.count}{" "}
                                 <span className="text-[9px] text-txt-dim font-normal">
-                                  мөр
+                                  {t("alertRows")}
                                 </span>
                               </p>
                               <p className="text-[10px] text-amber-400">
@@ -541,7 +540,7 @@ export default function AlertsPage() {
                               className="animate-spin text-golomt-400"
                             />
                             <span className="text-[11px] text-txt-dim">
-                              Дэлгэрэнгүй ачааллаж байна...
+                              {t("alertLoadingDetail")}
                             </span>
                           </div>
                         )}
@@ -555,7 +554,7 @@ export default function AlertsPage() {
                                 <summary className="px-3 py-2 cursor-pointer hover:bg-surface-elevated/50 text-[11px] font-semibold text-txt flex items-center justify-between">
                                   <span>
                                     DB{dr.dashboardId}: {dr.dashboardName} (
-                                    {dr.matchCount} мөр)
+                                    {dr.matchCount} {t("alertRows")})
                                   </span>
                                 </summary>
                                 <div className="overflow-auto border-t border-surface-border max-h-[380px]">

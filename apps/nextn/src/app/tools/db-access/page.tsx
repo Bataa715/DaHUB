@@ -22,6 +22,7 @@ import {
   Check,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TableInfo {
   database: string;
@@ -32,6 +33,7 @@ interface TableInfo {
 export default function DbAccessRequestPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const router = useRouter();
 
   // Permission guard
@@ -73,8 +75,8 @@ export default function DbAccessRequestPage() {
       setTables(data);
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хүснэгтүүд ачаалахад алдаа гарлаа",
+        title: t("dbAccessValidationTitle"),
+        description: t("dbAccessLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -116,8 +118,8 @@ export default function DbAccessRequestPage() {
   const handleSubmit = async () => {
     if (selectedTables.length === 0) {
       toast({
-        title: "Сонголт хийнэ үү",
-        description: "Хамгийн багадаа нэг хүснэгт сонгоно уу",
+        title: t("dbAccessValidationTitle"),
+        description: t("dbAccessValidationNoTable"),
         variant: "destructive",
       });
       return;
@@ -125,8 +127,8 @@ export default function DbAccessRequestPage() {
 
     if (!validUntilDate) {
       toast({
-        title: "Огноо оруулна уу",
-        description: "Эрхийн дуусах огноог заавал оруулна уу",
+        title: t("dbAccessValidationDate"),
+        description: t("dbAccessValidationDateRequired"),
         variant: "destructive",
       });
       return;
@@ -134,8 +136,8 @@ export default function DbAccessRequestPage() {
 
     if (!reason.trim()) {
       toast({
-        title: "Шалтгаан оруулна уу",
-        description: "Эрх хүссэн шалтгааныг заавал бичнэ үү",
+        title: t("dbAccessValidationReason"),
+        description: t("dbAccessValidationReasonRequired"),
         variant: "destructive",
       });
       return;
@@ -144,8 +146,8 @@ export default function DbAccessRequestPage() {
     const validUntil = new Date(`${validUntilDate}T${validUntilTime}:00`);
     if (validUntil <= new Date()) {
       toast({
-        title: "Буруу огноо",
-        description: "Дуусах хугацаа ирээдүйд байх ёстой",
+        title: t("dbAccessValidationBadDate"),
+        description: t("dbAccessValidationFutureDate"),
         variant: "destructive",
       });
       return;
@@ -161,8 +163,8 @@ export default function DbAccessRequestPage() {
       });
 
       toast({
-        title: "Хүсэлт илгээгдлээ",
-        description: `${selectedTables.length} хүснэгтэд эрх хүсэх хүсэлт амжилттай илгээгдлээ`,
+        title: t("dbAccessRequestSent"),
+        description: t("dbAccessRequestSentMsg"),
       });
 
       // Reset form
@@ -170,9 +172,9 @@ export default function DbAccessRequestPage() {
       setReason("");
     } catch (err: any) {
       toast({
-        title: "Алдаа",
-        description:
-          err?.response?.data?.message ?? "Хүсэлт илгээхэд алдаа гарлаа",
+        title: t("dbAccessValidationTitle"),
+          description:
+            err?.response?.data?.message ?? t("dbAccessRequestError"),
         variant: "destructive",
       });
     } finally {
@@ -201,14 +203,14 @@ export default function DbAccessRequestPage() {
             <Database className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="ClickHouse Эрх Хүсэх"
-        subtitle="Хүснэгтэд хандах эрх хүсэх"
+        title={t("dbAccessMyGrants")}
+        subtitle={t("dbAccessSelectSection")}
         rightContent={
           <div className="flex items-center gap-2">
             <Link href="/tools/db-access/my-grants">
               <Button variant="outline" size="sm">
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Идэвхтэй эрхүүд
+                {t("dbAccessMyGrants")}
               </Button>
             </Link>
             {(user?.isAdmin ||
@@ -216,7 +218,7 @@ export default function DbAccessRequestPage() {
               <Link href="/tools/db-access/manage">
                 <Button variant="outline" size="sm">
                   <Table2 className="h-4 w-4 mr-2" />
-                  Хүсэлт шийдвэрлэх
+                  {t("dbAccessManage")}
                 </Button>
               </Link>
             )}
@@ -229,7 +231,7 @@ export default function DbAccessRequestPage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold flex items-center gap-2">
                 <Database className="h-4 w-4 text-cyan-400" />
-                Хүснэгт сонгох
+                {t("dbAccessTableSearch")}
               </h2>
               <Button
                 variant="ghost"
@@ -244,7 +246,7 @@ export default function DbAccessRequestPage() {
             </div>
 
             <Input
-              placeholder="Хүснэгт хайх..."
+              placeholder={t("dbAccessTableSearch") + "..."}
               value={tableFilter}
               onChange={(e) => setTableFilter(e.target.value)}
               className="bg-background"
@@ -284,7 +286,7 @@ export default function DbAccessRequestPage() {
                           <div className="w-2 h-0.5 bg-cyan-400 rounded" />
                         )}
                     </div>
-                    Бүгдийг сонгох ({tables.length} хүснэгт)
+                    {t("dbAccessSelectTableHint")} ({tables.length} {t("dbAccessTableSearch")})
                   </button>
                 )}
 
@@ -367,7 +369,7 @@ export default function DbAccessRequestPage() {
                   })}
                   {Object.keys(grouped).length === 0 && (
                     <p className="text-center text-muted-foreground py-4 text-sm">
-                      Хүснэгт олдсонгүй
+                      {t("dbAccessSelectTableHint")}
                     </p>
                   )}
                 </div>
@@ -377,7 +379,7 @@ export default function DbAccessRequestPage() {
             {selectedTables.length > 0 && (
               <div className="pt-2 border-t">
                 <p className="text-xs text-muted-foreground mb-2">
-                  Сонгогдсон ({selectedTables.length}):
+                  {t("dbAccessExpirySection")} ({selectedTables.length}):
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {selectedTables.map((t) => (
@@ -399,11 +401,11 @@ export default function DbAccessRequestPage() {
           <div className="rounded-xl border bg-card p-5 space-y-4">
             <h2 className="font-semibold flex items-center gap-2">
               <Calendar className="h-4 w-4 text-cyan-400" />
-              Хугацаа & Шалтгаан
+              {t("dbAccessExpirySection")}
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Дуусах огноо</Label>
+                <Label>{t("dbAccessExpiryDate")}</Label>
                 <Input
                   type="date"
                   value={validUntilDate}
@@ -417,7 +419,7 @@ export default function DbAccessRequestPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Дуусах цаг</Label>
+                <Label>{t("dbAccessExpiryTime")}</Label>
                 <Input
                   type="time"
                   value={validUntilTime}
@@ -427,9 +429,9 @@ export default function DbAccessRequestPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Шалтгаан (заавал)</Label>
+              <Label>{t("dbAccessReason")} ({t("dbAccessValidationReason")})</Label>
               <Textarea
-                placeholder="Яагаад энэ эрх хэрэгтэй байгаагаа бичнэ үү..."
+                placeholder={t("dbAccessReasonPlaceholder")}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
@@ -449,7 +451,7 @@ export default function DbAccessRequestPage() {
               ) : (
                 <Send className="h-4 w-4 mr-2" />
               )}
-              Хүсэлт илгээх
+              {t("dbAccessSubmitBtn")}
             </Button>
           </div>
         </div>

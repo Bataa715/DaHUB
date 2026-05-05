@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { pythonToolApi, PythonTool } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const DATE_ICON = {
   none: {
@@ -43,6 +44,7 @@ const OUTPUT_META = {
 
 export default function ReportsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const router = useRouter();
   const [pyTools, setPyTools] = useState<PythonTool[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,8 +56,8 @@ export default function ReportsPage() {
       setPyTools(await pythonToolApi.getTools());
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Тайлан ачаалахад алдаа гарлаа",
+        title: t("reportsLoadError"),
+        description: t("reportsLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -86,14 +88,14 @@ export default function ReportsPage() {
             href="/tools"
             className="flex items-center gap-1.5 text-slate-500 hover:text-slate-200 transition-colors text-sm"
           >
-            <ArrowLeft className="w-4 h-4" /> Буцах
+            <ArrowLeft className="w-4 h-4" /> {t("back")}
           </Link>
           <span className="text-slate-700">/</span>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md">
               <Code2 className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-semibold text-slate-100">Тайлан татах</span>
+            <span className="font-semibold text-slate-100">{t("reportsSearchPlaceholder")}</span>
           </div>
           {!loading && pyTools.length > 0 && (
             <div className="ml-auto flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 w-52 focus-within:border-violet-500/50 transition-colors">
@@ -101,7 +103,7 @@ export default function ReportsPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Хайх..."
+                placeholder={t("reportsSearchPlaceholder")}
                 className="bg-transparent text-sm text-slate-200 placeholder:text-slate-600 outline-none w-full"
               />
             </div>
@@ -133,10 +135,10 @@ export default function ReportsPage() {
           <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
             <Code2 className="w-14 h-14 text-slate-700" />
             <p className="text-slate-400 font-medium text-lg">
-              Эрхтэй тайлан байхгүй байна
+              {t("reportsNoAccess")}
             </p>
             <p className="text-slate-600 text-sm">
-              Администратортай холбогдоно уу
+              {t("reportsContactAdmin")}
             </p>
           </div>
         ) : (
@@ -150,11 +152,11 @@ export default function ReportsPage() {
                 {search
                   ? `${filtered.length} / ${pyTools.length}`
                   : pyTools.length}{" "}
-                тайлан
+                {t("reportsSearchPlaceholder")}
               </div>
               {search && filtered.length === 0 && (
                 <span className="text-xs text-slate-600">
-                  «{search}» — олдсонгүй
+                  «{search}» — {t("reportsNoAccess")}
                 </span>
               )}
             </motion.div>

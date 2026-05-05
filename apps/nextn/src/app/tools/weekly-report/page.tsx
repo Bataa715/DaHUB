@@ -24,6 +24,7 @@ import {
   FileDown,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ function downloadPreviewAsDoc(filename: string) {
   if (typeof window === "undefined") return;
   const sheet = document.querySelector(".weekly-print-sheet");
   if (!sheet) {
-    alert("Урьдчилсан харагдах хэсэг олдсонгүй.");
+    alert("Preview not found");
     return;
   }
   // Replace textareas/inputs with their current values so Word sees the text
@@ -281,11 +282,12 @@ function AddRowButton({
 }
 
 function RemoveBtn({ onClick }: { onClick: () => void }) {
+  const { t } = useLanguage();
   return (
     <button
       onClick={onClick}
       className="p-1 rounded-md text-rose-500 hover:bg-rose-500/10"
-      title="Устгах"
+      title={t("eng_deleteTitle")}
     >
       <Trash2 className="w-4 h-4" />
     </button>
@@ -302,20 +304,21 @@ function OtherInfoForm({
   onChange?: (next: OtherInfo) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   const upd = (k: keyof Omit<OtherInfo, "other">, v: string) =>
     onChange?.({ ...data, [k]: v });
 
   const numberFields: { key: keyof Omit<OtherInfo, "other">; label: string }[] =
     [
-      { key: "approvedHeadcount", label: "Батлагдсан орон тоо" },
-      { key: "working", label: "Ажиллаж байгаа" },
-      { key: "onLeave", label: "Ээлжийн амралттай" },
+      { key: "approvedHeadcount", label: t("wr_staffApproved") },
+      { key: "working", label: t("wr_staffWorking") },
+      { key: "onLeave", label: t("wr_staffLeave") },
     ];
 
   const textFields: { key: keyof Omit<OtherInfo, "other">; label: string }[] = [
-    { key: "currentInfo", label: "Цаг үеийн мэдээ" },
-    { key: "training", label: "Сургалт хөгжилтэй холбоотой" },
-    { key: "recruiting", label: "Сонгон шалгаруулалт" },
+    { key: "currentInfo", label: t("wr_currentNews") },
+    { key: "training", label: t("wr_training") },
+    { key: "recruiting", label: t("wr_selection") },
   ];
 
   const extraRows: OtherExtraRow[] = Array.isArray(data.other)
@@ -376,7 +379,7 @@ function OtherInfoForm({
       <div className="rounded-lg border border-border bg-muted/20 p-3">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-foreground">
-            Нэмэлт мэдээлэл
+            {t("wr_extraInfo")}
           </span>
           {!readOnly && (
             <button
@@ -384,7 +387,7 @@ function OtherInfoForm({
               onClick={addRow}
               className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" /> Мөр нэмэх
+              <Plus className="w-3.5 h-3.5" /> {t("wr_addRow")}
             </button>
           )}
         </div>
@@ -392,7 +395,7 @@ function OtherInfoForm({
           <p className="text-xs text-muted-foreground/60 italic text-center py-3">
             {readOnly
               ? "—"
-              : "Нэмэлт мэдээлэл байхгүй. Шаардлагатай бол «Мөр нэмэх» дарна уу."}
+              : t("wr_noExtra")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -419,7 +422,7 @@ function OtherInfoForm({
                     type="button"
                     onClick={() => removeRow(row.id)}
                     className="col-span-1 mt-1.5 text-muted-foreground hover:text-red-500 inline-flex justify-center"
-                    title="Устгах"
+                    title={t("eng_deleteTitle")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -443,6 +446,7 @@ function AuditWorksTable({
   onChange?: (next: AuditWorkRow[]) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   const update = (i: number, patch: Partial<AuditWorkRow>) =>
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
@@ -474,15 +478,15 @@ function AuditWorksTable({
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
               <th className="px-2 py-2 text-left min-w-[180px]">
-                Нээлттэй аудит
+                {t("wr_openAudit")}
               </th>
-              <th className="px-2 py-2 text-left min-w-[140px]">Төлөвлөгөө</th>
-              <th className="px-2 py-2 text-left min-w-[140px]">Гүйцэтгэл</th>
-              <th className="px-2 py-2 text-left w-32">Эхэлсэн</th>
-              <th className="px-2 py-2 text-left w-32">Дуусах</th>
-              <th className="px-2 py-2 text-left min-w-[120px]">Аудитын явц</th>
+              <th className="px-2 py-2 text-left min-w-[140px]">{t("wr_plan")}</th>
+              <th className="px-2 py-2 text-left min-w-[140px]">{t("wr_execution")}</th>
+              <th className="px-2 py-2 text-left w-32">{t("wr_started")}</th>
+              <th className="px-2 py-2 text-left w-32">{t("wr_endDate")}</th>
+              <th className="px-2 py-2 text-left min-w-[120px]">{t("wr_auditProgress")}</th>
               <th className="px-2 py-2 text-left min-w-[200px]">
-                Илэрсэн асуудал
+                {t("wr_foundIssues")}
               </th>
               {!readOnly && <th className="w-10" />}
             </tr>
@@ -494,7 +498,7 @@ function AuditWorksTable({
                   colSpan={readOnly ? 8 : 9}
                   className="px-3 py-6 text-center text-muted-foreground"
                 >
-                  Мөр алга
+                  {t("wr_noData")}
                 </td>
               </tr>
             )}
@@ -567,7 +571,7 @@ function AuditWorksTable({
           </tbody>
         </table>
       </div>
-      {!readOnly && <AddRowButton onClick={add} label="Мөр нэмэх" />}
+      {!readOnly && <AddRowButton onClick={add} label={t("wr_addRow")} />}
     </div>
   );
 }
@@ -581,6 +585,7 @@ function ComplaintsTable({
   onChange?: (next: ComplaintRow[]) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   const update = (i: number, patch: Partial<ComplaintRow>) =>
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
@@ -607,9 +612,9 @@ function ComplaintsTable({
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
               <th className="px-2 py-2 text-left min-w-[200px]">
-                Хариуцсан ажилтан
+                {t("wr_responsible")}
               </th>
-              <th className="px-2 py-2 text-left min-w-[300px]">Гомдлын явц</th>
+              <th className="px-2 py-2 text-left min-w-[300px]">{t("wr_complaintProgress")}</th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -620,7 +625,7 @@ function ComplaintsTable({
                   colSpan={readOnly ? 3 : 4}
                   className="px-3 py-6 text-center text-muted-foreground"
                 >
-                  Мөр алга
+                  {t("wr_noData")}
                 </td>
               </tr>
             )}
@@ -652,7 +657,7 @@ function ComplaintsTable({
           </tbody>
         </table>
       </div>
-      {!readOnly && <AddRowButton onClick={add} label="Мөр нэмэх" />}
+      {!readOnly && <AddRowButton onClick={add} label={t("wr_addRow")} />}
     </div>
   );
 }
@@ -666,6 +671,7 @@ function FollowupsTable({
   onChange?: (next: FollowupRow[]) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   const update = (i: number, patch: Partial<FollowupRow>) =>
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
@@ -692,9 +698,9 @@ function FollowupsTable({
           <thead className="bg-muted/40">
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">Дагах аудит</th>
-              <th className="px-2 py-2 text-left min-w-[160px]">Гүйцэтгэл</th>
-              <th className="px-2 py-2 text-left min-w-[160px]">Явц</th>
+              <th className="px-2 py-2 text-left min-w-[200px]">{t("wr_followupAudit")}</th>
+              <th className="px-2 py-2 text-left min-w-[160px]">{t("wr_execution")}</th>
+              <th className="px-2 py-2 text-left min-w-[160px]">{t("wr_progress")}</th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -705,7 +711,7 @@ function FollowupsTable({
                   colSpan={readOnly ? 4 : 5}
                   className="px-3 py-6 text-center text-muted-foreground"
                 >
-                  Мөр алга
+                  {t("wr_noData")}
                 </td>
               </tr>
             )}
@@ -746,7 +752,7 @@ function FollowupsTable({
           </tbody>
         </table>
       </div>
-      {!readOnly && <AddRowButton onClick={add} label="Мөр нэмэх" />}
+      {!readOnly && <AddRowButton onClick={add} label={t("wr_addRow")} />}
     </div>
   );
 }
@@ -761,6 +767,7 @@ function DaaWorksTable({
   onChange?: (next: DaaWorkRow[]) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   const update = (i: number, patch: Partial<DaaWorkRow>) =>
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
@@ -788,10 +795,10 @@ function DaaWorksTable({
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
               <th className="px-2 py-2 text-left min-w-[200px]">
-                Төлөвлөгөөт ажил
+                {t("wr_plannedTask")}
               </th>
-              <th className="px-2 py-2 text-left min-w-[180px]">Зорилго</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">Гүйцэтгэл</th>
+              <th className="px-2 py-2 text-left min-w-[180px]">{t("wr_goal")}</th>
+              <th className="px-2 py-2 text-left min-w-[200px]">{t("wr_execution")}</th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -802,7 +809,7 @@ function DaaWorksTable({
                   colSpan={readOnly ? 4 : 5}
                   className="px-3 py-6 text-center text-muted-foreground"
                 >
-                  Мөр алга
+                  {t("wr_noData")}
                 </td>
               </tr>
             )}
@@ -843,7 +850,7 @@ function DaaWorksTable({
           </tbody>
         </table>
       </div>
-      {!readOnly && <AddRowButton onClick={add} label="Мөр нэмэх" />}
+      {!readOnly && <AddRowButton onClick={add} label={t("wr_addRow")} />}
     </div>
   );
 }
@@ -857,6 +864,7 @@ function DataProcessingTable({
   onChange?: (next: DataProcessingRow[]) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   const update = (i: number, patch: Partial<DataProcessingRow>) =>
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
@@ -883,10 +891,10 @@ function DataProcessingTable({
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
               <th className="px-2 py-2 text-left min-w-[200px]">
-                Холбоотой аудит
+                {t("wr_relatedAudit")}
               </th>
               <th className="px-2 py-2 text-left min-w-[300px]">
-                Өгөгдөл боловсруулалтын ажил
+                {t("wr_dataTask")}
               </th>
               {!readOnly && <th className="w-10" />}
             </tr>
@@ -898,7 +906,7 @@ function DataProcessingTable({
                   colSpan={readOnly ? 3 : 4}
                   className="px-3 py-6 text-center text-muted-foreground"
                 >
-                  Мөр алга
+                  {t("wr_noData")}
                 </td>
               </tr>
             )}
@@ -931,7 +939,7 @@ function DataProcessingTable({
           </tbody>
         </table>
       </div>
-      {!readOnly && <AddRowButton onClick={add} label="Мөр нэмэх" />}
+      {!readOnly && <AddRowButton onClick={add} label={t("wr_addRow")} />}
     </div>
   );
 }
@@ -946,10 +954,11 @@ function AuditEditor({
   onChange?: (next: AuditSections) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-8">
       <div>
-        <SectionTitle idx={1} title="Долоо хоногийн аудитын мэдээлэл" />
+        <SectionTitle idx={1} title={t("wr_saved")} />
         <AuditWorksTable
           rows={data.auditWorks}
           onChange={(v) => onChange?.({ ...data, auditWorks: v })}
@@ -957,7 +966,7 @@ function AuditEditor({
         />
       </div>
       <div>
-        <SectionTitle idx={2} title="Гомдлын мэдээлэл" />
+        <SectionTitle idx={2} title={t("wr_s2Title")} />
         <ComplaintsTable
           rows={data.complaints}
           onChange={(v) => onChange?.({ ...data, complaints: v })}
@@ -965,7 +974,7 @@ function AuditEditor({
         />
       </div>
       <div>
-        <SectionTitle idx={3} title="Дагах аудит" />
+        <SectionTitle idx={3} title={t("wr_s3Title")} />
         <FollowupsTable
           rows={data.followups}
           onChange={(v) => onChange?.({ ...data, followups: v })}
@@ -973,7 +982,7 @@ function AuditEditor({
         />
       </div>
       <div>
-        <SectionTitle idx={4} title="Бусад мэдээлэл" />
+        <SectionTitle idx={4} title={t("wr_s4Title")} />
         <OtherInfoForm
           data={data.other}
           onChange={(v) => onChange?.({ ...data, other: v })}
@@ -993,10 +1002,11 @@ function DaaEditor({
   onChange?: (next: DaaSections) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-8">
       <div>
-        <SectionTitle idx={1} title="ДАА-ийн ажил" />
+        <SectionTitle idx={1} title={t("wr_daaWork")} />
         <DaaWorksTable
           rows={data.daaWorks}
           onChange={(v) => onChange?.({ ...data, daaWorks: v })}
@@ -1004,7 +1014,7 @@ function DaaEditor({
         />
       </div>
       <div>
-        <SectionTitle idx={2} title="Өгөгдөл боловсруулалт" />
+        <SectionTitle idx={2} title={t("wr_dataProcessing")} />
         <DataProcessingTable
           rows={data.dataProcessing}
           onChange={(v) => onChange?.({ ...data, dataProcessing: v })}
@@ -1012,7 +1022,7 @@ function DaaEditor({
         />
       </div>
       <div>
-        <SectionTitle idx={3} title="Бусад мэдээлэл" />
+        <SectionTitle idx={3} title={t("wr_other")} />
         <OtherInfoForm
           data={data.other}
           onChange={(v) => onChange?.({ ...data, other: v })}
@@ -1038,6 +1048,7 @@ function DirectorReportCard({
   const [open, setOpen] = useState(!!defaultOpen);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { t } = useLanguage();
 
   const buildAudit = (
     s: Partial<AuditSections & DaaSections>,
@@ -1083,11 +1094,11 @@ function DirectorReportCard({
       await weeklyReportApi.directorEdit(r.id, sections);
       onSaved?.({ ...r, sections });
       setEditing(false);
-      showToast("Засвар хадгалагдлаа");
+      showToast(t("wr_saved"));
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Алдаа гарлаа";
+          ?.message ?? t("wr_saveError");
       showToast(msg);
     } finally {
       setSaving(false);
@@ -1115,13 +1126,13 @@ function DirectorReportCard({
           </div>
         </button>
         <span className="text-xs px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground font-medium">
-          {r.role === "daa" ? "ДАА" : "Аудит"}
+          {r.role === "daa" ? t("wr_daaWork") : t("wr_s1Title")}
         </span>
         {!editing ? (
           <button
             onClick={startEdit}
             className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors print:hidden"
-            title="Засах"
+            title={t("eng_editTitle")}
           >
             <Pencil className="w-4 h-4" />
           </button>
@@ -1137,12 +1148,12 @@ function DirectorReportCard({
               ) : (
                 <Save className="w-3 h-3" />
               )}
-              Хадгалах
+              {t("wr_saved")}
             </button>
             <button
               onClick={cancelEdit}
               className="p-1 rounded-md text-muted-foreground hover:bg-muted"
-              title="Цуцлах"
+              title={t("back")}
             >
               <X className="w-4 h-4" />
             </button>
@@ -1180,6 +1191,7 @@ function PvTable({
   rows: (string | number | null | undefined)[][];
   colWidths?: string[];
 }) {
+  const { t } = useLanguage();
   return (
     <table
       className="w-full text-[9.5px] border-collapse mb-0"
@@ -1212,7 +1224,7 @@ function PvTable({
               colSpan={headers.length}
               className="border border-[#c8d0dc] px-2 py-3 text-center text-gray-400 italic"
             >
-              Мэдээлэл байхгүй
+              {t("wr_noData")}
             </td>
           </tr>
         ) : (
@@ -1241,15 +1253,16 @@ function PvTable({
 }
 
 function PvOtherInfo({ data }: { data: OtherInfo }) {
+  const { t } = useLanguage();
   const left: { key: keyof Omit<OtherInfo, "other">; label: string }[] = [
-    { key: "approvedHeadcount", label: "Батлагдсан орон тоо" },
-    { key: "working", label: "Ажиллаж байгаа" },
-    { key: "onLeave", label: "Ээлжийн амралттай" },
+    { key: "approvedHeadcount", label: t("wr_staffApproved") },
+    { key: "working", label: t("wr_staffWorking") },
+    { key: "onLeave", label: t("wr_staffLeave") },
   ];
   const right: { key: keyof Omit<OtherInfo, "other">; label: string }[] = [
-    { key: "currentInfo", label: "Цаг үеийн мэдээ" },
-    { key: "training", label: "Сургалт хөгжилтэй холбоотой" },
-    { key: "recruiting", label: "Сонгон шалгаруулалт" },
+    { key: "currentInfo", label: t("wr_currentNews") },
+    { key: "training", label: t("wr_training") },
+    { key: "recruiting", label: t("wr_selection") },
   ];
   const extraRows: OtherExtraRow[] = Array.isArray(data.other)
     ? data.other
@@ -1298,7 +1311,7 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
       {extraRows.length > 0 && (
         <div>
           <div className="text-[9px] font-semibold text-[#1a2744] uppercase tracking-wide mb-1 mt-2">
-            Нэмэлт мэдээлэл
+            {t("wr_extraInfo")}
           </div>
           <table
             className="w-full text-[9.5px] border-collapse"
@@ -1307,10 +1320,10 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
             <thead>
               <tr>
                 <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5] w-[35%]">
-                  Гарчиг
+                  {t("wr_titleCol")}
                 </th>
                 <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5]">
-                  Агуулга
+                  {t("wr_contentCol")}
                 </th>
               </tr>
             </thead>
@@ -1383,6 +1396,7 @@ function WeeklyPreviewDoc({
   departmentName: string;
   userName: string;
 }) {
+  const { t } = useLanguage();
   const fmt = (d: string) =>
     d
       ? new Date(d).toLocaleDateString("mn-MN", {
@@ -1406,10 +1420,10 @@ function WeeklyPreviewDoc({
         <div className="flex items-start justify-between">
           <div>
             <div className="text-[9px] font-semibold tracking-[0.15em] uppercase text-[#6b7a99] mb-0.5">
-              Голомт Банк · Дотоод Аудитын Газар
+              {t("wr_orgHeader")}
             </div>
             <h1 className="text-[18px] font-black text-[#1a2744] leading-tight tracking-tight">
-              ДОЛОО ХОНОГИЙН ТАЙЛАН
+              {t("wr_docTitle")}
             </h1>
             <div className="text-[10px] text-[#4a5568] mt-0.5">
               {departmentName}
@@ -1418,7 +1432,7 @@ function WeeklyPreviewDoc({
           <div className="text-right">
             <div className="inline-block border border-[#c8d0dc] rounded-lg px-3 py-2 bg-[#f0f4ff]">
               <div className="text-[8.5px] text-[#6b7a99] uppercase tracking-wide mb-0.5">
-                Хугацаа
+                {t("wr_period")}
               </div>
               <div className="text-[11px] font-bold text-[#1a2744]">
                 {fmt(weekStart)}
@@ -1438,17 +1452,17 @@ function WeeklyPreviewDoc({
       <div className="font-sans text-black bg-white">
         {header}
         <div className="px-7 pb-7">
-          <PvSection n={1} title="Долоо хоногийн аудитын мэдээлэл">
+          <PvSection n={1} title={t("wr_saved")}>
             <PvTable
               headers={[
                 "№",
-                "Нээлттэй аудит",
-                "Төлөвлөгөө",
-                "Гүйцэтгэл",
-                "Эхэлсэн",
-                "Дуусах",
-                "Явц %",
-                "Илэрсэн асуудал",
+                t("wr_openAudit"),
+                t("wr_plan"),
+                t("wr_execution"),
+                t("wr_started"),
+                t("wr_endDate"),
+                t("wr_progressPct"),
+                t("wr_foundIssues"),
               ]}
               colWidths={["4%", "18%", "13%", "13%", "8%", "8%", "8%", "28%"]}
               rows={s.auditWorks.map((r) => [
@@ -1463,9 +1477,9 @@ function WeeklyPreviewDoc({
               ])}
             />
           </PvSection>
-          <PvSection n={2} title="Гомдол хүсэлтийн мэдээлэл">
+          <PvSection n={2} title={t("wr_s2Title")}>
             <PvTable
-              headers={["№", "Хариуцсан ажилтан", "Гомдлын явц"]}
+              headers={["№", t("wr_responsible"), t("wr_complaintProgress")]}
               colWidths={["5%", "30%", "65%"]}
               rows={s.complaints.map((r) => [
                 r.rowNo,
@@ -1474,9 +1488,9 @@ function WeeklyPreviewDoc({
               ])}
             />
           </PvSection>
-          <PvSection n={3} title="Дагаж хэрэгжилтийн мэдээлэл">
+          <PvSection n={3} title={t("wr_s3Title")}>
             <PvTable
-              headers={["№", "Дагах аудит", "Гүйцэтгэл", "Явц"]}
+              headers={["№", t("wr_followupAudit"), t("wr_execution"), t("wr_progress")]}
               colWidths={["5%", "40%", "30%", "25%"]}
               rows={s.followups.map((r) => [
                 r.rowNo,
@@ -1486,7 +1500,7 @@ function WeeklyPreviewDoc({
               ])}
             />
           </PvSection>
-          <PvSection n={4} title="Бусад мэдээлэл">
+          <PvSection n={4} title={t("wr_s4Title")}>
             <div className="p-2">
               <PvOtherInfo data={s.other} />
             </div>
@@ -1501,9 +1515,9 @@ function WeeklyPreviewDoc({
     <div className="font-sans text-black bg-white">
       {header}
       <div className="px-7 pb-7">
-        <PvSection n={1} title="ДАА-ийн ажлын гүйцэтгэл">
+        <PvSection n={1} title={t("wr_daaSection1")}>
           <PvTable
-            headers={["№", "Төлөвлөгөөт ажил", "Зорилго", "Гүйцэтгэл"]}
+            headers={["№", t("wr_plannedTask"), t("wr_goal"), t("wr_execution")]}
             colWidths={["5%", "33%", "30%", "32%"]}
             rows={s.daaWorks.map((r) => [
               r.rowNo,
@@ -1513,9 +1527,9 @@ function WeeklyPreviewDoc({
             ])}
           />
         </PvSection>
-        <PvSection n={2} title="Өгөгдөл боловсруулалт">
+        <PvSection n={2} title={t("wr_daaSection2")}>
           <PvTable
-            headers={["№", "Холбоотой аудит", "Өгөгдөл боловсруулалтын ажил"]}
+            headers={["№", t("wr_relatedAudit"), t("wr_dataTask")]}
             colWidths={["5%", "35%", "60%"]}
             rows={s.dataProcessing.map((r) => [
               r.rowNo,
@@ -1524,7 +1538,7 @@ function WeeklyPreviewDoc({
             ])}
           />
         </PvSection>
-        <PvSection n={3} title="Бусад мэдээлэл">
+        <PvSection n={3} title={t("wr_daaSection3")}>
           <div className="p-2">
             <PvOtherInfo data={s.other} />
           </div>
@@ -1537,6 +1551,7 @@ function WeeklyPreviewDoc({
 // ─── Main page ──────────────────────────────────────────────────────────────
 export default function WeeklyReportPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [roleInfo, setRoleInfo] = useState<WeeklyReportRoleInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -1651,13 +1666,13 @@ export default function WeeklyReportPage() {
       });
       if (alsoSubmit) {
         setStatus("submitted");
-        showToast("Тайлан амжилттай илгээгдлээ");
+        showToast(t("wr_submitted"));
       } else {
-        showToast("Хадгалагдлаа");
+        showToast(t("wr_saved"));
       }
     } catch (e: any) {
       console.error(e);
-      showToast(e?.response?.data?.message ?? "Алдаа гарлаа");
+      showToast(e?.response?.data?.message ?? t("wr_saveError"));
     } finally {
       setSaving(false);
       setSubmitting(false);
@@ -1684,10 +1699,10 @@ export default function WeeklyReportPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <ClipboardList className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-        <h2 className="text-xl font-semibold mb-2">Эрх олгогдоогүй байна</h2>
+        <h2 className="text-xl font-semibold mb-2">{t("wr_noAccess")}</h2>
         <p className="text-muted-foreground">
-          Долоо хоногийн тайлангийн хэрэгсэлд хандах эрх танд алга. Системийн
-          админтай холбогдоно уу.
+          {t("wr_noAccessMsg")}
+
         </p>
       </div>
     );
@@ -1758,12 +1773,12 @@ export default function WeeklyReportPage() {
       <ToolPageHeader
         href="/tools"
         icon={<CalendarRange className="w-4 h-4 text-indigo-500" />}
-        title="Долоо хоногийн тайлан"
+        title={t("wr_docTitle")}
         subtitle={
           isDirector
-            ? "Захирлын нэгдсэн харагдац"
+            ? t("wr_directorSubtitle")
             : roleInfo.departmentName
-              ? `${roleInfo.departmentName} · ${roleInfo.role === "daa" ? "ДАА" : "Аудит хэлтэс"}`
+              ? `${roleInfo.departmentName} · ${roleInfo.role === "daa" ? t("wr_daaWork") : t("wr_s1Title")}`
               : undefined
         }
         rightContent={
@@ -1786,7 +1801,7 @@ export default function WeeklyReportPage() {
                   ) : (
                     <Save className="w-4 h-4" />
                   )}
-                  Хадгалах
+                  {t("wr_saved")}
                 </button>
                 <button
                   disabled={saving || submitting}
@@ -1798,16 +1813,16 @@ export default function WeeklyReportPage() {
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
-                  Илгээх
+                  {t("wr_submitted")}
                 </button>
               </>
             )}
             <button
               onClick={() =>
-                downloadPreviewAsDoc(`Долоо-хоногийн-тайлан-${year}-W${week}`)
+                downloadPreviewAsDoc(`${t("wr_docTitle")}-${year}-W${week}`)
               }
               className="px-3 py-1.5 rounded-md border border-border hover:bg-accent text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
-              title="Word (.doc) болгож татах"
+              title={t("wr_docTitle")}
             >
               <FileDown className="w-4 h-4" /> Word
             </button>
@@ -1824,7 +1839,7 @@ export default function WeeklyReportPage() {
             ) : reports.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                Энэ долоо хоногт ирүүлсэн тайлан байхгүй байна.
+                {t("wr_noReports")}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1865,8 +1880,8 @@ export default function WeeklyReportPage() {
             {status === "submitted" && (
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-sm mb-5">
                 <CheckCircle2 className="w-4 h-4" />
-                Энэ долоо хоногийн тайлан илгээгдсэн байна. Шаардлагатай бол
-                засаж, дахин «Илгээх» дарна уу.
+                {t("wr_pdfHint")}
+                
               </div>
             )}
             {roleInfo.role === "audit" ? (
@@ -1905,7 +1920,7 @@ export default function WeeklyReportPage() {
               />
             </div>
             <p className="text-center text-slate-600 text-[11px] mt-3 print:hidden">
-              PDF хэвлэх → хөтчийн хэвлэх цонхноос хадгална
+              {t("wr_pdfHint")}
             </p>
           </div>
         </div>

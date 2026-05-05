@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, Loader2, Flag } from "lucide-react";
 
@@ -11,6 +12,7 @@ import GameView from "./_components/GameView";
 
 export default function ChessPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const myId = user?.id ?? "";
   const myName = user?.name ?? "";
 
@@ -38,10 +40,10 @@ export default function ChessPage() {
                 <div className="w-9 h-9 rounded-xl bg-rose-500/20 flex items-center justify-center">
                   <Flag className="w-4 h-4 text-rose-400" />
                 </div>
-                <h3 className="text-white font-semibold">Тоглоом дуусгах уу</h3>
+                <h3 className="text-white font-semibold">{t("chessResignTitle")}</h3>
               </div>
               <p className="text-slate-400 text-sm mb-5">
-                Тоглоомыг дуусгавал хожигдсон гэж тооцогдоно.
+                {t("chessResignMsg")}
               </p>
               <div className="flex gap-2">
                 <button
@@ -56,7 +58,7 @@ export default function ChessPage() {
                   className="flex-1 py-2.5 rounded-xl bg-rose-500/80 hover:bg-rose-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {h.resigning && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Тоглоом дуусгах
+                  {t("chessResignBtn")}
                 </button>
               </div>
             </motion.div>
@@ -91,10 +93,10 @@ export default function ChessPage() {
             <Crown className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Шатрын тоглоом"
+        title={t("chessTitle")}
         subtitle={
           h.view === "lobby"
-            ? "Найзтайгаа онлайн шатар тоглоорой"
+            ? t("chessSubtitle")
             : `Тоглоом: ${h.gameId?.slice(0, 8) ?? ""}…`
         }
       />

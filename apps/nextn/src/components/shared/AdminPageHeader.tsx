@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ReactNode } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AdminPageHeaderProps {
   href?: string;
@@ -17,6 +18,7 @@ export default function AdminPageHeader({
   title,
   rightContent,
 }: AdminPageHeaderProps) {
+  const { t } = useLanguage();
   return (
     <div className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">
       <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center gap-3">
@@ -25,7 +27,7 @@ export default function AdminPageHeader({
           className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          Буцах
+          {t("back")}
         </Link>
         <span className="text-slate-700">/</span>
         <div className="flex items-center gap-2">

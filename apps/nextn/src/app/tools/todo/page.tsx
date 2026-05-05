@@ -2,6 +2,7 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
   Trash2,
@@ -52,21 +53,18 @@ interface Todo {
 
 const priorityConfig = {
   high: {
-    label: "Чухал",
     color: "text-red-500",
     bg: "bg-red-500/10",
     border: "border-red-500/30",
     bar: "bg-red-500",
   },
   medium: {
-    label: "Дунд",
     color: "text-amber-500",
     bg: "bg-amber-500/10",
     border: "border-amber-500/30",
     bar: "bg-amber-500",
   },
   low: {
-    label: "Энгийн",
     color: "text-primary",
     bg: "bg-primary/10",
     border: "border-primary/30",
@@ -74,13 +72,13 @@ const priorityConfig = {
   },
 };
 
-const categories = [
-  { value: "work", label: "Ажил", emoji: "💼" },
-  { value: "personal", label: "Хувийн", emoji: "🏠" },
-  { value: "health", label: "Эрүүл мэнд", emoji: "💪" },
-  { value: "study", label: "Суралцах", emoji: "📚" },
-  { value: "other", label: "Бусад", emoji: "📌" },
-];
+const categoryEmoji: Record<string, string> = {
+  work: "💼",
+  personal: "🏠",
+  health: "💪",
+  study: "📚",
+  other: "📌",
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 8 },
@@ -93,7 +91,7 @@ const itemVariants = {
 };
 
 // Circular progress ring
-const ProgressRing = ({ pct }: { pct: number }) => {
+const ProgressRing = ({ pct, label }: { pct: number; label: string }) => {
   const r = 28;
   const circ = 2 * Math.PI * r;
   const dash = (pct / 100) * circ;
@@ -125,7 +123,7 @@ const ProgressRing = ({ pct }: { pct: number }) => {
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-base font-bold leading-none">{pct}%</span>
         <span className="text-[9px] text-muted-foreground leading-none mt-0.5">
-          гүйцэтгэл
+          {label}
         </span>
       </div>
     </div>
@@ -142,8 +140,13 @@ const TodoItem = ({
   onToggle: () => void;
   onDelete: () => void;
 }) => {
+  const { t } = useLanguage();
   const priority = priorityConfig[todo.priority] || priorityConfig.low;
-  const category = categories.find((c) => c.value === todo.category);
+  const catEmoji = todo.category ? categoryEmoji[todo.category] : undefined;
+  const catLabelKey = { work: "catWork", personal: "catPersonal", health: "catHealth", study: "catLearn", other: "catOther" } as const;
+  const catLabel = todo.category && todo.category in catLabelKey ? t(catLabelKey[todo.category as keyof typeof catLabelKey]) : undefined;
+  const priorityLabelKey = { high: "priorityHigh", medium: "priorityMedium", low: "priorityLow" } as const;
+  const priorityLabel = t(priorityLabelKey[todo.priority]);
   const isOverdue =
     todo.dueDate && new Date(todo.dueDate) < new Date() && !todo.completed;
 
@@ -198,9 +201,9 @@ const TodoItem = ({
           {todo.task}
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {category && (
+          {catEmoji && catLabel && (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground">
-              {category.emoji} {category.label}
+              {catEmoji} {catLabel}
             </span>
           )}
           <span
@@ -211,7 +214,7 @@ const TodoItem = ({
             )}
           >
             <Flag className="h-3 w-3" />
-            {priority.label}
+            {priorityLabel}
           </span>
           {todo.dueDate && (
             <span
@@ -247,6 +250,7 @@ const TodoItem = ({
 
 export default function TodoPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,7 +336,7 @@ export default function TodoPage() {
     const updated = [newTodo, ...todos];
     setTodos(updated);
     saveTodosToStorage(updated);
-    toast({ title: "Нэмэгдлээ!" });
+    toast({ title: t("todoAdded") });
   };
 
   const handleQuickAdd = (e: FormEvent) => {
@@ -402,16 +406,16 @@ export default function TodoPage() {
         <ToolPageHeader
           icon={headerIcon}
           title="Хийх зүйлс"
-          subtitle="Өдрийн ажлаа төлөвлөж, бүтээмжээ нэмэгдүүлээрэй"
+          subtitle={t("todoSubtitle")}
         />
         <div className="flex flex-col justify-center items-center p-4 pt-16">
           <div className="text-center max-w-md">
             <div className="p-6 rounded-full bg-muted/40 inline-block mb-6">
               <Lock className="w-12 h-12 text-muted-foreground" />
             </div>
-            <h2 className="text-2xl font-bold mb-3">Эрх хязгаарлагдсан</h2>
+            <h2 className="text-2xl font-bold mb-3">{t("accessDenied")}</h2>
             <p className="text-muted-foreground">
-              Та энэ хэрэгслийг ашиглах эрхгүй байна. Админтай холбогдоно уу.
+              {t("accessDeniedMsg")}
             </p>
           </div>
         </div>
@@ -424,7 +428,7 @@ export default function TodoPage() {
       <ToolPageHeader
         icon={headerIcon}
         title="Хийх зүйлс"
-        subtitle="Өдрийн ажлаа төлөвлөж, бүтээмжээ нэмэгдүүлээрэй"
+        subtitle={t("todoSubtitle")}
         rightContent={
           <Button
             size="sm"
@@ -432,7 +436,7 @@ export default function TodoPage() {
             className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-xs h-8 px-3"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            Дэлгэрэнгүй
+            {t("todoDetailTitle")}
           </Button>
         }
       />
@@ -445,24 +449,24 @@ export default function TodoPage() {
           transition={{ delay: 0.05 }}
           className="flex items-center gap-5 bg-card/60 backdrop-blur-sm border border-border/40 rounded-2xl px-5 py-4"
         >
-          <ProgressRing pct={completionRate} />
+          <ProgressRing pct={completionRate} label={t("todoPerformance")} />
           <div className="h-12 w-px bg-border/40 shrink-0" />
           <div className="grid grid-cols-3 gap-4 flex-1">
             {[
               {
-                label: "Нийт",
+                label: t("todoTotal"),
                 value: todos.length,
                 icon: Target,
                 cls: "text-muted-foreground",
               },
               {
-                label: "Идэвхтэй",
+                label: t("todoFilterActive"),
                 value: activeCount,
                 icon: Zap,
                 cls: "text-amber-500",
               },
               {
-                label: "Дууссан",
+                label: t("todoFilterDone"),
                 value: completedCount,
                 icon: CheckCircle2,
                 cls: "text-primary",
@@ -492,7 +496,7 @@ export default function TodoPage() {
             >
               <Zap className="h-4 w-4 shrink-0" />
               <span>
-                <b>{highCount}</b> чухал ажил хийгдэж дуусаагүй байна
+                <b>{highCount}</b> {t("todoUrgentAlert")}
               </span>
             </motion.div>
           )}
@@ -511,7 +515,7 @@ export default function TodoPage() {
             <input
               value={quickTask}
               onChange={(e) => setQuickTask(e.target.value)}
-              placeholder="Шинэ ажил нэмэх… (Enter)"
+              placeholder={t("todoNewPlaceholder")}
               className="flex-1 bg-transparent text-sm py-2.5 outline-none placeholder:text-muted-foreground/60"
             />
           </div>
@@ -526,13 +530,13 @@ export default function TodoPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="high">
-                <span className="text-red-500 text-xs">● Чухал</span>
+                <span className="text-red-500 text-xs">● {t("priorityHigh")}</span>
               </SelectItem>
               <SelectItem value="medium">
-                <span className="text-amber-500 text-xs">● Дунд</span>
+                <span className="text-amber-500 text-xs">● {t("priorityMedium")}</span>
               </SelectItem>
               <SelectItem value="low">
-                <span className="text-primary text-xs">● Энгийн</span>
+                <span className="text-primary text-xs">● {t("priorityLow")}</span>
               </SelectItem>
             </SelectContent>
           </Select>
@@ -555,9 +559,9 @@ export default function TodoPage() {
         >
           {(
             [
-              { key: "all", label: `Бүгд (${todos.length})` },
-              { key: "active", label: `Идэвхтэй (${activeCount})` },
-              { key: "completed", label: `Дууссан (${completedCount})` },
+              { key: "all", label: `${t("todoFilterAll")} (${todos.length})` },
+              { key: "active", label: `${t("todoFilterActive")} (${activeCount})` },
+              { key: "completed", label: `${t("todoFilterDone")} (${completedCount})` },
             ] as const
           ).map(({ key, label }) => (
             <button
@@ -573,28 +577,30 @@ export default function TodoPage() {
               {label}
             </button>
           ))}
-          {categories.some((cat) =>
-            todos.some((t) => t.category === cat.value),
+          {Object.keys(categoryEmoji).some((val) =>
+            todos.some((td) => td.category === val),
           ) && <div className="h-4 w-px bg-border/50 mx-1" />}
-          {categories.map((cat) => {
-            const count = todos.filter((t) => t.category === cat.value).length;
+          {(Object.entries(categoryEmoji) as [string, string][]).map(([val, emoji]) => {
+            const catLabelKey = { work: "catWork", personal: "catPersonal", health: "catHealth", study: "catLearn", other: "catOther" } as const;
+            const count = todos.filter((td) => td.category === val).length;
             if (count === 0) return null;
+            const label = val in catLabelKey ? t(catLabelKey[val as keyof typeof catLabelKey]) : val;
             return (
               <button
-                key={cat.value}
+                key={val}
                 onClick={() =>
                   setCategoryFilter(
-                    categoryFilter === cat.value ? "all" : cat.value,
+                    categoryFilter === val ? "all" : val,
                   )
                 }
                 className={cn(
                   "px-3 py-1 rounded-full text-xs font-medium transition-all",
-                  categoryFilter === cat.value
+                  categoryFilter === val
                     ? "bg-primary/20 text-primary border border-primary/30"
                     : "bg-muted/30 text-muted-foreground hover:bg-muted/50",
                 )}
               >
-                {cat.emoji} {cat.label} ({count})
+                {emoji} {label} ({count})
               </button>
             );
           })}
@@ -630,14 +636,13 @@ export default function TodoPage() {
               </div>
               <p className="text-base font-semibold mb-1">
                 {filter === "completed"
-                  ? "Дууссан ажил алга"
+                  ? t("todoEmptyDone")
                   : filter === "active"
-                    ? "Бүх ажил дууслаа! 🎉"
-                    : "Одоогоор ажил алга"}
+                    ? t("todoAllDone")
+                    : t("todoEmpty")}
               </p>
               <p className="text-sm text-muted-foreground">
-                {filter === "all" &&
-                  "Дээрх хурдан нэмэх хэсгээс ажилдаа эхлэн нэмэх"}
+                {filter === "all" && t("todoEmptyHint")}
               </p>
             </motion.div>
           )}
@@ -650,16 +655,16 @@ export default function TodoPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <ListTodo className="h-5 w-5 text-primary" />
-              Дэлгэрэнгүй ажил нэмэх
+              {t("todoDetailTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleDialogAdd} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Ажлын нэр</Label>
+              <Label className="text-xs text-muted-foreground">{t("todoNameLabel")}</Label>
               <input
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
-                placeholder="Юу хийх вэ?"
+                placeholder={t("todoNamePlaceholder")}
                 className="w-full bg-background/60 border border-border/50 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary/60 transition-colors placeholder:text-muted-foreground/60"
                 autoFocus
               />
@@ -668,7 +673,7 @@ export default function TodoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
-                  Ач холбогдол
+                  {t("todoPriorityLabel")}
                 </Label>
                 <Select
                   value={priority}
@@ -682,17 +687,17 @@ export default function TodoPage() {
                   <SelectContent>
                     <SelectItem value="high">
                       <span className="flex items-center gap-2">
-                        <Flag className="h-3.5 w-3.5 text-red-500" /> Чухал
+                        <Flag className="h-3.5 w-3.5 text-red-500" /> {t("priorityHigh")}
                       </span>
                     </SelectItem>
                     <SelectItem value="medium">
                       <span className="flex items-center gap-2">
-                        <Flag className="h-3.5 w-3.5 text-amber-500" /> Дунд
+                        <Flag className="h-3.5 w-3.5 text-amber-500" /> {t("priorityMedium")}
                       </span>
                     </SelectItem>
                     <SelectItem value="low">
                       <span className="flex items-center gap-2">
-                        <Flag className="h-3.5 w-3.5 text-primary" /> Энгийн
+                        <Flag className="h-3.5 w-3.5 text-primary" /> {t("priorityLow")}
                       </span>
                     </SelectItem>
                   </SelectContent>
@@ -700,19 +705,23 @@ export default function TodoPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Ангилал</Label>
+                <Label className="text-xs text-muted-foreground">{t("todoCategoryLabel")}</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger className="bg-background/60 border-border/50 rounded-xl">
-                    <SelectValue placeholder="Сонгох" />
+                    <SelectValue placeholder={t("todoCategoryPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        <span className="flex items-center gap-2">
-                          {cat.emoji} {cat.label}
-                        </span>
-                      </SelectItem>
-                    ))}
+                    {(Object.entries(categoryEmoji) as [string, string][]).map(([val, emoji]) => {
+                      const catLabelKey2 = { work: "catWork", personal: "catPersonal", health: "catHealth", study: "catLearn", other: "catOther" } as const;
+                      const lbl = val in catLabelKey2 ? t(catLabelKey2[val as keyof typeof catLabelKey2]) : val;
+                      return (
+                        <SelectItem key={val} value={val}>
+                          <span className="flex items-center gap-2">
+                            {emoji} {lbl}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -720,7 +729,7 @@ export default function TodoPage() {
 
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" /> Дуусах хугацаа
+                <Calendar className="h-3.5 w-3.5" /> {t("todoDueDateLabel")}
               </Label>
               <input
                 type="date"
@@ -745,7 +754,7 @@ export default function TodoPage() {
                 disabled={!newTask.trim()}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm"
               >
-                Нэмэх
+                {t("todoAddBtn")}
               </Button>
             </DialogFooter>
           </form>

@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ChainResult {
   id: number;
@@ -34,6 +35,7 @@ interface RedFlagData {
 
 export default function RedFlagPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [data, setData] = useState<RedFlagData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export default function RedFlagPage() {
       const res = await abFetchRedFlags();
       setData(res);
     } catch (e: any) {
-      setError(e?.message || "Алдаа гарлаа");
+      setError(e?.message || t("redflagNoResult"));
     } finally {
       setLoading(false);
     }
@@ -159,12 +161,12 @@ export default function RedFlagPage() {
 
             {chain.matchCount === 0 ? (
               <p className="text-[11px] text-txt-dim text-center py-3">
-                Илэрц олдсонгүй
+                {t("redflagNoResult")}
               </p>
             ) : (
               <div>
                 <p className="text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-2">
-                  Давхцсан CIF ({chain.matchCount})
+                  {t("redflagTotalMatches")} ({chain.matchCount})
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {chain.matches.map((cif) => (
@@ -180,7 +182,7 @@ export default function RedFlagPage() {
                   ))}
                   {chain.matchCount > chain.matches.length && (
                     <span className="px-2 py-1 text-[10px] text-txt-dim">
-                      +{chain.matchCount - chain.matches.length} бусад
+                      +{chain.matchCount - chain.matches.length} {t("redflagNoResult")}
                     </span>
                   )}
                 </div>
@@ -198,7 +200,7 @@ export default function RedFlagPage() {
         href="/tools"
         icon={<Flag size={16} className="text-red-400" />}
         title="Red Flag"
-        subtitle="Event Chain дүрмийн илэрцүүд"
+        subtitle={t("redflagSubtitle")}
         rightContent={
           <button
             onClick={load}
@@ -217,7 +219,7 @@ export default function RedFlagPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-red-400" />
             <span className="text-[12px] text-txt-dim ml-3">
-              12 Dashboard-ийн Event Chain шалгаж байна...
+              {t("redflagLoading")}
             </span>
           </div>
         )}
@@ -233,20 +235,20 @@ export default function RedFlagPage() {
                 <p className="text-2xl font-extrabold text-txt">
                   {data.totalChains}
                 </p>
-                <p className="text-[10px] text-txt-dim uppercase">Нийт дүрэм</p>
+                <p className="text-[10px] text-txt-dim uppercase">{t("redflagTotalRules")}</p>
               </div>
               <div className="bg-surface-card rounded-xl border border-surface-border p-4 text-center">
                 <p className="text-2xl font-extrabold text-red-400">
                   {data.triggeredChains}
                 </p>
-                <p className="text-[10px] text-txt-dim uppercase">Идэвхжсэн</p>
+                <p className="text-[10px] text-txt-dim uppercase">{t("redflagActive")}</p>
               </div>
               <div className="bg-surface-card rounded-xl border border-surface-border p-4 text-center">
                 <p className="text-2xl font-extrabold text-amber-400">
                   {data.totalMatches}
                 </p>
                 <p className="text-[10px] text-txt-dim uppercase">
-                  Нийт давхцал
+                  {t("redflagTotalMatches")}
                 </p>
               </div>
             </div>

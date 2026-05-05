@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { abFetchDashboards, abFetchDashboardTop } from "../_lib/api";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard,
   Loader2,
@@ -41,6 +42,7 @@ function fmt(n: number) {
 }
 
 export default function DashboardsPage() {
+  const { t } = useLanguage();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,7 +59,7 @@ export default function DashboardsPage() {
   useEffect(() => {
     abFetchDashboards()
       .then(setDashboards)
-      .catch((e) => setError(e?.message || "Алдаа гарлаа"))
+      .catch((e) => setError(e?.message || t("dashOracleError")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -72,7 +74,7 @@ export default function DashboardsPage() {
           status: "error",
           hasAmount: false,
           rows: [],
-          error: e?.message || "Алдаа гарлаа",
+            error: e?.message || t("dashOracleError"),
         }),
       );
   }, []);
@@ -109,7 +111,7 @@ export default function DashboardsPage() {
         href="/tools"
         icon={<LayoutDashboard size={16} className="text-violet-400" />}
         title="Dashboards"
-        subtitle={`Oracle хяналтын ${dashboards.length} dashboard`}
+        subtitle={`Oracle ${t("dashTitle")} ${dashboards.length} dashboard`}
       />
 
       <div className="px-6 space-y-4">
@@ -122,7 +124,7 @@ export default function DashboardsPage() {
           <input
             value={listSearch}
             onChange={(e) => setListSearch(e.target.value)}
-            placeholder="Dashboard хайх..."
+            placeholder={t("dashSearchPlaceholder")}
             className="w-full bg-surface-card border border-surface-border rounded-xl pl-8 pr-4 py-2 text-[12px] text-txt placeholder:text-txt-dim outline-none focus:border-golomt-500/50"
           />
           {listSearch && (
@@ -139,7 +141,7 @@ export default function DashboardsPage() {
           <div className="flex items-center justify-center py-16">
             <Loader2 size={20} className="animate-spin text-golomt-400" />
             <span className="text-[12px] text-txt-dim ml-3">
-              Уншиж байна...
+              {t("dashLoading")}
             </span>
           </div>
         )}
@@ -192,7 +194,7 @@ export default function DashboardsPage() {
                         <input
                           value={search}
                           onChange={(e) => handleSearch(e.target.value)}
-                          placeholder="CIF хайх..."
+                            placeholder={t("dashCifSearch")}
                           className="w-full bg-surface-card border border-surface-border rounded-lg pl-7 pr-4 py-1.5 text-[11px] text-txt placeholder:text-txt-dim outline-none focus:border-golomt-500/50"
                         />
                         {search && (
@@ -216,7 +218,7 @@ export default function DashboardsPage() {
                             className="animate-spin text-golomt-400"
                           />
                           <span className="text-[11px] text-txt-dim">
-                            Oracle-с татаж байна...
+                            {t("dashOracleLoading")}
                           </span>
                         </div>
                       )}
@@ -226,7 +228,7 @@ export default function DashboardsPage() {
                         <div className="bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-3 space-y-2">
                           <p className="text-[11px] text-red-400 font-semibold flex items-start gap-1.5">
                             <span className="mt-px">⚠</span>
-                            <span>Oracle алдаа гарлаа</span>
+                            <span>{t("dashOracleError")}</span>
                           </p>
                           <p className="text-[10.5px] text-red-300/80 font-mono whitespace-pre-wrap break-all leading-relaxed">
                             {detail.error}
@@ -235,7 +237,7 @@ export default function DashboardsPage() {
                             onClick={() => loadDetail(d.id, search)}
                             className="text-[10px] text-red-400 border border-red-500/30 rounded px-2 py-0.5 hover:bg-red-500/10 transition-colors"
                           >
-                            Дахин оролдох
+                            {t("dashRetry")}
                           </button>
                         </div>
                       )}
@@ -245,7 +247,7 @@ export default function DashboardsPage() {
                         <>
                           {detail.rows.length === 0 ? (
                             <p className="text-[11px] text-txt-dim text-center py-4">
-                              Өгөгдөл олдсонгүй
+                              {t("dashNoData")}
                             </p>
                           ) : (
                             <div className="overflow-hidden rounded-lg border border-surface-border">
@@ -260,13 +262,13 @@ export default function DashboardsPage() {
                                     </th>
                                     <th className="px-3 py-2 text-right text-txt-dim font-semibold">
                                       <span className="flex items-center justify-end gap-1">
-                                        <Hash size={10} /> Тоо
+                                        <Hash size={10} /> {t("alertTransactions")}
                                       </span>
                                     </th>
                                     {detail.hasAmount && (
                                       <th className="px-3 py-2 text-right text-txt-dim font-semibold">
                                         <span className="flex items-center justify-end gap-1">
-                                          <TrendingUp size={10} /> Дүн (₮)
+                                          <TrendingUp size={10} /> {t("alertTotalAmount")} (₮)
                                         </span>
                                       </th>
                                     )}
@@ -299,7 +301,7 @@ export default function DashboardsPage() {
                             </div>
                           )}
                           <p className="text-[10px] text-txt-dim text-right">
-                            Хүснэгт: {d.tableName}
+                            {t("dataDocDbLabel")}: {d.tableName}
                           </p>
                         </>
                       )}
@@ -311,7 +313,7 @@ export default function DashboardsPage() {
 
             {filtered.length === 0 && !loading && (
               <div className="px-4 py-10 text-center text-[12px] text-txt-dim">
-                Илэрц олдсонгүй
+                            {t("dashNoResults")}
               </div>
             )}
           </div>
