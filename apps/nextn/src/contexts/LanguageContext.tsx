@@ -126,12 +126,12 @@ export const translations = {
     toolReportDesc: "Улирлын ажлын тайлан бэлтгэх",
     toolDbRequestTitle: "Эрх Хүсэх",
     toolDbRequestDesc:
-      "ClickHouse хүснэгтэд хандах эрх хүсэх, өөрийн хүсэлтүүдийг хянах",
+      "ClickHouse хүснэгтэд хандах эрх хүсэх",
     toolDbGrantTitle: "Эрх Олгох",
     toolDbGrantDesc: "ClickHouse хандалтын хүсэлтүүдийг хянаж удирдах",
     toolEnglishTitle: "Англи үгс",
     toolEnglishDesc:
-      "Англи үгийн санг бүрдүүлж, flash card болон тест горимоор цээжлэх",
+      "Англи үгийн санг бүрдүүлж, цээжлэх",
     toolExcelTitle: "Excel тайлан",
     toolExcelDesc: "Системийн мэдээллээс Excel тайлан үүсгэж татах",
     toolPdfTitle: "PDF → Текст",
@@ -139,16 +139,22 @@ export const translations = {
       "PDF файлыг текст болгон хөрвүүлж, хуулж авах боломжтой хэрэгсэл",
     toolDataDocTitle: "Өгөгдлийн толь бичиг",
     toolDataDocDesc:
-      "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
+      "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар",
     toolAlertBoxTitle: "Alert Box",
     toolAlertBoxDesc:
-      "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, улаан тугийн мэдэгдэл",
+      "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, Red Flag мэдэгдэл",
+    toolRiskAssessmentTitle: "Эрсдэлийн үнэлгээ",
+    toolRiskAssessmentDesc:
+      "Сар бүрийн эрсдэлийн үнэлгээ",
+    toolWeeklyReportTitle: "Долоо хоногийн тайлан",
+    toolWeeklyReportDesc:
+      "Хэлтсүүдийн долоо хоногийн ажлын тайлан",
     toolPythonApiTitle: "Python API Tools",
     toolPythonApiDesc:
-      "FastAPI дээр ажилладаг pandas/Python тайлан — ClickHouse, Oracle, MSSQL холболттой",
+      "FastAPI дээр ажилладаг pandas/Python тайлан — ClickHouse, Oracle холболттой",
     toolReportsTitle: "Тайлан татах",
     toolReportsDesc:
-      "SQL болон Python горимын тайлангуудыг нэг дороос татаж авах хэрэгсэл",
+      "Дотоод хэрэглээний тайлангуудыг татах хэрэгсэл",
 
     // Departments page
     albumTitle: "Альбом",
@@ -228,7 +234,7 @@ export const translations = {
     tailan_myReportDesc: "Тайлангаа бэлтгэж хэлтсийн ахлагч руу илгээх",
     tailan_deptReport: "Хэлтсийн тайлан",
     tailan_headTag: "Ахлагч",
-    tailan_deptReportDesc: "Гишүүдийн тайлануудыг нэгтгэж нэк баримт болгох",
+    tailan_deptReportDesc: "Гишүүдийн тайлануудыг нэгтгэж нэг баримт болгох",
     tailan_membersView: "Гишүүдийн тайлан харах",
     tailan_viewTag: "Харах",
     tailan_membersViewDesc: "Хэлтсийн гишүүдийн илгээсэн тайлануудыг харах",
@@ -252,7 +258,7 @@ export const translations = {
       "III.2 Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал",
     tailan_s4Title: "IV. Хамрагдсан сургалт",
     tailan_s41Title: "IV.1 Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал",
-    tailan_s5Title: "V. Үүрэг даалгаварын биелэлт",
+    tailan_s5Title: "V. Үүрэг даалгаврын биелэлт",
     tailan_s6Title: "VI. Хамт олны ажил",
     tailan_s7Title: "VII. Шинэ санал санаачилга",
     tailan_dynTitle: "Нэмэлт хэсгүүд (VIII, IX, …)",
@@ -316,7 +322,7 @@ export const translations = {
     tailan_submittedAtLabel: "Илгээсэн:",
     tailan_updatedAtLabel: "Шинэчилсэн:",
     tailan_viewReportHint: "Тайлан харах",
-    tailan_deptReportPageTitle: "Хэлтсийн улирлийн тайлан",
+    tailan_deptReportPageTitle: "Хэлтсийн улирлын тайлан",
     tailan_savingLabel: "Хадгалаж байна...",
     tailan_collapseSidebar: "Хураах",
     tailan_expandSidebar: "Дэлгэх",
@@ -618,6 +624,12 @@ export const translations = {
     toolAlertBoxTitle: "Alert Box",
     toolAlertBoxDesc:
       "Transaction risk analysis, CIF search, and red-flag alerts",
+    toolRiskAssessmentTitle: "Risk Assessment",
+    toolRiskAssessmentDesc:
+      "Monthly risk assessment — department scores, manual adjustments, and audit log",
+    toolWeeklyReportTitle: "Weekly Report",
+    toolWeeklyReportDesc:
+      "Department weekly work reports — submit, send, and view consolidated results",
     toolPythonApiTitle: "Python API Tools",
     toolPythonApiDesc:
       "Pandas/Python reports powered by FastAPI — supports ClickHouse, Oracle, MSSQL",

@@ -51,26 +51,26 @@ function nameHash(str: string) {
 
 const HERO_GRADIENTS = [
   "from-blue-600 via-violet-700 to-purple-800",
-  "from-rose-500 via-pink-600 to-fuchsia-700",
   "from-cyan-500 via-blue-600 to-indigo-700",
   "from-emerald-500 via-teal-600 to-cyan-700",
   "from-amber-500 via-orange-500 to-red-600",
-  "from-violet-500 via-purple-600 to-pink-700",
-  "from-indigo-500 via-blue-600 to-cyan-600",
+  "from-indigo-500 via-blue-600 to-sky-600",
   "from-teal-500 via-emerald-600 to-green-700",
+  "from-violet-600 via-indigo-700 to-blue-800",
+  "from-sky-500 via-cyan-600 to-teal-700",
 ];
 
 const AVATAR_GRADIENTS = [
   "from-blue-400 to-violet-600",
-  "from-violet-400 to-pink-600",
+  "from-violet-400 to-indigo-600",
   "from-emerald-400 to-teal-600",
   "from-amber-400 to-orange-500",
-  "from-rose-400 to-pink-600",
-  "from-cyan-400 to-blue-600",
+  "from-sky-400 to-blue-600",
+  "from-cyan-400 to-teal-600",
   "from-indigo-400 to-purple-600",
   "from-teal-400 to-emerald-600",
-  "from-pink-400 to-rose-600",
-  "from-sky-400 to-cyan-600",
+  "from-orange-400 to-amber-600",
+  "from-green-400 to-emerald-600",
 ];
 
 const DEPT_COLORS = [
@@ -124,6 +124,17 @@ const DEPT_COLORS = [
   },
 ];
 
+const CARD_BORDER_COLORS = [
+  { border: "border-blue-500",    text: "text-blue-400",    bg: "bg-blue-500/5"    },
+  { border: "border-violet-500",  text: "text-violet-400",  bg: "bg-violet-500/5"  },
+  { border: "border-emerald-500", text: "text-emerald-400", bg: "bg-emerald-500/5" },
+  { border: "border-amber-500",   text: "text-amber-400",   bg: "bg-amber-500/5"   },
+  { border: "border-cyan-500",    text: "text-cyan-400",    bg: "bg-cyan-500/5"    },
+  { border: "border-indigo-500",  text: "text-indigo-400",  bg: "bg-indigo-500/5"  },
+  { border: "border-teal-500",    text: "text-teal-400",    bg: "bg-teal-500/5"    },
+  { border: "border-sky-500",     text: "text-sky-400",     bg: "bg-sky-500/5"     },
+];
+
 function getHeroGradient(name: string) {
   return HERO_GRADIENTS[nameHash(name) % HERO_GRADIENTS.length];
 }
@@ -132,6 +143,9 @@ function getAvatarGradient(name: string) {
 }
 function getDeptColor(index: number) {
   return DEPT_COLORS[index % DEPT_COLORS.length];
+}
+function getCardColor(name: string) {
+  return CARD_BORDER_COLORS[nameHash(name) % CARD_BORDER_COLORS.length];
 }
 
 // ── Photo Modal (Lightbox) ─────────────────────────────────────────────────
@@ -400,66 +414,50 @@ function EmployeeCard({
   isManager: boolean;
 }) {
   const { t } = useLanguage();
-  const grad = getAvatarGradient(member.name);
+  const color = getCardColor(member.name);
 
   return (
     <div
-      className={`group relative rounded-2xl overflow-hidden bg-card border transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl ${
-        isSelf
-          ? "border-blue-500/40 ring-2 ring-blue-500/20 ring-offset-background"
-          : isManager
-            ? "border-amber-500/40"
-            : "border-border hover:border-foreground/20"
+      className={`rounded-3xl border-2 ${color.border} ${color.bg} p-4 flex flex-col items-center gap-3 text-center transition-all duration-200 hover:shadow-md ${
+        isSelf ? "ring-2 ring-blue-500/30" : ""
       }`}
     >
-      {/* Gradient banner */}
-      <div className={`h-14 bg-gradient-to-r ${grad}`}>
-        <div className="w-full h-full bg-black/10" />
+      {/* Avatar */}
+      {member.profileImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={member.profileImage}
+          alt={member.name}
+          className="w-20 h-20 rounded-full object-cover ring-2 ring-border"
+        />
+      ) : (
+        <div
+          className="w-20 h-20 rounded-full bg-zinc-900 border-2 border-zinc-600 flex items-center justify-center text-white font-black text-xl"
+        >
+          {getInitials(member.name)}
+        </div>
+      )}
+
+      {/* Name + position */}
+      <div className="w-full">
+        <p className="text-xs font-bold text-foreground leading-snug">{member.name}</p>
+        {member.position && (
+          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{member.position}</p>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="px-4 pb-5">
-        {/* Overlapping avatar */}
-        {member.profileImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={member.profileImage}
-            alt={member.name}
-            className="-mt-7 w-14 h-14 rounded-xl object-cover border-4 border-card shadow-lg"
-          />
-        ) : (
-          <div
-            className={`-mt-7 w-14 h-14 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black text-base border-4 border-card shadow-lg`}
-          >
-            {getInitials(member.name)}
-          </div>
+      {/* Badges */}
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {isSelf && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+            {t("youBadge")}
+          </span>
         )}
-
-        <div className="mt-3">
-          <p className="text-sm font-bold text-foreground leading-snug">{member.name}</p>
-          {member.position && (
-            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{member.position}</p>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {isSelf && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              {t("youBadge")}
-            </span>
-          )}
-          {isManager && !isSelf && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              {t("managerBadge")}
-            </span>
-          )}
-          {member.isActive !== false && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-              Идэвхтэй
-            </span>
-          )}
-        </div>
+        {isManager && !isSelf && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            {t("managerBadge")}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -489,14 +487,101 @@ function MemberGrid({
   );
 }
 
+// ── DeptDetailView ─────────────────────────────────────────────────────────
+function DeptDetailView({
+  dept,
+  onBack,
+}: {
+  dept: DepartmentData;
+  onBack: () => void;
+}) {
+  const color = getCardColor(dept.name);
+  const members = dept.users ?? [];
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Hero */}
+      <div className={`relative w-full border-b-2 ${color.border}`}>
+        <div className="max-w-6xl mx-auto px-6 pt-8 pb-12">
+          {/* Back button */}
+          <button
+            onClick={onBack}
+            className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-full border-2 ${color.border} ${color.text} ${color.bg} text-sm font-semibold transition-all hover:opacity-80`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Буцах
+          </button>
+          <p className="text-muted-foreground text-[11px] uppercase tracking-[0.2em] font-semibold mb-4">
+            Хэлтэс
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-black text-foreground tracking-tight leading-tight">
+            {dept.name}
+          </h1>
+          {dept.description && (
+            <p className="mt-4 text-muted-foreground text-base max-w-2xl leading-relaxed">
+              {dept.description}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3 mt-8">
+            <div className={`px-5 py-2.5 rounded-full border-2 ${color.border} ${color.text} text-sm font-bold tabular-nums`}>
+              {members.length} ажилтан
+            </div>
+            {dept.manager && (
+              <div className="px-5 py-2.5 rounded-full border border-amber-500/50 text-amber-600 dark:text-amber-400 text-sm font-semibold">
+                {dept.manager}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
+        {members.length > 0 && (
+          <section>
+            <div className="mb-5">
+              <h2 className="text-xl font-black text-foreground">Баг</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">{members.length} ажилтан</p>
+            </div>
+            <MemberGrid members={members} currentUserId="" managerName={dept.manager} />
+          </section>
+        )}
+
+        {dept.description && dept.description.length > 80 && (
+          <section className="rounded-2xl border border-border bg-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-1 h-6 rounded-full ${color.border} border-l-4`} />
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-widest">Тайлбар</h2>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {dept.description}
+            </p>
+          </section>
+        )}
+
+        {dept.id && (
+          <section className="rounded-2xl border border-border bg-card p-6">
+            <DeptAlbum deptId={dept.id} deptName={dept.name} />
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── OtherDeptViewer ────────────────────────────────────────────────────────
-function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
+function OtherDeptViewer({
+  currentDeptId,
+  onSelect,
+}: {
+  currentDeptId: string;
+  onSelect: (dept: DepartmentData) => void;
+}) {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [list, setList] = useState<DepartmentData[]>([]);
   const [loadingList, setLoadingList] = useState(true);
-  const [selected, setSelected] = useState<DepartmentData | null>(null);
-  const [loadingSelected, setLoadingSelected] = useState(false);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     departmentsApi
@@ -520,18 +605,14 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   }, [currentDeptId]);
 
   const selectDept = async (dept: DepartmentData) => {
-    if (selected?.id === dept.id) {
-      setSelected(null);
-      return;
-    }
-    setLoadingSelected(true);
+    setLoadingId(dept.id);
     try {
       const full = await departmentsApi.getOne(dept.id);
-      setSelected(full);
+      onSelect(full);
     } catch {
       toast({ title: t("error"), description: t("deptDetailLoadError"), variant: "destructive" });
     } finally {
-      setLoadingSelected(false);
+      setLoadingId(null);
     }
   };
 
@@ -552,87 +633,40 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Pill buttons */}
-      <div className="flex flex-wrap gap-2">
-        {list.map((dept, i) => {
-          const c = getDeptColor(i);
-          const isActive = selected?.id === dept.id;
+    <div className="-mx-6 px-6 overflow-x-auto pb-2">
+      <div className="flex gap-4" style={{ minWidth: "max-content" }}>
+        {list.map((dept) => {
+          const color = getCardColor(dept.name);
+          const count = dept.users?.length ?? dept.employeeCount ?? 0;
+          const isLoading = loadingId === dept.id;
           return (
             <button
               key={dept.id}
               onClick={() => selectDept(dept)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all ${
-                isActive ? c.active : c.pill
-              }`}
+              disabled={loadingId !== null}
+              className={`group w-52 flex-shrink-0 rounded-2xl border-2 ${color.border} ${color.bg} text-left p-4 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg disabled:opacity-60`}
             >
-              <span className={`w-2 h-2 rounded-full ${c.dot} flex-shrink-0`} />
-              <span>{dept.name}</span>
-              <span className="text-xs opacity-60 tabular-nums">
-                {dept.users?.length ?? dept.employeeCount ?? 0}
-              </span>
+              {/* Initials badge */}
+              <div className={`w-9 h-9 rounded-xl border ${color.border} ${color.text} flex items-center justify-center font-black text-xs mb-3`}>
+                {getInitials(dept.name)}
+              </div>
+              <p className="text-xs font-bold text-foreground leading-snug line-clamp-2">
+                {dept.name}
+              </p>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {count} ажилтан
+                </span>
+                {isLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                ) : (
+                  <ChevronRight className={`w-3.5 h-3.5 ${color.text} opacity-40 group-hover:opacity-100 transition-opacity`} />
+                )}
+              </div>
             </button>
           );
         })}
       </div>
-
-      {/* Detail panel */}
-      {(loadingSelected || selected) && (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          {loadingSelected ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : selected ? (
-            <>
-              {/* Detail header */}
-              {(() => {
-                const idx = list.findIndex((d) => d.id === selected.id);
-                const c = getDeptColor(idx >= 0 ? idx : 0);
-                const grad = getHeroGradient(selected.name);
-                return (
-                  <div className={`relative px-6 py-5 bg-gradient-to-r ${grad} bg-opacity-20 overflow-hidden`}>
-                    <div className="absolute inset-0 opacity-10 bg-gradient-to-r from-transparent to-black" />
-                    <div className="relative">
-                      <p className="text-white/70 text-xs uppercase tracking-widest mb-1">Хэлтэс</p>
-                      <h3 className="text-xl font-black text-white">{selected.name}</h3>
-                      {selected.manager && (
-                        <p className="text-white/70 text-sm mt-1">
-                          <span className="text-white/40 text-xs">Менежер · </span>
-                          {selected.manager}
-                        </p>
-                      )}
-                      <div className="flex gap-3 mt-3">
-                        <span className="px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold">
-                          {selected.users?.length ?? 0} ажилтан
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {selected.users && selected.users.length > 0 && (
-                <div className="p-6">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-                    Баг · {selected.users.length} хүн
-                  </p>
-                  <MemberGrid
-                    members={selected.users}
-                    currentUserId=""
-                    managerName={selected.manager}
-                  />
-                </div>
-              )}
-              {selected.id && (
-                <div className="px-6 pb-6">
-                  <DeptAlbum deptId={selected.id} deptName={selected.name} />
-                </div>
-              )}
-            </>
-          ) : null}
-        </div>
-      )}
     </div>
   );
 }
@@ -643,8 +677,7 @@ export default function DepartmentsPage() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [department, setDepartment] = useState<DepartmentData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(false);  const [viewingDept, setViewingDept] = useState<DepartmentData | null>(null);
   useEffect(() => {
     if (authLoading) return;
     if (user?.department) {
@@ -707,50 +740,37 @@ export default function DepartmentsPage() {
   const activeCount = members.filter((m) => m.isActive !== false).length;
   const currentUserId = (user as any).id ?? (user as any).userId ?? "";
   const heroGrad = getHeroGradient(department.name);
+  const heroColor = getCardColor(department.name);
+
+  // ── Full-page detail view for another department ──
+  if (viewingDept) {
+    return <DeptDetailView dept={viewingDept} onBack={() => setViewingDept(null)} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <div className={`relative w-full bg-gradient-to-br ${heroGrad} overflow-hidden`}>
-        {/* Dot grid overlay */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.4) 1px, transparent 0)",
-            backgroundSize: "28px 28px",
-          }}
-        />
-        {/* Decorative blobs */}
-        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-black/15 blur-2xl" />
-        <div className="absolute top-1/2 right-1/4 w-40 h-40 rounded-full bg-white/5 blur-2xl" />
-
-        <div className="relative max-w-6xl mx-auto px-6 pt-12 pb-14">
-          <p className="text-white/60 text-[11px] uppercase tracking-[0.2em] font-semibold mb-4">
+      <div className={`relative w-full border-b-2 ${heroColor.border}`}>
+        <div className="max-w-6xl mx-auto px-6 pt-12 pb-14">
+          <p className="text-muted-foreground text-[11px] uppercase tracking-[0.2em] font-semibold mb-4">
             {t("myDept")}
           </p>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-foreground tracking-tight leading-tight">
             {department.name}
           </h1>
           {department.description && (
-            <p className="mt-4 text-white/70 text-base max-w-2xl leading-relaxed">
+            <p className="mt-4 text-muted-foreground text-base max-w-2xl leading-relaxed">
               {department.description}
             </p>
           )}
 
           {/* Stat pills */}
           <div className="flex flex-wrap items-center gap-3 mt-8">
-            <div className="px-5 py-2.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 text-white text-sm font-bold tabular-nums">
+            <div className="px-5 py-2.5 rounded-full border border-border text-foreground text-sm font-bold tabular-nums">
               {totalCount} ажилтан
             </div>
-            {activeCount > 0 && (
-              <div className="px-5 py-2.5 rounded-full bg-emerald-500/25 backdrop-blur-sm border border-emerald-400/30 text-emerald-100 text-sm font-bold tabular-nums">
-                {activeCount} идэвхтэй
-              </div>
-            )}
             {department.manager && (
-              <div className="px-5 py-2.5 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-400/25 text-amber-100 text-sm font-semibold">
+              <div className="px-5 py-2.5 rounded-full border border-amber-500/50 text-amber-600 dark:text-amber-400 text-sm font-semibold">
                 {department.manager}
               </div>
             )}
@@ -761,41 +781,15 @@ export default function DepartmentsPage() {
       {/* ── CONTENT ──────────────────────────────────────────────────────── */}
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
 
-        {/* Quick stat bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 -mt-6">
-          {[
-            { label: "Нийт ажилтан", value: totalCount, color: "from-blue-500 to-violet-600" },
-            { label: "Идэвхтэй", value: activeCount, color: "from-emerald-500 to-teal-600" },
-            { label: "Идэвхгүй", value: totalCount - activeCount, color: "from-slate-400 to-slate-600" },
-            {
-              label: "Менежер",
-              value: department.manager ? "✓" : "—",
-              color: "from-amber-500 to-orange-600",
-            },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-2xl bg-card border border-border p-4 shadow-sm"
-            >
-              <div className={`w-8 h-1.5 rounded-full bg-gradient-to-r ${s.color} mb-3`} />
-              <p className="text-2xl font-black text-foreground tabular-nums">{s.value}</p>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">{s.label}</p>
-            </div>
-          ))}
-        </div>
-
         {/* ── MEMBERS ──────────────────────────────────────────────────── */}
         <section>
           <div className="flex items-end justify-between mb-5">
             <div>
               <h2 className="text-xl font-black text-foreground">{t("teamTitle")}</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {totalCount} гишүүн
+                {totalCount} ажилтан
               </p>
             </div>
-            <div
-              className={`w-10 h-10 rounded-xl bg-gradient-to-br ${heroGrad} opacity-70`}
-            />
           </div>
 
           {members.length > 0 ? (
@@ -846,7 +840,12 @@ export default function DepartmentsPage() {
               </p>
             </div>
           </div>
-          {department.id && <OtherDeptViewer currentDeptId={department.id} />}
+          {department.id && (
+            <OtherDeptViewer
+              currentDeptId={department.id}
+              onSelect={(dept) => setViewingDept(dept)}
+            />
+          )}
         </section>
 
       </div>

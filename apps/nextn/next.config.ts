@@ -3,6 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  allowedDevOrigins: ["192.168.10.50", "192.168.10.*", "192.168.*.*"],
   output: "standalone",
   // Trace files from monorepo root so standalone includes node_modules
   outputFileTracingRoot: path.join(__dirname, "../../"),

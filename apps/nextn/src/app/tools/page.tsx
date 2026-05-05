@@ -177,9 +177,8 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
     },
     {
       id: "risk_assessment",
-      title: "Эрсдэлийн үнэлгээ",
-      description:
-        "Сар бүрийн эрсдэлийн үнэлгээ — салбаруудын оноо, гар засвар, аудит лог",
+      title: t("toolRiskAssessmentTitle"),
+      description: t("toolRiskAssessmentDesc"),
       icon: ShieldAlert,
       href: "/tools/risk-assessment",
       gradient: "from-rose-500 to-orange-500",
@@ -194,9 +193,8 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
         "weekly_report_daa",
         "weekly_report_director",
       ],
-      title: "Долоо хоногийн тайлан",
-      description:
-        "Хэлтсүүдийн долоо хоногийн ажлын тайлан — бөглөх, илгээх, нэгдсэн харагдац",
+      title: t("toolWeeklyReportTitle"),
+      description: t("toolWeeklyReportDesc"),
       icon: CalendarRange,
       href: "/tools/weekly-report",
       gradient: "from-indigo-500 to-purple-500",

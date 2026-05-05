@@ -15,7 +15,6 @@ import {
   ArrowRight,
   X,
   ArrowLeft,
-  Plus,
   BarChart3,
   Trophy,
   Upload,
@@ -594,35 +593,23 @@ export default function NewsPage() {
       )}
 
       {/* ─── Floating Action Buttons (bottom-right) ─── */}
-      <div className="fixed bottom-8 right-8 z-50 flex flex-col items-center gap-3">
-        {/* Stat button */}
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+      <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2">
+        {/* Stats button */}
+        <button
           onClick={openStats}
-          className="w-11 h-11 rounded-full shadow-lg flex items-center justify-center transition-colors"
-          style={{
-            background: "rgba(99,102,241,0.8)",
-            backdropFilter: "blur(8px)",
-          }}
-          title={t("newsStatsTitle")}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card text-foreground text-xs font-semibold hover:bg-muted transition-colors shadow-lg"
         >
-          <BarChart3 className="w-5 h-5 text-white" />
-        </motion.button>
+          <BarChart3 className="w-3.5 h-3.5" />
+          {t("newsStatsTitle")}
+        </button>
         {/* Add button */}
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+        <button
           onClick={() => setShowCreate(true)}
-          className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-colors"
-          style={{
-            background: "linear-gradient(135deg, #6366f1, #a855f7)",
-            boxShadow: "0 4px 20px rgba(99,102,241,0.4)",
-          }}
-          title={t("newsCreateTitle")}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-foreground text-background text-xs font-semibold hover:opacity-80 transition-opacity shadow-lg"
         >
-          <Plus className="w-7 h-7 text-white" />
-        </motion.button>
+          <span className="text-base leading-none">＋</span>
+          {t("newsCreateTitle")}
+        </button>
       </div>
 
       {/* ─── Create News Modal ─── */}
@@ -645,32 +632,25 @@ export default function NewsPage() {
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="w-full max-w-lg rounded-2xl overflow-hidden"
-              style={{
-                background: "rgba(15,18,35,0.97)",
-                border: "1px solid rgba(99,102,241,0.2)",
-              }}
+              className="w-full max-w-lg rounded-2xl overflow-hidden bg-card border border-border shadow-2xl"
             >
               {/* Header */}
-              <div
-                className="flex items-center justify-between px-6 py-4"
-                style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}
-              >
-                <h2 className="text-white font-bold text-lg">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <h2 className="text-foreground font-bold text-lg">
                   {t("newsCreateTitle")}
                 </h2>
                 <button
                   onClick={() => setShowCreate(false)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               {/* Body */}
               <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
                 {/* Title */}
                 <div>
-                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                  <label className="text-muted-foreground text-xs font-semibold block mb-1.5">
                     {t("newsFormTitle")}
                   </label>
                   <input
@@ -679,17 +659,13 @@ export default function NewsPage() {
                     onChange={(e) =>
                       setCreateForm((f) => ({ ...f, title: e.target.value }))
                     }
-                    className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(99,102,241,0.2)",
-                    }}
+                    className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted/50 border border-border placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30"
                     placeholder={t("newsFormTitle")}
                   />
                 </div>
                 {/* Category */}
                 <div>
-                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                  <label className="text-muted-foreground text-xs font-semibold block mb-1.5">
                     {t("newsFormCategory")}
                   </label>
                   <select
@@ -697,11 +673,7 @@ export default function NewsPage() {
                     onChange={(e) =>
                       setCreateForm((f) => ({ ...f, category: e.target.value }))
                     }
-                    className="w-full rounded-lg px-3 py-2 text-sm text-white"
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(99,102,241,0.2)",
-                    }}
+                    className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted/50 border border-border focus:outline-none focus:border-foreground/30"
                   >
                     <option value="Ерөнхий">Ерөнхий</option>
                     <option value="Мэдэгдэл">Мэдэгдэл</option>
@@ -711,11 +683,11 @@ export default function NewsPage() {
                 </div>
                 {/* Image upload */}
                 <div>
-                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                  <label className="text-muted-foreground text-xs font-semibold block mb-1.5">
                     {t("newsFormImage")}
                   </label>
                   {imagePreview ? (
-                    <div className="relative w-full h-40 rounded-lg overflow-hidden mb-2">
+                    <div className="relative w-full h-40 rounded-xl overflow-hidden mb-2">
                       <Image
                         src={imagePreview}
                         alt="preview"
@@ -728,18 +700,15 @@ export default function NewsPage() {
                           setImagePreview(null);
                           setCreateForm((f) => ({ ...f, imageUrl: "" }));
                         }}
-                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/80 text-foreground flex items-center justify-center hover:bg-background transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ) : (
-                    <label
-                      className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-lg cursor-pointer transition-colors hover:bg-white/5"
-                      style={{ border: "1px dashed rgba(99,102,241,0.3)" }}
-                    >
-                      <Upload className="w-6 h-6 text-white/30" />
-                      <span className="text-white/30 text-xs">
+                    <label className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-xl cursor-pointer border-2 border-dashed border-border hover:border-foreground/20 hover:bg-muted/20 transition-all">
+                      <Upload className="w-6 h-6 text-muted-foreground/50" />
+                      <span className="text-muted-foreground/50 text-xs">
                         {t("newsFormImageHint")}
                       </span>
                       <input
@@ -753,7 +722,7 @@ export default function NewsPage() {
                 </div>
                 {/* Content */}
                 <div>
-                  <label className="text-white/60 text-xs font-semibold block mb-1.5">
+                  <label className="text-muted-foreground text-xs font-semibold block mb-1.5">
                     {t("newsFormContent")}
                   </label>
                   <textarea
@@ -762,20 +731,19 @@ export default function NewsPage() {
                       setCreateForm((f) => ({ ...f, content: e.target.value }))
                     }
                     rows={6}
-                    className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none"
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(99,102,241,0.2)",
-                    }}
+                    className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted/50 border border-border placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:border-foreground/30"
                     placeholder={t("newsFormContent")}
                   />
                 </div>
               </div>
               {/* Footer */}
-              <div
-                className="px-6 py-4 flex justify-end"
-                style={{ borderTop: "1px solid rgba(99,102,241,0.15)" }}
-              >
+              <div className="px-6 py-4 flex justify-end gap-2 border-t border-border">
+                <button
+                  onClick={() => setShowCreate(false)}
+                  className="px-4 py-2 rounded-xl border border-border text-foreground text-xs font-semibold hover:bg-muted transition-colors"
+                >
+                  Болих
+                </button>
                 <button
                   onClick={handleCreate}
                   disabled={
@@ -783,16 +751,14 @@ export default function NewsPage() {
                     !createForm.title.trim() ||
                     !createForm.content.trim()
                   }
-                  className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-all"
-                  style={{
-                    background: "linear-gradient(135deg, #6366f1, #a855f7)",
-                  }}
+                  className="px-4 py-2 rounded-xl bg-foreground text-background text-xs font-semibold hover:opacity-80 transition-opacity disabled:opacity-40 flex items-center gap-2"
                 >
                   {createLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    t("newsCreateBtn")
+                    <span className="text-base leading-none">＋</span>
                   )}
+                  {t("newsCreateBtn")}
                 </button>
               </div>
             </motion.div>
@@ -820,38 +786,31 @@ export default function NewsPage() {
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="w-full max-w-md rounded-2xl overflow-hidden"
-              style={{
-                background: "rgba(15,18,35,0.97)",
-                border: "1px solid rgba(99,102,241,0.2)",
-              }}
+              className="w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border shadow-2xl"
             >
               {/* Header */}
-              <div
-                className="flex items-center justify-between px-6 py-4"
-                style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}
-              >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-amber-400" />
-                  <h2 className="text-white font-bold text-lg">
+                  <h2 className="text-foreground font-bold text-lg">
                     {t("newsStatsTitle")}
                   </h2>
                 </div>
                 <button
                   onClick={() => setShowStats(false)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               {/* Body */}
               <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
                 {statsLoading ? (
                   <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                    <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
                   </div>
                 ) : topPublishers.length === 0 ? (
-                  <p className="text-white/40 text-center py-10 text-sm">
+                  <p className="text-muted-foreground text-center py-10 text-sm">
                     {t("newsStatsEmpty")}
                   </p>
                 ) : (
@@ -862,42 +821,33 @@ export default function NewsPage() {
                       return (
                         <div
                           key={p.authorId}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
-                          style={{
-                            background: isTop3
-                              ? "rgba(99,102,241,0.1)"
-                              : "transparent",
-                            border: isTop3
-                              ? "1px solid rgba(99,102,241,0.15)"
-                              : "1px solid transparent",
-                          }}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                            isTop3 ? "bg-muted/60 border border-border" : "border border-transparent"
+                          }`}
                         >
                           <span
-                            className="w-8 text-center text-sm font-bold"
-                            style={{
-                              color: isTop3
-                                ? "#fbbf24"
-                                : "rgba(255,255,255,0.3)",
-                            }}
+                            className={`w-8 text-center text-sm font-bold ${
+                              isTop3 ? "text-amber-400" : "text-muted-foreground/50"
+                            }`}
                           >
                             {isTop3 ? medals[p.rank] : p.rank}
                           </span>
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                            <User className="w-3.5 h-3.5 text-white" />
+                          <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center flex-shrink-0">
+                            <User className="w-3.5 h-3.5 text-muted-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-semibold truncate">
+                            <p className="text-foreground text-sm font-semibold truncate">
                               {p.authorName}
                             </p>
-                            <p className="text-white/40 text-xs">
+                            <p className="text-muted-foreground text-xs">
                               {p.newsCount} {t("newsStatsCount").toLowerCase()}
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-white/80 text-sm font-bold">
+                            <p className="text-foreground text-sm font-bold">
                               {p.totalViews.toLocaleString()}
                             </p>
-                            <p className="text-white/30 text-xs">
+                            <p className="text-muted-foreground text-xs">
                               {t("newsStatsViews").toLowerCase()}
                             </p>
                           </div>
