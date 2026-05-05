@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback, Fragment, useRef } from "react";
+import {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  Fragment,
+  useRef,
+} from "react";
 import { Download, Loader2, X, Hand } from "lucide-react";
 import Cookies from "js-cookie";
 import { riskApi } from "@/lib/api";
@@ -48,7 +55,11 @@ const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
 // localStorage дахь өмнөх утгуудыг ClickHouse-руу нэг удаа migrate хийх
 async function migrateFromLocalStorage(legacy: ManualMap) {
   try {
-    const entries: Array<{ branchId: string; indicatorId: string; value: number }> = [];
+    const entries: Array<{
+      branchId: string;
+      indicatorId: string;
+      value: number;
+    }> = [];
     for (const [branchId, inds] of Object.entries(legacy)) {
       for (const [indicatorId, value] of Object.entries(inds)) {
         if (value > 0) entries.push({ branchId, indicatorId, value });
@@ -81,7 +92,9 @@ export default function ReportView({
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // beforeunload flush-д зориулж pending payload-уудыг хянана
-  const pendingSavePayloads = useRef<Record<string, { branchId: string; indicatorId: string; value: number }>>({});
+  const pendingSavePayloads = useRef<
+    Record<string, { branchId: string; indicatorId: string; value: number }>
+  >({});
 
   // ESC товчоор modal хаах
   useEffect(() => {
@@ -223,20 +236,16 @@ export default function ReportView({
       let total: number | null = null;
       if (s1 != null && s2 != null && s3 != null) {
         total =
-          s1 * w.s1 +
-          s2 * w.s2 +
-          s3 * w.s3 +
-          (s4 || 0) * w.s4 +
-          (j || 0) * w.j;
+          s1 * w.s1 + s2 * w.s2 + s3 * w.s3 + (s4 || 0) * w.s4 + (j || 0) * w.j;
       }
       const level: RiskLevel | "" =
         total == null
           ? ""
           : total >= 3.5
-          ? "Өндөр"
-          : total >= 2.5
-          ? "Дунд"
-          : "Бага";
+            ? "Өндөр"
+            : total >= 2.5
+              ? "Дунд"
+              : "Бага";
       return {
         ...b,
         s1,
@@ -321,7 +330,8 @@ export default function ReportView({
     const lines = [cols.join(",")];
     aggregates.forEach((b, i) => {
       const p = previousAggMap.get(b.branchId);
-      const diff = p && b.total != null && p.total != null ? b.total - p.total : null;
+      const diff =
+        p && b.total != null && p.total != null ? b.total - p.total : null;
       lines.push(
         [
           i + 1,
@@ -384,15 +394,28 @@ export default function ReportView({
               <span className="inline-block w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
               <span>
                 <b className="text-foreground">Өмнөх харьцуулалт</b>:{" "}
-                {previousScoredRows.length > 0
-                  ? <span className="text-emerald-700 dark:text-emerald-400">
-                      {previousHistoryName
-                        ? <><b className="text-violet-600 dark:text-violet-400">«{previousHistoryName}»</b> улирлын өгөгдөл ({previousScoredRows.length} мөр).</>
-                        : <>Өмнөх Oracle таталтын өгөгдөл ({previousScoredRows.length} мөр).</>
-                      }
-                    </span>
-                  : <span className="text-muted-foreground/60">Өмнөх улирал сонгогдоогүй — дээрх «Өмнөх улирал сонгох» товчоор сонгоно уу.</span>
-                }
+                {previousScoredRows.length > 0 ? (
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    {previousHistoryName ? (
+                      <>
+                        <b className="text-violet-600 dark:text-violet-400">
+                          «{previousHistoryName}»
+                        </b>{" "}
+                        улирлын өгөгдөл ({previousScoredRows.length} мөр).
+                      </>
+                    ) : (
+                      <>
+                        Өмнөх Oracle таталтын өгөгдөл (
+                        {previousScoredRows.length} мөр).
+                      </>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground/60">
+                    Өмнөх улирал сонгогдоогүй — дээрх «Өмнөх улирал сонгох»
+                    товчоор сонгоно уу.
+                  </span>
+                )}
               </span>
             </p>
           </div>
@@ -479,7 +502,12 @@ export default function ReportView({
           <SRow label="Өндөр" v={summary.cur.Өндөр} prev={summary.prev.Өндөр} />
           <SRow label="Дунд" v={summary.cur.Дунд} prev={summary.prev.Дунд} />
           <SRow label="Бага" v={summary.cur.Бага} prev={summary.prev.Бага} />
-          <SRow label="Нийт" v={summary.cur.Нийт} prev={summary.prev.Нийт} bold />
+          <SRow
+            label="Нийт"
+            v={summary.cur.Нийт}
+            prev={summary.prev.Нийт}
+            bold
+          />
         </SummaryBlock>
         <SummaryBlock title="2. ҮНЭЛГЭЭНИЙ ӨӨРЧЛӨЛТ" cols={["Үзүүлэлт", "Тоо"]}>
           <SRow label="Үнэлгээ өссөн" v={summary.upCnt} />
@@ -511,14 +539,16 @@ export default function ReportView({
         <IndicatorPanelModal
           group={expanded.group}
           branchId={expanded.branchId}
-          branchName={aggregates.find((b) => b.branchId === expanded.branchId)?.branchName ?? expanded.branchId}
+          branchName={
+            aggregates.find((b) => b.branchId === expanded.branchId)
+              ?.branchName ?? expanded.branchId
+          }
           ev={branchEvals.get(expanded.branchId)}
           manual={manualMap[expanded.branchId] || {}}
           setManualValue={setManualValue}
           onClose={() => setExpanded(null)}
         />
       )}
-
     </div>
   );
 }
@@ -577,11 +607,36 @@ function ReportTable({
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
           <span className="font-semibold uppercase tracking-wider">Жин:</span>
-          <span>S1 <b className="text-foreground tabular-nums">{(w.s1 * 100).toFixed(0)}%</b></span>
-          <span>S2 <b className="text-foreground tabular-nums">{(w.s2 * 100).toFixed(0)}%</b></span>
-          <span>S3 <b className="text-foreground tabular-nums">{(w.s3 * 100).toFixed(0)}%</b></span>
-          <span>S4 <b className="text-foreground tabular-nums">{(w.s4 * 100).toFixed(0)}%</b></span>
-          <span>J <b className="text-foreground tabular-nums">{(w.j * 100).toFixed(0)}%</b></span>
+          <span>
+            S1{" "}
+            <b className="text-foreground tabular-nums">
+              {(w.s1 * 100).toFixed(0)}%
+            </b>
+          </span>
+          <span>
+            S2{" "}
+            <b className="text-foreground tabular-nums">
+              {(w.s2 * 100).toFixed(0)}%
+            </b>
+          </span>
+          <span>
+            S3{" "}
+            <b className="text-foreground tabular-nums">
+              {(w.s3 * 100).toFixed(0)}%
+            </b>
+          </span>
+          <span>
+            S4{" "}
+            <b className="text-foreground tabular-nums">
+              {(w.s4 * 100).toFixed(0)}%
+            </b>
+          </span>
+          <span>
+            J{" "}
+            <b className="text-foreground tabular-nums">
+              {(w.j * 100).toFixed(0)}%
+            </b>
+          </span>
           <span className="ml-auto flex items-center gap-1 italic">
             <Hand className="w-3 h-3" /> товчоор гарын үзүүлэлт оруулна
           </span>
@@ -593,7 +648,9 @@ function ReportTable({
             <tr>
               <th className="px-2 py-2 text-left font-semibold">№</th>
               <th className="px-2 py-2 text-left font-semibold">SOL</th>
-              <th className="px-2 py-2 text-left font-semibold">Салбарын нэр</th>
+              <th className="px-2 py-2 text-left font-semibold">
+                Салбарын нэр
+              </th>
               <th className="px-2 py-2 text-center font-semibold">Зэрэглэл</th>
               <th className="px-2 py-2 text-right font-semibold">Score 1</th>
               <th className="px-2 py-2 text-right font-semibold">Score 2</th>
@@ -608,17 +665,20 @@ function ReportTable({
           <tbody>
             {rows.map((b, i) => {
               const prev = previousAggMap.get(b.branchId);
-              const diff = prev && b.total != null && prev.total != null ? b.total - prev.total : null;
+              const diff =
+                prev && b.total != null && prev.total != null
+                  ? b.total - prev.total
+                  : null;
               const ev = branchEvals.get(b.branchId);
               const isOpen = expanded?.branchId === b.branchId;
               const openGroup = isOpen ? expanded!.group : null;
               const branchManual = manualMap[b.branchId] || {};
               return (
                 <Fragment key={b.branchId}>
-                  <tr
-                    className="border-t border-border hover:bg-accent/30"
-                  >
-                    <td className="px-2 py-1.5 tabular-nums text-muted-foreground">{i + 1}</td>
+                  <tr className="border-t border-border hover:bg-accent/30">
+                    <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
+                      {i + 1}
+                    </td>
                     <td className="px-2 py-1.5 tabular-nums">{b.solid}</td>
                     <td className="px-2 py-1.5 font-medium">{b.branchName}</td>
                     <td className="px-2 py-1.5 text-center text-[10px] text-muted-foreground">
@@ -650,7 +710,9 @@ function ReportTable({
                     />
                     <td className="px-2 py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <span className="tabular-nums text-xs w-14 text-right inline-block">{fmt(b.s4 ?? null)}</span>
+                        <span className="tabular-nums text-xs w-14 text-right inline-block">
+                          {fmt(b.s4 ?? null)}
+                        </span>
                         <HandBtn
                           open={openGroup === 4}
                           onClick={() => toggle(b.branchId, 4)}
@@ -660,7 +722,12 @@ function ReportTable({
                     </td>
                     <td className="px-2 py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <NumInput value={manualMap[b.branchId]?.["j-001"] ?? 0} onChange={(v) => setManualValue(b.branchId, "j-001", v)} />
+                        <NumInput
+                          value={manualMap[b.branchId]?.["j-001"] ?? 0}
+                          onChange={(v) =>
+                            setManualValue(b.branchId, "j-001", v)
+                          }
+                        />
                         <HandBtn
                           open={openGroup === 5}
                           onClick={() => toggle(b.branchId, 5)}
@@ -669,7 +736,17 @@ function ReportTable({
                       </div>
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums font-bold">
-                      <span className={b.total != null && b.total >= 3.5 ? "text-rose-600 dark:text-rose-400" : b.total != null && b.total >= 2.5 ? "text-amber-600 dark:text-amber-400" : b.total != null ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>
+                      <span
+                        className={
+                          b.total != null && b.total >= 3.5
+                            ? "text-rose-600 dark:text-rose-400"
+                            : b.total != null && b.total >= 2.5
+                              ? "text-amber-600 dark:text-amber-400"
+                              : b.total != null
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-muted-foreground"
+                        }
+                      >
                         {fmt(b.total)}
                       </span>
                     </td>
@@ -689,29 +766,33 @@ function ReportTable({
                         diff == null
                           ? "text-muted-foreground/40"
                           : diff > 0
-                          ? "text-rose-600 dark:text-rose-400"
-                          : diff < 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-muted-foreground"
+                            ? "text-rose-600 dark:text-rose-400"
+                            : diff < 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-muted-foreground"
                       }`}
                     >
                       {diff == null
                         ? "—"
                         : diff === 0
-                        ? "0.00"
-                        : diff > 0
-                        ? `▲ +${diff.toFixed(2)}`
-                        : `▼ ${diff.toFixed(2)}`}
+                          ? "0.00"
+                          : diff > 0
+                            ? `▲ +${diff.toFixed(2)}`
+                            : `▼ ${diff.toFixed(2)}`}
                     </td>
                   </tr>
-
                 </Fragment>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-10 text-center text-muted-foreground">
-                  <div className="text-xs">Энэ бүсэд тохирох салбар олдсонгүй</div>
+                <td
+                  colSpan={12}
+                  className="px-4 py-10 text-center text-muted-foreground"
+                >
+                  <div className="text-xs">
+                    Энэ бүсэд тохирох салбар олдсонгүй
+                  </div>
                 </td>
               </tr>
             )}
@@ -722,7 +803,10 @@ function ReportTable({
   );
 }
 
-function countManual(branchManual: Record<string, number>, group: CatalogGroup) {
+function countManual(
+  branchManual: Record<string, number>,
+  group: CatalogGroup,
+) {
   let c = 0;
   for (const ind of CATALOG_BY_GROUP[group]) {
     if (ind.autoSubid == null && (branchManual[ind.id] ?? 0) > 0) c++;
@@ -747,8 +831,8 @@ function HandBtn({
         open
           ? "bg-amber-500 border-amber-500 text-white shadow-sm shadow-amber-500/30"
           : count > 0
-          ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
-          : "bg-background border-border text-muted-foreground hover:bg-accent hover:border-amber-500/30 hover:text-amber-600"
+            ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
+            : "bg-background border-border text-muted-foreground hover:bg-accent hover:border-amber-500/30 hover:text-amber-600"
       }`}
     >
       <Hand className="w-3 h-3" />
@@ -779,7 +863,9 @@ function ScoreCell({
   return (
     <td className="px-2 py-1.5 text-right">
       <div className="flex items-center justify-end gap-1">
-        <span className="tabular-nums">{value == null ? "—" : value.toFixed(2)}</span>
+        <span className="tabular-nums">
+          {value == null ? "—" : value.toFixed(2)}
+        </span>
         <HandBtn
           open={open}
           onClick={() => onToggle(branchId, group)}
@@ -808,7 +894,10 @@ function IndicatorPanelModal({
   onClose: () => void;
 }) {
   const items = CATALOG_BY_GROUP[group];
-  const totalWeight = items.reduce((s: number, i: CatalogIndicator) => s + i.weight, 0);
+  const totalWeight = items.reduce(
+    (s: number, i: CatalogIndicator) => s + i.weight,
+    0,
+  );
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
@@ -829,16 +918,22 @@ function IndicatorPanelModal({
                 {GROUP_LABEL[group]} — үзүүлэлтийн задаргаа
               </h3>
               <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-foreground truncate max-w-xs">{branchName}</span>
+                <span className="font-semibold text-foreground truncate max-w-xs">
+                  {branchName}
+                </span>
                 <span className="text-border">·</span>
                 <span>
                   Нийт жин:{" "}
-                  <span className="font-semibold text-foreground tabular-nums">{totalWeight}%</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totalWeight}%
+                  </span>
                 </span>
                 <span className="text-border">·</span>
                 <span>
                   Гарын үзүүлэлт:{" "}
-                  <span className="font-semibold text-foreground tabular-nums">{MANUAL_COUNT_BY_GROUP[group]}</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {MANUAL_COUNT_BY_GROUP[group]}
+                  </span>
                 </span>
               </div>
             </div>
@@ -855,10 +950,12 @@ function IndicatorPanelModal({
         {/* ── Гараар оруулсан зүйлсийн хураангуй ── */}
         {(() => {
           const filled = items.filter(
-            (ind: CatalogIndicator) => ind.autoSubid == null && (manual[ind.id] ?? 0) > 0,
+            (ind: CatalogIndicator) =>
+              ind.autoSubid == null && (manual[ind.id] ?? 0) > 0,
           );
           const empty = items.filter(
-            (ind: CatalogIndicator) => ind.autoSubid == null && !(manual[ind.id] ?? 0),
+            (ind: CatalogIndicator) =>
+              ind.autoSubid == null && !(manual[ind.id] ?? 0),
           );
           return (
             <div className="px-5 py-3 border-b border-border bg-muted/30 flex-shrink-0">
@@ -980,8 +1077,8 @@ function IndicatorPanelModal({
                             v.source === "manual"
                               ? "text-foreground"
                               : v.source === "auto"
-                              ? "text-muted-foreground"
-                              : "text-muted-foreground/40"
+                                ? "text-muted-foreground"
+                                : "text-muted-foreground/40"
                           }`}
                         >
                           {v.score.toFixed(2)}
@@ -1000,7 +1097,11 @@ function IndicatorPanelModal({
                           value={manualV || ""}
                           placeholder="0–5"
                           onChange={(e) =>
-                            setManualValue(branchId, ind.id, Number(e.target.value) || 0)
+                            setManualValue(
+                              branchId,
+                              ind.id,
+                              Number(e.target.value) || 0,
+                            )
                           }
                           className="w-20 px-2 py-1.5 text-right text-xs rounded-lg border border-border bg-background text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/40 transition-colors"
                         />
@@ -1009,8 +1110,18 @@ function IndicatorPanelModal({
                           className="w-20 inline-flex items-center justify-end gap-1 px-2 py-1.5 rounded-lg border border-border/40 bg-muted/40 text-muted-foreground/50 text-xs cursor-not-allowed select-none"
                           title="Auto үзүүлэлтийг гараар засах боломжгүй"
                         >
-                          <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          <svg
+                            className="w-3 h-3 opacity-60"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                            />
                           </svg>
                           <span className="text-[10px]">auto</span>
                         </div>
@@ -1026,13 +1137,15 @@ function IndicatorPanelModal({
         {/* Footer */}
         <div className="px-5 py-3 border-t border-border bg-muted/20 flex-shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
           <span>
-            <span className="font-semibold text-foreground">Гар</span>
-            {" "}— гараар оруулах, засах боломжтой
+            <span className="font-semibold text-foreground">Гар</span> — гараар
+            оруулах, засах боломжтой
           </span>
           <span className="text-border">·</span>
           <span>
-            <span className="font-semibold text-blue-600 dark:text-blue-400">Auto</span>
-            {" "}— Oracle-аас автоматаар тооцоологдсон, засах боломжгүй
+            <span className="font-semibold text-blue-600 dark:text-blue-400">
+              Auto
+            </span>{" "}
+            — Oracle-аас автоматаар тооцоологдсон, засах боломжгүй
           </span>
           <span className="text-border">·</span>
           <span>Score = Σ(оноо × жин) / Σ(оноотой жин)</span>
@@ -1081,7 +1194,10 @@ function SummaryBlock({
         <thead className="bg-muted/30 text-[10px] uppercase text-muted-foreground">
           <tr>
             {cols.map((c, i) => (
-              <th key={c} className={`px-3 py-1.5 font-semibold ${i === 0 ? "text-left" : "text-right"}`}>
+              <th
+                key={c}
+                className={`px-3 py-1.5 font-semibold ${i === 0 ? "text-left" : "text-right"}`}
+              >
                 {c}
               </th>
             ))}
@@ -1106,14 +1222,18 @@ function SRow({
 }) {
   const diff = prev !== undefined ? v - prev : null;
   return (
-    <tr className={`border-t border-border transition-colors ${bold ? "font-bold bg-muted/30" : "hover:bg-accent/30"}`}>
+    <tr
+      className={`border-t border-border transition-colors ${bold ? "font-bold bg-muted/30" : "hover:bg-accent/30"}`}
+    >
       <td className="px-3 py-1.5">{label}</td>
       <td className="px-3 py-1.5 text-right tabular-nums">{v}</td>
       {prev !== undefined && (
         <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
           <span>{prev}</span>
           {diff !== null && diff !== 0 && (
-            <span className={`ml-1.5 text-[10px] font-semibold ${diff > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+            <span
+              className={`ml-1.5 text-[10px] font-semibold ${diff > 0 ? "text-rose-600" : "text-emerald-600"}`}
+            >
               {diff > 0 ? `+${diff}` : diff}
             </span>
           )}
@@ -1122,4 +1242,3 @@ function SRow({
     </tr>
   );
 }
-

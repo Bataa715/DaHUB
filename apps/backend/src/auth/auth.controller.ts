@@ -164,7 +164,10 @@ export class AuthController {
   // [H-4] Extract caller IP for brute-force lockout key. Honours X-Forwarded-For
   // when behind a trusted reverse proxy (set TRUST_PROXY=1 + app.set('trust proxy')).
   private clientIp(req: any): string {
-    const xff = (req.headers?.["x-forwarded-for"] || "").toString().split(",")[0].trim();
+    const xff = (req.headers?.["x-forwarded-for"] || "")
+      .toString()
+      .split(",")[0]
+      .trim();
     return xff || req.ip || req.socket?.remoteAddress || "unknown";
   }
 

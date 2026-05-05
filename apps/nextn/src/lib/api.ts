@@ -887,17 +887,28 @@ export const pythonToolApi = {
   // ── Permissions ────────────────────────────────────────────────────────────
 
   adminGetPermissions: async (): Promise<
-    { userId: string; templateId: string; grantedBy: string; grantedAt: string }[]
+    {
+      userId: string;
+      templateId: string;
+      grantedBy: string;
+      grantedAt: string;
+    }[]
   > => {
     const res = await api.get("/python-api/admin/permissions");
     return res.data;
   },
 
-  adminGrantPermission: async (userId: string, templateId: string): Promise<void> => {
+  adminGrantPermission: async (
+    userId: string,
+    templateId: string,
+  ): Promise<void> => {
     await api.post("/python-api/admin/permissions", { userId, templateId });
   },
 
-  adminRevokePermission: async (userId: string, templateId: string): Promise<void> => {
+  adminRevokePermission: async (
+    userId: string,
+    templateId: string,
+  ): Promise<void> => {
     await api.delete("/python-api/admin/permissions", {
       data: { userId, templateId },
     });
@@ -992,12 +1003,20 @@ export const riskApi = {
   },
 
   /** Нэг Oracle мөрийн RESULT утгыг гараар засах */
-  overrideBranchRiskassRow: async (rowKey: string, manualResult: string): Promise<void> => {
-    await api.patch(`/risk-assessment/branch-riskass/row`, { rowKey, manualResult });
+  overrideBranchRiskassRow: async (
+    rowKey: string,
+    manualResult: string,
+  ): Promise<void> => {
+    await api.patch(`/risk-assessment/branch-riskass/row`, {
+      rowKey,
+      manualResult,
+    });
   },
 
   /** Гарын үзүүлэлтийн бүх утгыг авах */
-  listManualIndicators: async (): Promise<Record<string, Record<string, number>>> => {
+  listManualIndicators: async (): Promise<
+    Record<string, Record<string, number>>
+  > => {
     const res = await api.get(`/risk-assessment/manual-indicators`);
     return res.data ?? {};
   },
@@ -1026,7 +1045,9 @@ export const riskApi = {
   },
 
   /** History нэг бичлэгийн дэлгэрэнгүй (rows + manualMap) */
-  getHistory: async (id: string): Promise<{
+  getHistory: async (
+    id: string,
+  ): Promise<{
     entry: RiskHistoryEntry;
     rows: RiskCurrentRow[];
     manualMap: Record<string, Record<string, number>>;
@@ -1152,6 +1173,3 @@ export const weeklyReportApi = {
     return res.data;
   },
 };
-
-
-

@@ -24,11 +24,17 @@ function validateProductionEnv() {
   }
   // Warn if any of them still point at localhost (deployment misconfig)
   const localish = /(localhost|127\.0\.0\.1)/i;
-  for (const key of ["PYTHON_SERVICE_URL", "PYTHON_API_URL", "CLICKHOUSE_HOST"]) {
+  for (const key of [
+    "PYTHON_SERVICE_URL",
+    "PYTHON_API_URL",
+    "CLICKHOUSE_HOST",
+  ]) {
     const v = process.env[key];
     if (v && localish.test(v)) {
       // eslint-disable-next-line no-console
-      console.warn(`[SEC-3] WARNING: ${key} contains localhost in production: ${v}`);
+      console.warn(
+        `[SEC-3] WARNING: ${key} contains localhost in production: ${v}`,
+      );
     }
   }
 }

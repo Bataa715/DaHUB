@@ -46,12 +46,15 @@ export class DbAccessService {
         "JWT_SECRET (>=16 chars) is required for chPassword encryption-at-rest",
       );
     }
-    return createHash("sha256").update("db-access:ch-pwd:" + secret).digest();
+    return createHash("sha256")
+      .update("db-access:ch-pwd:" + secret)
+      .digest();
   })();
 
   /** Resolve ClickHouse host: prefer CLICKHOUSE_EXTERNAL_HOST, else parse from CLICKHOUSE_HOST URL. */
   private resolveChHost(): string {
-    if (process.env.CLICKHOUSE_EXTERNAL_HOST) return process.env.CLICKHOUSE_EXTERNAL_HOST;
+    if (process.env.CLICKHOUSE_EXTERNAL_HOST)
+      return process.env.CLICKHOUSE_EXTERNAL_HOST;
     const raw = process.env.CLICKHOUSE_HOST;
     if (raw) {
       try {
@@ -827,5 +830,5 @@ export class DbAccessService {
       isActive: !!g.isActive,
       chPassword: this.decryptPwd(g.chPassword),
     };
-  }
+  };
 }

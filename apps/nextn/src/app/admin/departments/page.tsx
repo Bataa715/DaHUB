@@ -63,17 +63,83 @@ interface DepartmentData {
 
 // Хэлтэс бүрт өнгө + дүрс автоматаар
 const DEPT_PALETTES = [
-  { bg: "bg-blue-500/15", border: "border-blue-500/30", icon: "bg-blue-500/20 text-blue-400", bar: "bg-blue-500", ring: "ring-blue-500/30", accent: "text-blue-400" },
-  { bg: "bg-violet-500/15", border: "border-violet-500/30", icon: "bg-violet-500/20 text-violet-400", bar: "bg-violet-500", ring: "ring-violet-500/30", accent: "text-violet-400" },
-  { bg: "bg-emerald-500/15", border: "border-emerald-500/30", icon: "bg-emerald-500/20 text-emerald-400", bar: "bg-emerald-500", ring: "ring-emerald-500/30", accent: "text-emerald-400" },
-  { bg: "bg-amber-500/15", border: "border-amber-500/30", icon: "bg-amber-500/20 text-amber-400", bar: "bg-amber-500", ring: "ring-amber-500/30", accent: "text-amber-400" },
-  { bg: "bg-rose-500/15", border: "border-rose-500/30", icon: "bg-rose-500/20 text-rose-400", bar: "bg-rose-500", ring: "ring-rose-500/30", accent: "text-rose-400" },
-  { bg: "bg-cyan-500/15", border: "border-cyan-500/30", icon: "bg-cyan-500/20 text-cyan-400", bar: "bg-cyan-500", ring: "ring-cyan-500/30", accent: "text-cyan-400" },
-  { bg: "bg-orange-500/15", border: "border-orange-500/30", icon: "bg-orange-500/20 text-orange-400", bar: "bg-orange-500", ring: "ring-orange-500/30", accent: "text-orange-400" },
-  { bg: "bg-teal-500/15", border: "border-teal-500/30", icon: "bg-teal-500/20 text-teal-400", bar: "bg-teal-500", ring: "ring-teal-500/30", accent: "text-teal-400" },
+  {
+    bg: "bg-blue-500/15",
+    border: "border-blue-500/30",
+    icon: "bg-blue-500/20 text-blue-400",
+    bar: "bg-blue-500",
+    ring: "ring-blue-500/30",
+    accent: "text-blue-400",
+  },
+  {
+    bg: "bg-violet-500/15",
+    border: "border-violet-500/30",
+    icon: "bg-violet-500/20 text-violet-400",
+    bar: "bg-violet-500",
+    ring: "ring-violet-500/30",
+    accent: "text-violet-400",
+  },
+  {
+    bg: "bg-emerald-500/15",
+    border: "border-emerald-500/30",
+    icon: "bg-emerald-500/20 text-emerald-400",
+    bar: "bg-emerald-500",
+    ring: "ring-emerald-500/30",
+    accent: "text-emerald-400",
+  },
+  {
+    bg: "bg-amber-500/15",
+    border: "border-amber-500/30",
+    icon: "bg-amber-500/20 text-amber-400",
+    bar: "bg-amber-500",
+    ring: "ring-amber-500/30",
+    accent: "text-amber-400",
+  },
+  {
+    bg: "bg-rose-500/15",
+    border: "border-rose-500/30",
+    icon: "bg-rose-500/20 text-rose-400",
+    bar: "bg-rose-500",
+    ring: "ring-rose-500/30",
+    accent: "text-rose-400",
+  },
+  {
+    bg: "bg-cyan-500/15",
+    border: "border-cyan-500/30",
+    icon: "bg-cyan-500/20 text-cyan-400",
+    bar: "bg-cyan-500",
+    ring: "ring-cyan-500/30",
+    accent: "text-cyan-400",
+  },
+  {
+    bg: "bg-orange-500/15",
+    border: "border-orange-500/30",
+    icon: "bg-orange-500/20 text-orange-400",
+    bar: "bg-orange-500",
+    ring: "ring-orange-500/30",
+    accent: "text-orange-400",
+  },
+  {
+    bg: "bg-teal-500/15",
+    border: "border-teal-500/30",
+    icon: "bg-teal-500/20 text-teal-400",
+    bar: "bg-teal-500",
+    ring: "ring-teal-500/30",
+    accent: "text-teal-400",
+  },
 ];
 
-const DEPT_ICONS = [Building2, Shield, Briefcase, BookOpen, FlaskConical, Landmark, Globe, Layers, BarChart3];
+const DEPT_ICONS = [
+  Building2,
+  Shield,
+  Briefcase,
+  BookOpen,
+  FlaskConical,
+  Landmark,
+  Globe,
+  Layers,
+  BarChart3,
+];
 
 function getDeptStyle(index: number) {
   return DEPT_PALETTES[index % DEPT_PALETTES.length];
@@ -84,7 +150,13 @@ function DeptIcon({ index, className }: { index: number; className?: string }) {
   return <Icon className={className ?? "w-5 h-5"} />;
 }
 
-function AvatarRow({ users, max = 5 }: { users: DepartmentUser[]; max?: number }) {
+function AvatarRow({
+  users,
+  max = 5,
+}: {
+  users: DepartmentUser[];
+  max?: number;
+}) {
   const shown = users.slice(0, max);
   const rest = users.length - max;
   return (
@@ -117,20 +189,33 @@ export default function AdminDepartmentsPage() {
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
   const [filteredDepts, setFilteredDepts] = useState<DepartmentData[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentData | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<DepartmentData | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ name: "", description: "", employeeCount: 0 });
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    employeeCount: 0,
+  });
 
-  useEffect(() => { loadDepartments(); }, []);
+  useEffect(() => {
+    loadDepartments();
+  }, []);
 
   useEffect(() => {
     const q = search.trim().toLowerCase();
     setFilteredDepts(
-      q ? departments.filter((d) => d.name.toLowerCase().includes(q) || d.description?.toLowerCase().includes(q)) : departments
+      q
+        ? departments.filter(
+            (d) =>
+              d.name.toLowerCase().includes(q) ||
+              d.description?.toLowerCase().includes(q),
+          )
+        : departments,
     );
   }, [search, departments]);
 
@@ -143,7 +228,11 @@ export default function AdminDepartmentsPage() {
       }));
       setDepartments(filtered);
     } catch {
-      toast({ title: "Алдаа", description: "Хэлтсүүдийг ачаалахад алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэлтсүүдийг ачаалахад алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +247,11 @@ export default function AdminDepartmentsPage() {
   const handleEditDepartment = (dept: DepartmentData, index?: number) => {
     setSelectedDepartment(dept);
     if (index !== undefined) setSelectedIndex(index);
-    setFormData({ name: dept.name || "", description: dept.description || "", employeeCount: dept.employeeCount || 0 });
+    setFormData({
+      name: dept.name || "",
+      description: dept.description || "",
+      employeeCount: dept.employeeCount || 0,
+    });
     setIsEditOpen(true);
   };
 
@@ -167,37 +260,86 @@ export default function AdminDepartmentsPage() {
     setIsSaving(true);
     try {
       await departmentsApi.update(selectedDepartment.id, formData);
-      toast({ title: "Амжилттай", description: "Хэлтсийн мэдээлэл шинэчлэгдлээ." });
+      toast({
+        title: "Амжилттай",
+        description: "Хэлтсийн мэдээлэл шинэчлэгдлээ.",
+      });
       setIsEditOpen(false);
       loadDepartments();
     } catch {
-      toast({ title: "Алдаа", description: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteDepartment = async (e: React.MouseEvent, dept: DepartmentData) => {
+  const handleDeleteDepartment = async (
+    e: React.MouseEvent,
+    dept: DepartmentData,
+  ) => {
     e.stopPropagation();
-    if (!confirm(`"${dept.name}" хэлтсийг устгахдаа итгэлтэй байна уу?`)) return;
+    if (!confirm(`"${dept.name}" хэлтсийг устгахдаа итгэлтэй байна уу?`))
+      return;
     try {
       await departmentsApi.delete(dept.id);
       toast({ title: "Амжилттай", description: "Хэлтэс устгагдлаа." });
       loadDepartments();
     } catch (error: any) {
-      toast({ title: "Алдаа", description: error.response?.data?.message || "Хэлтсийг устгахад алдаа гарлаа.", variant: "destructive" });
+      toast({
+        title: "Алдаа",
+        description:
+          error.response?.data?.message || "Хэлтсийг устгахад алдаа гарлаа.",
+        variant: "destructive",
+      });
     }
   };
 
-  const totalEmployees = departments.reduce((sum, d) => sum + (d.users?.length || 0), 0);
-  const activeEmployees = departments.reduce((sum, d) => sum + (d.users?.filter((u) => u.isActive !== false).length || 0), 0);
-  const avgPerDept = Math.round(totalEmployees / Math.max(departments.length, 1));
+  const totalEmployees = departments.reduce(
+    (sum, d) => sum + (d.users?.length || 0),
+    0,
+  );
+  const activeEmployees = departments.reduce(
+    (sum, d) =>
+      sum + (d.users?.filter((u) => u.isActive !== false).length || 0),
+    0,
+  );
+  const avgPerDept = Math.round(
+    totalEmployees / Math.max(departments.length, 1),
+  );
 
   const stats = [
-    { label: "Нийт хэлтэс", value: departments.length, icon: Building2, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
-    { label: "Нийт ажилтан", value: totalEmployees, icon: Users, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
-    { label: "Идэвхтэй", value: activeEmployees, icon: UserCheck, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
-    { label: "Дундаж / хэлтэс", value: avgPerDept, icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+    {
+      label: "Нийт хэлтэс",
+      value: departments.length,
+      icon: Building2,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10 border-blue-500/20",
+    },
+    {
+      label: "Нийт ажилтан",
+      value: totalEmployees,
+      icon: Users,
+      color: "text-violet-400",
+      bg: "bg-violet-500/10 border-violet-500/20",
+    },
+    {
+      label: "Идэвхтэй",
+      value: activeEmployees,
+      icon: UserCheck,
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10 border-emerald-500/20",
+    },
+    {
+      label: "Дундаж / хэлтэс",
+      value: avgPerDept,
+      icon: TrendingUp,
+      color: "text-amber-400",
+      bg: "bg-amber-500/10 border-amber-500/20",
+    },
   ];
 
   if (authLoading || isLoading) {
@@ -229,7 +371,6 @@ export default function AdminDepartmentsPage() {
       <AdminPageHeader title="Хэлтсүүд" />
 
       <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
-
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {stats.map((s, i) => (
@@ -286,8 +427,10 @@ export default function AdminDepartmentsPage() {
               {filteredDepts.map((dept, index) => {
                 const palette = getDeptStyle(index);
                 const userCount = dept.users?.length || 0;
-                const activeCount = dept.users?.filter((u) => u.isActive !== false).length || 0;
-                const pct = totalEmployees > 0 ? (userCount / totalEmployees) * 100 : 0;
+                const activeCount =
+                  dept.users?.filter((u) => u.isActive !== false).length || 0;
+                const pct =
+                  totalEmployees > 0 ? (userCount / totalEmployees) * 100 : 0;
 
                 return (
                   <motion.div
@@ -301,13 +444,17 @@ export default function AdminDepartmentsPage() {
                     onClick={() => handleViewDepartment(dept, index)}
                   >
                     {/* Top accent bar */}
-                    <div className={`absolute top-0 left-0 right-0 h-0.5 ${palette.bar} opacity-60`} />
+                    <div
+                      className={`absolute top-0 left-0 right-0 h-0.5 ${palette.bar} opacity-60`}
+                    />
 
                     <div className="p-4 space-y-4">
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${palette.icon}`}>
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${palette.icon}`}
+                          >
                             <DeptIcon index={index} className="w-4.5 h-4.5" />
                           </div>
                           <div className="min-w-0">
@@ -326,7 +473,10 @@ export default function AdminDepartmentsPage() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleEditDepartment(dept, index); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditDepartment(dept, index);
+                            }}
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"
                             title="Засах"
                           >
@@ -346,15 +496,25 @@ export default function AdminDepartmentsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="text-center">
-                            <p className={`text-lg font-bold leading-none ${palette.accent}`}>{userCount}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">ажилтан</p>
+                            <p
+                              className={`text-lg font-bold leading-none ${palette.accent}`}
+                            >
+                              {userCount}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              ажилтан
+                            </p>
                           </div>
                           {activeCount > 0 && (
                             <>
                               <div className="w-px h-6 bg-slate-800" />
                               <div className="text-center">
-                                <p className="text-lg font-bold text-emerald-400 leading-none">{activeCount}</p>
-                                <p className="text-[10px] text-slate-500 mt-0.5">идэвхтэй</p>
+                                <p className="text-lg font-bold text-emerald-400 leading-none">
+                                  {activeCount}
+                                </p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                  идэвхтэй
+                                </p>
                               </div>
                             </>
                           )}
@@ -367,15 +527,25 @@ export default function AdminDepartmentsPage() {
                       {/* Progress + chevron */}
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-600">Нийт ажилтны хувь</span>
-                          <span className={`text-[10px] font-semibold ${palette.accent}`}>{pct.toFixed(1)}%</span>
+                          <span className="text-[10px] text-slate-600">
+                            Нийт ажилтны хувь
+                          </span>
+                          <span
+                            className={`text-[10px] font-semibold ${palette.accent}`}
+                          >
+                            {pct.toFixed(1)}%
+                          </span>
                         </div>
                         <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
                           <motion.div
                             className={`h-full rounded-full ${palette.bar}`}
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
-                            transition={{ duration: 0.9, delay: 0.3 + index * 0.04, ease: "easeOut" }}
+                            transition={{
+                              duration: 0.9,
+                              delay: 0.3 + index * 0.04,
+                              ease: "easeOut",
+                            }}
                           />
                         </div>
                       </div>
@@ -383,9 +553,15 @@ export default function AdminDepartmentsPage() {
                       {/* Footer */}
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-[10px] text-slate-600">
-                          {dept.createdAt ? new Date(dept.createdAt).toLocaleDateString("mn-MN") : "—"}
+                          {dept.createdAt
+                            ? new Date(dept.createdAt).toLocaleDateString(
+                                "mn-MN",
+                              )
+                            : "—"}
                         </span>
-                        <span className={`flex items-center gap-0.5 text-[11px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity ${palette.accent}`}>
+                        <span
+                          className={`flex items-center gap-0.5 text-[11px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity ${palette.accent}`}
+                        >
                           Дэлгэрэнгүй <ChevronRight className="w-3 h-3" />
                         </span>
                       </div>
@@ -401,109 +577,158 @@ export default function AdminDepartmentsPage() {
       {/* View Sheet */}
       <Sheet open={isViewOpen} onOpenChange={setIsViewOpen}>
         <SheetContent className="sm:max-w-md bg-slate-950 border-slate-800 p-0 flex flex-col">
-          <SheetTitle className="sr-only">{selectedDepartment?.name ?? "Хэлтэс"}</SheetTitle>
-          {selectedDepartment && (() => {
-            const palette = getDeptStyle(selectedIndex);
-            const userCount = selectedDepartment.users?.length || 0;
-            const activeCount = selectedDepartment.users?.filter((u) => u.isActive !== false).length || 0;
-            return (
-              <>
-                {/* Sheet header */}
-                <div className={`relative border-b border-slate-800 px-5 py-5 overflow-hidden`}>
-                  <div className={`absolute inset-0 ${palette.bg} opacity-40`} />
-                  <div className={`absolute top-0 left-0 right-0 h-0.5 ${palette.bar}`} />
-                  <div className="relative flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${palette.icon}`}>
-                      <DeptIcon index={selectedIndex} className="w-6 h-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Хэлтэс</p>
-                      <p className="text-lg font-bold text-white leading-snug">{selectedDepartment.name}</p>
-                      {selectedDepartment.description && (
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{selectedDepartment.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="relative flex gap-4 mt-4 pt-4 border-t border-slate-800/60">
-                    <div className="text-center">
-                      <p className={`text-2xl font-bold leading-none ${palette.accent}`}>{userCount}</p>
-                      <p className="text-[10px] text-slate-500 mt-1">нийт ажилтан</p>
-                    </div>
-                    <div className="w-px bg-slate-800" />
-                    <div className="text-center">
-                      <p className="text-2xl font-bold leading-none text-emerald-400">{activeCount}</p>
-                      <p className="text-[10px] text-slate-500 mt-1">идэвхтэй</p>
-                    </div>
-                    <div className="w-px bg-slate-800" />
-                    <div className="text-center">
-                      <p className="text-2xl font-bold leading-none text-slate-400">{userCount - activeCount}</p>
-                      <p className="text-[10px] text-slate-500 mt-1">идэвхгүй</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Users */}
-                <ScrollArea className="flex-1">
-                  {selectedDepartment.users && selectedDepartment.users.length > 0 ? (
-                    <div className="py-2">
-                      <p className="px-5 py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
-                        Ажилтнууд
-                      </p>
-                      <div className="divide-y divide-slate-800/50">
-                        {selectedDepartment.users.map((u, i) => (
-                          <motion.div
-                            key={u.id}
-                            initial={{ opacity: 0, x: -8 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.04 }}
-                            className="flex items-center justify-between px-5 py-3 hover:bg-slate-900/50 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold border ${palette.icon} ${palette.border}`}>
-                                {u.name.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-white">{u.name}</p>
-                                {u.position && <p className="text-[11px] text-slate-500 mt-0.5">{u.position}</p>}
-                                <p className="text-[10px] text-slate-600">{u.email}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {u.isActive !== false ? (
-                                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                                  <BadgeCheck className="w-3 h-3" /> Идэвхтэй
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-semibold text-slate-500 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full">
-                                  Идэвхгүй
-                                </span>
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-20 gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-slate-600" />
-                      </div>
-                      <p className="text-slate-500 text-sm">Ажилтан бүртгэгдээгүй</p>
-                    </div>
-                  )}
-                </ScrollArea>
-
-                <div className="border-t border-slate-800 p-4">
-                  <button
-                    onClick={() => { setIsViewOpen(false); handleEditDepartment(selectedDepartment, selectedIndex); }}
-                    className={`w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${palette.icon} border ${palette.border} hover:brightness-110`}
+          <SheetTitle className="sr-only">
+            {selectedDepartment?.name ?? "Хэлтэс"}
+          </SheetTitle>
+          {selectedDepartment &&
+            (() => {
+              const palette = getDeptStyle(selectedIndex);
+              const userCount = selectedDepartment.users?.length || 0;
+              const activeCount =
+                selectedDepartment.users?.filter((u) => u.isActive !== false)
+                  .length || 0;
+              return (
+                <>
+                  {/* Sheet header */}
+                  <div
+                    className={`relative border-b border-slate-800 px-5 py-5 overflow-hidden`}
                   >
-                    <Pencil className="w-3.5 h-3.5" /> Хэлтэс засах
-                  </button>
-                </div>
-              </>
-            );
-          })()}
+                    <div
+                      className={`absolute inset-0 ${palette.bg} opacity-40`}
+                    />
+                    <div
+                      className={`absolute top-0 left-0 right-0 h-0.5 ${palette.bar}`}
+                    />
+                    <div className="relative flex items-start gap-4">
+                      <div
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${palette.icon}`}
+                      >
+                        <DeptIcon index={selectedIndex} className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">
+                          Хэлтэс
+                        </p>
+                        <p className="text-lg font-bold text-white leading-snug">
+                          {selectedDepartment.name}
+                        </p>
+                        {selectedDepartment.description && (
+                          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                            {selectedDepartment.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="relative flex gap-4 mt-4 pt-4 border-t border-slate-800/60">
+                      <div className="text-center">
+                        <p
+                          className={`text-2xl font-bold leading-none ${palette.accent}`}
+                        >
+                          {userCount}
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          нийт ажилтан
+                        </p>
+                      </div>
+                      <div className="w-px bg-slate-800" />
+                      <div className="text-center">
+                        <p className="text-2xl font-bold leading-none text-emerald-400">
+                          {activeCount}
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          идэвхтэй
+                        </p>
+                      </div>
+                      <div className="w-px bg-slate-800" />
+                      <div className="text-center">
+                        <p className="text-2xl font-bold leading-none text-slate-400">
+                          {userCount - activeCount}
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          идэвхгүй
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Users */}
+                  <ScrollArea className="flex-1">
+                    {selectedDepartment.users &&
+                    selectedDepartment.users.length > 0 ? (
+                      <div className="py-2">
+                        <p className="px-5 py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                          Ажилтнууд
+                        </p>
+                        <div className="divide-y divide-slate-800/50">
+                          {selectedDepartment.users.map((u, i) => (
+                            <motion.div
+                              key={u.id}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.04 }}
+                              className="flex items-center justify-between px-5 py-3 hover:bg-slate-900/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold border ${palette.icon} ${palette.border}`}
+                                >
+                                  {u.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-white">
+                                    {u.name}
+                                  </p>
+                                  {u.position && (
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                      {u.position}
+                                    </p>
+                                  )}
+                                  <p className="text-[10px] text-slate-600">
+                                    {u.email}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {u.isActive !== false ? (
+                                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                    <BadgeCheck className="w-3 h-3" /> Идэвхтэй
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full">
+                                    Идэвхгүй
+                                  </span>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-20 gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center">
+                          <Users className="w-5 h-5 text-slate-600" />
+                        </div>
+                        <p className="text-slate-500 text-sm">
+                          Ажилтан бүртгэгдээгүй
+                        </p>
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  <div className="border-t border-slate-800 p-4">
+                    <button
+                      onClick={() => {
+                        setIsViewOpen(false);
+                        handleEditDepartment(selectedDepartment, selectedIndex);
+                      }}
+                      className={`w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${palette.icon} border ${palette.border} hover:brightness-110`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> Хэлтэс засах
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
         </SheetContent>
       </Sheet>
 
@@ -512,12 +737,18 @@ export default function AdminDepartmentsPage() {
         <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-1">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${getDeptStyle(selectedIndex).icon}`}>
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center ${getDeptStyle(selectedIndex).icon}`}
+              >
                 <DeptIcon index={selectedIndex} />
               </div>
               <div>
-                <DialogTitle className="text-white text-base">Хэлтэс засах</DialogTitle>
-                <DialogDescription className="text-slate-500 text-xs">Хэлтсийн мэдээллийг шинэчлэх</DialogDescription>
+                <DialogTitle className="text-white text-base">
+                  Хэлтэс засах
+                </DialogTitle>
+                <DialogDescription className="text-slate-500 text-xs">
+                  Хэлтсийн мэдээллийг шинэчлэх
+                </DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -526,7 +757,9 @@ export default function AdminDepartmentsPage() {
               <Label className="text-slate-400 text-xs">Хэлтсийн нэр</Label>
               <Input
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className="bg-slate-800 border-slate-700 text-white focus-visible:ring-blue-500/30"
               />
             </div>
@@ -534,7 +767,9 @@ export default function AdminDepartmentsPage() {
               <Label className="text-slate-400 text-xs">Тайлбар</Label>
               <Textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 rows={3}
                 placeholder="Хэлтсийн чиг үүрэг…"
                 className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 resize-none focus-visible:ring-blue-500/30"
@@ -542,11 +777,21 @@ export default function AdminDepartmentsPage() {
             </div>
           </div>
           <DialogFooter className="gap-2 mt-2">
-            <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="border border-slate-700 text-slate-300 hover:bg-slate-800">
+            <Button
+              variant="ghost"
+              onClick={() => setIsEditOpen(false)}
+              className="border border-slate-700 text-slate-300 hover:bg-slate-800"
+            >
               Цуцлах
             </Button>
-            <Button onClick={handleSaveEdit} disabled={isSaving} className="bg-white text-slate-950 hover:bg-slate-200 border-0">
-              {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+            <Button
+              onClick={handleSaveEdit}
+              disabled={isSaving}
+              className="bg-white text-slate-950 hover:bg-slate-200 border-0"
+            >
+              {isSaving && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              )}
               Хадгалах
             </Button>
           </DialogFooter>

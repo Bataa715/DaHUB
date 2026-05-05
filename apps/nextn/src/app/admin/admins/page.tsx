@@ -31,7 +31,6 @@ const ALL_TOOLS = [
   { id: "weekly_report_audit", name: "7 хоногийн тайлан (аудит хэлтэс)" },
   { id: "weekly_report_daa", name: "7 хоногийн тайлан (ДАА)" },
   { id: "weekly_report_director", name: "7 хоногийн тайлан (захирал)" },
-
 ];
 
 interface AdminUser {

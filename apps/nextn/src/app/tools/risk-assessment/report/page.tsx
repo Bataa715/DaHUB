@@ -30,7 +30,12 @@ function toScored(rows: RiskCurrentRow[]): ScoredRow[] {
     .filter((r) => r.rowType === "oracle")
     .map((r) => {
       const sr = computeScore(r.SUBID as any, r.RESULT, r.RESULT_TYPE);
-      return { ...r, __score: sr.score, __scoreLabel: sr.label, __group: getGroup(r.SUBID as any) };
+      return {
+        ...r,
+        __score: sr.score,
+        __scoreLabel: sr.label,
+        __group: getGroup(r.SUBID as any),
+      };
     });
 }
 
@@ -46,8 +51,12 @@ export default function RiskAssessmentReportPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
-  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
-  const [selectedHistoryRows, setSelectedHistoryRows] = useState<RiskCurrentRow[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
+    null,
+  );
+  const [selectedHistoryRows, setSelectedHistoryRows] = useState<
+    RiskCurrentRow[]
+  >([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -83,7 +92,9 @@ export default function RiskAssessmentReportPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const loadAll = useCallback(async () => {
@@ -115,47 +126,60 @@ export default function RiskAssessmentReportPage() {
       setSaveModalOpen(false);
       setSaveName("");
     } catch (e: any) {
-      setErrorMsg(e?.response?.data?.message ?? e.message ?? "Хадгалахад алдаа");
+      setErrorMsg(
+        e?.response?.data?.message ?? e.message ?? "Хадгалахад алдаа",
+      );
     } finally {
       setSaving(false);
     }
   }, [saveName]);
 
-  const selectHistory = useCallback(async (id: string) => {
-    if (id === selectedHistoryId) {
-      setSelectedHistoryId(null);
-      setSelectedHistoryRows([]);
-      setHistoryOpen(false);
-      return;
-    }
-    setLoadingHistory(true);
-    try {
-      const data = await riskApi.getHistory(id);
-      setSelectedHistoryId(id);
-      setSelectedHistoryRows(data.rows);
-      setHistoryOpen(false);
-    } catch (e: any) {
-      setErrorMsg(e?.response?.data?.message ?? e.message ?? "Алдаа");
-    } finally {
-      setLoadingHistory(false);
-    }
-  }, [selectedHistoryId]);
-
-  const deleteHistory = useCallback(async (id: string) => {
-    try {
-      await riskApi.deleteHistory(id);
-      setHistoryList((prev) => prev.filter((h) => h.id !== id));
-      if (selectedHistoryId === id) {
+  const selectHistory = useCallback(
+    async (id: string) => {
+      if (id === selectedHistoryId) {
         setSelectedHistoryId(null);
         setSelectedHistoryRows([]);
+        setHistoryOpen(false);
+        return;
       }
-    } catch (e: any) {
-      setErrorMsg(e?.response?.data?.message ?? e.message ?? "Устгахад алдаа");
-    }
-  }, [selectedHistoryId]);
+      setLoadingHistory(true);
+      try {
+        const data = await riskApi.getHistory(id);
+        setSelectedHistoryId(id);
+        setSelectedHistoryRows(data.rows);
+        setHistoryOpen(false);
+      } catch (e: any) {
+        setErrorMsg(e?.response?.data?.message ?? e.message ?? "Алдаа");
+      } finally {
+        setLoadingHistory(false);
+      }
+    },
+    [selectedHistoryId],
+  );
+
+  const deleteHistory = useCallback(
+    async (id: string) => {
+      try {
+        await riskApi.deleteHistory(id);
+        setHistoryList((prev) => prev.filter((h) => h.id !== id));
+        if (selectedHistoryId === id) {
+          setSelectedHistoryId(null);
+          setSelectedHistoryRows([]);
+        }
+      } catch (e: any) {
+        setErrorMsg(
+          e?.response?.data?.message ?? e.message ?? "Устгахад алдаа",
+        );
+      }
+    },
+    [selectedHistoryId],
+  );
 
   const scoredRows = useMemo(() => toScored(rows), [rows]);
-  const previousScoredRows = useMemo(() => toScored(selectedHistoryRows), [selectedHistoryRows]);
+  const previousScoredRows = useMemo(
+    () => toScored(selectedHistoryRows),
+    [selectedHistoryRows],
+  );
   const selectedEntry = historyList.find((h) => h.id === selectedHistoryId);
 
   return (
@@ -191,7 +215,9 @@ export default function RiskAssessmentReportPage() {
             </div>
             <span className="text-muted-foreground/40 text-xs">→</span>
             <div className="flex items-center gap-1.5">
-              <label className="text-[10px] text-muted-foreground">Дуусах</label>
+              <label className="text-[10px] text-muted-foreground">
+                Дуусах
+              </label>
               <input
                 type="date"
                 value={pDate}
@@ -205,7 +231,11 @@ export default function RiskAssessmentReportPage() {
               disabled={refreshing || !datesValid}
               className="group flex items-center gap-1.5 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold disabled:opacity-40 transition-all"
             >
-              {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />}
+              {refreshing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
+              )}
               {hasFetched ? "Дахин татах" : "Татах"}
             </button>
 
@@ -230,9 +260,13 @@ export default function RiskAssessmentReportPage() {
                     : "border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground"
                 }`}
               >
-                {loadingHistory && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {loadingHistory && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                )}
                 {selectedEntry ? selectedEntry.name : "Өмнөх улирал сонгох"}
-                <ChevronDown className={`w-3 h-3 transition-transform ${historyOpen ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform ${historyOpen ? "rotate-180" : ""}`}
+                />
               </button>
 
               {historyOpen && (
@@ -241,29 +275,51 @@ export default function RiskAssessmentReportPage() {
                   onMouseLeave={() => setHistoryOpen(false)}
                 >
                   <div className="px-3 py-2 border-b border-border bg-muted/30">
-                    <p className="text-[11px] font-semibold text-muted-foreground">Хадгалсан улирлын үнэлгээнүүд</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground">
+                      Хадгалсан улирлын үнэлгээнүүд
+                    </p>
                   </div>
                   {historyList.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-xs text-muted-foreground">Хадгалсан үнэлгээ байхгүй</div>
+                    <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                      Хадгалсан үнэлгээ байхгүй
+                    </div>
                   ) : (
                     <div className="max-h-60 overflow-y-auto">
                       {selectedHistoryId && (
                         <button
-                          onClick={() => { setSelectedHistoryId(null); setSelectedHistoryRows([]); setHistoryOpen(false); }}
+                          onClick={() => {
+                            setSelectedHistoryId(null);
+                            setSelectedHistoryRows([]);
+                            setHistoryOpen(false);
+                          }}
                           className="w-full px-3 py-2 text-left text-xs hover:bg-muted/40 text-muted-foreground flex items-center gap-2 border-b border-border/50"
                         >
                           Харьцуулалт болиулах
                         </button>
                       )}
                       {historyList.map((h) => (
-                        <div key={h.id} className="flex items-center hover:bg-muted/40 border-b border-border/30 last:border-0">
-                          <button onClick={() => selectHistory(h.id)} className="flex-1 px-3 py-2.5 text-left">
+                        <div
+                          key={h.id}
+                          className="flex items-center hover:bg-muted/40 border-b border-border/30 last:border-0"
+                        >
+                          <button
+                            onClick={() => selectHistory(h.id)}
+                            className="flex-1 px-3 py-2.5 text-left"
+                          >
                             <div className="flex items-center gap-2">
-                              {selectedHistoryId === h.id && <Check className="w-3 h-3 text-violet-500 flex-shrink-0" />}
+                              {selectedHistoryId === h.id && (
+                                <Check className="w-3 h-3 text-violet-500 flex-shrink-0" />
+                              )}
                               <div className="min-w-0">
-                                <div className="text-xs font-semibold truncate">{h.name}</div>
+                                <div className="text-xs font-semibold truncate">
+                                  {h.name}
+                                </div>
                                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                                  {h.pDateBeg} → {h.pDate} · {h.branchCount} салбар{h.createdByName ? ` · ${h.createdByName}` : ""}
+                                  {h.pDateBeg} → {h.pDate} · {h.branchCount}{" "}
+                                  салбар
+                                  {h.createdByName
+                                    ? ` · ${h.createdByName}`
+                                    : ""}
                                 </div>
                               </div>
                             </div>
@@ -301,7 +357,12 @@ export default function RiskAssessmentReportPage() {
               <div className="font-semibold text-sm text-red-600">Алдаа</div>
               <div className="text-xs mt-1 text-red-600/80">{errorMsg}</div>
             </div>
-            <button onClick={() => setErrorMsg(null)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+            <button
+              onClick={() => setErrorMsg(null)}
+              className="text-muted-foreground hover:text-foreground text-xs"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -317,7 +378,9 @@ export default function RiskAssessmentReportPage() {
             </div>
             <div className="text-sm font-semibold">Oracle өгөгдөл байхгүй</div>
             <div className="text-xs mt-1.5 text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Огноогоо сонгоод <span className="font-semibold text-blue-600">«Татах»</span> товчийг дарж Oracle-аас ачаалаарай.
+              Огноогоо сонгоод{" "}
+              <span className="font-semibold text-blue-600">«Татах»</span>{" "}
+              товчийг дарж Oracle-аас ачаалаарай.
             </div>
           </div>
         ) : (
@@ -346,8 +409,12 @@ export default function RiskAssessmentReportPage() {
                 <BookmarkPlus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">Өмнөх улирал болгон хадгалах</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{pDateBeg} → {pDate} · Oracle + гарын үзүүлэлтүүд</p>
+                <h3 className="text-sm font-semibold">
+                  Өмнөх улирал болгон хадгалах
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {pDateBeg} → {pDate} · Oracle + гарын үзүүлэлтүүд
+                </p>
               </div>
             </div>
             <input

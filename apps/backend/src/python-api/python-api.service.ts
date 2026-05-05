@@ -84,7 +84,9 @@ export class PythonApiService implements OnModuleInit {
         "JWT_SECRET (>=16 chars) is required — it is reused for python-api config encryption",
       );
     }
-    return createHash("sha256").update("py-tool-cfg:" + secret).digest();
+    return createHash("sha256")
+      .update("py-tool-cfg:" + secret)
+      .digest();
   })();
 
   private encryptConfig(plain: string): string {
@@ -97,9 +99,7 @@ export class PythonApiService implements OnModuleInit {
       return "enc:v1:" + Buffer.concat([iv, tag, ct]).toString("base64");
     } catch (e) {
       this.logger.error("connectionConfig encrypt failed", e);
-      throw new InternalServerErrorException(
-        "Тохиргоо шифрлэхэд алдаа гарлаа",
-      );
+      throw new InternalServerErrorException("Тохиргоо шифрлэхэд алдаа гарлаа");
     }
   }
 
@@ -116,7 +116,9 @@ export class PythonApiService implements OnModuleInit {
       const ct = buf.subarray(28);
       const decipher = createDecipheriv("aes-256-gcm", this.encKey, iv);
       decipher.setAuthTag(tag);
-      return Buffer.concat([decipher.update(ct), decipher.final()]).toString("utf8");
+      return Buffer.concat([decipher.update(ct), decipher.final()]).toString(
+        "utf8",
+      );
     } catch (e) {
       this.logger.warn(
         "connectionConfig decrypt failed — admin must re-save the tool config",
@@ -330,7 +332,12 @@ export class PythonApiService implements OnModuleInit {
   }
 
   async getAllPermissions(): Promise<
-    { userId: string; templateId: string; grantedBy: string; grantedAt: string }[]
+    {
+      userId: string;
+      templateId: string;
+      grantedBy: string;
+      grantedAt: string;
+    }[]
   > {
     return this.clickhouse.query<any>(
       `SELECT userId, templateId, grantedBy, grantedAt
@@ -437,7 +444,9 @@ export class PythonApiService implements OnModuleInit {
    * Tools not present in the list keep their current sortOrder. */
   async reorderTools(ids: string[]): Promise<void> {
     if (!Array.isArray(ids) || ids.length === 0) return;
-    const uniq = Array.from(new Set(ids.filter((s) => typeof s === "string" && s.length > 0)));
+    const uniq = Array.from(
+      new Set(ids.filter((s) => typeof s === "string" && s.length > 0)),
+    );
     const now = nowCH();
     const baseSeq = Date.now();
     const rows: any[] = [];
@@ -472,7 +481,11 @@ export class PythonApiService implements OnModuleInit {
 
   // ── FastAPI proxy helper ──────────────────────────────────────────────────
 
-  private callFastApi(path: string, body: object, signal?: AbortSignal): Promise<Buffer> {
+  private callFastApi(
+    path: string,
+    body: object,
+    signal?: AbortSignal,
+  ): Promise<Buffer> {
     const payload = Buffer.from(JSON.stringify(body), "utf-8");
     const url = new URL(path, this.pythonServiceUrl);
     const isHttps = url.protocol === "https:";
@@ -493,9 +506,7 @@ export class PythonApiService implements OnModuleInit {
           headers: {
             "Content-Type": "application/json",
             "Content-Length": payload.length,
-            ...(this.pythonApiKey
-              ? { "x-api-key": this.pythonApiKey }
-              : {}),
+            ...(this.pythonApiKey ? { "x-api-key": this.pythonApiKey } : {}),
           },
         },
         (res) => {
@@ -522,12 +533,20 @@ export class PythonApiService implements OnModuleInit {
       // Client disconnect/cancel → upstream socket-ийг таслана
       const onAbort = () => {
         req.destroy();
-        reject(Object.assign(new Error("Таталтыг зогсоолоо"), { code: "CLIENT_CANCELED" }));
+        reject(
+          Object.assign(new Error("Таталтыг зогсоолоо"), {
+            code: "CLIENT_CANCELED",
+          }),
+        );
       };
       if (signal) {
         if (signal.aborted) {
           req.destroy();
-          reject(Object.assign(new Error("Таталтыг зогсоолоо"), { code: "CLIENT_CANCELED" }));
+          reject(
+            Object.assign(new Error("Таталтыг зогсоолоо"), {
+              code: "CLIENT_CANCELED",
+            }),
+          );
           return;
         }
         signal.addEventListener("abort", onAbort, { once: true });
@@ -578,15 +597,19 @@ export class PythonApiService implements OnModuleInit {
       connectionConfig = undefined;
     }
 
-    const buffer = await this.callFastApi("/run-tool", {
-      code: tool.pythonCode,
-      connection_type: tool.connectionType ?? "clickhouse",
-      connection_config: connectionConfig,
-      start_date: dto.startDate ?? null,
-      end_date: dto.endDate ?? dto.startDate ?? null,
-      filters: dto.filters ?? {},
-      output_format: tool.outputFormat ?? "excel",
-    }, signal);
+    const buffer = await this.callFastApi(
+      "/run-tool",
+      {
+        code: tool.pythonCode,
+        connection_type: tool.connectionType ?? "clickhouse",
+        connection_config: connectionConfig,
+        start_date: dto.startDate ?? null,
+        end_date: dto.endDate ?? dto.startDate ?? null,
+        filters: dto.filters ?? {},
+        output_format: tool.outputFormat ?? "excel",
+      },
+      signal,
+    );
 
     const date = new Date().toISOString().slice(0, 10);
     const ext = tool.outputFormat === "csv" ? "csv" : "xlsx";
@@ -608,9 +631,7 @@ export class PythonApiService implements OnModuleInit {
     };
   }
 
-  async previewTool(
-    dto: RunToolDto,
-  ): Promise<{
+  async previewTool(dto: RunToolDto): Promise<{
     columns: string[];
     rows: any[][];
     totalCount: number;

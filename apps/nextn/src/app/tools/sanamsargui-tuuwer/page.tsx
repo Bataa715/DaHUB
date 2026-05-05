@@ -42,7 +42,9 @@ export default function SanamsarguiTuuwerPage() {
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="bg-card border border-border rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-xl">
             <Loader2 className="w-9 h-9 text-violet-500 animate-spin" />
-            <p className="text-foreground font-semibold text-base">Excel бэлтгэж байна...</p>
+            <p className="text-foreground font-semibold text-base">
+              Excel бэлтгэж байна...
+            </p>
             <p className="text-muted-foreground text-sm">Түр хүлээнэ үү</p>
           </div>
         </div>
@@ -80,8 +82,12 @@ export default function SanamsarguiTuuwerPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.entries(DESIGN_LABELS) as [DesignType, string][]).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    {(
+                      Object.entries(DESIGN_LABELS) as [DesignType, string][]
+                    ).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -90,7 +96,9 @@ export default function SanamsarguiTuuwerPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm">Итгэлийн түвшин</Label>
-                  <span className="text-violet-600 font-bold text-sm tabular-nums">{confLabel}</span>
+                  <span className="text-violet-600 font-bold text-sm tabular-nums">
+                    {confLabel}
+                  </span>
                 </div>
                 <Slider
                   value={[s.confidence]}
@@ -100,30 +108,51 @@ export default function SanamsarguiTuuwerPage() {
                   step={0.01}
                 />
                 <div className="flex justify-between text-xs text-muted-foreground px-0.5">
-                  <span>80%</span><span>85%</span><span>90%</span><span>95%</span><span>99%</span>
+                  <span>80%</span>
+                  <span>85%</span>
+                  <span>90%</span>
+                  <span>95%</span>
+                  <span>99%</span>
                 </div>
               </div>
             </div>
 
             {/* Margin + StdDev + Filename */}
-            <div className={`grid grid-cols-1 gap-4 ${!s.isStratified ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+            <div
+              className={`grid grid-cols-1 gap-4 ${!s.isStratified ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+            >
               <div className="space-y-1.5">
                 <Label className="text-sm">Алдааны марж (%)</Label>
                 <div className="flex">
                   <button
-                    onClick={() => s.setMargin((m) => Math.max(0.1, parseFloat((m - 0.5).toFixed(2))))}
+                    onClick={() =>
+                      s.setMargin((m) =>
+                        Math.max(0.1, parseFloat((m - 0.5).toFixed(2))),
+                      )
+                    }
                     className="px-3 py-2 rounded-l-md border border-r-0 border-border bg-muted hover:bg-muted/80 text-foreground text-sm transition-colors"
-                  >−</button>
+                  >
+                    −
+                  </button>
                   <Input
-                    type="number" min={0.1} max={20} step={0.5}
+                    type="number"
+                    min={0.1}
+                    max={20}
+                    step={0.5}
                     value={s.margin}
-                    onChange={(e) => s.setMargin(parseFloat(e.target.value) || 5)}
+                    onChange={(e) =>
+                      s.setMargin(parseFloat(e.target.value) || 5)
+                    }
                     className="text-center rounded-none border-x-0 z-10"
                   />
                   <button
-                    onClick={() => s.setMargin((m) => parseFloat((m + 0.5).toFixed(2)))}
+                    onClick={() =>
+                      s.setMargin((m) => parseFloat((m + 0.5).toFixed(2)))
+                    }
                     className="px-3 py-2 rounded-r-md border border-l-0 border-border bg-muted hover:bg-muted/80 text-foreground text-sm transition-colors"
-                  >+</button>
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
@@ -132,19 +161,34 @@ export default function SanamsarguiTuuwerPage() {
                   <Label className="text-sm">Стандарт хазайлт (σ)</Label>
                   <div className="flex">
                     <button
-                      onClick={() => s.setStdDev((d) => Math.max(0.01, parseFloat((d - 0.05).toFixed(3))))}
+                      onClick={() =>
+                        s.setStdDev((d) =>
+                          Math.max(0.01, parseFloat((d - 0.05).toFixed(3))),
+                        )
+                      }
                       className="px-3 py-2 rounded-l-md border border-r-0 border-border bg-muted hover:bg-muted/80 text-foreground text-sm transition-colors"
-                    >−</button>
+                    >
+                      −
+                    </button>
                     <Input
-                      type="number" min={0.01} max={1} step={0.05}
+                      type="number"
+                      min={0.01}
+                      max={1}
+                      step={0.05}
                       value={s.stdDev}
-                      onChange={(e) => s.setStdDev(parseFloat(e.target.value) || 0.5)}
+                      onChange={(e) =>
+                        s.setStdDev(parseFloat(e.target.value) || 0.5)
+                      }
                       className="text-center rounded-none border-x-0 z-10"
                     />
                     <button
-                      onClick={() => s.setStdDev((d) => parseFloat((d + 0.05).toFixed(3)))}
+                      onClick={() =>
+                        s.setStdDev((d) => parseFloat((d + 0.05).toFixed(3)))
+                      }
                       className="px-3 py-2 rounded-r-md border border-l-0 border-border bg-muted hover:bg-muted/80 text-foreground text-sm transition-colors"
-                    >+</button>
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               )}
@@ -173,7 +217,10 @@ export default function SanamsarguiTuuwerPage() {
               <div className="space-y-3">
                 <Label className="text-sm">Excel файл оруулах</Label>
                 <div
-                  onDragOver={(e) => { e.preventDefault(); s.setIsDragging(true); }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    s.setIsDragging(true);
+                  }}
                   onDragLeave={() => s.setIsDragging(false)}
                   onDrop={s.handleDrop}
                   onClick={() => s.fileInputRef.current?.click()}
@@ -187,25 +234,39 @@ export default function SanamsarguiTuuwerPage() {
                 >
                   <input
                     ref={s.fileInputRef}
-                    type="file" accept=".xlsx,.xls"
+                    type="file"
+                    accept=".xlsx,.xls"
                     className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) s.processFile(f); }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) s.processFile(f);
+                    }}
                   />
                   {s.fileName ? (
                     <div className="flex items-center justify-center gap-2">
                       <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
-                      <span className="text-emerald-600 font-medium text-sm">{s.fileName}</span>
-                      <span className="text-muted-foreground text-sm">({s.fileData?.length} мөр)</span>
+                      <span className="text-emerald-600 font-medium text-sm">
+                        {s.fileName}
+                      </span>
+                      <span className="text-muted-foreground text-sm">
+                        ({s.fileData?.length} мөр)
+                      </span>
                     </div>
                   ) : (
                     <>
                       <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-1.5" />
-                      <p className="text-sm font-medium text-foreground">Файл чирж оруулах буюу дарж сонгох</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">XLSX, XLS</p>
+                      <p className="text-sm font-medium text-foreground">
+                        Файл чирж оруулах буюу дарж сонгох
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        XLSX, XLS
+                      </p>
                     </>
                   )}
                 </div>
-                {s.fileError && <p className="text-destructive text-sm">{s.fileError}</p>}
+                {s.fileError && (
+                  <p className="text-destructive text-sm">{s.fileError}</p>
+                )}
 
                 {/* Column filter */}
                 {s.fileData && s.fileHeaders.length > 0 && (
@@ -225,7 +286,9 @@ export default function SanamsarguiTuuwerPage() {
                         className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
                       />
                       <span className="text-sm font-medium">Баганаар шүүх</span>
-                      <span className="text-xs text-muted-foreground">— жишээ: SOL баганаас 100/101/102</span>
+                      <span className="text-xs text-muted-foreground">
+                        — жишээ: SOL баганаас 100/101/102
+                      </span>
                     </label>
 
                     {s.useColumnFilter && (
@@ -233,7 +296,9 @@ export default function SanamsarguiTuuwerPage() {
                         <div className="space-y-1.5">
                           <Label className="text-sm">
                             Шүүх багана
-                            <span className="ml-1 text-xs text-muted-foreground font-normal">(дурын багана)</span>
+                            <span className="ml-1 text-xs text-muted-foreground font-normal">
+                              (дурын багана)
+                            </span>
                           </Label>
                           <Select
                             value={s.filterCol || "__none__"}
@@ -249,9 +314,16 @@ export default function SanamsarguiTuuwerPage() {
                               <SelectValue placeholder="— Багана сонгоно —" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__none__" className="text-muted-foreground">— Багана сонгоно —</SelectItem>
+                              <SelectItem
+                                value="__none__"
+                                className="text-muted-foreground"
+                              >
+                                — Багана сонгоно —
+                              </SelectItem>
                               {s.fileHeaders.map((h, hi) => (
-                                <SelectItem key={`${h}-${hi}`} value={h}>{h}</SelectItem>
+                                <SelectItem key={`${h}-${hi}`} value={h}>
+                                  {h}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -261,61 +333,94 @@ export default function SanamsarguiTuuwerPage() {
                           <div className="space-y-2">
                             <Label className="text-sm">
                               Утгын шүүлтүүр
-                              <span className="ml-1 text-xs text-muted-foreground font-normal">({s.availableFilterValues.length} утга)</span>
+                              <span className="ml-1 text-xs text-muted-foreground font-normal">
+                                ({s.availableFilterValues.length} утга)
+                              </span>
                             </Label>
                             <div className="relative">
                               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                               <input
                                 type="text"
                                 value={filterSearch}
-                                onChange={(e) => { setFilterSearch(e.target.value); setFilterExpanded(true); }}
+                                onChange={(e) => {
+                                  setFilterSearch(e.target.value);
+                                  setFilterExpanded(true);
+                                }}
                                 placeholder="Утга хайх..."
                                 className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-400"
                               />
                             </div>
                             {(() => {
                               const filtered = filterSearch
-                                ? s.availableFilterValues.filter((v) => v.toLowerCase().includes(filterSearch.toLowerCase()))
+                                ? s.availableFilterValues.filter((v) =>
+                                    v
+                                      .toLowerCase()
+                                      .includes(filterSearch.toLowerCase()),
+                                  )
                                 : s.availableFilterValues;
                               const LIMIT = 10;
                               const showAll = filterExpanded || filterSearch;
-                              const visible = showAll ? filtered : filtered.slice(0, LIMIT);
+                              const visible = showAll
+                                ? filtered
+                                : filtered.slice(0, LIMIT);
                               const hiddenCount = filtered.length - LIMIT;
                               return (
                                 <>
                                   <div className="flex flex-wrap gap-1.5">
                                     <button
-                                      onClick={() => { s.setSelectedFilterValue("all"); setFilterSearch(""); }}
+                                      onClick={() => {
+                                        s.setSelectedFilterValue("all");
+                                        setFilterSearch("");
+                                      }}
                                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                         s.selectedFilterValue === "all"
                                           ? "bg-violet-500 border-violet-500 text-white"
                                           : "border-border bg-background text-foreground hover:border-violet-400"
                                       }`}
-                                    >Бүх утга</button>
+                                    >
+                                      Бүх утга
+                                    </button>
                                     {visible.map((v) => (
                                       <button
                                         key={v}
-                                        onClick={() => s.setSelectedFilterValue(v)}
+                                        onClick={() =>
+                                          s.setSelectedFilterValue(v)
+                                        }
                                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                           s.selectedFilterValue === v
                                             ? "bg-violet-500 border-violet-500 text-white"
                                             : "border-border bg-background text-foreground hover:border-violet-400"
                                         }`}
-                                      >{v}</button>
+                                      >
+                                        {v}
+                                      </button>
                                     ))}
                                   </div>
                                   {!filterSearch && filtered.length > LIMIT && (
                                     <button
-                                      onClick={() => setFilterExpanded((p) => !p)}
+                                      onClick={() =>
+                                        setFilterExpanded((p) => !p)
+                                      }
                                       className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-500 transition-colors mt-0.5"
                                     >
-                                      {filterExpanded
-                                        ? <><ChevronUp className="w-3 h-3" /> Хураах</>
-                                        : <><ChevronDown className="w-3 h-3" /> Бүгдийг харах (+{hiddenCount})</>}
+                                      {filterExpanded ? (
+                                        <>
+                                          <ChevronUp className="w-3 h-3" />{" "}
+                                          Хураах
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="w-3 h-3" />{" "}
+                                          Бүгдийг харах (+{hiddenCount})
+                                        </>
+                                      )}
                                     </button>
                                   )}
                                   {filterSearch && filtered.length === 0 && (
-                                    <p className="text-xs text-muted-foreground">&ldquo;{filterSearch}&rdquo; илэрц олдсонгүй</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      &ldquo;{filterSearch}&rdquo; илэрц
+                                      олдсонгүй
+                                    </p>
                                   )}
                                 </>
                               );
@@ -325,21 +430,27 @@ export default function SanamsarguiTuuwerPage() {
                               <input
                                 type="checkbox"
                                 checked={s.coverAllValues}
-                                onChange={(e) => s.setCoverAllValues(e.target.checked)}
+                                onChange={(e) =>
+                                  s.setCoverAllValues(e.target.checked)
+                                }
                                 disabled={s.selectedFilterValue !== "all"}
                                 className="w-3.5 h-3.5 rounded accent-violet-500 cursor-pointer disabled:opacity-50"
                               />
                               Бүх утгыг заавал хамруулах
                             </label>
                             <p className="text-xs text-muted-foreground">
-                              Жишээ: <strong>SOL</strong> баганад 100, 101, 102 бол эдгээрийн аль аль нь дор хаяж 1 удаа орно.
+                              Жишээ: <strong>SOL</strong> баганад 100, 101, 102
+                              бол эдгээрийн аль аль нь дор хаяж 1 удаа орно.
                             </p>
                           </div>
                         )}
 
-                        {s.filterCol && s.availableFilterValues.length === 0 && (
-                          <p className="text-xs text-amber-500">⚠️ Сонгосон баганад илэрц олдсонгүй.</p>
-                        )}
+                        {s.filterCol &&
+                          s.availableFilterValues.length === 0 && (
+                            <p className="text-xs text-amber-500">
+                              ⚠️ Сонгосон баганад илэрц олдсонгүй.
+                            </p>
+                          )}
                       </>
                     )}
                   </div>
@@ -348,9 +459,15 @@ export default function SanamsarguiTuuwerPage() {
                 {s.computedN !== null && (
                   <div className="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-4 py-2.5 text-sm">
                     <span className="text-muted-foreground">
-                      Тооцоологдсон түүврийн хэмжээ ({!s.useColumnFilter || s.selectedFilterValue === "all" ? "Бүх өгөгдөл" : `${s.filterCol}=${s.selectedFilterValue}`}):
+                      Тооцоологдсон түүврийн хэмжээ (
+                      {!s.useColumnFilter || s.selectedFilterValue === "all"
+                        ? "Бүх өгөгдөл"
+                        : `${s.filterCol}=${s.selectedFilterValue}`}
+                      ):
                     </span>
-                    <strong className="text-violet-600 text-base">{s.computedN}</strong>
+                    <strong className="text-violet-600 text-base">
+                      {s.computedN}
+                    </strong>
                   </div>
                 )}
               </div>
@@ -363,35 +480,52 @@ export default function SanamsarguiTuuwerPage() {
                   <div className="space-y-1.5">
                     <Label className="text-sm">Эх олонлогийн тоо (N)</Label>
                     <Input
-                      type="number" min={30}
+                      type="number"
+                      min={30}
                       value={s.totalVars}
-                      onChange={(e) => { s.setTotalVars(parseInt(e.target.value) || 100); s.setResult(null); }}
+                      onChange={(e) => {
+                        s.setTotalVars(parseInt(e.target.value) || 100);
+                        s.setResult(null);
+                      }}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-sm">Бүлгийн тоо (≥2)</Label>
                     <Input
-                      type="number" min={2}
+                      type="number"
+                      min={2}
                       value={s.numGroups}
-                      onChange={(e) => { s.handleNumGroupsChange(parseInt(e.target.value) || 2); s.setResult(null); }}
+                      onChange={(e) => {
+                        s.handleNumGroupsChange(parseInt(e.target.value) || 2);
+                        s.setResult(null);
+                      }}
                     />
                   </div>
                 </div>
                 {s.computedN !== null && (
                   <div className="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-4 py-2.5 text-sm">
-                    <span className="text-muted-foreground">Тооцоологдсон түүврийн хэмжээ:</span>
-                    <strong className="text-violet-600 text-base">{s.computedN}</strong>
+                    <span className="text-muted-foreground">
+                      Тооцоологдсон түүврийн хэмжээ:
+                    </span>
+                    <strong className="text-violet-600 text-base">
+                      {s.computedN}
+                    </strong>
                   </div>
                 )}
                 {s.design === "prop" && (
                   <div>
-                    <Label className="text-sm mb-2 block">Бүлэг тус бүрийн хувьсагчийн тоо:</Label>
+                    <Label className="text-sm mb-2 block">
+                      Бүлэг тус бүрийн хувьсагчийн тоо:
+                    </Label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {s.groupSizes.map((sz, i) => (
                         <div key={i} className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Бүлэг {i + 1}:</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            Бүлэг {i + 1}:
+                          </Label>
                           <Input
-                            type="number" min={1}
+                            type="number"
+                            min={1}
                             value={sz}
                             onChange={(e) => {
                               const next = [...s.groupSizes];
@@ -422,106 +556,152 @@ export default function SanamsarguiTuuwerPage() {
         </Card>
 
         {/* Results */}
-        {s.result && (() => {
-          const result = s.result!;
-          return (
-            <Card className="border border-emerald-200 dark:border-emerald-800 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    Түүвэр амжилттай
-                  </CardTitle>
-                  <Button
-                    onClick={s.handleExport}
-                    size="sm"
-                    variant="outline"
-                    className="border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
-                  >
-                    <Download className="w-4 h-4 mr-1.5" />
-                    Excel татах
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {s.exportError && (
-                  <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {s.exportError}
+        {s.result &&
+          (() => {
+            const result = s.result!;
+            return (
+              <Card className="border border-emerald-200 dark:border-emerald-800 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      Түүвэр амжилттай
+                    </CardTitle>
+                    <Button
+                      onClick={s.handleExport}
+                      size="sm"
+                      variant="outline"
+                      className="border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                    >
+                      <Download className="w-4 h-4 mr-1.5" />
+                      Excel татах
+                    </Button>
                   </div>
-                )}
+                </CardHeader>
+                <CardContent>
+                  {s.exportError && (
+                    <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {s.exportError}
+                    </div>
+                  )}
 
-                {/* Stats row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                  <div className="rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/20 p-3 text-center">
-                    <div className="text-3xl font-bold text-violet-600">{result.n}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Түүврийн хэмжээ (n)</div>
+                  {/* Stats row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                    <div className="rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/20 p-3 text-center">
+                      <div className="text-3xl font-bold text-violet-600">
+                        {result.n}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Түүврийн хэмжээ (n)
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                      <div className="text-2xl font-bold text-foreground">
+                        {result.N}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Хүн ам (N)
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                      <div className="text-2xl font-bold text-foreground">
+                        {result.Z}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Z утга
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                      <div className="text-2xl font-bold text-foreground">
+                        {(result.confidence * 100).toFixed(0)}%
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Итгэлийн түвшин
+                      </div>
+                    </div>
                   </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-                    <div className="text-2xl font-bold text-foreground">{result.N}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Хүн ам (N)</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-                    <div className="text-2xl font-bold text-foreground">{result.Z}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Z утга</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-                    <div className="text-2xl font-bold text-foreground">{(result.confidence * 100).toFixed(0)}%</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Итгэлийн түвшин</div>
-                  </div>
-                </div>
 
-                {/* Group tables */}
-                {result.groups.map((g, gi) => (
-                  <div key={gi} className={gi > 0 ? "mt-5" : ""}>
-                    <p className="text-sm font-medium text-foreground mb-2">
-                      {result.groups.length > 1 ? g.label : "Түүврийн үр дүн"}
-                      {g.size !== undefined ? ` (бүлгийн хэмжээ: ${g.size})` : ""}
-                      {" — "}
-                      <span className="text-muted-foreground">{g.indices.length} мөр сонгогдлоо{g.indices.length > 50 && " (эхний 50)"}</span>
-                    </p>
-                    <div className="overflow-x-auto rounded-lg border border-border">
-                      <table className="text-xs min-w-full">
-                        <thead>
-                          <tr className="bg-muted/60">
-                            <th className="px-3 py-2 text-muted-foreground text-center whitespace-nowrap border-r border-border font-medium">Мөр №</th>
-                            {s.isStratified ? (
-                              <th className="px-3 py-2 text-muted-foreground text-left border-r border-border/50 font-medium">Санамсаргүй хувьсагч</th>
-                            ) : (
-                              result.headers.map((h, hi) => (
-                                <th key={hi} className="px-3 py-2 text-muted-foreground text-left whitespace-nowrap border-r border-border/50 font-medium">{h}</th>
-                              ))
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {g.indices.slice(0, 50).map((idx, i) => (
-                            <tr key={i} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                              <td className="px-3 py-1.5 text-violet-600 font-mono font-bold text-center border-r border-border">{idx}</td>
+                  {/* Group tables */}
+                  {result.groups.map((g, gi) => (
+                    <div key={gi} className={gi > 0 ? "mt-5" : ""}>
+                      <p className="text-sm font-medium text-foreground mb-2">
+                        {result.groups.length > 1 ? g.label : "Түүврийн үр дүн"}
+                        {g.size !== undefined
+                          ? ` (бүлгийн хэмжээ: ${g.size})`
+                          : ""}
+                        {" — "}
+                        <span className="text-muted-foreground">
+                          {g.indices.length} мөр сонгогдлоо
+                          {g.indices.length > 50 && " (эхний 50)"}
+                        </span>
+                      </p>
+                      <div className="overflow-x-auto rounded-lg border border-border">
+                        <table className="text-xs min-w-full">
+                          <thead>
+                            <tr className="bg-muted/60">
+                              <th className="px-3 py-2 text-muted-foreground text-center whitespace-nowrap border-r border-border font-medium">
+                                Мөр №
+                              </th>
                               {s.isStratified ? (
-                                <td className="px-3 py-1.5 text-foreground font-mono border-r border-border/30">{idx}</td>
+                                <th className="px-3 py-2 text-muted-foreground text-left border-r border-border/50 font-medium">
+                                  Санамсаргүй хувьсагч
+                                </th>
                               ) : (
-                                (g.rows[i] ?? []).map((cell, ci) => (
-                                  <td key={ci} className="px-3 py-1.5 text-foreground whitespace-nowrap border-r border-border/30">
-                                    {cell instanceof Date ? cell.toLocaleDateString("mn-MN") : String(cell ?? "")}
-                                  </td>
+                                result.headers.map((h, hi) => (
+                                  <th
+                                    key={hi}
+                                    className="px-3 py-2 text-muted-foreground text-left whitespace-nowrap border-r border-border/50 font-medium"
+                                  >
+                                    {h}
+                                  </th>
                                 ))
                               )}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {g.indices.slice(0, 50).map((idx, i) => (
+                              <tr
+                                key={i}
+                                className={
+                                  i % 2 === 0 ? "bg-background" : "bg-muted/20"
+                                }
+                              >
+                                <td className="px-3 py-1.5 text-violet-600 font-mono font-bold text-center border-r border-border">
+                                  {idx}
+                                </td>
+                                {s.isStratified ? (
+                                  <td className="px-3 py-1.5 text-foreground font-mono border-r border-border/30">
+                                    {idx}
+                                  </td>
+                                ) : (
+                                  (g.rows[i] ?? []).map((cell, ci) => (
+                                    <td
+                                      key={ci}
+                                      className="px-3 py-1.5 text-foreground whitespace-nowrap border-r border-border/30"
+                                    >
+                                      {cell instanceof Date
+                                        ? cell.toLocaleDateString("mn-MN")
+                                        : String(cell ?? "")}
+                                    </td>
+                                  ))
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {g.indices.length > 50 && (
+                        <p className="text-muted-foreground text-xs mt-1.5 text-center">
+                          Бүгдийг Excel-д татаж харна уу ({g.indices.length} мөр
+                          нийт)
+                        </p>
+                      )}
                     </div>
-                    {g.indices.length > 50 && (
-                      <p className="text-muted-foreground text-xs mt-1.5 text-center">
-                        Бүгдийг Excel-д татаж харна уу ({g.indices.length} мөр нийт)
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          );
-        })()}
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
         {/* Тайлбар */}
         <Card className="border border-border shadow-sm">
@@ -530,23 +710,37 @@ export default function SanamsarguiTuuwerPage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-3">
             <p>
-              <strong className="text-foreground">Стандарт хазайлт</strong> нь өгөгдлийн хэлбэлзэлийг
-              илэрхийлнэ. Хэрэв мэдэхгүй бол <strong className="text-foreground">0.5</strong> гэж ашиглана.
+              <strong className="text-foreground">Стандарт хазайлт</strong> нь
+              өгөгдлийн хэлбэлзэлийг илэрхийлнэ. Хэрэв мэдэхгүй бол{" "}
+              <strong className="text-foreground">0.5</strong> гэж ашиглана.
             </p>
             <div className="rounded-lg border border-border bg-muted/30 p-4 text-center font-mono text-base text-foreground">
               σ = √( Σ(x<sub>i</sub> − μ)² / N )
             </div>
             <ul className="space-y-1 text-xs">
-              <li><strong className="text-foreground">σ</strong> — стандарт хазайлт</li>
-              <li><strong className="text-foreground">x_i</strong> — олонлогийн утга</li>
-              <li><strong className="text-foreground">μ</strong> — дундаж утга</li>
-              <li><strong className="text-foreground">N</strong> — эх олонлогийн хэмжээ</li>
+              <li>
+                <strong className="text-foreground">σ</strong> — стандарт
+                хазайлт
+              </li>
+              <li>
+                <strong className="text-foreground">x_i</strong> — олонлогийн
+                утга
+              </li>
+              <li>
+                <strong className="text-foreground">μ</strong> — дундаж утга
+              </li>
+              <li>
+                <strong className="text-foreground">N</strong> — эх олонлогийн
+                хэмжээ
+              </li>
             </ul>
             <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20 px-3 py-2.5 text-sm text-red-700 dark:text-red-400">
-              <strong>Алдааны марж</strong> бага байх тусам түүвэр эх олонлогоос илүү сайн төлөөлнө.
+              <strong>Алдааны марж</strong> бага байх тусам түүвэр эх олонлогоос
+              илүү сайн төлөөлнө.
             </div>
             <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
-              <strong>Санамж:</strong> Аудитын ажилд ихэвчлэн 95%-ийн итгэлцлийн түвшин, 5%-иас ихгүй алдааны маржийг ашигладаг.
+              <strong>Санамж:</strong> Аудитын ажилд ихэвчлэн 95%-ийн итгэлцлийн
+              түвшин, 5%-иас ихгүй алдааны маржийг ашигладаг.
             </div>
           </CardContent>
         </Card>

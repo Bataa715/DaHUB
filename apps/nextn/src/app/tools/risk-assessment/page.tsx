@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
-import { ShieldAlert, ClipboardList, Table as TableIcon, ChevronRight } from "lucide-react";
+import {
+  ShieldAlert,
+  ClipboardList,
+  Table as TableIcon,
+  ChevronRight,
+} from "lucide-react";
 
 export default function RiskAssessmentPage() {
   const router = useRouter();
@@ -29,9 +34,12 @@ export default function RiskAssessmentPage() {
               <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-rose-500 group-hover:translate-x-0.5 transition-all" />
             </div>
             <div>
-              <div className="text-base font-semibold text-foreground mb-1">Эрсдэлийн үнэлгээ</div>
+              <div className="text-base font-semibold text-foreground mb-1">
+                Эрсдэлийн үнэлгээ
+              </div>
               <div className="text-xs text-muted-foreground leading-relaxed">
-                Салбаруудын нэгдсэн эрсдэлийн оноо, гарын үнэлэмж, хүснэгтэн харагдац, тайлангийн хадгалалт
+                Салбаруудын нэгдсэн эрсдэлийн оноо, гарын үнэлэмж, хүснэгтэн
+                харагдац, тайлангийн хадгалалт
               </div>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
@@ -51,9 +59,12 @@ export default function RiskAssessmentPage() {
               <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
             </div>
             <div>
-              <div className="text-base font-semibold text-foreground mb-1">Үнэлгээний дэлгэрэнгүй</div>
+              <div className="text-base font-semibold text-foreground mb-1">
+                Үнэлгээний дэлгэрэнгүй
+              </div>
               <div className="text-xs text-muted-foreground leading-relaxed">
-                Oracle-аас татсан бүх үзүүлэлтийн мөрүүд, Score бүлгийн шүүлтүүр, хайлт, CSV экспорт
+                Oracle-аас татсан бүх үзүүлэлтийн мөрүүд, Score бүлгийн
+                шүүлтүүр, хайлт, CSV экспорт
               </div>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
@@ -61,8 +72,6 @@ export default function RiskAssessmentPage() {
             </span>
           </button>
         </div>
-
-
       </div>
     </div>
   );

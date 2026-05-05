@@ -129,7 +129,9 @@ function getIsoWeek(date: Date): { year: number; week: number } {
   const day = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - day);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  const week = Math.ceil(
+    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
   return { year: d.getUTCFullYear(), week };
 }
 
@@ -253,13 +255,21 @@ function Cell({
       onChange={(e) => onChange?.(e.target.value)}
       min={type === "number" ? 0 : undefined}
       className={`w-full px-2 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-foreground/20 focus:border-foreground/30 read-only:bg-muted/20 transition-colors${
-        type === "number" ? " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" : ""
+        type === "number"
+          ? " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          : ""
       }`}
     />
   );
 }
 
-function AddRowButton({ onClick, label }: { onClick: () => void; label: string }) {
+function AddRowButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
   return (
     <button
       onClick={onClick}
@@ -295,11 +305,12 @@ function OtherInfoForm({
   const upd = (k: keyof Omit<OtherInfo, "other">, v: string) =>
     onChange?.({ ...data, [k]: v });
 
-  const numberFields: { key: keyof Omit<OtherInfo, "other">; label: string }[] = [
-    { key: "approvedHeadcount", label: "Батлагдсан орон тоо" },
-    { key: "working", label: "Ажиллаж байгаа" },
-    { key: "onLeave", label: "Ээлжийн амралттай" },
-  ];
+  const numberFields: { key: keyof Omit<OtherInfo, "other">; label: string }[] =
+    [
+      { key: "approvedHeadcount", label: "Батлагдсан орон тоо" },
+      { key: "working", label: "Ажиллаж байгаа" },
+      { key: "onLeave", label: "Ээлжийн амралттай" },
+    ];
 
   const textFields: { key: keyof Omit<OtherInfo, "other">; label: string }[] = [
     { key: "currentInfo", label: "Цаг үеийн мэдээ" },
@@ -307,7 +318,9 @@ function OtherInfoForm({
     { key: "recruiting", label: "Сонгон шалгаруулалт" },
   ];
 
-  const extraRows: OtherExtraRow[] = Array.isArray(data.other) ? data.other : [];
+  const extraRows: OtherExtraRow[] = Array.isArray(data.other)
+    ? data.other
+    : [];
 
   const addRow = () =>
     onChange?.({
@@ -328,7 +341,9 @@ function OtherInfoForm({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {numberFields.map((f) => (
           <div key={f.key}>
-            <label className="text-xs text-muted-foreground mb-1 block">{f.label}</label>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              {f.label}
+            </label>
             <Cell
               value={data[f.key] as string}
               onChange={(v) => upd(f.key, v)}
@@ -344,7 +359,9 @@ function OtherInfoForm({
       <div className="space-y-3">
         {textFields.map((f) => (
           <div key={f.key}>
-            <label className="text-xs text-muted-foreground mb-1 block">{f.label}</label>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              {f.label}
+            </label>
             <Cell
               value={data[f.key] as string}
               onChange={(v) => upd(f.key, v)}
@@ -373,7 +390,9 @@ function OtherInfoForm({
         </div>
         {extraRows.length === 0 ? (
           <p className="text-xs text-muted-foreground/60 italic text-center py-3">
-            {readOnly ? "—" : "Нэмэлт мэдээлэл байхгүй. Шаардлагатай бол «Мөр нэмэх» дарна уу."}
+            {readOnly
+              ? "—"
+              : "Нэмэлт мэдээлэл байхгүй. Шаардлагатай бол «Мөр нэмэх» дарна уу."}
           </p>
         ) : (
           <div className="space-y-2">
@@ -428,7 +447,9 @@ function AuditWorksTable({
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
     onChange?.(
-      rows.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, rowNo: idx + 1 })),
+      rows
+        .filter((_, idx) => idx !== i)
+        .map((r, idx) => ({ ...r, rowNo: idx + 1 })),
     );
   const add = () =>
     onChange?.([
@@ -452,13 +473,17 @@ function AuditWorksTable({
           <thead className="bg-muted/40">
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
-              <th className="px-2 py-2 text-left min-w-[180px]">Нээлттэй аудит</th>
+              <th className="px-2 py-2 text-left min-w-[180px]">
+                Нээлттэй аудит
+              </th>
               <th className="px-2 py-2 text-left min-w-[140px]">Төлөвлөгөө</th>
               <th className="px-2 py-2 text-left min-w-[140px]">Гүйцэтгэл</th>
               <th className="px-2 py-2 text-left w-32">Эхэлсэн</th>
               <th className="px-2 py-2 text-left w-32">Дуусах</th>
               <th className="px-2 py-2 text-left min-w-[120px]">Аудитын явц</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">Илэрсэн асуудал</th>
+              <th className="px-2 py-2 text-left min-w-[200px]">
+                Илэрсэн асуудал
+              </th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -560,7 +585,9 @@ function ComplaintsTable({
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
     onChange?.(
-      rows.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, rowNo: idx + 1 })),
+      rows
+        .filter((_, idx) => idx !== i)
+        .map((r, idx) => ({ ...r, rowNo: idx + 1 })),
     );
   const add = () =>
     onChange?.([
@@ -579,7 +606,9 @@ function ComplaintsTable({
           <thead className="bg-muted/40">
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">Хариуцсан ажилтан</th>
+              <th className="px-2 py-2 text-left min-w-[200px]">
+                Хариуцсан ажилтан
+              </th>
               <th className="px-2 py-2 text-left min-w-[300px]">Гомдлын явц</th>
               {!readOnly && <th className="w-10" />}
             </tr>
@@ -641,7 +670,9 @@ function FollowupsTable({
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
     onChange?.(
-      rows.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, rowNo: idx + 1 })),
+      rows
+        .filter((_, idx) => idx !== i)
+        .map((r, idx) => ({ ...r, rowNo: idx + 1 })),
     );
   const add = () =>
     onChange?.([
@@ -734,7 +765,9 @@ function DaaWorksTable({
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
     onChange?.(
-      rows.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, rowNo: idx + 1 })),
+      rows
+        .filter((_, idx) => idx !== i)
+        .map((r, idx) => ({ ...r, rowNo: idx + 1 })),
     );
   const add = () =>
     onChange?.([
@@ -754,7 +787,9 @@ function DaaWorksTable({
           <thead className="bg-muted/40">
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">Төлөвлөгөөт ажил</th>
+              <th className="px-2 py-2 text-left min-w-[200px]">
+                Төлөвлөгөөт ажил
+              </th>
               <th className="px-2 py-2 text-left min-w-[180px]">Зорилго</th>
               <th className="px-2 py-2 text-left min-w-[200px]">Гүйцэтгэл</th>
               {!readOnly && <th className="w-10" />}
@@ -826,7 +861,9 @@ function DataProcessingTable({
     onChange?.(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) =>
     onChange?.(
-      rows.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, rowNo: idx + 1 })),
+      rows
+        .filter((_, idx) => idx !== i)
+        .map((r, idx) => ({ ...r, rowNo: idx + 1 })),
     );
   const add = () =>
     onChange?.([
@@ -845,8 +882,12 @@ function DataProcessingTable({
           <thead className="bg-muted/40">
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">Холбоотой аудит</th>
-              <th className="px-2 py-2 text-left min-w-[300px]">Өгөгдөл боловсруулалтын ажил</th>
+              <th className="px-2 py-2 text-left min-w-[200px]">
+                Холбоотой аудит
+              </th>
+              <th className="px-2 py-2 text-left min-w-[300px]">
+                Өгөгдөл боловсруулалтын ажил
+              </th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -1015,7 +1056,9 @@ function DirectorReportCard({
   const initialSections = (r.sections ?? {}) as Partial<
     AuditSections & DaaSections
   >;
-  const [audit, setAudit] = useState<AuditSections>(buildAudit(initialSections));
+  const [audit, setAudit] = useState<AuditSections>(
+    buildAudit(initialSections),
+  );
   const [daa, setDaa] = useState<DaaSections>(buildDaa(initialSections));
 
   const startEdit = () => {
@@ -1138,10 +1181,15 @@ function PvTable({
   colWidths?: string[];
 }) {
   return (
-    <table className="w-full text-[9.5px] border-collapse mb-0" style={{ tableLayout: "fixed" }}>
+    <table
+      className="w-full text-[9.5px] border-collapse mb-0"
+      style={{ tableLayout: "fixed" }}
+    >
       {colWidths && (
         <colgroup>
-          {colWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
+          {colWidths.map((w, i) => (
+            <col key={i} style={{ width: w }} />
+          ))}
         </colgroup>
       )}
       <thead>
@@ -1203,26 +1251,45 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
     { key: "training", label: "Сургалт хөгжилтэй холбоотой" },
     { key: "recruiting", label: "Сонгон шалгаруулалт" },
   ];
-  const extraRows: OtherExtraRow[] = Array.isArray(data.other) ? data.other : [];
+  const extraRows: OtherExtraRow[] = Array.isArray(data.other)
+    ? data.other
+    : [];
   return (
-    <div className="space-y-3" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
+    <div
+      className="space-y-3"
+      style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+    >
       <div className="grid grid-cols-2 gap-3">
-        <table className="w-full text-[9.5px] border-collapse" style={{ tableLayout: "fixed" }}>
+        <table
+          className="w-full text-[9.5px] border-collapse"
+          style={{ tableLayout: "fixed" }}
+        >
           <tbody>
             {left.map((f) => (
               <tr key={f.key}>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] font-semibold text-[#1a2744] bg-[#e8edf5] w-[60%]">{f.label}</td>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] text-right tabular-nums">{data[f.key] || "—"}</td>
+                <td className="border border-[#c8d0dc] px-2 py-[5px] font-semibold text-[#1a2744] bg-[#e8edf5] w-[60%]">
+                  {f.label}
+                </td>
+                <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] text-right tabular-nums">
+                  {data[f.key] || "—"}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-        <table className="w-full text-[9.5px] border-collapse" style={{ tableLayout: "fixed" }}>
+        <table
+          className="w-full text-[9.5px] border-collapse"
+          style={{ tableLayout: "fixed" }}
+        >
           <tbody>
             {right.map((f) => (
               <tr key={f.key}>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] font-semibold text-[#1a2744] bg-[#e8edf5] w-[35%] align-top">{f.label}</td>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">{data[f.key] || "—"}</td>
+                <td className="border border-[#c8d0dc] px-2 py-[5px] font-semibold text-[#1a2744] bg-[#e8edf5] w-[35%] align-top">
+                  {f.label}
+                </td>
+                <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">
+                  {data[f.key] || "—"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1230,19 +1297,35 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
       </div>
       {extraRows.length > 0 && (
         <div>
-          <div className="text-[9px] font-semibold text-[#1a2744] uppercase tracking-wide mb-1 mt-2">Нэмэлт мэдээлэл</div>
-          <table className="w-full text-[9.5px] border-collapse" style={{ tableLayout: "fixed" }}>
+          <div className="text-[9px] font-semibold text-[#1a2744] uppercase tracking-wide mb-1 mt-2">
+            Нэмэлт мэдээлэл
+          </div>
+          <table
+            className="w-full text-[9.5px] border-collapse"
+            style={{ tableLayout: "fixed" }}
+          >
             <thead>
               <tr>
-                <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5] w-[35%]">Гарчиг</th>
-                <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5]">Агуулга</th>
+                <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5] w-[35%]">
+                  Гарчиг
+                </th>
+                <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5]">
+                  Агуулга
+                </th>
               </tr>
             </thead>
             <tbody>
               {extraRows.map((row, i) => (
-                <tr key={row.id} className={i % 2 === 0 ? "bg-white" : "bg-[#f5f7fb]"}>
-                  <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] font-medium align-top">{row.label || "—"}</td>
-                  <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">{row.value || "—"}</td>
+                <tr
+                  key={row.id}
+                  className={i % 2 === 0 ? "bg-white" : "bg-[#f5f7fb]"}
+                >
+                  <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] font-medium align-top">
+                    {row.label || "—"}
+                  </td>
+                  <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">
+                    {row.value || "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1253,14 +1336,34 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
   );
 }
 
-function PvSection({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function PvSection({
+  n,
+  title,
+  children,
+}: {
+  n: number;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="mb-5">
       <div className="flex items-center gap-2 mb-1.5">
-        <div className="w-5 h-5 rounded flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ background: "#1a2744" }}>{n}</div>
-        <h2 className="text-[10.5px] font-bold text-[#1a2744] uppercase tracking-wide">{title}</h2>
+        <div
+          className="w-5 h-5 rounded flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+          style={{ background: "#1a2744" }}
+        >
+          {n}
+        </div>
+        <h2 className="text-[10.5px] font-bold text-[#1a2744] uppercase tracking-wide">
+          {title}
+        </h2>
       </div>
-      <div className="rounded border border-[#c8d0dc]" style={{ overflowWrap: "anywhere" }}>{children}</div>
+      <div
+        className="rounded border border-[#c8d0dc]"
+        style={{ overflowWrap: "anywhere" }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -1281,23 +1384,45 @@ function WeeklyPreviewDoc({
   userName: string;
 }) {
   const fmt = (d: string) =>
-    d ? new Date(d).toLocaleDateString("mn-MN", { year: "numeric", month: "2-digit", day: "2-digit" }) : "—";
+    d
+      ? new Date(d).toLocaleDateString("mn-MN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        })
+      : "—";
 
   const header = (
     <>
       {/* Top accent bar */}
-      <div className="h-1.5 w-full rounded-t" style={{ background: "linear-gradient(90deg,#1a2744 0%,#3b5bdb 50%,#1a2744 100%)" }} />
+      <div
+        className="h-1.5 w-full rounded-t"
+        style={{
+          background:
+            "linear-gradient(90deg,#1a2744 0%,#3b5bdb 50%,#1a2744 100%)",
+        }}
+      />
       <div className="px-7 pt-5 pb-4">
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-[9px] font-semibold tracking-[0.15em] uppercase text-[#6b7a99] mb-0.5">Голомт Банк · Дотоод Аудитын Газар</div>
-            <h1 className="text-[18px] font-black text-[#1a2744] leading-tight tracking-tight">ДОЛОО ХОНОГИЙН ТАЙЛАН</h1>
-            <div className="text-[10px] text-[#4a5568] mt-0.5">{departmentName}</div>
+            <div className="text-[9px] font-semibold tracking-[0.15em] uppercase text-[#6b7a99] mb-0.5">
+              Голомт Банк · Дотоод Аудитын Газар
+            </div>
+            <h1 className="text-[18px] font-black text-[#1a2744] leading-tight tracking-tight">
+              ДОЛОО ХОНОГИЙН ТАЙЛАН
+            </h1>
+            <div className="text-[10px] text-[#4a5568] mt-0.5">
+              {departmentName}
+            </div>
           </div>
           <div className="text-right">
             <div className="inline-block border border-[#c8d0dc] rounded-lg px-3 py-2 bg-[#f0f4ff]">
-              <div className="text-[8.5px] text-[#6b7a99] uppercase tracking-wide mb-0.5">Хугацаа</div>
-              <div className="text-[11px] font-bold text-[#1a2744]">{fmt(weekStart)}</div>
+              <div className="text-[8.5px] text-[#6b7a99] uppercase tracking-wide mb-0.5">
+                Хугацаа
+              </div>
+              <div className="text-[11px] font-bold text-[#1a2744]">
+                {fmt(weekStart)}
+              </div>
               <div className="text-[9px] text-[#6b7a99]">— {fmt(weekEnd)}</div>
             </div>
           </div>
@@ -1315,13 +1440,26 @@ function WeeklyPreviewDoc({
         <div className="px-7 pb-7">
           <PvSection n={1} title="Долоо хоногийн аудитын мэдээлэл">
             <PvTable
-              headers={["№", "Нээлттэй аудит", "Төлөвлөгөө", "Гүйцэтгэл", "Эхэлсэн", "Дуусах", "Явц %", "Илэрсэн асуудал"]}
+              headers={[
+                "№",
+                "Нээлттэй аудит",
+                "Төлөвлөгөө",
+                "Гүйцэтгэл",
+                "Эхэлсэн",
+                "Дуусах",
+                "Явц %",
+                "Илэрсэн асуудал",
+              ]}
               colWidths={["4%", "18%", "13%", "13%", "8%", "8%", "8%", "28%"]}
               rows={s.auditWorks.map((r) => [
-                r.rowNo, r.openAuditWork, r.plan, r.performance,
+                r.rowNo,
+                r.openAuditWork,
+                r.plan,
+                r.performance,
                 r.startDate ? fmt(r.startDate) : "",
                 r.endDate ? fmt(r.endDate) : "",
-                r.progress, r.foundIssues,
+                r.progress,
+                r.foundIssues,
               ])}
             />
           </PvSection>
@@ -1329,14 +1467,23 @@ function WeeklyPreviewDoc({
             <PvTable
               headers={["№", "Хариуцсан ажилтан", "Гомдлын явц"]}
               colWidths={["5%", "30%", "65%"]}
-              rows={s.complaints.map((r) => [r.rowNo, r.responsibleEmployee, r.progress])}
+              rows={s.complaints.map((r) => [
+                r.rowNo,
+                r.responsibleEmployee,
+                r.progress,
+              ])}
             />
           </PvSection>
           <PvSection n={3} title="Дагаж хэрэгжилтийн мэдээлэл">
             <PvTable
               headers={["№", "Дагах аудит", "Гүйцэтгэл", "Явц"]}
               colWidths={["5%", "40%", "30%", "25%"]}
-              rows={s.followups.map((r) => [r.rowNo, r.followupAudit, r.performance, r.progress])}
+              rows={s.followups.map((r) => [
+                r.rowNo,
+                r.followupAudit,
+                r.performance,
+                r.progress,
+              ])}
             />
           </PvSection>
           <PvSection n={4} title="Бусад мэдээлэл">
@@ -1358,14 +1505,23 @@ function WeeklyPreviewDoc({
           <PvTable
             headers={["№", "Төлөвлөгөөт ажил", "Зорилго", "Гүйцэтгэл"]}
             colWidths={["5%", "33%", "30%", "32%"]}
-            rows={s.daaWorks.map((r) => [r.rowNo, r.plannedWork, r.purpose, r.performance])}
+            rows={s.daaWorks.map((r) => [
+              r.rowNo,
+              r.plannedWork,
+              r.purpose,
+              r.performance,
+            ])}
           />
         </PvSection>
         <PvSection n={2} title="Өгөгдөл боловсруулалт">
           <PvTable
             headers={["№", "Холбоотой аудит", "Өгөгдөл боловсруулалтын ажил"]}
             colWidths={["5%", "35%", "60%"]}
-            rows={s.dataProcessing.map((r) => [r.rowNo, r.relatedAudit, r.dataProcessingWork])}
+            rows={s.dataProcessing.map((r) => [
+              r.rowNo,
+              r.relatedAudit,
+              r.dataProcessingWork,
+            ])}
           />
         </PvSection>
         <PvSection n={3} title="Бусад мэдээлэл">
@@ -1530,8 +1686,8 @@ export default function WeeklyReportPage() {
         <ClipboardList className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
         <h2 className="text-xl font-semibold mb-2">Эрх олгогдоогүй байна</h2>
         <p className="text-muted-foreground">
-          Долоо хоногийн тайлангийн хэрэгсэлд хандах эрх танд алга.
-          Системийн админтай холбогдоно уу.
+          Долоо хоногийн тайлангийн хэрэгсэлд хандах эрх танд алга. Системийн
+          админтай холбогдоно уу.
         </p>
       </div>
     );
@@ -1543,7 +1699,8 @@ export default function WeeklyReportPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col weekly-report-print">
       <style jsx global>{`
         @media print {
-          html, body {
+          html,
+          body {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -1552,7 +1709,8 @@ export default function WeeklyReportPage() {
             overflow: visible !important;
           }
           /* Collapse height/overflow on every container so wrappers don't reserve a full screen */
-          body, body * {
+          body,
+          body * {
             min-height: 0 !important;
             max-height: none !important;
             height: auto !important;
@@ -1560,7 +1718,10 @@ export default function WeeklyReportPage() {
             box-shadow: none !important;
           }
           /* Hide every element that is NOT an ancestor of, descendant of, or the print sheet itself */
-          body :not(:has(.weekly-print-sheet)):not(.weekly-print-sheet):not(.weekly-print-sheet *) {
+          body
+            :not(:has(.weekly-print-sheet)):not(.weekly-print-sheet):not(
+              .weekly-print-sheet *
+            ) {
             display: none !important;
           }
           .weekly-print-sheet {
@@ -1573,13 +1734,16 @@ export default function WeeklyReportPage() {
             width: 100% !important;
           }
           /* Strip dark backdrops on the wrapping containers */
-          .weekly-print-area, .weekly-print-shell, .weekly-report-print {
+          .weekly-print-area,
+          .weekly-print-shell,
+          .weekly-report-print {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
             display: block !important;
           }
-          textarea, input {
+          textarea,
+          input {
             border: none !important;
             background: transparent !important;
             color: black !important;
@@ -1599,8 +1763,8 @@ export default function WeeklyReportPage() {
           isDirector
             ? "Захирлын нэгдсэн харагдац"
             : roleInfo.departmentName
-            ? `${roleInfo.departmentName} · ${roleInfo.role === "daa" ? "ДАА" : "Аудит хэлтэс"}`
-            : undefined
+              ? `${roleInfo.departmentName} · ${roleInfo.role === "daa" ? "ДАА" : "Аудит хэлтэс"}`
+              : undefined
         }
         rightContent={
           <div className="flex items-center gap-2 print:hidden">
@@ -1639,7 +1803,9 @@ export default function WeeklyReportPage() {
               </>
             )}
             <button
-              onClick={() => downloadPreviewAsDoc(`Долоо-хоногийн-тайлан-${year}-W${week}`)}
+              onClick={() =>
+                downloadPreviewAsDoc(`Долоо-хоногийн-тайлан-${year}-W${week}`)
+              }
               className="px-3 py-1.5 rounded-md border border-border hover:bg-accent text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
               title="Word (.doc) болгож татах"
             >
@@ -1679,34 +1845,42 @@ export default function WeeklyReportPage() {
             )}
           </div>
           <p className="text-center text-slate-500 text-xs py-6 print:hidden">
-            {user?.name && <><span>{user.name}</span>{" · "}</>}
+            {user?.name && (
+              <>
+                <span>{user.name}</span>
+                {" · "}
+              </>
+            )}
             {(user as any)?.department ?? ""}
           </p>
         </div>
       ) : (
         /* ── Writer: split-screen editor + preview ── */
-        <div className="flex flex-1 overflow-hidden weekly-print-shell" style={{ height: "calc(100vh - 57px)" }}>
+        <div
+          className="flex flex-1 overflow-hidden weekly-print-shell"
+          style={{ height: "calc(100vh - 57px)" }}
+        >
           {/* Left: editor */}
           <div className="w-1/2 overflow-y-auto border-r border-border px-4 py-5 sm:px-6 weekly-editor-pane">
             {status === "submitted" && (
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-sm mb-5">
                 <CheckCircle2 className="w-4 h-4" />
-                Энэ долоо хоногийн тайлан илгээгдсэн байна. Шаардлагатай бол засаж, дахин «Илгээх» дарна уу.
+                Энэ долоо хоногийн тайлан илгээгдсэн байна. Шаардлагатай бол
+                засаж, дахин «Илгээх» дарна уу.
               </div>
             )}
             {roleInfo.role === "audit" ? (
-              <AuditEditor
-                data={auditData}
-                onChange={setAuditData}
-              />
+              <AuditEditor data={auditData} onChange={setAuditData} />
             ) : (
-              <DaaEditor
-                data={daaData}
-                onChange={setDaaData}
-              />
+              <DaaEditor data={daaData} onChange={setDaaData} />
             )}
             <p className="text-center text-slate-500 text-xs py-6 print:hidden">
-              {user?.name && <><span>{user.name}</span>{" · "}</>}
+              {user?.name && (
+                <>
+                  <span>{user.name}</span>
+                  {" · "}
+                </>
+              )}
               {(user as any)?.department ?? ""}
             </p>
           </div>
@@ -1716,7 +1890,8 @@ export default function WeeklyReportPage() {
             <div
               className="bg-white rounded-2xl overflow-hidden weekly-print-sheet"
               style={{
-                boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)",
+                boxShadow:
+                  "0 0 0 1px rgba(255,255,255,0.06), 0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)",
                 minHeight: "297mm",
               }}
             >
@@ -1729,7 +1904,9 @@ export default function WeeklyReportPage() {
                 userName={user?.name ?? ""}
               />
             </div>
-            <p className="text-center text-slate-600 text-[11px] mt-3 print:hidden">PDF хэвлэх → хөтчийн хэвлэх цонхноос хадгална</p>
+            <p className="text-center text-slate-600 text-[11px] mt-3 print:hidden">
+              PDF хэвлэх → хөтчийн хэвлэх цонхноос хадгална
+            </p>
           </div>
         </div>
       )}

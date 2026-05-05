@@ -206,7 +206,8 @@ export default function ReportDetailPage() {
         error: e?.response?.data?.message ?? e?.message ?? "Preview алдаа",
       });
     } finally {
-      if (previewAbortRef.current === controller) previewAbortRef.current = null;
+      if (previewAbortRef.current === controller)
+        previewAbortRef.current = null;
     }
   };
 
@@ -240,8 +241,12 @@ export default function ReportDetailPage() {
           </Link>
           <span className="text-slate-700">/</span>
           <div className="flex items-center gap-2.5">
-            <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${color}`} />
-            <span className="font-semibold text-slate-100 text-sm">{item.name}</span>
+            <div
+              className={`w-2 h-2 rounded-full bg-gradient-to-br ${color}`}
+            />
+            <span className="font-semibold text-slate-100 text-sm">
+              {item.name}
+            </span>
           </div>
           <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-mono border bg-violet-500/10 text-violet-400 border-violet-500/20">
             Python
@@ -256,13 +261,17 @@ export default function ReportDetailPage() {
             <div className="p-5 space-y-5">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center shadow`}>
+                  <div
+                    className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center shadow`}
+                  >
                     <Code2 className="w-4 h-4 text-white" />
                   </div>
                   <p className="font-bold text-slate-100">{item.name}</p>
                 </div>
                 {item.description && (
-                  <p className="text-slate-500 text-xs mt-1 leading-relaxed">{item.description}</p>
+                  <p className="text-slate-500 text-xs mt-1 leading-relaxed">
+                    {item.description}
+                  </p>
                 )}
               </div>
 
@@ -270,15 +279,34 @@ export default function ReportDetailPage() {
 
               {dateMode === "range" && (
                 <div className="space-y-2">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Огнооны интервал</p>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Огнооны интервал
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-600">Эхлэх</label>
-                      <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={downloading} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition" />
+                      <label className="text-[10px] text-slate-600">
+                        Эхлэх
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        disabled={downloading}
+                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                      />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-600">Дуусах</label>
-                      <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} disabled={downloading} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition" />
+                      <label className="text-[10px] text-slate-600">
+                        Дуусах
+                      </label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        min={startDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        disabled={downloading}
+                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                      />
                     </div>
                   </div>
                 </div>
@@ -286,20 +314,32 @@ export default function ReportDetailPage() {
 
               {dateMode === "single" && (
                 <div className="space-y-2">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Огноо</p>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={downloading} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition" />
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Огноо
+                  </p>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    disabled={downloading}
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                  />
                 </div>
               )}
 
               {dateMode === "none" && (
-                <p className="text-xs text-slate-600 text-center py-0.5">Огноо шаардлагагүй</p>
+                <p className="text-xs text-slate-600 text-center py-0.5">
+                  Огноо шаардлагагүй
+                </p>
               )}
 
               {parsedFilters.length > 0 && (
                 <>
                   <div className="border-t border-white/[0.06]" />
                   <div className="space-y-4">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Шүүлтүүрүүд</p>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      Шүүлтүүрүүд
+                    </p>
                     {parsedFilters.map((f) => {
                       const raw = filterValues[f.key] ?? "";
                       const filled = !!raw.trim();
@@ -308,16 +348,27 @@ export default function ReportDetailPage() {
                         <div key={f.key} className="space-y-1.5">
                           <label className="text-xs font-medium text-slate-300">
                             {f.label}
-                            {f.required && <span className="text-rose-400 ml-0.5">*</span>}
+                            {f.required && (
+                              <span className="text-rose-400 ml-0.5">*</span>
+                            )}
                           </label>
                           <input
                             value={raw}
-                            onChange={(e) => setFilterValues((p) => ({ ...p, [f.key]: e.target.value }))}
+                            onChange={(e) =>
+                              setFilterValues((p) => ({
+                                ...p,
+                                [f.key]: e.target.value,
+                              }))
+                            }
                             disabled={downloading}
                             placeholder={f.placeholder ?? ""}
                             className={`w-full rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none disabled:opacity-40 placeholder:text-slate-600 transition ${missing ? "bg-rose-950/60 border border-rose-500/40" : filled ? "bg-emerald-950/40 border border-emerald-500/30" : "bg-[#0d1520] border border-white/[0.08] focus:border-white/20"}`}
                           />
-                          {missing && <p className="text-[10px] text-rose-400">Заавал шаардлагатай</p>}
+                          {missing && (
+                            <p className="text-[10px] text-rose-400">
+                              Заавал шаардлагатай
+                            </p>
+                          )}
                         </div>
                       );
                     })}
@@ -330,16 +381,27 @@ export default function ReportDetailPage() {
                   <div className="border-t border-white/[0.06]" />
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-400">{downloadProgress === 100 ? "Дууслаа ✓" : "Татаж байна..."}</span>
+                      <span className="text-xs text-slate-400">
+                        {downloadProgress === 100
+                          ? "Дууслаа ✓"
+                          : "Татаж байна..."}
+                      </span>
                       {downloadProgress > 0 && downloadProgress < 100 && (
-                        <span className="text-xs font-mono font-bold text-violet-400">{downloadProgress}%</span>
+                        <span className="text-xs font-mono font-bold text-violet-400">
+                          {downloadProgress}%
+                        </span>
                       )}
                     </div>
                     <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                       {downloadProgress > 0 ? (
-                        <div className={`h-1.5 rounded-full bg-gradient-to-r ${color} transition-all duration-300`} style={{ width: `${downloadProgress}%` }} />
+                        <div
+                          className={`h-1.5 rounded-full bg-gradient-to-r ${color} transition-all duration-300`}
+                          style={{ width: `${downloadProgress}%` }}
+                        />
                       ) : (
-                        <div className={`h-1.5 rounded-full bg-gradient-to-r ${color} animate-pulse w-full opacity-60`} />
+                        <div
+                          className={`h-1.5 rounded-full bg-gradient-to-r ${color} animate-pulse w-full opacity-60`}
+                        />
                       )}
                     </div>
                   </div>
@@ -365,7 +427,11 @@ export default function ReportDetailPage() {
                     Зогсоох
                   </button>
                 ) : (
-                  <button onClick={handlePreview} disabled={downloading} className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 hover:border-white/20 transition-all disabled:opacity-40 font-medium">
+                  <button
+                    onClick={handlePreview}
+                    disabled={downloading}
+                    className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 hover:border-white/20 transition-all disabled:opacity-40 font-medium"
+                  >
                     Preview
                   </button>
                 )}
@@ -382,8 +448,12 @@ export default function ReportDetailPage() {
                       : "Зогсоох"}
                   </button>
                 ) : (
-                  <button onClick={handleDownload} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-gradient-to-r ${outMeta.color} hover:opacity-90 text-white font-bold transition-all disabled:opacity-50 shadow-lg`}>
-                    <Download className="w-3.5 h-3.5" />{outMeta.label}
+                  <button
+                    onClick={handleDownload}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-gradient-to-r ${outMeta.color} hover:opacity-90 text-white font-bold transition-all disabled:opacity-50 shadow-lg`}
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {outMeta.label}
                   </button>
                 )}
               </div>
@@ -392,27 +462,70 @@ export default function ReportDetailPage() {
         </aside>
 
         <div className="flex-1 min-w-0 flex flex-col gap-4">
-          {preview.status === "done" && (() => {
-            const sampleAvg = preview.rows.length > 0 ? preview.rows.slice(0, 10).reduce((s, r) => s + r.join(",").length + 2, 0) / Math.min(10, preview.rows.length) : 200;
-            const estBytes = preview.totalCount * sampleAvg;
-            const estMB = estBytes / 1024 / 1024;
-            const sizeLabel = estMB < 0.1 ? `~${(estMB * 1024).toFixed(0)} KB` : estMB < 100 ? `~${estMB.toFixed(1)} MB` : `~${(estMB / 1024).toFixed(2)} GB`;
-            return (
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: "Нийт мөр", value: preview.totalCount.toLocaleString(), cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-300", lCls: "text-emerald-500" },
-                  { label: "Preview", value: `${preview.rows.length} мөр`, cls: "bg-white/[0.03] border-white/[0.07] text-slate-300", lCls: "text-slate-500" },
-                  { label: "Багана", value: String(preview.columns.length), cls: "bg-white/[0.03] border-white/[0.07] text-slate-300", lCls: "text-slate-500" },
-                  ...(preview.totalCount > 0 ? [{ label: "Хэмжээ", value: sizeLabel, cls: "bg-sky-500/10 border-sky-500/20 text-sky-300", lCls: "text-sky-500" }] : []),
-                ].map((s) => (
-                  <div key={s.label} className={`rounded-xl border px-3 py-2 ${s.cls}`}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold ${s.lCls}`}>{s.label}</p>
-                    <p className="text-sm font-bold mt-0.5">{s.value}</p>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+          {preview.status === "done" &&
+            (() => {
+              const sampleAvg =
+                preview.rows.length > 0
+                  ? preview.rows
+                      .slice(0, 10)
+                      .reduce((s, r) => s + r.join(",").length + 2, 0) /
+                    Math.min(10, preview.rows.length)
+                  : 200;
+              const estBytes = preview.totalCount * sampleAvg;
+              const estMB = estBytes / 1024 / 1024;
+              const sizeLabel =
+                estMB < 0.1
+                  ? `~${(estMB * 1024).toFixed(0)} KB`
+                  : estMB < 100
+                    ? `~${estMB.toFixed(1)} MB`
+                    : `~${(estMB / 1024).toFixed(2)} GB`;
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    {
+                      label: "Нийт мөр",
+                      value: preview.totalCount.toLocaleString(),
+                      cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+                      lCls: "text-emerald-500",
+                    },
+                    {
+                      label: "Preview",
+                      value: `${preview.rows.length} мөр`,
+                      cls: "bg-white/[0.03] border-white/[0.07] text-slate-300",
+                      lCls: "text-slate-500",
+                    },
+                    {
+                      label: "Багана",
+                      value: String(preview.columns.length),
+                      cls: "bg-white/[0.03] border-white/[0.07] text-slate-300",
+                      lCls: "text-slate-500",
+                    },
+                    ...(preview.totalCount > 0
+                      ? [
+                          {
+                            label: "Хэмжээ",
+                            value: sizeLabel,
+                            cls: "bg-sky-500/10 border-sky-500/20 text-sky-300",
+                            lCls: "text-sky-500",
+                          },
+                        ]
+                      : []),
+                  ].map((s) => (
+                    <div
+                      key={s.label}
+                      className={`rounded-xl border px-3 py-2 ${s.cls}`}
+                    >
+                      <p
+                        className={`text-[10px] uppercase tracking-wider font-semibold ${s.lCls}`}
+                      >
+                        {s.label}
+                      </p>
+                      <p className="text-sm font-bold mt-0.5">{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
           {preview.status === "idle" && (
             <div className="flex-1 h-80 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.06] text-slate-700 gap-3">
@@ -421,7 +534,11 @@ export default function ReportDetailPage() {
               </div>
               <div className="text-center">
                 <p className="text-sm text-slate-500">Preview хоосон байна</p>
-                <p className="text-xs text-slate-700 mt-1">{dateMode !== "none" ? "Огноо сонгоод Preview дарна уу" : "Preview товч дарна уу"}</p>
+                <p className="text-xs text-slate-700 mt-1">
+                  {dateMode !== "none"
+                    ? "Огноо сонгоод Preview дарна уу"
+                    : "Preview товч дарна уу"}
+                </p>
               </div>
             </div>
           )}
@@ -437,41 +554,88 @@ export default function ReportDetailPage() {
 
           {preview.status === "error" && (
             <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
-              <p className="text-sm text-rose-300 font-semibold">Preview алдаа</p>
-              <p className="text-xs text-rose-400/70 mt-1 leading-relaxed font-mono">{preview.error}</p>
+              <p className="text-sm text-rose-300 font-semibold">
+                Preview алдаа
+              </p>
+              <p className="text-xs text-rose-400/70 mt-1 leading-relaxed font-mono">
+                {preview.error}
+              </p>
             </div>
           )}
 
           <AnimatePresence>
             {preview.status === "done" && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden"
+              >
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
-                  <span className="text-xs text-slate-400 font-medium">Preview — эхний {preview.rows.length} мөр</span>
-                  <span className="text-[10px] text-slate-600">{preview.columns.length} багана · нийт {preview.totalCount.toLocaleString()} мөр</span>
+                  <span className="text-xs text-slate-400 font-medium">
+                    Preview — эхний {preview.rows.length} мөр
+                  </span>
+                  <span className="text-[10px] text-slate-600">
+                    {preview.columns.length} багана · нийт{" "}
+                    {preview.totalCount.toLocaleString()} мөр
+                  </span>
                 </div>
                 <div className="overflow-auto max-h-[70vh]">
                   <table className="w-full text-xs border-collapse min-w-max">
                     <thead className="sticky top-0 z-10 bg-[#0d1520]">
                       <tr>
-                        <th className="px-3 py-2.5 text-left text-slate-600 font-medium border-b border-white/[0.06] w-8 text-[10px]">№</th>
+                        <th className="px-3 py-2.5 text-left text-slate-600 font-medium border-b border-white/[0.06] w-8 text-[10px]">
+                          №
+                        </th>
                         {preview.columns.map((col) => (
-                          <th key={col} className="px-3 py-2.5 text-left text-slate-300 font-semibold border-b border-white/[0.06] whitespace-nowrap border-r border-white/[0.04] last:border-r-0 text-[11px] tracking-wide">{col}</th>
+                          <th
+                            key={col}
+                            className="px-3 py-2.5 text-left text-slate-300 font-semibold border-b border-white/[0.06] whitespace-nowrap border-r border-white/[0.04] last:border-r-0 text-[11px] tracking-wide"
+                          >
+                            {col}
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {preview.rows.map((row, ri) => (
-                        <tr key={ri} className="hover:bg-white/[0.03] transition-colors">
-                          <td className="px-3 py-1.5 text-slate-700 border-b border-white/[0.04] text-[10px]">{ri + 1}</td>
+                        <tr
+                          key={ri}
+                          className="hover:bg-white/[0.03] transition-colors"
+                        >
+                          <td className="px-3 py-1.5 text-slate-700 border-b border-white/[0.04] text-[10px]">
+                            {ri + 1}
+                          </td>
                           {row.map((cell: any, ci: number) => (
-                            <td key={ci} className="px-3 py-1.5 text-slate-300 border-b border-white/[0.04] border-r border-white/[0.03] last:border-r-0 whitespace-nowrap max-w-xs truncate" title={cell == null ? "" : String(cell)}>
-                              {cell == null ? <span className="text-slate-700 italic text-[10px]">null</span> : typeof cell === "number" ? <span className="font-mono text-sky-300/80">{cell.toLocaleString()}</span> : String(cell)}
+                            <td
+                              key={ci}
+                              className="px-3 py-1.5 text-slate-300 border-b border-white/[0.04] border-r border-white/[0.03] last:border-r-0 whitespace-nowrap max-w-xs truncate"
+                              title={cell == null ? "" : String(cell)}
+                            >
+                              {cell == null ? (
+                                <span className="text-slate-700 italic text-[10px]">
+                                  null
+                                </span>
+                              ) : typeof cell === "number" ? (
+                                <span className="font-mono text-sky-300/80">
+                                  {cell.toLocaleString()}
+                                </span>
+                              ) : (
+                                String(cell)
+                              )}
                             </td>
                           ))}
                         </tr>
                       ))}
                       {preview.rows.length === 0 && (
-                        <tr><td colSpan={preview.columns.length + 1} className="px-4 py-8 text-center text-slate-600 text-xs">Өгөгдөл байхгүй</td></tr>
+                        <tr>
+                          <td
+                            colSpan={preview.columns.length + 1}
+                            className="px-4 py-8 text-center text-slate-600 text-xs"
+                          >
+                            Өгөгдөл байхгүй
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>

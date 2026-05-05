@@ -544,7 +544,7 @@ export class AuthService {
     const { username, password } = adminLoginDto;
     const lockKey = `admin-login:${username}:${clientIp}`; // [H-4] IP-aware
     // [L-3] admin username removed from log to prevent credential exposure
-    this.logger.debug('Admin login attempt received');
+    this.logger.debug("Admin login attempt received");
 
     // Guard runs OUTSIDE try-catch so a lockout error is not counted as a new failure
     await this.guardLogin(lockKey); // [CRIT-2] now async
@@ -563,7 +563,7 @@ export class AuthService {
       await this.clearFailedLogins(lockKey); // [CRIT-2] async
       // [SEC-4] admin username removed from success log to prevent credential
       // enumeration if log files are compromised. Audit log keeps full record.
-      this.logger.log('Admin authentication successful');
+      this.logger.log("Admin authentication successful");
       await this.updateLastLogin(user.id);
 
       const accessToken = this.generateTokenForUser(user);

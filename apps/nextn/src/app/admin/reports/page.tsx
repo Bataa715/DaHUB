@@ -39,12 +39,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  pythonToolApi,
-  usersApi,
-  PythonToolAdmin,
-  FilterDef,
-} from "@/lib/api";
+import { pythonToolApi, usersApi, PythonToolAdmin, FilterDef } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Shared constants ──────────────────────────────────────────────────────────
@@ -84,7 +79,11 @@ const DATE_MODE_META = {
 const CONNECTION_META = {
   clickhouse: { label: "ClickHouse", color: "text-yellow-400", icon: Database },
   oracle: { label: "Oracle DB", color: "text-red-400", icon: Database },
-  clickhouse_oracle: { label: "ClickHouse + Oracle", color: "text-violet-400", icon: Database },
+  clickhouse_oracle: {
+    label: "ClickHouse + Oracle",
+    color: "text-violet-400",
+    icon: Database,
+  },
 };
 
 const OUTPUT_META = {
@@ -447,11 +446,7 @@ export default function AdminReportsPage() {
     }
   };
 
-  const openPermSheet = (t: {
-    id: string;
-    name: string;
-    color: string;
-  }) => {
+  const openPermSheet = (t: { id: string; name: string; color: string }) => {
     setPSelectedTemplate(t);
     setPSheetTab("with");
     setPSelectedUsers(new Set());
@@ -719,13 +714,11 @@ export default function AdminReportsPage() {
               <div className="grid gap-3">
                 <AnimatePresence>
                   {pyTools.map((t, idx) => {
-                    const connType = (t.connectionType ?? "clickhouse") as keyof typeof CONNECTION_META;
-                    const ConnIcon =
-                      CONNECTION_META[connType].icon;
-                    const OutIcon =
-                      OUTPUT_META[t.outputFormat ?? "excel"].icon;
-                    const DateIcon =
-                      DATE_MODE_META[t.dateMode ?? "none"].Icon;
+                    const connType = (t.connectionType ??
+                      "clickhouse") as keyof typeof CONNECTION_META;
+                    const ConnIcon = CONNECTION_META[connType].icon;
+                    const OutIcon = OUTPUT_META[t.outputFormat ?? "excel"].icon;
+                    const DateIcon = DATE_MODE_META[t.dateMode ?? "none"].Icon;
                     return (
                       <motion.div
                         key={t.id}
@@ -766,9 +759,7 @@ export default function AdminReportsPage() {
                               className={`flex items-center gap-1 text-xs ${CONNECTION_META[connType].color}`}
                             >
                               <ConnIcon className="w-3 h-3" />{" "}
-                              {
-                                CONNECTION_META[connType].label
-                              }
+                              {CONNECTION_META[connType].label}
                             </span>
                             <span
                               className={`flex items-center gap-1 text-xs ${OUTPUT_META[t.outputFormat ?? "excel"].color}`}
@@ -1416,11 +1407,7 @@ export default function AdminReportsPage() {
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-700">
                       {Object.entries(CONNECTION_META).map(([k, v]) => (
-                        <SelectItem
-                          key={k}
-                          value={k}
-                          className="text-white"
-                        >
+                        <SelectItem key={k} value={k} className="text-white">
                           {v.label}
                         </SelectItem>
                       ))}
@@ -1442,11 +1429,7 @@ export default function AdminReportsPage() {
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-700">
                       {Object.entries(OUTPUT_META).map(([k, v]) => (
-                        <SelectItem
-                          key={k}
-                          value={k}
-                          className="text-white"
-                        >
+                        <SelectItem key={k} value={k} className="text-white">
                           {v.label}
                         </SelectItem>
                       ))}
@@ -1454,9 +1437,7 @@ export default function AdminReportsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">
-                    Огноо горим
-                  </Label>
+                  <Label className="text-slate-300 text-xs">Огноо горим</Label>
                   <Select
                     value={pyForm.dateMode}
                     onValueChange={(v: any) =>
@@ -1468,11 +1449,7 @@ export default function AdminReportsPage() {
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-700">
                       {Object.entries(DATE_MODE_META).map(([k, v]) => (
-                        <SelectItem
-                          key={k}
-                          value={k}
-                          className="text-white"
-                        >
+                        <SelectItem key={k} value={k} className="text-white">
                           {v.label}
                         </SelectItem>
                       ))}
@@ -1522,9 +1499,7 @@ export default function AdminReportsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-slate-300 text-xs">
-                  Python код *
-                </Label>
+                <Label className="text-slate-300 text-xs">Python код *</Label>
                 <CodeEditor
                   value={pyForm.pythonCode}
                   onChange={(v) => {

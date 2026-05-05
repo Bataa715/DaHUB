@@ -486,9 +486,14 @@ export default function PivotPage() {
         {/* File Upload */}
         <Card className="border border-border shadow-sm">
           <CardContent className="pt-5 space-y-3">
-            <Label className="text-sm font-medium">Excel эсвэл CSV файл оруулах</Label>
+            <Label className="text-sm font-medium">
+              Excel эсвэл CSV файл оруулах
+            </Label>
             <div
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
@@ -502,21 +507,30 @@ export default function PivotPage() {
             >
               <input
                 ref={fileInputRef}
-                type="file" accept=".xlsx,.xls,.csv"
+                type="file"
+                accept=".xlsx,.xls,.csv"
                 className="hidden"
                 onChange={handleFileChange}
               />
               {fileName ? (
                 <div className="flex items-center justify-center gap-2">
                   <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
-                  <span className="text-emerald-600 font-medium text-sm">{fileName}</span>
-                  <span className="text-muted-foreground text-sm">({fileData?.length} мөр, {headers.length} багана)</span>
+                  <span className="text-emerald-600 font-medium text-sm">
+                    {fileName}
+                  </span>
+                  <span className="text-muted-foreground text-sm">
+                    ({fileData?.length} мөр, {headers.length} багана)
+                  </span>
                 </div>
               ) : (
                 <>
                   <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-1.5" />
-                  <p className="text-sm font-medium text-foreground">Файл чирж оруулах буюу дарж сонгох</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">XLSX, XLS, CSV</p>
+                  <p className="text-sm font-medium text-foreground">
+                    Файл чирж оруулах буюу дарж сонгох
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    XLSX, XLS, CSV
+                  </p>
                 </>
               )}
             </div>
@@ -545,7 +559,9 @@ export default function PivotPage() {
                         ? "bg-cyan-500 border-cyan-500 text-white"
                         : "border-border bg-background text-foreground hover:border-cyan-400"
                     }`}
-                  >Бүх жил</button>
+                  >
+                    Бүх жил
+                  </button>
                   {availableYears.map((y) => (
                     <button
                       key={y}
@@ -555,7 +571,9 @@ export default function PivotPage() {
                           ? "bg-cyan-500 border-cyan-500 text-white"
                           : "border-border bg-background text-foreground hover:border-cyan-400"
                       }`}
-                    >{y}</button>
+                    >
+                      {y}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -565,18 +583,30 @@ export default function PivotPage() {
                 <div className="space-y-1.5">
                   <Label className="text-sm">Огноон багана</Label>
                   <Select value={dateCol} onValueChange={setDateCol}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      {headers.map((h) => (
+                        <SelectItem key={h} value={h}>
+                          {h}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">Бүлэглэх багана</Label>
                   <Select value={codeCol} onValueChange={setCodeCol}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      {headers.map((h) => (
+                        <SelectItem key={h} value={h}>
+                          {h}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -592,12 +622,21 @@ export default function PivotPage() {
                             ? "bg-cyan-500 border-cyan-500 text-white"
                             : "border-border bg-background text-foreground hover:border-cyan-400"
                         }`}
-                      >{n}</button>
+                      >
+                        {n}
+                      </button>
                     ))}
                   </div>
                   {codeCol && fileData && (
                     <p className="text-xs text-muted-foreground truncate">
-                      Жишээ: &quot;{String((fileData[0] as unknown[])[headers.indexOf(codeCol)] ?? "").slice(0, prefixLen).toUpperCase()}&quot;,...
+                      Жишээ: &quot;
+                      {String(
+                        (fileData[0] as unknown[])[headers.indexOf(codeCol)] ??
+                          "",
+                      )
+                        .slice(0, prefixLen)
+                        .toUpperCase()}
+                      &quot;,...
                     </p>
                   )}
                 </div>
@@ -608,22 +647,36 @@ export default function PivotPage() {
                       value={String(Math.round(confidence * 100))}
                       onValueChange={(v) => setConfidence(Number(v) / 100)}
                     >
-                      <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
-                        {[80, 90, 95, 99].map((v) => <SelectItem key={v} value={String(v)}>{v}%</SelectItem>)}
+                        {[80, 90, 95, 99].map((v) => (
+                          <SelectItem key={v} value={String(v)}>
+                            {v}%
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Select
                       value={String(Math.round(marginError * 100))}
                       onValueChange={(v) => setMarginError(Number(v) / 100)}
                     >
-                      <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
-                        {[5, 10, 15, 20].map((v) => <SelectItem key={v} value={String(v)}>{v}%</SelectItem>)}
+                        {[5, 10, 15, 20].map((v) => (
+                          <SelectItem key={v} value={String(v)}>
+                            {v}%
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <p className="text-xs text-muted-foreground">Итгэлцлийн % / Алдааны %</p>
+                  <p className="text-xs text-muted-foreground">
+                    Итгэлцлийн % / Алдааны %
+                  </p>
                 </div>
               </div>
 
@@ -643,12 +696,23 @@ export default function PivotPage() {
           <div className="space-y-3">
             {/* Export toolbar */}
             <div className="flex items-center justify-between flex-wrap gap-3 px-1">
-              <h2 className="text-base font-semibold text-foreground">Кодын бүлгээр pivot</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                Кодын бүлгээр pivot
+              </h2>
               <div className="flex items-center gap-2 flex-wrap">
-                <Select value={selectedPrefix} onValueChange={setSelectedPrefix}>
-                  <SelectTrigger className="w-36"><SelectValue placeholder="Prefix..." /></SelectTrigger>
+                <Select
+                  value={selectedPrefix}
+                  onValueChange={setSelectedPrefix}
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Prefix..." />
+                  </SelectTrigger>
                   <SelectContent>
-                    {prefixList.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    {prefixList.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Input
@@ -669,20 +733,32 @@ export default function PivotPage() {
             </div>
 
             {prefixGroups.map((group) => (
-              <Card key={group.prefix} className="border border-border shadow-sm">
+              <Card
+                key={group.prefix}
+                className="border border-border shadow-sm"
+              >
                 <CardHeader
                   className="py-3 cursor-pointer"
                   onClick={() => toggleExpand(group.prefix)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-semibold">
-                      {expandedPrefixes.has(group.prefix)
-                        ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                        : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                      <span className="font-mono bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded text-xs">{group.prefix}</span>
-                      <span className="text-muted-foreground font-normal">бүлэг</span>
+                      {expandedPrefixes.has(group.prefix) ? (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      <span className="font-mono bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded text-xs">
+                        {group.prefix}
+                      </span>
+                      <span className="text-muted-foreground font-normal">
+                        бүлэг
+                      </span>
                     </div>
-                    <span className="text-muted-foreground text-xs">{group.rows.length} жил · {group.rows.reduce((s, r) => s + r.total, 0)} нийт</span>
+                    <span className="text-muted-foreground text-xs">
+                      {group.rows.length} жил ·{" "}
+                      {group.rows.reduce((s, r) => s + r.total, 0)} нийт
+                    </span>
                   </div>
                 </CardHeader>
                 {expandedPrefixes.has(group.prefix) && (
@@ -692,44 +768,87 @@ export default function PivotPage() {
                         <table className="w-full text-xs border-collapse">
                           <thead>
                             <tr className="bg-muted/60">
-                              <th className="px-3 py-2 text-left text-muted-foreground border border-border font-medium">Жил</th>
+                              <th className="px-3 py-2 text-left text-muted-foreground border border-border font-medium">
+                                Жил
+                              </th>
                               {group.codes.map((c) => (
-                                <th key={c} className="px-3 py-2 text-right text-cyan-600 dark:text-cyan-400 border border-border whitespace-nowrap font-medium">{c}</th>
+                                <th
+                                  key={c}
+                                  className="px-3 py-2 text-right text-cyan-600 dark:text-cyan-400 border border-border whitespace-nowrap font-medium"
+                                >
+                                  {c}
+                                </th>
                               ))}
-                              <th className="px-3 py-2 text-right text-foreground border border-border font-bold">Нийт</th>
-                              <th className="px-3 py-2 text-right text-muted-foreground border border-border font-medium">Хувь (%)</th>
+                              <th className="px-3 py-2 text-right text-foreground border border-border font-bold">
+                                Нийт
+                              </th>
+                              <th className="px-3 py-2 text-right text-muted-foreground border border-border font-medium">
+                                Хувь (%)
+                              </th>
                               <th className="px-3 py-2 text-right text-amber-600 dark:text-amber-400 border border-border whitespace-nowrap font-medium">
-                                Түүвэр ({Math.round(confidence * 100)}/{Math.round(marginError * 100)})
+                                Түүвэр ({Math.round(confidence * 100)}/
+                                {Math.round(marginError * 100)})
                               </th>
                             </tr>
                           </thead>
                           <tbody>
                             {group.rows.map((row, i) => (
-                              <tr key={row.year} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                                <td className="px-3 py-2 text-foreground border border-border font-medium">{row.year}</td>
+                              <tr
+                                key={row.year}
+                                className={
+                                  i % 2 === 0 ? "bg-background" : "bg-muted/20"
+                                }
+                              >
+                                <td className="px-3 py-2 text-foreground border border-border font-medium">
+                                  {row.year}
+                                </td>
                                 {group.codes.map((c) => (
-                                  <td key={c} className="px-3 py-2 text-foreground text-right border border-border">{row.codeCounts[c] ?? 0}</td>
+                                  <td
+                                    key={c}
+                                    className="px-3 py-2 text-foreground text-right border border-border"
+                                  >
+                                    {row.codeCounts[c] ?? 0}
+                                  </td>
                                 ))}
-                                <td className="px-3 py-2 text-foreground font-bold text-right border border-border">{row.total}</td>
-                                <td className="px-3 py-2 text-muted-foreground text-right border border-border">{row.pct.toFixed(2)}%</td>
-                                <td className="px-3 py-2 text-amber-600 dark:text-amber-400 font-bold text-right border border-border">{row.sampleSize}</td>
+                                <td className="px-3 py-2 text-foreground font-bold text-right border border-border">
+                                  {row.total}
+                                </td>
+                                <td className="px-3 py-2 text-muted-foreground text-right border border-border">
+                                  {row.pct.toFixed(2)}%
+                                </td>
+                                <td className="px-3 py-2 text-amber-600 dark:text-amber-400 font-bold text-right border border-border">
+                                  {row.sampleSize}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
                           <tfoot>
                             <tr className="bg-muted/50 font-bold">
-                              <td className="px-3 py-2 text-foreground border border-border">Нийт</td>
+                              <td className="px-3 py-2 text-foreground border border-border">
+                                Нийт
+                              </td>
                               {group.codes.map((c) => (
-                                <td key={c} className="px-3 py-2 text-foreground text-right border border-border">
-                                  {group.rows.reduce((s, r) => s + (r.codeCounts[c] ?? 0), 0)}
+                                <td
+                                  key={c}
+                                  className="px-3 py-2 text-foreground text-right border border-border"
+                                >
+                                  {group.rows.reduce(
+                                    (s, r) => s + (r.codeCounts[c] ?? 0),
+                                    0,
+                                  )}
                                 </td>
                               ))}
                               <td className="px-3 py-2 text-cyan-600 dark:text-cyan-400 text-right border border-border">
                                 {group.rows.reduce((s, r) => s + r.total, 0)}
                               </td>
-                              <td className="px-3 py-2 text-muted-foreground text-right border border-border">100%</td>
+                              <td className="px-3 py-2 text-muted-foreground text-right border border-border">
+                                100%
+                              </td>
                               <td className="px-3 py-2 text-amber-600 dark:text-amber-400 text-right border border-border">
-                                {group.rows.reduce((s, r) => s + r.sampleSize, 0)}
+                                {group.rows.reduce(
+                                  (s, r) => s + r.sampleSize,
+                                  0,
+                                )}
                               </td>
                             </tr>
                           </tfoot>
@@ -749,17 +868,26 @@ export default function PivotPage() {
             <CardTitle className="text-base font-semibold">Тайлбар</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2.5">
-            <p><strong className="text-foreground">Огноон баганаа</strong> сонгоход жилийг автоматаар гаргаж авна.</p>
             <p>
-              <strong className="text-foreground">Бүлэглэх баганаа</strong> сонгоход кодуудыг эхний <em>prefix</em> тэмдэгтээр нь бүлэглэнэ
+              <strong className="text-foreground">Огноон баганаа</strong>{" "}
+              сонгоход жилийг автоматаар гаргаж авна.
+            </p>
+            <p>
+              <strong className="text-foreground">Бүлэглэх баганаа</strong>{" "}
+              сонгоход кодуудыг эхний <em>prefix</em> тэмдэгтээр нь бүлэглэнэ
               (жишэ: CA602 → CA6 [prefix=3]).
             </p>
             <p>
-              Pivot хүснэгт бүр <strong className="text-foreground">жилээр мөр</strong>,{" "}
-              <strong className="text-foreground">код баганаар</strong> тоолно. Түүврийн хэмжээг итгэлцлийн түвшин болон алдааны маржинг ашиглан тооцоолно.
+              Pivot хүснэгт бүр{" "}
+              <strong className="text-foreground">жилээр мөр</strong>,{" "}
+              <strong className="text-foreground">код баганаар</strong> тоолно.
+              Түүврийн хэмжээг итгэлцлийн түвшин болон алдааны маржинг ашиглан
+              тооцоолно.
             </p>
             <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
-              <strong>Ашиглах заавар:</strong> Excel/CSV файл оруулаад огноон болон кодын багануудыг сонгоод <strong>Pivot үүсгэх</strong> дарна уу. Дараа нь prefix сонгоод Excel татна уу.
+              <strong>Ашиглах заавар:</strong> Excel/CSV файл оруулаад огноон
+              болон кодын багануудыг сонгоод <strong>Pivot үүсгэх</strong> дарна
+              уу. Дараа нь prefix сонгоод Excel татна уу.
             </div>
           </CardContent>
         </Card>

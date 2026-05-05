@@ -147,7 +147,9 @@ export default function ReportsPage() {
               className="flex items-center gap-3 mb-6"
             >
               <div className="flex items-center gap-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full px-3 py-1 text-xs text-violet-400">
-                {search ? `${filtered.length} / ${pyTools.length}` : pyTools.length}{" "}
+                {search
+                  ? `${filtered.length} / ${pyTools.length}`
+                  : pyTools.length}{" "}
                 тайлан
               </div>
               {search && filtered.length === 0 && (
@@ -234,4 +236,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-

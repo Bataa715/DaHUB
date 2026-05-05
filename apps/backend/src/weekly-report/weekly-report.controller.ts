@@ -33,7 +33,11 @@ export class WeeklyReportController {
     @Body() body: { year: number; weekNumber: number },
     @Request() req: any,
   ) {
-    return this.svc.submit(req.user, Number(body.year), Number(body.weekNumber));
+    return this.svc.submit(
+      req.user,
+      Number(body.year),
+      Number(body.weekNumber),
+    );
   }
 
   @Get("my")

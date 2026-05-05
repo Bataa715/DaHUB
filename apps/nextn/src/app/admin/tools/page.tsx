@@ -193,8 +193,7 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "weekly_report_audit",
     name: "7 хоногийн тайлан (аудит хэлтэс)",
-    description:
-      "ЕАХ / МТАХ / ЗАЧБХ-н долоо хоногийн тайлан бичих эрх",
+    description: "ЕАХ / МТАХ / ЗАЧБХ-н долоо хоногийн тайлан бичих эрх",
     icon: CalendarRange,
     color: "from-indigo-500 to-purple-500",
     gradient: "bg-gradient-to-br from-indigo-500/20 to-purple-500/20",
@@ -203,8 +202,7 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "weekly_report_daa",
     name: "7 хоногийн тайлан (ДАА)",
-    description:
-      "Дата анализийн алба — долоо хоногийн тайлан бичих эрх",
+    description: "Дата анализийн алба — долоо хоногийн тайлан бичих эрх",
     icon: CalendarRange,
     color: "from-sky-500 to-indigo-500",
     gradient: "bg-gradient-to-br from-sky-500/20 to-indigo-500/20",
@@ -256,7 +254,9 @@ export default function AdminToolsPage() {
   const [activeTab, setActiveTab] = useState("current");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   // Revoke tab state
-  const [revokeSelectedUsers, setRevokeSelectedUsers] = useState<Set<string>>(new Set());
+  const [revokeSelectedUsers, setRevokeSelectedUsers] = useState<Set<string>>(
+    new Set(),
+  );
   const [revokeSearch, setRevokeSearch] = useState("");
   const [revokeDepartment, setRevokeDepartment] = useState<string>("");
   // Grant tab search
@@ -806,47 +806,47 @@ export default function AdminToolsPage() {
                     ) : getFilteredUsersWithAccess().length === 0 ? (
                       <div className="text-center py-16 text-slate-600">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">Хайлтад тохирох хэрэглэгч олдсонгүй</p>
+                        <p className="text-sm">
+                          Хайлтад тохирох хэрэглэгч олдсонгүй
+                        </p>
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-800/60">
-                        {getFilteredUsersWithAccess().map(
-                          (user, index) => (
-                            <motion.div
-                              key={user.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.02 }}
-                              className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-                                revokeSelectedUsers.has(user.id)
-                                  ? "bg-slate-800"
-                                  : "hover:bg-slate-900/60"
-                              }`}
-                              onClick={() => toggleRevokeSelection(user.id)}
+                        {getFilteredUsersWithAccess().map((user, index) => (
+                          <motion.div
+                            key={user.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: index * 0.02 }}
+                            className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
+                              revokeSelectedUsers.has(user.id)
+                                ? "bg-slate-800"
+                                : "hover:bg-slate-900/60"
+                            }`}
+                            onClick={() => toggleRevokeSelection(user.id)}
+                          >
+                            <Checkbox
+                              checked={revokeSelectedUsers.has(user.id)}
+                              onCheckedChange={() =>
+                                toggleRevokeSelection(user.id)
+                              }
+                              className="border-slate-700 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-white shrink-0"
+                            />
+                            <div
+                              className={`w-7 h-7 rounded-md bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}
                             >
-                              <Checkbox
-                                checked={revokeSelectedUsers.has(user.id)}
-                                onCheckedChange={() =>
-                                  toggleRevokeSelection(user.id)
-                                }
-                                className="border-slate-700 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-white shrink-0"
-                              />
-                              <div
-                                className={`w-7 h-7 rounded-md bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}
-                              >
-                                {user.name.charAt(0)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm text-white truncate">
-                                  {user.name}
-                                </p>
-                                <p className="text-xs text-slate-500 truncate">
-                                  {user.department}
-                                </p>
-                              </div>
-                            </motion.div>
-                          ),
-                        )}
+                              {user.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-white truncate">
+                                {user.name}
+                              </p>
+                              <p className="text-xs text-slate-500 truncate">
+                                {user.department}
+                              </p>
+                            </div>
+                          </motion.div>
+                        ))}
                       </div>
                     )}
                   </ScrollArea>
@@ -951,45 +951,45 @@ export default function AdminToolsPage() {
                     ) : getFilteredUsersWithoutAccess().length === 0 ? (
                       <div className="text-center py-16 text-slate-600">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">Хайлтад тохирох хэрэглэгч олдсонгүй</p>
+                        <p className="text-sm">
+                          Хайлтад тохирох хэрэглэгч олдсонгүй
+                        </p>
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-800/60">
-                        {getFilteredUsersWithoutAccess().map(
-                          (user, index) => (
-                            <motion.div
-                              key={user.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.02 }}
-                              className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-                                selectedUsers.has(user.id)
-                                  ? "bg-slate-800"
-                                  : "hover:bg-slate-900/60"
-                              }`}
-                              onClick={() => toggleUserSelection(user.id)}
-                            >
-                              <Checkbox
-                                checked={selectedUsers.has(user.id)}
-                                onCheckedChange={() =>
-                                  toggleUserSelection(user.id)
-                                }
-                                className="border-slate-700 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-slate-900 shrink-0"
-                              />
-                              <div className="w-7 h-7 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-medium shrink-0">
-                                {user.name.charAt(0)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm text-white truncate">
-                                  {user.name}
-                                </p>
-                                <p className="text-xs text-slate-500 truncate">
-                                  {user.department}
-                                </p>
-                              </div>
-                            </motion.div>
-                          ),
-                        )}
+                        {getFilteredUsersWithoutAccess().map((user, index) => (
+                          <motion.div
+                            key={user.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: index * 0.02 }}
+                            className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
+                              selectedUsers.has(user.id)
+                                ? "bg-slate-800"
+                                : "hover:bg-slate-900/60"
+                            }`}
+                            onClick={() => toggleUserSelection(user.id)}
+                          >
+                            <Checkbox
+                              checked={selectedUsers.has(user.id)}
+                              onCheckedChange={() =>
+                                toggleUserSelection(user.id)
+                              }
+                              className="border-slate-700 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-slate-900 shrink-0"
+                            />
+                            <div className="w-7 h-7 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-medium shrink-0">
+                              {user.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-white truncate">
+                                {user.name}
+                              </p>
+                              <p className="text-xs text-slate-500 truncate">
+                                {user.department}
+                              </p>
+                            </div>
+                          </motion.div>
+                        ))}
                       </div>
                     )}
                   </ScrollArea>

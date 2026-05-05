@@ -91,7 +91,10 @@ export class WeeklyReportService implements OnModuleInit {
     }
 
     // Existing row хайж id-ийг дахин ашиглана (ReplacingMergeTree dedup).
-    const existing = await this.clickhouse.query<{ id: string; status: string }>(
+    const existing = await this.clickhouse.query<{
+      id: string;
+      status: string;
+    }>(
       `SELECT id, status FROM weekly_reports FINAL
        WHERE userId = {uid:String} AND year = {y:UInt16} AND weekNumber = {w:UInt8}
        ORDER BY updatedAt DESC LIMIT 1`,
@@ -101,8 +104,7 @@ export class WeeklyReportService implements OnModuleInit {
     const id = existing[0]?.id || randomUUID();
     const now = nowCH();
     const status = dto.status === "submitted" ? "submitted" : "draft";
-    const submittedAt =
-      status === "submitted" ? now : "1970-01-01 00:00:00";
+    const submittedAt = status === "submitted" ? now : "1970-01-01 00:00:00";
 
     await this.clickhouse.insert("weekly_reports", [
       {
@@ -162,11 +164,7 @@ export class WeeklyReportService implements OnModuleInit {
   }
 
   // ── Director consolidated view ────────────────────────────────────────────
-  async getConsolidated(
-    user: UserPayload,
-    year: number,
-    weekNumber: number,
-  ) {
+  async getConsolidated(user: UserPayload, year: number, weekNumber: number) {
     const role = this.resolveRole(user);
     if (role !== "director") {
       throw new ForbiddenException("Зөвхөн газрын захирал харах эрхтэй");

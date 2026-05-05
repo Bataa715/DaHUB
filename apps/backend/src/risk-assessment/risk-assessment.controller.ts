@@ -39,7 +39,11 @@ export class RiskAssessmentController {
     @Body() body: { rowKey: string; manualResult: string },
     @Request() req,
   ) {
-    await this.service.overrideBranchRiskassRow(body.rowKey, body.manualResult, req.user.id);
+    await this.service.overrideBranchRiskassRow(
+      body.rowKey,
+      body.manualResult,
+      req.user.id,
+    );
     return { ok: true };
   }
 

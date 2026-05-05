@@ -35,9 +35,26 @@ export interface CatalogIndicator {
 
 export const INDICATOR_CATALOG: CatalogIndicator[] = [
   // ────────────────────────── Score 1 (35%) ──────────────────────────
-  { id: "s1-001", name: "Салбарын үнэлгээний хуудасны үнэлгээ", group: 1, weight: 2 },
-  { id: "s1-002", name: "Анхаарал хандуулах зээл", group: 1, weight: 3, autoSubid: 5 },
-  { id: "s1-003", name: "Даатгалын үйл ажиллагаа", group: 1, weight: 2, autoSubid: 21 },
+  {
+    id: "s1-001",
+    name: "Салбарын үнэлгээний хуудасны үнэлгээ",
+    group: 1,
+    weight: 2,
+  },
+  {
+    id: "s1-002",
+    name: "Анхаарал хандуулах зээл",
+    group: 1,
+    weight: 3,
+    autoSubid: 5,
+  },
+  {
+    id: "s1-003",
+    name: "Даатгалын үйл ажиллагаа",
+    group: 1,
+    weight: 2,
+    autoSubid: 21,
+  },
   {
     id: "s1-004",
     name: "Дотоод үнэлгээний ашгийн төлөвлөгөөний биелэлт",
@@ -45,7 +62,13 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     weight: 3,
     autoSubid: 3,
   },
-  { id: "s1-005", name: "Зээлийн материал буцаалт", group: 1, weight: 2, autoSubid: 20 },
+  {
+    id: "s1-005",
+    name: "Зээлийн материал буцаалт",
+    group: 1,
+    weight: 2,
+    autoSubid: 20,
+  },
   {
     id: "s1-006",
     name: "Зээлийн төлөвлөгөөний биелэлт",
@@ -60,7 +83,13 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     weight: 2,
     autoSubid: 19,
   },
-  { id: "s1-008", name: "Зээлийн эргэн хяналт", group: 1, weight: 2, autoSubid: 18 },
+  {
+    id: "s1-008",
+    name: "Зээлийн эргэн хяналт",
+    group: 1,
+    weight: 2,
+    autoSubid: 18,
+  },
   {
     id: "s1-009",
     name: "Зээлийн өр цуглуулах үйл ажиллагаа",
@@ -75,11 +104,29 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     weight: 2,
     autoSubid: 27,
   },
-  { id: "s1-011", name: "Салбарын зэрэглэл", group: 1, weight: 1, autoSubid: 11 },
+  {
+    id: "s1-011",
+    name: "Салбарын зэрэглэл",
+    group: 1,
+    weight: 1,
+    autoSubid: 11,
+  },
   { id: "s1-012", name: "Тоон төлөвлөгөө", group: 1, weight: 2 },
-  { id: "s1-013", name: "Хүүгийн бус орлого", group: 1, weight: 2, autoSubid: 4 },
+  {
+    id: "s1-013",
+    name: "Хүүгийн бус орлого",
+    group: 1,
+    weight: 2,
+    autoSubid: 4,
+  },
   { id: "s1-014", name: "Чанаргүй зээл", group: 1, weight: 3, autoSubid: 6 },
-  { id: "s1-015", name: "Чанаргүй зээлийн тоо", group: 1, weight: 2, autoSubid: 7 },
+  {
+    id: "s1-015",
+    name: "Чанаргүй зээлийн тоо",
+    group: 1,
+    weight: 2,
+    autoSubid: 7,
+  },
   {
     id: "s1-016",
     name: "Эх үүсвэрийн төлөвлөгөөний биелэлт",
@@ -104,7 +151,13 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     weight: 2,
   },
   { id: "s2-004", name: "Гарсан гомдлын тоо", group: 2, weight: 3 },
-  { id: "s2-005", name: "Монгол банкны үнэлгээ", group: 2, weight: 2, autoSubid: 28 },
+  {
+    id: "s2-005",
+    name: "Монгол банкны үнэлгээ",
+    group: 2,
+    weight: 2,
+    autoSubid: 28,
+  },
   {
     id: "s2-006",
     name: "Нэг ажилтанд ногдох сургалтын цаг",
@@ -112,7 +165,13 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     weight: 2,
     autoSubid: 16,
   },
-  { id: "s2-007", name: "Орон тоо бүрэн эсэх", group: 2, weight: 2, autoSubid: 15 },
+  {
+    id: "s2-007",
+    name: "Орон тоо бүрэн эсэх",
+    group: 2,
+    weight: 2,
+    autoSubid: 15,
+  },
   {
     id: "s2-008",
     name: "Удирдах ажилтнуудын ажилласан жил",
@@ -120,10 +179,22 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     weight: 2,
     autoSubid: 13,
   },
-  { id: "s2-009", name: "Хүний нөөцийн эргэц", group: 2, weight: 2, autoSubid: 14 },
+  {
+    id: "s2-009",
+    name: "Хүний нөөцийн эргэц",
+    group: 2,
+    weight: 2,
+    autoSubid: 14,
+  },
 
   // ────────────────────────── Score 3 (20%) ──────────────────────────
-  { id: "s3-001", name: "Follow up үнэлгээ", group: 3, weight: 4, autoSubid: 33 },
+  {
+    id: "s3-001",
+    name: "Follow up үнэлгээ",
+    group: 3,
+    weight: 4,
+    autoSubid: 33,
+  },
   { id: "s3-002", name: "Зайны аудитын үнэлгээ", group: 3, weight: 4 },
   {
     id: "s3-003",
@@ -132,7 +203,13 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     weight: 4,
     autoSubid: 32,
   },
-  { id: "s3-004", name: "Өмнөх аудитын үнэлгээ", group: 3, weight: 4, autoSubid: 30 },
+  {
+    id: "s3-004",
+    name: "Өмнөх аудитын үнэлгээ",
+    group: 3,
+    weight: 4,
+    autoSubid: 30,
+  },
   {
     id: "s3-005",
     name: "Өндөр эрсдэлтэй асуудлын тоо",
@@ -177,7 +254,13 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
     group: 4,
     weight: 2,
   },
-  { id: "s4-008", name: "Хувийн хэргийн зөрчил", group: 4, weight: 2, autoSubid: 23 },
+  {
+    id: "s4-008",
+    name: "Хувийн хэргийн зөрчил",
+    group: 4,
+    weight: 2,
+    autoSubid: 23,
+  },
 
   // ────────────────────── Judgement Score (10%) ──────────────────────
   { id: "j-001", name: "Аудиторын үнэлэмж", group: 5, weight: 10 },
@@ -265,7 +348,15 @@ export function evaluateBranch(
   manual: Record<string, number> | undefined,
 ): BranchCatalogResult {
   // SUBID → ScoreResult (Oracle-аас computeScore-аар татна)
-  const autoBySubid = new Map<number, { score: ScoreResult; raw: string; label: string | null; rule?: IndicatorRule }>();
+  const autoBySubid = new Map<
+    number,
+    {
+      score: ScoreResult;
+      raw: string;
+      label: string | null;
+      rule?: IndicatorRule;
+    }
+  >();
   for (const r of rows) {
     const sid = Number(r.SUBID);
     if (!Number.isFinite(sid)) continue;
@@ -280,8 +371,20 @@ export function evaluateBranch(
   }
 
   const values: Record<string, IndicatorValue> = {};
-  const sumByGroup: Record<CatalogGroup, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  const wByGroup: Record<CatalogGroup, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const sumByGroup: Record<CatalogGroup, number> = {
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+  };
+  const wByGroup: Record<CatalogGroup, number> = {
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+  };
 
   for (const ind of INDICATOR_CATALOG) {
     let score: number | null = null;
@@ -324,10 +427,17 @@ export function evaluateBranch(
     }
   }
 
-  const groupScores: Record<CatalogGroup, number | null> = { 1: null, 2: null, 3: null, 4: null, 5: null };
+  const groupScores: Record<CatalogGroup, number | null> = {
+    1: null,
+    2: null,
+    3: null,
+    4: null,
+    5: null,
+  };
   (Object.keys(groupScores) as unknown as CatalogGroup[]).forEach((g) => {
     const w = wByGroup[g as CatalogGroup];
-    if (w > 0) groupScores[g as CatalogGroup] = sumByGroup[g as CatalogGroup] / w;
+    if (w > 0)
+      groupScores[g as CatalogGroup] = sumByGroup[g as CatalogGroup] / w;
   });
 
   return { branchId, groupScores, values };

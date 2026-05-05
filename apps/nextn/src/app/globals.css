@@ -4,7 +4,8 @@
 
 /* JetBrains Mono fallback — system monospace (Google Fonts татахгүй) */
 :root {
-  --font-jetbrainsMono: 'Consolas', 'Cascadia Code', 'Fira Mono', 'Menlo', 'Monaco', monospace;
+  --font-jetbrainsMono:
+    "Consolas", "Cascadia Code", "Fira Mono", "Menlo", "Monaco", monospace;
 }
 
 @layer utilities {

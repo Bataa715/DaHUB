@@ -36,7 +36,7 @@ import configuration from "./config/configuration";
         name: "default",
         ttl: 60000, // 1 minute
         limit: 120, // 120 requests per minute
-      }
+      },
     ]),
     ScheduleModule.forRoot(),
     ClickHouseModule,

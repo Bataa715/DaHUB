@@ -9,15 +9,25 @@
   --txt-muted: #7c7c96;
   --txt-dim: #55556b;
 
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   background: var(--surface);
   color: var(--txt);
 }
 
-.ab-theme ::-webkit-scrollbar { width: 5px; height: 5px; }
-.ab-theme ::-webkit-scrollbar-track { background: transparent; }
-.ab-theme ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 99px; }
-.ab-theme ::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+.ab-theme ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.ab-theme ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ab-theme ::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 99px;
+}
+.ab-theme ::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
+}
 
 .ab-theme .skeleton {
   background: linear-gradient(90deg, #18181f 25%, #222230 50%, #18181f 75%);
@@ -26,8 +36,12 @@
 }
 
 @keyframes ab-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* native select dark styling */

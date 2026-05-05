@@ -408,7 +408,11 @@ export const INDICATOR_RULES: IndicatorRule[] = [
     name: "Өмнөх аудитын үнэлгээ",
     strings: [
       {
-        match: contains(["хангалтгүй", "идэвхитэй менежмент", "идэвхтэй менежмент"]),
+        match: contains([
+          "хангалтгүй",
+          "идэвхитэй менежмент",
+          "идэвхтэй менежмент",
+        ]),
         score: 5,
         label: "Хангалтгүй",
       },
@@ -472,20 +476,29 @@ export const INDICATOR_RULES: IndicatorRule[] = [
   },
 
   // SUBID 35 — Ажилтны ур чадварын түвшин: rubric-д заагаагүй
-  { subid: 35, group: "Score 2", name: "Ажилтны ур чадварын түвшин", noScore: true },
+  {
+    subid: 35,
+    group: "Score 2",
+    name: "Ажилтны ур чадварын түвшин",
+    noScore: true,
+  },
 ];
 
 const RULE_BY_SUBID = new Map<number, IndicatorRule>(
   INDICATOR_RULES.map((r) => [r.subid, r]),
 );
 
-export function getRule(subid: number | string | null | undefined): IndicatorRule | undefined {
+export function getRule(
+  subid: number | string | null | undefined,
+): IndicatorRule | undefined {
   const n = Number(subid);
   if (!Number.isFinite(n)) return undefined;
   return RULE_BY_SUBID.get(n);
 }
 
-export function getGroup(subid: number | string | null | undefined): ScoreGroup | null {
+export function getGroup(
+  subid: number | string | null | undefined,
+): ScoreGroup | null {
   return getRule(subid)?.group ?? null;
 }
 
@@ -535,10 +548,12 @@ export function computeScore(
 /** UI-д харагдах өнгө. */
 export function scoreColorClass(score: ScoreResult): string {
   if (score === 5) return "bg-red-500/15 text-red-600 border-red-500/30";
-  if (score === 4) return "bg-orange-500/15 text-orange-600 border-orange-500/30";
+  if (score === 4)
+    return "bg-orange-500/15 text-orange-600 border-orange-500/30";
   if (score === 3) return "bg-amber-500/15 text-amber-600 border-amber-500/30";
   if (score === 2) return "bg-lime-500/15 text-lime-700 border-lime-500/30";
-  if (score === 1) return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
+  if (score === 1)
+    return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
   if (score === 0 || score === "Үнэлэхгүй")
     return "bg-slate-500/10 text-slate-500 border-slate-500/30";
   return "bg-transparent text-muted-foreground border-transparent";
@@ -560,7 +575,10 @@ export type RiskLevel = "Өндөр" | "Дунд" | "Бага";
 const UB_RATINGS = new Set(["УБТ", "A1", "A2", "A3", "SME", "C", "БИЗНЕС ТӨВ"]);
 const LOC_RATINGS = new Set(["ОБТ", "Б1", "Б2"]);
 
-export const WEIGHTS: Record<Region, { s1: number; s2: number; s3: number; s4: number; j: number }> = {
+export const WEIGHTS: Record<
+  Region,
+  { s1: number; s2: number; s3: number; s4: number; j: number }
+> = {
   UB: { s1: 0.35, s2: 0.2, s3: 0.2, s4: 0.15, j: 0.1 },
   LOC: { s1: 0.25, s2: 0.2, s3: 0.2, s4: 0.1, j: 0.1 },
 };
@@ -582,8 +600,10 @@ export function riskLevel(total: number | null | undefined): RiskLevel | "" {
 
 export function riskLevelClass(lv: string): string {
   if (lv === "Өндөр") return "bg-rose-500/15 text-rose-600 border-rose-500/30";
-  if (lv === "Дунд") return "bg-amber-500/15 text-amber-700 border-amber-500/30";
-  if (lv === "Бага") return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
+  if (lv === "Дунд")
+    return "bg-amber-500/15 text-amber-700 border-amber-500/30";
+  if (lv === "Бага")
+    return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
   return "text-muted-foreground border-transparent";
 }
 
@@ -731,4 +751,3 @@ export function aggregateBranch(
   list.sort((a, b) => a.branchName.localeCompare(b.branchName, "mn"));
   return list;
 }
-
