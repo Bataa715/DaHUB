@@ -924,136 +924,48 @@ export const pythonToolApi = {
 
 // ── Risk Assessment ─────────────────────────────────────────────────────────
 
-export interface RiskIndicator {
+export interface RiskHistoryEntry {
   id: string;
-  code: string;
   name: string;
-  category: string;
-  weight: number;
-  sourceType: "auto" | "manual" | "hybrid";
-  unit: string;
-  isActive: number;
+  pDate: string;
+  pDateBeg: string;
+  branchCount: number;
+  oracleFetchedAt: string;
+  createdBy: string;
+  createdByName: string;
   createdAt: string;
-  oracleQuery?: string;
-  scoreScale?: number;
 }
 
-export interface RiskScore {
-  id: string;
-  period: string;
-  branchId: string;
-  branchName: string;
-  indicatorId: string;
-  rawValue: number | null;
-  score: number;
-  isManual: number;
-  note: string;
+export interface RiskCurrentRow {
+  rowKey: string;
+  rowType: "oracle" | "manual_indicator";
+  fetchedAt: string;
   updatedBy: string;
-  updatedAt: string;
-}
-
-export interface BranchSummary {
-  period: string;
-  branchId: string;
-  branchName: string;
-  totalScore: number;
-  level: "low" | "medium" | "high";
-  indicatorCount: number;
-  manualCount: number;
+  pDate: string;
+  pDateBeg: string;
+  SOLID: string;
+  BRANCHNAME: string;
+  BRANCHID: string;
+  PARENTBRANCH: string;
+  RESULT: string;
+  RESULT_TYPE: string;
+  DESCRIPTION_TEXT: string;
+  P_DATEBEG: string;
+  P_DATE: string;
+  ID: string;
+  SUBID: string;
+  OPERATION_TYPE: string;
+  isManual: number;
+  manualResult: string;
+  indicatorId: string;
+  indicatorValue: number | null;
 }
 
 export const riskApi = {
-  listIndicators: async (): Promise<RiskIndicator[]> => {
-    const res = await api.get("/risk-assessment/indicators");
-    return res.data;
-  },
-
-  createIndicator: async (data: {
-    code: string;
-    name: string;
-    category: string;
-    weight: number;
-    sourceType: "auto" | "manual" | "hybrid";
-    unit: string;
-  }): Promise<RiskIndicator> => {
-    const res = await api.post("/risk-assessment/indicators", data);
-    return res.data;
-  },
-
-  deleteIndicator: async (id: string): Promise<void> => {
-    await api.delete(`/risk-assessment/indicators/${id}`);
-  },
-
-  updateIndicator: async (
-    id: string,
-    patch: { oracleQuery?: string; scoreScale?: number; weight?: number },
-  ): Promise<void> => {
-    await api.patch(`/risk-assessment/indicators/${id}`, patch);
-  },
-
-  syncOracle: async (
-    period: string,
-  ): Promise<{
-    period: string;
-    ok: boolean;
-    upserted: number;
-    skippedManual: number;
-    perIndicator: { code: string; name: string; rows: number; error?: string }[];
-  }> => {
-    const res = await api.post(`/risk-assessment/sync-oracle?period=${period}`);
-    return res.data;
-  },
-
-  listScores: async (period: string): Promise<RiskScore[]> => {
-    const res = await api.get(`/risk-assessment/scores?period=${period}`);
-    return res.data;
-  },
-
-  upsertScore: async (data: {
-    period: string;
-    branchId: string;
-    branchName: string;
-    indicatorId: string;
-    rawValue: number | null;
-    score: number;
-    note?: string;
-    reason?: string;
-  }): Promise<RiskScore> => {
-    const res = await api.put("/risk-assessment/scores", data);
-    return res.data;
-  },
-
-  getSummary: async (period: string): Promise<BranchSummary[]> => {
-    const res = await api.get(`/risk-assessment/summary?period=${period}`);
-    return res.data;
-  },
-
-  getAuditLog: async (
-    period: string,
-    branchId: string,
-    indicatorId: string,
-  ): Promise<
-    {
-      id: string;
-      oldValue: number | null;
-      newValue: number | null;
-      oldScore: number | null;
-      newScore: number | null;
-      reason: string;
-      changedBy: string;
-      changedAt: string;
-    }[]
-  > => {
-    const res = await api.get(
-      `/risk-assessment/audit-log?period=${period}&branchId=${branchId}&indicatorId=${indicatorId}`,
-    );
-    return res.data;
-  },
-
-  /** RISKASSESSMENT.BranchRiskass procedure-ийн үр дүн (35 SUBID × салбар) */
+  /** Oracle-аас татаж current-д хадгалах */
   branchRiskass: async (args: {
-    pDate: string; // 'YYYY-MM-DD'
-    pDateBeg: string; // 'YYYY-MM-DD'
+    pDate: string;
+    pDateBeg: string;
     branchIds?: number[];
   }): Promise<{
     pDate: string;
@@ -1061,118 +973,71 @@ export const riskApi = {
     branchCount: number;
     rowCount: number;
     failed: { branchId: number; error: string }[];
-    rows: Array<{
-      SOLID: number | string;
-      BRANCHNAME: string;
-      BRANCHID: string;
-      PARENTBRANCH: string;
-      RESULT: string;
-      RESULT_TYPE: string;
-      DESCRIPTION_TEXT: string;
-      P_DATEBEG: string;
-      P_DATE: string;
-      ID: string;
-      SUBID: string;
-      OPERATION_TYPE: string;
-    }>;
+    rows: RiskCurrentRow[];
   }> => {
     const res = await api.post(`/risk-assessment/branch-riskass`, args);
     return res.data;
   },
 
-  /** Хэрэглэгчийн сүүлд хадгалсан BranchRiskass үр дүнг ClickHouse-аас унших */
-  branchRiskassLast: async (): Promise<{
+  /** Current table-аас бүгдийг уншина (oracle мөрүүд + manual indicator мөрүүд) */
+  getCurrent: async (): Promise<{
     pDate: string;
     pDateBeg: string;
-    branchCount: number;
-    rowCount: number;
-    failed: { branchId: number; error: string }[];
-    rows: Array<{
-      SOLID: number | string;
-      BRANCHNAME: string;
-      BRANCHID: string;
-      PARENTBRANCH: string;
-      RESULT: string;
-      RESULT_TYPE: string;
-      DESCRIPTION_TEXT: string;
-      P_DATEBEG: string;
-      P_DATE: string;
-      ID: string;
-      SUBID: string;
-      OPERATION_TYPE: string;
-    }>;
-    fetchedAt: string;
-  } | null> => {
-    const res = await api.get(`/risk-assessment/branch-riskass/last`);
-    return res.data;
-  },
-
-  // ── Snapshots (нэр өгч хадгалсан тайлангийн түүх) ───────────────────────
-  saveSnapshot: async (args: {
-    name: string;
-    payload: any;
-    pDate?: string;
-    pDateBeg?: string;
-    branchCount?: number;
-  }): Promise<{ id: string; name: string; createdAt: string }> => {
-    const res = await api.post(`/risk-assessment/snapshots`, args);
-    return res.data;
-  },
-
-  listSnapshots: async (): Promise<
-    Array<{
-      id: string;
-      name: string;
-      createdBy: string;
-      createdByName: string;
-      pDate: string;
-      pDateBeg: string;
-      branchCount: number;
-      createdAt: string;
-    }>
-  > => {
-    const res = await api.get(`/risk-assessment/snapshots`);
-    return res.data;
-  },
-
-  getSnapshot: async (
-    id: string,
-  ): Promise<{
-    id: string;
-    name: string;
-    createdBy: string;
-    createdByName: string;
-    pDate: string;
-    pDateBeg: string;
-    branchCount: number;
-    createdAt: string;
-    payload: Record<string, { total: number; level: string }>;
+    oracleFetchedAt: string | null;
+    rows: RiskCurrentRow[];
+    manualMap: Record<string, Record<string, number>>;
   }> => {
-    const res = await api.get(`/risk-assessment/snapshots/${id}`);
+    const res = await api.get(`/risk-assessment/current`);
     return res.data;
   },
 
-  deleteSnapshot: async (id: string): Promise<void> => {
-    await api.delete(`/risk-assessment/snapshots/${id}`);
+  /** Нэг Oracle мөрийн RESULT утгыг гараар засах */
+  overrideBranchRiskassRow: async (rowKey: string, manualResult: string): Promise<void> => {
+    await api.patch(`/risk-assessment/branch-riskass/row`, { rowKey, manualResult });
   },
 
-  // ── Manual indicators (per-branch × per-indicator) ──────────────────────
-  // Гарын үзүүлэлтийн утгыг localStorage биш, ClickHouse-н risk_scores
-  // хүснэгтэд period='manual' гэж хадгална. Snapshot-аас тусдаа.
-  listManualIndicators: async (): Promise<
-    Record<string, Record<string, number>>
-  > => {
+  /** Гарын үзүүлэлтийн бүх утгыг авах */
+  listManualIndicators: async (): Promise<Record<string, Record<string, number>>> => {
     const res = await api.get(`/risk-assessment/manual-indicators`);
     return res.data ?? {};
   },
 
+  /** Гарын үзүүлэлтийн нэг утгыг хадгалах (debounce-тай дуудагдана) */
   upsertManualIndicator: async (args: {
     branchId: string;
     indicatorId: string;
     value: number;
-    branchName?: string;
   }): Promise<void> => {
     await api.put(`/risk-assessment/manual-indicators`, args);
+  },
+
+  // ── History ──────────────────────────────────────────────────────────────
+
+  /** Current байдлыг нэр өгч History-д хадгалах */
+  saveHistory: async (name: string): Promise<RiskHistoryEntry> => {
+    const res = await api.post(`/risk-assessment/history`, { name });
+    return res.data;
+  },
+
+  /** History жагсаалт (meta-г л буцаана, rows байхгүй) */
+  listHistory: async (): Promise<RiskHistoryEntry[]> => {
+    const res = await api.get(`/risk-assessment/history`);
+    return res.data;
+  },
+
+  /** History нэг бичлэгийн дэлгэрэнгүй (rows + manualMap) */
+  getHistory: async (id: string): Promise<{
+    entry: RiskHistoryEntry;
+    rows: RiskCurrentRow[];
+    manualMap: Record<string, Record<string, number>>;
+  }> => {
+    const res = await api.get(`/risk-assessment/history/${id}`);
+    return res.data;
+  },
+
+  /** History бичлэг устгах */
+  deleteHistory: async (id: string): Promise<void> => {
+    await api.delete(`/risk-assessment/history/${id}`);
   },
 };
 

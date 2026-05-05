@@ -4,25 +4,18 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { departmentsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
   Building2,
   Users,
-  Briefcase,
   Target,
-  User,
   Lock,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
   Camera,
   ImagePlus,
   Crown,
-  Star,
   X,
-  ZoomIn,
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
@@ -48,22 +41,13 @@ interface DepartmentData {
   updatedAt?: string;
 }
 
-/*  helpers  */
-const AVATAR_GRADIENTS = [
-  "from-violet-500 to-purple-600",
-  "from-blue-500 to-cyan-500",
-  "from-emerald-500 to-teal-600",
-  "from-rose-500 to-pink-600",
-  "from-amber-500 to-orange-500",
-  "from-indigo-500 to-blue-600",
-  "from-fuchsia-500 to-violet-600",
-  "from-teal-500 to-emerald-500",
-];
-
-const getGradient = (name: string) => {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
+type DeptPhoto = {
+  id: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  caption: string;
+  imageData: string;
+  uploadedAt: string;
 };
 
 const getInitials = (name: string) =>
@@ -74,41 +58,111 @@ const getInitials = (name: string) =>
     .toUpperCase()
     .slice(0, 2);
 
-const ALBUM_PREVIEW = 6;
+// ── Photo Modal (Lightbox) ─────────────────────────────────────────────────
+function PhotoModal({
+  photos,
+  index,
+  onClose,
+  onDelete,
+  onPrev,
+  onNext,
+}: {
+  photos: DeptPhoto[];
+  index: number;
+  onClose: () => void;
+  onDelete: (id: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const photo = photos[index];
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") onPrev();
+      if (e.key === "ArrowRight") onNext();
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onPrev, onNext, onClose]);
 
-const PARTICLES = [
-  { l: 8, t: 18 },
-  { l: 88, t: 12 },
-  { l: 48, t: 78 },
-  { l: 22, t: 42 },
-  { l: 72, t: 58 },
-  { l: 14, t: 72 },
-  { l: 82, t: 32 },
-  { l: 38, t: 8 },
-  { l: 62, t: 88 },
-  { l: 28, t: 52 },
-  { l: 68, t: 22 },
-  { l: 4, t: 62 },
-];
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      {/* Counter */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-black/50 text-white/70 text-xs">
+        {index + 1} / {photos.length}
+      </div>
+      {/* Prev */}
+      {index > 0 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          className="absolute left-4 z-10 p-2.5 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+      {/* Next */}
+      {index < photos.length - 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          className="absolute right-4 z-10 p-2.5 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
+      {/* Image + info */}
+      <div
+        className="relative mx-16 max-w-4xl w-full flex flex-col items-center gap-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photo.imageData}
+          alt={photo.caption || "Зураг"}
+          className="block max-h-[80vh] max-w-full w-auto rounded-lg shadow-2xl"
+        />
+        <div className="flex items-center justify-between w-full px-1">
+          <div>
+            {photo.caption && (
+              <p className="text-white text-sm font-medium">{photo.caption}</p>
+            )}
+            <p className="text-white/50 text-xs">
+              {photo.uploadedByName} ·{" "}
+              {new Date(photo.uploadedAt).toLocaleDateString("mn-MN", {
+                timeZone: "Asia/Ulaanbaatar",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+          <button
+            onClick={() => onDelete(photo.id)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Устгах
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-/* 
-   DEPT ALBUM
- */
-type DeptPhoto = {
-  id: string;
-  uploadedBy: string;
-  uploadedByName: string;
-  caption: string;
-  imageData: string;
-  uploadedAt: string;
-};
-
+// ── DeptAlbum ──────────────────────────────────────────────────────────────
 function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
   const { t } = useLanguage();
   const [photos, setPhotos] = useState<DeptPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -193,268 +247,85 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
     }
   };
 
-  const preview = photos.slice(0, ALBUM_PREVIEW);
-  const remaining = photos.length - ALBUM_PREVIEW;
-
-  const PhotoGrid = ({
-    items,
-    startIdx = 0,
-  }: {
-    items: DeptPhoto[];
-    startIdx?: number;
-  }) => (
-    <div className="columns-2 sm:columns-3 gap-3">
-      {items.map((photo, i) => (
-        <motion.div
-          key={photo.id}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: i * 0.05 }}
-          className="group relative rounded-2xl overflow-hidden cursor-pointer bg-slate-800 break-inside-avoid mb-3"
-          onClick={() => setLightbox(startIdx + i)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photo.imageData}
-            alt={photo.caption || "Зураг"}
-            className="w-full h-auto block transition-transform duration-500 group-hover:scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          {photo.caption && (
-            <div className="absolute bottom-0 inset-x-0 p-2 translate-y-1 group-hover:translate-y-0 transition-transform">
-              <p className="text-foreground text-xs font-medium line-clamp-1">
-                {photo.caption}
-              </p>
-            </div>
-          )}
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightbox(startIdx + i);
-              }}
-              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-foreground transition-all"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete(photo.id);
-              }}
-              className="p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/80 text-foreground transition-all"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  );
-
   return (
     <>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFile}
-      />
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center">
-            <Camera className="w-4 h-4 text-rose-400" />
-          </div>
-          <h2 className="text-lg font-semibold text-foreground">
-            {t("albumTitle")}
-          </h2>
+          <Camera className="w-4 h-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">{t("albumTitle")}</h2>
           {photos.length > 0 && (
-            <span className="text-xs text-muted-foreground/70">
-              {photos.length} {t("photosSuffix")}
-            </span>
+            <span className="text-xs text-muted-foreground tabular-nums">{photos.length} зураг</span>
           )}
         </div>
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-medium transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-accent text-xs font-medium transition-colors disabled:opacity-50"
         >
-          {uploading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <ImagePlus className="w-3.5 h-3.5" />
-          )}
+          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
           {t("addPhoto")}
         </button>
       </div>
 
       {/* Body */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-rose-400" />
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       ) : photos.length === 0 ? (
         <button
           onClick={() => fileRef.current?.click()}
-          className="w-full py-14 rounded-2xl border-2 border-dashed border-border hover:border-rose-500/50 bg-muted/30 hover:bg-card/50 flex flex-col items-center gap-2 text-muted-foreground/70 hover:text-rose-400 transition-all"
+          className="w-full py-12 rounded-lg border border-dashed border-border hover:border-foreground/20 hover:bg-muted/30 flex flex-col items-center gap-2 text-muted-foreground transition-colors"
         >
-          <Camera className="w-10 h-10" />
+          <Camera className="w-8 h-8 opacity-40" />
           <p className="text-sm">{t("uploadPhotoPrompt")}</p>
-          <p className="text-xs text-muted-foreground/60">
-            {t("photoSizeHint")}
-          </p>
+          <p className="text-xs opacity-60">{t("photoSizeHint")}</p>
         </button>
       ) : (
-        <>
-          <PhotoGrid items={preview} startIdx={0} />
-
-          {/* See more / collapse */}
-          {photos.length > ALBUM_PREVIEW && (
-            <>
-              <AnimatePresence>
-                {expanded && (
-                  <motion.div
-                    key="extra"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.35 }}
-                    className="overflow-hidden mt-3"
-                  >
-                    <PhotoGrid
-                      items={photos.slice(ALBUM_PREVIEW)}
-                      startIdx={ALBUM_PREVIEW}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+        <div className="columns-2 sm:columns-3 lg:columns-4 gap-2">
+          {photos.map((photo, i) => (
+            <div
+              key={photo.id}
+              className="group relative rounded-md overflow-hidden cursor-pointer bg-muted break-inside-avoid mb-2"
+              onClick={() => setLightbox(i)}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.imageData}
+                alt={photo.caption || "Зураг"}
+                className="w-full h-auto block transition-opacity group-hover:opacity-90"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
               <button
-                onClick={() => setExpanded((v) => !v)}
-                className="mt-4 w-full py-2 rounded-xl bg-card/50 hover:bg-muted/50 border border-border/50 text-muted-foreground hover:text-foreground text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
+                onClick={(e) => { e.stopPropagation(); handleDelete(photo.id); }}
+                className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/70"
               >
-                {expanded ? (
-                  <>
-                    <ChevronUp className="w-3.5 h-3.5" /> {t("collapseText")}
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="w-3.5 h-3.5" /> {t("showMoreText")}{" "}
-                    ({remaining})
-                  </>
-                )}
+                <Trash2 className="w-3 h-3" />
               </button>
-            </>
-          )}
-        </>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Lightbox */}
-      <AnimatePresence>
-        {lightbox !== null && (
-          <motion.div
-            key="lightbox"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center"
-            onClick={() => setLightbox(null)}
-          >
-            {/* Blurred backdrop */}
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" />
-
-            {/* Close */}
-            <button
-              onClick={() => setLightbox(null)}
-              className="absolute top-5 right-5 z-20 p-2.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition-all border border-white/10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Counter pill */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-black/50 border border-white/10 text-white/70 text-xs font-medium">
-              {lightbox + 1} / {photos.length}
-            </div>
-
-            {/* Prev */}
-            {lightbox > 0 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i as number) - 1); }}
-                className="absolute left-4 z-20 p-3 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/10 transition-all hover:scale-110"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-            )}
-
-            {/* Next */}
-            {lightbox < photos.length - 1 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i as number) + 1); }}
-                className="absolute right-4 z-20 p-3 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/10 transition-all hover:scale-110"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            )}
-
-            {/* Image card */}
-            <motion.div
-              key={lightbox}
-              initial={{ scale: 0.88, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.88, opacity: 0, y: 16 }}
-              transition={{ type: "spring", stiffness: 320, damping: 28 }}
-              className="relative z-10 flex flex-col items-center mx-16 max-w-5xl w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Frame */}
-              <div className="relative rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.7)] border border-white/10 bg-slate-900">
-                {/* Top gradient line */}
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent z-10" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photos[lightbox].imageData}
-                  alt={photos[lightbox].caption || "Зураг"}
-                  className="block max-h-[78vh] max-w-full w-auto object-contain"
-                />
-                {/* Bottom info overlay */}
-                {(photos[lightbox].caption || photos[lightbox].uploadedByName) && (
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-5 pt-10 pb-4">
-                    {photos[lightbox].caption && (
-                      <p className="text-white font-semibold text-sm leading-snug">
-                        {photos[lightbox].caption}
-                      </p>
-                    )}
-                    <p className="text-white/50 text-xs mt-1">
-                      {photos[lightbox].uploadedByName} ·{" "}
-                      {new Date(photos[lightbox].uploadedAt).toLocaleDateString("mn-MN", {
-                        timeZone: "Asia/Ulaanbaatar",
-                        year: "numeric", month: "long", day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Delete button below frame */}
-              <button
-                onClick={() => handleDelete(photos[lightbox].id)}
-                className="mt-4 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs font-medium flex items-center gap-2 border border-red-500/20 transition-all"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Устгах
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {lightbox !== null && (
+        <PhotoModal
+          photos={photos}
+          index={lightbox}
+          onClose={() => setLightbox(null)}
+          onDelete={handleDelete}
+          onPrev={() => setLightbox((i) => Math.max(0, (i ?? 0) - 1))}
+          onNext={() => setLightbox((i) => Math.min(photos.length - 1, (i ?? 0) + 1))}
+        />
+      )}
     </>
   );
 }
 
-/* 
-   EMPLOYEE CARD
- */
+// ── EmployeeCard ───────────────────────────────────────────────────────────
 function EmployeeCard({
   member,
   isSelf,
@@ -465,99 +336,53 @@ function EmployeeCard({
   isManager: boolean;
 }) {
   const { t } = useLanguage();
-  const gradient = getGradient(member.name);
   return (
-    <motion.div
-      whileHover={{ y: -7, scale: 1.03 }}
-      transition={{ type: "spring", stiffness: 350, damping: 22 }}
-      className="relative flex-shrink-0 w-52"
+    <div
+      className={`flex-shrink-0 w-40 rounded-xl border bg-card p-4 flex flex-col items-center gap-2.5 ${
+        isSelf
+          ? "border-blue-500/30"
+          : isManager
+            ? "border-amber-500/30"
+            : "border-border"
+      }`}
     >
-      <div
-        className={`rounded-3xl overflow-hidden border transition-all duration-300 bg-card backdrop-blur-xl shadow-lg
-          ${
-            isSelf
-              ? "border-blue-500/50 shadow-blue-900/20"
-              : isManager
-                ? "border-amber-500/50 shadow-amber-900/20"
-                : "border-border/30 hover:border-border/60"
-          }`}
-      >
-        {/* Colored top stripe */}
-        <div className={`h-1 bg-gradient-to-r ${gradient}`} />
-        <div className="p-5 flex flex-col items-center gap-3">
-          {/* Self / Manager badge */}
-          {(isSelf || isManager) && (
-            <div className="absolute top-4 left-4 z-10">
-              {isSelf ? (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-foreground shadow-lg">
-                  <User className="w-2.5 h-2.5" /> {t("youBadge")}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-black shadow-lg">
-                  <Crown className="w-2.5 h-2.5" /> {t("managerBadge")}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Avatar with gradient ring */}
-          <div
-            className={`p-[2px] rounded-[18px] bg-gradient-to-br ${gradient} shadow-md`}
-          >
-            {member.profileImage ? (
-              <img
-                src={member.profileImage}
-                alt={member.name}
-                className="block rounded-2xl object-cover bg-slate-800"
-                style={{ width: 70, height: 70 }}
-              />
-            ) : (
-              <div
-                className="rounded-2xl bg-muted flex items-center justify-center text-foreground text-xl font-extrabold"
-                style={{ width: 70, height: 70 }}
-              >
-                {getInitials(member.name)}
-              </div>
-            )}
-          </div>
-
-          {/* Name & position */}
-          <div className="text-center w-full">
-            <p className="font-bold text-foreground text-sm leading-snug truncate">
-              {member.name}
-            </p>
-            {member.position && (
-              <p className="mt-0.5 text-xs text-muted-foreground flex items-center justify-center gap-1">
-                <Briefcase className="w-2.5 h-2.5 shrink-0 text-muted-foreground/70" />
-                <span className="truncate max-w-[140px]">
-                  {member.position}
-                </span>
-              </p>
-            )}
-          </div>
-
-          {/* Status pill */}
-          {member.isActive !== false ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-semibold text-emerald-400">
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-              {t("activeStatus")}
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 border border-border/30 text-[11px] font-semibold text-muted-foreground/70">
-              <span className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
-              {t("inactiveStatus")}
-            </div>
-          )}
+      {/* Avatar */}
+      {member.profileImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={member.profileImage}
+          alt={member.name}
+          className="w-14 h-14 rounded-full object-cover bg-muted"
+        />
+      ) : (
+        <div className="w-14 h-14 rounded-full bg-muted border border-border flex items-center justify-center text-foreground text-base font-bold">
+          {getInitials(member.name)}
         </div>
+      )}
+      {/* Name + position */}
+      <div className="text-center w-full">
+        <p className="text-xs font-semibold text-foreground leading-snug truncate">{member.name}</p>
+        {member.position && (
+          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{member.position}</p>
+        )}
       </div>
-    </motion.div>
+      {/* Badge */}
+      {isSelf && (
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 font-medium">
+          {t("youBadge")}
+        </span>
+      )}
+      {isManager && !isSelf && (
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+          <Crown className="w-2.5 h-2.5" />{t("managerBadge")}
+        </span>
+      )}
+    </div>
   );
 }
 
-/* 
-   CAROUSEL
- */
-function MemberCarousel({
+// ── MemberGrid ────────────────────────────────────────────────────────────
+function MemberGrid({
   members,
   currentUserId,
   managerName,
@@ -566,77 +391,21 @@ function MemberCarousel({
   currentUserId: string;
   managerName?: string;
 }) {
-  const [idx, setIdx] = useState(0);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const CARD_W = 224;
-
-  const max = Math.max(0, members.length - 1);
-  const prev = () => setIdx((i) => Math.max(0, i - 1));
-  const next = () => setIdx((i) => Math.min(max, i + 1));
-
-  useEffect(() => {
-    if (trackRef.current) {
-      trackRef.current.scrollTo({ left: idx * CARD_W, behavior: "smooth" });
-    }
-  }, [idx]);
-
   return (
-    <div className="relative">
-      <div
-        ref={trackRef}
-        className="flex gap-4 overflow-x-hidden scroll-smooth py-5 px-2"
-        style={{ scrollbarWidth: "none" }}
-      >
-        {members.map((m) => (
-          <EmployeeCard
-            key={m.id}
-            member={m}
-            isSelf={m.id === currentUserId}
-            isManager={!!managerName && m.name === managerName}
-          />
-        ))}
-      </div>
-
-      {members.length > 3 && (
-        <div className="flex items-center justify-center gap-3 mt-2">
-          <button
-            onClick={prev}
-            disabled={idx === 0}
-            className="p-2 rounded-full bg-muted/60 hover:bg-blue-500/70 disabled:opacity-30 text-foreground transition-all hover:scale-110 disabled:scale-100"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div className="flex gap-1.5">
-            {members.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setIdx(i)}
-                className={`rounded-full transition-all ${
-                  i === idx
-                    ? "w-6 h-2 bg-blue-500"
-                    : "w-2 h-2 bg-muted-foreground/40 hover:bg-muted-foreground/60"
-                }`}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={next}
-            disabled={idx === max}
-            className="p-2 rounded-full bg-muted/60 hover:bg-blue-500/70 disabled:opacity-30 text-foreground transition-all hover:scale-110 disabled:scale-100"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-      )}
+    <div className="flex flex-wrap gap-2">
+      {members.map((m) => (
+        <EmployeeCard
+          key={m.id}
+          member={m}
+          isSelf={m.id === currentUserId}
+          isManager={!!managerName && m.name === managerName}
+        />
+      ))}
     </div>
   );
 }
 
-/*
-   OTHER DEPARTMENTS VIEWER
- */
+// ── OtherDeptViewer ───────────────────────────────────────────────────────
 function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -707,162 +476,76 @@ function OtherDeptViewer({ currentDeptId }: { currentDeptId: string }) {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Dept grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {list.map((dept, i) => {
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {list.map((dept) => {
           const isActive = selected?.id === dept.id;
-          const ACCENT = [
-            {
-              icon: "text-blue-400",
-              iconBg: "bg-blue-500/15",
-              activeBg: "from-blue-600/25 to-cyan-600/15",
-              activeBorder: "border-blue-500/40",
-            },
-            {
-              icon: "text-violet-400",
-              iconBg: "bg-violet-500/15",
-              activeBg: "from-violet-600/25 to-purple-600/15",
-              activeBorder: "border-violet-500/40",
-            },
-            {
-              icon: "text-emerald-400",
-              iconBg: "bg-emerald-500/15",
-              activeBg: "from-emerald-600/25 to-teal-600/15",
-              activeBorder: "border-emerald-500/40",
-            },
-            {
-              icon: "text-amber-400",
-              iconBg: "bg-amber-500/15",
-              activeBg: "from-amber-600/25 to-orange-600/15",
-              activeBorder: "border-amber-500/40",
-            },
-            {
-              icon: "text-rose-400",
-              iconBg: "bg-rose-500/15",
-              activeBg: "from-rose-600/25 to-pink-600/15",
-              activeBorder: "border-rose-500/40",
-            },
-            {
-              icon: "text-cyan-400",
-              iconBg: "bg-cyan-500/15",
-              activeBg: "from-cyan-600/25 to-blue-600/15",
-              activeBorder: "border-cyan-500/40",
-            },
-          ];
-          const ac = ACCENT[i % ACCENT.length];
           return (
             <button
               key={dept.id}
               onClick={() => selectDept(dept)}
-              className={`rounded-2xl border p-4 text-left transition-all duration-200 group
-                ${
-                  isActive
-                    ? `bg-gradient-to-br ${ac.activeBg} ${ac.activeBorder} shadow-lg`
-                    : "bg-card/50 border-border/30 hover:border-border/40 hover:bg-muted/70 hover:scale-[1.03]"
-                }`}
+              className={`rounded-lg border p-3 text-left transition-colors ${
+                isActive
+                  ? "border-foreground/30 bg-accent"
+                  : "border-border bg-card hover:bg-muted/50"
+              }`}
             >
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 transition-all
-                  ${
-                    isActive
-                      ? `${ac.iconBg} ${ac.icon}`
-                      : "bg-muted/60 text-muted-foreground group-hover:bg-muted/80"
-                  }`}
-              >
-                <Building2 className="w-4 h-4" />
-              </div>
-              <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2 mb-2">
-                {dept.name}
-              </p>
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground/70">
+              <Building2 className={`w-3.5 h-3.5 mb-2 ${isActive ? "text-foreground" : "text-muted-foreground"}`} />
+              <p className="text-xs font-medium text-foreground leading-snug line-clamp-2 mb-1">{dept.name}</p>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <Users className="w-3 h-3" />
-                {dept.users?.length ?? dept.employeeCount ?? 0}{" "}
-                {t("employeeSuffix")}
-              </div>
+                {dept.users?.length ?? dept.employeeCount ?? 0} {t("employeeSuffix")}
+              </p>
             </button>
           );
         })}
       </div>
 
-      {/* Selected dept detail */}
-      <AnimatePresence>
-        {(loadingSelected || selected) && (
-          <motion.div
-            key={selected?.id ?? "loading"}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            {loadingSelected ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />
-              </div>
-            ) : selected ? (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-border/30 bg-card/50 backdrop-blur p-5 space-y-6"
-              >
-                {/* Dept header */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg">
-                    <Building2 className="w-5 h-5 text-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-foreground">
-                      {selected.name}
-                    </h3>
-                    {selected.manager && (
-                      <p className="text-xs text-amber-400 flex items-center gap-1 mt-0.5">
-                        <Crown className="w-3 h-3" /> {selected.manager}
-                      </p>
-                    )}
-                  </div>
+      {(loadingSelected || selected) && (
+        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+          {loadingSelected ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : selected ? (
+            <>
+              <div className="flex items-center gap-2.5">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{selected.name}</h3>
+                  {selected.manager && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <Crown className="w-3 h-3" /> {selected.manager}
+                    </p>
+                  )}
                 </div>
-
-                {/* Members */}
-                {selected.users && selected.users.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-cyan-500/15 flex items-center justify-center">
-                        <Users className="w-3.5 h-3.5 text-cyan-400" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">
-                        {t("teamTitle")}
-                      </span>
-                      <div className="ml-auto px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
-                        <span className="text-[11px] font-bold text-cyan-300">
-                          {selected.users.length} {t("employeeSuffix")}
-                        </span>
-                      </div>
-                    </div>
-                    <MemberCarousel
-                      members={selected.users}
-                      currentUserId=""
-                      managerName={selected.manager}
-                    />
+              </div>
+              {selected.users && selected.users.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-semibold">{t("teamTitle")}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{selected.users.length} {t("employeeSuffix")}</span>
                   </div>
-                )}
-
-                {/* Album */}
-                {selected.id && (
-                  <DeptAlbum deptId={selected.id} deptName={selected.name} />
-                )}
-              </motion.div>
-            ) : null}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  <MemberGrid
+                    members={selected.users}
+                    currentUserId=""
+                    managerName={selected.manager}
+                  />
+                </div>
+              )}
+              {selected.id && (
+                <DeptAlbum deptId={selected.id} deptName={selected.name} />
+              )}
+            </>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
 
-/* 
-   MAIN PAGE
- */
+// ── Main Page ──────────────────────────────────────────────────────────────
 export default function DepartmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -885,363 +568,126 @@ export default function DepartmentsPage() {
       const data = await departmentsApi.getByName(user.department);
       setDepartment(data);
     } catch {
-      toast({
-        title: t("error"),
-        description: t("deptLoadError"),
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: t("deptLoadError"), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const BG = (
-    <div className="absolute inset-0 bg-background pointer-events-none">
-      <motion.div
-        className="absolute -top-1/2 -left-1/4 w-3/4 h-3/4 bg-gradient-to-br from-blue-600/8 to-transparent rounded-full blur-3xl"
-        animate={{ x: [0, 80, 0], y: [0, 40, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-      />
-      <motion.div
-        className="absolute -bottom-1/3 -right-1/4 w-3/4 h-3/4 bg-gradient-to-tl from-cyan-600/8 to-transparent rounded-full blur-3xl"
-        animate={{ x: [0, -80, 0], y: [0, -40, 0] }}
-        transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
-      />
-      {PARTICLES.map((p, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1 h-1 bg-blue-400/25 rounded-full"
-          style={{ left: `${p.l}%`, top: `${p.t}%` }}
-          animate={{ y: [0, -18, 0], opacity: [0.2, 0.6, 0.2] }}
-          transition={{
-            duration: 3 + (i % 4),
-            repeat: Infinity,
-            delay: (i % 8) * 0.35,
-          }}
-        />
-      ))}
-    </div>
-  );
-
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        {BG}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="relative z-10 text-center"
-        >
-          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-muted-foreground">{t("loadingText")}</p>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        {BG}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative z-10 text-center"
-        >
-          <div className="w-20 h-20 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-10 h-10 text-red-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">
-            {t("needLogin")}
-          </h2>
-          <p className="text-muted-foreground">{t("needLoginDeptDesc")}</p>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <h2 className="text-base font-semibold text-foreground">{t("needLogin")}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{t("needLoginDeptDesc")}</p>
+        </div>
       </div>
     );
   }
 
   if (!user.department || !department) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        {BG}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative z-10 text-center"
-        >
-          <div className="w-20 h-20 rounded-2xl bg-amber-500/20 flex items-center justify-center mx-auto mb-6">
-            <Building2 className="w-10 h-10 text-amber-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">
-            {t("deptUnknownTitle")}
-          </h2>
-          <p className="text-muted-foreground">{t("deptUnknownDesc")}</p>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Building2 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <h2 className="text-base font-semibold text-foreground">{t("deptUnknownTitle")}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{t("deptUnknownDesc")}</p>
+        </div>
       </div>
     );
   }
 
   const members = department.users ?? [];
   const totalCount = members.length || department.employeeCount || 0;
+  const currentUserId = (user as any).id ?? (user as any).userId ?? "";
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-background">
-      {BG}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-4">
 
-      <div className="relative z-10 py-8 px-4 sm:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-5xl mx-auto space-y-4"
-        >
-          {/* ── HERO ─────────────────────────────────────────────────── */}
-          <div className="relative rounded-3xl overflow-hidden">
-            {/* Layered background */}
-            <div className="absolute inset-0 bg-card" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_85%_-10%,rgba(99,102,241,0.10),transparent)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_5%_100%,rgba(6,182,212,0.04),transparent)]" />
-            {/* Grid overlay */}
-            <div
-              className="absolute inset-0 opacity-[0.04]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)",
-                backgroundSize: "50px 50px",
-              }}
-            />
-            {/* Decorative rings */}
-            <div className="absolute -top-10 -right-10 w-72 h-72 rounded-full border border-indigo-500/10" />
-            <div className="absolute -top-20 -right-20 w-[420px] h-[420px] rounded-full border border-indigo-500/5" />
-            {/* Golomt logo */}
-            <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none">
-              {/* Outer glow ring */}
-              <div className="absolute inset-0 rounded-full bg-indigo-500/10 blur-2xl scale-150" />
-              {/* Subtle ring border */}
-              <div className="absolute inset-0 rounded-full border border-border/40" />
-              <div className="relative w-36 h-36 rounded-full overflow-hidden border-2 border-border/40 shadow-[0_0_40px_rgba(99,102,241,0.15)] bg-primary/5 backdrop-blur-sm">
-                <Image
-                  src="/golomt.jpg"
-                  alt="Golomt"
-                  fill
-                  className="object-cover"
-                  sizes="144px"
-                />
-                {/* Overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent" />
-              </div>
+        {/* Hero */}
+        <div className="rounded-xl border border-border bg-card p-6 flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground mb-3 px-2 py-0.5 rounded-full border border-border bg-muted/30">
+              <Building2 className="w-3 h-3" /> {t("myDept")}
             </div>
-
-            <div className="relative px-8 py-10">
-              {/* Label badge */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-5">
-                  <Star className="w-3 h-3" />
-                  {t("myDept")}
-                </div>
-              </motion.div>
-
-              {/* Department name */}
-              <motion.h1
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight leading-tight max-w-lg"
-              >
-                {department.name}
-              </motion.h1>
-
-              {/* Description preview */}
-              {department.description && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-2 text-muted-foreground text-sm leading-relaxed max-w-md line-clamp-2"
-                >
-                  {department.description}
-                </motion.p>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">{department.name}</h1>
+            {department.description && (
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-2">{department.description}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
+                <span className="font-semibold text-foreground">{totalCount}</span> {t("employeeSuffix")}
+              </span>
+              {department.manager && (
+                <span className="flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5" />
+                  <span className="font-semibold text-foreground">{department.manager}</span>
+                </span>
               )}
-
-              {/* Stats chips */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="flex flex-wrap items-center gap-3 mt-7"
-              >
-                {/* Employee count */}
-                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-primary/5 border border-border/40 backdrop-blur-sm">
-                  <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                    <Users className="w-4 h-4 text-cyan-400" />
-                  </div>
-                  <div>
-                    <p className="text-base font-extrabold text-foreground leading-none">
-                      {totalCount}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                      {t("employeeSuffix")}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Manager */}
-                {department.manager && (
-                  <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-primary/5 border border-border/40 backdrop-blur-sm">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                      <Crown className="w-4 h-4 text-amber-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground leading-none">
-                        {department.manager}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                        {t("managerLabel")}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Active badge */}
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-semibold text-emerald-300">
-                    {t("activeStatus")}
-                  </span>
-                </div>
-              </motion.div>
             </div>
           </div>
+          <div className="relative w-20 h-20 rounded-full overflow-hidden border border-border flex-shrink-0">
+            <Image src="/golomt.jpg" alt="Golomt" fill className="object-cover" sizes="80px" />
+          </div>
+        </div>
 
-          {/* ── DESCRIPTION ─────────────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
-          >
-            <div className="h-px bg-gradient-to-r from-blue-500/70 via-cyan-400/40 to-transparent" />
-            <div className="p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center ring-1 ring-blue-500/20">
-                  <Target className="w-4 h-4 text-blue-400" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground">
-                    {t("missionTitle")}
-                  </h2>
-                  <p className="text-[11px] text-muted-foreground/70">
-                    {t("missionSubtitle")}
-                  </p>
-                </div>
-              </div>
-              {department.description ? (
-                <p className="text-foreground/70 leading-relaxed text-sm whitespace-pre-wrap">
-                  {department.description}
-                </p>
-              ) : (
-                <div className="flex items-center gap-3 py-6 text-muted-foreground/70 italic text-sm">
-                  <Target className="w-5 h-5 text-muted-foreground/60 shrink-0" />
-                  {t("noDescription")}
-                </div>
-              )}
+        {/* Description */}
+        {department.description && (
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold text-foreground">{t("missionTitle")}</h2>
             </div>
-          </motion.div>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{department.description}</p>
+          </div>
+        )}
 
-          {/* ── MEMBERS ─────────────────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
-          >
-            <div className="h-px bg-gradient-to-r from-cyan-500/70 via-blue-400/40 to-transparent" />
-            <div className="p-6 md:p-8">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/15 flex items-center justify-center ring-1 ring-cyan-500/20">
-                    <Users className="w-4 h-4 text-cyan-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-foreground">
-                      {t("teamTitle")}
-                    </h2>
-                    <p className="text-[11px] text-muted-foreground/70">
-                      {t("teamSubtitle")}
-                    </p>
-                  </div>
-                </div>
-                <div className="px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
-                  <span className="text-xs font-bold text-cyan-300">
-                    {totalCount} {t("employeeSuffix")}
-                  </span>
-                </div>
-              </div>
-
-              {members.length > 0 ? (
-                <MemberCarousel
-                  members={members}
-                  currentUserId={
-                    user.id ?? (user as { userId?: string }).userId ?? ""
-                  }
-                  managerName={department.manager}
-                />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border bg-muted/30 py-14 flex flex-col items-center gap-3 text-muted-foreground/70">
-                  <Users className="w-10 h-10 text-muted-foreground/60" />
-                  <p className="text-sm">{t("noEmployees")}</p>
-                </div>
-              )}
+        {/* Members */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold text-foreground">{t("teamTitle")}</h2>
             </div>
-          </motion.div>
-
-          {/* ── ALBUM ───────────────────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55 }}
-            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
-          >
-            <div className="h-px bg-gradient-to-r from-rose-500/70 via-pink-400/40 to-transparent" />
-            <div className="p-6 md:p-8">
-              {department.id && (
-                <DeptAlbum deptId={department.id} deptName={department.name} />
-              )}
+            <span className="text-xs text-muted-foreground tabular-nums">{totalCount} {t("employeeSuffix")}</span>
+          </div>
+          {members.length > 0 ? (
+            <MemberGrid members={members} currentUserId={currentUserId} managerName={department.manager} />
+          ) : (
+            <div className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
+              <Users className="w-7 h-7 opacity-40" />
+              <p className="text-sm">{t("noEmployees")}</p>
             </div>
-          </motion.div>
+          )}
+        </div>
 
-          {/* ── OTHER DEPARTMENTS ───────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65 }}
-            className="rounded-3xl overflow-hidden border border-border/30 bg-card/60 backdrop-blur-xl shadow-xl"
-          >
-            <div className="h-px bg-gradient-to-r from-violet-500/70 via-indigo-400/40 to-transparent" />
-            <div className="p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center ring-1 ring-violet-500/20">
-                  <Building2 className="w-4 h-4 text-violet-400" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground">
-                    {t("otherDeptsTitle")}
-                  </h2>
-                  <p className="text-[11px] text-muted-foreground/70">
-                    {t("otherDeptsSubtitle")}
-                  </p>
-                </div>
-              </div>
-              {department.id && (
-                <OtherDeptViewer currentDeptId={department.id} />
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
+        {/* Album */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          {department.id && (
+            <DeptAlbum deptId={department.id} deptName={department.name} />
+          )}
+        </div>
+
+        {/* Other Departments */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Building2 className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">{t("otherDeptsTitle")}</h2>
+          </div>
+          {department.id && <OtherDeptViewer currentDeptId={department.id} />}
+        </div>
+
       </div>
     </div>
   );

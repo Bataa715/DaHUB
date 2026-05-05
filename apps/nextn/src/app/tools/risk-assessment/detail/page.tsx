@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { riskApi } from "@/lib/api";
 import {
@@ -13,6 +13,9 @@ import {
   Table as TableIcon,
   ChevronDown,
   ChevronRight,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -55,35 +58,72 @@ export default function RiskAssessmentDetailPage() {
   const router = useRouter();
 
   const [rows, setRows] = useState<RiskRow[]>([]);
-  const [cacheLoading, setCacheLoading] = useState(true);
-  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const [pDate, setPDate] = useState("");
   const [pDateBeg, setPDateBeg] = useState("");
+
+  // Inline edit state: rowKey → editValue
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Хуудас ачааллах үед ClickHouse-аас унших
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await riskApi.getCurrent();
+        if (cancelled) return;
+        setRows(data.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
+        setPDate(data.pDate);
+        setPDateBeg(data.pDateBeg);
+        setFetchedAt(data.oracleFetchedAt);
+      } catch {
+        // өгөгдөл байхгүй бол чимээгүй өнгөрнө
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Мөр засах
+  const startEdit = useCallback((rowKey: string, currentResult: string) => {
+    setEditingKey(rowKey);
+    setEditValue(currentResult);
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingKey(null);
+    setEditValue("");
+  }, []);
+
+  const commitEdit = useCallback(async (rowKey: string) => {
+    if (!editValue.trim()) { cancelEdit(); return; }
+    setSavingKey(rowKey);
+    try {
+      await riskApi.overrideBranchRiskassRow(rowKey, editValue.trim());
+      setRows((prev) =>
+        prev.map((r) =>
+          (r as any).rowKey === rowKey
+            ? { ...r, RESULT: editValue.trim(), isManual: 1, manualResult: editValue.trim() }
+            : r,
+        ),
+      );
+    } catch { /* silent */ } finally {
+      setSavingKey(null);
+      setEditingKey(null);
+      setEditValue("");
+    }
+  }, [editValue, cancelEdit]);
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<FilterKey>("all");
-
-  // Mount хийх үед ClickHouse кэшийг ачаалах
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const cached = await riskApi.branchRiskassLast();
-        if (cancelled || !cached) return;
-        setRows(cached.rows as RiskRow[]);
-        setPDate(cached.pDate);
-        setPDateBeg(cached.pDateBeg);
-        setCachedAt(cached.fetchedAt);
-      } catch {
-        // кэш байхгүй бол чимээгүй өнгөрнө
-      } finally {
-        if (!cancelled) setCacheLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   const scoredRows: ScoredRow[] = useMemo(() => {
     return rows.map((r) => {
@@ -158,17 +198,17 @@ export default function RiskAssessmentDetailPage() {
           Үндсэн хуудас руу буцах
         </button>
 
-        {/* Кэш цаг */}
-        {(cacheLoading || cachedAt) && (
+        {/* ClickHouse-д хадгалсан огноо */}
+        {(loading || fetchedAt) && (
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            {cacheLoading && <><Loader2 className="w-3 h-3 animate-spin" /> Сэргээж байна…</>}
-            {cachedAt && (
+            {loading && <><Loader2 className="w-3 h-3 animate-spin" /> Ачаалж байна…</>}
+            {fetchedAt && (
               <span className="flex items-center gap-1.5 text-emerald-600">
                 <span className="relative flex w-1.5 h-1.5">
                   <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
                   <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 </span>
-                Кэш: {new Date(cachedAt).toLocaleString("mn-MN")}
+                Татсан: {new Date(fetchedAt).toLocaleString("mn-MN")}
               </span>
             )}
           </div>
@@ -245,13 +285,13 @@ export default function RiskAssessmentDetailPage() {
               <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
                 <TableIcon className="w-6 h-6 text-muted-foreground/60" />
               </div>
-              {cacheLoading ? (
-                <div className="text-sm text-muted-foreground">Кэш ачаалж байна…</div>
+              {loading ? (
+                <div className="text-sm text-muted-foreground">Ачаалж байна…</div>
               ) : (
                 <>
-                  <div className="text-sm font-semibold text-foreground">Өгөгдөл олдсонгүй</div>
+                  <div className="text-sm font-semibold text-foreground">Өгөдөл олдсонгүй</div>
                   <div className="text-xs mt-1.5 text-muted-foreground max-w-md mx-auto leading-relaxed">
-                    "Эрсдэлийн үнэлгээ" хуудаснаас Oracle-аас энх татсна уу.
+                    "Эрсдэлийн үнэлгээ" хуудаснаас Oracle-аас татсна уу.
                   </div>
                 </>
               )}
@@ -274,16 +314,34 @@ export default function RiskAssessmentDetailPage() {
                     <th className="px-2 py-2 text-center">SUBID</th>
                     <th className="px-2 py-2 text-center">Score</th>
                     <th className="px-2 py-2 text-left">OP_TYPE</th>
+                    <th className="px-2 py-2 text-center"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((r, i) => (
-                    <tr key={`${r.BRANCHID}-${r.SUBID}-${i}`} className="border-t border-border hover:bg-accent/30">
+                  {filteredRows.map((r, i) => {
+                    const rowKey = (r as any).rowKey ?? `${r.BRANCHID}|${r.SUBID}|${r.SOLID}`;
+                    const isEditing = editingKey === rowKey;
+                    const isSaving = savingKey === rowKey;
+                    const isManual = Number((r as any).isManual) === 1;
+                    return (
+                    <tr key={`${r.BRANCHID}-${r.SUBID}-${i}`} className={`border-t border-border hover:bg-accent/30 ${isManual ? 'bg-amber-500/[0.04]' : ''}`}>
                       <td className="px-2 py-1.5 tabular-nums">{r.SOLID}</td>
                       <td className="px-2 py-1.5 font-medium">{r.BRANCHNAME}</td>
                       <td className="px-2 py-1.5 tabular-nums">{r.BRANCHID}</td>
                       <td className="px-2 py-1.5 text-muted-foreground">{r.PARENTBRANCH}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums font-medium">{r.RESULT}</td>
+                      <td className="px-2 py-1.5 text-right">
+                        {isEditing ? (
+                          <input
+                            ref={editInputRef}
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(rowKey); if (e.key === 'Escape') cancelEdit(); }}
+                            className="w-24 px-1.5 py-0.5 text-xs rounded border border-blue-500/60 bg-background focus:outline-none text-right"
+                          />
+                        ) : (
+                          <span className={`tabular-nums font-medium ${isManual ? 'text-amber-600 dark:text-amber-400' : ''}`}>{r.RESULT}</span>
+                        )}
+                      </td>
                       <td className="px-2 py-1.5 text-center text-[10px] text-muted-foreground">{r.RESULT_TYPE}</td>
                       <td className="px-2 py-1.5 max-w-md truncate" title={r.DESCRIPTION_TEXT}>{r.DESCRIPTION_TEXT}</td>
                       <td className="px-2 py-1.5 text-center text-muted-foreground tabular-nums whitespace-nowrap">{r.P_DATEBEG}</td>
@@ -292,8 +350,30 @@ export default function RiskAssessmentDetailPage() {
                       <td className="px-2 py-1.5 text-center tabular-nums">{r.SUBID}</td>
                       <td className="px-2 py-1.5 text-center"><ScoreBadge row={r} /></td>
                       <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{r.OPERATION_TYPE}</td>
-                    </tr>
-                  ))}
+                      <td className="px-2 py-1.5 text-center">
+                        {isEditing ? (
+                          <div className="flex items-center gap-1">
+                            {isSaving ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                            ) : (
+                              <>
+                                <button onClick={() => commitEdit(rowKey)} className="text-emerald-600 hover:text-emerald-500" title="Хадгалах"><Check className="w-3.5 h-3.5" /></button>
+                                <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground" title="Цуцлах"><X className="w-3.5 h-3.5" /></button>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEdit(rowKey, r.RESULT)}
+                            className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                            title="Энэ мөрийн RESULT засах"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>);
+                  })}
                 </tbody>
               </table>
             </div>

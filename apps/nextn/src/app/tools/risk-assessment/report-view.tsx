@@ -1,21 +1,11 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback, Fragment, useRef } from "react";
-import {
-  Save,
-  Download,
-  History,
-  Trash2,
-  Loader2,
-  X,
-  Hand,
-  AlertTriangle,
-} from "lucide-react";
+import { Download, Loader2, X, Hand } from "lucide-react";
+import Cookies from "js-cookie";
 import { riskApi } from "@/lib/api";
 import {
   aggregateBranch,
-  computeTotal,
-  riskLevel,
   riskLevelClass,
   WEIGHTS,
   type BranchAggregate,
@@ -44,23 +34,13 @@ type AnyRow = {
   RESULT_TYPE?: any;
 };
 
-type Snapshot = Record<string, { total: number; level: string }>;
-
-interface SnapshotMeta {
-  id: string;
-  name: string;
-  createdBy: string;
-  createdByName: string;
-  pDate: string;
-  pDateBeg: string;
-  branchCount: number;
-  createdAt: string;
-}
-
 interface Props {
   scoredRows: AnyRow[];
   riskFilter: "all" | RiskLevel;
   setRiskFilter: React.Dispatch<React.SetStateAction<"all" | RiskLevel>>;
+  previousScoredRows?: AnyRow[];
+  previousFetchedAt?: string | null;
+  previousHistoryName?: string | null;
 }
 
 const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
@@ -86,18 +66,10 @@ export default function ReportView({
   scoredRows,
   riskFilter,
   setRiskFilter,
+  previousScoredRows = [],
+  previousFetchedAt,
+  previousHistoryName,
 }: Props) {
-  const [snapshot, setSnapshot] = useState<Snapshot>({});
-  const [activeSnapshot, setActiveSnapshot] = useState<SnapshotMeta | null>(null);
-  const [snapshotList, setSnapshotList] = useState<SnapshotMeta[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [saveName, setSaveName] = useState("");
-  const [saveNameError, setSaveNameError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
   const [manualLoading, setManualLoading] = useState(false);
@@ -108,18 +80,48 @@ export default function ReportView({
   } | null>(null);
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // beforeunload flush-д зориулж pending payload-уудыг хянана
+  const pendingSavePayloads = useRef<Record<string, { branchId: string; indicatorId: string; value: number }>>({});
 
   // ESC товчоор modal хаах
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (expanded) setExpanded(null);
-        else if (historyOpen) setHistoryOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [expanded, historyOpen]);
+  }, [expanded]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      const payloads = Object.values(pendingSavePayloads.current);
+      if (payloads.length === 0) return;
+      // Pending timer-уудыг цуцлах
+      Object.values(saveTimers.current).forEach(clearTimeout);
+      saveTimers.current = {};
+      pendingSavePayloads.current = {};
+      // keepalive fetch-ээр flush хийх (axios биш — browser-ийн native fetch)
+      const token = Cookies.get(
+        window.location.pathname.startsWith("/admin") ? "adminToken" : "token",
+      );
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+      for (const p of payloads) {
+        fetch(`${baseUrl}/risk-assessment/manual-indicators`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(p),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
 
   // ClickHouse-аас гарын утгуудыг ачаалах (нэг удаа)
   useEffect(() => {
@@ -156,9 +158,15 @@ export default function ReportView({
       });
       // 2) 600ms debounce-тайгаар backend-рүү хадгалах
       const key = `${branchId}::${indicatorId}`;
+      // beforeunload flush-д зориулж хянана
+      if (!value || value <= 0) {
+        delete pendingSavePayloads.current[key];
+      } else {
+        pendingSavePayloads.current[key] = { branchId, indicatorId, value };
+      }
       clearTimeout(saveTimers.current[key]);
       saveTimers.current[key] = setTimeout(() => {
-        // Scalar branchName-г rows-аас авч чадахгүй тул хоосон дамжуулна
+        delete pendingSavePayloads.current[key];
         riskApi
           .upsertManualIndicator({ branchId, indicatorId, value })
           .catch(console.error);
@@ -166,21 +174,6 @@ export default function ReportView({
     },
     [],
   );
-
-  const loadSnapshotList = useCallback(async () => {
-    setLoadingHistory(true);
-    try {
-      const list = await riskApi.listSnapshots();
-      setSnapshotList(list);
-    } catch {}
-    finally {
-      setLoadingHistory(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSnapshotList();
-  }, [loadSnapshotList]);
 
   // Базын aggregate-уудыг авах (Oracle-аас ирсэн SUBID 11-аар бүс/зэрэглэл, мөн
   // одоо байгаа auto Score 1/2/3 тооцоог хадгална — эдгээрийг үндсэн default
@@ -269,107 +262,11 @@ export default function ReportView({
   const ub = filtered.filter((b) => b.region === "UB");
   const loc = filtered.filter((b) => b.region === "LOC");
 
-  // Snapshot хадгалах: модал нээх
-  const openSaveModal = useCallback(() => {
-    setSaveName(new Date().toLocaleDateString("mn-MN"));
-    setSaveNameError(null);
-    setSaveModalOpen(true);
-  }, []);
-
-  // Нэрийг баталгаажуулж ClickHouse-д хадгалах
-  const doSaveSnapshot = useCallback(async () => {
-    if (!saveName.trim()) {
-      setSaveNameError("Тайлангийн нэр хоосон байж болохгүй.");
-      return;
-    }
-    const payload: Record<
-      string,
-      {
-        total: number;
-        level: string;
-        s1: number | null;
-        s2: number | null;
-        s3: number | null;
-        s4: number;
-        j: number;
-        region: string;
-        rating: string;
-        branchName: string;
-        solid: string;
-      }
-    > = {};
-    for (const b of aggregates) {
-      if (b.total != null) {
-        payload[b.branchId] = {
-          total: b.total,
-          level: b.level,
-          s1: b.s1,
-          s2: b.s2,
-          s3: b.s3,
-          s4: b.s4,
-          j: b.j,
-          region: b.region,
-          rating: b.rating,
-          branchName: b.branchName,
-          solid: b.solid,
-        };
-      }
-    }
-    setSaving(true);
-    try {
-      const meta = await riskApi.saveSnapshot({
-        name: saveName.trim(),
-        payload,
-        branchCount: Object.keys(payload).length,
-      });
-      await loadSnapshotList();
-      setSaveModalOpen(false);
-      setSaveSuccess(`"${meta.name}" нэртэйгээр амжилттай хадгаллаа.`);
-      setTimeout(() => setSaveSuccess(null), 4000);
-    } catch (e: any) {
-      setSaveNameError(`Хадгалахад алдаа гарлаа: ${e?.message ?? e}`);
-    } finally {
-      setSaving(false);
-    }
-  }, [saveName, aggregates, loadSnapshotList]);
-
-  // Түүхээс сонгосон snapshot-ийг "өмнөх үе" болгон ашиглах
-  const applySnapshot = useCallback(async (meta: SnapshotMeta) => {
-    try {
-      const full = await riskApi.getSnapshot(meta.id);
-      const snap: Snapshot = {};
-      for (const [k, v] of Object.entries(full.payload || {})) {
-        const vv = v as any;
-        if (vv && typeof vv.total === "number") {
-          snap[k] = { total: vv.total, level: vv.level ?? "" };
-        }
-      }
-      setSnapshot(snap);
-      setActiveSnapshot(meta);
-      setHistoryOpen(false);
-    } catch (e: any) {
-      window.alert(`Татахад алдаа гарлаа: ${e?.message ?? e}`);
-    }
-  }, []);
-
-  const clearActiveSnapshot = useCallback(() => {
-    setSnapshot({});
-    setActiveSnapshot(null);
-  }, []);
-
-  const deleteSnapshot = useCallback(
-    async (id: string) => {
-      if (!window.confirm("Энэ хадгалсан тайланг устгах уу?")) return;
-      try {
-        await riskApi.deleteSnapshot(id);
-        if (activeSnapshot?.id === id) clearActiveSnapshot();
-        await loadSnapshotList();
-      } catch (e: any) {
-        window.alert(`Устгахад алдаа гарлаа: ${e?.message ?? e}`);
-      }
-    },
-    [activeSnapshot, clearActiveSnapshot, loadSnapshotList],
-  );
+  // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
+  const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
+    const prevBase = aggregateBranch(previousScoredRows);
+    return new Map(prevBase.map((b) => [b.branchId, b]));
+  }, [previousScoredRows]);
 
   // Summary
   const summary = useMemo(() => {
@@ -384,11 +281,11 @@ export default function ReportView({
     for (const b of aggregates) {
       cur.Нийт++;
       if (b.level) (cur as any)[b.level]++;
-      const p = snapshot[b.branchId];
+      const p = previousAggMap.get(b.branchId);
       if (p) {
         prev.Нийт++;
-        (prev as any)[p.level]++;
-        if (b.total != null) {
+        if (p.level) (prev as any)[p.level]++;
+        if (b.total != null && p.total != null) {
           const diff = b.total - p.total;
           if (Math.abs(diff) < 0.005) sameCnt++;
           else if (diff > 0) upCnt++;
@@ -401,7 +298,7 @@ export default function ReportView({
       }
     }
     return { cur, prev, upCnt, downCnt, sameCnt, newCnt, transitions };
-  }, [aggregates, snapshot]);
+  }, [aggregates, previousAggMap]);
 
   const downloadCsv = () => {
     const cols = [
@@ -423,8 +320,8 @@ export default function ReportView({
     const fmt = (n: number | null) => (n == null ? "" : n.toFixed(2));
     const lines = [cols.join(",")];
     aggregates.forEach((b, i) => {
-      const p = snapshot[b.branchId];
-      const diff = p && b.total != null ? b.total - p.total : null;
+      const p = previousAggMap.get(b.branchId);
+      const diff = p && b.total != null && p.total != null ? b.total - p.total : null;
       lines.push(
         [
           i + 1,
@@ -459,7 +356,7 @@ export default function ReportView({
     return (
       <div className="px-6 py-16 text-center">
         <div className="inline-flex w-12 h-12 rounded-2xl bg-muted border border-border items-center justify-center mb-3">
-          <History className="w-5 h-5 text-muted-foreground/60" />
+          <Download className="w-5 h-5 text-muted-foreground/60" />
         </div>
         <div className="text-sm font-semibold">Тайлан гаргах өгөгдөл алга</div>
         <div className="text-xs mt-1 text-muted-foreground">
@@ -484,43 +381,22 @@ export default function ReportView({
               </span>
             </p>
             <p className="flex items-start gap-1.5">
-              <span className="inline-block w-1 h-1 rounded-full bg-violet-500 mt-1.5 flex-shrink-0" />
+              <span className="inline-block w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
               <span>
-                <b className="text-foreground">Хадгалах</b> — одоогийн дүнг нэр өгч
-                хадгална. <b className="text-foreground">Түүх</b> — өмнө хадгалснаас
-                сонгоход <i>Зөрүү</i>, <i>Үнэлгээний өөрчлөлт</i>,{" "}
-                <i>Түвшин өөрчлөлт</i> тооцогдоно.
+                <b className="text-foreground">Өмнөх харьцуулалт</b>:{" "}
+                {previousScoredRows.length > 0
+                  ? <span className="text-emerald-700 dark:text-emerald-400">
+                      {previousHistoryName
+                        ? <><b className="text-violet-600 dark:text-violet-400">«{previousHistoryName}»</b> улирлын өгөгдөл ({previousScoredRows.length} мөр).</>
+                        : <>Өмнөх Oracle таталтын өгөгдөл ({previousScoredRows.length} мөр).</>
+                      }
+                    </span>
+                  : <span className="text-muted-foreground/60">Өмнөх улирал сонгогдоогүй — дээрх «Өмнөх улирал сонгох» товчоор сонгоно уу.</span>
+                }
               </span>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={openSaveModal}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-sm shadow-violet-500/20 disabled:opacity-50 transition-all"
-            >
-              {saving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
-              )}
-              Хадгалах
-            </button>
-            <button
-              onClick={() => {
-                setHistoryOpen(true);
-                loadSnapshotList();
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold transition-all"
-            >
-              <History className="w-3.5 h-3.5" />
-              Түүх
-              {snapshotList.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-blue-500/20 text-[10px] tabular-nums font-bold">
-                  {snapshotList.length}
-                </span>
-              )}
-            </button>
             <button
               onClick={downloadCsv}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-all"
@@ -570,41 +446,15 @@ export default function ReportView({
                 Гарын утга ачаалж байна…
               </span>
             )}
-            {activeSnapshot && (
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                  Харьцуулж буй:{" "}
-                  <b>{activeSnapshot.name}</b>
-                </span>
-                <button
-                  onClick={clearActiveSnapshot}
-                  className="text-rose-600 hover:text-rose-700 ml-1"
-                  title="Харьцуулалт цуцлах"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
-
-      {saveSuccess && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-          {saveSuccess}
-          <button onClick={() => setSaveSuccess(null)} className="ml-auto p-1 rounded hover:bg-emerald-500/20">
-            <X className="w-3 h-3" />
-          </button>
-        </div>
-      )}
 
       <ReportTable
         title="Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд"
         region="UB"
         rows={ub}
-        snapshot={snapshot}
+        previousAggMap={previousAggMap}
         branchEvals={branchEvals}
         manualMap={manualMap}
         setManualValue={setManualValue}
@@ -616,14 +466,13 @@ export default function ReportView({
         title="Орон нутгийн Бизнес төв, салбар, тооцооны төвүүд"
         region="LOC"
         rows={loc}
-        snapshot={snapshot}
+        previousAggMap={previousAggMap}
         branchEvals={branchEvals}
         manualMap={manualMap}
         setManualValue={setManualValue}
         expanded={expanded}
         setExpanded={setExpanded}
       />
-
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SummaryBlock title="1. ҮНЭЛГЭЭ" cols={["Үзүүлэлт", "Одоо", "Өмнө"]}>
@@ -670,249 +519,18 @@ export default function ReportView({
         />
       )}
 
-      {historyOpen && (
-        <HistoryModal
-          list={snapshotList}
-          loading={loadingHistory}
-          activeId={activeSnapshot?.id ?? null}
-          onClose={() => setHistoryOpen(false)}
-          onApply={applySnapshot}
-          onDelete={deleteSnapshot}
-          onRefresh={loadSnapshotList}
-        />
-      )}
-
-      {saveModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-          onClick={() => { if (!saving) setSaveModalOpen(false); }}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-violet-500/10 to-transparent flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
-                <Save className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold">Тайлан хадгалах</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                  Одоогийн дүнг нэрлэж хадгална. Дараа нь харьцуулахад ашиглана.
-                </p>
-              </div>
-              <button
-                onClick={() => setSaveModalOpen(false)}
-                disabled={saving}
-                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                title="Хаах"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  Тайлангийн нэр
-                </label>
-                <input
-                  autoFocus
-                  type="text"
-                  value={saveName}
-                  onChange={(e) => { setSaveName(e.target.value); setSaveNameError(null); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") doSaveSnapshot();
-                    if (e.key === "Escape") setSaveModalOpen(false);
-                  }}
-                  placeholder="жишээ нь: 2026Q1, 2025-12-31, Сарын тайлан 04"
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    saveNameError
-                      ? "border-red-500/50 focus:ring-red-500/40 focus:border-red-500/60"
-                      : "border-border focus:ring-violet-500/40 focus:border-violet-500/60"
-                  } bg-background text-sm focus:outline-none focus:ring-2 transition-all`}
-                />
-                {saveNameError && (
-                  <p className="text-[11px] text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                    {saveNameError}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
-                <button
-                  onClick={() => setSaveModalOpen(false)}
-                  disabled={saving}
-                  className="px-3.5 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-accent transition-colors disabled:opacity-50"
-                >
-                  Цуцлах
-                </button>
-                <button
-                  onClick={doSaveSnapshot}
-                  disabled={saving || !saveName.trim()}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-sm shadow-violet-500/20 disabled:opacity-50 transition-all"
-                >
-                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  Хадгалах
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Хадгалсан тайлангийн түүхийн модал ─────────────────────────────────────
-function HistoryModal({
-  list,
-  loading,
-  activeId,
-  onClose,
-  onApply,
-  onDelete,
-  onRefresh,
-}: {
-  list: SnapshotMeta[];
-  loading: boolean;
-  activeId: string | null;
-  onClose: () => void;
-  onApply: (m: SnapshotMeta) => void;
-  onDelete: (id: string) => void;
-  onRefresh: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-3xl max-h-[80vh] overflow-hidden rounded-2xl border border-border bg-card flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 py-3.5 border-b border-border bg-gradient-to-r from-blue-500/10 to-transparent flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-              <History className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold">Хадгалсан тайлангийн түүх</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                Сонгосон тайлан «өмнөх үе» болж зөрүү тооцоонд орно.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={onRefresh}
-              className="text-xs px-2 py-1.5 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              title="Шинэчлэх"
-            >
-              ↻
-            </button>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              title="Хаах"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-auto">
-          {loading ? (
-            <div className="p-12 text-center text-muted-foreground text-sm">
-              <Loader2 className="w-6 h-6 mx-auto animate-spin mb-2 text-blue-500" />
-              Уншиж байна…
-            </div>
-          ) : list.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="inline-flex w-12 h-12 rounded-2xl bg-muted border border-border items-center justify-center mb-3">
-                <History className="w-5 h-5 text-muted-foreground/60" />
-              </div>
-              <div className="text-sm font-semibold">Хадгалсан тайлан алга</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                «Хадгалах» товчоор эхний тайлангаа үүсгээрэй.
-              </div>
-            </div>
-          ) : (
-            <table className="w-full text-xs">
-              <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground sticky top-0 z-10">
-                <tr>
-                  <th className="px-3 py-2.5 text-left font-semibold">Нэр</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">Хадгалсан</th>
-                  <th className="px-3 py-2.5 text-right font-semibold">Салбар</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">Огноо</th>
-                  <th className="px-3 py-2.5"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((s) => {
-                  const isActive = s.id === activeId;
-                  return (
-                    <tr
-                      key={s.id}
-                      className={`border-t border-border transition-colors ${
-                        isActive ? "bg-emerald-500/8" : "hover:bg-accent/40"
-                      }`}
-                    >
-                      <td className="px-3 py-2.5 font-medium">
-                        {s.name}
-                        {isActive && (
-                          <span className="ml-2 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                            Идэвхтэй
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-muted-foreground">
-                        {new Date(s.createdAt).toLocaleString("mn-MN")}
-                        {s.createdByName && (
-                          <div className="text-[10px] mt-0.5 opacity-70">
-                            · {s.createdByName}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold">
-                        {s.branchCount}
-                      </td>
-                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums text-[11px]">
-                        {s.pDateBeg && s.pDate ? `${s.pDateBeg} → ${s.pDate}` : "—"}
-                      </td>
-                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => onApply(s)}
-                          disabled={isActive}
-                          className="px-2.5 py-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 text-[11px] font-semibold mr-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Сонгох
-                        </button>
-                        <button
-                          onClick={() => onDelete(s.id)}
-                          className="text-rose-600 hover:bg-rose-500/10 p-1.5 rounded-md transition-colors"
-                          title="Устгах"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
 
 // ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
 function ReportTable({
   title,
   region,
   rows,
-  snapshot,
+  previousAggMap,
   branchEvals,
   manualMap,
   setManualValue,
@@ -922,7 +540,7 @@ function ReportTable({
   title: string;
   region: "UB" | "LOC";
   rows: BranchAggregate[];
-  snapshot: Snapshot;
+  previousAggMap: Map<string, BranchAggregate>;
   branchEvals: Map<string, BranchCatalogResult>;
   manualMap: ManualMap;
   setManualValue: (branchId: string, indicatorId: string, v: number) => void;
@@ -989,8 +607,8 @@ function ReportTable({
           </thead>
           <tbody>
             {rows.map((b, i) => {
-              const prev = snapshot[b.branchId];
-              const diff = prev && b.total != null ? b.total - prev.total : null;
+              const prev = previousAggMap.get(b.branchId);
+              const diff = prev && b.total != null && prev.total != null ? b.total - prev.total : null;
               const ev = branchEvals.get(b.branchId);
               const isOpen = expanded?.branchId === b.branchId;
               const openGroup = isOpen ? expanded!.group : null;
@@ -1505,6 +1123,3 @@ function SRow({
   );
 }
 
-// computeTotal-г import-аар ашиглаж байгааг tree-shaker-т зориулсан хадгалагч
-void computeTotal;
-void riskLevel;
