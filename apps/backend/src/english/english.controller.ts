@@ -23,13 +23,13 @@ export class EnglishController {
   constructor(private readonly service: EnglishService) {}
 
   @Get("words")
-  getWords(@Request() req: any) {
-    return this.service.getWords(req.user.id);
+  getWords() {
+    return this.service.getWords();
   }
 
   @Get("stats")
-  getStats(@Request() req: any) {
-    return this.service.getStats(req.user.id);
+  getStats() {
+    return this.service.getStats();
   }
 
   @Post("words")
@@ -40,23 +40,21 @@ export class EnglishController {
   @Put("words/:id")
   updateWord(
     @Param("id") id: string,
-    @Request() req: any,
     @Body() dto: UpdateWordDto,
   ) {
-    return this.service.updateWord(id, req.user.id, dto);
+    return this.service.updateWord(id, dto);
   }
 
   @Delete("words/:id")
-  deleteWord(@Param("id") id: string, @Request() req: any) {
-    return this.service.deleteWord(id, req.user.id);
+  deleteWord(@Param("id") id: string) {
+    return this.service.deleteWord(id);
   }
 
   @Post("words/:id/review")
   recordReview(
     @Param("id") id: string,
-    @Request() req: any,
     @Body() dto: RecordReviewDto,
   ) {
-    return this.service.recordReview(id, req.user.id, dto);
+    return this.service.recordReview(id, dto);
   }
 }

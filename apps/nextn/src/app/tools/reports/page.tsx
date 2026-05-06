@@ -22,17 +22,17 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const DATE_ICON = {
   none: {
     Icon: Zap,
-    label: "Шууд татах",
+    labelKey: "reportsDateInstant" as const,
     cls: "text-violet-400 bg-violet-500/10 border-violet-500/20",
   },
   single: {
     Icon: Calendar,
-    label: "Нэг огноо",
+    labelKey: "reportsDateSingle" as const,
     cls: "text-sky-400 bg-sky-500/10 border-sky-500/20",
   },
   range: {
     Icon: CalendarRange,
-    label: "Хугацааны интервал",
+    labelKey: "reportsDateRange" as const,
     cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   },
 };
@@ -95,7 +95,7 @@ export default function ReportsPage() {
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md">
               <Code2 className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-semibold text-slate-100">{t("reportsSearchPlaceholder")}</span>
+            <span className="font-semibold text-slate-100">{t("toolReportsTitle")}</span>
           </div>
           {!loading && pyTools.length > 0 && (
             <div className="ml-auto flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 w-52 focus-within:border-violet-500/50 transition-colors">
@@ -152,31 +152,31 @@ export default function ReportsPage() {
                 {search
                   ? `${filtered.length} / ${pyTools.length}`
                   : pyTools.length}{" "}
-                {t("reportsSearchPlaceholder")}
+                {t("reportsTool")}
               </div>
               {search && filtered.length === 0 && (
                 <span className="text-xs text-slate-600">
-                  «{search}» — {t("reportsNoAccess")}
+                  «{search}» — {t("reportsSearchNotFound")}
                 </span>
               )}
             </motion.div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-fr">
               <AnimatePresence>
-                {filtered.map((t, i) => {
+                {filtered.map((tool, i) => {
                   const dm =
-                    DATE_ICON[t.dateMode as keyof typeof DATE_ICON] ??
+                    DATE_ICON[tool.dateMode as keyof typeof DATE_ICON] ??
                     DATE_ICON.none;
                   const DmIcon = dm.Icon;
-                  const href = `/tools/reports/python/${t.id}`;
+                  const href = `/tools/reports/python/${tool.id}`;
                   const outMeta =
-                    OUTPUT_META[t.outputFormat as keyof typeof OUTPUT_META] ??
+                    OUTPUT_META[tool.outputFormat as keyof typeof OUTPUT_META] ??
                     OUTPUT_META.excel;
                   const OutIcon = outMeta.icon;
 
                   return (
                     <motion.div
-                      key={t.id}
+                      key={tool.id}
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
@@ -191,12 +191,12 @@ export default function ReportsPage() {
                     >
                       <div className="relative h-full flex flex-col rounded-2xl border border-white/[0.07] bg-white/[0.03] overflow-hidden transition-all duration-200 group-hover:border-white/[0.15] group-hover:bg-white/[0.05] group-hover:shadow-xl group-hover:shadow-black/40">
                         <div
-                          className={`h-1 w-full bg-gradient-to-r ${t.color}`}
+                          className={`h-1 w-full bg-gradient-to-r ${tool.color}`}
                         />
                         <div className="p-5 flex flex-col flex-1">
                           <div className="flex items-start justify-between mb-4">
                             <div
-                              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center shadow-lg`}
+                              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-lg`}
                             >
                               <Code2 className="w-6 h-6 text-white" />
                             </div>
@@ -205,16 +205,16 @@ export default function ReportsPage() {
                             </span>
                           </div>
                           <p className="font-semibold text-slate-100 text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
-                            {t.name}
+                            {tool.name}
                           </p>
                           <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed min-h-[2rem]">
-                            {t.description || "\u00a0"}
+                            {tool.description || "\u00a0"}
                           </p>
                           <div className="mt-auto pt-4 flex flex-wrap gap-1.5">
                             <span
                               className={`inline-flex items-center gap-1 text-xs rounded-full border px-2.5 py-0.5 ${dm.cls}`}
                             >
-                              <DmIcon className="w-3 h-3" /> {dm.label}
+                              <DmIcon className="w-3 h-3" /> {t(dm.labelKey)}
                             </span>
                             <span
                               className={`inline-flex items-center gap-1 text-xs rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 ${outMeta.color}`}

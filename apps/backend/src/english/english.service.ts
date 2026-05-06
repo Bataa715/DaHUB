@@ -2,7 +2,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  ForbiddenException,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
@@ -42,12 +41,11 @@ export class EnglishService {
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────
 
-  async getWords(userId: string) {
+  async getWords() {
     const rows = await this.clickhouse.query<any>(
       `SELECT * FROM english_words FINAL
-       WHERE userId = {userId:String}
        ORDER BY createdAt DESC`,
-      { userId },
+      {},
     );
     return rows.map((r) => this.mapWord(r));
   }
@@ -78,15 +76,13 @@ export class EnglishService {
     return { id };
   }
 
-  async updateWord(id: string, userId: string, dto: UpdateWordDto) {
+  async updateWord(id: string, dto: UpdateWordDto) {
     const rows = await this.clickhouse.query<any>(
       `SELECT * FROM english_words FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     const existing = rows[0];
     if (!existing) throw new NotFoundException("Үг олдсонгүй");
-    if (existing.userId !== userId)
-      throw new ForbiddenException("Зөвхөн өөрийн үгийг засах боломжтой");
 
     const now = fmt(new Date());
 
@@ -106,15 +102,13 @@ export class EnglishService {
     return { success: true };
   }
 
-  async deleteWord(id: string, userId: string) {
+  async deleteWord(id: string) {
     const rows = await this.clickhouse.query<any>(
       `SELECT * FROM english_words FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     const existing = rows[0];
     if (!existing) throw new NotFoundException("Үг олдсонгүй");
-    if (existing.userId !== userId)
-      throw new ForbiddenException("Зөвхөн өөрийн үгийг устгах боломжтой");
 
     // Hard-delete via ALTER TABLE DELETE (parameterized)
     await this.clickhouse.exec(
@@ -122,21 +116,19 @@ export class EnglishService {
       { id },
     );
 
-    this.logger.log(`Word ${id} deleted by user ${userId}`);
+    this.logger.log(`Word ${id} deleted`);
     return { success: true };
   }
 
   // ─── Review ───────────────────────────────────────────────────────────────
 
-  async recordReview(id: string, userId: string, dto: RecordReviewDto) {
+  async recordReview(id: string, dto: RecordReviewDto) {
     const rows = await this.clickhouse.query<any>(
       `SELECT * FROM english_words FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     const existing = rows[0];
     if (!existing) throw new NotFoundException("Үг олдсонгүй");
-    if (existing.userId !== userId)
-      throw new ForbiddenException("Зөвхөн өөрийн үгийг шалгах боломжтой");
 
     const now = fmt(new Date());
 
@@ -156,7 +148,7 @@ export class EnglishService {
 
   // ─── Stats ────────────────────────────────────────────────────────────────
 
-  async getStats(userId: string) {
+  async getStats() {
     const rows = await this.clickhouse.query<any>(
       `SELECT
          count() AS total,
@@ -164,9 +156,8 @@ export class EnglishService {
          countIf(totalReviews > 0 AND correctReviews / totalReviews >= 0.8) AS mastered,
          sum(totalReviews) AS sumReviews,
          sum(correctReviews) AS sumCorrect
-       FROM english_words FINAL
-       WHERE userId = {userId:String}`,
-      { userId },
+       FROM english_words FINAL`,
+      {},
     );
     const r = rows[0] ?? {};
     return {

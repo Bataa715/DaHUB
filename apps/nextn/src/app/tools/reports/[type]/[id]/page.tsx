@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { pythonToolApi, PythonTool, FilterDef } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { FileSpreadsheet, FileText, Code2, Download, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -21,13 +22,13 @@ function currentMonthStart() {
 const OUTPUT_META = {
   excel: {
     icon: FileSpreadsheet,
-    label: "Excel татах",
+    labelKey: "reportsOutputExcel" as const,
     ext: ".xlsx",
     color: "from-emerald-600 to-teal-600",
   },
   csv: {
     icon: FileText,
-    label: "CSV татах",
+    labelKey: "reportsOutputCsv" as const,
     ext: ".csv",
     color: "from-sky-600 to-blue-600",
   },
@@ -47,6 +48,7 @@ export default function ReportDetailPage() {
   const { id } = useParams<{ type: string; id: string }>();
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const [item, setItem] = useState<PythonTool | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,13 +72,13 @@ export default function ReportDetailPage() {
       const all = await pythonToolApi.getTools();
       const found = all.find((t) => t.id === id);
       if (!found) {
-        toast({ title: "Tool олдсонгүй", variant: "destructive" });
+        toast({ title: t("reportsToolNotFound"), variant: "destructive" });
         router.replace("/tools/reports");
         return;
       }
       setItem(found);
     } catch {
-      toast({ title: "Мэдээлэл татахад алдаа гарлаа", variant: "destructive" });
+      toast({ title: t("reportsToolLoadError"), variant: "destructive" });
       router.replace("/tools/reports");
     } finally {
       setLoading(false);
@@ -100,15 +102,15 @@ export default function ReportDetailPage() {
   const handleDownload = async () => {
     if (!item) return;
     if (dateMode === "range" && (!startDate || !endDate))
-      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+      return toast({ title: t("reportsDateRequired"), variant: "destructive" });
     if (dateMode === "single" && !startDate)
-      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+      return toast({ title: t("reportsDateRequired"), variant: "destructive" });
     const missing = parsedFilters.filter(
       (f) => f.required && !filterValues[f.key],
     );
     if (missing.length)
       return toast({
-        title: "Заавал шүүлтүүр бөглөнө үү",
+        title: t("reportsFilterRequired"),
         description: missing.map((f) => f.label).join(", "),
         variant: "destructive",
       });
@@ -135,7 +137,7 @@ export default function ReportDetailPage() {
       a.download = `${item.name}_${today()}${outMeta.ext}`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ title: "Амжилттай татлаа" });
+      toast({ title: t("reportsDownloadSuccess") });
     } catch (e: any) {
       // Кэнсэлэхд алдаа биш
       if (
@@ -143,7 +145,7 @@ export default function ReportDetailPage() {
         e?.name === "CanceledError" ||
         e?.code === "ERR_CANCELED"
       ) {
-        toast({ title: "Таталтыг зогсооллоо" });
+        toast({ title: t("reportsDownloadCanceled") });
       } else {
         const msg =
           e?.response?.data instanceof Blob
@@ -169,9 +171,9 @@ export default function ReportDetailPage() {
   const handlePreview = async () => {
     if (!item) return;
     if (dateMode === "range" && (!startDate || !endDate))
-      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+      return toast({ title: t("reportsDateRequired"), variant: "destructive" });
     if (dateMode === "single" && !startDate)
-      return toast({ title: "Огноо оруулна уу", variant: "destructive" });
+      return toast({ title: t("reportsDateRequired"), variant: "destructive" });
 
     // Өмнөх preview ажиллаж байвал болиулна
     previewAbortRef.current?.abort();
@@ -195,7 +197,7 @@ export default function ReportDetailPage() {
         e?.code === "ERR_CANCELED"
       ) {
         setPreview({ status: "idle", columns: [], rows: [], totalCount: 0 });
-        toast({ title: "Preview-г зогсооллоо" });
+        toast({ title: t("reportsPreviewCanceled") });
         return;
       }
       setPreview({
@@ -216,7 +218,7 @@ export default function ReportDetailPage() {
       <div className="flex h-screen items-center justify-center bg-[#080d14]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
-          <p className="text-slate-500 text-sm">Уншиж байна...</p>
+          <p className="text-slate-500 text-sm">{t("loading")}</p>
         </div>
       </div>
     );
@@ -237,7 +239,7 @@ export default function ReportDetailPage() {
             href="/tools/reports"
             className="text-slate-500 hover:text-slate-200 transition-colors text-sm flex items-center gap-1"
           >
-            ← Буцах
+            ← {t("back")}
           </Link>
           <span className="text-slate-700">/</span>
           <div className="flex items-center gap-2.5">
@@ -280,12 +282,12 @@ export default function ReportDetailPage() {
               {dateMode === "range" && (
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Огнооны интервал
+                    {t("reportsDateRangeLabel")}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="text-[10px] text-slate-600">
-                        Эхлэх
+                        {t("reportsDateStart")}
                       </label>
                       <input
                         type="date"
@@ -297,7 +299,7 @@ export default function ReportDetailPage() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] text-slate-600">
-                        Дуусах
+                        {t("reportsDateEnd")}
                       </label>
                       <input
                         type="date"
@@ -315,7 +317,7 @@ export default function ReportDetailPage() {
               {dateMode === "single" && (
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Огноо
+                    {t("reportsDateSingleLabel")}
                   </p>
                   <input
                     type="date"
@@ -329,7 +331,7 @@ export default function ReportDetailPage() {
 
               {dateMode === "none" && (
                 <p className="text-xs text-slate-600 text-center py-0.5">
-                  Огноо шаардлагагүй
+                  {t("reportsDateNone")}
                 </p>
               )}
 
@@ -338,7 +340,7 @@ export default function ReportDetailPage() {
                   <div className="border-t border-white/[0.06]" />
                   <div className="space-y-4">
                     <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                      Шүүлтүүрүүд
+                      {t("reportsFiltersLabel")}
                     </p>
                     {parsedFilters.map((f) => {
                       const raw = filterValues[f.key] ?? "";
@@ -366,7 +368,7 @@ export default function ReportDetailPage() {
                           />
                           {missing && (
                             <p className="text-[10px] text-rose-400">
-                              Заавал шаардлагатай
+                              {t("reportsFilterRequiredMsg")}
                             </p>
                           )}
                         </div>
@@ -383,8 +385,8 @@ export default function ReportDetailPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-slate-400">
                         {downloadProgress === 100
-                          ? "Дууслаа ✓"
-                          : "Татаж байна..."}
+                          ? t("reportsDownloadDone")
+                          : t("reportsDownloading")}
                       </span>
                       {downloadProgress > 0 && downloadProgress < 100 && (
                         <span className="text-xs font-mono font-bold text-violet-400">
@@ -421,10 +423,10 @@ export default function ReportDetailPage() {
                     type="button"
                     onClick={handleCancelPreview}
                     className="px-4 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold transition-all flex items-center gap-1.5"
-                    title="Preview-г зогсоох"
+                    title={t("reportsStopBtn")}
                   >
                     <X className="w-3.5 h-3.5" />
-                    Зогсоох
+                    {t("reportsStopBtn")}
                   </button>
                 ) : (
                   <button
@@ -440,12 +442,12 @@ export default function ReportDetailPage() {
                     type="button"
                     onClick={handleCancelDownload}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold transition-all"
-                    title="Татаж байгааг зогсоох"
+                    title={t("reportsStopBtn")}
                   >
                     <X className="w-3.5 h-3.5" />
                     {downloadProgress !== null && downloadProgress > 0
-                      ? `Зогсоох (${downloadProgress}%)`
-                      : "Зогсоох"}
+                      ? `${t("reportsStopBtn")} (${downloadProgress}%)`
+                      : t("reportsStopBtn")}
                   </button>
                 ) : (
                   <button
@@ -453,7 +455,7 @@ export default function ReportDetailPage() {
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-gradient-to-r ${outMeta.color} hover:opacity-90 text-white font-bold transition-all disabled:opacity-50 shadow-lg`}
                   >
                     <Download className="w-3.5 h-3.5" />
-                    {outMeta.label}
+                    {t(outMeta.labelKey)}
                   </button>
                 )}
               </div>
@@ -483,19 +485,19 @@ export default function ReportDetailPage() {
                 <div className="flex flex-wrap gap-2">
                   {[
                     {
-                      label: "Нийт мөр",
+                      label: t("reportsStatTotal"),
                       value: preview.totalCount.toLocaleString(),
                       cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
                       lCls: "text-emerald-500",
                     },
                     {
                       label: "Preview",
-                      value: `${preview.rows.length} мөр`,
+                      value: `${preview.rows.length} ${t("reportsStatRows")}`,
                       cls: "bg-white/[0.03] border-white/[0.07] text-slate-300",
                       lCls: "text-slate-500",
                     },
                     {
-                      label: "Багана",
+                      label: t("reportsStatColumns"),
                       value: String(preview.columns.length),
                       cls: "bg-white/[0.03] border-white/[0.07] text-slate-300",
                       lCls: "text-slate-500",
@@ -503,7 +505,7 @@ export default function ReportDetailPage() {
                     ...(preview.totalCount > 0
                       ? [
                           {
-                            label: "Хэмжээ",
+                            label: t("reportsStatSize"),
                             value: sizeLabel,
                             cls: "bg-sky-500/10 border-sky-500/20 text-sky-300",
                             lCls: "text-sky-500",
@@ -533,11 +535,11 @@ export default function ReportDetailPage() {
                 <span className="text-xl text-slate-600">◈</span>
               </div>
               <div className="text-center">
-                <p className="text-sm text-slate-500">Preview хоосон байна</p>
+                <p className="text-sm text-slate-500">{t("reportsPreviewEmpty")}</p>
                 <p className="text-xs text-slate-700 mt-1">
                   {dateMode !== "none"
-                    ? "Огноо сонгоод Preview дарна уу"
-                    : "Preview товч дарна уу"}
+                    ? t("reportsPreviewEmptyHint")
+                    : t("reportsPreviewEmptyHintNoDate")}
                 </p>
               </div>
             </div>
@@ -547,7 +549,7 @@ export default function ReportDetailPage() {
             <div className="h-80 flex items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
               <div className="flex flex-col items-center gap-3 text-slate-500">
                 <div className="w-6 h-6 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
-                <p className="text-sm">Татаж байна...</p>
+                <p className="text-sm">{t("reportsDownloading")}</p>
               </div>
             </div>
           )}
@@ -555,7 +557,7 @@ export default function ReportDetailPage() {
           {preview.status === "error" && (
             <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
               <p className="text-sm text-rose-300 font-semibold">
-                Preview алдаа
+                {t("reportsPreviewError")}
               </p>
               <p className="text-xs text-rose-400/70 mt-1 leading-relaxed font-mono">
                 {preview.error}
@@ -573,11 +575,11 @@ export default function ReportDetailPage() {
               >
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
                   <span className="text-xs text-slate-400 font-medium">
-                    Preview — эхний {preview.rows.length} мөр
+                    Preview — {t("reportsPreviewFirst")} {preview.rows.length} {t("reportsStatRows")}
                   </span>
                   <span className="text-[10px] text-slate-600">
-                    {preview.columns.length} багана · нийт{" "}
-                    {preview.totalCount.toLocaleString()} мөр
+                    {preview.columns.length} {t("reportsPreviewColumns")} · {t("reportsPreviewTotal")}{" "}
+                    {preview.totalCount.toLocaleString()} {t("reportsStatRows")}
                   </span>
                 </div>
                 <div className="overflow-auto max-h-[70vh]">
@@ -633,7 +635,7 @@ export default function ReportDetailPage() {
                             colSpan={preview.columns.length + 1}
                             className="px-4 py-8 text-center text-slate-600 text-xs"
                           >
-                            Өгөгдөл байхгүй
+                            {t("reportsNoAccess")}
                           </td>
                         </tr>
                       )}

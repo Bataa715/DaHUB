@@ -341,8 +341,8 @@ export default function DbAccessManagePage() {
             <ShieldCheck className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title={t("dbManageResolveBtn")}
-        subtitle={t("dbManageResolveBtn")}
+        title={t("dbManageTitle")}
+        subtitle={t("dbManageSubtitle")}
         rightContent={
           <Button
             variant="ghost"
@@ -365,18 +365,18 @@ export default function DbAccessManagePage() {
               { key: "all" as Tab, label: t("dbManageAllTab") },
               { key: "grants" as Tab, label: t("dbManageGrantsTab") },
             ] as const
-          ).map((t) => (
+          ).map((tb) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={tb.key}
+              onClick={() => setTab(tb.key)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-2 ${
-                tab === t.key
+                tab === tb.key
                   ? "border-violet-500 text-violet-400"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.label}
-              {t.key === "pending" && pendingCount > 0 && (
+              {tb.label}
+              {tb.key === "pending" && pendingCount > 0 && (
                 <Badge
                   variant="outline"
                   className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs px-1.5 py-0"
@@ -681,15 +681,15 @@ export default function DbAccessManagePage() {
               <div className="flex items-center gap-3 p-3 rounded-xl border bg-card text-sm">
                 <Users className="h-4 w-4 text-violet-400 shrink-0" />
                 <span className="flex-1 text-muted-foreground">
-                  {t("redflagTotalRules")}{" "}
+                  {t("dbManageSummary")}{" "}
                   <span className="font-semibold text-foreground">
                     {allGrants.length}
                   </span>{" "}
-                  {t("dbManageGrantsTab")}{" "}
+                  {t("dbManageGrantUnit")},{" "}
                   <span className="font-semibold text-foreground">
                     {uniqueUsers.length}
                   </span>{" "}
-                  {t("dbManageGrantsTab")}
+                  {t("dbManageUserUnit")}
                 </span>
               </div>
             )}
@@ -719,7 +719,7 @@ export default function DbAccessManagePage() {
                         ({u.code})
                       </span>
                       <Badge variant="secondary" className="text-xs ml-1">
-                        {groupByRequest(uGrants).length} {t("dbManagePendingTab")}
+                        {groupByRequest(uGrants).length} {t("dbManageGrantUnit")}
                       </Badge>
                     </div>
 
@@ -799,7 +799,7 @@ export default function DbAccessManagePage() {
                           ) : (
                             <Trash2 className="h-3.5 w-3.5" />
                           )}
-                          <span className="text-xs">{t("dbManageConfirmDelete")}</span>
+                          <span className="text-xs">{t("dbManageRevokeBtn")}</span>
                         </Button>
                       </div>
                     ))}

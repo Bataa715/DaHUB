@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   CheckCircle2,
   Loader2,
@@ -93,6 +94,7 @@ function fmt24(dateStr: string): string {
 
 export default function MyGrantsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const [grants, setGrants] = useState<ActiveGrant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,8 +165,8 @@ export default function MyGrantsPage() {
             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Миний Идэвхтэй Эрхүүд"
-        subtitle="Одоогийн хандалтын зөвшөөрлүүд"
+        title={t("myGrantsTitle")}
+        subtitle={t("myGrantsSubtitle")}
         rightContent={
           <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -179,11 +181,11 @@ export default function MyGrantsPage() {
         ) : grants.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-xl border bg-card text-muted-foreground">
             <Database className="h-12 w-12 opacity-20" />
-            <p className="font-medium">Идэвхтэй эрх байхгүй</p>
-            <p className="text-sm">Эрх хүсэхийн тулд хүсэлт илгээнэ үү</p>
+            <p className="font-medium">{t("myGrantsEmpty")}</p>
+            <p className="text-sm">{t("myGrantsEmptyHint")}</p>
             <Link href="/tools/db-access">
               <Button variant="outline" size="sm" className="mt-1">
-                Эрх хүсэх
+                {t("myGrantsRequestBtn")}
               </Button>
             </Link>
           </div>
@@ -213,7 +215,7 @@ export default function MyGrantsPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">
-                          Олгосон: {grp.grantedByName}
+                          {t("myGrantsGrantedBy")} {grp.grantedByName}
                         </p>
                       </div>
                     </div>
@@ -236,14 +238,14 @@ export default function MyGrantsPage() {
                           className="text-destructive hover:bg-destructive/10 gap-1 h-7 px-2"
                           disabled={cancelingId === grp.requestId}
                           onClick={() => handleCancel(grp)}
-                          title="Эрхийг хугацаанаас өмнө хаах"
+                          title={t("myGrantsCloseTitle")}
                         >
                           {cancelingId === grp.requestId ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
                             <XCircle className="h-3.5 w-3.5" />
                           )}
-                          <span className="text-xs">Хаах</span>
+                          <span className="text-xs">{t("myGrantsCloseBtn")}</span>
                         </Button>
                       )}
                     </div>
@@ -271,21 +273,21 @@ export default function MyGrantsPage() {
                       <Clock className="h-3.5 w-3.5" />
                       <span suppressHydrationWarning>
                         {expired ? (
-                          <span className="text-red-400">Хугацаа дууссан</span>
+                          <span className="text-red-400">{t("myGrantsExpired")}</span>
                         ) : expiringSoon ? (
                           <span className="text-amber-400">
-                            {days} өдөр үлдсэн
+                            {days} {t("myGrantsDaysLeft")}
                           </span>
                         ) : (
-                          `${days} өдөр үлдсэн`
+                          `${days} ${t("myGrantsDaysLeft")}`
                         )}
                       </span>
                     </div>
                     <span suppressHydrationWarning>
-                      Хаагдах: <strong>{fmt24(grp.validUntil)}</strong>
+                      {t("myGrantsExpiresLabel")} <strong>{fmt24(grp.validUntil)}</strong>
                     </span>
                     <span suppressHydrationWarning>
-                      Олгосон: {fmt24(grp.grantedAt)}
+                      {t("myGrantsGrantedBy")} {fmt24(grp.grantedAt)}
                     </span>
                   </div>
 
@@ -293,11 +295,11 @@ export default function MyGrantsPage() {
                   {grp.chPassword && (
                     <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 space-y-2">
                       <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
-                        ClickHouse Нэвтрэх мэдээлэл
+                        {t("myGrantsChCreds")}
                       </p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-20 shrink-0">
-                          Хэрэглэгч:
+                          {t("myGrantsChUser")}
                         </span>
                         <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1">
                           {grp.userUserId}
@@ -307,7 +309,7 @@ export default function MyGrantsPage() {
                           size="icon"
                           className="h-6 w-6"
                           onClick={() =>
-                            copyText(grp.userUserId, "Хэрэглэгч нэр")
+                            copyText(grp.userUserId, t("myGrantsCopyUser"))
                           }
                         >
                           <Copy className="h-3 w-3" />
@@ -315,7 +317,7 @@ export default function MyGrantsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-20 shrink-0">
-                          Нууц үг:
+                          {t("myGrantsChPassword")}
                         </span>
                         <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1 tracking-widest">
                           {showPwd[grp.requestId]
@@ -343,23 +345,11 @@ export default function MyGrantsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => copyText(grp.chPassword, "Нууц үг")}
+                          onClick={() => copyText(grp.chPassword, t("myGrantsCopyPwd"))}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
-                      <a
-                        href={
-                          process.env.NEXT_PUBLIC_CLICKHOUSE_PLAY_URL ??
-                          "http://localhost:8123/play"
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 mt-1"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        ClickHouse Play дээр нээх
-                      </a>
                     </div>
                   )}
                 </div>

@@ -164,7 +164,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     id: "data_doc",
     name: "Өгөгдлийн толь бичиг",
     description:
-      "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар, код сан",
+      "ClickHouse баганын тайлбар",
     icon: Database,
     color: "from-teal-500 to-cyan-500",
     gradient: "bg-gradient-to-br from-teal-500/20 to-cyan-500/20",

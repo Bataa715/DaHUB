@@ -231,7 +231,7 @@ export default function DbAccessRequestPage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold flex items-center gap-2">
                 <Database className="h-4 w-4 text-cyan-400" />
-                {t("dbAccessTableSearch")}
+                {t("dbAccessSelectSection")}
               </h2>
               <Button
                 variant="ghost"
@@ -246,7 +246,7 @@ export default function DbAccessRequestPage() {
             </div>
 
             <Input
-              placeholder={t("dbAccessTableSearch") + "..."}
+              placeholder={t("dbAccessTableSearch")}
               value={tableFilter}
               onChange={(e) => setTableFilter(e.target.value)}
               className="bg-background"
@@ -286,7 +286,7 @@ export default function DbAccessRequestPage() {
                           <div className="w-2 h-0.5 bg-cyan-400 rounded" />
                         )}
                     </div>
-                    {t("dbAccessSelectTableHint")} ({tables.length} {t("dbAccessTableSearch")})
+                    {t("dbAccessSelectTableHint")} ({tables.length} {t("dbAccessTableUnit")})
                   </button>
                 )}
 
