@@ -114,10 +114,10 @@ export const translations = {
       "Танд ашиглах боломжтой хэрэгсэл байхгүй байна. Админтай холбогдож эрх авна уу.",
     toolTodoTitle: "Хийх зүйлсийн жагсаалт",
     toolTodoDesc:
-      "Өдөр тутмын ажлуудаа үр дүнтэй төлөвлөж, хянах боломжтой хэрэгсэл",
+      "Өдөр тутмын ажлуудаа үр дүнтэй төлөвлөх хэрэгсэл",
     toolChessTitle: "Оюуны спорт",
     toolChessDesc:
-      "Шатар тоглоом — хамт олныхоо гишүүнтэй онлайнаар тоглох боломж",
+      "Шатар",
     toolSampleTitle: "Санамсаргүй түүвэр",
     toolSampleDesc: "Аудитын санамсаргүй түүвэр гаргах хэрэгсэл",
     toolPivotTitle: "Pivot",
@@ -136,25 +136,22 @@ export const translations = {
     toolExcelDesc: "Системийн мэдээллээс Excel тайлан үүсгэж татах",
     toolPdfTitle: "PDF → Текст",
     toolPdfDesc:
-      "PDF файлыг текст болгон хөрвүүлж, хуулж авах боломжтой хэрэгсэл",
+      "PDF файлыг текст болгон хөрвүүлэх хэрэгсэл",
     toolDataDocTitle: "Өгөгдлийн толь бичиг",
     toolDataDocDesc:
       "ClickHouse мэдээллийн сангийн бүтэц, баганын тайлбар",
     toolAlertBoxTitle: "Alert Box",
     toolAlertBoxDesc:
-      "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, Red Flag мэдэгдэл",
+      "Банкны эрсдэлийн шинжилгээ, CIF хайлт, Red Flag мэдэгдэл",
     toolRiskAssessmentTitle: "Эрсдэлийн үнэлгээ",
     toolRiskAssessmentDesc:
       "Сар бүрийн эрсдэлийн үнэлгээ",
     toolWeeklyReportTitle: "Долоо хоногийн тайлан",
     toolWeeklyReportDesc:
       "Хэлтсүүдийн долоо хоногийн ажлын тайлан",
-    toolPythonApiTitle: "Python API Tools",
-    toolPythonApiDesc:
-      "FastAPI дээр ажилладаг pandas/Python тайлан — ClickHouse, Oracle холболттой",
     toolReportsTitle: "Тайлан татах",
     toolReportsDesc:
-      "Дотоод хэрэглээний тайлангуудыг татах хэрэгсэл",
+      "Дотоод хэрэглээний тайлан татах хэрэгсэл",
 
     // Departments page
     albumTitle: "Альбом",
@@ -728,7 +725,7 @@ export const translations = {
     riskDetailTitle: "Үнэлгээний дэлгэрэнгүй",
     riskDetailSubtitle: "Мөр бүрийн дэлгэрэнгүй",
     riskReportTitle: "Эрсдэлийн үнэлгээ — Тайлан",
-    riskReportSubtitle: "Эрсдэлийн тайлан харах, хадгалах, харьцуулах",
+    riskReportSubtitle: "Салбар",
     riskDateFrom: "Эхлэх",
     riskDateTo: "Дуусах",
     riskFetch: "Татах",
@@ -784,12 +781,12 @@ export const translations = {
     wr_noData: "Мэдээлэл байхгүй",
     wr_titleCol: "Гарчиг",
     wr_contentCol: "Агуулга",
-    wr_saved: "Засвар хадгалагдлаа",
+    wr_saved: "Хадгалах",
     wr_saveError: "Алдаа гарлаа",
-    wr_submitted: "Энэ долоо хоногийн тайлан илгээгдсэн байна. Шаардлагатай бол засаж, дахин «Илгээх» дарна уу.",
+    wr_submitted: "«Илгээх» дарна уу.",
     wr_pdfHint: "PDF хэвлэх → хөтчийн хэвлэх цонхноос хадгална",
     wr_noReports: "Энэ долоо хоногт ирүүлсэн тайлан байхгүй байна.",
-    wr_docTitle: "ДОЛОО ХОНОГИЙН ТАЙЛАН",
+    wr_docTitle: "Долоо хоногийн тайлан",
     wr_period: "Хугацаа",
     wr_orgHeader: "Голомт Банк · Дотоод Аудитын Газар",
     wr_daaSection1: "ДАА-ийн ажлын гүйцэтгэл",

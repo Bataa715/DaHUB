@@ -382,16 +382,8 @@ export default function ReportView({
       <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="text-[11px] text-muted-foreground max-w-2xl space-y-1.5 leading-relaxed">
+      
             <p className="flex items-start gap-1.5">
-              <span className="inline-block w-1 h-1 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
-              <span>
-                <b className="text-foreground">Score 4</b> ба{" "}
-                <b className="text-foreground">Judgement</b>-ийг гараар оруулна
-                (0–5). Бичсэн утга автоматаар хадгалагдана.
-              </span>
-            </p>
-            <p className="flex items-start gap-1.5">
-              <span className="inline-block w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
               <span>
                 <b className="text-foreground">Өмнөх харьцуулалт</b>:{" "}
                 {previousScoredRows.length > 0 ? (

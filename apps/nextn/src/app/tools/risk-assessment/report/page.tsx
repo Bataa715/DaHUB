@@ -12,7 +12,7 @@ import {
   Database,
   RefreshCw,
   BookmarkPlus,
-  ChevronDown,
+  MoreHorizontal,
   Trash2,
   Check,
 } from "lucide-react";
@@ -60,6 +60,7 @@ export default function RiskAssessmentReportPage() {
     RiskCurrentRow[]
   >([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveModalOpen, setSaveModalOpen] = useState(false);
@@ -243,56 +244,55 @@ export default function RiskAssessmentReportPage() {
 
             <div className="flex-1" />
 
-            {hasFetched && (
+            {/* 3-dot hover menu */}
+            <div
+              className="relative"
+              onMouseEnter={() => setMenuOpen(true)}
+              onMouseLeave={() => { setMenuOpen(false); setHistoryOpen(false); }}
+            >
               <button
-                onClick={() => setSaveModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-md border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-semibold transition-all"
-              >
-                <BookmarkPlus className="w-3.5 h-3.5" />
-                {t("riskSaveQuarter")}
-              </button>
-            )}
-
-            <div className="relative">
-              <button
-                onClick={() => setHistoryOpen((v) => !v)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md border text-xs font-semibold transition-all ${
+                className={`p-1.5 rounded-md border transition-all text-xs ${
                   selectedHistoryId
-                    ? "border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 text-violet-700 dark:text-violet-400"
-                    : "border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground"
+                    ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60"
                 }`}
               >
-                {loadingHistory && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {loadingHistory ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <MoreHorizontal className="w-4 h-4" />
                 )}
-                {selectedEntry ? selectedEntry.name : t("riskSelectQuarter")}
-                <ChevronDown
-                  className={`w-3 h-3 transition-transform ${historyOpen ? "rotate-180" : ""}`}
-                />
               </button>
 
-              {historyOpen && (
-                <div
-                  className="absolute right-0 top-full mt-1 z-50 w-80 rounded-xl border border-border bg-card shadow-2xl overflow-hidden"
-                  onMouseLeave={() => setHistoryOpen(false)}
-                >
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
+                  {/* Save action */}
+                  {hasFetched && (
+                    <button
+                      onClick={() => { setSaveModalOpen(true); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs hover:bg-amber-500/10 border-b border-border/50 transition-colors"
+                    >
+                      <BookmarkPlus className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                      <span className="font-medium">{t("riskSaveQuarter")}</span>
+                    </button>
+                  )}
+
+                  {/* History section */}
                   <div className="px-3 py-2 border-b border-border bg-muted/30">
-                    <p className="text-[11px] font-semibold text-muted-foreground">
-                      {t("riskSavedQuarters")}
-                    </p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("riskSavedQuarters")}</p>
                   </div>
                   {historyList.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                    <div className="px-4 py-5 text-center text-xs text-muted-foreground">
                       {t("riskNoSaved")}
                     </div>
                   ) : (
-                    <div className="max-h-60 overflow-y-auto">
+                    <div className="max-h-56 overflow-y-auto">
                       {selectedHistoryId && (
                         <button
                           onClick={() => {
                             setSelectedHistoryId(null);
                             setSelectedHistoryRows([]);
-                            setHistoryOpen(false);
+                            setMenuOpen(false);
                           }}
                           className="w-full px-3 py-2 text-left text-xs hover:bg-muted/40 text-muted-foreground flex items-center gap-2 border-b border-border/50"
                         >
@@ -305,7 +305,7 @@ export default function RiskAssessmentReportPage() {
                           className="flex items-center hover:bg-muted/40 border-b border-border/30 last:border-0"
                         >
                           <button
-                            onClick={() => selectHistory(h.id)}
+                            onClick={() => { selectHistory(h.id); setMenuOpen(false); }}
                             className="flex-1 px-3 py-2.5 text-left"
                           >
                             <div className="flex items-center gap-2">
@@ -313,15 +313,10 @@ export default function RiskAssessmentReportPage() {
                                 <Check className="w-3 h-3 text-violet-500 flex-shrink-0" />
                               )}
                               <div className="min-w-0">
-                                <div className="text-xs font-semibold truncate">
-                                  {h.name}
-                                </div>
+                                <div className="text-xs font-semibold truncate">{h.name}</div>
                                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                                  {h.pDateBeg} → {h.pDate} · {h.branchCount}{" "}
-                                  салбар
-                                  {h.createdByName
-                                    ? ` · ${h.createdByName}`
-                                    : ""}
+                                  {h.pDateBeg} → {h.pDate} · {h.branchCount} салбар
+                                  {h.createdByName ? ` · ${h.createdByName}` : ""}
                                 </div>
                               </div>
                             </div>

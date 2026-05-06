@@ -1783,12 +1783,33 @@ export default function WeeklyReportPage() {
         }
         rightContent={
           <div className="flex items-center gap-2 print:hidden">
-            <input
-              type="week"
-              value={weekInputValue(year, week)}
-              onChange={(e) => onWeekChange(e.target.value)}
-              className="px-3 py-1.5 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-foreground/20 focus:border-foreground/30 transition-colors"
-            />
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                value={dateRange.weekStart}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  const d = new Date(e.target.value + "T00:00:00Z");
+                  const { year: y, week: w } = getIsoWeek(d);
+                  setYear(y); setWeek(w);
+                }}
+                className="px-2 py-1 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-foreground/20 transition-colors"
+                style={{ fontFamily: "var(--font-jetbrainsMono)" }}
+              />
+              <span className="text-muted-foreground/60 text-xs">–</span>
+              <input
+                type="date"
+                value={dateRange.weekEnd}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  const d = new Date(e.target.value + "T00:00:00Z");
+                  const { year: y, week: w } = getIsoWeek(d);
+                  setYear(y); setWeek(w);
+                }}
+                className="px-2 py-1 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-foreground/20 transition-colors"
+                style={{ fontFamily: "var(--font-jetbrainsMono)" }}
+              />
+            </div>
             {!isDirector && (
               <>
                 <button
@@ -1889,15 +1910,6 @@ export default function WeeklyReportPage() {
             ) : (
               <DaaEditor data={daaData} onChange={setDaaData} />
             )}
-            <p className="text-center text-slate-500 text-xs py-6 print:hidden">
-              {user?.name && (
-                <>
-                  <span>{user.name}</span>
-                  {" · "}
-                </>
-              )}
-              {(user as any)?.department ?? ""}
-            </p>
           </div>
           {/* Right: preview */}
           <div className="w-1/2 overflow-y-auto bg-slate-950 px-3 py-6 sm:px-6 weekly-print-area">
