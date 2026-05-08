@@ -11,6 +11,7 @@ import {
   Calendar,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DashboardResult {
   dashboardId: number;
@@ -31,6 +32,7 @@ interface SearchResult {
 }
 
 function SearchContent() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -89,7 +91,7 @@ function SearchContent() {
         href="/tools"
         icon={<Search size={16} className="text-blue-400" />}
         title="Search Engine"
-        subtitle="12 Dashboard дээр CIF хайлт"
+        subtitle={t("searchSubtitle")}
       />
       <div className="px-6 space-y-5">
         {/* Search Form */}
@@ -168,7 +170,7 @@ function SearchContent() {
           <div className="flex items-center justify-center py-16">
             <Loader2 size={20} className="animate-spin text-golomt-400" />
             <span className="text-[12px] text-txt-dim ml-3">
-              12 Dashboard хайж байна...
+              {t("searchLoading")}
             </span>
           </div>
         )}

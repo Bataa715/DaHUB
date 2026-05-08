@@ -583,6 +583,7 @@ export const translations = {
 
     // Data dictionary tool
     dataDocCodeLib: "Код сан",
+    dataDocCodeSaved: "код хадгалагдсан",
     dataDocDbLabel: "Өгөгдлийн сан",
     dataDocSelectDb: "DB сонгох",
     dataDocSearchTable: "Хүснэгт хайх…",
@@ -610,6 +611,8 @@ export const translations = {
     alertLoadingDetail: "Дэлгэрэнгүй ачааллаж байна...",
     alertRows: "мөр",
     alertNoResult: "Alert илэрсэнгүй",
+    searchSubtitle: "12 Dashboard дээр CIF хайлт",
+    searchLoading: "12 Dashboard хайж байна...",
 
     // Alert Box / Dashboards
     dashTitle: "Dashboards",
@@ -1492,6 +1495,7 @@ export const translations = {
 
     // Data dictionary tool
     dataDocCodeLib: "Code library",
+    dataDocCodeSaved: "snippets saved",
     dataDocDbLabel: "Database",
     dataDocSelectDb: "Select DB",
     dataDocSearchTable: "Search tables…",
@@ -1519,6 +1523,8 @@ export const translations = {
     alertLoadingDetail: "Loading details...",
     alertRows: "rows",
     alertNoResult: "No alerts found",
+    searchSubtitle: "CIF search across 12 dashboards",
+    searchLoading: "Searching 12 dashboards...",
 
     // Alert Box / Dashboards
     dashTitle: "Dashboards",

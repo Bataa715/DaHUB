@@ -405,7 +405,7 @@ export default function TodoPage() {
       <div className="min-h-screen">
         <ToolPageHeader
           icon={headerIcon}
-          title="Хийх зүйлс"
+          title={t("toolTodoTitle")}
           subtitle={t("todoSubtitle")}
         />
         <div className="flex flex-col justify-center items-center p-4 pt-16">
@@ -427,7 +427,7 @@ export default function TodoPage() {
     <>
       <ToolPageHeader
         icon={headerIcon}
-        title="Хийх зүйлс"
+        title={t("toolTodoTitle")}
         subtitle={t("todoSubtitle")}
         rightContent={
           <Button

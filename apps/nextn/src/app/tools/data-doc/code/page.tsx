@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Code2,
   Plus,
@@ -80,6 +81,7 @@ function generateId() {
 }
 
 export default function CodePage() {
+  const { t } = useLanguage();
   const [snippets, setSnippets] = useState<CodeSnippet[]>([]);
   const [search, setSearch] = useState("");
   const [langFilter, setLangFilter] = useState("all");
@@ -321,8 +323,8 @@ export default function CodePage() {
             <Code2 className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Код сан"
-        subtitle={`${snippets.length} код хадгалагдсан`}
+        title={t("dataDocCodeLib")}
+        subtitle={`${snippets.length} ${t("dataDocCodeSaved")}`}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -330,7 +332,7 @@ export default function CodePage() {
         <div className="w-80 shrink-0 border-r border-slate-800/60 flex flex-col bg-[#0a0f1e]">
           <div className="px-4 py-4 border-b border-slate-800/60 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white">Код сан</h2>
+              <h2 className="text-sm font-bold text-white">{t("dataDocCodeLib")}</h2>
               <button
                 onClick={() => {
                   resetForm();
