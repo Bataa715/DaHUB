@@ -9,6 +9,29 @@ import {
 } from "react";
 import { authApi } from "@/lib/api";
 import Cookies from "js-cookie";
+import { z } from "zod";
+import axios from "axios";
+
+/** Token expiry constants */
+const ACCESS_TOKEN_EXPIRY_DAYS = 1 / 24; // 1 hour
+const REFRESH_TOKEN_EXPIRY_DAYS = 3;
+
+/** Zod schema — guards against tampered/malformed cookie data */
+const UserSchema = z.object({
+  id: z.string(),
+  email: z.string().optional(),
+  userId: z.string().optional(),
+  name: z.string(),
+  position: z.string().optional(),
+  profileImage: z.string().optional(),
+  department: z.string().optional(),
+  departmentId: z.string().optional(),
+  isAdmin: z.boolean(),
+  isSuperAdmin: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  allowedTools: z.array(z.string()),
+  grantableTools: z.array(z.string()).optional(),
+});
 
 interface User {
   id: string;
@@ -54,7 +77,8 @@ const getCachedUser = (): User | null => {
     const adminPath = window.location.pathname.startsWith("/admin");
     const raw = adminPath ? Cookies.get("adminUser") : Cookies.get("user");
     if (!raw) return null;
-    return JSON.parse(raw) as User;
+    const parsed = UserSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
@@ -92,17 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             typeof window !== "undefined" &&
             window.location.protocol === "https:";
           Cookies.set(tokenKey, accessToken, {
-            expires: 1 / 24,
+            expires: ACCESS_TOKEN_EXPIRY_DAYS,
             sameSite: "strict",
             secure,
           });
           Cookies.set(refreshKey, newRefreshToken, {
-            expires: 3,
+            expires: REFRESH_TOKEN_EXPIRY_DAYS,
             sameSite: "strict",
             secure,
           });
           Cookies.set(userKey, JSON.stringify(freshUser), {
-            expires: 3,
+            expires: REFRESH_TOKEN_EXPIRY_DAYS,
             sameSite: "strict",
             secure,
           });
@@ -157,17 +181,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const secure =
       typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("token", accessToken, {
-      expires: 1 / 24,
+      expires: ACCESS_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
       secure,
     });
     Cookies.set("refreshToken", refreshToken, {
-      expires: 3,
+      expires: REFRESH_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
       secure,
     });
     Cookies.set("user", JSON.stringify(userData), {
-      expires: 3,
+      expires: REFRESH_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
       secure,
     });
@@ -182,17 +206,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const secure =
       typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("adminToken", accessToken, {
-      expires: 1 / 24,
+      expires: ACCESS_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
       secure,
     });
     Cookies.set("adminRefreshToken", refreshToken, {
-      expires: 3,
+      expires: REFRESH_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
       secure,
     });
     Cookies.set("adminUser", JSON.stringify(userData), {
-      expires: 3,
+      expires: REFRESH_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
       secure,
     });
@@ -211,10 +235,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       );
       saveUserSession(user, accessToken, refreshToken);
-    } catch (error: any) {
-      throw new Error(
-        error.response?.data?.message || "Нэвтрэх үед алдаа гарлаа",
-      );
+    } catch (error) {
+      const msg =
+        axios.isAxiosError(error)
+          ? (error.response?.data?.message as string | undefined)
+          : undefined;
+      throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
     }
   };
 
@@ -225,10 +251,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       );
       saveUserSession(user, accessToken, refreshToken);
-    } catch (error: any) {
-      throw new Error(
-        error.response?.data?.message || "Нэвтрэх үед алдаа гарлаа",
-      );
+    } catch (error) {
+      const msg =
+        axios.isAxiosError(error)
+          ? (error.response?.data?.message as string | undefined)
+          : undefined;
+      throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
     }
   };
 
@@ -240,12 +268,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       if (!user.isAdmin) throw new Error("Та админ эрхгүй байна");
       saveAdminSession(user, accessToken, refreshToken);
-    } catch (error: any) {
-      throw new Error(
-        error.response?.data?.message ||
-          error.message ||
-          "Нэвтрэх үед алдаа гарлаа",
-      );
+    } catch (error) {
+      const msg =
+        axios.isAxiosError(error)
+          ? (error.response?.data?.message as string | undefined)
+          : error instanceof Error
+            ? error.message
+            : undefined;
+      throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
     }
   };
 
@@ -282,17 +312,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             typeof window !== "undefined" &&
             window.location.protocol === "https:";
           Cookies.set(tokenKey, accessToken, {
-            expires: 1 / 24,
+            expires: ACCESS_TOKEN_EXPIRY_DAYS,
             sameSite: "strict",
             secure,
           });
           Cookies.set(refreshKey, newRefreshToken, {
-            expires: 3,
+            expires: REFRESH_TOKEN_EXPIRY_DAYS,
             sameSite: "strict",
             secure,
           });
           Cookies.set(userKey, JSON.stringify(freshUser), {
-            expires: 3,
+            expires: REFRESH_TOKEN_EXPIRY_DAYS,
             sameSite: "strict",
             secure,
           });

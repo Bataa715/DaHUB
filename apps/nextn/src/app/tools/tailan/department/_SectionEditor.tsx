@@ -50,7 +50,7 @@ export function SectionEditor({
     onChange({ ...report, [key]: value });
 
   const inputCls =
-    "w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60 resize-none leading-relaxed";
+    "w-full bg-muted/60 border border-border/50 rounded-xl px-3 py-2.5 text-xs text-white placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60 resize-none leading-relaxed";
 
   const kpiData =
     def.id === "s1" ? mergeKpi(report.kpiTable, DEFAULT_S1_KPI) : [];
@@ -71,7 +71,7 @@ export function SectionEditor({
           {def.num}. {def.heading}
         </div>
         {"subtitle" in def && (def as { subtitle?: string }).subtitle && (
-          <div className="text-xs text-slate-300 font-bold mb-0.5">
+          <div className="text-xs text-foreground/80 font-bold mb-0.5">
             ({(def as { subtitle?: string }).subtitle})
           </div>
         )}
@@ -112,7 +112,7 @@ export function SectionEditor({
             onS43TrainingsApiLoad={onS43TrainingsApiLoad}
           />
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
               {t("tailan_s4ContentLabel")}
             </label>
             <textarea
@@ -127,7 +127,7 @@ export function SectionEditor({
       ) : (
         <>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
               {t("tailan_generalDescLabel")}
             </label>
             <textarea
@@ -139,7 +139,7 @@ export function SectionEditor({
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
               {t("tailan_achievementsLabel")}
             </label>
             <textarea
@@ -151,7 +151,7 @@ export function SectionEditor({
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
               {t("tailan_challengesLabel")}
             </label>
             <textarea

@@ -173,8 +173,7 @@ export default function DbAccessRequestPage() {
     } catch (err: any) {
       toast({
         title: t("dbAccessValidationTitle"),
-          description:
-            err?.response?.data?.message ?? t("dbAccessRequestError"),
+        description: err?.response?.data?.message ?? t("dbAccessRequestError"),
         variant: "destructive",
       });
     } finally {
@@ -286,7 +285,8 @@ export default function DbAccessRequestPage() {
                           <div className="w-2 h-0.5 bg-cyan-400 rounded" />
                         )}
                     </div>
-                    {t("dbAccessSelectTableHint")} ({tables.length} {t("dbAccessTableUnit")})
+                    {t("dbAccessSelectTableHint")} ({tables.length}{" "}
+                    {t("dbAccessTableUnit")})
                   </button>
                 )}
 
@@ -429,7 +429,9 @@ export default function DbAccessRequestPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>{t("dbAccessReason")} ({t("dbAccessValidationReason")})</Label>
+              <Label>
+                {t("dbAccessReason")} ({t("dbAccessValidationReason")})
+              </Label>
               <Textarea
                 placeholder={t("dbAccessReasonPlaceholder")}
                 value={reason}

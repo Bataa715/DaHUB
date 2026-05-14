@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,12 +25,12 @@ import { RowImageUpload } from "./_components/RowImageUpload";
 import { useTailanReport } from "./_hooks/useTailanReport";
 
 const selectCls =
-  "w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition";
+  "w-full bg-muted/60 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition";
 
 // --- Shared style helpers -----------------------------------------------------
 const inputCls =
-  "w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition";
-const labelCls = "block text-xs font-medium text-slate-400 mb-1";
+  "w-full bg-muted/60 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition";
+const labelCls = "block text-xs font-medium text-muted-foreground mb-1";
 
 // --- Main Page ---------------------------------------------------------------
 export default function TailanMinePage() {
@@ -106,15 +106,15 @@ export default function TailanMinePage() {
   } = report;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-900">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* --- LEFT: Editor --- */}
-      <div className="flex flex-col w-1/2 border-r border-slate-700/50 overflow-hidden">
+      <div className="flex flex-col w-1/2 border-r border-border/50 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-background/80 backdrop-blur flex-shrink-0">
           <div className="flex items-center gap-2">
             <Link
               href="/tools/tailan"
-              className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition-colors text-sm"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
             >
               <ArrowLeft className="h-4 w-4" />
               {t("back")}
@@ -140,7 +140,7 @@ export default function TailanMinePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted text-white text-xs font-medium transition disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -220,7 +220,7 @@ export default function TailanMinePage() {
           </div>
           {/* Section 1: Planned tasks */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s1") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s1") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -257,7 +257,7 @@ export default function TailanMinePage() {
                   <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s1") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s1") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -270,21 +270,21 @@ export default function TailanMinePage() {
                 return (
                   <div
                     key={task._id}
-                    className="bg-slate-700/30 rounded-lg overflow-hidden"
+                    className="bg-muted/30 rounded-lg overflow-hidden"
                   >
                     {/* Collapsed header — always visible */}
                     <div
-                      className="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-slate-700/60 transition select-none"
+                      className="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-muted/60 transition select-none"
                       onClick={() => toggleTaskExpand(task._id)}
                     >
-                      <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+                      <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                         {task.order}
                       </span>
                       <span className="flex-1 text-sm font-bold text-white">
                         {task.title ? (
                           task.title
                         ) : (
-                          <span className="font-normal text-slate-500">
+                          <span className="font-normal text-muted-foreground/70">
                             Ажлын нэр...
                           </span>
                         )}
@@ -292,7 +292,7 @@ export default function TailanMinePage() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <label
                           htmlFor={task._id + "-img"}
-                          className="cursor-pointer text-slate-400 hover:text-blue-400 transition"
+                          className="cursor-pointer text-muted-foreground hover:text-blue-400 transition"
                           onClick={(e) => e.stopPropagation()}
                           suppressHydrationWarning
                         >
@@ -308,13 +308,13 @@ export default function TailanMinePage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                         <ChevronDown
-                          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                          className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
                         />
                       </div>
                     </div>
                     {/* Expanded form */}
                     {isOpen && (
-                      <div className="px-3 pb-3 space-y-2 border-t border-slate-700/50">
+                      <div className="px-3 pb-3 space-y-2 border-t border-border/50">
                         <div className="grid grid-cols-2 gap-2 pt-2">
                           <div className="col-span-2">
                             <label className={labelCls}>
@@ -360,7 +360,7 @@ export default function TailanMinePage() {
           </section>
           {/* Section I.2: Шинээр хөгжүүлсэн dashboard */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s12") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s12") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -380,7 +380,7 @@ export default function TailanMinePage() {
                       ? t("tailan_showInReport")
                       : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s12") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                  className={`transition ${hiddenSections.has("s12") ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                 >
                   {hiddenSections.has("s12") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -398,7 +398,7 @@ export default function TailanMinePage() {
                   <Plus className="h-3.5 w-3.5" /> {t("tailan_addEntry")}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s12") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s12") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -408,16 +408,16 @@ export default function TailanMinePage() {
               {section1Dashboards.map((dash) => (
                 <div
                   key={dash._id}
-                  className="bg-slate-700/30 rounded-lg p-3 space-y-2"
+                  className="bg-muted/30 rounded-lg p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-medium">
+                    <span className="text-xs text-muted-foreground font-medium">
                       #{dash.order}
                     </span>
                     <div className="flex items-center gap-2">
                       <label
                         htmlFor={dash._id + "-img"}
-                        className="cursor-pointer text-slate-400 hover:text-blue-400 transition"
+                        className="cursor-pointer text-muted-foreground hover:text-blue-400 transition"
                         suppressHydrationWarning
                       >
                         <ImageIcon className="h-3.5 w-3.5" />
@@ -540,7 +540,7 @@ export default function TailanMinePage() {
           </section>
           {/* Section II: Өгөгдөл боловсруулах ажил */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s2") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s2") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -560,7 +560,7 @@ export default function TailanMinePage() {
                       ? t("tailan_showInReport")
                       : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s2") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                  className={`transition ${hiddenSections.has("s2") ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                 >
                   {hiddenSections.has("s2") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -578,7 +578,7 @@ export default function TailanMinePage() {
                   <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s2") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s2") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -588,10 +588,10 @@ export default function TailanMinePage() {
               {section2Tasks.map((s2) => (
                 <div
                   key={s2._id}
-                  className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
+                  className="bg-muted/30 rounded-lg p-2 space-y-1.5"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+                    <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                       {s2.order}
                     </span>
                     <input
@@ -604,7 +604,7 @@ export default function TailanMinePage() {
                     />
                     <label
                       htmlFor={s2._id + "-img"}
-                      className="cursor-pointer text-slate-400 hover:text-blue-400 transition shrink-0"
+                      className="cursor-pointer text-muted-foreground hover:text-blue-400 transition shrink-0"
                       suppressHydrationWarning
                     >
                       <ImageIcon className="h-3.5 w-3.5" />
@@ -689,7 +689,7 @@ export default function TailanMinePage() {
           </section>
           {/* Section III: Тогтмол хийгддэг ажлууд */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s3") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s3") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -709,7 +709,7 @@ export default function TailanMinePage() {
                       ? t("tailan_showInReport")
                       : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s3") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                  className={`transition ${hiddenSections.has("s3") ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                 >
                   {hiddenSections.has("s3") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -718,7 +718,7 @@ export default function TailanMinePage() {
                   )}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s3") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s3") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -729,7 +729,7 @@ export default function TailanMinePage() {
               {/* III.1 Автоматжуулалт */}
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-slate-300">
+                  <p className="text-xs font-medium text-foreground/80">
                     {t("tailan_s31Title")}
                   </p>
                   <button
@@ -743,10 +743,10 @@ export default function TailanMinePage() {
                   {section3AutoTasks.map((s3a) => (
                     <div
                       key={s3a._id}
-                      className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
+                      className="bg-muted/30 rounded-lg p-2 space-y-1.5"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+                        <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                           {s3a.order}
                         </span>
                         <input
@@ -807,7 +807,7 @@ export default function TailanMinePage() {
               <div className={hiddenSections.has("s32") ? "opacity-50" : ""}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <p className="text-xs font-medium text-slate-300">
+                    <p className="text-xs font-medium text-foreground/80">
                       {t("tailan_s32Title")}
                     </p>
                     <button
@@ -820,7 +820,7 @@ export default function TailanMinePage() {
                           ? t("tailan_showInReport")
                           : t("tailan_hideFromReport")
                       }
-                      className={`transition ${hiddenSections.has("s32") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                      className={`transition ${hiddenSections.has("s32") ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                     >
                       {hiddenSections.has("s32") ? (
                         <EyeOff className="h-3.5 w-3.5" />
@@ -840,10 +840,10 @@ export default function TailanMinePage() {
                   {section3Dashboards.map((s3d) => (
                     <div
                       key={s3d._id}
-                      className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
+                      className="bg-muted/30 rounded-lg p-2 space-y-1.5"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+                        <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                           {s3d.order}
                         </span>
                         <input
@@ -903,7 +903,7 @@ export default function TailanMinePage() {
           </section>
           {/* Section IV: Хамрагдсан сургалт */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s4") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s4") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -923,7 +923,7 @@ export default function TailanMinePage() {
                       ? t("tailan_showInReport")
                       : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s4") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                  className={`transition ${hiddenSections.has("s4") ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                 >
                   {hiddenSections.has("s4") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -941,7 +941,7 @@ export default function TailanMinePage() {
                   <Plus className="h-3.5 w-3.5" /> {t("tailan_addTraining")}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s4") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s4") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -952,10 +952,10 @@ export default function TailanMinePage() {
                 {section4Trainings.map((tr) => (
                   <div
                     key={tr._id}
-                    className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
+                    className="bg-muted/30 rounded-lg p-2 space-y-1.5"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+                      <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                         {tr.order}
                       </span>
                       <input
@@ -1120,7 +1120,7 @@ export default function TailanMinePage() {
                 ))}
               </div>
               <div className="mt-3">
-                <p className="text-xs font-medium text-slate-300 mb-1">
+                <p className="text-xs font-medium text-foreground/80 mb-1">
                   {t("tailan_s41Title")}
                 </p>
                 <RichToolbar
@@ -1135,7 +1135,7 @@ export default function TailanMinePage() {
           </section>
           {/* Section V: Үүрэг даалгаварын биелэлт */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s5") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s5") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -1155,7 +1155,7 @@ export default function TailanMinePage() {
                       ? t("tailan_showInReport")
                       : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s5") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                  className={`transition ${hiddenSections.has("s5") ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                 >
                   {hiddenSections.has("s5") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -1173,7 +1173,7 @@ export default function TailanMinePage() {
                   <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s5") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s5") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -1183,10 +1183,10 @@ export default function TailanMinePage() {
               {section5Tasks.map((t) => (
                 <div
                   key={t._id}
-                  className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
+                  className="bg-muted/30 rounded-lg p-2 space-y-1.5"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+                    <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                       {t.order}
                     </span>
                     <input
@@ -1221,7 +1221,7 @@ export default function TailanMinePage() {
           </section>
           {/* Section VI: Хамт олны ажил */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s6") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s6") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -1258,7 +1258,7 @@ export default function TailanMinePage() {
                   <Plus className="h-3.5 w-3.5" /> {t("tailan_addTask")}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s6") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s6") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -1268,10 +1268,10 @@ export default function TailanMinePage() {
               {section6Activities.map((act) => (
                 <div
                   key={act._id}
-                  className="bg-slate-700/30 rounded-lg p-2 space-y-1.5"
+                  className="bg-muted/30 rounded-lg p-2 space-y-1.5"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+                    <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                       {act.order}
                     </span>
                     <input
@@ -1322,7 +1322,7 @@ export default function TailanMinePage() {
           </section>
           {/* Section VII: Шинэ санал санаачилга */}
           <section
-            className={`rounded-xl border border-slate-700/60 bg-slate-800/30 p-4 ${hiddenSections.has("s7") ? "opacity-50" : ""}`}
+            className={`rounded-xl border border-border/60 bg-muted/30 p-4 ${hiddenSections.has("s7") ? "opacity-50" : ""}`}
           >
             <div
               className="flex items-center justify-between cursor-pointer select-none"
@@ -1342,7 +1342,7 @@ export default function TailanMinePage() {
                       ? t("tailan_showInReport")
                       : t("tailan_hideFromReport")
                   }
-                  className={`transition ${hiddenSections.has("s7") ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                  className={`transition ${hiddenSections.has("s7") ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                 >
                   {hiddenSections.has("s7") ? (
                     <EyeOff className="h-3.5 w-3.5" />
@@ -1351,7 +1351,7 @@ export default function TailanMinePage() {
                   )}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("s7") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("s7") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -1368,7 +1368,7 @@ export default function TailanMinePage() {
             </div>
           </section>{" "}
           {/* Dynamic sections */}
-          <section className="rounded-xl border border-slate-700/60 bg-slate-800/30 p-4">
+          <section className="rounded-xl border border-border/60 bg-muted/30 p-4">
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("sdyn")}
@@ -1387,7 +1387,7 @@ export default function TailanMinePage() {
                   <Plus className="h-3.5 w-3.5" /> {t("tailan_addSection")}
                 </button>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${collapsedSections.has("sdyn") ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${collapsedSections.has("sdyn") ? "-rotate-90" : ""}`}
                 />
               </div>
             </div>
@@ -1397,10 +1397,10 @@ export default function TailanMinePage() {
               {dynamicSections.map((sec, idx) => (
                 <div
                   key={sec._id}
-                  className="bg-slate-700/30 rounded-lg p-3 space-y-2"
+                  className="bg-muted/30 rounded-lg p-3 space-y-2"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 font-medium w-8 shrink-0">
+                    <span className="text-xs text-muted-foreground/70 font-medium w-8 shrink-0">
                       {ROMAN_NUMS[idx + 7] ?? `${idx + 8}`}.
                     </span>
                     <input
@@ -1421,7 +1421,7 @@ export default function TailanMinePage() {
                           ? t("tailan_showInReport")
                           : t("tailan_hideFromReport")
                       }
-                      className={`transition flex-shrink-0 ${hiddenSections.has(`dyn_${idx}`) ? "text-red-400 hover:text-red-300" : "text-slate-400 hover:text-slate-300"}`}
+                      className={`transition flex-shrink-0 ${hiddenSections.has(`dyn_${idx}`) ? "text-red-400 hover:text-red-300" : "text-muted-foreground hover:text-foreground/80"}`}
                     >
                       {hiddenSections.has(`dyn_${idx}`) ? (
                         <EyeOff className="h-3.5 w-3.5" />
@@ -1451,8 +1451,8 @@ export default function TailanMinePage() {
       </div>
 
       {/* --- RIGHT: Live Word Preview --- */}
-      <div className="flex flex-col flex-1 bg-slate-600 overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-slate-500/50 text-xs font-medium text-slate-300 flex items-center gap-2 flex-shrink-0 bg-slate-700/50">
+      <div className="flex flex-col flex-1 bg-muted overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-border/50 text-xs font-medium text-foreground/80 flex items-center gap-2 flex-shrink-0 bg-muted/50">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           {t("tailan_livePreview")}
         </div>

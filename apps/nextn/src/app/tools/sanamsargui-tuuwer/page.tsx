@@ -287,7 +287,9 @@ export default function SanamsarguiTuuwerPage() {
                         }}
                         className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
                       />
-                      <span className="text-sm font-medium">{t("sampleFilterByCol")}</span>
+                      <span className="text-sm font-medium">
+                        {t("sampleFilterByCol")}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         — жишээ: SOL баганаас 100/101/102
                       </span>
@@ -420,7 +422,8 @@ export default function SanamsarguiTuuwerPage() {
                                   )}
                                   {filterSearch && filtered.length === 0 && (
                                     <p className="text-xs text-muted-foreground">
-                                      &ldquo;{filterSearch}&rdquo; {t("sampleNoFilter")}
+                                      &ldquo;{filterSearch}&rdquo;{" "}
+                                      {t("sampleNoFilter")}
                                     </p>
                                   )}
                                 </>
@@ -551,7 +554,9 @@ export default function SanamsarguiTuuwerPage() {
               className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-5 text-base disabled:opacity-40"
             >
               <Shuffle className="w-4 h-4 mr-2" />
-              {s.isStratified ? "Стратифик түүвэр сонгох" : t("sampleSizeLabel")}
+              {s.isStratified
+                ? "Стратифик түүвэр сонгох"
+                : t("sampleSizeLabel")}
             </Button>
           </CardContent>
         </Card>
@@ -626,13 +631,16 @@ export default function SanamsarguiTuuwerPage() {
                   {result.groups.map((g, gi) => (
                     <div key={gi} className={gi > 0 ? "mt-5" : ""}>
                       <p className="text-sm font-medium text-foreground mb-2">
-                        {result.groups.length > 1 ? g.label : t("sampleSizeLabel")}
+                        {result.groups.length > 1
+                          ? g.label
+                          : t("sampleSizeLabel")}
                         {g.size !== undefined
                           ? ` (бүлгийн хэмжээ: ${g.size})`
                           : ""}
                         {" — "}
                         <span className="text-muted-foreground">
-                          {g.indices.length} {t("alertRows")} {t("sampleSizeLabel")}
+                          {g.indices.length} {t("alertRows")}{" "}
+                          {t("sampleSizeLabel")}
                           {g.indices.length > 50 && " (эхний 50)"}
                         </span>
                       </p>

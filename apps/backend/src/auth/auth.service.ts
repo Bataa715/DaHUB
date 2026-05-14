@@ -155,8 +155,7 @@ export class AuthService {
   private async generateRefreshToken(userId: string): Promise<string> {
     const refreshToken = randomUUID();
     const expiresAt = new Date();
-    // [M-1] Reduced from 3 days to 1 day for financial-system security posture
-    expiresAt.setDate(expiresAt.getDate() + 1);
+    expiresAt.setDate(expiresAt.getDate() + 3); // 3 days — matches frontend REFRESH_TOKEN_EXPIRY_DAYS
 
     const now = nowCH();
     const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace("T", " ");

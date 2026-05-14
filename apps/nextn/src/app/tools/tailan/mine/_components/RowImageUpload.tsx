@@ -54,7 +54,7 @@ export function RowImageUpload({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-1 text-xs text-slate-400 hover:text-blue-400 transition"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-400 transition"
         >
           <ImageIcon className="h-3.5 w-3.5" />
           <span>Зураг нэмэх</span>
@@ -75,10 +75,10 @@ export function RowImageUpload({
           {images.map((img) => (
             <div
               key={img.id}
-              className="bg-slate-900/50 rounded-lg p-2 space-y-1.5"
+              className="bg-card/50 rounded-lg p-2 space-y-1.5"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground/70">
                   {img.width}% өргөн
                   {img.height ? ` · ${img.height}px өндөр` : ""}
                 </span>
@@ -101,7 +101,7 @@ export function RowImageUpload({
                 className="rounded max-w-full"
               />
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-600 w-10 shrink-0">
+                <span className="text-xs text-muted-foreground/50 w-10 shrink-0">
                   Өргөн
                 </span>
                 <input
@@ -113,12 +113,12 @@ export function RowImageUpload({
                   onChange={(e) => setWidth(img.id, Number(e.target.value))}
                   className="flex-1 accent-blue-500"
                 />
-                <span className="text-xs text-slate-500 w-9 text-right shrink-0">
+                <span className="text-xs text-muted-foreground/70 w-9 text-right shrink-0">
                   {img.width}%
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-600 w-10 shrink-0">
+                <span className="text-xs text-muted-foreground/50 w-10 shrink-0">
                   Өндөр
                 </span>
                 <input
@@ -133,9 +133,9 @@ export function RowImageUpload({
                       Math.max(50, Number(e.target.value) || 280),
                     )
                   }
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-slate-300 placeholder-slate-600"
+                  className="flex-1 bg-card border border-border rounded px-2 py-0.5 text-xs text-foreground/80 placeholder-muted-foreground/40"
                 />
-                <span className="text-xs text-slate-500 w-9 shrink-0">px</span>
+                <span className="text-xs text-muted-foreground/70 w-9 shrink-0">px</span>
               </div>
             </div>
           ))}

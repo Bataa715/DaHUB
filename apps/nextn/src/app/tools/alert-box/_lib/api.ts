@@ -1,7 +1,10 @@
 // DaHUB-ийн өөрийн backend-ийг ашиглана — тусдаа API URL хэрэггүй
 import Cookies from "js-cookie";
 
-const AB_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const AB_API = process.env.NEXT_PUBLIC_API_URL;
+if (!AB_API) {
+  throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
+}
 
 function getToken() {
   if (typeof window === "undefined") return null;

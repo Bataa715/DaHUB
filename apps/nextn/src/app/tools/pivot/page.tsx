@@ -26,7 +26,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// ─── Inverse normal CDF (Abramowitz & Stegun) 
+// ─── Inverse normal CDF (Abramowitz & Stegun)
 function getZ(cl: number): number {
   const p = 1 - (1 - cl) / 2;
   if (p >= 1) return 3.5;
@@ -488,9 +488,7 @@ export default function PivotPage() {
         {/* File Upload */}
         <Card className="border border-border shadow-sm">
           <CardContent className="pt-5 space-y-3">
-            <Label className="text-sm font-medium">
-              {t("pivotFileLabel")}
-            </Label>
+            <Label className="text-sm font-medium">{t("pivotFileLabel")}</Label>
             <div
               onDragOver={(e) => {
                 e.preventDefault();

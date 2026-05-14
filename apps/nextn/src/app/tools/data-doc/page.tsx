@@ -42,7 +42,7 @@ function getTypeColor(type: string): string {
   for (const [key, cls] of Object.entries(TYPE_COLORS)) {
     if (type.includes(key)) return cls;
   }
-  return "text-slate-400 bg-slate-800 border-slate-700";
+  return "text-muted-foreground bg-card border-border";
 }
 
 export default function DataDocPage() {
@@ -176,14 +176,14 @@ export default function DataDocPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1117] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-white flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1117] text-white flex flex-col">
+    <div className="min-h-screen bg-background text-white flex flex-col">
       <ToolPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md">
@@ -199,7 +199,7 @@ export default function DataDocPage() {
         rightContent={
           <Link
             href="/tools/data-doc/code"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-card hover:bg-muted border border-border rounded-lg text-foreground/80 transition-colors"
           >
             <Code2 className="w-3.5 h-3.5" />
             {t("dataDocCodeLib")}
@@ -209,9 +209,9 @@ export default function DataDocPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Panel 1: Databases */}
-        <div className="w-44 shrink-0 bg-[#0a0f1e] border-r border-slate-800/60 flex flex-col">
-          <div className="px-4 py-4 border-b border-slate-800/60">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+        <div className="w-44 shrink-0 bg-card border-r border-border/50 flex flex-col">
+          <div className="px-4 py-4 border-b border-border/50">
+            <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">
               {t("dataDocDbLabel")}
             </span>
           </div>
@@ -224,8 +224,8 @@ export default function DataDocPage() {
                   onClick={() => selectDb(db.name)}
                   className={`w-full text-left px-4 py-3 flex items-center gap-2.5 transition-all ${
                     isActive
-                      ? "bg-slate-800/60 border-r-2"
-                      : "hover:bg-slate-800/30 border-r-2 border-transparent"
+                      ? "bg-muted/60 border-r-2"
+                      : "hover:bg-muted/30 border-r-2 border-transparent"
                   }`}
                   style={isActive ? { borderRightColor: db.color } : {}}
                 >
@@ -238,12 +238,12 @@ export default function DataDocPage() {
                   />
                   <span
                     className={`text-sm font-mono font-semibold truncate ${
-                      isActive ? "text-white" : "text-slate-500"
+                      isActive ? "text-white" : "text-muted-foreground/70"
                     }`}
                   >
                     {db.name}
                   </span>
-                  <span className="ml-auto text-[11px] text-slate-600 shrink-0">
+                  <span className="ml-auto text-[11px] text-muted-foreground/50 shrink-0">
                     {db.tables.length}
                   </span>
                 </button>
@@ -253,8 +253,8 @@ export default function DataDocPage() {
         </div>
 
         {/* Panel 2: Tables */}
-        <div className="w-52 shrink-0 border-r border-slate-800/60 flex flex-col bg-[#0b1120]">
-          <div className="px-3 py-3 border-b border-slate-800/60 space-y-2">
+        <div className="w-52 shrink-0 border-r border-border/50 flex flex-col bg-card">
+          <div className="px-3 py-3 border-b border-border/50 space-y-2">
             <span
               className="text-[11px] font-bold uppercase tracking-widest"
               style={{ color: currentDb?.color || "#64748b" }}
@@ -262,12 +262,12 @@ export default function DataDocPage() {
               {selectedDb || t("dataDocSelectDb")}
             </span>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-600" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
               <input
                 value={tableSearch}
                 onChange={(e) => setTableSearch(e.target.value)}
                 placeholder={t("dataDocSearchTable") + "…"}
-                className="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-800/60 border border-slate-700/40 rounded-lg text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
+                className="w-full pl-7 pr-3 py-1.5 text-xs bg-muted/60 border border-border/40 rounded-lg text-foreground/80 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50"
               />
             </div>
           </div>
@@ -285,19 +285,19 @@ export default function DataDocPage() {
                   onClick={() => selectTable(table.name)}
                   className={`w-full text-left px-3 py-2.5 transition-all border-r-2 ${
                     isActive
-                      ? "bg-slate-800/70 border-r-cyan-400"
-                      : "hover:bg-slate-800/30 border-r-transparent"
+                      ? "bg-card/70 border-r-cyan-400"
+                      : "hover:bg-muted/30 border-r-transparent"
                   }`}
                 >
                   <div
                     className={`text-xs font-mono font-semibold truncate mb-1 ${
-                      isActive ? "text-cyan-300" : "text-slate-400"
+                      isActive ? "text-cyan-300" : "text-muted-foreground"
                     }`}
                   >
                     {table.name}
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1 bg-card rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -306,7 +306,7 @@ export default function DataDocPage() {
                         }}
                       />
                     </div>
-                    <span className="text-[10px] text-slate-600 shrink-0">
+                    <span className="text-[10px] text-muted-foreground/50 shrink-0">
                       {table.totalColumns}
                     </span>
                   </div>
@@ -314,7 +314,7 @@ export default function DataDocPage() {
               );
             })}
             {filteredTables.length === 0 && (
-              <div className="px-4 py-6 text-xs text-slate-600 text-center">
+              <div className="px-4 py-6 text-xs text-muted-foreground/50 text-center">
                 {t("dataDocNoTables")}
               </div>
             )}
@@ -323,28 +323,29 @@ export default function DataDocPage() {
 
         {/* Panel 3: Columns */}
         <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-          <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-800/60 bg-[#0b1120] shrink-0">
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-border/50 bg-card shrink-0">
             {currentTable ? (
               <>
                 <div>
                   <span className="font-mono font-bold text-white text-sm">
                     {currentTable.name}
                   </span>
-                  <span className="text-slate-500 text-xs ml-2">
+                  <span className="text-muted-foreground/70 text-xs ml-2">
                     {currentDb?.name}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700/50">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border/50">
                   <div
                     className="w-1.5 h-1.5 rounded-full"
                     style={{ backgroundColor: currentDb?.color || "#06b6d4" }}
                   />
-                  <span className="text-xs text-slate-400">
-                    {coverage}% · {describedCount}/{totalCount} {t("dataDocColName")}
+                  <span className="text-xs text-muted-foreground">
+                    {coverage}% · {describedCount}/{totalCount}{" "}
+                    {t("dataDocColName")}
                   </span>
                 </div>
                 <div className="flex-1" />
-                <div className="flex items-center gap-1 bg-slate-800/60 rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
                   {(["all", "described", "undescribed"] as FilterMode[]).map(
                     (f) => (
                       <button
@@ -352,8 +353,8 @@ export default function DataDocPage() {
                         onClick={() => setFilter(f)}
                         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                           filter === f
-                            ? "bg-slate-700 text-white"
-                            : "text-slate-500 hover:text-slate-300"
+                            ? "bg-muted text-white"
+                            : "text-muted-foreground/70 hover:text-foreground/80"
                         }`}
                       >
                         {f === "all"
@@ -366,17 +367,17 @@ export default function DataDocPage() {
                   )}
                 </div>
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70" />
                   <input
                     value={colSearch}
                     onChange={(e) => setColSearch(e.target.value)}
                     placeholder={t("dataDocSearchCol") + "…"}
-                    className="pl-8 pr-3 py-1.5 text-xs bg-slate-800 border border-slate-700/50 rounded-lg text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 w-44"
+                    className="pl-8 pr-3 py-1.5 text-xs bg-card border border-border/50 rounded-lg text-foreground/80 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50 w-44"
                   />
                 </div>
               </>
             ) : (
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-muted-foreground/70">
                 {t("dataDocSelectTableHint")}
               </span>
             )}
@@ -386,14 +387,14 @@ export default function DataDocPage() {
             <div className="flex-1 overflow-y-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="bg-[#0b1120] sticky top-0 z-10 border-b border-slate-800/60">
-                    <th className="text-left px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-[260px]">
+                  <tr className="bg-card sticky top-0 z-10 border-b border-border/50">
+                    <th className="text-left px-5 py-3 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest w-[260px]">
                       {t("dataDocColName")}
                     </th>
-                    <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-[220px]">
+                    <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest w-[220px]">
                       {t("dataDocColType")}
                     </th>
-                    <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">
                       {t("dataDocColDesc")}
                     </th>
                   </tr>
@@ -402,8 +403,8 @@ export default function DataDocPage() {
                   {filteredColumns.map((col, i) => (
                     <tr
                       key={col.name}
-                      className={`border-b border-slate-800/30 hover:bg-slate-800/20 group transition-colors ${
-                        i % 2 === 1 ? "bg-slate-900/20" : ""
+                      className={`border-b border-border/30 hover:bg-card/20 group transition-colors ${
+                        i % 2 === 1 ? "bg-background/20" : ""
                       }`}
                     >
                       <td className="px-5 py-3 w-[260px]">
@@ -418,7 +419,7 @@ export default function DataDocPage() {
                             {copied === col.name ? (
                               <Check className="w-3 h-3 text-emerald-400" />
                             ) : (
-                              <Copy className="w-3 h-3 text-slate-500 hover:text-slate-300" />
+                              <Copy className="w-3 h-3 text-muted-foreground/70 hover:text-foreground/80" />
                             )}
                           </button>
                         </div>
@@ -450,7 +451,7 @@ export default function DataDocPage() {
                                 if (e.key === "Enter") saveEdit();
                                 if (e.key === "Escape") cancelEdit();
                               }}
-                              className="w-full px-2.5 py-1.5 text-xs bg-slate-800 border border-cyan-500/50 rounded-lg text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                              className="w-full px-2.5 py-1.5 text-xs bg-card border border-cyan-500/50 rounded-lg text-foreground/90 placeholder-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
                               placeholder={t("dataDocDescPlaceholder") + "…"}
                             />
                             <div className="flex items-center gap-1.5">
@@ -463,7 +464,7 @@ export default function DataDocPage() {
                               </button>
                               <button
                                 onClick={cancelEdit}
-                                className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+                                className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-muted hover:bg-muted text-foreground/80 transition-colors"
                               >
                                 {t("back")}
                               </button>
@@ -477,11 +478,11 @@ export default function DataDocPage() {
                         ) : (
                           <div className="flex items-center gap-2 group/desc">
                             {col.description ? (
-                              <span className="text-slate-300 text-xs">
+                              <span className="text-foreground/80 text-xs">
                                 {col.description}
                               </span>
                             ) : (
-                              <span className="text-slate-700 text-xs italic">
+                              <span className="text-muted-foreground/40 text-xs italic">
                                 —
                               </span>
                             )}
@@ -495,7 +496,7 @@ export default function DataDocPage() {
                               }
                               className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
                             >
-                              <Pencil className="w-3 h-3 text-slate-500 hover:text-cyan-400 transition-colors" />
+                              <Pencil className="w-3 h-3 text-muted-foreground/70 hover:text-cyan-400 transition-colors" />
                             </button>
                           </div>
                         )}
@@ -506,7 +507,7 @@ export default function DataDocPage() {
                     <tr>
                       <td
                         colSpan={3}
-                        className="px-5 py-12 text-center text-slate-600 text-sm"
+                        className="px-5 py-12 text-center text-muted-foreground/50 text-sm"
                       >
                         {t("dataDocNoTables")}
                       </td>
@@ -518,13 +519,13 @@ export default function DataDocPage() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-slate-800/40 flex items-center justify-center mx-auto mb-4">
-                  <Database className="w-8 h-8 text-slate-600" />
+                <div className="w-16 h-16 rounded-2xl bg-card/40 flex items-center justify-center mx-auto mb-4">
+                  <Database className="w-8 h-8 text-muted-foreground/50" />
                 </div>
-                <h3 className="text-slate-400 font-medium mb-1">
+                <h3 className="text-muted-foreground font-medium mb-1">
                   {t("dataDocSelectDb")}
                 </h3>
-                <p className="text-slate-600 text-sm">
+                <p className="text-muted-foreground/50 text-sm">
                   {t("dataDocSelectTableHint")}
                 </p>
               </div>

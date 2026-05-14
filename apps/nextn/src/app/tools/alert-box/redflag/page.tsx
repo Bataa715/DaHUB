@@ -182,7 +182,8 @@ export default function RedFlagPage() {
                   ))}
                   {chain.matchCount > chain.matches.length && (
                     <span className="px-2 py-1 text-[10px] text-txt-dim">
-                      +{chain.matchCount - chain.matches.length} {t("redflagNoResult")}
+                      +{chain.matchCount - chain.matches.length}{" "}
+                      {t("redflagNoResult")}
                     </span>
                   )}
                 </div>
@@ -235,13 +236,17 @@ export default function RedFlagPage() {
                 <p className="text-2xl font-extrabold text-txt">
                   {data.totalChains}
                 </p>
-                <p className="text-[10px] text-txt-dim uppercase">{t("redflagTotalRules")}</p>
+                <p className="text-[10px] text-txt-dim uppercase">
+                  {t("redflagTotalRules")}
+                </p>
               </div>
               <div className="bg-surface-card rounded-xl border border-surface-border p-4 text-center">
                 <p className="text-2xl font-extrabold text-red-400">
                   {data.triggeredChains}
                 </p>
-                <p className="text-[10px] text-txt-dim uppercase">{t("redflagActive")}</p>
+                <p className="text-[10px] text-txt-dim uppercase">
+                  {t("redflagActive")}
+                </p>
               </div>
               <div className="bg-surface-card rounded-xl border border-surface-border p-4 text-center">
                 <p className="text-2xl font-extrabold text-amber-400">

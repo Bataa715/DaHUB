@@ -2,6 +2,9 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+if (!API_URL) {
+  throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
+}
 
 const api = axios.create({
   baseURL: API_URL,

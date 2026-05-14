@@ -33,8 +33,13 @@ const TOOL_GUARDS: Record<string, string[]> = {
 
 async function getTokenPayload(token: string | undefined) {
   if (!token) return null;
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    console.error("JWT_SECRET environment variable is not set");
+    return null;
+  }
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const secret = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secret);
     return payload;
   } catch {

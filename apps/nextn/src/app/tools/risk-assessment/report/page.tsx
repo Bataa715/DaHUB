@@ -207,7 +207,9 @@ export default function RiskAssessmentReportPage() {
           <div className="px-3 py-2.5 flex flex-wrap items-center gap-2">
             <Database className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
             <div className="flex items-center gap-1.5">
-              <label className="text-[10px] text-muted-foreground">{t("riskDateFrom")}</label>
+              <label className="text-[10px] text-muted-foreground">
+                {t("riskDateFrom")}
+              </label>
               <input
                 type="date"
                 value={pDateBeg}
@@ -248,7 +250,10 @@ export default function RiskAssessmentReportPage() {
             <div
               className="relative"
               onMouseEnter={() => setMenuOpen(true)}
-              onMouseLeave={() => { setMenuOpen(false); setHistoryOpen(false); }}
+              onMouseLeave={() => {
+                setMenuOpen(false);
+                setHistoryOpen(false);
+              }}
             >
               <button
                 className={`p-1.5 rounded-md border transition-all text-xs ${
@@ -269,17 +274,24 @@ export default function RiskAssessmentReportPage() {
                   {/* Save action */}
                   {hasFetched && (
                     <button
-                      onClick={() => { setSaveModalOpen(true); setMenuOpen(false); }}
+                      onClick={() => {
+                        setSaveModalOpen(true);
+                        setMenuOpen(false);
+                      }}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs hover:bg-amber-500/10 border-b border-border/50 transition-colors"
                     >
                       <BookmarkPlus className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                      <span className="font-medium">{t("riskSaveQuarter")}</span>
+                      <span className="font-medium">
+                        {t("riskSaveQuarter")}
+                      </span>
                     </button>
                   )}
 
                   {/* History section */}
                   <div className="px-3 py-2 border-b border-border bg-muted/30">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("riskSavedQuarters")}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      {t("riskSavedQuarters")}
+                    </p>
                   </div>
                   {historyList.length === 0 ? (
                     <div className="px-4 py-5 text-center text-xs text-muted-foreground">
@@ -305,7 +317,10 @@ export default function RiskAssessmentReportPage() {
                           className="flex items-center hover:bg-muted/40 border-b border-border/30 last:border-0"
                         >
                           <button
-                            onClick={() => { selectHistory(h.id); setMenuOpen(false); }}
+                            onClick={() => {
+                              selectHistory(h.id);
+                              setMenuOpen(false);
+                            }}
                             className="flex-1 px-3 py-2.5 text-left"
                           >
                             <div className="flex items-center gap-2">
@@ -313,10 +328,15 @@ export default function RiskAssessmentReportPage() {
                                 <Check className="w-3 h-3 text-violet-500 flex-shrink-0" />
                               )}
                               <div className="min-w-0">
-                                <div className="text-xs font-semibold truncate">{h.name}</div>
+                                <div className="text-xs font-semibold truncate">
+                                  {h.name}
+                                </div>
                                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                                  {h.pDateBeg} → {h.pDate} · {h.branchCount} салбар
-                                  {h.createdByName ? ` · ${h.createdByName}` : ""}
+                                  {h.pDateBeg} → {h.pDate} · {h.branchCount}{" "}
+                                  салбар
+                                  {h.createdByName
+                                    ? ` · ${h.createdByName}`
+                                    : ""}
                                 </div>
                               </div>
                             </div>

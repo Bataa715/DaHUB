@@ -76,63 +76,83 @@ const AVATAR_GRADIENTS = [
 const DEPT_COLORS = [
   {
     pill: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/25 text-blue-600 dark:text-blue-400",
-    active: "bg-blue-500/20 border-blue-500/50 text-blue-600 dark:text-blue-300",
+    active:
+      "bg-blue-500/20 border-blue-500/50 text-blue-600 dark:text-blue-300",
     header: "bg-blue-500/10 border-blue-500/20",
     dot: "bg-blue-500",
   },
   {
     pill: "bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/25 text-violet-600 dark:text-violet-400",
-    active: "bg-violet-500/20 border-violet-500/50 text-violet-600 dark:text-violet-300",
+    active:
+      "bg-violet-500/20 border-violet-500/50 text-violet-600 dark:text-violet-300",
     header: "bg-violet-500/10 border-violet-500/20",
     dot: "bg-violet-500",
   },
   {
     pill: "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/25 text-emerald-600 dark:text-emerald-400",
-    active: "bg-emerald-500/20 border-emerald-500/50 text-emerald-600 dark:text-emerald-300",
+    active:
+      "bg-emerald-500/20 border-emerald-500/50 text-emerald-600 dark:text-emerald-300",
     header: "bg-emerald-500/10 border-emerald-500/20",
     dot: "bg-emerald-500",
   },
   {
     pill: "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/25 text-amber-600 dark:text-amber-400",
-    active: "bg-amber-500/20 border-amber-500/50 text-amber-600 dark:text-amber-300",
+    active:
+      "bg-amber-500/20 border-amber-500/50 text-amber-600 dark:text-amber-300",
     header: "bg-amber-500/10 border-amber-500/20",
     dot: "bg-amber-500",
   },
   {
     pill: "bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/25 text-rose-600 dark:text-rose-400",
-    active: "bg-rose-500/20 border-rose-500/50 text-rose-600 dark:text-rose-300",
+    active:
+      "bg-rose-500/20 border-rose-500/50 text-rose-600 dark:text-rose-300",
     header: "bg-rose-500/10 border-rose-500/20",
     dot: "bg-rose-500",
   },
   {
     pill: "bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/25 text-cyan-600 dark:text-cyan-400",
-    active: "bg-cyan-500/20 border-cyan-500/50 text-cyan-600 dark:text-cyan-300",
+    active:
+      "bg-cyan-500/20 border-cyan-500/50 text-cyan-600 dark:text-cyan-300",
     header: "bg-cyan-500/10 border-cyan-500/20",
     dot: "bg-cyan-500",
   },
   {
     pill: "bg-pink-500/10 hover:bg-pink-500/20 border-pink-500/25 text-pink-600 dark:text-pink-400",
-    active: "bg-pink-500/20 border-pink-500/50 text-pink-600 dark:text-pink-300",
+    active:
+      "bg-pink-500/20 border-pink-500/50 text-pink-600 dark:text-pink-300",
     header: "bg-pink-500/10 border-pink-500/20",
     dot: "bg-pink-500",
   },
   {
     pill: "bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/25 text-indigo-600 dark:text-indigo-400",
-    active: "bg-indigo-500/20 border-indigo-500/50 text-indigo-600 dark:text-indigo-300",
+    active:
+      "bg-indigo-500/20 border-indigo-500/50 text-indigo-600 dark:text-indigo-300",
     header: "bg-indigo-500/10 border-indigo-500/20",
     dot: "bg-indigo-500",
   },
 ];
 
 const CARD_BORDER_COLORS = [
-  { border: "border-blue-500",    text: "text-blue-400",    bg: "bg-blue-500/5"    },
-  { border: "border-violet-500",  text: "text-violet-400",  bg: "bg-violet-500/5"  },
-  { border: "border-emerald-500", text: "text-emerald-400", bg: "bg-emerald-500/5" },
-  { border: "border-amber-500",   text: "text-amber-400",   bg: "bg-amber-500/5"   },
-  { border: "border-cyan-500",    text: "text-cyan-400",    bg: "bg-cyan-500/5"    },
-  { border: "border-indigo-500",  text: "text-indigo-400",  bg: "bg-indigo-500/5"  },
-  { border: "border-teal-500",    text: "text-teal-400",    bg: "bg-teal-500/5"    },
-  { border: "border-sky-500",     text: "text-sky-400",     bg: "bg-sky-500/5"     },
+  { border: "border-blue-500", text: "text-blue-400", bg: "bg-blue-500/5" },
+  {
+    border: "border-violet-500",
+    text: "text-violet-400",
+    bg: "bg-violet-500/5",
+  },
+  {
+    border: "border-emerald-500",
+    text: "text-emerald-400",
+    bg: "bg-emerald-500/5",
+  },
+  { border: "border-amber-500", text: "text-amber-400", bg: "bg-amber-500/5" },
+  { border: "border-cyan-500", text: "text-cyan-400", bg: "bg-cyan-500/5" },
+  {
+    border: "border-indigo-500",
+    text: "text-indigo-400",
+    bg: "bg-indigo-500/5",
+  },
+  { border: "border-teal-500", text: "text-teal-400", bg: "bg-teal-500/5" },
+  { border: "border-sky-500", text: "text-sky-400", bg: "bg-sky-500/5" },
 ];
 
 function getHeroGradient(name: string) {
@@ -224,7 +244,9 @@ function PhotoModal({
         <div className="flex items-center justify-between w-full px-2">
           <div>
             {photo.caption && (
-              <p className="text-white text-sm font-semibold">{photo.caption}</p>
+              <p className="text-white text-sm font-semibold">
+                {photo.caption}
+              </p>
             )}
             <p className="text-white/50 text-xs mt-0.5">
               {photo.uploadedByName} ·{" "}
@@ -279,9 +301,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
       if (e.key === "ArrowLeft")
         setLightbox((i) => (i !== null && i > 0 ? i - 1 : i));
       if (e.key === "ArrowRight")
-        setLightbox((i) =>
-          i !== null && i < photos.length - 1 ? i + 1 : i,
-        );
+        setLightbox((i) => (i !== null && i < photos.length - 1 ? i + 1 : i));
       if (e.key === "Escape") setLightbox(null);
     };
     window.addEventListener("keydown", handler);
@@ -292,7 +312,11 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
-      toast({ title: t("error"), description: t("photoSizeError"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("photoSizeError"),
+        variant: "destructive",
+      });
       return;
     }
     e.target.value = "";
@@ -300,11 +324,19 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       try {
-        await departmentsApi.uploadPhoto(deptId, deptName, ev.target!.result as string);
+        await departmentsApi.uploadPhoto(
+          deptId,
+          deptName,
+          ev.target!.result as string,
+        );
         toast({ title: t("success"), description: t("photoAdded") });
         await loadPhotos();
       } catch {
-        toast({ title: t("error"), description: t("photoUploadError"), variant: "destructive" });
+        toast({
+          title: t("error"),
+          description: t("photoUploadError"),
+          variant: "destructive",
+        });
       } finally {
         setUploading(false);
       }
@@ -319,20 +351,34 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
       if (lightbox !== null) setLightbox(null);
       await loadPhotos();
     } catch {
-      toast({ title: t("error"), description: t("deleteError"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("deleteError"),
+        variant: "destructive",
+      });
     }
   };
 
   return (
     <>
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-base font-bold text-foreground">{t("albumTitle")}</h2>
+          <h2 className="text-base font-bold text-foreground">
+            {t("albumTitle")}
+          </h2>
           {photos.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">{photos.length} зураг</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {photos.length} зураг
+            </p>
           )}
         </div>
         <button
@@ -340,7 +386,11 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           disabled={uploading}
           className="px-4 py-2 rounded-xl bg-foreground text-background text-xs font-semibold hover:opacity-80 transition-opacity disabled:opacity-40 flex items-center gap-2"
         >
-          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span className="text-base leading-none">＋</span>}
+          {uploading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <span className="text-base leading-none">＋</span>
+          )}
           {t("addPhoto")}
         </button>
       </div>
@@ -354,7 +404,9 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           onClick={() => fileRef.current?.click()}
           className="w-full py-14 rounded-2xl border-2 border-dashed border-border hover:border-foreground/20 hover:bg-muted/20 flex flex-col items-center gap-3 text-muted-foreground transition-all"
         >
-          <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center text-2xl">📷</div>
+          <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center text-2xl">
+            📷
+          </div>
           <div>
             <p className="text-sm font-medium">{t("uploadPhotoPrompt")}</p>
             <p className="text-xs opacity-60 mt-1">{t("photoSizeHint")}</p>
@@ -396,7 +448,9 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
           onClose={() => setLightbox(null)}
           onDelete={handleDelete}
           onPrev={() => setLightbox((i) => Math.max(0, (i ?? 0) - 1))}
-          onNext={() => setLightbox((i) => Math.min(photos.length - 1, (i ?? 0) + 1))}
+          onNext={() =>
+            setLightbox((i) => Math.min(photos.length - 1, (i ?? 0) + 1))
+          }
         />
       )}
     </>
@@ -431,18 +485,20 @@ function EmployeeCard({
           className="w-20 h-20 rounded-full object-cover ring-2 ring-border"
         />
       ) : (
-        <div
-          className="w-20 h-20 rounded-full bg-zinc-900 border-2 border-zinc-600 flex items-center justify-center text-white font-black text-xl"
-        >
+        <div className="w-20 h-20 rounded-full bg-zinc-900 border-2 border-zinc-600 flex items-center justify-center text-white font-black text-xl">
           {getInitials(member.name)}
         </div>
       )}
 
       {/* Name + position */}
       <div className="w-full">
-        <p className="text-xs font-bold text-foreground leading-snug">{member.name}</p>
+        <p className="text-xs font-bold text-foreground leading-snug">
+          {member.name}
+        </p>
         {member.position && (
-          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{member.position}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+            {member.position}
+          </p>
         )}
       </div>
 
@@ -523,7 +579,9 @@ function DeptDetailView({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-3 mt-8">
-            <div className={`px-5 py-2.5 rounded-full border-2 ${color.border} ${color.text} text-sm font-bold tabular-nums`}>
+            <div
+              className={`px-5 py-2.5 rounded-full border-2 ${color.border} ${color.text} text-sm font-bold tabular-nums`}
+            >
               {members.length} ажилтан
             </div>
             {dept.manager && (
@@ -541,17 +599,27 @@ function DeptDetailView({
           <section>
             <div className="mb-5">
               <h2 className="text-xl font-black text-foreground">Баг</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">{members.length} ажилтан</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {members.length} ажилтан
+              </p>
             </div>
-            <MemberGrid members={members} currentUserId="" managerName={dept.manager} />
+            <MemberGrid
+              members={members}
+              currentUserId=""
+              managerName={dept.manager}
+            />
           </section>
         )}
 
         {dept.description && dept.description.length > 80 && (
           <section className="rounded-2xl border border-border bg-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`w-1 h-6 rounded-full ${color.border} border-l-4`} />
-              <h2 className="text-sm font-bold text-foreground uppercase tracking-widest">Тайлбар</h2>
+              <div
+                className={`w-1 h-6 rounded-full ${color.border} border-l-4`}
+              />
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-widest">
+                Тайлбар
+              </h2>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
               {dept.description}
@@ -598,7 +666,11 @@ function OtherDeptViewer({
         setList(filtered);
       })
       .catch(() =>
-        toast({ title: t("error"), description: t("deptsLoadError"), variant: "destructive" }),
+        toast({
+          title: t("error"),
+          description: t("deptsLoadError"),
+          variant: "destructive",
+        }),
       )
       .finally(() => setLoadingList(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -610,7 +682,11 @@ function OtherDeptViewer({
       const full = await departmentsApi.getOne(dept.id);
       onSelect(full);
     } catch {
-      toast({ title: t("error"), description: t("deptDetailLoadError"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("deptDetailLoadError"),
+        variant: "destructive",
+      });
     } finally {
       setLoadingId(null);
     }
@@ -647,7 +723,9 @@ function OtherDeptViewer({
               className={`group w-52 flex-shrink-0 rounded-2xl border-2 ${color.border} ${color.bg} text-left p-4 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg disabled:opacity-60`}
             >
               {/* Initials badge */}
-              <div className={`w-9 h-9 rounded-xl border ${color.border} ${color.text} flex items-center justify-center font-black text-xs mb-3`}>
+              <div
+                className={`w-9 h-9 rounded-xl border ${color.border} ${color.text} flex items-center justify-center font-black text-xs mb-3`}
+              >
                 {getInitials(dept.name)}
               </div>
               <p className="text-xs font-bold text-foreground leading-snug line-clamp-2">
@@ -660,7 +738,9 @@ function OtherDeptViewer({
                 {isLoading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                 ) : (
-                  <ChevronRight className={`w-3.5 h-3.5 ${color.text} opacity-40 group-hover:opacity-100 transition-opacity`} />
+                  <ChevronRight
+                    className={`w-3.5 h-3.5 ${color.text} opacity-40 group-hover:opacity-100 transition-opacity`}
+                  />
                 )}
               </div>
             </button>
@@ -677,7 +757,8 @@ export default function DepartmentsPage() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [department, setDepartment] = useState<DepartmentData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);  const [viewingDept, setViewingDept] = useState<DepartmentData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [viewingDept, setViewingDept] = useState<DepartmentData | null>(null);
   useEffect(() => {
     if (authLoading) return;
     if (user?.department) {
@@ -693,7 +774,11 @@ export default function DepartmentsPage() {
       const data = await departmentsApi.getByName(user.department);
       setDepartment(data);
     } catch {
-      toast({ title: t("error"), description: t("deptLoadError"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("deptLoadError"),
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -714,8 +799,12 @@ export default function DepartmentsPage() {
           <div className="w-16 h-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center text-3xl">
             🔒
           </div>
-          <h2 className="text-lg font-bold text-foreground">{t("needLogin")}</h2>
-          <p className="text-sm text-muted-foreground mt-2">{t("needLoginDeptDesc")}</p>
+          <h2 className="text-lg font-bold text-foreground">
+            {t("needLogin")}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            {t("needLoginDeptDesc")}
+          </p>
         </div>
       </div>
     );
@@ -728,8 +817,12 @@ export default function DepartmentsPage() {
           <div className="w-16 h-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center text-3xl">
             🏢
           </div>
-          <h2 className="text-lg font-bold text-foreground">{t("deptUnknownTitle")}</h2>
-          <p className="text-sm text-muted-foreground mt-2">{t("deptUnknownDesc")}</p>
+          <h2 className="text-lg font-bold text-foreground">
+            {t("deptUnknownTitle")}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            {t("deptUnknownDesc")}
+          </p>
         </div>
       </div>
     );
@@ -744,7 +837,9 @@ export default function DepartmentsPage() {
 
   // ── Full-page detail view for another department ──
   if (viewingDept) {
-    return <DeptDetailView dept={viewingDept} onBack={() => setViewingDept(null)} />;
+    return (
+      <DeptDetailView dept={viewingDept} onBack={() => setViewingDept(null)} />
+    );
   }
 
   return (
@@ -780,12 +875,13 @@ export default function DepartmentsPage() {
 
       {/* ── CONTENT ──────────────────────────────────────────────────────── */}
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
-
         {/* ── MEMBERS ──────────────────────────────────────────────────── */}
         <section>
           <div className="flex items-end justify-between mb-5">
             <div>
-              <h2 className="text-xl font-black text-foreground">{t("teamTitle")}</h2>
+              <h2 className="text-xl font-black text-foreground">
+                {t("teamTitle")}
+              </h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {totalCount} ажилтан
               </p>
@@ -810,7 +906,9 @@ export default function DepartmentsPage() {
         {department.description && department.description.length > 80 && (
           <section className="rounded-2xl border border-border bg-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`w-1 h-6 rounded-full bg-gradient-to-b ${heroGrad}`} />
+              <div
+                className={`w-1 h-6 rounded-full bg-gradient-to-b ${heroGrad}`}
+              />
               <h2 className="text-sm font-bold text-foreground uppercase tracking-widest">
                 {t("missionTitle")}
               </h2>
@@ -847,7 +945,6 @@ export default function DepartmentsPage() {
             />
           )}
         </section>
-
       </div>
     </div>
   );

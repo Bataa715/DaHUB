@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { usersApi } from "@/lib/api";
 import api from "@/lib/api";
+import axios from "axios";
 import BackButton from "@/components/shared/BackButton";
 import { motion } from "framer-motion";
 
@@ -113,13 +114,11 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error changing password:", error);
-      toast({
-        title: t("error"),
-        description: error.response?.data?.message || t("passwordChangeBtn"),
-        variant: "destructive",
-      });
+      let message = t("passwordChangeBtn");
+      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      toast({ title: t("error"), description: message, variant: "destructive" });
     } finally {
       setIsChangingPassword(false);
     }
@@ -206,22 +205,16 @@ export default function SettingsPage() {
       await refreshUser();
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error uploading profile image:", error);
       let errorMessage = t("imageError");
-      if (
-        error.response?.status === 413 ||
-        error.message?.includes("too large")
-      ) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 413) errorMessage = t("imageTooBig");
+        else if (error.response?.data?.message) errorMessage = error.response.data.message;
+      } else if (error instanceof Error && error.message.includes("too large")) {
         errorMessage = t("imageTooBig");
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
       }
-      toast({
-        title: t("error"),
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: errorMessage, variant: "destructive" });
     } finally {
       setIsUploadingImage(false);
     }
@@ -237,13 +230,9 @@ export default function SettingsPage() {
 
       toast({ title: t("success"), description: t("imageRemoved") });
       await refreshUser();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error removing profile image:", error);
-      toast({
-        title: t("error"),
-        description: t("imageError"),
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: t("imageError"), variant: "destructive" });
     } finally {
       setIsUploadingImage(false);
     }

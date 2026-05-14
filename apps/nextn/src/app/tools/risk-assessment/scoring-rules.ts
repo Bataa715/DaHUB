@@ -555,7 +555,7 @@ export function scoreColorClass(score: ScoreResult): string {
   if (score === 1)
     return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
   if (score === 0 || score === "Үнэлэхгүй")
-    return "bg-slate-500/10 text-slate-500 border-slate-500/30";
+    return "bg-slate-500/10 text-muted-foreground/70 border-border/30";
   return "bg-transparent text-muted-foreground border-transparent";
 }
 

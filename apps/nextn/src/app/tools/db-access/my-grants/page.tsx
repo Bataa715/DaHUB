@@ -245,7 +245,9 @@ export default function MyGrantsPage() {
                           ) : (
                             <XCircle className="h-3.5 w-3.5" />
                           )}
-                          <span className="text-xs">{t("myGrantsCloseBtn")}</span>
+                          <span className="text-xs">
+                            {t("myGrantsCloseBtn")}
+                          </span>
                         </Button>
                       )}
                     </div>
@@ -273,7 +275,9 @@ export default function MyGrantsPage() {
                       <Clock className="h-3.5 w-3.5" />
                       <span suppressHydrationWarning>
                         {expired ? (
-                          <span className="text-red-400">{t("myGrantsExpired")}</span>
+                          <span className="text-red-400">
+                            {t("myGrantsExpired")}
+                          </span>
                         ) : expiringSoon ? (
                           <span className="text-amber-400">
                             {days} {t("myGrantsDaysLeft")}
@@ -284,7 +288,8 @@ export default function MyGrantsPage() {
                       </span>
                     </div>
                     <span suppressHydrationWarning>
-                      {t("myGrantsExpiresLabel")} <strong>{fmt24(grp.validUntil)}</strong>
+                      {t("myGrantsExpiresLabel")}{" "}
+                      <strong>{fmt24(grp.validUntil)}</strong>
                     </span>
                     <span suppressHydrationWarning>
                       {t("myGrantsGrantedBy")} {fmt24(grp.grantedAt)}
@@ -345,7 +350,9 @@ export default function MyGrantsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => copyText(grp.chPassword, t("myGrantsCopyPwd"))}
+                          onClick={() =>
+                            copyText(grp.chPassword, t("myGrantsCopyPwd"))
+                          }
                         >
                           <Copy className="h-3 w-3" />
                         </Button>

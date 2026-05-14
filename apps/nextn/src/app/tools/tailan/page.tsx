@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -39,16 +39,16 @@ export default function TailanPage() {
 
   if (loading)
     return (
-      <div className="flex h-screen items-center justify-center bg-[#080d14]">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
-          <span className="text-slate-400 text-sm">{t("tailan_loading")}</span>
+          <span className="text-muted-foreground text-sm">{t("tailan_loading")}</span>
         </div>
       </div>
     );
 
   return (
-    <div className="relative min-h-screen bg-[#080d14] overflow-hidden">
+    <div className="relative min-h-screen bg-background overflow-hidden">
       {/* ── Ambient glow orbs ── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
@@ -95,7 +95,7 @@ export default function TailanPage() {
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
             {t("tailan_title")}
           </h1>
-          <p className="text-slate-400 text-sm leading-relaxed">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             {t("tailan_subtitle")}
           </p>
         </div>
@@ -106,8 +106,8 @@ export default function TailanPage() {
           <button
             onClick={() => router.push("/tools/tailan/mine")}
             className="group relative flex items-center gap-4 rounded-2xl p-5 text-left
-              bg-white/[0.03] hover:bg-white/[0.06]
-              border border-white/[0.07] hover:border-blue-500/40
+              bg-muted/30 hover:bg-white/[0.06]
+              border border-border hover:border-blue-500/40
               shadow-[0_1px_1px_rgba(0,0,0,0.3)]
               hover:shadow-[0_0_28px_rgba(59,130,246,0.12)]
               transition-all duration-250 cursor-pointer overflow-hidden"
@@ -135,12 +135,12 @@ export default function TailanPage() {
                   {t("tailan_privateTag")}
                 </span>
               </div>
-              <p className="text-slate-400 text-xs leading-relaxed">
+              <p className="text-muted-foreground text-xs leading-relaxed">
                 {t("tailan_myReportDesc")}
               </p>
             </div>
 
-            <ChevronRight className="flex-shrink-0 h-4 w-4 text-slate-600 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all duration-200" />
+            <ChevronRight className="flex-shrink-0 h-4 w-4 text-muted-foreground/50 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all duration-200" />
           </button>
 
           {/* ── Хэлтсийн тайлан — dept head only ── */}
@@ -148,8 +148,8 @@ export default function TailanPage() {
             <button
               onClick={() => router.push("/tools/tailan/department")}
               className="group relative flex items-center gap-4 rounded-2xl p-5 text-left
-                bg-white/[0.03] hover:bg-white/[0.06]
-                border border-white/[0.07] hover:border-emerald-500/40
+                bg-muted/30 hover:bg-white/[0.06]
+                border border-border hover:border-emerald-500/40
                 shadow-[0_1px_1px_rgba(0,0,0,0.3)]
                 hover:shadow-[0_0_28px_rgba(16,185,129,0.10)]
                 transition-all duration-250 cursor-pointer overflow-hidden"
@@ -176,12 +176,12 @@ export default function TailanPage() {
                     {t("tailan_headTag")}
                   </span>
                 </div>
-                <p className="text-slate-400 text-xs leading-relaxed">
+                <p className="text-muted-foreground text-xs leading-relaxed">
                   {t("tailan_deptReportDesc")}
                 </p>
               </div>
 
-              <ChevronRight className="flex-shrink-0 h-4 w-4 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all duration-200" />
+              <ChevronRight className="flex-shrink-0 h-4 w-4 text-muted-foreground/50 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all duration-200" />
             </button>
           )}
 
@@ -190,8 +190,8 @@ export default function TailanPage() {
             <button
               onClick={() => router.push("/tools/tailan/dept-view")}
               className="group relative flex items-center gap-4 rounded-2xl p-5 text-left
-                bg-white/[0.03] hover:bg-white/[0.06]
-                border border-white/[0.07] hover:border-violet-500/40
+                bg-muted/30 hover:bg-white/[0.06]
+                border border-border hover:border-violet-500/40
                 shadow-[0_1px_1px_rgba(0,0,0,0.3)]
                 hover:shadow-[0_0_28px_rgba(139,92,246,0.10)]
                 transition-all duration-250 cursor-pointer overflow-hidden"
@@ -218,21 +218,21 @@ export default function TailanPage() {
                     {t("tailan_viewTag")}
                   </span>
                 </div>
-                <p className="text-slate-400 text-xs leading-relaxed">
+                <p className="text-muted-foreground text-xs leading-relaxed">
                   {t("tailan_membersViewDesc")}
                 </p>
               </div>
 
-              <ChevronRight className="flex-shrink-0 h-4 w-4 text-slate-600 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all duration-200" />
+              <ChevronRight className="flex-shrink-0 h-4 w-4 text-muted-foreground/50 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all duration-200" />
             </button>
           )}
         </div>
 
         {/* Footer note */}
-        <p className="text-center text-slate-600 text-xs mt-8">
+        <p className="text-center text-muted-foreground/50 text-xs mt-8">
           {user?.name && (
             <>
-              <span className="text-slate-500">{user.name}</span>
+              <span className="text-muted-foreground/70">{user.name}</span>
               {" · "}
             </>
           )}

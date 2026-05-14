@@ -163,8 +163,7 @@ const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "data_doc",
     name: "Өгөгдлийн толь бичиг",
-    description:
-      "ClickHouse баганын тайлбар",
+    description: "ClickHouse баганын тайлбар",
     icon: Database,
     color: "from-teal-500 to-cyan-500",
     gradient: "bg-gradient-to-br from-teal-500/20 to-cyan-500/20",
@@ -237,10 +236,10 @@ export default function AdminToolsPage() {
   const [mounted, setMounted] = useState(false);
 
   // Sub-admin: restrict visible tools to their grantableTools list
-  const isSuperAdmin = (user as any)?.isSuperAdmin;
+  const isSuperAdmin = user?.isSuperAdmin;
   const subAdminTools: string[] | null =
     user?.isAdmin && !isSuperAdmin
-      ? ((user as any)?.grantableTools ?? [])
+      ? (user?.grantableTools ?? [])
       : null;
   const visibleTools =
     subAdminTools !== null

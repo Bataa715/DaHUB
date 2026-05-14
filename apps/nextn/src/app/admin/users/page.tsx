@@ -44,6 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { DEPARTMENTS } from "@/lib/constants";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
+import axios from "axios";
 
 interface UserData {
   id: string;
@@ -214,13 +215,10 @@ export default function UsersPage() {
       });
       setChangingUserIdId(null);
       loadUsers();
-    } catch (error: any) {
-      toast({
-        title: "Алдаа",
-        description:
-          error?.response?.data?.message ?? "ID өөрчлөхөд алдаа гарлаа.",
-        variant: "destructive",
-      });
+    } catch (error) {
+      let message = "ID өөрчлөхд алдаа гарлаа.";
+      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      toast({ title: "Алдаа", description: message, variant: "destructive" });
     } finally {
       setIsSavingUserId(false);
     }
@@ -237,13 +235,10 @@ export default function UsersPage() {
       });
       setResetPasswordUser(null);
       setNewPassword("");
-    } catch (error: any) {
-      toast({
-        title: "Алдаа",
-        description:
-          error?.response?.data?.message || "Нууц үг сэргээхэд алдаа гарлаа.",
-        variant: "destructive",
-      });
+    } catch (error) {
+      let message = "Нууц үг сэргээхэд алдаа гарлаа.";
+      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      toast({ title: "Алдаа", description: message, variant: "destructive" });
     } finally {
       setIsResetting(false);
     }

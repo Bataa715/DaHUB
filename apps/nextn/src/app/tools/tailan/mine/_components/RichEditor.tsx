@@ -150,11 +150,11 @@ function TableGridPicker({
 
   return (
     <div
-      className="absolute z-50 top-full left-0 mt-1 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl"
+      className="absolute z-50 top-full left-0 mt-1 p-2 bg-card border border-border rounded-lg shadow-xl"
       onMouseLeave={() => setHover(null)}
     >
       <div
-        className="text-xs text-slate-400 mb-1.5 text-center"
+        className="text-xs text-muted-foreground mb-1.5 text-center"
         style={{ minWidth: 120 }}
       >
         {hover
@@ -176,7 +176,7 @@ function TableGridPicker({
             <div
               key={idx}
               style={{ width: 18, height: 18, cursor: "pointer" }}
-              className={`border rounded-sm transition ${active ? "bg-blue-500 border-blue-400" : "bg-slate-700 border-slate-500"}`}
+              className={`border rounded-sm transition ${active ? "bg-blue-500 border-blue-400" : "bg-muted border-border"}`}
               onMouseEnter={() => setHover({ r, c })}
               onMouseDown={(ev) => {
                 ev.preventDefault();
@@ -249,7 +249,7 @@ export function RichToolbar({
   };
 
   const btnCls =
-    "px-1.5 py-0.5 rounded text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition select-none";
+    "px-1.5 py-0.5 rounded text-xs font-medium bg-muted hover:bg-muted text-foreground/90 border border-border transition select-none";
 
   return (
     <div>
@@ -290,7 +290,7 @@ export function RichToolbar({
         <div className="relative">
           <button
             type="button"
-            className={btnCls + (showGrid ? " bg-slate-600" : "")}
+            className={btnCls + (showGrid ? " bg-muted" : "")}
             title="Хүснэгт оруулах"
             onMouseDown={(ev) => {
               ev.preventDefault();

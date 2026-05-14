@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,7 +19,7 @@ export default function ChessPage() {
   const h = useChessGame(myId, myName);
 
   return (
-    <div className="relative min-h-screen bg-[#0f1117] text-white overflow-hidden">
+    <div className="relative min-h-screen bg-background text-white overflow-hidden">
       {/* Resign confirmation modal */}
       <AnimatePresence>
         {h.showResignModal && (
@@ -34,21 +34,23 @@ export default function ChessPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 12 }}
               transition={{ duration: 0.18 }}
-              className="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 max-w-xs w-full mx-4 shadow-2xl"
+              className="bg-card border border-border/60 rounded-2xl p-6 max-w-xs w-full mx-4 shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-9 h-9 rounded-xl bg-rose-500/20 flex items-center justify-center">
                   <Flag className="w-4 h-4 text-rose-400" />
                 </div>
-                <h3 className="text-white font-semibold">{t("chessResignTitle")}</h3>
+                <h3 className="text-white font-semibold">
+                  {t("chessResignTitle")}
+                </h3>
               </div>
-              <p className="text-slate-400 text-sm mb-5">
+              <p className="text-muted-foreground text-sm mb-5">
                 {t("chessResignMsg")}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => h.setShowResignModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-600/60 text-slate-300 text-sm transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-muted/60 hover:bg-muted/60 text-foreground/80 text-sm transition-all"
                 >
                   Болих
                 </button>

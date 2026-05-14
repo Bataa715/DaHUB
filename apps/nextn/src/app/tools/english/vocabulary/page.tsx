@@ -124,8 +124,24 @@ function WordFormDialog({
 }) {
   const [form, setForm] = useState<WordFormData>(EMPTY_FORM);
   const { t } = useLanguage();
-  const PARTS_T = [t("eng_pos_noun"), t("eng_pos_verb"), t("eng_pos_adj"), t("eng_pos_adv"), t("eng_pos_prep"), t("eng_pos_conj"), t("eng_pos_phrase"), t("eng_pos_other")];
-  const DIFF_T = ["", t("eng_diff_easy"), t("eng_diff_medium"), t("eng_diff_hard"), t("eng_diff_vhard"), t("eng_diff_champion")];
+  const PARTS_T = [
+    t("eng_pos_noun"),
+    t("eng_pos_verb"),
+    t("eng_pos_adj"),
+    t("eng_pos_adv"),
+    t("eng_pos_prep"),
+    t("eng_pos_conj"),
+    t("eng_pos_phrase"),
+    t("eng_pos_other"),
+  ];
+  const DIFF_T = [
+    "",
+    t("eng_diff_easy"),
+    t("eng_diff_medium"),
+    t("eng_diff_hard"),
+    t("eng_diff_vhard"),
+    t("eng_diff_champion"),
+  ];
 
   useEffect(() => {
     if (open) {
@@ -366,15 +382,21 @@ function FlashcardMode({
             <div className="text-3xl font-bold text-emerald-500">
               {done.correct}
             </div>
-            <div className="text-sm text-muted-foreground">{t("eng_correct")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_correct")}
+            </div>
           </div>
           <div>
             <div className="text-3xl font-bold text-rose-500">{done.wrong}</div>
-            <div className="text-sm text-muted-foreground">{t("eng_checkBtn")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_checkBtn")}
+            </div>
           </div>
           <div>
             <div className="text-3xl font-bold text-sky-500">{pct}%</div>
-            <div className="text-sm text-muted-foreground">{t("eng_numHint")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_numHint")}
+            </div>
           </div>
         </div>
         <div className="flex gap-3">
@@ -467,7 +489,13 @@ function FlashcardMode({
               <Badge
                 className={`${DIFF_COLOR[card.difficulty]} border-0 text-xs`}
               >
-                {[t("eng_diff_easy"), t("eng_diff_medium"), t("eng_diff_hard"), t("eng_diff_vhard"), t("eng_diff_champion")][card.difficulty - 1] ?? ""}
+                {[
+                  t("eng_diff_easy"),
+                  t("eng_diff_medium"),
+                  t("eng_diff_hard"),
+                  t("eng_diff_vhard"),
+                  t("eng_diff_champion"),
+                ][card.difficulty - 1] ?? ""}
               </Badge>
             </div>
             <div className="text-center space-y-2">
@@ -701,17 +729,23 @@ function MultipleChoiceMode({
             <div className="text-3xl font-bold text-emerald-500">
               {score.correct}
             </div>
-            <div className="text-sm text-muted-foreground">{t("eng_correct")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_correct")}
+            </div>
           </div>
           <div>
             <div className="text-3xl font-bold text-rose-500">
               {score.wrong}
             </div>
-            <div className="text-sm text-muted-foreground">{t("eng_checkBtn")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_checkBtn")}
+            </div>
           </div>
           <div>
             <div className="text-3xl font-bold text-sky-500">{pct}%</div>
-            <div className="text-sm text-muted-foreground">{t("eng_numHint")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_numHint")}
+            </div>
           </div>
         </div>
         <div className="flex gap-3">
@@ -928,17 +962,23 @@ function TypeAnswerMode({
             <div className="text-3xl font-bold text-emerald-500">
               {score.correct}
             </div>
-            <div className="text-sm text-muted-foreground">{t("eng_correct")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_correct")}
+            </div>
           </div>
           <div>
             <div className="text-3xl font-bold text-rose-500">
               {score.wrong}
             </div>
-            <div className="text-sm text-muted-foreground">{t("eng_checkBtn")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_checkBtn")}
+            </div>
           </div>
           <div>
             <div className="text-3xl font-bold text-sky-500">{pct}%</div>
-            <div className="text-sm text-muted-foreground">{t("eng_numHint")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("eng_numHint")}
+            </div>
           </div>
         </div>
         <Button onClick={restart} className="gap-2">
@@ -1026,7 +1066,8 @@ function TypeAnswerMode({
 
         {result === "wrong" && (
           <div className="text-sm text-rose-600 dark:text-rose-400 font-medium bg-rose-50 dark:bg-rose-950/30 rounded-lg px-4 py-2">
-            {t("eng_correctAnswer")}: <span className="font-bold">{card.translation}</span>
+            {t("eng_correctAnswer")}:{" "}
+            <span className="font-bold">{card.translation}</span>
           </div>
         )}
         {result === "correct" && (
@@ -1069,9 +1110,7 @@ function TypeAnswerMode({
           </Button>
         )}
       </div>
-      <div className="text-xs text-muted-foreground">
-        {t("eng_enterHint")}
-      </div>
+      <div className="text-xs text-muted-foreground">{t("eng_enterHint")}</div>
     </div>
   );
 }
@@ -1188,9 +1227,7 @@ function WordTable({
                     colSpan={7}
                     className="px-4 py-12 text-center text-muted-foreground"
                   >
-                    {search
-                      ? t("eng_noWords")
-                      : t("eng_emptyVocab")}
+                    {search ? t("eng_noWords") : t("eng_emptyVocab")}
                   </td>
                 </tr>
               ) : (
@@ -1221,7 +1258,13 @@ function WordTable({
                         <Badge
                           className={`${DIFF_COLOR[w.difficulty]} border-0 text-xs`}
                         >
-                          {[t("eng_diff_easy"), t("eng_diff_medium"), t("eng_diff_hard"), t("eng_diff_vhard"), t("eng_diff_champion")][w.difficulty - 1] ?? ""}
+                          {[
+                            t("eng_diff_easy"),
+                            t("eng_diff_medium"),
+                            t("eng_diff_hard"),
+                            t("eng_diff_vhard"),
+                            t("eng_diff_champion"),
+                          ][w.difficulty - 1] ?? ""}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
@@ -1501,7 +1544,8 @@ export default function EnglishVocabularyPage() {
               />
             ) : (
               <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
-                {t("eng_flashcardTab")} эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+                {t("eng_flashcardTab")} эхлүүлэхийн тулд хамгийн багадаа 4 үг
+                нэмнэ үү.
               </div>
             )}
           </TabsContent>
@@ -1515,7 +1559,8 @@ export default function EnglishVocabularyPage() {
               />
             ) : (
               <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
-                {t("eng_choiceTab")}ын дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+                {t("eng_choiceTab")}ын дасгал эхлүүлэхийн тулд хамгийн багадаа 4
+                үг нэмнэ үү.
               </div>
             )}
           </TabsContent>
@@ -1529,7 +1574,8 @@ export default function EnglishVocabularyPage() {
               />
             ) : (
               <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-4 py-3">
-                {t("eng_writeTab")} дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.
+                {t("eng_writeTab")} дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг
+                нэмнэ үү.
               </div>
             )}
           </TabsContent>

@@ -27,6 +27,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import Image from "next/image";
+import axios from "axios";
 
 export const dynamic = "force-dynamic";
 
@@ -71,12 +72,11 @@ export default function AdminLoginPage() {
         duration: 3000,
       });
       window.location.replace("/admin");
-    } catch (error: any) {
-      toast({
-        title: "Нэвтрэхэд алдаа гарлаа",
-        description: error?.message || "Нэвтрэхэд тодорхойгүй алдаа гарлаа.",
-        variant: "destructive",
-      });
+    } catch (error) {
+      let message = "Нэвтрэхэд тодорхойгүй алдаа гарлаа.";
+      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      else if (error instanceof Error) message = error.message;
+      toast({ title: "Нэвтрэхэд алдаа гарлаа", description: message, variant: "destructive" });
       setIsLoading(false);
     }
   }

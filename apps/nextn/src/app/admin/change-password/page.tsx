@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import api from "@/lib/api";
+import axios from "axios";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 
 export default function AdminChangePasswordPage() {
@@ -61,13 +62,10 @@ export default function AdminChangePasswordPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
-      toast({
-        title: "Алдаа",
-        description:
-          error.response?.data?.message || "Нууц үг солихоор алдаа гарлаа",
-        variant: "destructive",
-      });
+    } catch (error) {
+      let message = "Нууц үг солихоор алдаа гарлаа";
+      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      toast({ title: "Алдаа", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }

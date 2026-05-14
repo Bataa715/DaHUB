@@ -361,8 +361,16 @@ export default function RiskAssessmentDetailPage() {
               {/* View toggle */}
               <div className="flex rounded-lg border border-border overflow-hidden bg-background/60 p-0.5">
                 {[
-                  { key: "grouped" as const, icon: LayoutGrid, label: t("viewGrouped") },
-                  { key: "table" as const, icon: TableIcon, label: t("viewTable") },
+                  {
+                    key: "grouped" as const,
+                    icon: LayoutGrid,
+                    label: t("viewGrouped"),
+                  },
+                  {
+                    key: "table" as const,
+                    icon: TableIcon,
+                    label: t("viewTable"),
+                  },
                 ].map(({ key, icon: Icon, label }) => (
                   <button
                     key={key}

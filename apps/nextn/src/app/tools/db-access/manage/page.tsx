@@ -221,7 +221,10 @@ export default function DbAccessManagePage() {
     try {
       setReviewLoading(true);
       await dbAccessApi.reviewRequest(id, action, reviewNote || undefined);
-      toast({ title: action === "approve" ? t("dbManageApproved") : t("dbManageRejected") });
+      toast({
+        title:
+          action === "approve" ? t("dbManageApproved") : t("dbManageRejected"),
+      });
       setReviewingId(null);
       setReviewNote("");
       loadRequests(tab === "all");
@@ -257,12 +260,7 @@ export default function DbAccessManagePage() {
   };
 
   const handleDeleteHistory = async () => {
-    if (
-      !confirm(
-        t("dbManageHistoryConfirm"),
-      )
-    )
-      return;
+    if (!confirm(t("dbManageHistoryConfirm"))) return;
     try {
       setDeletingHistory(true);
       await dbAccessApi.deleteRequestHistory();
@@ -302,12 +300,7 @@ export default function DbAccessManagePage() {
   };
 
   const handleCleanupCh = async (group: GrantGroup) => {
-    if (
-      !confirm(
-        t("dbManageHistoryConfirm"),
-      )
-    )
-      return;
+    if (!confirm(t("dbManageHistoryConfirm"))) return;
     try {
       setCleaningChUser(group.userUserId);
       const result = await dbAccessApi.cleanupChUser(group.userUserId);
@@ -318,8 +311,7 @@ export default function DbAccessManagePage() {
     } catch (err: any) {
       toast({
         title: t("dbAccessValidationTitle"),
-        description:
-          err?.response?.data?.message ?? t("dbManageCleanError"),
+        description: err?.response?.data?.message ?? t("dbManageCleanError"),
         variant: "destructive",
       });
     } finally {
@@ -561,7 +553,9 @@ export default function DbAccessManagePage() {
                                     {t("dbManageDecisionNote")}
                                   </Label>
                                   <Textarea
-                                    placeholder={t("dbManageDecisionPlaceholder")}
+                                    placeholder={t(
+                                      "dbManageDecisionPlaceholder",
+                                    )}
                                     value={reviewNote}
                                     onChange={(e) =>
                                       setReviewNote(e.target.value)
@@ -719,7 +713,8 @@ export default function DbAccessManagePage() {
                         ({u.code})
                       </span>
                       <Badge variant="secondary" className="text-xs ml-1">
-                        {groupByRequest(uGrants).length} {t("dbManageGrantUnit")}
+                        {groupByRequest(uGrants).length}{" "}
+                        {t("dbManageGrantUnit")}
                       </Badge>
                     </div>
 
@@ -799,7 +794,9 @@ export default function DbAccessManagePage() {
                           ) : (
                             <Trash2 className="h-3.5 w-3.5" />
                           )}
-                          <span className="text-xs">{t("dbManageRevokeBtn")}</span>
+                          <span className="text-xs">
+                            {t("dbManageRevokeBtn")}
+                          </span>
                         </Button>
                       </div>
                     ))}

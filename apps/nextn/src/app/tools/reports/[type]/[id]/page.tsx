@@ -215,10 +215,10 @@ export default function ReportDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#080d14]">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
-          <p className="text-slate-500 text-sm">{t("loading")}</p>
+          <p className="text-muted-foreground/70 text-sm">{t("loading")}</p>
         </div>
       </div>
     );
@@ -232,21 +232,21 @@ export default function ReportDetailPage() {
   const previewLoading = preview.status === "loading";
 
   return (
-    <div className="min-h-screen bg-[#080d14] text-slate-100 flex flex-col">
-      <div className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#080d14]/90 backdrop-blur-xl">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <div className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="max-w-[1440px] mx-auto px-6 h-14 flex items-center gap-3">
           <Link
             href="/tools/reports"
-            className="text-slate-500 hover:text-slate-200 transition-colors text-sm flex items-center gap-1"
+            className="text-muted-foreground/70 hover:text-foreground/90 transition-colors text-sm flex items-center gap-1"
           >
             ← {t("back")}
           </Link>
-          <span className="text-slate-700">/</span>
+          <span className="text-muted-foreground/60">/</span>
           <div className="flex items-center gap-2.5">
             <div
               className={`w-2 h-2 rounded-full bg-gradient-to-br ${color}`}
             />
-            <span className="font-semibold text-slate-100 text-sm">
+            <span className="font-semibold text-foreground text-sm">
               {item.name}
             </span>
           </div>
@@ -258,7 +258,7 @@ export default function ReportDetailPage() {
 
       <div className="flex-1 max-w-[1440px] mx-auto w-full px-6 py-6 flex flex-col lg:flex-row gap-6">
         <aside className="w-full lg:w-80 flex-shrink-0">
-          <div className="sticky top-20 rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+          <div className="sticky top-20 rounded-2xl bg-muted/30 border border-border overflow-hidden">
             <div className={`h-0.5 w-full bg-gradient-to-r ${color}`} />
             <div className="p-5 space-y-5">
               <div>
@@ -268,25 +268,25 @@ export default function ReportDetailPage() {
                   >
                     <Code2 className="w-4 h-4 text-white" />
                   </div>
-                  <p className="font-bold text-slate-100">{item.name}</p>
+                  <p className="font-bold text-foreground">{item.name}</p>
                 </div>
                 {item.description && (
-                  <p className="text-slate-500 text-xs mt-1 leading-relaxed">
+                  <p className="text-muted-foreground/70 text-xs mt-1 leading-relaxed">
                     {item.description}
                   </p>
                 )}
               </div>
 
-              <div className="border-t border-white/[0.06]" />
+              <div className="border-t border-border" />
 
               {dateMode === "range" && (
                 <div className="space-y-2">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                     {t("reportsDateRangeLabel")}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-600">
+                      <label className="text-[10px] text-muted-foreground/50">
                         {t("reportsDateStart")}
                       </label>
                       <input
@@ -294,11 +294,11 @@ export default function ReportDetailPage() {
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         disabled={downloading}
-                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                        className="w-full bg-muted/40 border border-border rounded-lg px-2 py-1.5 text-foreground/90 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] text-slate-600">
+                      <label className="text-[10px] text-muted-foreground/50">
                         {t("reportsDateEnd")}
                       </label>
                       <input
@@ -307,7 +307,7 @@ export default function ReportDetailPage() {
                         min={startDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         disabled={downloading}
-                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                        className="w-full bg-muted/40 border border-border rounded-lg px-2 py-1.5 text-foreground/90 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
                       />
                     </div>
                   </div>
@@ -316,7 +316,7 @@ export default function ReportDetailPage() {
 
               {dateMode === "single" && (
                 <div className="space-y-2">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                     {t("reportsDateSingleLabel")}
                   </p>
                   <input
@@ -324,22 +324,22 @@ export default function ReportDetailPage() {
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     disabled={downloading}
-                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                    className="w-full bg-muted/40 border border-border rounded-lg px-2 py-2 text-foreground/90 text-sm focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
                   />
                 </div>
               )}
 
               {dateMode === "none" && (
-                <p className="text-xs text-slate-600 text-center py-0.5">
+                <p className="text-xs text-muted-foreground/50 text-center py-0.5">
                   {t("reportsDateNone")}
                 </p>
               )}
 
               {parsedFilters.length > 0 && (
                 <>
-                  <div className="border-t border-white/[0.06]" />
+                  <div className="border-t border-border" />
                   <div className="space-y-4">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                       {t("reportsFiltersLabel")}
                     </p>
                     {parsedFilters.map((f) => {
@@ -348,7 +348,7 @@ export default function ReportDetailPage() {
                       const missing = f.required && !filled;
                       return (
                         <div key={f.key} className="space-y-1.5">
-                          <label className="text-xs font-medium text-slate-300">
+                          <label className="text-xs font-medium text-foreground/80">
                             {f.label}
                             {f.required && (
                               <span className="text-rose-400 ml-0.5">*</span>
@@ -364,7 +364,7 @@ export default function ReportDetailPage() {
                             }
                             disabled={downloading}
                             placeholder={f.placeholder ?? ""}
-                            className={`w-full rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none disabled:opacity-40 placeholder:text-slate-600 transition ${missing ? "bg-rose-950/60 border border-rose-500/40" : filled ? "bg-emerald-950/40 border border-emerald-500/30" : "bg-[#0d1520] border border-white/[0.08] focus:border-white/20"}`}
+                            className={`w-full rounded-xl px-3 py-2 text-foreground/90 text-xs focus:outline-none disabled:opacity-40 placeholder:text-muted-foreground/50 transition ${missing ? "bg-rose-950/60 border border-rose-500/40" : filled ? "bg-emerald-950/40 border border-emerald-500/30" : "bg-card border border-border focus:border-white/20"}`}
                           />
                           {missing && (
                             <p className="text-[10px] text-rose-400">
@@ -380,10 +380,10 @@ export default function ReportDetailPage() {
 
               {downloadProgress !== null && (
                 <>
-                  <div className="border-t border-white/[0.06]" />
+                  <div className="border-t border-border" />
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-muted-foreground">
                         {downloadProgress === 100
                           ? t("reportsDownloadDone")
                           : t("reportsDownloading")}
@@ -416,7 +416,7 @@ export default function ReportDetailPage() {
                 </div>
               )}
 
-              <div className="border-t border-white/[0.06]" />
+              <div className="border-t border-border" />
               <div className="flex gap-2">
                 {previewLoading ? (
                   <button
@@ -432,7 +432,7 @@ export default function ReportDetailPage() {
                   <button
                     onClick={handlePreview}
                     disabled={downloading}
-                    className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 hover:border-white/20 transition-all disabled:opacity-40 font-medium"
+                    className="px-4 py-2.5 text-xs rounded-xl border border-white/[0.1] text-muted-foreground hover:bg-white/[0.05] hover:text-foreground/90 hover:border-white/20 transition-all disabled:opacity-40 font-medium"
                   >
                     Preview
                   </button>
@@ -493,14 +493,14 @@ export default function ReportDetailPage() {
                     {
                       label: "Preview",
                       value: `${preview.rows.length} ${t("reportsStatRows")}`,
-                      cls: "bg-white/[0.03] border-white/[0.07] text-slate-300",
-                      lCls: "text-slate-500",
+                      cls: "bg-muted/30 border-border text-foreground/80",
+                      lCls: "text-muted-foreground/70",
                     },
                     {
                       label: t("reportsStatColumns"),
                       value: String(preview.columns.length),
-                      cls: "bg-white/[0.03] border-white/[0.07] text-slate-300",
-                      lCls: "text-slate-500",
+                      cls: "bg-muted/30 border-border text-foreground/80",
+                      lCls: "text-muted-foreground/70",
                     },
                     ...(preview.totalCount > 0
                       ? [
@@ -530,13 +530,15 @@ export default function ReportDetailPage() {
             })()}
 
           {preview.status === "idle" && (
-            <div className="flex-1 h-80 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.06] text-slate-700 gap-3">
-              <div className="w-12 h-12 rounded-full bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
-                <span className="text-xl text-slate-600">◈</span>
+            <div className="flex-1 h-80 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border text-muted-foreground/60 gap-3">
+              <div className="w-12 h-12 rounded-full bg-muted/30 border border-border flex items-center justify-center">
+                <span className="text-xl text-muted-foreground/50">◈</span>
               </div>
               <div className="text-center">
-                <p className="text-sm text-slate-500">{t("reportsPreviewEmpty")}</p>
-                <p className="text-xs text-slate-700 mt-1">
+                <p className="text-sm text-muted-foreground/70">
+                  {t("reportsPreviewEmpty")}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">
                   {dateMode !== "none"
                     ? t("reportsPreviewEmptyHint")
                     : t("reportsPreviewEmptyHintNoDate")}
@@ -546,8 +548,8 @@ export default function ReportDetailPage() {
           )}
 
           {preview.status === "loading" && (
-            <div className="h-80 flex items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
-              <div className="flex flex-col items-center gap-3 text-slate-500">
+            <div className="h-80 flex items-center justify-center rounded-2xl border border-border bg-muted/20">
+              <div className="flex flex-col items-center gap-3 text-muted-foreground/70">
                 <div className="w-6 h-6 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
                 <p className="text-sm">{t("reportsDownloading")}</p>
               </div>
@@ -571,28 +573,30 @@ export default function ReportDetailPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden"
+                className="rounded-2xl border border-border bg-muted/20 overflow-hidden"
               >
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
-                  <span className="text-xs text-slate-400 font-medium">
-                    Preview — {t("reportsPreviewFirst")} {preview.rows.length} {t("reportsStatRows")}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Preview — {t("reportsPreviewFirst")} {preview.rows.length}{" "}
+                    {t("reportsStatRows")}
                   </span>
-                  <span className="text-[10px] text-slate-600">
-                    {preview.columns.length} {t("reportsPreviewColumns")} · {t("reportsPreviewTotal")}{" "}
+                  <span className="text-[10px] text-muted-foreground/50">
+                    {preview.columns.length} {t("reportsPreviewColumns")} ·{" "}
+                    {t("reportsPreviewTotal")}{" "}
                     {preview.totalCount.toLocaleString()} {t("reportsStatRows")}
                   </span>
                 </div>
                 <div className="overflow-auto max-h-[70vh]">
                   <table className="w-full text-xs border-collapse min-w-max">
-                    <thead className="sticky top-0 z-10 bg-[#0d1520]">
+                    <thead className="sticky top-0 z-10 bg-card">
                       <tr>
-                        <th className="px-3 py-2.5 text-left text-slate-600 font-medium border-b border-white/[0.06] w-8 text-[10px]">
+                        <th className="px-3 py-2.5 text-left text-muted-foreground/50 font-medium border-b border-border w-8 text-[10px]">
                           №
                         </th>
                         {preview.columns.map((col) => (
                           <th
                             key={col}
-                            className="px-3 py-2.5 text-left text-slate-300 font-semibold border-b border-white/[0.06] whitespace-nowrap border-r border-white/[0.04] last:border-r-0 text-[11px] tracking-wide"
+                            className="px-3 py-2.5 text-left text-foreground/80 font-semibold border-b border-border whitespace-nowrap border-r border-white/[0.04] last:border-r-0 text-[11px] tracking-wide"
                           >
                             {col}
                           </th>
@@ -603,19 +607,19 @@ export default function ReportDetailPage() {
                       {preview.rows.map((row, ri) => (
                         <tr
                           key={ri}
-                          className="hover:bg-white/[0.03] transition-colors"
+                          className="hover:bg-muted/30 transition-colors"
                         >
-                          <td className="px-3 py-1.5 text-slate-700 border-b border-white/[0.04] text-[10px]">
+                          <td className="px-3 py-1.5 text-muted-foreground/60 border-b border-white/[0.04] text-[10px]">
                             {ri + 1}
                           </td>
                           {row.map((cell: any, ci: number) => (
                             <td
                               key={ci}
-                              className="px-3 py-1.5 text-slate-300 border-b border-white/[0.04] border-r border-white/[0.03] last:border-r-0 whitespace-nowrap max-w-xs truncate"
+                              className="px-3 py-1.5 text-foreground/80 border-b border-white/[0.04] border-r border-white/[0.03] last:border-r-0 whitespace-nowrap max-w-xs truncate"
                               title={cell == null ? "" : String(cell)}
                             >
                               {cell == null ? (
-                                <span className="text-slate-700 italic text-[10px]">
+                                <span className="text-muted-foreground/60 italic text-[10px]">
                                   null
                                 </span>
                               ) : typeof cell === "number" ? (
@@ -633,7 +637,7 @@ export default function ReportDetailPage() {
                         <tr>
                           <td
                             colSpan={preview.columns.length + 1}
-                            className="px-4 py-8 text-center text-slate-600 text-xs"
+                            className="px-4 py-8 text-center text-muted-foreground/50 text-xs"
                           >
                             {t("reportsNoAccess")}
                           </td>

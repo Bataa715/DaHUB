@@ -87,7 +87,7 @@ export function DashTaskCard({
   const fileRef = React.useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
   const iCls =
-    "w-full bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60";
+    "w-full bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs text-white placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60";
 
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -137,24 +137,24 @@ export function DashTaskCard({
     );
   };
   return (
-    <div className="bg-slate-700/20">
+    <div className="bg-muted/20">
       {/* Collapsed row */}
       <div
-        className="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-slate-700/40 transition select-none"
+        className="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition select-none"
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="text-xs text-slate-500 w-5 shrink-0 text-center">
+        <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
           {index + 1}
         </span>
         <span className="flex-1 text-xs font-semibold text-white truncate">
           {row.title || (
-            <span className="font-normal text-slate-500">
+            <span className="font-normal text-muted-foreground/70">
               {t("tailan_taskNamePlaceholder")}
             </span>
           )}
         </span>
         {(row.images ?? []).length > 0 && (
-          <span className="text-[9px] text-slate-500">
+          <span className="text-[9px] text-muted-foreground/70">
             {row.images!.length} {t("tailan_imagesCount")}
           </span>
         )}
@@ -180,7 +180,7 @@ export function DashTaskCard({
           </svg>
         </button>
         <svg
-          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -195,9 +195,9 @@ export function DashTaskCard({
       </div>
       {/* Expanded */}
       {open && (
-        <div className="px-3 pb-3 space-y-2 border-t border-slate-700/40">
+        <div className="px-3 pb-3 space-y-2 border-t border-border/40">
           <div className="pt-2">
-            <label className="block text-[10px] text-slate-400 mb-1">
+            <label className="block text-[10px] text-muted-foreground mb-1">
               {t("tailan_taskNameLabel")}
             </label>
             <input
@@ -208,7 +208,7 @@ export function DashTaskCard({
             />
           </div>
           <div>
-            <label className="block text-[10px] text-slate-400 mb-1">
+            <label className="block text-[10px] text-muted-foreground mb-1">
               {t("tailan_taskResultLabel")}
             </label>
             <textarea
@@ -226,11 +226,11 @@ export function DashTaskCard({
                   <img
                     src={img.dataUrl}
                     alt=""
-                    className="h-14 rounded border border-slate-700/50 object-cover shrink-0"
+                    className="h-14 rounded border border-border/50 object-cover shrink-0"
                   />
                   <div className="flex flex-col gap-1 flex-1">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                      <span className="text-[10px] text-muted-foreground w-10 shrink-0">
                         {t("tailan_widthLabel")}
                       </span>
                       <input
@@ -243,12 +243,12 @@ export function DashTaskCard({
                         }
                         className="w-20 accent-blue-400"
                       />
-                      <span className="text-[10px] text-slate-300 w-7">
+                      <span className="text-[10px] text-foreground/80 w-7">
                         {img.width ?? 80}%
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                      <span className="text-[10px] text-muted-foreground w-10 shrink-0">
                         {t("tailan_heightLabel")}
                       </span>
                       <input
@@ -262,7 +262,7 @@ export function DashTaskCard({
                         }
                         className="w-20 accent-purple-400"
                       />
-                      <span className="text-[10px] text-slate-300 w-12">
+                      <span className="text-[10px] text-foreground/80 w-12">
                         {`${img.height ?? 280}px`}
                       </span>
                     </div>
@@ -270,7 +270,7 @@ export function DashTaskCard({
                   {onChangeImages && (
                     <button
                       onClick={() => handleDeleteImage(img.id)}
-                      className="text-slate-600 hover:text-rose-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
                       title={t("tailan_deleteAction")}
                     >
                       ✕
@@ -292,7 +292,7 @@ export function DashTaskCard({
               />
               <button
                 onClick={() => fileRef.current?.click()}
-                className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
               >
                 {t("tailan_addImage")}
               </button>
@@ -333,7 +333,7 @@ export function KpiTableEditor({
 }) {
   const { t } = useLanguage();
   const iCls =
-    "w-full bg-slate-800/60 border border-slate-700/50 rounded px-2 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60";
+    "w-full bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs text-white placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60";
   const taCls = iCls + " resize-none overflow-hidden leading-relaxed";
 
   const updateSection14Row = (
@@ -1072,10 +1072,10 @@ export function KpiTableEditor({
             );
             return (
               <>
-                <tr className="bg-slate-800/60">
+                <tr className="bg-muted/60">
                   <td
                     colSpan={5}
-                    className="border border-slate-700/40 px-2 py-1.5 text-center text-[10px] font-bold text-slate-300"
+                    className="border border-border/40 px-2 py-1.5 text-center text-[10px] font-bold text-foreground/80"
                   >
                     {label}
                   </td>
@@ -1084,7 +1084,7 @@ export function KpiTableEditor({
                   <tr>
                     <td
                       colSpan={5}
-                      className="border border-slate-700/40 px-2 py-2 text-center text-slate-600 text-[10px]"
+                      className="border border-border/40 px-2 py-2 text-center text-muted-foreground/50 text-[10px]"
                     >
                       — {t("tailan_noData")} —
                     </td>
@@ -1093,11 +1093,11 @@ export function KpiTableEditor({
                 {rows.map((row, li) => {
                   const ri = startIdx + li;
                   return (
-                    <tr key={ri} className="border-b border-slate-700/30">
-                      <td className="border border-slate-700/40 px-1 py-1 text-center text-slate-400 text-xs">
+                    <tr key={ri} className="border-b border-border/30">
+                      <td className="border border-border/40 px-1 py-1 text-center text-muted-foreground text-xs">
                         {li + 1}
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <AutoTextarea
                           value={row.title}
                           onChange={(e) =>
@@ -1107,7 +1107,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <select
                           value={row.productType}
                           onChange={(e) =>
@@ -1127,7 +1127,7 @@ export function KpiTableEditor({
                           ))}
                         </select>
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <input
                           value={row.savedDays}
                           onChange={(e) =>
@@ -1142,10 +1142,10 @@ export function KpiTableEditor({
                           className={`${iCls} text-center`}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1 text-center">
+                      <td className="border border-border/40 px-1 py-1 text-center">
                         <button
                           onClick={() => removeSection14Row(si, ri)}
-                          className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                          className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                         >
                           ×
                         </button>
@@ -1153,20 +1153,20 @@ export function KpiTableEditor({
                     </tr>
                   );
                 })}
-                <tr className="bg-slate-800/40">
+                <tr className="bg-muted/40">
                   <td
                     colSpan={3}
-                    className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-[10px] text-slate-400"
+                    className="border border-border/40 px-2 py-1.5 text-center font-bold text-[10px] text-muted-foreground"
                   >
                     {t("tailan_grandTotalRow")}
                   </td>
-                  <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white text-xs">
+                  <td className="border border-border/40 px-2 py-1.5 text-center font-bold text-white text-xs">
                     {total > 0 ? total : "–"}
                   </td>
-                  <td className="border border-slate-700/40">
+                  <td className="border border-border/40">
                     <button
                       onClick={() => addSection14Row(si, group)}
-                      className="w-full text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                      className="w-full text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                     >
                       +
                     </button>
@@ -1179,19 +1179,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS14TableApiLoad && (
                   <button
@@ -1210,7 +1210,7 @@ export function KpiTableEditor({
                 )}
               </div>
               <div className="px-3 pt-2 pb-1">
-                <label className="block text-[10px] text-slate-400 mb-1">
+                <label className="block text-[10px] text-muted-foreground mb-1">
                   {t("tailan_descriptionText")}
                 </label>
                 <textarea
@@ -1225,19 +1225,19 @@ export function KpiTableEditor({
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="bg-amber-400/30 text-amber-100">
-                      <th className="border border-slate-700/40 px-2 py-1.5 text-center w-8">
+                      <th className="border border-border/40 px-2 py-1.5 text-center w-8">
                         №
                       </th>
-                      <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                      <th className="border border-border/40 px-2 py-1.5 text-left">
                         {t("tailan_dataProductCol")}
                       </th>
-                      <th className="border border-slate-700/40 px-2 py-1.5 w-40">
+                      <th className="border border-border/40 px-2 py-1.5 w-40">
                         {t("tailan_productTypeCol")}
                       </th>
-                      <th className="border border-slate-700/40 px-2 py-1.5 text-center w-24">
+                      <th className="border border-border/40 px-2 py-1.5 text-center w-24">
                         {t("tailan_savedDaysCol")}
                       </th>
-                      <th className="border border-slate-700/40 w-7"></th>
+                      <th className="border border-border/40 w-7"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1256,19 +1256,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS2TableApiLoad && (
                   <button
@@ -1288,23 +1288,23 @@ export function KpiTableEditor({
               </div>
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-700/60 text-slate-200">
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-7">
+                  <tr className="bg-muted/60 text-foreground/90">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-7">
                       №
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       {t("tailan_plannedTaskCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-16">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-16">
                       {t("tailan_taskCompletionCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 w-32">
+                    <th className="border border-border/40 px-2 py-1.5 w-32">
                       {t("tailan_taskPeriodCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5">
+                    <th className="border border-border/40 px-2 py-1.5">
                       {t("tailan_completionBriefCol")}
                     </th>
-                    <th className="border border-slate-700/40 w-7"></th>
+                    <th className="border border-border/40 w-7"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1312,18 +1312,18 @@ export function KpiTableEditor({
                     <tr>
                       <td
                         colSpan={6}
-                        className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
+                        className="border border-border/40 px-3 py-3 text-center text-muted-foreground/50 text-[11px]"
                       >
                         {t("tailan_noTasksHint")}
                       </td>
                     </tr>
                   )}
                   {s2Rows.map((row, ri) => (
-                    <tr key={ri} className="border-b border-slate-700/30">
-                      <td className="border border-slate-700/40 px-1 py-1 text-center text-slate-400">
+                    <tr key={ri} className="border-b border-border/30">
+                      <td className="border border-border/40 px-1 py-1 text-center text-muted-foreground">
                         {ri + 1}
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <AutoTextarea
                           value={row.title}
                           onChange={(e) =>
@@ -1333,7 +1333,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <input
                           type="number"
                           value={row.result}
@@ -1344,7 +1344,7 @@ export function KpiTableEditor({
                           className={`${iCls} text-center`}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <AutoTextarea
                           value={row.period}
                           onChange={(e) =>
@@ -1354,7 +1354,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <AutoTextarea
                           value={row.completion}
                           onChange={(e) =>
@@ -1369,10 +1369,10 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1 text-center">
+                      <td className="border border-border/40 px-1 py-1 text-center">
                         <button
                           onClick={() => removeSection2Row(si, ri)}
-                          className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                          className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                           title={t("tailan_deleteAction")}
                         >
                           ×
@@ -1389,41 +1389,41 @@ export function KpiTableEditor({
                         ? nums.reduce((a, b) => a + b, 0) / nums.length
                         : null;
                     return (
-                      <tr className="bg-slate-800/50">
-                        <td className="border border-slate-700/40 px-1 py-1"></td>
-                        <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white">
+                      <tr className="bg-muted/50">
+                        <td className="border border-border/40 px-1 py-1"></td>
+                        <td className="border border-border/40 px-2 py-1.5 text-center font-bold text-white">
                           {t("tailan_avgLabel")}
                         </td>
-                        <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
+                        <td className="border border-border/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? `${avg.toFixed(1)}%` : "–"}
                         </td>
                         <td
-                          className="border border-slate-700/40 px-1 py-1"
+                          className="border border-border/40 px-1 py-1"
                           colSpan={2}
                         ></td>
-                        <td className="border border-slate-700/40 w-7"></td>
+                        <td className="border border-border/40 w-7"></td>
                       </tr>
                     );
                   })()}
                 </tbody>
               </table>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addSection2Row(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addTask")}
                 </button>
               </div>
               {s2Rows.some((r) => (r.images ?? []).length > 0) && (
-                <div className="px-3 py-2 bg-slate-900/60 border-t border-slate-700/40">
-                  <div className="text-[10px] text-slate-500 mb-1.5">
+                <div className="px-3 py-2 bg-card/60 border-t border-border/40">
+                  <div className="text-[10px] text-muted-foreground/70 mb-1.5">
                     {t("tailan_imageWidthSettings")}
                   </div>
                   {s2Rows.map((row, ri) =>
                     (row.images ?? []).length > 0 ? (
                       <div key={ri} className="mb-2">
-                        <div className="text-[10px] text-slate-400 mb-1 truncate">
+                        <div className="text-[10px] text-muted-foreground mb-1 truncate">
                           {ri + 1}. {row.title || `(${t("tailan_unnamed")})`}
                         </div>
                         {row.images!.map((img) => (
@@ -1435,11 +1435,11 @@ export function KpiTableEditor({
                               <img
                                 src={img.dataUrl}
                                 alt=""
-                                className="h-8 w-12 rounded border border-slate-700/50 object-cover shrink-0"
+                                className="h-8 w-12 rounded border border-border/50 object-cover shrink-0"
                               />
                               <div className="flex flex-col gap-0.5 flex-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                  <span className="text-[10px] text-muted-foreground w-10 shrink-0">
                                     {t("tailan_widthLabel")}
                                   </span>
                                   <input
@@ -1460,12 +1460,12 @@ export function KpiTableEditor({
                                     }}
                                     className="w-20 accent-blue-400"
                                   />
-                                  <span className="text-[10px] text-slate-300 w-7">
+                                  <span className="text-[10px] text-foreground/80 w-7">
                                     {img.width ?? 80}%
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                  <span className="text-[10px] text-muted-foreground w-10 shrink-0">
                                     {t("tailan_heightLabel")}
                                   </span>
                                   <input
@@ -1487,7 +1487,7 @@ export function KpiTableEditor({
                                     }}
                                     className="w-20 accent-purple-400"
                                   />
-                                  <span className="text-[10px] text-slate-300 w-12">
+                                  <span className="text-[10px] text-foreground/80 w-12">
                                     {`${img.height ?? 280}px`}
                                   </span>
                                 </div>
@@ -1510,19 +1510,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS23TableApiLoad && (
                   <button
@@ -1543,19 +1543,19 @@ export function KpiTableEditor({
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-amber-400/30 text-amber-100">
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-8">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-8">
                       №
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       {t("tailan_dataProcessingCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       {t("tailan_usageSignificanceCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-28">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-28">
                       {t("tailan_clientScoreCol")}
                     </th>
-                    <th className="border border-slate-700/40 w-7"></th>
+                    <th className="border border-border/40 w-7"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1563,18 +1563,18 @@ export function KpiTableEditor({
                     <tr>
                       <td
                         colSpan={5}
-                        className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
+                        className="border border-border/40 px-3 py-3 text-center text-muted-foreground/50 text-[11px]"
                       >
                         {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
                   {s23Rows.map((row, ri) => (
-                    <tr key={ri} className="border-b border-slate-700/30">
-                      <td className="border border-slate-700/40 px-1 py-1 text-center text-slate-400">
+                    <tr key={ri} className="border-b border-border/30">
+                      <td className="border border-border/40 px-1 py-1 text-center text-muted-foreground">
                         {ri + 1}
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.title}
@@ -1585,7 +1585,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.usage}
@@ -1596,7 +1596,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <input
                           value={row.clientScore}
                           onChange={(e) =>
@@ -1611,10 +1611,10 @@ export function KpiTableEditor({
                           className={`${iCls} text-center`}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1 text-center">
+                      <td className="border border-border/40 px-1 py-1 text-center">
                         <button
                           onClick={() => removeSection23Row(si, ri)}
-                          className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                          className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                           title={t("tailan_deleteAction")}
                         >
                           ×
@@ -1631,26 +1631,26 @@ export function KpiTableEditor({
                         ? nums.reduce((a, b) => a + b, 0) / nums.length
                         : null;
                     return (
-                      <tr className="bg-slate-800/50">
+                      <tr className="bg-muted/50">
                         <td
                           colSpan={3}
-                          className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white"
+                          className="border border-border/40 px-2 py-1.5 text-center font-bold text-white"
                         >
                           {t("tailan_avgLabel")}
                         </td>
-                        <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
+                        <td className="border border-border/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? avg.toFixed(1) : "–"}
                         </td>
-                        <td className="border border-slate-700/40 w-7"></td>
+                        <td className="border border-border/40 w-7"></td>
                       </tr>
                     );
                   })()}
                 </tbody>
               </table>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addSection23Row(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addRow")}
                 </button>
@@ -1665,19 +1665,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS24TableApiLoad && (
                   <button
@@ -1698,22 +1698,22 @@ export function KpiTableEditor({
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-amber-400/30 text-amber-100">
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-8">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-8">
                       №
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       {t("tailan_taskNameHeader")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-16">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-16">
                       {t("tailan_completionPctHeader")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 w-28">
+                    <th className="border border-border/40 px-2 py-1.5 w-28">
                       {t("tailan_completionBriefHeader")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 w-36">
+                    <th className="border border-border/40 px-2 py-1.5 w-36">
                       {t("tailan_periodHeader")}
                     </th>
-                    <th className="border border-slate-700/40 w-7"></th>
+                    <th className="border border-border/40 w-7"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1721,18 +1721,18 @@ export function KpiTableEditor({
                     <tr>
                       <td
                         colSpan={6}
-                        className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
+                        className="border border-border/40 px-3 py-3 text-center text-muted-foreground/50 text-[11px]"
                       >
                         {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
                   {s24Rows.map((row, ri) => (
-                    <tr key={ri} className="border-b border-slate-700/30">
-                      <td className="border border-slate-700/40 px-1 py-1 text-center text-slate-400">
+                    <tr key={ri} className="border-b border-border/30">
+                      <td className="border border-border/40 px-1 py-1 text-center text-muted-foreground">
                         {ri + 1}
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.title}
@@ -1743,7 +1743,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <input
                           type="text"
                           value={row.result}
@@ -1753,7 +1753,7 @@ export function KpiTableEditor({
                           className={`${iCls} text-center`}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.completion}
@@ -1769,7 +1769,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.period}
@@ -1780,10 +1780,10 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1 text-center">
+                      <td className="border border-border/40 px-1 py-1 text-center">
                         <button
                           onClick={() => removeSection24Row(si, ri)}
-                          className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                          className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                         >
                           ×
                         </button>
@@ -1799,41 +1799,41 @@ export function KpiTableEditor({
                         ? nums.reduce((a, b) => a + b, 0) / nums.length
                         : null;
                     return (
-                      <tr className="bg-slate-800/50">
-                        <td className="border border-slate-700/40 px-1 py-1"></td>
-                        <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white">
+                      <tr className="bg-muted/50">
+                        <td className="border border-border/40 px-1 py-1"></td>
+                        <td className="border border-border/40 px-2 py-1.5 text-center font-bold text-white">
                           {t("tailan_avgLabel")}
                         </td>
-                        <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
+                        <td className="border border-border/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? `${avg.toFixed(1)}%` : "–"}
                         </td>
                         <td
-                          className="border border-slate-700/40 px-1 py-1"
+                          className="border border-border/40 px-1 py-1"
                           colSpan={2}
                         ></td>
-                        <td className="border border-slate-700/40 w-7"></td>
+                        <td className="border border-border/40 w-7"></td>
                       </tr>
                     );
                   })()}
                 </tbody>
               </table>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addSection24Row(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addRow")}
                 </button>
               </div>
               {s24Rows.some((r) => (r.images ?? []).length > 0) && (
-                <div className="px-3 py-2 bg-slate-900/60 border-t border-slate-700/40">
-                  <div className="text-[10px] text-slate-500 mb-1.5">
+                <div className="px-3 py-2 bg-card/60 border-t border-border/40">
+                  <div className="text-[10px] text-muted-foreground/70 mb-1.5">
                     {t("tailan_imageWidthSettings")}
                   </div>
                   {s24Rows.map((row, ri) =>
                     (row.images ?? []).length > 0 ? (
                       <div key={ri} className="mb-2">
-                        <div className="text-[10px] text-slate-400 mb-1 truncate">
+                        <div className="text-[10px] text-muted-foreground mb-1 truncate">
                           {ri + 1}. {row.title || `(${t("tailan_unnamed")})`}
                         </div>
                         {row.images!.map((img) => (
@@ -1845,11 +1845,11 @@ export function KpiTableEditor({
                               <img
                                 src={img.dataUrl}
                                 alt=""
-                                className="h-8 w-12 rounded border border-slate-700/50 object-cover shrink-0"
+                                className="h-8 w-12 rounded border border-border/50 object-cover shrink-0"
                               />
                               <div className="flex flex-col gap-0.5 flex-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                  <span className="text-[10px] text-muted-foreground w-10 shrink-0">
                                     {t("tailan_widthLabel")}
                                   </span>
                                   <input
@@ -1870,12 +1870,12 @@ export function KpiTableEditor({
                                     }}
                                     className="w-20 accent-blue-400"
                                   />
-                                  <span className="text-[10px] text-slate-300 w-7">
+                                  <span className="text-[10px] text-foreground/80 w-7">
                                     {img.width ?? 80}%
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                                  <span className="text-[10px] text-muted-foreground w-10 shrink-0">
                                     {t("tailan_heightLabel")}
                                   </span>
                                   <input
@@ -1897,7 +1897,7 @@ export function KpiTableEditor({
                                     }}
                                     className="w-20 accent-purple-400"
                                   />
-                                  <span className="text-[10px] text-slate-300 w-12">
+                                  <span className="text-[10px] text-foreground/80 w-12">
                                     {`${img.height ?? 280}px`}
                                   </span>
                                 </div>
@@ -1920,19 +1920,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS33TableApiLoad && (
                   <button
@@ -1953,19 +1953,19 @@ export function KpiTableEditor({
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-amber-400/30 text-amber-100">
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-8">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-8">
                       №
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       {t("tailan_regularDataProcessingCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       {t("tailan_usageSignificanceCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-28">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-28">
                       {t("tailan_clientScoreCol")}
                     </th>
-                    <th className="border border-slate-700/40 w-7"></th>
+                    <th className="border border-border/40 w-7"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1973,18 +1973,18 @@ export function KpiTableEditor({
                     <tr>
                       <td
                         colSpan={5}
-                        className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
+                        className="border border-border/40 px-3 py-3 text-center text-muted-foreground/50 text-[11px]"
                       >
                         {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
                   {s33Rows.map((row, ri) => (
-                    <tr key={ri} className="border-b border-slate-700/30">
-                      <td className="border border-slate-700/40 px-1 py-1 text-center text-slate-400">
+                    <tr key={ri} className="border-b border-border/30">
+                      <td className="border border-border/40 px-1 py-1 text-center text-muted-foreground">
                         {ri + 1}
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.title}
@@ -1997,7 +1997,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.usage}
@@ -2008,7 +2008,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <input
                           value={row.clientScore}
                           onChange={(e) =>
@@ -2023,10 +2023,10 @@ export function KpiTableEditor({
                           className={`${iCls} text-center`}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1 text-center">
+                      <td className="border border-border/40 px-1 py-1 text-center">
                         <button
                           onClick={() => removeSection33Row(si, ri)}
-                          className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                          className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                         >
                           ×
                         </button>
@@ -2042,26 +2042,26 @@ export function KpiTableEditor({
                         ? nums.reduce((a, b) => a + b, 0) / nums.length
                         : null;
                     return (
-                      <tr className="bg-slate-800/50">
+                      <tr className="bg-muted/50">
                         <td
                           colSpan={3}
-                          className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white"
+                          className="border border-border/40 px-2 py-1.5 text-center font-bold text-white"
                         >
                           {t("tailan_avgLabel")}
                         </td>
-                        <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
+                        <td className="border border-border/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? avg.toFixed(1) : "–"}
                         </td>
-                        <td className="border border-slate-700/40 w-7"></td>
+                        <td className="border border-border/40 w-7"></td>
                       </tr>
                     );
                   })()}
                 </tbody>
               </table>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addSection33Row(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addRow")}
                 </button>
@@ -2076,19 +2076,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS34TableApiLoad && (
                   <button
@@ -2109,19 +2109,19 @@ export function KpiTableEditor({
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-amber-400/30 text-amber-100">
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-8">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-8">
                       №
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       Dashboard
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                    <th className="border border-border/40 px-2 py-1.5 text-left">
                       {t("tailan_dashUsageCol")}
                     </th>
-                    <th className="border border-slate-700/40 px-2 py-1.5 text-center w-28">
+                    <th className="border border-border/40 px-2 py-1.5 text-center w-28">
                       {t("tailan_clientScoreCol")}
                     </th>
-                    <th className="border border-slate-700/40 w-7"></th>
+                    <th className="border border-border/40 w-7"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2129,18 +2129,18 @@ export function KpiTableEditor({
                     <tr>
                       <td
                         colSpan={5}
-                        className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
+                        className="border border-border/40 px-3 py-3 text-center text-muted-foreground/50 text-[11px]"
                       >
                         {t("tailan_clickFetchHint")}
                       </td>
                     </tr>
                   )}
                   {s34Rows.map((row, ri) => (
-                    <tr key={ri} className="border-b border-slate-700/30">
-                      <td className="border border-slate-700/40 px-1 py-1 text-center text-slate-400">
+                    <tr key={ri} className="border-b border-border/30">
+                      <td className="border border-border/40 px-1 py-1 text-center text-muted-foreground">
                         {ri + 1}
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.title}
@@ -2151,7 +2151,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <textarea
                           rows={2}
                           value={row.usage}
@@ -2162,7 +2162,7 @@ export function KpiTableEditor({
                           className={taCls}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1">
+                      <td className="border border-border/40 px-1 py-1">
                         <input
                           value={row.clientScore}
                           onChange={(e) =>
@@ -2177,10 +2177,10 @@ export function KpiTableEditor({
                           className={`${iCls} text-center`}
                         />
                       </td>
-                      <td className="border border-slate-700/40 px-1 py-1 text-center">
+                      <td className="border border-border/40 px-1 py-1 text-center">
                         <button
                           onClick={() => removeSection34Row(si, ri)}
-                          className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                          className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                         >
                           ×
                         </button>
@@ -2196,26 +2196,26 @@ export function KpiTableEditor({
                         ? nums.reduce((a, b) => a + b, 0) / nums.length
                         : null;
                     return (
-                      <tr className="bg-slate-800/50">
+                      <tr className="bg-muted/50">
                         <td
                           colSpan={3}
-                          className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white"
+                          className="border border-border/40 px-2 py-1.5 text-center font-bold text-white"
                         >
                           {t("tailan_avgLabel")}
                         </td>
-                        <td className="border border-slate-700/40 px-1 py-1 text-center font-bold text-amber-300">
+                        <td className="border border-border/40 px-1 py-1 text-center font-bold text-amber-300">
                           {avg !== null ? avg.toFixed(1) : "–"}
                         </td>
-                        <td className="border border-slate-700/40 w-7"></td>
+                        <td className="border border-border/40 w-7"></td>
                       </tr>
                     );
                   })()}
                 </tbody>
               </table>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addSection34Row(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addRow")}
                 </button>
@@ -2230,19 +2230,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder=""
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS42KnowledgeApiLoad && (
                   <button
@@ -2260,9 +2260,9 @@ export function KpiTableEditor({
                   </button>
                 )}
               </div>
-              <div className="divide-y divide-slate-700/30">
+              <div className="divide-y divide-border/30">
                 {items.length === 0 && (
-                  <div className="px-4 py-3 text-[11px] text-slate-600 text-center">
+                  <div className="px-4 py-3 text-[11px] text-muted-foreground/50 text-center">
                     {t("tailan_noItemsHint")}
                   </div>
                 )}
@@ -2293,7 +2293,7 @@ export function KpiTableEditor({
                         <div key={c.id} className="flex items-start gap-1.5">
                           {c.type === "bullet" ? (
                             <>
-                              <span className="text-slate-500 text-xs shrink-0 mt-1.5">
+                              <span className="text-muted-foreground/70 text-xs shrink-0 mt-1.5">
                                 •
                               </span>
                               <input
@@ -2320,7 +2320,7 @@ export function KpiTableEditor({
                                     ),
                                   )
                                 }
-                                className="text-slate-600 hover:text-rose-400 text-sm leading-none shrink-0 mt-1"
+                                className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none shrink-0 mt-1"
                               >
                                 ×
                               </button>
@@ -2332,7 +2332,7 @@ export function KpiTableEditor({
                                   <img
                                     src={c.dataUrl}
                                     alt=""
-                                    className="h-16 w-auto rounded border border-slate-600/50 object-contain"
+                                    className="h-16 w-auto rounded border border-border/50 object-contain"
                                   />
                                   <button
                                     onClick={() =>
@@ -2407,11 +2407,11 @@ export function KpiTableEditor({
                               },
                             ])
                           }
-                          className="text-[10px] text-slate-500 hover:text-green-400 transition-colors"
+                          className="text-[10px] text-muted-foreground/70 hover:text-green-400 transition-colors"
                         >
                           {t("tailan_addBullet")}
                         </button>
-                        <label className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors cursor-pointer">
+                        <label className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors cursor-pointer">
                           {t("tailan_addImage")}
                           <input
                             type="file"
@@ -2452,10 +2452,10 @@ export function KpiTableEditor({
                   </div>
                 ))}
               </div>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addRichTextItem(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addItem")}
                 </button>
@@ -2470,24 +2470,24 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
               </div>
-              <div className="divide-y divide-slate-700/30">
+              <div className="divide-y divide-border/30">
                 {s42Rows.length === 0 && (
-                  <div className="px-4 py-3 text-[11px] text-slate-600 text-center">
+                  <div className="px-4 py-3 text-[11px] text-muted-foreground/50 text-center">
                     {t("tailan_clickFetchHint")}
                   </div>
                 )}
@@ -2526,10 +2526,10 @@ export function KpiTableEditor({
                   </div>
                 ))}
               </div>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addSection42Row(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addRow")}
                 </button>
@@ -2544,19 +2544,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder=""
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onS43TrainingsApiLoad && (
                   <button
@@ -2591,12 +2591,12 @@ export function KpiTableEditor({
                       ].map((h, i) => (
                         <th
                           key={i}
-                          className="border border-slate-700/40 px-2 py-1.5 text-left"
+                          className="border border-border/40 px-2 py-1.5 text-left"
                         >
                           {h}
                         </th>
                       ))}
-                      <th className="border border-slate-700/40 w-7"></th>
+                      <th className="border border-border/40 w-7"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2604,14 +2604,14 @@ export function KpiTableEditor({
                       <tr>
                         <td
                           colSpan={10}
-                          className="border border-slate-700/40 px-3 py-3 text-center text-slate-600 text-[11px]"
+                          className="border border-border/40 px-3 py-3 text-center text-muted-foreground/50 text-[11px]"
                         >
                           {t("tailan_clickFetchHint")}
                         </td>
                       </tr>
                     )}
                     {s43Rows.map((row, ri) => (
-                      <tr key={ri} className="border-b border-slate-700/30">
+                      <tr key={ri} className="border-b border-border/30">
                         {(
                           [
                             [
@@ -2636,7 +2636,7 @@ export function KpiTableEditor({
                         ).map(([field, ph]) => (
                           <td
                             key={field}
-                            className="border border-slate-700/40 px-1 py-1"
+                            className="border border-border/40 px-1 py-1"
                           >
                             <AutoTextarea
                               value={row[field]}
@@ -2653,10 +2653,10 @@ export function KpiTableEditor({
                             />
                           </td>
                         ))}
-                        <td className="border border-slate-700/40 px-1 py-1 text-center">
+                        <td className="border border-border/40 px-1 py-1 text-center">
                           <button
                             onClick={() => removeSection43Row(si, ri)}
-                            className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                            className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                           >
                             ×
                           </button>
@@ -2666,10 +2666,10 @@ export function KpiTableEditor({
                   </tbody>
                 </table>
               </div>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addSection43Row(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addRow")}
                 </button>
@@ -2684,19 +2684,19 @@ export function KpiTableEditor({
           return (
             <div
               key={si}
-              className="border border-slate-700/40 rounded-xl overflow-hidden"
+              className="border border-border/40 rounded-xl overflow-hidden"
             >
-              <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+              <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
                 <input
                   value={sub.id}
                   onChange={(e) => updateSub(si, "id", e.target.value)}
-                  className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                  className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
                 />
                 <input
                   value={sub.groupLabel}
                   onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                   placeholder={t("tailan_sectionNamePlaceholder")}
-                  className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                  className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
                 />
                 {onApiLoad && (
                   <button
@@ -2714,9 +2714,9 @@ export function KpiTableEditor({
                   </button>
                 )}
               </div>
-              <div className="divide-y divide-slate-700/30">
+              <div className="divide-y divide-border/30">
                 {dashRows.length === 0 && (
-                  <div className="px-4 py-4 text-center text-slate-600 text-[11px]">
+                  <div className="px-4 py-4 text-center text-muted-foreground/50 text-[11px]">
                     {t("tailan_noTasksHint")}
                   </div>
                 )}
@@ -2734,10 +2734,10 @@ export function KpiTableEditor({
                   />
                 ))}
               </div>
-              <div className="px-3 py-1.5 bg-slate-900/40">
+              <div className="px-3 py-1.5 bg-card/40">
                 <button
                   onClick={() => addDashRow(si)}
-                  className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                  className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
                 >
                   {t("tailan_addTask")}
                 </button>
@@ -2754,43 +2754,43 @@ export function KpiTableEditor({
         return (
           <div
             key={si}
-            className="border border-slate-700/40 rounded-xl overflow-hidden"
+            className="border border-border/40 rounded-xl overflow-hidden"
           >
-            <div className="bg-slate-800/80 px-3 py-2 flex items-center gap-2 border-b border-slate-700/50">
+            <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
               <input
                 value={sub.id}
                 onChange={(e) => updateSub(si, "id", e.target.value)}
-                className="w-12 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
+                className="w-12 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-orange-300 focus:outline-none"
               />
               <input
                 value={sub.groupLabel}
                 onChange={(e) => updateSub(si, "groupLabel", e.target.value)}
                 placeholder={t("tailan_sectionNamePlaceholder")}
-                className="flex-1 bg-slate-700/60 border border-slate-600/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
+                className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none"
               />
             </div>
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-amber-400/30 text-amber-100">
-                  <th className="border border-slate-700/40 px-2 py-1.5 text-left">
+                  <th className="border border-border/40 px-2 py-1.5 text-left">
                     {t("tailan_keyIndicatorHeader")}
                   </th>
-                  <th className="border border-slate-700/40 px-2 py-1.5 text-center w-14">
+                  <th className="border border-border/40 px-2 py-1.5 text-center w-14">
                     {t("tailan_weightPctHeader")}
                   </th>
-                  <th className="border border-slate-700/40 px-2 py-1.5 text-center w-16">
+                  <th className="border border-border/40 px-2 py-1.5 text-center w-16">
                     {t("tailan_scoreHeader")}
                   </th>
-                  <th className="border border-slate-700/40 px-2 py-1.5 w-44">
+                  <th className="border border-border/40 px-2 py-1.5 w-44">
                     {t("tailan_evaluatedDescHeader")}
                   </th>
-                  <th className="border border-slate-700/40 w-7"></th>
+                  <th className="border border-border/40 w-7"></th>
                 </tr>
               </thead>
               <tbody>
                 {sub.rows.map((row, ri) => (
-                  <tr key={ri} className="border-b border-slate-700/30">
-                    <td className="border border-slate-700/40 px-1 py-1">
+                  <tr key={ri} className="border-b border-border/30">
+                    <td className="border border-border/40 px-1 py-1">
                       <AutoTextarea
                         value={row.indicator}
                         onChange={(e) =>
@@ -2800,7 +2800,7 @@ export function KpiTableEditor({
                         className={taCls}
                       />
                     </td>
-                    <td className="border border-slate-700/40 px-1 py-1">
+                    <td className="border border-border/40 px-1 py-1">
                       <input
                         type="number"
                         value={row.weight}
@@ -2810,7 +2810,7 @@ export function KpiTableEditor({
                         className={`${iCls} text-center`}
                       />
                     </td>
-                    <td className="border border-slate-700/40 px-1 py-1">
+                    <td className="border border-border/40 px-1 py-1">
                       <input
                         value={row.score}
                         onChange={(e) =>
@@ -2820,7 +2820,7 @@ export function KpiTableEditor({
                         className={`${iCls} text-center`}
                       />
                     </td>
-                    <td className="border border-slate-700/40 px-1 py-1">
+                    <td className="border border-border/40 px-1 py-1">
                       <AutoTextarea
                         value={row.evaluatedBy}
                         onChange={(e) =>
@@ -2829,10 +2829,10 @@ export function KpiTableEditor({
                         className={taCls}
                       />
                     </td>
-                    <td className="border border-slate-700/40 px-1 py-1 text-center">
+                    <td className="border border-border/40 px-1 py-1 text-center">
                       <button
                         onClick={() => removeRow(si, ri)}
-                        className="text-slate-600 hover:text-rose-400 text-sm leading-none"
+                        className="text-muted-foreground/50 hover:text-rose-400 text-sm leading-none"
                         title={t("tailan_deleteAction")}
                       >
                         ×
@@ -2840,21 +2840,21 @@ export function KpiTableEditor({
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-slate-800/40">
-                  <td className="border border-slate-700/40 px-2 py-1.5 text-center text-slate-400 font-bold text-[10px]">
+                <tr className="bg-muted/40">
+                  <td className="border border-border/40 px-2 py-1.5 text-center text-muted-foreground font-bold text-[10px]">
                     {t("tailan_subtotalRow")}
                   </td>
-                  <td className="border border-slate-700/40 px-2 py-1.5 text-center font-bold text-white">
+                  <td className="border border-border/40 px-2 py-1.5 text-center font-bold text-white">
                     {totalW}
                   </td>
-                  <td className="border border-slate-700/40" colSpan={3}></td>
+                  <td className="border border-border/40" colSpan={3}></td>
                 </tr>
               </tbody>
             </table>
-            <div className="px-3 py-1.5 bg-slate-900/40">
+            <div className="px-3 py-1.5 bg-card/40">
               <button
                 onClick={() => addRow(si)}
-                className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors"
+                className="text-[10px] text-muted-foreground/70 hover:text-blue-400 transition-colors"
               >
                 {t("tailan_addRow")}
               </button>

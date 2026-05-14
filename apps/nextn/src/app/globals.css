@@ -169,7 +169,7 @@
     --chart-5: 330 89% 78%;
   }
 
-  html[class="tokyo-night"] {
+  html.tokyo-night {
     --background: 222 47% 11%;
     --foreground: 214 33% 91%;
     --card: 222 47% 14%;
@@ -191,26 +191,26 @@
     --ring: 195 100% 75%;
   }
 
-  html[class="light"] {
-    --background: 210 20% 96%;
-    --foreground: 222 47% 8%;
+  html.light {
+    --background: 220 16% 96%;
+    --foreground: 222 47% 5%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 8%;
+    --card-foreground: 222 47% 5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 8%;
-    --primary: 198 80% 38%;
+    --popover-foreground: 222 47% 5%;
+    --primary: 198 80% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 20% 90%;
-    --secondary-foreground: 222 47% 8%;
-    --muted: 210 20% 90%;
-    --muted-foreground: 215 16% 40%;
-    --accent: 198 80% 38%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 55%;
+    --secondary: 220 12% 88%;
+    --secondary-foreground: 222 47% 5%;
+    --muted: 220 12% 91%;
+    --muted-foreground: 215 16% 30%;
+    --accent: 210 50% 90%;
+    --accent-foreground: 198 70% 18%;
+    --destructive: 0 84% 48%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 20% 74%;
-    --input: 214 20% 74%;
-    --ring: 198 80% 38%;
+    --border: 220 16% 28%;
+    --input: 220 16% 28%;
+    --ring: 198 80% 32%;
     --chart-1: 198 80% 40%;
     --chart-2: 152 76% 38%;
     --chart-3: 251 78% 60%;
@@ -236,6 +236,38 @@
       "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
       "Android Emoji", "EmojiSymbols", sans-serif;
   }
+}
+
+/* ── Light mode: stronger borders ────────────────────────────────────────── */
+html.light .rounded-sm.border,
+html.light .rounded.border,
+html.light .rounded-md.border,
+html.light .rounded-lg.border,
+html.light .rounded-xl.border,
+html.light .rounded-2xl.border,
+html.light .rounded-3xl.border {
+  border-width: 1.5px;
+}
+
+html.light button.border,
+html.light [role="button"].border {
+  border-width: 1.5px;
+}
+
+html.light .border-t {
+  border-top-width: 1.5px;
+}
+
+html.light .border-b {
+  border-bottom-width: 1.5px;
+}
+
+html.light .border-l {
+  border-left-width: 1.5px;
+}
+
+html.light .border-r {
+  border-right-width: 1.5px;
 }
 
 .card-glow::before {
@@ -545,6 +577,21 @@
     hsl(var(--primary) / 0.8)
   );
   animation: rotate-glow-circle-cw 8s linear infinite;
+}
+
+html.light .animated-border-wrapper::before {
+  background: conic-gradient(
+    from 90deg at 50% 50%,
+    hsl(220 16% 15% / 0.9),
+    45deg,
+    hsl(220 16% 40% / 0.4),
+    90deg,
+    hsl(220 16% 15% / 0.7),
+    135deg,
+    hsl(220 16% 40% / 0.3),
+    180deg,
+    hsl(220 16% 15% / 0.9)
+  );
 }
 
 .animated-border-wrapper > * {

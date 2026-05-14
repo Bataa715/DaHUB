@@ -21,6 +21,7 @@ import {
 import {
   evaluateBranch,
   CATALOG_BY_GROUP,
+  INDICATOR_CATALOG,
   GROUP_LABEL,
   MANUAL_COUNT_BY_GROUP,
   type CatalogGroup,
@@ -84,11 +85,10 @@ export default function ReportView({
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
   const [manualLoading, setManualLoading] = useState(false);
-  // Аль салбар × бүлгийн манай гарын панель нээгдсэн байна
-  const [expanded, setExpanded] = useState<{
-    branchId: string;
-    group: CatalogGroup;
-  } | null>(null);
+  // Аль тайлангийн хүснэгтийн гарын үзүүлэлт оруулах modal нээгдсэн байна
+  const [manualTableOpen, setManualTableOpen] = useState<"UB" | "LOC" | null>(
+    null,
+  );
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // beforeunload flush-д зориулж pending payload-уудыг хянана
@@ -100,12 +100,12 @@ export default function ReportView({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (expanded) setExpanded(null);
+        if (manualTableOpen) setManualTableOpen(null);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [expanded]);
+  }, [manualTableOpen]);
 
   useEffect(() => {
     const handleUnload = () => {
@@ -119,7 +119,8 @@ export default function ReportView({
       const token = Cookies.get(
         window.location.pathname.startsWith("/admin") ? "adminToken" : "token",
       );
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!baseUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
       for (const p of payloads) {
         fetch(`${baseUrl}/risk-assessment/manual-indicators`, {
           method: "PUT",
@@ -270,6 +271,8 @@ export default function ReportView({
 
   const ub = filtered.filter((b) => b.region === "UB");
   const loc = filtered.filter((b) => b.region === "LOC");
+  const allUb = aggregates.filter((b) => b.region === "UB");
+  const allLoc = aggregates.filter((b) => b.region === "LOC");
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
@@ -382,7 +385,6 @@ export default function ReportView({
       <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="text-[11px] text-muted-foreground max-w-2xl space-y-1.5 leading-relaxed">
-      
             <p className="flex items-start gap-1.5">
               <span>
                 <b className="text-foreground">Өмнөх харьцуулалт</b>:{" "}
@@ -470,11 +472,8 @@ export default function ReportView({
         region="UB"
         rows={ub}
         previousAggMap={previousAggMap}
-        branchEvals={branchEvals}
         manualMap={manualMap}
-        setManualValue={setManualValue}
-        expanded={expanded}
-        setExpanded={setExpanded}
+        onOpenManual={() => setManualTableOpen("UB")}
       />
 
       <ReportTable
@@ -482,11 +481,8 @@ export default function ReportView({
         region="LOC"
         rows={loc}
         previousAggMap={previousAggMap}
-        branchEvals={branchEvals}
         manualMap={manualMap}
-        setManualValue={setManualValue}
-        expanded={expanded}
-        setExpanded={setExpanded}
+        onOpenManual={() => setManualTableOpen("LOC")}
       />
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -527,25 +523,260 @@ export default function ReportView({
         </SummaryBlock>
       </div>
 
-      {expanded && (
-        <IndicatorPanelModal
-          group={expanded.group}
-          branchId={expanded.branchId}
-          branchName={
-            aggregates.find((b) => b.branchId === expanded.branchId)
-              ?.branchName ?? expanded.branchId
+      {manualTableOpen && (
+        <AllBranchesManualModal
+          title={
+            manualTableOpen === "UB"
+              ? "Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд"
+              : "Орон нутгийн Бизнес төв, салбар, тооцооны төвүүд"
           }
-          ev={branchEvals.get(expanded.branchId)}
-          manual={manualMap[expanded.branchId] || {}}
+          rows={manualTableOpen === "UB" ? allUb : allLoc}
+          manualMap={manualMap}
           setManualValue={setManualValue}
-          onClose={() => setExpanded(null)}
+          onClose={() => setManualTableOpen(null)}
         />
       )}
     </div>
   );
 }
 
-// ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
+// ── Бүх салбарын гарын үзүүлэлт оруулах modal ────────────────────────────
+function AllBranchesManualModal({
+  title,
+  rows,
+  manualMap,
+  setManualValue,
+  onClose,
+}: {
+  title: string;
+  rows: BranchAggregate[];
+  manualMap: ManualMap;
+  setManualValue: (branchId: string, indicatorId: string, v: number) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string>(rows[0]?.branchId ?? "");
+
+  const ALL_MANUAL = useMemo(
+    () =>
+      INDICATOR_CATALOG.filter(
+        (ind) => ind.autoSubid == null && ind.weight > 0,
+      ),
+    [],
+  );
+  const MANUAL_TOTAL = ALL_MANUAL.length;
+
+  const fillCount = (branchId: string) => {
+    const m = manualMap[branchId] || {};
+    return ALL_MANUAL.filter((ind) => (m[ind.id] ?? 0) > 0).length;
+  };
+
+  const filteredRows = rows.filter(
+    (b) =>
+      b.branchName.toLowerCase().includes(search.toLowerCase()) ||
+      String(b.solid ?? "")
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
+
+  const selectedBranch = rows.find((b) => b.branchId === selectedId);
+  const selectedManual = selectedId ? manualMap[selectedId] || {} : {};
+
+  const GROUPS: CatalogGroup[] = [1, 2, 3, 4, 5];
+  const manualByGroup = (group: CatalogGroup) =>
+    CATALOG_BY_GROUP[group].filter((ind) => ind.autoSubid == null);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-5xl h-[88vh] flex flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Hand className="w-4 h-4 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">Гарын үзүүлэлт оруулах</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-md">
+                {title} · {rows.length} салбар
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            title="Хаах (ESC)"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body: 2 panel */}
+        <div className="flex flex-1 min-h-0">
+          {/* Left: branch list */}
+          <div className="w-52 flex-shrink-0 border-r border-border flex flex-col bg-muted/20">
+            <div className="p-2 border-b border-border flex-shrink-0">
+              <input
+                type="text"
+                placeholder="Хайх..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {filteredRows.map((b) => {
+                const filled = fillCount(b.branchId);
+                const pct = MANUAL_TOTAL > 0 ? filled / MANUAL_TOTAL : 0;
+                const isSelected = b.branchId === selectedId;
+                return (
+                  <button
+                    key={b.branchId}
+                    onClick={() => setSelectedId(b.branchId)}
+                    className={`w-full text-left px-3 py-2.5 border-b border-border/40 transition-colors hover:bg-accent/40 flex flex-col gap-1 ${
+                      isSelected
+                        ? "bg-amber-500/10 border-l-2 border-l-amber-500"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-medium truncate flex-1 text-left">
+                        {b.branchName}
+                      </span>
+                      <span
+                        className={`text-[10px] tabular-nums flex-shrink-0 ${
+                          filled === MANUAL_TOTAL
+                            ? "text-emerald-500"
+                            : filled > 0
+                              ? "text-amber-500"
+                              : "text-muted-foreground/40"
+                        }`}
+                      >
+                        {filled}/{MANUAL_TOTAL}
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full bg-border overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          pct === 1
+                            ? "bg-emerald-500"
+                            : pct > 0
+                              ? "bg-amber-500"
+                              : ""
+                        }`}
+                        style={{ width: `${Math.max(pct * 100, 0)}%` }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+              {filteredRows.length === 0 && (
+                <p className="px-3 py-6 text-xs text-muted-foreground italic text-center">
+                  Олдсонгүй
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right: indicator inputs for selected branch */}
+          {selectedBranch ? (
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex items-center gap-2 pb-3 border-b border-border">
+                <span className="text-sm font-semibold">
+                  {selectedBranch.branchName}
+                </span>
+                {selectedBranch.solid && (
+                  <span className="text-xs text-muted-foreground">
+                    ({selectedBranch.solid})
+                  </span>
+                )}
+                <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">
+                  {fillCount(selectedBranch.branchId)}/{MANUAL_TOTAL} оруулсан
+                </span>
+              </div>
+
+              {GROUPS.map((group) => {
+                const inds = manualByGroup(group);
+                if (inds.length === 0) return null;
+                const filledInGroup = inds.filter(
+                  (ind) => (selectedManual[ind.id] ?? 0) > 0,
+                ).length;
+                return (
+                  <div
+                    key={group}
+                    className="rounded-xl border border-border overflow-hidden"
+                  >
+                    <div className="px-3.5 py-2 bg-muted/40 border-b border-border flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                        {GROUP_LABEL[group]}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">
+                        {filledInGroup}/{inds.length}
+                      </span>
+                    </div>
+                    <table className="w-full text-xs">
+                      <tbody>
+                        {inds.map((ind) => {
+                          const val = selectedManual[ind.id] ?? 0;
+                          return (
+                            <tr
+                              key={ind.id}
+                              className="border-t border-border/50 hover:bg-accent/20"
+                            >
+                              <td className="px-3.5 py-2.5 font-medium text-foreground">
+                                {ind.name}
+                                {ind.hint && (
+                                  <div className="text-[9px] text-muted-foreground font-normal mt-0.5">
+                                    {ind.hint}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-muted-foreground w-12 tabular-nums">
+                                {ind.weight > 0 ? `${ind.weight}%` : "—"}
+                              </td>
+                              <td className="px-3 py-2.5 text-right w-28">
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min={0}
+                                  max={5}
+                                  value={val || ""}
+                                  placeholder="0–5"
+                                  onChange={(e) =>
+                                    setManualValue(
+                                      selectedBranch.branchId,
+                                      ind.id,
+                                      Number(e.target.value) || 0,
+                                    )
+                                  }
+                                  className="w-20 px-2 py-1.5 text-right text-xs rounded-lg border border-border bg-background text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-colors"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+              Салбар сонгоно уу
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
 function ReportTable({
@@ -553,32 +784,21 @@ function ReportTable({
   region,
   rows,
   previousAggMap,
-  branchEvals,
   manualMap,
-  setManualValue,
-  expanded,
-  setExpanded,
+  onOpenManual,
 }: {
   title: string;
   region: "UB" | "LOC";
   rows: BranchAggregate[];
   previousAggMap: Map<string, BranchAggregate>;
-  branchEvals: Map<string, BranchCatalogResult>;
   manualMap: ManualMap;
-  setManualValue: (branchId: string, indicatorId: string, v: number) => void;
-  expanded: { branchId: string; group: CatalogGroup } | null;
-  setExpanded: React.Dispatch<
-    React.SetStateAction<{ branchId: string; group: CatalogGroup } | null>
-  >;
+  onOpenManual: () => void;
 }) {
   const w = WEIGHTS[region];
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
-  const toggle = (branchId: string, group: CatalogGroup) =>
-    setExpanded((cur) =>
-      cur && cur.branchId === branchId && cur.group === group
-        ? null
-        : { branchId, group },
-    );
+  const manualBranchCount = rows.filter(
+    (b) => Object.keys(manualMap[b.branchId] || {}).length > 0,
+  ).length;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
@@ -629,9 +849,22 @@ function ReportTable({
               {(w.j * 100).toFixed(0)}%
             </b>
           </span>
-          <span className="ml-auto flex items-center gap-1 italic">
-            <Hand className="w-3 h-3" /> товчоор гарын үзүүлэлт оруулна
-          </span>
+          <button
+            onClick={onOpenManual}
+            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all ${
+              manualBranchCount > 0
+                ? "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
+                : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <Hand className="w-3 h-3" />
+            Гарын үзүүлэлт оруулах
+            {manualBranchCount > 0 && (
+              <span className="bg-amber-500 text-white rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold">
+                {manualBranchCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -644,12 +877,25 @@ function ReportTable({
                 Салбарын нэр
               </th>
               <th className="px-2 py-2 text-center font-semibold">Зэрэглэл</th>
-              <th className="px-2 py-2 text-right font-semibold">Score 1</th>
-              <th className="px-2 py-2 text-right font-semibold">Score 2</th>
-              <th className="px-2 py-2 text-right font-semibold">Score 3</th>
-              <th className="px-2 py-2 text-right font-semibold">Score 4</th>
-              <th className="px-2 py-2 text-right font-semibold">Judgement</th>
+              <th className="px-2 py-2 text-right font-semibold text-sky-600 dark:text-sky-400">
+                Score 1
+              </th>
+              <th className="px-2 py-2 text-right font-semibold text-violet-600 dark:text-violet-400">
+                Score 2
+              </th>
+              <th className="px-2 py-2 text-right font-semibold text-amber-600 dark:text-amber-400">
+                Score 3
+              </th>
+              <th className="px-2 py-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                Score 4
+              </th>
+              <th className="px-2 py-2 text-right font-semibold text-rose-600 dark:text-rose-400">
+                Judgement
+              </th>
               <th className="px-2 py-2 text-right font-semibold">Total</th>
+              <th className="px-2 py-2 text-right font-semibold text-muted-foreground/70">
+                Өмнөх
+              </th>
               <th className="px-2 py-2 text-center font-semibold">Түвшин</th>
               <th className="px-2 py-2 text-right font-semibold">Зөрүү</th>
             </tr>
@@ -661,10 +907,6 @@ function ReportTable({
                 prev && b.total != null && prev.total != null
                   ? b.total - prev.total
                   : null;
-              const ev = branchEvals.get(b.branchId);
-              const isOpen = expanded?.branchId === b.branchId;
-              const openGroup = isOpen ? expanded!.group : null;
-              const branchManual = manualMap[b.branchId] || {};
               return (
                 <Fragment key={b.branchId}>
                   <tr className="border-t border-border hover:bg-accent/30">
@@ -676,56 +918,14 @@ function ReportTable({
                     <td className="px-2 py-1.5 text-center text-[10px] text-muted-foreground">
                       {b.rating}
                     </td>
-                    <ScoreCell
-                      value={b.s1}
-                      group={1}
-                      branchId={b.branchId}
-                      manual={branchManual}
-                      open={openGroup === 1}
-                      onToggle={toggle}
-                    />
-                    <ScoreCell
-                      value={b.s2}
-                      group={2}
-                      branchId={b.branchId}
-                      manual={branchManual}
-                      open={openGroup === 2}
-                      onToggle={toggle}
-                    />
-                    <ScoreCell
-                      value={b.s3}
-                      group={3}
-                      branchId={b.branchId}
-                      manual={branchManual}
-                      open={openGroup === 3}
-                      onToggle={toggle}
-                    />
-                    <td className="px-2 py-1.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <span className="tabular-nums text-xs w-14 text-right inline-block">
-                          {fmt(b.s4 ?? null)}
-                        </span>
-                        <HandBtn
-                          open={openGroup === 4}
-                          onClick={() => toggle(b.branchId, 4)}
-                          count={countManual(branchManual, 4)}
-                        />
-                      </div>
+                    <ScoreCell value={b.s1} color="sky" />
+                    <ScoreCell value={b.s2} color="violet" />
+                    <ScoreCell value={b.s3} color="amber" />
+                    <td className="px-2 py-1.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                      {fmt(b.s4 ?? null)}
                     </td>
-                    <td className="px-2 py-1.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <NumInput
-                          value={manualMap[b.branchId]?.["j-001"] ?? 0}
-                          onChange={(v) =>
-                            setManualValue(b.branchId, "j-001", v)
-                          }
-                        />
-                        <HandBtn
-                          open={openGroup === 5}
-                          onClick={() => toggle(b.branchId, 5)}
-                          count={countManual(branchManual, 5)}
-                        />
-                      </div>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-rose-700 dark:text-rose-400">
+                      {fmt(b.j ?? null)}
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums font-bold">
                       <span
@@ -741,6 +941,9 @@ function ReportTable({
                       >
                         {fmt(b.total)}
                       </span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                      {prev?.total != null ? fmt(prev.total) : "—"}
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {b.level && (
@@ -779,7 +982,7 @@ function ReportTable({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={12}
+                  colSpan={13}
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   <div className="text-xs">
@@ -839,31 +1042,20 @@ function HandBtn({
 
 function ScoreCell({
   value,
-  group,
-  branchId,
-  manual,
-  open,
-  onToggle,
+  color,
 }: {
   value: number | null;
-  group: CatalogGroup;
-  branchId: string;
-  manual: Record<string, number>;
-  open: boolean;
-  onToggle: (branchId: string, group: CatalogGroup) => void;
+  color: "sky" | "violet" | "amber";
 }) {
+  const cls =
+    color === "sky"
+      ? "text-sky-700 dark:text-sky-400"
+      : color === "violet"
+        ? "text-violet-700 dark:text-violet-400"
+        : "text-amber-700 dark:text-amber-400";
   return (
-    <td className="px-2 py-1.5 text-right">
-      <div className="flex items-center justify-end gap-1">
-        <span className="tabular-nums">
-          {value == null ? "—" : value.toFixed(2)}
-        </span>
-        <HandBtn
-          open={open}
-          onClick={() => onToggle(branchId, group)}
-          count={countManual(manual, group)}
-        />
-      </div>
+    <td className={`px-2 py-1.5 text-right tabular-nums ${cls}`}>
+      {value == null ? "—" : value.toFixed(2)}
     </td>
   );
 }

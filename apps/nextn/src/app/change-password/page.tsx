@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Eye, EyeOff, KeyRound } from "lucide-react";
 import api from "@/lib/api";
+import axios from "axios";
 import BackButton from "@/components/shared/BackButton";
 
 export default function ChangePasswordPage() {
@@ -93,12 +94,15 @@ export default function ChangePasswordPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error changing password:", error);
+      let message = "Нууц үг солихоор алдаа гарлаа";
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message ?? message;
+      }
       toast({
         title: "Алдаа",
-        description:
-          error.response?.data?.message || "Нууц үг солихоор алдаа гарлаа",
+        description: message,
         variant: "destructive",
       });
     } finally {

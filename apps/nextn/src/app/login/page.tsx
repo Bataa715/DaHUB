@@ -5,9 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Cookies from "js-cookie";
+import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { DEPARTMENT_POSITIONS, DEPARTMENT_CODES } from "@/lib/constants";
-import { FlowSelector } from "./_components/FlowSelector";
 import { RegisterFlow } from "./_components/RegisterFlow";
 import { LoginFlow } from "./_components/LoginFlow";
 import {
@@ -21,13 +21,13 @@ import {
   type UserCheckResult,
 } from "./_components/login.types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   const { toast } = useToast();
-  const [flowType, setFlowType] = useState<FlowType>("select");
+  const [flowType, setFlowType] = useState<FlowType>("login");
 
   // Register state
   const [registerStep, setRegisterStep] = useState<RegisterStep>("info");
@@ -324,79 +324,116 @@ export default function LoginPage() {
     }
   };
 
-  const resetRegisterFlow = () => {
-    setFlowType("select");
+  // In-flow step back (Буцах at top of card)
+  const backStepRegister = () => {
+    setRegisterStep("info");
+    setRegisteredUser(null);
+    passwordForm.reset();
+  };
+
+  const backStepLogin = () => {
+    setLoginStep("userId");
+    setCheckedUser(null);
+    passwordForm.reset();
+    loginPasswordForm.reset();
+  };
+
+  // Switch entirely between login <-> register, fully resetting state
+  const switchToRegister = () => {
+    setLoginStep("userId");
+    setCheckedUser(null);
+    loginForm.reset();
+    loginPasswordForm.reset();
     setRegisterStep("info");
     setRegisteredUser(null);
     setGeneratedUserId("");
     registerForm.reset();
     passwordForm.reset();
+    setFlowType("register");
   };
 
-  const resetLoginFlow = () => {
-    setFlowType("select");
+  const switchToLogin = () => {
+    setRegisterStep("info");
+    setRegisteredUser(null);
+    setGeneratedUserId("");
+    registerForm.reset();
     setLoginStep("userId");
     setCheckedUser(null);
     loginForm.reset();
-    passwordForm.reset();
     loginPasswordForm.reset();
+    passwordForm.reset();
+    setFlowType("login");
   };
 
-  if (flowType === "select") {
-    return <FlowSelector onSelect={setFlowType} />;
-  }
-
-  if (flowType === "register") {
-    return (
-      <RegisterFlow
-        registerForm={registerForm}
-        passwordForm={passwordForm}
-        positions={positions}
-        selectedDepartment={selectedDepartment}
-        generatedUserId={generatedUserId}
-        registeredUser={registeredUser}
-        registerStep={registerStep}
-        isLoading={isLoading}
-        showPassword={showPassword}
-        showConfirmPassword={showConfirmPassword}
-        setShowPassword={setShowPassword}
-        setShowConfirmPassword={setShowConfirmPassword}
-        passwordChecks={passwordChecks}
-        allChecksPass={allChecksPass}
-        getUserIdPrefix={getUserIdPrefix}
-        handleRegisterInfo={handleRegisterInfo}
-        handleSetPassword={handleSetPassword}
-        onBack={resetRegisterFlow}
-      />
-    );
-  }
-
   return (
-    <LoginFlow
-      loginForm={loginForm}
-      loginPasswordForm={loginPasswordForm}
-      passwordForm={passwordForm}
-      loginStep={loginStep}
-      checkedUser={checkedUser}
-      userSuggestions={userSuggestions}
-      showSuggestions={showSuggestions}
-      isSearching={isSearching}
-      isLoading={isLoading}
-      showPassword={showPassword}
-      showConfirmPassword={showConfirmPassword}
-      forgotPasswordOpen={forgotPasswordOpen}
-      setShowPassword={setShowPassword}
-      setShowConfirmPassword={setShowConfirmPassword}
-      setForgotPasswordOpen={setForgotPasswordOpen}
-      setShowSuggestions={setShowSuggestions}
-      passwordChecks={passwordChecks}
-      allChecksPass={allChecksPass}
-      searchUsers={searchUsers}
-      handleSelectSuggestion={handleSelectSuggestion}
-      handleCheckUser={handleCheckUser}
-      handleLogin={handleLogin}
-      handleSetPassword={handleSetPassword}
-      onBack={resetLoginFlow}
-    />
+    <AnimatePresence mode="wait" initial={false}>
+      {flowType === "register" ? (
+        <motion.div
+          key="register"
+          initial={{ opacity: 0, x: 60, filter: "blur(8px)" }}
+          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, x: -60, filter: "blur(8px)" }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <RegisterFlow
+            registerForm={registerForm}
+            passwordForm={passwordForm}
+            positions={positions}
+            selectedDepartment={selectedDepartment}
+            generatedUserId={generatedUserId}
+            registeredUser={registeredUser}
+            registerStep={registerStep}
+            isLoading={isLoading}
+            showPassword={showPassword}
+            showConfirmPassword={showConfirmPassword}
+            setShowPassword={setShowPassword}
+            setShowConfirmPassword={setShowConfirmPassword}
+            passwordChecks={passwordChecks}
+            allChecksPass={allChecksPass}
+            getUserIdPrefix={getUserIdPrefix}
+            handleRegisterInfo={handleRegisterInfo}
+            handleSetPassword={handleSetPassword}
+            onBack={backStepRegister}
+            onSwitch={switchToLogin}
+          />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="login"
+          initial={{ opacity: 0, x: -60, filter: "blur(8px)" }}
+          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, x: 60, filter: "blur(8px)" }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <LoginFlow
+            loginForm={loginForm}
+            loginPasswordForm={loginPasswordForm}
+            passwordForm={passwordForm}
+            loginStep={loginStep}
+            checkedUser={checkedUser}
+            userSuggestions={userSuggestions}
+            showSuggestions={showSuggestions}
+            isSearching={isSearching}
+            isLoading={isLoading}
+            showPassword={showPassword}
+            showConfirmPassword={showConfirmPassword}
+            forgotPasswordOpen={forgotPasswordOpen}
+            setShowPassword={setShowPassword}
+            setShowConfirmPassword={setShowConfirmPassword}
+            setForgotPasswordOpen={setForgotPasswordOpen}
+            setShowSuggestions={setShowSuggestions}
+            passwordChecks={passwordChecks}
+            allChecksPass={allChecksPass}
+            searchUsers={searchUsers}
+            handleSelectSuggestion={handleSelectSuggestion}
+            handleCheckUser={handleCheckUser}
+            handleLogin={handleLogin}
+            handleSetPassword={handleSetPassword}
+            onBack={backStepLogin}
+            onSwitch={switchToRegister}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

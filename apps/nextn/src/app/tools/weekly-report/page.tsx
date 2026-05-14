@@ -393,9 +393,7 @@ function OtherInfoForm({
         </div>
         {extraRows.length === 0 ? (
           <p className="text-xs text-muted-foreground/60 italic text-center py-3">
-            {readOnly
-              ? "—"
-              : t("wr_noExtra")}
+            {readOnly ? "—" : t("wr_noExtra")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -480,11 +478,17 @@ function AuditWorksTable({
               <th className="px-2 py-2 text-left min-w-[180px]">
                 {t("wr_openAudit")}
               </th>
-              <th className="px-2 py-2 text-left min-w-[140px]">{t("wr_plan")}</th>
-              <th className="px-2 py-2 text-left min-w-[140px]">{t("wr_execution")}</th>
+              <th className="px-2 py-2 text-left min-w-[140px]">
+                {t("wr_plan")}
+              </th>
+              <th className="px-2 py-2 text-left min-w-[140px]">
+                {t("wr_execution")}
+              </th>
               <th className="px-2 py-2 text-left w-32">{t("wr_started")}</th>
               <th className="px-2 py-2 text-left w-32">{t("wr_endDate")}</th>
-              <th className="px-2 py-2 text-left min-w-[120px]">{t("wr_auditProgress")}</th>
+              <th className="px-2 py-2 text-left min-w-[120px]">
+                {t("wr_auditProgress")}
+              </th>
               <th className="px-2 py-2 text-left min-w-[200px]">
                 {t("wr_foundIssues")}
               </th>
@@ -614,7 +618,9 @@ function ComplaintsTable({
               <th className="px-2 py-2 text-left min-w-[200px]">
                 {t("wr_responsible")}
               </th>
-              <th className="px-2 py-2 text-left min-w-[300px]">{t("wr_complaintProgress")}</th>
+              <th className="px-2 py-2 text-left min-w-[300px]">
+                {t("wr_complaintProgress")}
+              </th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -698,9 +704,15 @@ function FollowupsTable({
           <thead className="bg-muted/40">
             <tr>
               <th className="px-2 py-2 text-left w-10">№</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">{t("wr_followupAudit")}</th>
-              <th className="px-2 py-2 text-left min-w-[160px]">{t("wr_execution")}</th>
-              <th className="px-2 py-2 text-left min-w-[160px]">{t("wr_progress")}</th>
+              <th className="px-2 py-2 text-left min-w-[200px]">
+                {t("wr_followupAudit")}
+              </th>
+              <th className="px-2 py-2 text-left min-w-[160px]">
+                {t("wr_execution")}
+              </th>
+              <th className="px-2 py-2 text-left min-w-[160px]">
+                {t("wr_progress")}
+              </th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -797,8 +809,12 @@ function DaaWorksTable({
               <th className="px-2 py-2 text-left min-w-[200px]">
                 {t("wr_plannedTask")}
               </th>
-              <th className="px-2 py-2 text-left min-w-[180px]">{t("wr_goal")}</th>
-              <th className="px-2 py-2 text-left min-w-[200px]">{t("wr_execution")}</th>
+              <th className="px-2 py-2 text-left min-w-[180px]">
+                {t("wr_goal")}
+              </th>
+              <th className="px-2 py-2 text-left min-w-[200px]">
+                {t("wr_execution")}
+              </th>
               {!readOnly && <th className="w-10" />}
             </tr>
           </thead>
@@ -1209,7 +1225,7 @@ function PvTable({
           {headers.map((h, i) => (
             <th
               key={i}
-              className="border border-[#c8d0dc] px-1.5 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5]"
+              className="border border-border px-1.5 py-[5px] text-left font-semibold text-foreground bg-muted/50"
               style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
             >
               {h}
@@ -1222,18 +1238,18 @@ function PvTable({
           <tr>
             <td
               colSpan={headers.length}
-              className="border border-[#c8d0dc] px-2 py-3 text-center text-gray-400 italic"
+              className="border border-border px-2 py-3 text-center text-gray-400 italic"
             >
               {t("wr_noData")}
             </td>
           </tr>
         ) : (
           rows.map((row, i) => (
-            <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-[#f5f7fb]"}>
+            <tr key={i} className={i % 2 === 0 ? "bg-card" : "bg-muted/30"}>
               {row.map((cell, j) => (
                 <td
                   key={j}
-                  className="border border-[#c8d0dc] px-1.5 py-[5px] text-[#333] align-top"
+                  className="border border-border px-1.5 py-[5px] text-[#333] align-top"
                   style={{
                     overflowWrap: "anywhere",
                     wordBreak: "break-word",
@@ -1280,10 +1296,10 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
           <tbody>
             {left.map((f) => (
               <tr key={f.key}>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] font-semibold text-[#1a2744] bg-[#e8edf5] w-[60%]">
+                <td className="border border-border px-2 py-[5px] font-semibold text-foreground bg-muted/50 w-[60%]">
                   {f.label}
                 </td>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] text-right tabular-nums">
+                <td className="border border-border px-2 py-[5px] text-[#333] text-right tabular-nums">
                   {data[f.key] || "—"}
                 </td>
               </tr>
@@ -1297,10 +1313,10 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
           <tbody>
             {right.map((f) => (
               <tr key={f.key}>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] font-semibold text-[#1a2744] bg-[#e8edf5] w-[35%] align-top">
+                <td className="border border-border px-2 py-[5px] font-semibold text-foreground bg-muted/50 w-[35%] align-top">
                   {f.label}
                 </td>
-                <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">
+                <td className="border border-border px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">
                   {data[f.key] || "—"}
                 </td>
               </tr>
@@ -1310,7 +1326,7 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
       </div>
       {extraRows.length > 0 && (
         <div>
-          <div className="text-[9px] font-semibold text-[#1a2744] uppercase tracking-wide mb-1 mt-2">
+          <div className="text-[9px] font-semibold text-foreground uppercase tracking-wide mb-1 mt-2">
             {t("wr_extraInfo")}
           </div>
           <table
@@ -1319,10 +1335,10 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
           >
             <thead>
               <tr>
-                <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5] w-[35%]">
+                <th className="border border-border px-2 py-[5px] text-left font-semibold text-foreground bg-muted/50 w-[35%]">
                   {t("wr_titleCol")}
                 </th>
-                <th className="border border-[#c8d0dc] px-2 py-[5px] text-left font-semibold text-[#1a2744] bg-[#e8edf5]">
+                <th className="border border-border px-2 py-[5px] text-left font-semibold text-foreground bg-muted/50">
                   {t("wr_contentCol")}
                 </th>
               </tr>
@@ -1331,12 +1347,12 @@ function PvOtherInfo({ data }: { data: OtherInfo }) {
               {extraRows.map((row, i) => (
                 <tr
                   key={row.id}
-                  className={i % 2 === 0 ? "bg-white" : "bg-[#f5f7fb]"}
+                  className={i % 2 === 0 ? "bg-card" : "bg-muted/30"}
                 >
-                  <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] font-medium align-top">
+                  <td className="border border-border px-2 py-[5px] text-[#333] font-medium align-top">
                     {row.label || "—"}
                   </td>
-                  <td className="border border-[#c8d0dc] px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">
+                  <td className="border border-border px-2 py-[5px] text-[#333] whitespace-pre-wrap align-top">
                     {row.value || "—"}
                   </td>
                 </tr>
@@ -1367,12 +1383,12 @@ function PvSection({
         >
           {n}
         </div>
-        <h2 className="text-[10.5px] font-bold text-[#1a2744] uppercase tracking-wide">
+        <h2 className="text-[10.5px] font-bold text-foreground uppercase tracking-wide">
           {title}
         </h2>
       </div>
       <div
-        className="rounded border border-[#c8d0dc]"
+        className="rounded border border-border"
         style={{ overflowWrap: "anywhere" }}
       >
         {children}
@@ -1422,7 +1438,7 @@ function WeeklyPreviewDoc({
             <div className="text-[9px] font-semibold tracking-[0.15em] uppercase text-[#6b7a99] mb-0.5">
               {t("wr_orgHeader")}
             </div>
-            <h1 className="text-[18px] font-black text-[#1a2744] leading-tight tracking-tight">
+            <h1 className="text-[18px] font-black text-foreground leading-tight tracking-tight">
               {t("wr_docTitle")}
             </h1>
             <div className="text-[10px] text-[#4a5568] mt-0.5">
@@ -1430,11 +1446,11 @@ function WeeklyPreviewDoc({
             </div>
           </div>
           <div className="text-right">
-            <div className="inline-block border border-[#c8d0dc] rounded-lg px-3 py-2 bg-[#f0f4ff]">
+            <div className="inline-block border border-border rounded-lg px-3 py-2 bg-muted/20">
               <div className="text-[8.5px] text-[#6b7a99] uppercase tracking-wide mb-0.5">
                 {t("wr_period")}
               </div>
-              <div className="text-[11px] font-bold text-[#1a2744]">
+              <div className="text-[11px] font-bold text-foreground">
                 {fmt(weekStart)}
               </div>
               <div className="text-[9px] text-[#6b7a99]">— {fmt(weekEnd)}</div>
@@ -1490,7 +1506,12 @@ function WeeklyPreviewDoc({
           </PvSection>
           <PvSection n={3} title={t("wr_s3Title")}>
             <PvTable
-              headers={["№", t("wr_followupAudit"), t("wr_execution"), t("wr_progress")]}
+              headers={[
+                "№",
+                t("wr_followupAudit"),
+                t("wr_execution"),
+                t("wr_progress"),
+              ]}
               colWidths={["5%", "40%", "30%", "25%"]}
               rows={s.followups.map((r) => [
                 r.rowNo,
@@ -1517,7 +1538,12 @@ function WeeklyPreviewDoc({
       <div className="px-7 pb-7">
         <PvSection n={1} title={t("wr_daaSection1")}>
           <PvTable
-            headers={["№", t("wr_plannedTask"), t("wr_goal"), t("wr_execution")]}
+            headers={[
+              "№",
+              t("wr_plannedTask"),
+              t("wr_goal"),
+              t("wr_execution"),
+            ]}
             colWidths={["5%", "33%", "30%", "32%"]}
             rows={s.daaWorks.map((r) => [
               r.rowNo,
@@ -1700,10 +1726,7 @@ export default function WeeklyReportPage() {
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <ClipboardList className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
         <h2 className="text-xl font-semibold mb-2">{t("wr_noAccess")}</h2>
-        <p className="text-muted-foreground">
-          {t("wr_noAccessMsg")}
-
-        </p>
+        <p className="text-muted-foreground">{t("wr_noAccessMsg")}</p>
       </div>
     );
   }
@@ -1791,7 +1814,8 @@ export default function WeeklyReportPage() {
                   if (!e.target.value) return;
                   const d = new Date(e.target.value + "T00:00:00Z");
                   const { year: y, week: w } = getIsoWeek(d);
-                  setYear(y); setWeek(w);
+                  setYear(y);
+                  setWeek(w);
                 }}
                 className="px-2 py-1 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-foreground/20 transition-colors"
                 style={{ fontFamily: "var(--font-jetbrainsMono)" }}
@@ -1804,7 +1828,8 @@ export default function WeeklyReportPage() {
                   if (!e.target.value) return;
                   const d = new Date(e.target.value + "T00:00:00Z");
                   const { year: y, week: w } = getIsoWeek(d);
-                  setYear(y); setWeek(w);
+                  setYear(y);
+                  setWeek(w);
                 }}
                 className="px-2 py-1 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-foreground/20 transition-colors"
                 style={{ fontFamily: "var(--font-jetbrainsMono)" }}
@@ -1880,7 +1905,7 @@ export default function WeeklyReportPage() {
               </div>
             )}
           </div>
-          <p className="text-center text-slate-500 text-xs py-6 print:hidden">
+          <p className="text-center text-muted-foreground/70 text-xs py-6 print:hidden">
             {user?.name && (
               <>
                 <span>{user.name}</span>
@@ -1902,7 +1927,6 @@ export default function WeeklyReportPage() {
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-sm mb-5">
                 <CheckCircle2 className="w-4 h-4" />
                 {t("wr_pdfHint")}
-                
               </div>
             )}
             {roleInfo.role === "audit" ? (
@@ -1912,7 +1936,7 @@ export default function WeeklyReportPage() {
             )}
           </div>
           {/* Right: preview */}
-          <div className="w-1/2 overflow-y-auto bg-slate-950 px-3 py-6 sm:px-6 weekly-print-area">
+          <div className="w-1/2 overflow-y-auto bg-background px-3 py-6 sm:px-6 weekly-print-area">
             {/* A4-style shadow sheet */}
             <div
               className="bg-white rounded-2xl overflow-hidden weekly-print-sheet"
@@ -1931,7 +1955,7 @@ export default function WeeklyReportPage() {
                 userName={user?.name ?? ""}
               />
             </div>
-            <p className="text-center text-slate-600 text-[11px] mt-3 print:hidden">
+            <p className="text-center text-muted-foreground/50 text-[11px] mt-3 print:hidden">
               {t("wr_pdfHint")}
             </p>
           </div>

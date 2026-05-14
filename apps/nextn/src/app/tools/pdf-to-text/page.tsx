@@ -109,7 +109,7 @@ export default function PdfToTextPage() {
           }
         }
 
-        setExtractedText(fullText.trim() || `(${t("pdfNoText")})`); 
+        setExtractedText(fullText.trim() || `(${t("pdfNoText")})`);
         setCurrentPage(0);
       } catch (err) {
         console.error(err);
@@ -202,12 +202,12 @@ export default function PdfToTextPage() {
           {/* Stats */}
           <div className="flex items-center gap-2 ml-2">
             {pageCount > 0 && (
-              <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+              <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded-full">
                 {pageCount} хуудас
               </span>
             )}
             {charCount > 0 && (
-              <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+              <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded-full">
                 {charCount.toLocaleString()} тэмдэгт
               </span>
             )}
@@ -244,7 +244,7 @@ export default function PdfToTextPage() {
                   ${
                     dragging
                       ? "border-pink-400 bg-pink-500/10 scale-[1.02]"
-                      : "border-slate-700 bg-slate-800/30 hover:border-slate-500 hover:bg-slate-800/50"
+                      : "border-border bg-muted/30 hover:border-border hover:bg-muted/50"
                   }
                 `}
                 onDragOver={handleDragOver}
@@ -260,13 +260,13 @@ export default function PdfToTextPage() {
                   <Upload className="w-9 h-9 text-white" />
                 </motion.div>
                 <div className="text-center">
-                  <p className="text-xl font-semibold text-slate-200">
+                  <p className="text-xl font-semibold text-foreground/90">
                     {t("pdfDropZone")}
                   </p>
-                  <p className="text-sm text-slate-500 mt-2">
+                  <p className="text-sm text-muted-foreground/70 mt-2">
                     {t("pdfDropHint")}
                   </p>
-                  <p className="text-xs text-slate-600 mt-1">
+                  <p className="text-xs text-muted-foreground/50 mt-1">
                     {t("pdfFormat")}
                   </p>
                 </div>
@@ -299,19 +299,19 @@ export default function PdfToTextPage() {
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="w-4 h-4 text-pink-400 flex-shrink-0" />
                     <span
-                      className="text-sm font-medium text-slate-300 truncate"
+                      className="text-sm font-medium text-foreground/80 truncate"
                       title={file.name}
                     >
                       {file.name}
                     </span>
-                    <span className="text-xs text-slate-600 flex-shrink-0">
+                    <span className="text-xs text-muted-foreground/50 flex-shrink-0">
                       {(file.size / 1024).toFixed(0)} KB
                     </span>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 h-7 px-2 flex-shrink-0 ml-2"
+                    className="text-muted-foreground/70 hover:text-red-400 hover:bg-red-500/10 h-7 px-2 flex-shrink-0 ml-2"
                     onClick={handleClear}
                   >
                     <X className="w-3.5 h-3.5 mr-1" />
@@ -320,7 +320,7 @@ export default function PdfToTextPage() {
                 </div>
 
                 {/* PDF iframe */}
-                <div className="flex-1 rounded-xl overflow-hidden border border-slate-700/50 bg-slate-900 min-h-0">
+                <div className="flex-1 rounded-xl overflow-hidden border border-border/50 bg-background min-h-0">
                   <iframe
                     src={fileUrl!}
                     className="w-full h-full"
@@ -334,7 +334,7 @@ export default function PdfToTextPage() {
               <div className="flex flex-col gap-2 min-h-0">
                 {/* Toolbar */}
                 <div className="flex items-center justify-between flex-shrink-0 px-1">
-                  <span className="text-sm font-medium text-slate-300">
+                  <span className="text-sm font-medium text-foreground/80">
                     {t("pdfExtracted")}
                   </span>
                   <div className="flex items-center gap-2">
@@ -343,7 +343,7 @@ export default function PdfToTextPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 px-3 text-xs border-slate-700 bg-slate-800/50 hover:bg-slate-700 text-slate-300"
+                          className="h-7 px-3 text-xs border-border bg-muted/50 hover:bg-muted text-foreground/80"
                           onClick={handleDownload}
                         >
                           <Download className="w-3 h-3 mr-1" />
@@ -376,25 +376,25 @@ export default function PdfToTextPage() {
                 </div>
 
                 {/* Text panel */}
-                <div className="flex-1 rounded-xl border border-slate-700/50 bg-slate-900/60 min-h-0 relative overflow-hidden">
+                <div className="flex-1 rounded-xl border border-border/50 bg-card/60 min-h-0 relative overflow-hidden">
                   {loading ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
                       <div className="relative">
-                        <div className="w-14 h-14 rounded-full border-4 border-slate-700" />
+                        <div className="w-14 h-14 rounded-full border-4 border-border" />
                         <div className="absolute inset-0 w-14 h-14 rounded-full border-4 border-pink-500 border-t-transparent animate-spin" />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm text-slate-300 font-medium">
+                        <p className="text-sm text-foreground/80 font-medium">
                           {t("pdfLoading")}
                         </p>
                         {currentPage > 0 && pageCount > 0 && (
-                          <p className="text-xs text-slate-500 mt-1">
+                          <p className="text-xs text-muted-foreground/70 mt-1">
                             {currentPage} / {pageCount} {t("pdfPageCount")}
                           </p>
                         )}
                       </div>
                       {pageCount > 0 && (
-                        <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="w-48 h-1.5 bg-card rounded-full overflow-hidden">
                           <motion.div
                             className="h-full bg-pink-500 rounded-full"
                             animate={{
@@ -414,21 +414,21 @@ export default function PdfToTextPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                        className="border-border text-foreground/80 hover:bg-card"
                         onClick={handleClear}
                       >
                         {t("back")}
                       </Button>
                     </div>
                   ) : extractedText ? (
-                    <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600 hover:scrollbar-thumb-slate-500">
-                      <pre className="p-4 text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                    <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border hover:scrollbar-thumb-muted-foreground/50">
+                      <pre className="p-4 text-xs text-foreground/80 whitespace-pre-wrap font-mono leading-relaxed">
                         {extractedText}
                       </pre>
                     </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-slate-600 text-sm">{t("pdfNoText")}</p>
+                      <p className="text-muted-foreground/50 text-sm">{t("pdfNoText")}</p>
                     </div>
                   )}
                 </div>

@@ -13,7 +13,7 @@ const Footer = () => {
           height={18}
           className="rounded opacity-70"
         />
-        <span className="text-xs text-muted-foreground/60">Голомт Банк</span>
+        <span className="text-xs text-muted-foreground">Голомт Банк</span>
       </div>
     </footer>
   );

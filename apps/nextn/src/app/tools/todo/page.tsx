@@ -143,9 +143,22 @@ const TodoItem = ({
   const { t } = useLanguage();
   const priority = priorityConfig[todo.priority] || priorityConfig.low;
   const catEmoji = todo.category ? categoryEmoji[todo.category] : undefined;
-  const catLabelKey = { work: "catWork", personal: "catPersonal", health: "catHealth", study: "catLearn", other: "catOther" } as const;
-  const catLabel = todo.category && todo.category in catLabelKey ? t(catLabelKey[todo.category as keyof typeof catLabelKey]) : undefined;
-  const priorityLabelKey = { high: "priorityHigh", medium: "priorityMedium", low: "priorityLow" } as const;
+  const catLabelKey = {
+    work: "catWork",
+    personal: "catPersonal",
+    health: "catHealth",
+    study: "catLearn",
+    other: "catOther",
+  } as const;
+  const catLabel =
+    todo.category && todo.category in catLabelKey
+      ? t(catLabelKey[todo.category as keyof typeof catLabelKey])
+      : undefined;
+  const priorityLabelKey = {
+    high: "priorityHigh",
+    medium: "priorityMedium",
+    low: "priorityLow",
+  } as const;
   const priorityLabel = t(priorityLabelKey[todo.priority]);
   const isOverdue =
     todo.dueDate && new Date(todo.dueDate) < new Date() && !todo.completed;
@@ -414,9 +427,7 @@ export default function TodoPage() {
               <Lock className="w-12 h-12 text-muted-foreground" />
             </div>
             <h2 className="text-2xl font-bold mb-3">{t("accessDenied")}</h2>
-            <p className="text-muted-foreground">
-              {t("accessDeniedMsg")}
-            </p>
+            <p className="text-muted-foreground">{t("accessDeniedMsg")}</p>
           </div>
         </div>
       </div>
@@ -530,13 +541,19 @@ export default function TodoPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="high">
-                <span className="text-red-500 text-xs">● {t("priorityHigh")}</span>
+                <span className="text-red-500 text-xs">
+                  ● {t("priorityHigh")}
+                </span>
               </SelectItem>
               <SelectItem value="medium">
-                <span className="text-amber-500 text-xs">● {t("priorityMedium")}</span>
+                <span className="text-amber-500 text-xs">
+                  ● {t("priorityMedium")}
+                </span>
               </SelectItem>
               <SelectItem value="low">
-                <span className="text-primary text-xs">● {t("priorityLow")}</span>
+                <span className="text-primary text-xs">
+                  ● {t("priorityLow")}
+                </span>
               </SelectItem>
             </SelectContent>
           </Select>
@@ -560,8 +577,14 @@ export default function TodoPage() {
           {(
             [
               { key: "all", label: `${t("todoFilterAll")} (${todos.length})` },
-              { key: "active", label: `${t("todoFilterActive")} (${activeCount})` },
-              { key: "completed", label: `${t("todoFilterDone")} (${completedCount})` },
+              {
+                key: "active",
+                label: `${t("todoFilterActive")} (${activeCount})`,
+              },
+              {
+                key: "completed",
+                label: `${t("todoFilterDone")} (${completedCount})`,
+              },
             ] as const
           ).map(({ key, label }) => (
             <button
@@ -580,30 +603,39 @@ export default function TodoPage() {
           {Object.keys(categoryEmoji).some((val) =>
             todos.some((td) => td.category === val),
           ) && <div className="h-4 w-px bg-border/50 mx-1" />}
-          {(Object.entries(categoryEmoji) as [string, string][]).map(([val, emoji]) => {
-            const catLabelKey = { work: "catWork", personal: "catPersonal", health: "catHealth", study: "catLearn", other: "catOther" } as const;
-            const count = todos.filter((td) => td.category === val).length;
-            if (count === 0) return null;
-            const label = val in catLabelKey ? t(catLabelKey[val as keyof typeof catLabelKey]) : val;
-            return (
-              <button
-                key={val}
-                onClick={() =>
-                  setCategoryFilter(
-                    categoryFilter === val ? "all" : val,
-                  )
-                }
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium transition-all",
-                  categoryFilter === val
-                    ? "bg-primary/20 text-primary border border-primary/30"
-                    : "bg-muted/30 text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                {emoji} {label} ({count})
-              </button>
-            );
-          })}
+          {(Object.entries(categoryEmoji) as [string, string][]).map(
+            ([val, emoji]) => {
+              const catLabelKey = {
+                work: "catWork",
+                personal: "catPersonal",
+                health: "catHealth",
+                study: "catLearn",
+                other: "catOther",
+              } as const;
+              const count = todos.filter((td) => td.category === val).length;
+              if (count === 0) return null;
+              const label =
+                val in catLabelKey
+                  ? t(catLabelKey[val as keyof typeof catLabelKey])
+                  : val;
+              return (
+                <button
+                  key={val}
+                  onClick={() =>
+                    setCategoryFilter(categoryFilter === val ? "all" : val)
+                  }
+                  className={cn(
+                    "px-3 py-1 rounded-full text-xs font-medium transition-all",
+                    categoryFilter === val
+                      ? "bg-primary/20 text-primary border border-primary/30"
+                      : "bg-muted/30 text-muted-foreground hover:bg-muted/50",
+                  )}
+                >
+                  {emoji} {label} ({count})
+                </button>
+              );
+            },
+          )}
         </motion.div>
 
         {/* Todo list */}
@@ -660,7 +692,9 @@ export default function TodoPage() {
           </DialogHeader>
           <form onSubmit={handleDialogAdd} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("todoNameLabel")}</Label>
+              <Label className="text-xs text-muted-foreground">
+                {t("todoNameLabel")}
+              </Label>
               <input
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
@@ -687,17 +721,20 @@ export default function TodoPage() {
                   <SelectContent>
                     <SelectItem value="high">
                       <span className="flex items-center gap-2">
-                        <Flag className="h-3.5 w-3.5 text-red-500" /> {t("priorityHigh")}
+                        <Flag className="h-3.5 w-3.5 text-red-500" />{" "}
+                        {t("priorityHigh")}
                       </span>
                     </SelectItem>
                     <SelectItem value="medium">
                       <span className="flex items-center gap-2">
-                        <Flag className="h-3.5 w-3.5 text-amber-500" /> {t("priorityMedium")}
+                        <Flag className="h-3.5 w-3.5 text-amber-500" />{" "}
+                        {t("priorityMedium")}
                       </span>
                     </SelectItem>
                     <SelectItem value="low">
                       <span className="flex items-center gap-2">
-                        <Flag className="h-3.5 w-3.5 text-primary" /> {t("priorityLow")}
+                        <Flag className="h-3.5 w-3.5 text-primary" />{" "}
+                        {t("priorityLow")}
                       </span>
                     </SelectItem>
                   </SelectContent>
@@ -705,23 +742,36 @@ export default function TodoPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("todoCategoryLabel")}</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("todoCategoryLabel")}
+                </Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger className="bg-background/60 border-border/50 rounded-xl">
                     <SelectValue placeholder={t("todoCategoryPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.entries(categoryEmoji) as [string, string][]).map(([val, emoji]) => {
-                      const catLabelKey2 = { work: "catWork", personal: "catPersonal", health: "catHealth", study: "catLearn", other: "catOther" } as const;
-                      const lbl = val in catLabelKey2 ? t(catLabelKey2[val as keyof typeof catLabelKey2]) : val;
-                      return (
-                        <SelectItem key={val} value={val}>
-                          <span className="flex items-center gap-2">
-                            {emoji} {lbl}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
+                    {(Object.entries(categoryEmoji) as [string, string][]).map(
+                      ([val, emoji]) => {
+                        const catLabelKey2 = {
+                          work: "catWork",
+                          personal: "catPersonal",
+                          health: "catHealth",
+                          study: "catLearn",
+                          other: "catOther",
+                        } as const;
+                        const lbl =
+                          val in catLabelKey2
+                            ? t(catLabelKey2[val as keyof typeof catLabelKey2])
+                            : val;
+                        return (
+                          <SelectItem key={val} value={val}>
+                            <span className="flex items-center gap-2">
+                              {emoji} {lbl}
+                            </span>
+                          </SelectItem>
+                        );
+                      },
+                    )}
                   </SelectContent>
                 </Select>
               </div>

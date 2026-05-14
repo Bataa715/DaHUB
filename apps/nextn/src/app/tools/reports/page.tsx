@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,31 +80,33 @@ export default function ReportsPage() {
   }, [pyTools, search]);
 
   return (
-    <div className="min-h-screen bg-[#080d14] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* ── Header ── */}
-      <div className="sticky top-0 z-20 border-b border-white/[0.07] bg-[#080d14]/90 backdrop-blur-xl">
+      <div className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center gap-3">
           <Link
             href="/tools"
-            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-200 transition-colors text-sm"
+            className="flex items-center gap-1.5 text-muted-foreground/70 hover:text-foreground/90 transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" /> {t("back")}
           </Link>
-          <span className="text-slate-700">/</span>
+          <span className="text-muted-foreground/40">/</span>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md">
               <Code2 className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-semibold text-slate-100">{t("toolReportsTitle")}</span>
+            <span className="font-semibold text-foreground">
+              {t("toolReportsTitle")}
+            </span>
           </div>
           {!loading && pyTools.length > 0 && (
-            <div className="ml-auto flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 w-52 focus-within:border-violet-500/50 transition-colors">
-              <Search className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+            <div className="ml-auto flex items-center gap-2 bg-muted/40 border border-border rounded-lg px-3 py-1.5 w-52 focus-within:border-violet-500/50 transition-colors">
+              <Search className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("reportsSearchPlaceholder")}
-                className="bg-transparent text-sm text-slate-200 placeholder:text-slate-600 outline-none w-full"
+                className="bg-transparent text-sm text-foreground/90 placeholder:text-muted-foreground/50 outline-none w-full"
               />
             </div>
           )}
@@ -118,28 +120,26 @@ export default function ReportsPage() {
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden animate-pulse"
+                className="rounded-2xl border border-border bg-muted/20 overflow-hidden animate-pulse"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <div className="h-1 bg-slate-800" />
+                <div className="h-1 bg-card" />
                 <div className="p-5 space-y-3">
-                  <div className="w-11 h-11 rounded-xl bg-slate-800" />
-                  <div className="h-3.5 w-3/4 bg-slate-800 rounded-full" />
-                  <div className="h-2.5 w-full bg-slate-800/70 rounded-full" />
-                  <div className="h-5 w-32 bg-slate-800/60 rounded-full mt-2" />
+                  <div className="w-11 h-11 rounded-xl bg-card" />
+                  <div className="h-3.5 w-3/4 bg-card rounded-full" />
+                  <div className="h-2.5 w-full bg-card/70 rounded-full" />
+                  <div className="h-5 w-32 bg-muted/60 rounded-full mt-2" />
                 </div>
               </div>
             ))}
           </div>
         ) : pyTools.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-            <Code2 className="w-14 h-14 text-slate-700" />
-            <p className="text-slate-400 font-medium text-lg">
+            <Code2 className="w-14 h-14 text-muted-foreground/40" />
+            <p className="text-muted-foreground font-medium text-lg">
               {t("reportsNoAccess")}
             </p>
-            <p className="text-slate-600 text-sm">
-              {t("reportsContactAdmin")}
-            </p>
+            <p className="text-muted-foreground/50 text-sm">{t("reportsContactAdmin")}</p>
           </div>
         ) : (
           <>
@@ -155,7 +155,7 @@ export default function ReportsPage() {
                 {t("reportsTool")}
               </div>
               {search && filtered.length === 0 && (
-                <span className="text-xs text-slate-600">
+                <span className="text-xs text-muted-foreground/50">
                   «{search}» — {t("reportsSearchNotFound")}
                 </span>
               )}
@@ -170,8 +170,9 @@ export default function ReportsPage() {
                   const DmIcon = dm.Icon;
                   const href = `/tools/reports/python/${tool.id}`;
                   const outMeta =
-                    OUTPUT_META[tool.outputFormat as keyof typeof OUTPUT_META] ??
-                    OUTPUT_META.excel;
+                    OUTPUT_META[
+                      tool.outputFormat as keyof typeof OUTPUT_META
+                    ] ?? OUTPUT_META.excel;
                   const OutIcon = outMeta.icon;
 
                   return (
@@ -189,7 +190,7 @@ export default function ReportsPage() {
                       className="group cursor-pointer h-full"
                       onClick={() => router.push(href)}
                     >
-                      <div className="relative h-full flex flex-col rounded-2xl border border-white/[0.07] bg-white/[0.03] overflow-hidden transition-all duration-200 group-hover:border-white/[0.15] group-hover:bg-white/[0.05] group-hover:shadow-xl group-hover:shadow-black/40">
+                      <div className="relative h-full flex flex-col rounded-2xl border border-border bg-muted/30 overflow-hidden transition-all duration-200 group-hover:border-white/[0.15] group-hover:bg-white/[0.05] group-hover:shadow-xl group-hover:shadow-black/40">
                         <div
                           className={`h-1 w-full bg-gradient-to-r ${tool.color}`}
                         />
@@ -204,10 +205,10 @@ export default function ReportsPage() {
                               Python
                             </span>
                           </div>
-                          <p className="font-semibold text-slate-100 text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
+                          <p className="font-semibold text-foreground text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
                             {tool.name}
                           </p>
-                          <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed min-h-[2rem]">
+                          <p className="text-xs text-muted-foreground/70 mt-1.5 line-clamp-2 leading-relaxed min-h-[2rem]">
                             {tool.description || "\u00a0"}
                           </p>
                           <div className="mt-auto pt-4 flex flex-wrap gap-1.5">
@@ -217,14 +218,14 @@ export default function ReportsPage() {
                               <DmIcon className="w-3 h-3" /> {t(dm.labelKey)}
                             </span>
                             <span
-                              className={`inline-flex items-center gap-1 text-xs rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 ${outMeta.color}`}
+                              className={`inline-flex items-center gap-1 text-xs rounded-full border border-border bg-muted/40 px-2.5 py-0.5 ${outMeta.color}`}
                             >
                               <OutIcon className="w-3 h-3" /> {outMeta.label}
                             </span>
                           </div>
                         </div>
-                        <div className="absolute bottom-4 right-4 w-7 h-7 rounded-lg bg-white/0 group-hover:bg-white/[0.07] flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
-                          <Download className="w-3.5 h-3.5 text-slate-400" />
+                        <div className="absolute bottom-4 right-4 w-7 h-7 rounded-lg bg-white/0 group-hover:bg-muted/50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                          <Download className="w-3.5 h-3.5 text-muted-foreground" />
                         </div>
                       </div>
                     </motion.div>

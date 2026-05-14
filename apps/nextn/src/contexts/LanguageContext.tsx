@@ -113,11 +113,9 @@ export const translations = {
     toolsNoneDesc:
       "Танд ашиглах боломжтой хэрэгсэл байхгүй байна. Админтай холбогдож эрх авна уу.",
     toolTodoTitle: "Хийх зүйлсийн жагсаалт",
-    toolTodoDesc:
-      "Өдөр тутмын ажлуудаа үр дүнтэй төлөвлөх хэрэгсэл",
+    toolTodoDesc: "Өдөр тутмын ажлуудаа үр дүнтэй төлөвлөх хэрэгсэл",
     toolChessTitle: "Оюуны спорт",
-    toolChessDesc:
-      "Шатар",
+    toolChessDesc: "Шатар",
     toolSampleTitle: "Санамсаргүй түүвэр",
     toolSampleDesc: "Аудитын санамсаргүй түүвэр гаргах хэрэгсэл",
     toolPivotTitle: "Pivot",
@@ -125,33 +123,26 @@ export const translations = {
     toolReportTitle: "Улирлын тайлан",
     toolReportDesc: "Улирлын ажлын тайлан бэлтгэх",
     toolDbRequestTitle: "Эрх Хүсэх",
-    toolDbRequestDesc:
-      "ClickHouse хүснэгтэд хандах эрх хүсэх",
+    toolDbRequestDesc: "ClickHouse хүснэгтэд хандах эрх хүсэх",
     toolDbGrantTitle: "Эрх Олгох",
     toolDbGrantDesc: "ClickHouse хандалтын хүсэлтүүдийг хянаж удирдах",
     toolEnglishTitle: "Англи үгс",
-    toolEnglishDesc:
-      "Англи үгийн санг бүрдүүлж, цээжлэх",
+    toolEnglishDesc: "Англи үгийн санг бүрдүүлж, цээжлэх",
     toolExcelTitle: "Excel тайлан",
     toolExcelDesc: "Системийн мэдээллээс Excel тайлан үүсгэж татах",
     toolPdfTitle: "PDF → Текст",
-    toolPdfDesc:
-      "PDF файлыг текст болгон хөрвүүлэх хэрэгсэл",
+    toolPdfDesc: "PDF файлыг текст болгон хөрвүүлэх хэрэгсэл",
     toolDataDocTitle: "Өгөгдлийн толь бичиг",
-    toolDataDocDesc:
-      "ClickHouse өгөгдлийн сангийн баганын тайлбар",
+    toolDataDocDesc: "ClickHouse өгөгдлийн сангийн баганын тайлбар",
     toolAlertBoxTitle: "Alert Box",
     toolAlertBoxDesc:
       "Банкны эрсдэлийн шинжилгээ, CIF хайлт, Red Flag мэдэгдэл",
     toolRiskAssessmentTitle: "Эрсдэлийн үнэлгээ",
-    toolRiskAssessmentDesc:
-      "Сар бүрийн эрсдэлийн үнэлгээ",
+    toolRiskAssessmentDesc: "Сар бүрийн эрсдэлийн үнэлгээ",
     toolWeeklyReportTitle: "Долоо хоногийн тайлан",
-    toolWeeklyReportDesc:
-      "Хэлтсүүдийн долоо хоногийн ажлын тайлан",
+    toolWeeklyReportDesc: "Хэлтсүүдийн долоо хоногийн ажлын тайлан",
     toolReportsTitle: "Тайлан татах",
-    toolReportsDesc:
-      "Дотоод хэрэглээний тайлан татах хэрэгсэл",
+    toolReportsDesc: "Дотоод хэрэглээний тайлан татах хэрэгсэл",
 
     // Departments page
     albumTitle: "Альбом",
@@ -498,7 +489,8 @@ export const translations = {
     all: "Бүгд",
     completed: "Дууссан",
     accessDenied: "Эрх хязгаарлагдсан",
-    accessDeniedMsg: "Та энэ хэрэгслийг ашиглах эрхгүй байна. Админтай холбогдоно уу.",
+    accessDeniedMsg:
+      "Та энэ хэрэгслийг ашиглах эрхгүй байна. Админтай холбогдоно уу.",
     fetchedAt: "Татсан:",
     clearSearch: "Цэвэрлэх",
     viewGrouped: "Бүлэг",
@@ -549,7 +541,8 @@ export const translations = {
 
     // Pivot tool
     pivotTitle: "Pivot түүвэр тооцоолох",
-    pivotSubtitle: "Кодоор бүлэглэж жилээр pivot хийн, түүвэр тооцоолж Excel татах",
+    pivotSubtitle:
+      "Кодоор бүлэглэж жилээр pivot хийн, түүвэр тооцоолж Excel татах",
     pivotFileLabel: "Excel эсвэл CSV файл оруулах",
     pivotDropZone: "Файл чирж оруулах буюу дарж сонгох",
     pivotFileError: "Зөвхөн Excel (.xlsx, .xls) эсвэл CSV файл оруулна уу",
@@ -749,7 +742,8 @@ export const translations = {
     dbManageRejected: "Татгалзлаа",
     dbManageActionError: "Үйлдэл амжилтгүй",
     dbManageDeleteError: "Устгахад алдаа гарлаа",
-    dbManageHistoryConfirm: "Бүх шийдвэрлэгдсэн хүсэлтийн түүхийг устгах уу? (Хүлээгдэж байгаа хүсэлтүүд хэвээр үлдэна)",
+    dbManageHistoryConfirm:
+      "Бүх шийдвэрлэгдсэн хүсэлтийн түүхийг устгах уу? (Хүлээгдэж байгаа хүсэлтүүд хэвээр үлдэна)",
     dbManageHistoryDeleted: "Түүх устгагдлаа",
     dbManageRevoked: "Эрх цуцлагдлаа",
     dbManageRevokeError: "Цуцлахад алдаа гарлаа",
@@ -799,7 +793,8 @@ export const translations = {
     riskNoSaved: "Хадгалсан үнэлгээ байхгүй",
     riskStopCompare: "Харьцуулалт болиулах",
     riskNoOracleData: "Oracle өгөгдөл байхгүй",
-    riskNoOracleHint: "Огноогоо сонгоод «Татах» товчийг дарж Oracle-аас ачаалаарай.",
+    riskNoOracleHint:
+      "Огноогоо сонгоод «Татах» товчийг дарж Oracle-аас ачаалаарай.",
     riskSavePlaceholder: "Жишээ: 2025 Q4 Улирал",
     riskSaveError: "Хадгалахад алдаа",
     riskDeleteError: "Устгахад алдаа",
@@ -807,7 +802,8 @@ export const translations = {
 
     // Weekly Report tool
     wr_noAccess: "Эрх олгогдоогүй байна",
-    wr_noAccessMsg: "Долоо хоногийн тайлангийн хэрэгслийг хандах эрх танд алга. Системийн админтай холбогдоно уу.",
+    wr_noAccessMsg:
+      "Долоо хоногийн тайлангийн хэрэгслийг хандах эрх танд алга. Системийн админтай холбогдоно уу.",
     wr_s1Title: "Долоо хоногийн аудитын мэдээлэл",
     wr_s2Title: "Гомдлын мэдээлэл",
     wr_s3Title: "Дагах аудит",
@@ -816,7 +812,8 @@ export const translations = {
     wr_dataProcessing: "Өгөгдөл боловсруулалт",
     wr_other: "Бусад мэдээлэл",
     wr_addRow: "Мөр нэмэх",
-    wr_noExtra: "Нэмэлт мэдээлэл байхгүй. Шаардлагатай бол «Мөр нэмэх» дарна уу.",
+    wr_noExtra:
+      "Нэмэлт мэдээлэл байхгүй. Шаардлагатай бол «Мөр нэмэх» дарна уу.",
     wr_staffApproved: "Батлагдсан орон тоо",
     wr_staffWorking: "Ажиллаж байгаа",
     wr_staffLeave: "Ээлжийн амралттай",
@@ -867,9 +864,12 @@ export const translations = {
     eng_flashcardTab: "Флэшкарт",
     eng_choiceTab: "Сонголт",
     eng_writeTab: "Бичих",
-    eng_minFlashcard: "Флэшкарт эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.",
-    eng_minChoice: "Сонголтын дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.",
-    eng_minWrite: "Бичих дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.",
+    eng_minFlashcard:
+      "Флэшкарт эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.",
+    eng_minChoice:
+      "Сонголтын дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.",
+    eng_minWrite:
+      "Бичих дасгал эхлүүлэхийн тулд хамгийн багадаа 4 үг нэмнэ үү.",
     eng_searchPlaceholder: "Хайх...",
     eng_sortByDate: "Нэмсэн огноогоор",
     eng_sortAlpha: "Үсгийн дарааллаар",
@@ -1410,7 +1410,8 @@ export const translations = {
     all: "All",
     completed: "Completed",
     accessDenied: "Access restricted",
-    accessDeniedMsg: "You don't have permission to use this tool. Contact your admin.",
+    accessDeniedMsg:
+      "You don't have permission to use this tool. Contact your admin.",
     fetchedAt: "Fetched:",
     clearSearch: "Clear",
     viewGrouped: "Group",
@@ -1461,7 +1462,8 @@ export const translations = {
 
     // Pivot tool
     pivotTitle: "Pivot & sample calculation",
-    pivotSubtitle: "Group by code, pivot by year, calculate sample and export to Excel",
+    pivotSubtitle:
+      "Group by code, pivot by year, calculate sample and export to Excel",
     pivotFileLabel: "Upload Excel or CSV file",
     pivotDropZone: "Drag and drop or click to select a file",
     pivotFileError: "Please upload an Excel (.xlsx, .xls) or CSV file",
@@ -1661,7 +1663,8 @@ export const translations = {
     dbManageRejected: "Rejected",
     dbManageActionError: "Action failed",
     dbManageDeleteError: "Delete failed",
-    dbManageHistoryConfirm: "Delete all resolved request history? (Pending requests will remain.)",
+    dbManageHistoryConfirm:
+      "Delete all resolved request history? (Pending requests will remain.)",
     dbManageHistoryDeleted: "History deleted",
     dbManageRevoked: "Access revoked",
     dbManageRevokeError: "Failed to revoke",
@@ -1711,7 +1714,8 @@ export const translations = {
     riskNoSaved: "No saved assessments",
     riskStopCompare: "Stop comparing",
     riskNoOracleData: "No Oracle data",
-    riskNoOracleHint: "Select a date and click «Fetch» to load data from Oracle.",
+    riskNoOracleHint:
+      "Select a date and click «Fetch» to load data from Oracle.",
     riskSavePlaceholder: "Example: 2025 Q4 Quarter",
     riskSaveError: "Save error",
     riskDeleteError: "Delete error",
@@ -1719,7 +1723,8 @@ export const translations = {
 
     // Weekly Report tool
     wr_noAccess: "Access not granted",
-    wr_noAccessMsg: "You don't have access to the weekly report tool. Contact your system admin.",
+    wr_noAccessMsg:
+      "You don't have access to the weekly report tool. Contact your system admin.",
     wr_s1Title: "Weekly audit information",
     wr_s2Title: "Complaint information",
     wr_s3Title: "Follow-up audit",
@@ -1758,7 +1763,8 @@ export const translations = {
     wr_contentCol: "Content",
     wr_saved: "Changes saved",
     wr_saveError: "Error occurred",
-    wr_submitted: "This week's report has been submitted. Edit and re-submit if needed.",
+    wr_submitted:
+      "This week's report has been submitted. Edit and re-submit if needed.",
     wr_pdfHint: "Print PDF → save from browser print dialog",
     wr_noReports: "No reports submitted for this week.",
     wr_docTitle: "WEEKLY REPORT",
@@ -1771,7 +1777,8 @@ export const translations = {
 
     // English vocabulary tool
     eng_title: "English vocabulary learning",
-    eng_subtitle: "Memorize with flashcards, multiple choice, and writing exercises",
+    eng_subtitle:
+      "Memorize with flashcards, multiple choice, and writing exercises",
     eng_totalWords: "Total words",
     eng_reviewed: "Reviewed",
     eng_mastered: "Mastered",

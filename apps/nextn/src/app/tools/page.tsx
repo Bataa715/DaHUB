@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -362,7 +362,7 @@ export default function ToolsPage() {
           className="relative z-10 text-center"
         >
           <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto mb-4" />
-          <p className="text-slate-400">{t("loadingText")}</p>
+          <p className="text-muted-foreground">{t("loadingText")}</p>
         </motion.div>
       </div>
     );
@@ -383,7 +383,7 @@ export default function ToolsPage() {
           <h2 className="text-2xl font-bold text-white mb-2">
             {t("needLogin")}
           </h2>
-          <p className="text-slate-400">{t("needLoginToolsDesc")}</p>
+          <p className="text-muted-foreground">{t("needLoginToolsDesc")}</p>
         </motion.div>
       </div>
     );
@@ -423,7 +423,7 @@ export default function ToolsPage() {
             className="flex flex-col items-center justify-center min-h-[50vh] text-center"
           >
             <div className="p-8 rounded-3xl bg-card/50 backdrop-blur-xl border border-border/50 mb-6">
-              <Lock className="w-16 h-16 text-slate-500 mx-auto" />
+              <Lock className="w-16 h-16 text-muted-foreground/70 mx-auto" />
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-3">
               {t("toolsNoneFound")}

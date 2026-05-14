@@ -21,7 +21,9 @@ export default function ToolPageHeader({
   title,
   subtitle,
   rightContent,
-}: ToolPageHeaderProps) {  const { t } = useLanguage();  return (
+}: ToolPageHeaderProps) {
+  const { t } = useLanguage();
+  return (
     <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center gap-3">
         {onBack ? (

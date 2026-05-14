@@ -149,7 +149,9 @@ export default function AlertsPage() {
         rightContent={
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-surface-card border border-surface-border rounded-lg px-3 py-1.5">
-              <span className="text-[10px] text-txt-dim">{t("alertMinDash")}</span>
+              <span className="text-[10px] text-txt-dim">
+                {t("alertMinDash")}
+              </span>
               <select
                 value={minDash}
                 onChange={(e) => setMinDash(Number(e.target.value))}
@@ -292,13 +294,17 @@ export default function AlertsPage() {
                               <p className="text-[13px] font-bold text-txt">
                                 {alert.totalTransactions}
                               </p>
-                              <p className="text-[9px] text-txt-dim">{t("alertTransactions")}</p>
+                              <p className="text-[9px] text-txt-dim">
+                                {t("alertTransactions")}
+                              </p>
                             </div>
                             <div className="text-right">
                               <p className="text-[12px] font-bold text-amber-400">
                                 {formatAmount(alert.totalAmount)}₮
                               </p>
-                              <p className="text-[9px] text-txt-dim">{t("alertTotalAmount")}</p>
+                              <p className="text-[9px] text-txt-dim">
+                                {t("alertTotalAmount")}
+                              </p>
                             </div>
                             {expandedCif === alert.cif ? (
                               <ChevronUp size={16} className="text-txt-dim" />
@@ -451,7 +457,9 @@ export default function AlertsPage() {
                       size={32}
                       className="mx-auto text-txt-dim mb-2 opacity-50"
                     />
-                    <p className="text-[13px] text-txt-dim">{t("alertNoResult")}</p>
+                    <p className="text-[13px] text-txt-dim">
+                      {t("alertNoResult")}
+                    </p>
                   </div>
                 )}
 
@@ -489,13 +497,17 @@ export default function AlertsPage() {
                           <p className="text-[13px] font-bold text-txt">
                             {alert.totalTransactions}
                           </p>
-                          <p className="text-[9px] text-txt-dim">{t("alertTransactions")}</p>
+                          <p className="text-[9px] text-txt-dim">
+                            {t("alertTransactions")}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-[12px] font-bold text-amber-400">
                             {formatAmount(alert.totalAmount)}₮
                           </p>
-                          <p className="text-[9px] text-txt-dim">{t("alertTotalAmount")}</p>
+                          <p className="text-[9px] text-txt-dim">
+                            {t("alertTotalAmount")}
+                          </p>
                         </div>
                         {expandedCif === alert.cif ? (
                           <ChevronUp size={16} className="text-txt-dim" />

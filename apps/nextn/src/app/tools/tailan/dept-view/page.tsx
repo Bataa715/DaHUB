@@ -129,7 +129,7 @@ export default function DeptViewPage() {
   const submittedCount = members.filter((m) => m.status === "submitted").length;
 
   return (
-    <div className="min-h-screen bg-[#080d14] text-white">
+    <div className="min-h-screen bg-background text-white">
       {/* Ambient glows */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-violet-600/8 blur-[120px]" />
@@ -146,19 +146,19 @@ export default function DeptViewPage() {
 
       {/* Slide-in drawer */}
       <div
-        className={`fixed top-0 right-0 h-full z-50 bg-[#0d1219] border-l border-white/10 shadow-2xl
+        className={`fixed top-0 right-0 h-full z-50 bg-card border-l border-border/30 shadow-2xl
           flex flex-col transition-transform duration-300
           ${drawerOpen ? "translate-x-0" : "translate-x-full"}
           w-full sm:w-[85vw] lg:w-[78vw] xl:w-[72vw]`}
       >
         {/* Drawer header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-[#0d1219] flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border/30 bg-card flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
               <Eye className="h-4 w-4 text-violet-300" />
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] text-slate-400 leading-none mb-0.5">
+              <p className="text-[13px] text-muted-foreground leading-none mb-0.5">
                 {t("tailan_viewReportTitle")}
               </p>
               <p className="text-[15px] font-semibold text-white truncate leading-tight">
@@ -168,7 +168,7 @@ export default function DeptViewPage() {
           </div>
           <button
             onClick={closeDrawer}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -179,7 +179,7 @@ export default function DeptViewPage() {
           {reportLoading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <Loader2 className="h-7 w-7 animate-spin text-violet-400" />
-              <span className="text-slate-400 text-sm">
+              <span className="text-muted-foreground text-sm">
                 {t("tailan_reportLoading")}
               </span>
             </div>
@@ -203,8 +203,8 @@ export default function DeptViewPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
-              <MinusCircle className="h-8 w-8 text-slate-600" />
-              <p className="text-slate-400 text-sm text-center px-6">
+              <MinusCircle className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-muted-foreground text-sm text-center px-6">
                 {selectedMember?.userName} {t("tailan_noReportSubmitted")}
               </p>
             </div>
@@ -232,7 +232,7 @@ export default function DeptViewPage() {
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="appearance-none bg-white/[0.05] border border-white/10 rounded-xl
+              className="appearance-none bg-white/[0.05] border border-border/30 rounded-xl
                 text-white text-sm font-medium px-4 py-2.5 pr-8 cursor-pointer
                 hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-violet-500/40
                 transition-colors"
@@ -242,16 +242,16 @@ export default function DeptViewPage() {
                 now.getFullYear(),
                 now.getFullYear() + 1,
               ].map((y) => (
-                <option key={y} value={y} className="bg-[#1a2130]">
+                <option key={y} value={y} className="bg-muted">
                   {language === "en" ? y : `${y} он`}
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           </div>
 
           {/* Quarter */}
-          <div className="flex rounded-xl overflow-hidden border border-white/10">
+          <div className="flex rounded-xl overflow-hidden border border-border/30">
             {QUARTER_NAMES.map((q, i) => (
               <button
                 key={q}
@@ -260,7 +260,7 @@ export default function DeptViewPage() {
                   ${
                     quarter === i + 1
                       ? "bg-violet-600 text-white"
-                      : "bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-white"
+                      : "bg-muted/40 text-muted-foreground hover:bg-white/[0.08] hover:text-white"
                   }`}
               >
                 {q}
@@ -284,8 +284,8 @@ export default function DeptViewPage() {
           </div>
         ) : members.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <MinusCircle className="h-10 w-10 text-slate-700" />
-            <p className="text-slate-500 text-sm">
+            <MinusCircle className="h-10 w-10 text-muted-foreground/60" />
+            <p className="text-muted-foreground/70 text-sm">
               {t("tailan_noReportsThisQuarter")}
             </p>
           </div>
@@ -298,11 +298,11 @@ export default function DeptViewPage() {
                   key={member.userId}
                   onClick={() => openMemberReport(member)}
                   className={`group relative flex flex-col gap-3 rounded-2xl p-5 text-left
-                    bg-white/[0.03] hover:bg-white/[0.06]
+                    bg-muted/30 hover:bg-white/[0.06]
                     border transition-all duration-200 cursor-pointer overflow-hidden
                     ${
                       isSubmitted
-                        ? "border-white/[0.07] hover:border-violet-500/40 hover:shadow-[0_0_24px_rgba(139,92,246,0.10)]"
+                        ? "border-border hover:border-violet-500/40 hover:shadow-[0_0_24px_rgba(139,92,246,0.10)]"
                         : "border-white/[0.05] hover:border-amber-500/30"
                     }`}
                 >
@@ -314,9 +314,9 @@ export default function DeptViewPage() {
 
                   {/* Top row */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-slate-700/50 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-muted/50 border border-border/30 flex items-center justify-center flex-shrink-0">
                       <User
-                        className="h-4.5 w-4.5 text-slate-400"
+                        className="h-4.5 w-4.5 text-muted-foreground"
                         style={{ width: "1.125rem", height: "1.125rem" }}
                       />
                     </div>
@@ -343,7 +343,7 @@ export default function DeptViewPage() {
                     <p className="text-[14px] font-semibold text-white leading-snug mb-1">
                       {member.userName}
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-muted-foreground/70">
                       {isSubmitted
                         ? `${t("tailan_submittedAtLabel")} ${fmtDate(member.submittedAt)}`
                         : `${t("tailan_updatedAtLabel")} ${fmtDate(member.updatedAt)}`}

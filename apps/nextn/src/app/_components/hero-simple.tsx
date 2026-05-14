@@ -223,7 +223,7 @@ export default function Hero() {
                   </p>
                 </div>
                 {user?.userId && (
-                  <p className="text-xs text-muted-foreground/70 font-mono pl-10">
+                  <p className="text-xs text-muted-foreground font-mono pl-10">
                     {user.userId}
                   </p>
                 )}
@@ -418,24 +418,21 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="relative overflow-hidden rounded-3xl p-6"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(99,102,241,0.08))",
-                border: "1px solid rgba(99,102,241,0.2)",
-                backdropFilter: "blur(20px)",
-              }}
+              className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
             >
-              <div
-                className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-20"
-                style={{
-                  background: "radial-gradient(circle, #3b82f6, transparent)",
-                }}
-              />
-              <div className="flex items-center gap-3 mb-3"></div>
-              <p className="text-4xl font-black text-foreground tracking-tight font-mono">
-                {currentTime}
-              </p>
+              {/* top color strip */}
+              <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-primary/0 via-primary/70 to-primary/0" />
+              <div className="px-6 py-5">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Clock className="h-3.5 w-3.5 text-primary/70" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Одоогийн цаг
+                  </span>
+                </div>
+                <p className="text-5xl font-black text-foreground tracking-tight tabular-nums leading-none">
+                  {currentTime}
+                </p>
+              </div>
             </motion.div>
 
             {/* Date */}
@@ -443,14 +440,13 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="relative overflow-hidden rounded-3xl p-5 bg-card/60 backdrop-blur-xl border border-border/15"
-              style={{}}
+              className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-purple-500/15">
-                  <Calendar className="h-4 w-4 text-purple-400" />
+              <div className="flex items-center gap-3 px-5 py-4">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <Calendar className="h-4 w-4 text-primary" />
                 </div>
-                <p className="text-muted-foreground text-sm font-medium leading-snug">
+                <p className="text-foreground text-sm font-semibold leading-snug">
                   {currentDate}
                 </p>
               </div>
@@ -460,31 +456,14 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="relative overflow-hidden rounded-3xl p-5 backdrop-blur-xl"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.05))",
-                border: "1px solid rgba(16,185,129,0.2)",
-              }}
+              className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
             >
-              <div
-                className="absolute bottom-0 right-0 w-24 h-24 rounded-full blur-3xl opacity-20"
-                style={{
-                  background: "radial-gradient(circle, #10b981, transparent)",
-                }}
-              />
-              <div className="flex items-center gap-3">
-                <motion.div
-                  className="p-2 rounded-xl bg-emerald-500/15"
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                ></motion.div>
+              <div className="flex items-center gap-3 px-5 py-4">
+                <div className="p-2 rounded-xl bg-emerald-500/15">
+                  <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
                 <div>
-                  <p className="text-emerald-300 text-xs font-semibold uppercase tracking-widest mb-0.5">
+                  <p className="text-foreground text-xs font-bold uppercase tracking-widest mb-0.5">
                     {t("internalAuditDept")}
                   </p>
                   <p className="text-muted-foreground text-xs">DaHUB</p>

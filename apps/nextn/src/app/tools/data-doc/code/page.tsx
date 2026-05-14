@@ -44,9 +44,9 @@ const LANG_META: Record<
   },
   other: {
     label: "Other",
-    color: "text-slate-400",
-    bg: "bg-slate-500/10",
-    border: "border-slate-500/30",
+    color: "text-muted-foreground",
+    bg: "bg-muted/30",
+    border: "border-border/30",
     icon: "📝",
   },
 };
@@ -206,18 +206,18 @@ export default function CodePage() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+          <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
             Гарчиг
           </label>
           <input
             value={form.title || ""}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             placeholder="Кодын нэр…"
-            className="w-full px-3 py-2 text-sm bg-[#0d1526] border border-slate-700/50 rounded-xl text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
+            className="w-full px-3 py-2 text-sm bg-muted border border-border/50 rounded-xl text-foreground/90 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+          <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
             Хэл
           </label>
           <select
@@ -225,7 +225,7 @@ export default function CodePage() {
             onChange={(e) =>
               setForm((f) => ({ ...f, language: e.target.value as any }))
             }
-            className="w-full px-3 py-2 text-sm bg-[#0d1526] border border-slate-700/50 rounded-xl text-slate-200 focus:outline-none focus:border-cyan-500/50"
+            className="w-full px-3 py-2 text-sm bg-muted border border-border/50 rounded-xl text-foreground/90 focus:outline-none focus:border-cyan-500/50"
           >
             {Object.entries(LANG_META).map(([k, v]) => (
               <option key={k} value={k}>
@@ -236,7 +236,7 @@ export default function CodePage() {
         </div>
       </div>
       <div>
-        <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
           Тайлбар
         </label>
         <input
@@ -245,11 +245,11 @@ export default function CodePage() {
             setForm((f) => ({ ...f, description: e.target.value }))
           }
           placeholder="Богино тайлбар…"
-          className="w-full px-3 py-2 text-sm bg-[#0d1526] border border-slate-700/50 rounded-xl text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
+          className="w-full px-3 py-2 text-sm bg-muted border border-border/50 rounded-xl text-foreground/90 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50"
         />
       </div>
       <div>
-        <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
           Код
         </label>
         <textarea
@@ -257,23 +257,23 @@ export default function CodePage() {
           onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
           placeholder="Кодоо энд оруулна уу…"
           rows={12}
-          className="w-full px-3 py-2.5 text-xs font-mono bg-[#060d18] border border-slate-700/50 rounded-xl text-slate-200 placeholder-slate-700 focus:outline-none focus:border-cyan-500/50 resize-none leading-relaxed"
+          className="w-full px-3 py-2.5 text-xs font-mono bg-muted/80 border border-border/50 rounded-xl text-foreground/90 placeholder-muted-foreground/50 focus:outline-none focus:border-cyan-500/50 resize-none leading-relaxed"
         />
       </div>
       <div>
-        <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
           Тэг
         </label>
         <div className="flex flex-wrap gap-1.5 mb-2">
           {(form.tags || []).map((tag) => (
             <span
               key={tag}
-              className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 text-slate-300 text-xs rounded-md"
+              className="flex items-center gap-1 px-2 py-0.5 bg-card text-foreground/80 text-xs rounded-md"
             >
               {tag}
               <button
                 onClick={() => removeTag(tag)}
-                className="text-slate-500 hover:text-red-400"
+                className="text-muted-foreground/70 hover:text-red-400"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -286,11 +286,11 @@ export default function CodePage() {
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTag()}
             placeholder="Тэг нэмэх + Enter"
-            className="flex-1 px-3 py-1.5 text-xs bg-[#0d1526] border border-slate-700/50 rounded-lg text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
+            className="flex-1 px-3 py-1.5 text-xs bg-muted border border-border/50 rounded-lg text-foreground/80 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50"
           />
           <button
             onClick={addTag}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition-colors"
+            className="px-3 py-1.5 bg-card hover:bg-muted text-foreground/80 text-xs rounded-lg border border-border transition-colors"
           >
             Нэмэх
           </button>
@@ -299,14 +299,14 @@ export default function CodePage() {
       <div className="flex gap-3 pt-2">
         <button
           onClick={onSubmit}
-          className="flex items-center gap-2 px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold rounded-xl transition-all text-sm"
+          className="flex items-center gap-2 px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-foreground font-semibold rounded-xl transition-all text-sm"
         >
           <Save className="w-4 h-4" />
           Хадгалах
         </button>
         <button
           onClick={onCancel}
-          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-all text-sm"
+          className="px-4 py-2 bg-card hover:bg-muted text-foreground/80 rounded-xl border border-border transition-all text-sm"
         >
           Цуцлах
         </button>
@@ -315,7 +315,7 @@ export default function CodePage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0f1117] text-white flex flex-col">
+    <div className="min-h-screen bg-background text-white flex flex-col">
       <ToolPageHeader
         href="/tools/data-doc"
         icon={
@@ -329,10 +329,12 @@ export default function CodePage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Snippet list */}
-        <div className="w-80 shrink-0 border-r border-slate-800/60 flex flex-col bg-[#0a0f1e]">
-          <div className="px-4 py-4 border-b border-slate-800/60 space-y-3">
+        <div className="w-80 shrink-0 border-r border-border/50 flex flex-col bg-card">
+          <div className="px-4 py-4 border-b border-border/50 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white">{t("dataDocCodeLib")}</h2>
+              <h2 className="text-sm font-bold text-white">
+                {t("dataDocCodeLib")}
+              </h2>
               <button
                 onClick={() => {
                   resetForm();
@@ -347,12 +349,12 @@ export default function CodePage() {
               </button>
             </div>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Код хайх…"
-                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-800/60 border border-slate-700/30 rounded-lg text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/40"
+                className="w-full pl-8 pr-3 py-2 text-xs bg-muted/60 border border-border/30 rounded-lg text-foreground/80 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/40"
               />
             </div>
             <div className="flex gap-1 flex-wrap">
@@ -362,8 +364,8 @@ export default function CodePage() {
                   onClick={() => setLangFilter(lang)}
                   className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
                     langFilter === lang
-                      ? "bg-slate-700 text-white"
-                      : "text-slate-600 hover:text-slate-300 hover:bg-slate-800"
+                      ? "bg-muted text-white"
+                      : "text-muted-foreground/50 hover:text-foreground/80 hover:bg-card"
                   }`}
                 >
                   {lang === "all"
@@ -376,7 +378,7 @@ export default function CodePage() {
 
           <div className="flex-1 overflow-y-auto py-2">
             {filtered.length === 0 ? (
-              <div className="px-4 py-10 text-center text-slate-600 text-sm">
+              <div className="px-4 py-10 text-center text-muted-foreground/50 text-sm">
                 Код олдсонгүй
               </div>
             ) : (
@@ -393,14 +395,14 @@ export default function CodePage() {
                     }}
                     className={`group mx-2 mb-1 px-3 py-3 rounded-xl cursor-pointer transition-all ${
                       isSelected
-                        ? "bg-slate-800 border border-slate-700"
-                        : "hover:bg-slate-800/50 border border-transparent"
+                        ? "bg-card border border-border"
+                        : "hover:bg-muted/50 border border-transparent"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <span
                         className={`text-xs font-semibold ${
-                          isSelected ? "text-white" : "text-slate-300"
+                          isSelected ? "text-white" : "text-foreground/80"
                         } leading-snug`}
                       >
                         {snippet.title}
@@ -412,7 +414,7 @@ export default function CodePage() {
                       </span>
                     </div>
                     {snippet.description && (
-                      <p className="text-[11px] text-slate-500 line-clamp-1 mb-1.5">
+                      <p className="text-[11px] text-muted-foreground/70 line-clamp-1 mb-1.5">
                         {snippet.description}
                       </p>
                     )}
@@ -420,7 +422,7 @@ export default function CodePage() {
                       {snippet.tags.slice(0, 3).map((tag) => (
                         <span
                           key={tag}
-                          className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-500 rounded"
+                          className="text-[10px] px-1.5 py-0.5 bg-card text-muted-foreground/70 rounded"
                         >
                           {tag}
                         </span>
@@ -431,8 +433,8 @@ export default function CodePage() {
               })
             )}
           </div>
-          <div className="px-4 py-3 border-t border-slate-800/60">
-            <span className="text-[11px] text-slate-600">
+          <div className="px-4 py-3 border-t border-border/50">
+            <span className="text-[11px] text-muted-foreground/50">
               {filtered.length} код
             </span>
           </div>
@@ -469,13 +471,13 @@ export default function CodePage() {
             </div>
           ) : selected ? (
             <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800/60 shrink-0">
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-border/50 shrink-0">
                 <div className="flex-1 min-w-0">
                   <h2 className="text-base font-bold text-white truncate">
                     {selected.title}
                   </h2>
                   {selected.description && (
-                    <p className="text-sm text-slate-400 truncate mt-0.5">
+                    <p className="text-sm text-muted-foreground truncate mt-0.5">
                       {selected.description}
                     </p>
                   )}
@@ -489,7 +491,7 @@ export default function CodePage() {
                   </span>
                   <button
                     onClick={() => copyCode(selected.code)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-foreground/80 border border-border rounded-lg text-xs transition-colors"
                   >
                     {copied ? (
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -500,7 +502,7 @@ export default function CodePage() {
                   </button>
                   <button
                     onClick={() => startEdit(selected)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-foreground/80 border border-border rounded-lg text-xs transition-colors"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     Засах
@@ -519,12 +521,12 @@ export default function CodePage() {
               </div>
 
               {selected.tags.length > 0 && (
-                <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-slate-800/40">
-                  <Tag className="w-3.5 h-3.5 text-slate-600" />
+                <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-border/40">
+                  <Tag className="w-3.5 h-3.5 text-muted-foreground/50" />
                   {selected.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="px-2 py-0.5 bg-slate-800 text-slate-400 text-xs rounded-md"
+                      className="px-2 py-0.5 bg-card text-muted-foreground text-xs rounded-md"
                     >
                       {tag}
                     </span>
@@ -533,7 +535,7 @@ export default function CodePage() {
               )}
 
               <div className="flex-1 overflow-y-auto p-6">
-                <pre className="text-xs font-mono text-slate-300 bg-[#060d18] border border-slate-800/60 rounded-xl p-5 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                <pre className="text-xs font-mono text-foreground/80 bg-muted/80 border border-border/50 rounded-xl p-5 overflow-x-auto leading-relaxed whitespace-pre-wrap">
                   {selected.code}
                 </pre>
               </div>
@@ -541,13 +543,13 @@ export default function CodePage() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-slate-800/40 flex items-center justify-center mx-auto mb-4">
-                  <Code2 className="w-8 h-8 text-slate-600" />
+                <div className="w-16 h-16 rounded-2xl bg-card/40 flex items-center justify-center mx-auto mb-4">
+                  <Code2 className="w-8 h-8 text-muted-foreground/50" />
                 </div>
-                <h3 className="text-slate-400 font-medium mb-1">
+                <h3 className="text-muted-foreground font-medium mb-1">
                   Код сонгоогүй байна
                 </h3>
-                <p className="text-slate-600 text-sm">
+                <p className="text-muted-foreground/50 text-sm">
                   Зүүн талаас код сонгох эсвэл шинээр нэмнэ үү
                 </p>
               </div>

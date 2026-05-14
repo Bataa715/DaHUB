@@ -36,7 +36,12 @@ function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
-    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+    FORBID_ATTR: [
+      "onerror", "onload", "onclick", "onmouseover", "onmouseout",
+      "onmouseenter", "onmouseleave", "onfocus", "onblur", "onchange",
+      "onsubmit", "onkeydown", "onkeyup", "onkeypress", "onpaste",
+      "ondrop", "ondragstart", "oncontextmenu", "onscroll", "oninput",
+    ],
   });
 }
 
@@ -822,12 +827,16 @@ export default function NewsPage() {
                         <div
                           key={p.authorId}
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                            isTop3 ? "bg-muted/60 border border-border" : "border border-transparent"
+                            isTop3
+                              ? "bg-muted/60 border border-border"
+                              : "border border-transparent"
                           }`}
                         >
                           <span
                             className={`w-8 text-center text-sm font-bold ${
-                              isTop3 ? "text-amber-400" : "text-muted-foreground/50"
+                              isTop3
+                                ? "text-amber-400"
+                                : "text-muted-foreground/50"
                             }`}
                           >
                             {isTop3 ? medals[p.rank] : p.rank}

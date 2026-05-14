@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { departmentsApi } from "@/lib/api";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -288,13 +289,10 @@ export default function AdminDepartmentsPage() {
       await departmentsApi.delete(dept.id);
       toast({ title: "Амжилттай", description: "Хэлтэс устгагдлаа." });
       loadDepartments();
-    } catch (error: any) {
-      toast({
-        title: "Алдаа",
-        description:
-          error.response?.data?.message || "Хэлтсийг устгахад алдаа гарлаа.",
-        variant: "destructive",
-      });
+    } catch (error) {
+      let message = "Хэлтсийг устгахад алдаа гарлаа.";
+      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      toast({ title: "Алдаа", description: message, variant: "destructive" });
     }
   };
 

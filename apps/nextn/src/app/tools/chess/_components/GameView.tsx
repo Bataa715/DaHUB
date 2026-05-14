@@ -177,11 +177,11 @@ export default function GameView(props: GameViewProps) {
 
     return (
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           <span className="text-white font-medium">
             {myLabel}: {myName}
           </span>
-          <span className="mx-2 text-slate-600">vs</span>
+          <span className="mx-2 text-muted-foreground/50">vs</span>
           <span>
             {oppLabel}: {oppName}
           </span>
@@ -190,7 +190,7 @@ export default function GameView(props: GameViewProps) {
           className={`px-3 py-1 rounded-lg text-xs font-semibold ${
             isMyTurn
               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-              : "bg-slate-700/60 text-slate-400"
+              : "bg-muted/60 text-muted-foreground"
           }`}
         >
           {submitting ? (
@@ -212,7 +212,7 @@ export default function GameView(props: GameViewProps) {
     const moves = parseMoves(game?.moves ?? "[]");
     if (!moves.length)
       return (
-        <p className="text-slate-500 text-xs italic text-center py-4">
+        <p className="text-muted-foreground/70 text-xs italic text-center py-4">
           Нүүд алга
         </p>
       );
@@ -225,13 +225,13 @@ export default function GameView(props: GameViewProps) {
         {pairs.map(([w, b], i) => (
           <div
             key={i}
-            className="flex gap-1 hover:bg-slate-700/30 rounded px-1"
+            className="flex gap-1 hover:bg-muted/30 rounded px-1"
           >
-            <span className="text-slate-600 w-7 text-right shrink-0">
+            <span className="text-muted-foreground/50 w-7 text-right shrink-0">
               {i + 1}.
             </span>
-            <span className="text-slate-200 flex-1">{w}</span>
-            <span className="text-slate-400 flex-1">{b ?? ""}</span>
+            <span className="text-foreground/90 flex-1">{w}</span>
+            <span className="text-muted-foreground flex-1">{b ?? ""}</span>
           </div>
         ))}
       </div>
@@ -286,7 +286,7 @@ export default function GameView(props: GameViewProps) {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Player cards */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 space-y-2">
+            <div className="bg-muted/50 border border-border/50 rounded-2xl p-4 space-y-2">
               {[
                 {
                   userId: game.blackUserId,
@@ -312,7 +312,7 @@ export default function GameView(props: GameViewProps) {
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                       isActiveTurn
                         ? "bg-amber-500/10 border border-amber-500/20"
-                        : "bg-slate-900/40 border border-slate-700/30"
+                        : "bg-card/40 border border-border/30"
                     }`}
                   >
                     <span
@@ -337,7 +337,7 @@ export default function GameView(props: GameViewProps) {
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-slate-500">{label}</p>
+                      <p className="text-xs text-muted-foreground/70">{label}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {game.status === "active" && (
@@ -347,7 +347,7 @@ export default function GameView(props: GameViewProps) {
                               ? "text-rose-400 animate-pulse"
                               : (color === "w" ? whiteMs : blackMs) < 60000
                                 ? "text-amber-400"
-                                : "text-slate-300"
+                                : "text-foreground/80"
                           }`}
                         >
                           {formatTime(color === "w" ? whiteMs : blackMs)}
@@ -370,8 +370,8 @@ export default function GameView(props: GameViewProps) {
             )}
 
             {/* Move history */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="bg-muted/50 border border-border/50 rounded-2xl p-4 space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Нүүдлийн түүх
               </h3>
               {renderMoveHistory()}

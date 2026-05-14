@@ -74,7 +74,7 @@ export default function DashboardsPage() {
           status: "error",
           hasAmount: false,
           rows: [],
-            error: e?.message || t("dashOracleError"),
+          error: e?.message || t("dashOracleError"),
         }),
       );
   }, []);
@@ -194,7 +194,7 @@ export default function DashboardsPage() {
                         <input
                           value={search}
                           onChange={(e) => handleSearch(e.target.value)}
-                            placeholder={t("dashCifSearch")}
+                          placeholder={t("dashCifSearch")}
                           className="w-full bg-surface-card border border-surface-border rounded-lg pl-7 pr-4 py-1.5 text-[11px] text-txt placeholder:text-txt-dim outline-none focus:border-golomt-500/50"
                         />
                         {search && (
@@ -262,13 +262,15 @@ export default function DashboardsPage() {
                                     </th>
                                     <th className="px-3 py-2 text-right text-txt-dim font-semibold">
                                       <span className="flex items-center justify-end gap-1">
-                                        <Hash size={10} /> {t("alertTransactions")}
+                                        <Hash size={10} />{" "}
+                                        {t("alertTransactions")}
                                       </span>
                                     </th>
                                     {detail.hasAmount && (
                                       <th className="px-3 py-2 text-right text-txt-dim font-semibold">
                                         <span className="flex items-center justify-end gap-1">
-                                          <TrendingUp size={10} /> {t("alertTotalAmount")} (₮)
+                                          <TrendingUp size={10} />{" "}
+                                          {t("alertTotalAmount")} (₮)
                                         </span>
                                       </th>
                                     )}
@@ -313,7 +315,7 @@ export default function DashboardsPage() {
 
             {filtered.length === 0 && !loading && (
               <div className="px-4 py-10 text-center text-[12px] text-txt-dim">
-                            {t("dashNoResults")}
+                {t("dashNoResults")}
               </div>
             )}
           </div>

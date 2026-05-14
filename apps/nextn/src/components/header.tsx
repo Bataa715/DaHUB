@@ -126,9 +126,15 @@ const Header = () => {
             {!isAdminPage && (
               <Sheet open={isOpen} onOpenChange={setIsOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden">
-                    <Menu className="h-5 w-5" />
-                    <span className="sr-only">Toggle Menu</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    aria-label="Цэс нээх"
+                    aria-expanded={isOpen}
+                    aria-haspopup="dialog"
+                  >
+                    <Menu className="h-5 w-5" aria-hidden="true" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="pr-0">
@@ -168,9 +174,9 @@ const Header = () => {
                           href={link.href}
                           onClick={() => setIsOpen(false)}
                           className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2 text-lg transition-colors hover:text-primary",
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-lg font-semibold transition-colors hover:text-primary",
                             isActive
-                              ? "bg-muted text-primary font-semibold"
+                              ? "bg-muted text-primary"
                               : "text-muted-foreground",
                           )}
                         >
@@ -195,7 +201,7 @@ const Header = () => {
                       key={link.href}
                       href={link.href}
                       className={cn(
-                        "text-sm font-medium transition-colors hover:text-primary",
+                        "text-sm font-semibold transition-colors hover:text-primary",
                         isActive ? "text-primary" : "text-muted-foreground",
                       )}
                     >
@@ -227,9 +233,13 @@ const Header = () => {
             {mounted && user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Settings className="h-5 w-5" />
-                    <span className="sr-only">Тохиргоо</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Тохиргоо нээх"
+                    aria-haspopup="menu"
+                  >
+                    <Settings className="h-5 w-5" aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -248,7 +258,7 @@ const Header = () => {
                               "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200",
                               theme === themeOption.name
                                 ? "bg-primary/15 border border-primary/30"
-                                : "hover:bg-white/5",
+                                : "hover:bg-accent/60",
                             )}
                           >
                             <div
@@ -277,8 +287,8 @@ const Header = () => {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Globe className="mr-2 h-4 w-4" />
+                    <DropdownMenuSubTrigger aria-label="Хэл солих">
+                      <Globe className="mr-2 h-4 w-4" aria-hidden="true" />
                       <span>
                         {language === "mn" ? "🇲🇳 Монгол" : "🇺🇸 English"}
                       </span>
@@ -286,6 +296,7 @@ const Header = () => {
                     <DropdownMenuSubContent>
                       <DropdownMenuItem
                         onClick={() => setLanguage("mn")}
+                        aria-current={language === "mn" ? "true" : undefined}
                         className={language === "mn" ? "bg-primary/15" : ""}
                       >
                         🇲🇳 Монгол{" "}
@@ -295,6 +306,7 @@ const Header = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setLanguage("en")}
+                        aria-current={language === "en" ? "true" : undefined}
                         className={language === "en" ? "bg-primary/15" : ""}
                       >
                         🇺🇸 English{" "}

@@ -89,8 +89,8 @@ export const TITLES = [
   {
     label: "Cумын начин",
     ratio: 0.1,
-    color: "text-slate-400",
-    bg: "bg-slate-700/40 border-slate-600/30",
+    color: "text-muted-foreground",
+    bg: "bg-muted/40 border-border/30",
     icon: "",
   },
   {
