@@ -868,8 +868,8 @@ function ReportTable({
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground sticky top-0 z-10">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-xs uppercase text-muted-foreground sticky top-0 z-10">
             <tr>
               <th className="px-2 py-2 text-left font-semibold">№</th>
               <th className="px-2 py-2 text-left font-semibold">SOL</th>
@@ -910,24 +910,24 @@ function ReportTable({
               return (
                 <Fragment key={b.branchId}>
                   <tr className="border-t border-border hover:bg-accent/30">
-                    <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
+                    <td className="px-2 py-2 tabular-nums text-muted-foreground font-semibold">
                       {i + 1}
                     </td>
-                    <td className="px-2 py-1.5 tabular-nums">{b.solid}</td>
-                    <td className="px-2 py-1.5 font-medium">{b.branchName}</td>
-                    <td className="px-2 py-1.5 text-center text-[10px] text-muted-foreground">
+                    <td className="px-2 py-2 tabular-nums font-bold">{b.solid}</td>
+                    <td className="px-2 py-2 font-bold">{b.branchName}</td>
+                    <td className="px-2 py-2 text-center text-xs text-muted-foreground font-semibold">
                       {b.rating}
                     </td>
                     <ScoreCell value={b.s1} color="sky" />
                     <ScoreCell value={b.s2} color="violet" />
                     <ScoreCell value={b.s3} color="amber" />
-                    <td className="px-2 py-1.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                    <td className="px-2 py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
                       {fmt(b.s4 ?? null)}
                     </td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-rose-700 dark:text-rose-400">
+                    <td className="px-2 py-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-400">
                       {fmt(b.j ?? null)}
                     </td>
-                    <td className="px-2 py-1.5 text-right tabular-nums font-bold">
+                    <td className="px-2 py-2 text-right tabular-nums font-bold">
                       <span
                         className={
                           b.total != null && b.total >= 3.5
@@ -942,13 +942,13 @@ function ReportTable({
                         {fmt(b.total)}
                       </span>
                     </td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                    <td className="px-2 py-2 text-right tabular-nums font-semibold text-muted-foreground">
                       {prev?.total != null ? fmt(prev.total) : "—"}
                     </td>
-                    <td className="px-2 py-1.5 text-center">
+                    <td className="px-2 py-2 text-center">
                       {b.level && (
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(
+                          className={`inline-block px-2 py-0.5 rounded-full border text-xs font-bold ${riskLevelClass(
                             b.level,
                           )}`}
                         >
@@ -957,7 +957,7 @@ function ReportTable({
                       )}
                     </td>
                     <td
-                      className={`px-2 py-1.5 text-right tabular-nums font-medium ${
+                      className={`px-2 py-2 text-right tabular-nums font-bold ${
                         diff == null
                           ? "text-muted-foreground/40"
                           : diff > 0
@@ -1054,7 +1054,7 @@ function ScoreCell({
         ? "text-violet-700 dark:text-violet-400"
         : "text-amber-700 dark:text-amber-400";
   return (
-    <td className={`px-2 py-1.5 text-right tabular-nums ${cls}`}>
+    <td className={`px-2 py-2 text-right tabular-nums font-bold ${cls}`}>
       {value == null ? "—" : value.toFixed(2)}
     </td>
   );

@@ -15,6 +15,8 @@ import {
   MoreHorizontal,
   Trash2,
   Check,
+  Eye,
+  X,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { computeScore, getGroup, type RiskLevel } from "../scoring-rules";
@@ -67,6 +69,18 @@ export default function RiskAssessmentReportPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
+
+  // Хадгалсан тайлан бүтнээр харах
+  const [viewHistoryId, setViewHistoryId] = useState<string | null>(null);
+  const [viewHistoryRows, setViewHistoryRows] = useState<RiskCurrentRow[]>([]);
+  const [viewHistoryLoading, setViewHistoryLoading] = useState(false);
+  const [historyViewRiskFilter, setHistoryViewRiskFilter] = useState<"all" | RiskLevel>("all");
+
+  // Устгах нууц үг modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletePasswordError, setDeletePasswordError] = useState("");
 
   const datesValid =
     /^\d{4}-\d{2}-\d{2}$/.test(pDate) &&
@@ -160,6 +174,29 @@ export default function RiskAssessmentReportPage() {
     [selectedHistoryId],
   );
 
+  const openHistoryView = useCallback(
+    async (id: string) => {
+      if (id === viewHistoryId) {
+        setViewHistoryId(null);
+        setViewHistoryRows([]);
+        return;
+      }
+      setViewHistoryLoading(true);
+      setMenuOpen(false);
+      try {
+        const data = await riskApi.getHistory(id);
+        setViewHistoryId(id);
+        setViewHistoryRows(data.rows);
+        setHistoryViewRiskFilter("all");
+      } catch (e: any) {
+        setErrorMsg(e?.response?.data?.message ?? e.message ?? "Алдаа");
+      } finally {
+        setViewHistoryLoading(false);
+      }
+    },
+    [viewHistoryId],
+  );
+
   const deleteHistory = useCallback(
     async (id: string) => {
       try {
@@ -169,14 +206,38 @@ export default function RiskAssessmentReportPage() {
           setSelectedHistoryId(null);
           setSelectedHistoryRows([]);
         }
+        if (viewHistoryId === id) {
+          setViewHistoryId(null);
+          setViewHistoryRows([]);
+        }
       } catch (e: any) {
         setErrorMsg(
           e?.response?.data?.message ?? e.message ?? t("riskDeleteError"),
         );
       }
     },
-    [selectedHistoryId],
+    [selectedHistoryId, viewHistoryId],
   );
+
+  const openDeleteConfirm = useCallback((id: string) => {
+    setDeleteTargetId(id);
+    setDeletePassword("");
+    setDeletePasswordError("");
+    setDeleteModalOpen(true);
+    setMenuOpen(false);
+  }, []);
+
+  const doDeleteHistory = useCallback(async () => {
+    if (deletePassword !== "OmnohDelete#24") {
+      setDeletePasswordError("Нууц үг буруу байна");
+      return;
+    }
+    if (!deleteTargetId) return;
+    setDeleteModalOpen(false);
+    await deleteHistory(deleteTargetId);
+    setDeleteTargetId(null);
+    setDeletePassword("");
+  }, [deletePassword, deleteTargetId, deleteHistory]);
 
   const scoredRows = useMemo(() => toScored(rows), [rows]);
   const previousScoredRows = useMemo(
@@ -184,6 +245,11 @@ export default function RiskAssessmentReportPage() {
     [selectedHistoryRows],
   );
   const selectedEntry = historyList.find((h) => h.id === selectedHistoryId);
+  const viewHistoryScoredRows = useMemo(
+    () => toScored(viewHistoryRows),
+    [viewHistoryRows],
+  );
+  const viewHistoryEntry = historyList.find((h) => h.id === viewHistoryId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-rose-500/[0.02] text-foreground flex flex-col">
@@ -246,18 +312,13 @@ export default function RiskAssessmentReportPage() {
 
             <div className="flex-1" />
 
-            {/* 3-dot hover menu */}
-            <div
-              className="relative"
-              onMouseEnter={() => setMenuOpen(true)}
-              onMouseLeave={() => {
-                setMenuOpen(false);
-                setHistoryOpen(false);
-              }}
-            >
+            {menuOpen && <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />}
+            {/* 3-dot click menu */}
+            <div className="relative">
               <button
+                onClick={() => setMenuOpen((v) => !v)}
                 className={`p-1.5 rounded-md border transition-all text-xs ${
-                  selectedHistoryId
+                  selectedHistoryId || menuOpen
                     ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
                     : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60"
                 }`}
@@ -342,7 +403,20 @@ export default function RiskAssessmentReportPage() {
                             </div>
                           </button>
                           <button
-                            onClick={() => deleteHistory(h.id)}
+                            onClick={() => openHistoryView(h.id)}
+                            title="Бүтнээр харах"
+                            className={`p-2 transition-colors flex-shrink-0 ${
+                              viewHistoryId === h.id
+                                ? "text-blue-500"
+                                : "text-muted-foreground/40 hover:text-blue-500"
+                            }`}
+                          >
+                            {viewHistoryLoading && viewHistoryId !== h.id ? null : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => openDeleteConfirm(h.id)}
                             className="p-2 text-muted-foreground/40 hover:text-red-500 transition-colors flex-shrink-0"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -383,7 +457,36 @@ export default function RiskAssessmentReportPage() {
           </div>
         )}
 
-        {loading ? (
+        {viewHistoryId && viewHistoryEntry ? (
+          <>
+            <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 px-4 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+                <Eye className="w-4 h-4 text-blue-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold truncate">{viewHistoryEntry.name}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {viewHistoryEntry.pDateBeg} → {viewHistoryEntry.pDate} · {viewHistoryEntry.branchCount} салбар
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setViewHistoryId(null);
+                  setViewHistoryRows([]);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors flex-shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+                Хаах
+              </button>
+            </div>
+            <ReportView
+              scoredRows={viewHistoryScoredRows}
+              riskFilter={historyViewRiskFilter}
+              setRiskFilter={setHistoryViewRiskFilter}
+            />
+          </>
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-32 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
             <p className="text-sm text-muted-foreground">{t("loading")}</p>
@@ -455,6 +558,56 @@ export default function RiskAssessmentReportPage() {
               >
                 {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Хадгалах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Устгах нууц үг modal */}
+      {deleteModalOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setDeleteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Тайлан устгах</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Үргэлжлүүлэхийн түлд нууц үг оруулна уу</p>
+              </div>
+            </div>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => { setDeletePassword(e.target.value); setDeletePasswordError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && doDeleteHistory()}
+              placeholder="Нууц үг"
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
+            />
+            {deletePasswordError && (
+              <p className="text-xs text-red-500 mt-1.5">{deletePasswordError}</p>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
+              >
+                Болих
+              </button>
+              <button
+                onClick={doDeleteHistory}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Устгах
               </button>
             </div>
           </div>

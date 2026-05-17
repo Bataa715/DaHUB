@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { riskApi } from "@/lib/api";
+import { riskApi, type RiskHistoryEntry, type RiskCurrentRow } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
@@ -17,6 +17,9 @@ import {
   Pencil,
   Check,
   X,
+  Eye,
+  MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -67,6 +70,19 @@ export default function RiskAssessmentDetailPage() {
   const [pDate, setPDate] = useState("");
   const [pDateBeg, setPDateBeg] = useState("");
 
+  // Хадгалсан улиралууд харах
+  const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
+  const [viewHistoryId, setViewHistoryId] = useState<string | null>(null);
+  const [viewHistoryRows, setViewHistoryRows] = useState<RiskRow[]>([]);
+  const [viewHistoryLoading, setViewHistoryLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Устгах нууц үг modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletePasswordError, setDeletePasswordError] = useState("");
+
   // Inline edit state: rowKey → editValue
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -78,12 +94,16 @@ export default function RiskAssessmentDetailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const data = await riskApi.getCurrent();
+        const [data, hist] = await Promise.all([
+          riskApi.getCurrent(),
+          riskApi.listHistory(),
+        ]);
         if (cancelled) return;
         setRows(data.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
         setPDate(data.pDate);
         setPDateBeg(data.pDateBeg);
         setFetchedAt(data.oracleFetchedAt);
+        setHistoryList(hist);
       } catch {
         // өгөгдөл байхгүй бол чимээгүй өнгөрнө
       } finally {
@@ -94,6 +114,67 @@ export default function RiskAssessmentDetailPage() {
       cancelled = true;
     };
   }, []);
+
+  const openHistoryView = useCallback(
+    async (id: string) => {
+      if (id === viewHistoryId) {
+        setViewHistoryId(null);
+        setViewHistoryRows([]);
+        setMenuOpen(false);
+        return;
+      }
+      setViewHistoryLoading(true);
+      setMenuOpen(false);
+      try {
+        const data = await riskApi.getHistory(id);
+        setViewHistoryId(id);
+        setViewHistoryRows(
+          data.rows.filter((r) => r.rowType === "oracle") as RiskRow[],
+        );
+      } catch (e: any) {
+        /* silent */
+      } finally {
+        setViewHistoryLoading(false);
+      }
+    },
+    [viewHistoryId],
+  );
+
+  const deleteHistory = useCallback(
+    async (id: string) => {
+      try {
+        await riskApi.deleteHistory(id);
+        setHistoryList((prev) => prev.filter((h) => h.id !== id));
+        if (viewHistoryId === id) {
+          setViewHistoryId(null);
+          setViewHistoryRows([]);
+        }
+      } catch {
+        /* silent */
+      }
+    },
+    [viewHistoryId],
+  );
+
+  const openDeleteConfirm = useCallback((id: string) => {
+    setDeleteTargetId(id);
+    setDeletePassword("");
+    setDeletePasswordError("");
+    setDeleteModalOpen(true);
+    setMenuOpen(false);
+  }, []);
+
+  const doDeleteHistory = useCallback(async () => {
+    if (deletePassword !== "OmnohDelete#24") {
+      setDeletePasswordError("Нууц үг буруу байна");
+      return;
+    }
+    if (!deleteTargetId) return;
+    setDeleteModalOpen(false);
+    await deleteHistory(deleteTargetId);
+    setDeleteTargetId(null);
+    setDeletePassword("");
+  }, [deletePassword, deleteTargetId, deleteHistory]);
 
   // Мөр засах
   const startEdit = useCallback((rowKey: string, currentResult: string) => {
@@ -144,8 +225,11 @@ export default function RiskAssessmentDetailPage() {
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<FilterKey>("all");
 
+  const viewHistoryEntry = historyList.find((h) => h.id === viewHistoryId);
+
   const scoredRows: ScoredRow[] = useMemo(() => {
-    return rows.map((r) => {
+    const src = (viewHistoryId ? viewHistoryRows : rows) as RiskRow[];
+    return src.map((r) => {
       const sr = computeScore(r.SUBID as any, r.RESULT, r.RESULT_TYPE);
       return {
         ...r,
@@ -154,7 +238,7 @@ export default function RiskAssessmentDetailPage() {
         __group: getGroup(r.SUBID as any),
       };
     });
-  }, [rows]);
+  }, [rows, viewHistoryId, viewHistoryRows]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -297,6 +381,31 @@ export default function RiskAssessmentDetailPage() {
           </div>
         )}
 
+        {/* Хадгалсан улирал харж байгаа бол banner */}
+        {viewHistoryId && viewHistoryEntry && (
+          <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+              <Eye className="w-4 h-4 text-blue-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold truncate">{viewHistoryEntry.name}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {viewHistoryEntry.pDateBeg} → {viewHistoryEntry.pDate} · {viewHistoryEntry.branchCount} салбар
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setViewHistoryId(null);
+                setViewHistoryRows([]);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors flex-shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+              Хаах
+            </button>
+          </div>
+        )}
+
         {/* Үндсэн хүснэгт */}
         <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
           {/* Sticky toolbar */}
@@ -314,9 +423,9 @@ export default function RiskAssessmentDetailPage() {
                     ? `${grouped.length} салбар`
                     : `${filteredRows.length} мөр`}
                 </span>
-                {search && filteredRows.length !== rows.length && (
+                {search && filteredRows.length !== (viewHistoryId ? viewHistoryRows : rows).length && (
                   <span className="text-muted-foreground/70 tabular-nums">
-                    / {rows.length}
+                    / {(viewHistoryId ? viewHistoryRows : rows).length}
                   </span>
                 )}
               </div>
@@ -396,6 +505,88 @@ export default function RiskAssessmentDetailPage() {
                 <Download className="w-3.5 h-3.5" />
                 CSV
               </button>
+              {/* Хадгалсан улирал харах */}
+              {menuOpen && <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />}
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className={`p-1.5 rounded-md border transition-all text-xs ${
+                    viewHistoryId || menuOpen
+                      ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                      : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60"
+                  }`}
+                  title="Өмнөх улиралууд"
+                >
+                  {viewHistoryLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <MoreHorizontal className="w-4 h-4" />
+                  )}
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
+                    <div className="px-3 py-2 border-b border-border bg-muted/30">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Хадгалсан улиралууд
+                      </p>
+                    </div>
+                    {viewHistoryId && (
+                      <button
+                        onClick={() => {
+                          setViewHistoryId(null);
+                          setViewHistoryRows([]);
+                          setMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-muted/40 text-muted-foreground flex items-center gap-2 border-b border-border/50"
+                      >
+                        Өдөогийн өгөгдлууд харах
+                      </button>
+                    )}
+                    {historyList.length === 0 ? (
+                      <div className="px-4 py-5 text-center text-xs text-muted-foreground">
+                        Хадгалсан өгөгдлөл байхгүй
+                      </div>
+                    ) : (
+                      <div className="max-h-60 overflow-y-auto">
+                        {historyList.map((h) => (
+                          <div
+                            key={h.id}
+                            className="flex items-center hover:bg-muted/40 border-b border-border/30 last:border-0 transition-colors"
+                          >
+                            <button
+                              onClick={() => openHistoryView(h.id)}
+                              className="flex-1 flex items-center gap-2.5 px-3 py-2.5 text-left"
+                            >
+                              <Eye
+                                className={`w-3.5 h-3.5 flex-shrink-0 ${
+                                  viewHistoryId === h.id
+                                    ? "text-blue-500"
+                                    : "text-muted-foreground/50"
+                                }`}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-semibold truncate">
+                                  {h.name}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground mt-0.5">
+                                  {h.pDateBeg} → {h.pDate} · {h.branchCount} салбар
+                                  {h.createdByName ? ` · ${h.createdByName}` : ""}
+                                </div>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => openDeleteConfirm(h.id)}
+                              className="p-2 text-muted-foreground/40 hover:text-red-500 transition-colors flex-shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -441,7 +632,7 @@ export default function RiskAssessmentDetailPage() {
                     <th className="px-2 py-2 text-center">SUBID</th>
                     <th className="px-2 py-2 text-center">Score</th>
                     <th className="px-2 py-2 text-left">OP_TYPE</th>
-                    <th className="px-2 py-2 text-center"></th>
+                    {!viewHistoryId && <th className="px-2 py-2 text-center"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -517,6 +708,7 @@ export default function RiskAssessmentDetailPage() {
                         <td className="px-2 py-1.5 text-[10px] text-muted-foreground">
                           {r.OPERATION_TYPE}
                         </td>
+                        {!viewHistoryId && (
                         <td className="px-2 py-1.5 text-center">
                           {isEditing ? (
                             <div className="flex items-center gap-1">
@@ -544,13 +736,14 @@ export default function RiskAssessmentDetailPage() {
                           ) : (
                             <button
                               onClick={() => startEdit(rowKey, r.RESULT)}
-                              className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                              className={`text-muted-foreground/40 hover:text-foreground transition-colors ${isManual ? "text-amber-500/60 hover:text-amber-500" : ""}`}
                               title="Энэ мөрийн RESULT засах"
                             >
                               <Pencil className="w-3 h-3" />
                             </button>
                           )}
                         </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -617,6 +810,7 @@ export default function RiskAssessmentDetailPage() {
                               <th className="px-2 py-1.5 text-center">SUBID</th>
                               <th className="px-2 py-1.5 text-center">Score</th>
                               <th className="px-2 py-1.5 text-left">OP_TYPE</th>
+                              {!viewHistoryId && <th className="px-2 py-1.5 text-center"></th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -675,6 +869,40 @@ export default function RiskAssessmentDetailPage() {
                                   <td className="px-2 py-1.5 text-[10px] text-muted-foreground">
                                     {r.OPERATION_TYPE}
                                   </td>
+                                  {!viewHistoryId && (() => {
+                                    const rowKey = (r as any).rowKey ?? `${r.BRANCHID}|${r.SUBID}|${r.SOLID}`;
+                                    const isEditing = editingKey === rowKey;
+                                    const isSaving = savingKey === rowKey;
+                                    const isManual = Number((r as any).isManual) === 1;
+                                    return (
+                                      <td className="px-2 py-1.5 text-center">
+                                        {isEditing ? (
+                                          <div className="flex items-center gap-1">
+                                            {isSaving ? (
+                                              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                                            ) : (
+                                              <>
+                                                <button onClick={() => commitEdit(rowKey)} className="text-emerald-600 hover:text-emerald-500" title="Хадгалах">
+                                                  <Check className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground" title="Цуцлах">
+                                                  <X className="w-3.5 h-3.5" />
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+                                        ) : isEditing === false && editingKey !== null && editingKey !== rowKey ? null : (
+                                          <button
+                                            onClick={() => startEdit(rowKey, r.RESULT)}
+                                            className={`text-muted-foreground/40 hover:text-foreground transition-colors ${isManual ? "text-amber-500/60 hover:text-amber-500" : ""}`}
+                                            title="Энэ мөрийн RESULT засах"
+                                          >
+                                            <Pencil className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </td>
+                                    );
+                                  })()}
                                 </tr>
                               ))}
                           </tbody>
@@ -688,6 +916,56 @@ export default function RiskAssessmentDetailPage() {
           )}
         </section>
       </div>
+
+      {/* Устгах нууц үг modal */}
+      {deleteModalOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setDeleteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Тайлан устгах</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Үргэлжлүүлэхийн түлд нууц үг оруулна уу</p>
+              </div>
+            </div>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => { setDeletePassword(e.target.value); setDeletePasswordError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && doDeleteHistory()}
+              placeholder="Нууц үг"
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
+            />
+            {deletePasswordError && (
+              <p className="text-xs text-red-500 mt-1.5">{deletePasswordError}</p>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
+              >
+                Болих
+              </button>
+              <button
+                onClick={doDeleteHistory}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Устгах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
