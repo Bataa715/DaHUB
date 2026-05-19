@@ -14,6 +14,18 @@
   color: var(--txt);
 }
 
+/* Light mode overrides */
+html.light .ab-theme {
+  --surface: #f0f1f5;
+  --surface-card: #ffffff;
+  --surface-elevated: #f4f5f8;
+  --surface-border: #d1d5db;
+  --surface-hover: #e8eaf0;
+  --txt: #1a1a2e;
+  --txt-muted: #6b7280;
+  --txt-dim: #9ca3af;
+}
+
 .ab-theme ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -22,15 +34,15 @@
   background: transparent;
 }
 .ab-theme ::-webkit-scrollbar-thumb {
-  background: #2a2a3a;
+  background: var(--surface-border);
   border-radius: 99px;
 }
 .ab-theme ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a4a;
+  background: var(--surface-hover);
 }
 
 .ab-theme .skeleton {
-  background: linear-gradient(90deg, #18181f 25%, #222230 50%, #18181f 75%);
+  background: linear-gradient(90deg, var(--surface-card) 25%, var(--surface-hover) 50%, var(--surface-card) 75%);
   background-size: 200% 100%;
   animation: ab-shimmer 1.5s ease-in-out infinite;
 }
@@ -44,10 +56,10 @@
   }
 }
 
-/* native select dark styling */
+/* native select styling */
 .ab-theme select option {
-  background: #18181f;
-  color: #e4e4ec;
+  background: var(--surface-card);
+  color: var(--txt);
 }
 
 /* Force dark background + light text on all inputs (browser overrides default to white) */
@@ -60,7 +72,7 @@
 .ab-theme input {
   background-color: var(--surface-elevated) !important;
   color: var(--txt) !important;
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 .ab-theme input::placeholder {
   color: var(--txt-dim);

@@ -201,17 +201,30 @@ export class OracleSearchController {
       }
     }
 
+    // ML dashboard-уудыг стандарт дүнгийн тооцооллоос хасна (давхардлаас сэргийлэх)
+    // DB1-4 (стандарт) болон DB13-16 (ML) нь ижил гүйлгээг илэрхийлдэг
+    const ML_DASH_IDS_SET = new Set([13, 14, 15, 16]);
+
     const alerts = Object.entries(cifMap)
       .filter(
         ([, v]) => v.dashboards.length >= (safeCifFilter ? 1 : minDashboards),
       )
-      .map(([cif, v]) => ({
-        cif,
-        dashboardCount: v.dashboards.length,
-        totalTransactions: v.dashboards.reduce((s, d) => s + d.count, 0),
-        totalAmount: v.dashboards.reduce((s, d) => s + d.totalAmount, 0),
-        dashboards: v.dashboards.sort((a, b) => b.count - a.count),
-      }))
+      .map(([cif, v]) => {
+        const stdAmount = v.dashboards
+          .filter((d) => !ML_DASH_IDS_SET.has(d.id))
+          .reduce((s, d) => s + d.totalAmount, 0);
+        const mlAmount = v.dashboards
+          .filter((d) => ML_DASH_IDS_SET.has(d.id))
+          .reduce((s, d) => s + d.totalAmount, 0);
+        return {
+          cif,
+          dashboardCount: v.dashboards.length,
+          totalTransactions: v.dashboards.reduce((s, d) => s + d.count, 0),
+          totalAmount: stdAmount,
+          mlAmount,
+          dashboards: v.dashboards.sort((a, b) => b.count - a.count),
+        };
+      })
       .sort(
         (a, b) =>
           b.dashboardCount - a.dashboardCount || b.totalAmount - a.totalAmount,
@@ -225,6 +238,52 @@ export class OracleSearchController {
       failedDashboards,
       searchedCif: safeCifFilter || null,
     };
+  }
+
+  /**
+   * GET /oracle/search/dashboard-summaries
+   * Нийт тоо + нийлбэр дүн — бүх идэвхтэй dashboard
+   */
+  @Get("dashboard-summaries")
+  async getDashboardSummaries() {
+    this.requireOracle();
+
+    const dashboards = this.config.getEnabledDashboards();
+
+    const results = await Promise.allSettled(
+      dashboards.map(async (dash) => {
+        const fromExpr = dash.fromClause ?? dash.tableName;
+        const safeAmt = dash.amountColumn;
+        const sql = safeAmt
+          ? `SELECT COUNT(*) AS CNT, SUM(NVL(${safeAmt}, 0)) AS TOTAL_AMT FROM ${fromExpr} WHERE ${dash.cifColumn} IS NOT NULL`
+          : `SELECT COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${fromExpr} WHERE ${dash.cifColumn} IS NOT NULL`;
+
+        const rows = await this.oracle.query<{
+          CNT: number;
+          TOTAL_AMT: number;
+        }>(sql);
+        const r = rows[0] || { CNT: 0, TOTAL_AMT: 0 };
+        return {
+          id: dash.id,
+          name: dash.name,
+          totalCount: Number(r.CNT) || 0,
+          totalAmount: Number(r.TOTAL_AMT) || 0,
+          hasAmount: !!safeAmt,
+        };
+      }),
+    );
+
+    return results.map((r, i) => {
+      if (r.status === "fulfilled") return r.value;
+      return {
+        id: dashboards[i].id,
+        name: dashboards[i].name,
+        totalCount: null,
+        totalAmount: null,
+        hasAmount: !!dashboards[i].amountColumn,
+        error: String((r.reason as any)?.message ?? r.reason),
+      };
+    });
   }
 
   /**

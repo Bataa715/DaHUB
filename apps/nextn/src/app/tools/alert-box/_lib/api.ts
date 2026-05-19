@@ -79,6 +79,19 @@ export async function abFetchNotifications(limit = 20) {
   return req(`/oracle/search/alerts?min_dashboards=2&limit=${limit}`);
 }
 
+export async function abFetchDashboardSummaries(): Promise<
+  {
+    id: number;
+    name: string;
+    totalCount: number | null;
+    totalAmount: number | null;
+    hasAmount: boolean;
+    error?: string;
+  }[]
+> {
+  return req("/oracle/search/dashboard-summaries");
+}
+
 export async function abFetchDashboardTop(
   id: number,
   limit = 10,
