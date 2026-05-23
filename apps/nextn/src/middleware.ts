@@ -24,7 +24,6 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/sanamsargui-tuuwer": ["sanamsargui-tuuwer"],
   "/tools/pivot": ["pivot"],
   "/tools/report": ["report"],
-  "/tools/chess": ["chess"],
   "/tools/english": ["english"],
   "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],

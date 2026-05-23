@@ -599,80 +599,6 @@ export const dbAccessApi = {
   },
 };
 
-// Chess (Оюуны спорт) APIs
-export const chessApi = {
-  getInvitations: async () => {
-    const response = await api.get("/chess/invitations");
-    return response.data as ChessInvitation[];
-  },
-
-  sendInvite: async (toUserId: string, toUserName: string) => {
-    const response = await api.post("/chess/invite", { toUserId, toUserName });
-    return response.data as { id: string; message: string };
-  },
-
-  acceptInvite: async (id: string) => {
-    const response = await api.post(`/chess/invite/${id}/accept`);
-    return response.data as { gameId: string; message: string };
-  },
-
-  declineInvite: async (id: string) => {
-    const response = await api.post(`/chess/invite/${id}/decline`);
-    return response.data as { message: string };
-  },
-
-  getMyGames: async () => {
-    const response = await api.get("/chess/games");
-    return response.data as ChessGame[];
-  },
-
-  getGame: async (id: string) => {
-    const response = await api.get(`/chess/game/${id}`);
-    return response.data as ChessGame;
-  },
-
-  makeMove: async (gameId: string, move: string) => {
-    const response = await api.post(`/chess/game/${gameId}/move`, { move });
-    return response.data as { success: boolean; moveCount: number };
-  },
-
-  finishGame: async (gameId: string, status: string, resultReason: string) => {
-    const response = await api.post(`/chess/game/${gameId}/finish`, {
-      status,
-      resultReason,
-    });
-    return response.data as { message: string };
-  },
-
-  getHistory: async () => {
-    const response = await api.get("/chess/history");
-    return response.data as {
-      games: {
-        id: string;
-        opponent: string;
-        result: string;
-        resultReason: string;
-        createdAt: string;
-      }[];
-      wins: number;
-      losses: number;
-      draws: number;
-      total: number;
-    };
-  },
-
-  getRankings: async () => {
-    const response = await api.get("/chess/rankings");
-    return response.data as {
-      id: string;
-      name: string;
-      wins: number;
-      losses: number;
-      draws: number;
-    }[];
-  },
-};
-
 export const englishApi = {
   getWords: async () => {
     const response = await api.get("/english/words");
@@ -721,28 +647,6 @@ export const englishApi = {
     return response.data as { success: boolean };
   },
 };
-
-export interface ChessInvitation {
-  id: string;
-  fromUserId: string;
-  fromUserName: string;
-  toUserId: string;
-  toUserName: string;
-  status: string;
-  createdAt: string;
-}
-
-interface ChessGame {
-  id: string;
-  whiteUserId: string;
-  whiteUserName: string;
-  blackUserId: string;
-  blackUserName: string;
-  moves: string; // JSON string array
-  status: string; // active | white_won | black_won | draw
-  resultReason: string;
-  createdAt: string;
-}
 
 // ── Python API Tools ──────────────────────────────────────────────────────────
 

@@ -12,7 +12,6 @@ import { AuditLogModule } from "./audit/audit-log.module";
 import { DbAccessModule } from "./db-access/db-access.module";
 import { TailanModule } from "./tailan/tailan.module";
 import { TuuwerModule } from "./tuuwer/tuuwer.module";
-import { ChessModule } from "./chess/chess.module";
 import { EnglishModule } from "./english/english.module";
 import { OracleModule } from "./oracle/oracle.module";
 import { PythonApiModule } from "./python-api/python-api.module";
@@ -48,7 +47,6 @@ import configuration from "./config/configuration";
     DbAccessModule,
     TailanModule,
     TuuwerModule,
-    ChessModule,
     EnglishModule,
     OracleModule,
     PythonApiModule,

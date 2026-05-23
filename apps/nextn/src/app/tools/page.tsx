@@ -17,9 +17,7 @@ import {
   Star,
   FileText,
   FileSpreadsheet,
-  FileSearch,
   Database,
-  Crown,
   BookOpen,
   BellDot,
   ShieldAlert,
@@ -52,17 +50,7 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       tag: "Productivity",
       category: "free",
     },
-    {
-      id: "chess",
-      title: t("toolChessTitle"),
-      description: t("toolChessDesc"),
-      icon: Crown,
-      href: "/tools/chess",
-      gradient: "from-amber-500 to-yellow-500",
-      glow: "shadow-amber-500/20 group-hover:shadow-amber-500/40",
-      tag: "Game",
-      category: "free",
-    },
+
     {
       id: "sanamsargui-tuuwer",
       title: t("toolSampleTitle"),
@@ -142,17 +130,7 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       tag: "Report",
       category: "work",
     },
-    {
-      id: "pdf_to_text",
-      title: t("toolPdfTitle"),
-      description: t("toolPdfDesc"),
-      icon: FileSearch,
-      href: "/tools/pdf-to-text",
-      gradient: "from-pink-500 to-rose-500",
-      glow: "shadow-pink-500/20 group-hover:shadow-pink-500/40",
-      tag: "Utility",
-      category: "free",
-    },
+
     {
       id: "data_doc",
       title: t("toolDataDocTitle"),
