@@ -90,13 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const adminPath = isAdminPath();
-    const token = adminPath ? Cookies.get("adminToken") : Cookies.get("token");
-    const refreshKey = adminPath ? "adminRefreshToken" : "refreshToken";
-    const tokenKey = adminPath ? "adminToken" : "token";
-    const userKey = adminPath ? "adminUser" : "user";
-    const storedRefreshToken = Cookies.get(refreshKey);
-
-    if (!token && !storedRefreshToken) {
+    const userCookie = adminPath ? Cookies.get("adminUser") : Cookies.get("user");
+    // [N-2] token/refreshToken are HttpOnly — not readable by JS.
+    // Use the user display cookie as the session presence indicator.
+    if (!userCookie) {
       setUser(null);
       setLoading(false);
       return;
@@ -105,37 +102,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Always re-issue the access token on load so the JWT cookie has the
     // latest allowedTools (in case an admin granted/revoked tools).
     const doRefresh = async () => {
-      if (storedRefreshToken) {
-        try {
-          const {
-            user: freshUser,
-            accessToken,
-            refreshToken: newRefreshToken,
-          } = await authApi.refreshToken(storedRefreshToken);
-          const secure =
-            typeof window !== "undefined" &&
-            window.location.protocol === "https:";
-          Cookies.set(tokenKey, accessToken, {
-            expires: ACCESS_TOKEN_EXPIRY_DAYS,
-            sameSite: "strict",
-            secure,
-          });
-          Cookies.set(refreshKey, newRefreshToken, {
-            expires: REFRESH_TOKEN_EXPIRY_DAYS,
-            sameSite: "strict",
-            secure,
-          });
-          Cookies.set(userKey, JSON.stringify(freshUser), {
-            expires: REFRESH_TOKEN_EXPIRY_DAYS,
-            sameSite: "strict",
-            secure,
-          });
-          setUser(freshUser);
-          setLoading(false);
-          return;
-        } catch {
-          // Fall through to getProfile if refresh fails
-        }
+      const userKey = adminPath ? "adminUser" : "user";
+      // [N-2] No refreshToken arg — browser sends HttpOnly cookie automatically
+      try {
+        const { user: freshUser } = await authApi.refreshToken();
+        const secure =
+          typeof window !== "undefined" &&
+          window.location.protocol === "https:";
+        Cookies.set(userKey, JSON.stringify(freshUser), {
+          expires: REFRESH_TOKEN_EXPIRY_DAYS,
+          sameSite: "strict",
+          secure,
+        });
+        setUser(freshUser);
+        setLoading(false);
+        return;
+      } catch {
+        // Fall through to getProfile if refresh fails
       }
 
       authApi
@@ -173,23 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     doRefresh();
   }, []);
 
-  const saveUserSession = (
-    userData: User,
-    accessToken: string,
-    refreshToken: string,
-  ) => {
+  // [N-2] saveUserSession only saves the user display cookie; token cookies set by backend
+  const saveUserSession = (userData: User) => {
     const secure =
       typeof window !== "undefined" && window.location.protocol === "https:";
-    Cookies.set("token", accessToken, {
-      expires: ACCESS_TOKEN_EXPIRY_DAYS,
-      sameSite: "strict",
-      secure,
-    });
-    Cookies.set("refreshToken", refreshToken, {
-      expires: REFRESH_TOKEN_EXPIRY_DAYS,
-      sameSite: "strict",
-      secure,
-    });
     Cookies.set("user", JSON.stringify(userData), {
       expires: REFRESH_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
@@ -198,23 +168,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
-  const saveAdminSession = (
-    userData: User,
-    accessToken: string,
-    refreshToken: string,
-  ) => {
+  // [N-2] saveAdminSession only saves adminUser display cookie
+  const saveAdminSession = (userData: User) => {
     const secure =
       typeof window !== "undefined" && window.location.protocol === "https:";
-    Cookies.set("adminToken", accessToken, {
-      expires: ACCESS_TOKEN_EXPIRY_DAYS,
-      sameSite: "strict",
-      secure,
-    });
-    Cookies.set("adminRefreshToken", refreshToken, {
-      expires: REFRESH_TOKEN_EXPIRY_DAYS,
-      sameSite: "strict",
-      secure,
-    });
     Cookies.set("adminUser", JSON.stringify(userData), {
       expires: REFRESH_TOKEN_EXPIRY_DAYS,
       sameSite: "strict",
@@ -229,63 +186,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
   ) => {
     try {
-      const { user, accessToken, refreshToken } = await authApi.login(
-        department,
-        username,
-        password,
-      );
-      saveUserSession(user, accessToken, refreshToken);
+      const { user } = await authApi.login(department, username, password);
+      saveUserSession(user);
     } catch (error) {
-      const msg =
-        axios.isAxiosError(error)
-          ? (error.response?.data?.message as string | undefined)
-          : undefined;
+      const msg = axios.isAxiosError(error)
+        ? (error.response?.data?.message as string | undefined)
+        : undefined;
       throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
     }
   };
 
   const loginById = async (userId: string, password: string) => {
     try {
-      const { user, accessToken, refreshToken } = await authApi.loginById(
-        userId,
-        password,
-      );
-      saveUserSession(user, accessToken, refreshToken);
+      const { user } = await authApi.loginById(userId, password);
+      saveUserSession(user);
     } catch (error) {
-      const msg =
-        axios.isAxiosError(error)
-          ? (error.response?.data?.message as string | undefined)
-          : undefined;
+      const msg = axios.isAxiosError(error)
+        ? (error.response?.data?.message as string | undefined)
+        : undefined;
       throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
     }
   };
 
   const adminLogin = async (userId: string, password: string) => {
     try {
-      const { user, accessToken, refreshToken } = await authApi.adminLogin(
-        userId,
-        password,
-      );
+      const { user } = await authApi.adminLogin(userId, password);
       if (!user.isAdmin) throw new Error("Та админ эрхгүй байна");
-      saveAdminSession(user, accessToken, refreshToken);
+      saveAdminSession(user);
     } catch (error) {
-      const msg =
-        axios.isAxiosError(error)
-          ? (error.response?.data?.message as string | undefined)
-          : error instanceof Error
-            ? error.message
-            : undefined;
+      const msg = axios.isAxiosError(error)
+        ? (error.response?.data?.message as string | undefined)
+        : error instanceof Error
+          ? error.message
+          : undefined;
       throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
     }
   };
 
   const logout = () => {
-    // Clear both regular and admin cookies unconditionally
-    Cookies.remove("token");
-    Cookies.remove("refreshToken");
+    // [N-2] Backend clears HttpOnly cookies; frontend clears display cookies only
+    authApi.logout().catch(() => { /* best-effort */ });
     Cookies.remove("user");
-    Cookies.remove("adminToken");
-    Cookies.remove("adminRefreshToken");
     Cookies.remove("adminUser");
     setUser(null);
   };
@@ -293,44 +234,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     try {
       const adminPath = isAdminPath();
-      const refreshKey = adminPath ? "adminRefreshToken" : "refreshToken";
-      const tokenKey = adminPath ? "adminToken" : "token";
       const userKey = adminPath ? "adminUser" : "user";
-      const storedRefreshToken = Cookies.get(refreshKey);
-
-      if (storedRefreshToken) {
-        // Re-issue access token so the JWT cookie contains the latest allowedTools.
-        // The middleware reads allowedTools from the JWT cookie directly, so without
-        // this step newly-granted tool permissions would not take effect until re-login.
-        try {
-          const {
-            user: freshUser,
-            accessToken,
-            refreshToken: newRefreshToken,
-          } = await authApi.refreshToken(storedRefreshToken);
-          const secure =
-            typeof window !== "undefined" &&
-            window.location.protocol === "https:";
-          Cookies.set(tokenKey, accessToken, {
-            expires: ACCESS_TOKEN_EXPIRY_DAYS,
-            sameSite: "strict",
-            secure,
-          });
-          Cookies.set(refreshKey, newRefreshToken, {
-            expires: REFRESH_TOKEN_EXPIRY_DAYS,
-            sameSite: "strict",
-            secure,
-          });
-          Cookies.set(userKey, JSON.stringify(freshUser), {
-            expires: REFRESH_TOKEN_EXPIRY_DAYS,
-            sameSite: "strict",
-            secure,
-          });
-          setUser(freshUser);
-          return;
-        } catch {
-          // If token refresh fails, fall back to getProfile only
-        }
+      // [N-2] No refreshToken arg — browser sends HttpOnly cookie automatically.
+      // Re-issue so the JWT cookie contains the latest allowedTools.
+      try {
+        const { user: freshUser } = await authApi.refreshToken();
+        const secure =
+          typeof window !== "undefined" &&
+          window.location.protocol === "https:";
+        Cookies.set(userKey, JSON.stringify(freshUser), {
+          expires: REFRESH_TOKEN_EXPIRY_DAYS,
+          sameSite: "strict",
+          secure,
+        });
+        setUser(freshUser);
+        return;
+      } catch {
+        // If token refresh fails, fall back to getProfile only
       }
 
       const profile = await authApi.getProfile();

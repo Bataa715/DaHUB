@@ -443,16 +443,28 @@ class RunToolRequest(BaseModel):
 # ── Code safety ───────────────────────────────────────────────────────────────
 
 _BLOCKED_STRINGS = [
+    # Process / OS execution
     "import subprocess", "from subprocess",
     "import socket", "from socket",
     "import shutil", "from shutil",
+    "import sys", "from sys",
+    # Network / HTTP — prevent SSRF and data exfiltration
+    "import requests", "from requests",
+    "import httpx", "from httpx",
+    "import urllib", "from urllib",
+    "import http.client", "import httplib",
+    "import ftplib", "import smtplib",
+    "import telnetlib", "import paramiko",
+    # Dynamic import / introspection
     "__import__", "importlib", "builtins", "__builtins__",
     "__dict__", "__class__", "__subclasses__", "__globals__", "__getattr__",
     "getattr(", "setattr(", "delattr(",
     "globals(", "locals(", "vars(", "dir(",
     "exec(", "eval(", "compile(",
+    # File system
     "os.system", "os.popen", "os.execv", "os.spawn", "os.environ",
     "os.path", "os.remove", "os.unlink", "os.rmdir", "os.listdir",
+    "import pathlib", "from pathlib",
     "open(", "pickle", "marshal", "shelve",
     "yaml.load", "yaml.unsafe_load",
 ]

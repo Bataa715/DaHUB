@@ -74,9 +74,14 @@ export default function AdminLoginPage() {
       window.location.replace("/admin");
     } catch (error) {
       let message = "Нэвтрэхэд тодорхойгүй алдаа гарлаа.";
-      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
       else if (error instanceof Error) message = error.message;
-      toast({ title: "Нэвтрэхэд алдаа гарлаа", description: message, variant: "destructive" });
+      toast({
+        title: "Нэвтрэхэд алдаа гарлаа",
+        description: message,
+        variant: "destructive",
+      });
       setIsLoading(false);
     }
   }

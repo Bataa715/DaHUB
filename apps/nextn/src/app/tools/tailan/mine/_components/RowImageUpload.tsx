@@ -73,10 +73,7 @@ export function RowImageUpload({
       {images.length > 0 && (
         <div className="mt-2 space-y-2">
           {images.map((img) => (
-            <div
-              key={img.id}
-              className="bg-card/50 rounded-lg p-2 space-y-1.5"
-            >
+            <div key={img.id} className="bg-card/50 rounded-lg p-2 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground/70">
                   {img.width}% өргөн
@@ -135,7 +132,9 @@ export function RowImageUpload({
                   }
                   className="flex-1 bg-card border border-border rounded px-2 py-0.5 text-xs text-foreground/80 placeholder-muted-foreground/40"
                 />
-                <span className="text-xs text-muted-foreground/70 w-9 shrink-0">px</span>
+                <span className="text-xs text-muted-foreground/70 w-9 shrink-0">
+                  px
+                </span>
               </div>
             </div>
           ))}

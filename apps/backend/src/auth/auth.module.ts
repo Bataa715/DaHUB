@@ -14,7 +14,7 @@ import { AuditLogModule } from "../audit/audit-log.module";
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>("JWT_SECRET"),
-        signOptions: { expiresIn: "1h" }, // Shortened from 7 days to 1 hour
+        signOptions: { expiresIn: "15m" }, // H-6: shortened from 1h — refresh token handles session continuity
       }),
       inject: [ConfigService],
     }),

@@ -20,7 +20,6 @@ import {
   Eye,
   EyeOff,
   KeyRound,
-  User,
   Camera,
   Upload,
   Loader2,
@@ -117,8 +116,13 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Error changing password:", error);
       let message = t("passwordChangeBtn");
-      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
-      toast({ title: t("error"), description: message, variant: "destructive" });
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setIsChangingPassword(false);
     }
@@ -210,11 +214,19 @@ export default function SettingsPage() {
       let errorMessage = t("imageError");
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 413) errorMessage = t("imageTooBig");
-        else if (error.response?.data?.message) errorMessage = error.response.data.message;
-      } else if (error instanceof Error && error.message.includes("too large")) {
+        else if (error.response?.data?.message)
+          errorMessage = error.response.data.message;
+      } else if (
+        error instanceof Error &&
+        error.message.includes("too large")
+      ) {
         errorMessage = t("imageTooBig");
       }
-      toast({ title: t("error"), description: errorMessage, variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsUploadingImage(false);
     }
@@ -232,7 +244,11 @@ export default function SettingsPage() {
       await refreshUser();
     } catch (error) {
       console.error("Error removing profile image:", error);
-      toast({ title: t("error"), description: t("imageError"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: t("imageError"),
+        variant: "destructive",
+      });
     } finally {
       setIsUploadingImage(false);
     }

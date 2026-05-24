@@ -156,12 +156,6 @@ export async function POST(req: NextRequest) {
   sumSheet.views = [{ state: "frozen", xSplit: 0, ySplit: 3 }];
 
   // ── Per-year sample sheets ──────────────────────────────────────────────────
-  const RED_FILL: ExcelJS.Fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFFCE4E4" },
-  };
-
   for (const pivotRow of group.rows) {
     const year = pivotRow.year;
     const sampled = sampledByYear[year] ?? [];

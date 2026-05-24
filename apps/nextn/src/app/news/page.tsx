@@ -25,7 +25,9 @@ import api from "@/lib/api";
 
 function getImageUrl(path?: string): string | null {
   if (!path) return null;
-  return `${process.env.NEXT_PUBLIC_API_URL}${path}`;
+  // [N-6] Use Next.js proxy so the server-side route can attach the HttpOnly
+  // token cookie to the upstream request. path is like "/news/{id}/image".
+  return `/api${path}`;
 }
 
 function sanitizeHtml(html: string): string {
@@ -37,10 +39,26 @@ function sanitizeHtml(html: string): string {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
     FORBID_ATTR: [
-      "onerror", "onload", "onclick", "onmouseover", "onmouseout",
-      "onmouseenter", "onmouseleave", "onfocus", "onblur", "onchange",
-      "onsubmit", "onkeydown", "onkeyup", "onkeypress", "onpaste",
-      "ondrop", "ondragstart", "oncontextmenu", "onscroll", "oninput",
+      "onerror",
+      "onload",
+      "onclick",
+      "onmouseover",
+      "onmouseout",
+      "onmouseenter",
+      "onmouseleave",
+      "onfocus",
+      "onblur",
+      "onchange",
+      "onsubmit",
+      "onkeydown",
+      "onkeyup",
+      "onkeypress",
+      "onpaste",
+      "ondrop",
+      "ondragstart",
+      "oncontextmenu",
+      "onscroll",
+      "oninput",
     ],
   });
 }

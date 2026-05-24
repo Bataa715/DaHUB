@@ -6,34 +6,19 @@ if (!API_URL) {
   throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
 }
 
+// [N-2] withCredentials: true so the browser sends HttpOnly token cookies with every request
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
-/** Pick the right token based on which part of the app is making the request */
-const getActiveToken = () => {
-  if (
-    typeof window !== "undefined" &&
-    window.location.pathname.startsWith("/admin")
-  ) {
-    return Cookies.get("adminToken");
-  }
-  return Cookies.get("token");
-};
+// [N-2] No request interceptor for Authorization header —
+// HttpOnly cookies are sent automatically by the browser.
 
-// Request interceptor - token нэмэх
-api.interceptors.request.use((config) => {
-  const token = getActiveToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Response interceptor - алдаа шийдвэрлэх
+// Response interceptor — silent token refresh on 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -41,42 +26,33 @@ api.interceptors.response.use(
     const isAdmin =
       typeof window !== "undefined" &&
       window.location.pathname.startsWith("/admin");
-
-    const tokenKey = isAdmin ? "adminToken" : "token";
-    const refreshKey = isAdmin ? "adminRefreshToken" : "refreshToken";
     const userKey = isAdmin ? "adminUser" : "user";
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = Cookies.get(refreshKey);
-        if (refreshToken) {
-          const response = await axios.post(`${API_URL}/auth/refresh`, {
-            refreshToken,
-          });
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
+        // [N-2] No body needed — browser sends HttpOnly refreshToken cookie automatically
+        const refreshRes = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true },
+        );
+        // Update the user display cookie from the refresh response
+        const freshUser = refreshRes.data?.user;
+        if (freshUser) {
           const secure =
             typeof window !== "undefined" &&
             window.location.protocol === "https:";
-
-          Cookies.set(tokenKey, accessToken, {
-            expires: 1 / 24,
+          Cookies.set(userKey, JSON.stringify(freshUser), {
+            expires: 3,
             sameSite: "strict",
             secure,
           });
-          Cookies.set(refreshKey, newRefreshToken, {
-            expires: 7,
-            sameSite: "strict",
-            secure,
-          });
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
         }
+        // Retry original — browser sends new HttpOnly token cookie automatically
+        return api(originalRequest);
       } catch {
-        Cookies.remove(tokenKey);
-        Cookies.remove(refreshKey);
         Cookies.remove(userKey);
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("auth:session-expired"));
@@ -89,8 +65,6 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      Cookies.remove(tokenKey);
-      Cookies.remove(refreshKey);
       Cookies.remove(userKey);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("auth:session-expired"));
@@ -151,8 +125,9 @@ export const authApi = {
     return response.data;
   },
 
-  refreshToken: async (refreshToken: string) => {
-    const response = await api.post("/auth/refresh", { refreshToken });
+  // [N-2] No arg needed — browser sends HttpOnly refreshToken cookie automatically
+  refreshToken: async () => {
+    const response = await api.post("/auth/refresh", {});
     return response.data;
   },
 
@@ -596,55 +571,6 @@ export const dbAccessApi = {
   getGrantors: async () => {
     const response = await api.get("/db-access/grantors");
     return response.data;
-  },
-};
-
-export const englishApi = {
-  getWords: async () => {
-    const response = await api.get("/english/words");
-    return response.data;
-  },
-
-  getStats: async () => {
-    const response = await api.get("/english/stats");
-    return response.data;
-  },
-
-  createWord: async (data: {
-    word: string;
-    translation: string;
-    definition?: string;
-    example?: string;
-    partOfSpeech?: string;
-    difficulty?: number;
-  }) => {
-    const response = await api.post("/english/words", data);
-    return response.data as { id: string };
-  },
-
-  updateWord: async (
-    id: string,
-    data: {
-      word?: string;
-      translation?: string;
-      definition?: string;
-      example?: string;
-      partOfSpeech?: string;
-      difficulty?: number;
-    },
-  ) => {
-    const response = await api.put(`/english/words/${id}`, data);
-    return response.data as { success: boolean };
-  },
-
-  deleteWord: async (id: string) => {
-    const response = await api.delete(`/english/words/${id}`);
-    return response.data as { success: boolean };
-  },
-
-  recordReview: async (id: string, correct: boolean) => {
-    const response = await api.post(`/english/words/${id}/review`, { correct });
-    return response.data as { success: boolean };
   },
 };
 

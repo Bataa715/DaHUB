@@ -7,20 +7,13 @@ import Link from "next/link";
 import {
   Search,
   Database,
-  CheckCircle2,
-  XCircle,
   Copy,
   Check,
   Pencil,
-  X,
   Loader2,
   Code2,
 } from "lucide-react";
-import type {
-  DatabaseSchema,
-  DatabaseTable,
-  Column,
-} from "@/lib/data-doc-types";
+import type { DatabaseSchema } from "@/lib/data-doc-types";
 
 type FilterMode = "all" | "described" | "undescribed";
 

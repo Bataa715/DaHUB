@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -8,17 +8,14 @@ import { usersApi } from "@/lib/api";
 import { motion } from "framer-motion";
 import {
   ArrowUpRight,
-  ListTodo,
   Wrench,
   Lock,
   Loader2,
   Dice6,
   Table2,
-  Star,
   FileText,
   FileSpreadsheet,
   Database,
-  BookOpen,
   BellDot,
   ShieldAlert,
   CalendarRange,
@@ -33,24 +30,11 @@ interface Tool {
   gradient: string;
   glow: string;
   tag: string;
-  category: "free" | "work";
   matchIds?: string[]; // if set, card is visible if user has ANY of these tool ids
 }
 
 function getTools(t: (key: TranslationKey) => string): Tool[] {
   return [
-    {
-      id: "todo",
-      title: t("toolTodoTitle"),
-      description: t("toolTodoDesc"),
-      icon: ListTodo,
-      href: "/tools/todo",
-      gradient: "from-emerald-500 to-teal-500",
-      glow: "shadow-emerald-500/20 group-hover:shadow-emerald-500/40",
-      tag: "Productivity",
-      category: "free",
-    },
-
     {
       id: "sanamsargui-tuuwer",
       title: t("toolSampleTitle"),
@@ -60,7 +44,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-violet-500 to-indigo-500",
       glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
       tag: "Audit",
-      category: "work",
     },
     {
       id: "pivot",
@@ -71,7 +54,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-cyan-500 to-blue-500",
       glow: "shadow-cyan-500/20 group-hover:shadow-cyan-500/40",
       tag: "Analysis",
-      category: "work",
     },
     {
       id: "tailan",
@@ -83,7 +65,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-violet-500 to-purple-500",
       glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
       tag: "Report",
-      category: "work",
     },
     {
       id: "db_access_requester",
@@ -94,7 +75,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-cyan-500 to-teal-500",
       glow: "shadow-cyan-500/20 group-hover:shadow-cyan-500/40",
       tag: "Security",
-      category: "work",
     },
     {
       id: "db_access_granter",
@@ -105,18 +85,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-violet-500 to-indigo-500",
       glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
       tag: "Security",
-      category: "work",
-    },
-    {
-      id: "english",
-      title: t("toolEnglishTitle"),
-      description: t("toolEnglishDesc"),
-      icon: BookOpen,
-      href: "/tools/english/vocabulary",
-      gradient: "from-sky-500 to-blue-500",
-      glow: "shadow-sky-500/20 group-hover:shadow-sky-500/40",
-      tag: "Learning",
-      category: "free",
     },
     {
       id: "reports",
@@ -128,7 +96,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-emerald-500 to-violet-500",
       glow: "shadow-emerald-500/20 group-hover:shadow-emerald-500/40",
       tag: "Report",
-      category: "work",
     },
 
     {
@@ -140,7 +107,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-teal-500 to-cyan-500",
       glow: "shadow-teal-500/20 group-hover:shadow-teal-500/40",
       tag: "Data",
-      category: "work",
     },
     {
       id: "alert_box",
@@ -151,7 +117,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-red-500 to-rose-500",
       glow: "shadow-red-500/20 group-hover:shadow-red-500/40",
       tag: "Audit",
-      category: "work",
     },
     {
       id: "risk_assessment",
@@ -162,7 +127,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-rose-500 to-orange-500",
       glow: "shadow-rose-500/20 group-hover:shadow-rose-500/40",
       tag: "Risk",
-      category: "work",
     },
     {
       id: "weekly_report",
@@ -178,7 +142,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-indigo-500 to-purple-500",
       glow: "shadow-indigo-500/20 group-hover:shadow-indigo-500/40",
       tag: "Report",
-      category: "work",
     },
   ];
 }
@@ -298,9 +261,6 @@ export default function ToolsPage() {
     return ids.some((id) => allowedTools.includes(id));
   });
 
-  const freeTools = available.filter((tool) => tool.category === "free");
-  const workTools = available.filter((tool) => tool.category === "work");
-
   /*  BG  */
   const BG = (
     <div className="absolute inset-0 bg-background">
@@ -411,50 +371,10 @@ export default function ToolsPage() {
             </p>
           </motion.div>
         ) : (
-          <div className="space-y-6">
-            {/* ── Чөлөөт хэрэгслүүд ── */}
-            {freeTools.length > 0 && (
-              <section>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-foreground">
-                      {t("toolsFree")}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      {freeTools.length}
-                    </span>
-                  </div>
-                  <div className="flex-1 h-px bg-border/50" />
-                </div>
-                <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-                  {freeTools.map((tool, i) => (
-                    <ToolCard key={tool.id} tool={tool} index={i} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* ── Ажлын хэрэгслүүд ── */}
-            {workTools.length > 0 && (
-              <section>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-foreground">
-                      {t("toolsWork")}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                      {workTools.length}
-                    </span>
-                  </div>
-                  <div className="flex-1 h-px bg-border/50" />
-                </div>
-                <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-                  {workTools.map((tool, i) => (
-                    <ToolCard key={tool.id} tool={tool} index={i} />
-                  ))}
-                </div>
-              </section>
-            )}
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            {available.map((tool, i) => (
+              <ToolCard key={tool.id} tool={tool} index={i} />
+            ))}
           </div>
         )}
       </div>

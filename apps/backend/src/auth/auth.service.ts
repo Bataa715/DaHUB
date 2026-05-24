@@ -370,7 +370,7 @@ export class AuthService {
         departmentId: dept.id,
         isAdmin: 0,
         isActive: 1,
-        allowedTools: JSON.stringify(["todo"]),
+        allowedTools: JSON.stringify([]),
         profileImage: "",
         lastLoginAt: null,
         createdAt: now,
@@ -384,7 +384,7 @@ export class AuthService {
       departmentName: department,
       departmentId: dept.id,
       isAdmin: 0,
-      allowedTools: JSON.stringify(["todo"]),
+      allowedTools: JSON.stringify([]),
       name,
       position,
     };
@@ -654,31 +654,21 @@ export class AuthService {
   async checkUser(checkUserDto: CheckUserDto) {
     const { userId } = checkUserDto;
     const users = await this.clickhouse.query<any>(
-      `SELECT u.*, d.name as departmentName
-       FROM users u LEFT JOIN departments d ON u.departmentId = d.id
-       WHERE u.userId = {userId:String} LIMIT 1`,
+      `SELECT userId, password, isActive FROM users WHERE userId = {userId:String} LIMIT 1`,
       { userId },
     );
     const user = users[0];
-    if (!user)
-      return {
-        exists: false,
-        hasPassword: false,
-        userId: null,
-        name: null,
-        department: null,
-      };
+    if (!user) return { exists: false, hasPassword: false };
 
     const hasPassword =
       user.password &&
       user.password.length > 0 &&
-      !user.password.startsWith("PENDING_");
+      !user.password.startsWith("PENDING:");
     return {
       exists: true,
       hasPassword,
       userId: user.userId,
-      name: user.name,
-      department: user.departmentName || null,
+      isActive: !!user.isActive,
     };
   }
 
@@ -700,18 +690,21 @@ export class AuthService {
     const dept = await this.ensureDepartment(department);
     const id = randomUUID();
     const now = nowCH();
+    // [N-3] Generate a one-time claim token — returned to caller so only they can set the password
+    const claimToken = randomUUID();
 
     await this.clickhouse.insert("users", [
       {
         id,
         userId,
-        password: "PENDING_PASSWORD",
+        password: "PENDING:" + claimToken,
         name,
         position,
         departmentId: dept.id,
         isAdmin: 0,
-        isActive: 1,
-        allowedTools: JSON.stringify(["todo"]),
+        // [N-1] New registrations require admin activation before they can log in
+        isActive: 0,
+        allowedTools: JSON.stringify([]),
         profileImage: "",
         lastLoginAt: null,
         createdAt: now,
@@ -725,7 +718,9 @@ export class AuthService {
       name,
       department,
       position,
-      message: "Бүртгэл амжилттай. Нууц үгээ үүсгэнэ үү.",
+      claimToken,
+      message:
+        "Бүртгэл амжилттай. Нууц үгээ үүсгэснийхээ дараа админаас эрхээ нээлгэнэ үү.",
     };
   }
 
@@ -747,10 +742,13 @@ export class AuthService {
   }
 
   async setPassword(setPasswordDto: SetPasswordDto) {
-    const { userId, password } = setPasswordDto;
+    const { userId, password, claimToken } = setPasswordDto;
 
     // [MED-2] Validate complexity before querying DB
     this.validatePasswordComplexity(password);
+
+    // [H-3] Brute-force guard — rate-limit setPassword attempts per userId
+    await this.guardLogin("setpw:" + userId);
 
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
@@ -759,9 +757,18 @@ export class AuthService {
       { userId },
     );
     const user = users[0];
-    if (!user) throw new NotFoundException("Хэрэглэгч олдсонгүй");
-    if (user.password && !user.password.startsWith("PENDING_")) {
+    if (!user) {
+      await this.recordFailedLogin("setpw:" + userId);
+      throw new NotFoundException("Хэрэглэгч олдсонгүй");
+    }
+    if (user.password && !user.password.startsWith("PENDING:")) {
+      await this.recordFailedLogin("setpw:" + userId);
       throw new BadRequestException("Нууц үг аль хэдийн тохируулагдсан байна");
+    }
+    // [N-3] Validate claim token — prevents an attacker from setting another user's password
+    if (user.password !== "PENDING:" + claimToken) {
+      await this.recordFailedLogin("setpw:" + userId);
+      throw new UnauthorizedException("Нууц үг тохируулах эрх байхгүй байна");
     }
 
     const hashedPassword = await bcrypt.hash(password, 13);
@@ -773,6 +780,7 @@ export class AuthService {
       },
     );
 
+    await this.clearFailedLogins("setpw:" + userId);
     const accessToken = this.generateTokenForUser(user);
     const refreshToken = await this.generateRefreshToken(user.id);
     return {
@@ -780,7 +788,6 @@ export class AuthService {
       user: this.formatUserResponse(user),
       accessToken,
       refreshToken,
-      token: accessToken, // for frontend compatibility
     };
   }
 

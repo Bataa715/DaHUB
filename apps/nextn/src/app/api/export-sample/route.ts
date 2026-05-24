@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     row.height = 18;
   };
 
-  for (const [gi, g] of result.groups.entries()) {
+  for (const g of result.groups) {
     const ws = wb.addWorksheet(g.label.slice(0, 31));
 
     if (isStratified) {

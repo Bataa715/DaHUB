@@ -41,8 +41,6 @@ export function buildWordHtml(
 
   const sectionHtml = SECTION_DEFS.map((def) => {
     const sec = sections[def.id] ?? emptySection();
-    const hasContent =
-      sec.content.trim() || sec.achievements.trim() || sec.issues.trim();
     const subtitle =
       "subtitle" in def ? (def as { subtitle?: string }).subtitle : undefined;
 

@@ -36,6 +36,7 @@ export default function LoginPage() {
   const [registeredUser, setRegisteredUser] = useState<{
     userId: string;
     name: string;
+    claimToken: string;
   } | null>(null);
 
   // Login state
@@ -176,7 +177,11 @@ export default function LoginPage() {
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.message || "Бүртгэл үүсгэхэд алдаа гарлаа");
-      setRegisteredUser({ userId: data.userId, name: data.name });
+      setRegisteredUser({
+        userId: data.userId,
+        name: data.name,
+        claimToken: data.claimToken,
+      });
       setRegisterStep("password");
       toast({
         title: "Бүртгэл амжилттай",
@@ -197,30 +202,27 @@ export default function LoginPage() {
     values: z.infer<typeof passwordFormSchema>,
   ) => {
     const userId = registeredUser?.userId || checkedUser?.userId;
-    if (!userId) return;
+    const claimToken = registeredUser?.claimToken;
+    if (!userId || !claimToken) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/set-password`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password: values.password }),
+        body: JSON.stringify({ userId, password: values.password, claimToken }),
       });
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.message || "Нууц үг тохируулахад алдаа гарлаа");
-      Cookies.set("token", data.accessToken || data.token, {
-        expires: 1 / 24,
-        sameSite: "strict",
-        path: "/",
-      });
-      Cookies.set("refreshToken", data.refreshToken, {
-        expires: 30,
-        sameSite: "strict",
-        path: "/",
-      });
+      // [N-2] token/refreshToken cookies are set by backend as HttpOnly
+      const secure =
+        typeof window !== "undefined" &&
+        window.location.protocol === "https:";
       Cookies.set("user", JSON.stringify(data.user), {
-        expires: 1 / 24,
+        expires: 3,
         sameSite: "strict",
+        secure,
         path: "/",
       });
       toast({
@@ -284,6 +286,7 @@ export default function LoginPage() {
     try {
       const response = await fetch(`${API_URL}/auth/login-by-id`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: checkedUser.userId,
@@ -293,19 +296,14 @@ export default function LoginPage() {
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.message || "Нэвтрэхэд алдаа гарлаа");
-      Cookies.set("token", data.accessToken || data.token, {
-        expires: 1 / 24,
-        sameSite: "strict",
-        path: "/",
-      });
-      Cookies.set("refreshToken", data.refreshToken, {
-        expires: 30,
-        sameSite: "strict",
-        path: "/",
-      });
+      // [N-2] token/refreshToken cookies are set by backend as HttpOnly
+      const secure =
+        typeof window !== "undefined" &&
+        window.location.protocol === "https:";
       Cookies.set("user", JSON.stringify(data.user), {
-        expires: 1 / 24,
+        expires: 3,
         sameSite: "strict",
+        secure,
         path: "/",
       });
       toast({

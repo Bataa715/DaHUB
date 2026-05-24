@@ -22,14 +22,15 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.22",
     "@nestjs/schedule": "^4.1.0",
-    "@nestjs/swagger": "^7.4.2",
     "@nestjs/throttler": "^6.5.0",
+    "@types/cookie-parser": "^1.4.10",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "cookie-parser": "^1.4.7",
     "docx": "^9.5.1",
     "helmet": "^8.1.0",
-    "multer": "^2.0.2",
+    "multer": "^2.1.1",
     "oracledb": "^6.10.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -37,7 +38,7 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.0.0",
+    "@nestjs/cli": "^11.0.21",
     "@nestjs/schematics": "^10.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
@@ -51,5 +52,11 @@
   },
   "optionalDependencies": {
     "sharp": "*"
+  },
+  "overrides": {
+    "multer": "^2.1.1",
+    "path-to-regexp": "^8.0.0",
+    "lodash": "^4.17.21",
+    "picomatch": "^4.0.2"
   }
 }

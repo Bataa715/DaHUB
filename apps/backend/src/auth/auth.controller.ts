@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Body,
@@ -7,16 +7,11 @@ import {
   Request,
   Param,
   Query,
+  Res,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { ThrottlerGuard, SkipThrottle, Throttle } from "@nestjs/throttler";
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-  ApiQuery,
-} from "@nestjs/swagger";
+import { Response } from "express";
 import { AuthService } from "./auth.service";
 import {
   SignupDto,
@@ -32,22 +27,47 @@ import {
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AdminGuard } from "./guards/admin.guard";
 
-@ApiTags("auth")
 @Controller("auth")
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  // [N-2] Set access + refresh tokens as HttpOnly cookies
+  private setAuthCookies(
+    res: Response,
+    accessToken: string,
+    refreshToken: string,
+    isAdmin = false,
+  ): void {
+    const isProd = process.env.NODE_ENV === "production";
+    const tokenName = isAdmin ? "adminToken" : "token";
+    const refreshName = isAdmin ? "adminRefreshToken" : "refreshToken";
+    res.cookie(tokenName, accessToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: "/",
+    });
+    res.cookie(refreshName, refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "strict",
+      maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
+      path: "/",
+    });
+  }
+
+  // [N-2] Clear both token cookies on logout / session expiry
+  private clearAuthCookies(res: Response, isAdmin = false): void {
+    const isProd = process.env.NODE_ENV === "production";
+    const opts = { httpOnly: true, secure: isProd, sameSite: "strict" as const, path: "/" };
+    res.clearCookie(isAdmin ? "adminToken" : "token", opts);
+    res.clearCookie(isAdmin ? "adminRefreshToken" : "refreshToken", opts);
+  }
+
   // Create a new user — Admin only
   @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth("JWT-auth")
   @Post("signup")
-  @ApiOperation({
-    summary: "Create new user (Admin only)",
-    description: "Admin endpoint to create a new user account",
-  })
-  @ApiResponse({ status: 201, description: "User created successfully" })
-  @ApiResponse({ status: 401, description: "Unauthorized" })
-  @ApiResponse({ status: 409, description: "User already exists" })
   async signup(@Body() signupDto: SignupDto) {
     return this.authService.signup(signupDto);
   }
@@ -55,12 +75,6 @@ export class AuthController {
   // Check if user exists
   @UseGuards(ThrottlerGuard)
   @Post("check-user")
-  @ApiOperation({
-    summary: "Check if user exists",
-    description:
-      "Check if a user with given userId exists and has a password set",
-  })
-  @ApiResponse({ status: 200, description: "User check result returned" })
   async checkUser(@Body() checkUserDto: CheckUserDto) {
     return this.authService.checkUser(checkUserDto);
   }
@@ -69,12 +83,6 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 3600000 } })
   @Post("register")
-  @ApiOperation({
-    summary: "Register new user",
-    description: "Register a new user without password (self-registration)",
-  })
-  @ApiResponse({ status: 201, description: "User registered successfully" })
-  @ApiResponse({ status: 409, description: "User already exists" })
   async registerUser(@Body() registerUserDto: RegisterUserDto) {
     return this.authService.registerUser(registerUserDto);
   }
@@ -82,83 +90,62 @@ export class AuthController {
   // Set password for first-time user (throttled)
   @UseGuards(ThrottlerGuard)
   @Post("set-password")
-  @ApiOperation({
-    summary: "Set password for new user",
-    description: "Set password for a newly registered user",
-  })
-  @ApiResponse({ status: 200, description: "Password set successfully" })
-  @ApiResponse({ status: 400, description: "Password already set" })
-  @ApiResponse({ status: 404, description: "User not found" })
-  async setPassword(@Body() setPasswordDto: SetPasswordDto) {
-    return this.authService.setPassword(setPasswordDto);
+  async setPassword(
+    @Body() setPasswordDto: SetPasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.setPassword(setPasswordDto);
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return { user: result.user, success: true };
   }
 
   // Get userId prefix for department (requires login)
   @UseGuards(JwtAuthGuard)
   @Get("user-id-prefix/:department")
-  @ApiOperation({
-    summary: "Get user ID prefix",
-    description: "Get the user ID prefix for a given department",
-  })
-  @ApiParam({
-    name: "department",
-    description: "Department name",
-    example: "Удирдлага",
-  })
-  @ApiResponse({ status: 200, description: "Returns user ID prefix" })
   async getUserIdPrefix(@Param("department") department: string) {
     return { prefix: this.authService.getUserIdPrefix(department) };
   }
 
   @UseGuards(ThrottlerGuard)
   @Post("login")
-  @ApiOperation({
-    summary: "Login with department and username",
-    description: "Login using department name, username and password",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Login successful, returns user and JWT token",
-  })
-  @ApiResponse({ status: 401, description: "Invalid credentials" })
-  @ApiResponse({ status: 429, description: "Too many requests" })
-  async login(@Body() loginDto: LoginDto, @Request() req: any) {
-    return this.authService.login(loginDto, this.clientIp(req));
+  async login(
+    @Body() loginDto: LoginDto,
+    @Request() req: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(loginDto, this.clientIp(req));
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return { user: result.user, success: true };
   }
 
   @UseGuards(ThrottlerGuard)
   @Post("login-by-id")
-  @ApiOperation({
-    summary: "Login with user ID",
-    description: "Login using user ID and password",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Login successful, returns user and JWT token",
-  })
-  @ApiResponse({ status: 401, description: "Invalid credentials" })
-  @ApiResponse({ status: 429, description: "Too many requests" })
-  async loginById(@Body() loginByIdDto: LoginByIdDto, @Request() req: any) {
-    return this.authService.loginById(loginByIdDto, this.clientIp(req));
+  async loginById(
+    @Body() loginByIdDto: LoginByIdDto,
+    @Request() req: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.loginById(
+      loginByIdDto,
+      this.clientIp(req),
+    );
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return { user: result.user, success: true };
   }
 
   @UseGuards(ThrottlerGuard)
   @Post("admin-login")
-  @ApiOperation({
-    summary: "Admin login",
-    description: "Login endpoint for administrators",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Admin login successful, returns user and JWT token",
-  })
-  @ApiResponse({
-    status: 401,
-    description: "Invalid credentials or not an admin",
-  })
-  @ApiResponse({ status: 429, description: "Too many requests" })
-  async adminLogin(@Body() adminLoginDto: AdminLoginDto, @Request() req: any) {
-    return this.authService.adminLogin(adminLoginDto, this.clientIp(req));
+  async adminLogin(
+    @Body() adminLoginDto: AdminLoginDto,
+    @Request() req: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.adminLogin(
+      adminLoginDto,
+      this.clientIp(req),
+    );
+    this.setAuthCookies(res, result.accessToken, result.refreshToken, true);
+    return { user: result.user, success: true };
   }
 
   // [H-4] Extract caller IP for brute-force lockout key. Honours X-Forwarded-For
@@ -172,63 +159,26 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth("JWT-auth")
   @Get("departments/:department/users")
-  @ApiOperation({
-    summary: "Get users by department",
-    description: "Get all active users in a specific department",
-  })
-  @ApiParam({
-    name: "department",
-    description: "Department name",
-    example: "Удирдлага",
-  })
-  @ApiResponse({ status: 200, description: "Returns list of users" })
   async getUsersByDepartment(@Param("department") department: string) {
     return this.authService.getUsersByDepartment(department);
   }
 
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
   @Get("search")
-  @ApiOperation({
-    summary: "Search users",
-    description:
-      "Search users by user ID or name (public — login suggestion dropdown, non-admin users only)",
-  })
-  @ApiQuery({ name: "q", description: "Search query", example: "Bold" })
-  @ApiResponse({ status: 200, description: "Returns search results" })
   async searchUsers(@Query("q") query: string) {
-    // H-3: adminOnly is never exposed on this public endpoint to prevent
-    // unauthenticated enumeration of admin user IDs.
     return this.authService.searchUsersByUserId(query, false);
   }
 
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth("JWT-auth")
   @Get("me")
-  @ApiOperation({
-    summary: "Get current user profile",
-    description: "Get the profile of the currently authenticated user",
-  })
-  @ApiResponse({ status: 200, description: "Returns current user profile" })
-  @ApiResponse({ status: 401, description: "Unauthorized" })
   async getProfile(@Request() req) {
     return req.user;
   }
 
   @UseGuards(ThrottlerGuard)
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth("JWT-auth")
   @Post("change-password")
-  @ApiOperation({
-    summary: "Change password",
-    description: "Change password for the currently authenticated user",
-  })
-  @ApiResponse({ status: 200, description: "Password changed successfully" })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized or invalid current password",
-  })
   async changePassword(
     @Request() req,
     @Body() changePasswordDto: ChangePasswordDto,
@@ -236,28 +186,36 @@ export class AuthController {
     return this.authService.changePassword(req.user.id, changePasswordDto);
   }
 
-  @SkipThrottle()
+  // 30 requests/min — enough for silent auto-refresh but limits token-grinding attacks
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Post("refresh")
-  @ApiOperation({
-    summary: "Refresh access token",
-    description: "Get a new access token using a refresh token",
-  })
-  @ApiResponse({ status: 200, description: "New tokens issued successfully" })
-  @ApiResponse({ status: 401, description: "Invalid or expired refresh token" })
-  async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refreshAccessToken(refreshTokenDto);
+  async refresh(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Request() req: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // [N-2] Cookie takes priority; fall back to body (Swagger / API tools)
+    const token =
+      req.cookies?.refreshToken ||
+      req.cookies?.adminRefreshToken ||
+      refreshTokenDto.refreshToken;
+    if (!token) throw new UnauthorizedException("Refresh token not found");
+    const result = await this.authService.refreshAccessToken({ refreshToken: token });
+    const isAdmin = !!result.user?.isAdmin;
+    this.setAuthCookies(res, result.accessToken, result.refreshToken, isAdmin);
+    return { user: result.user, success: true };
   }
 
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth("JWT-auth")
   @Post("logout")
-  @ApiOperation({
-    summary: "Logout",
-    description: "Revoke all refresh tokens for the current user",
-  })
-  @ApiResponse({ status: 200, description: "Logged out successfully" })
-  @ApiResponse({ status: 401, description: "Unauthorized" })
-  async logout(@Request() req) {
+  async logout(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const isAdmin = !!req.user?.isAdmin;
+    this.clearAuthCookies(res, isAdmin);
+    // Also clear the other side in case both were set
+    this.clearAuthCookies(res, !isAdmin);
     return this.authService.revokeRefreshTokens(req.user.id);
   }
 }

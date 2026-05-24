@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usersApi, departmentsApi } from "@/lib/api";
 import { Input } from "@/components/ui/input";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Table,
   TableBody,
@@ -217,7 +217,8 @@ export default function UsersPage() {
       loadUsers();
     } catch (error) {
       let message = "ID өөрчлөхд алдаа гарлаа.";
-      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
       toast({ title: "Алдаа", description: message, variant: "destructive" });
     } finally {
       setIsSavingUserId(false);
@@ -237,7 +238,8 @@ export default function UsersPage() {
       setNewPassword("");
     } catch (error) {
       let message = "Нууц үг сэргээхэд алдаа гарлаа.";
-      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
       toast({ title: "Алдаа", description: message, variant: "destructive" });
     } finally {
       setIsResetting(false);

@@ -37,7 +37,6 @@ import {
   Globe,
   Layers,
   Search,
-  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -291,7 +290,8 @@ export default function AdminDepartmentsPage() {
       loadDepartments();
     } catch (error) {
       let message = "Хэлтсийг устгахад алдаа гарлаа.";
-      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
       toast({ title: "Алдаа", description: message, variant: "destructive" });
     }
   };

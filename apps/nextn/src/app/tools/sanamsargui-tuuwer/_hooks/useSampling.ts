@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
 import type { DesignType, SamplingResult, GroupResult } from "../_lib/sampling";
 import {
   getZ,
   calcSampleSize,
   calcStratifiedSampleSize,
   normalizeFilterValue,
-  sampleWithReplacement,
   sampleWithoutReplacement,
   LARGE_EXPORT_ROW_THRESHOLD,
   buildCsvContent,
@@ -69,11 +67,20 @@ export function useSampling() {
     }
     setFileError(null);
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 });
+    reader.onload = async (e) => {
+      const arrayBuffer = e.target?.result as ArrayBuffer;
+      const ExcelJSMod = await import("exceljs");
+      const wb = new ExcelJSMod.default.Workbook();
+      await wb.xlsx.load(arrayBuffer);
+      const ws = wb.worksheets[0];
+      const rows: unknown[][] = [];
+      ws.eachRow((row) => {
+        rows.push(
+          (row.values as unknown[]).slice(1).map((v) =>
+            v instanceof Date ? v.toISOString().slice(0, 10) : v,
+          ),
+        );
+      });
       if (rows.length < 2) {
         setFileError("Файлд хангалттай мэдээлэл байхгүй");
         return;

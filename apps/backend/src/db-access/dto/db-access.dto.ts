@@ -22,6 +22,9 @@ export class CreateAccessRequestDto {
 
   @IsArray()
   @IsOptional()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
   columns?: string[]; // empty = all columns
 
   // M-9: Only SELECT is permitted — reject INSERT, UPDATE, DELETE, DROP, etc.
@@ -36,21 +39,25 @@ export class CreateAccessRequestDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(2000)
   reason?: string;
 }
 
 export class ReviewRequestDto {
   @IsString()
   @IsNotEmpty()
+  @IsIn(["approve", "reject"])
   action: "approve" | "reject";
 
   @IsString()
   @IsOptional()
+  @MaxLength(2000)
   reviewNote?: string;
 }
 
 export class RevokeGrantDto {
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   reason?: string;
 }

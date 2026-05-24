@@ -11,7 +11,6 @@ import {
   Section2TaskRow,
   Section14Row,
   Section23Row,
-  Section42Row,
   Section43Row,
   RichTextItem,
   mergeKpi,

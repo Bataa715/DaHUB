@@ -111,11 +111,12 @@ export class AuditLogService {
       ),
       1000,
     );
+    params.limit = limit;
     const query = `
       SELECT * FROM audit_logs 
       WHERE ${conditions.join(" AND ")} 
       ORDER BY createdAt DESC 
-      LIMIT ${limit}
+      LIMIT {limit:UInt32}
     `;
 
     const logs = await this.clickhouse.query<any>(query, params);

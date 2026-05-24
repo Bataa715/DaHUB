@@ -116,9 +116,18 @@ type ChartTooltipContentProps = React.ComponentProps<"div"> & {
   active?: boolean;
   payload?: TooltipPayloadItem[];
   label?: string;
-  labelFormatter?: (label: string, payload: TooltipPayloadItem[]) => React.ReactNode;
+  labelFormatter?: (
+    label: string,
+    payload: TooltipPayloadItem[],
+  ) => React.ReactNode;
   labelClassName?: string;
-  formatter?: (value: number, name: string, item: TooltipPayloadItem, index: number, payload: TooltipPayloadItem[]) => React.ReactNode;
+  formatter?: (
+    value: number,
+    name: string,
+    item: TooltipPayloadItem,
+    index: number,
+    payload: TooltipPayloadItem[],
+  ) => React.ReactNode;
   color?: string;
   hideLabel?: boolean;
   hideIndicator?: boolean;
@@ -217,7 +226,13 @@ const ChartTooltipContent = React.forwardRef<
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value as number, item.name, item, index, (item.payload as unknown as TooltipPayloadItem[]) ?? [])
+                  formatter(
+                    item.value as number,
+                    item.name,
+                    item,
+                    index,
+                    (item.payload as unknown as TooltipPayloadItem[]) ?? [],
+                  )
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -278,19 +293,18 @@ const ChartLegend = RechartsPrimitive.Legend;
 
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div"> &
-    {
-      payload?: Array<{
-        value?: string | number;
-        dataKey?: string | number;
-        color?: string;
-        type?: string;
-        id?: string;
-      }>;
-      verticalAlign?: RechartsPrimitive.LegendProps["verticalAlign"];
-      hideIcon?: boolean;
-      nameKey?: string;
-    }
+  React.ComponentProps<"div"> & {
+    payload?: Array<{
+      value?: string | number;
+      dataKey?: string | number;
+      color?: string;
+      type?: string;
+      id?: string;
+    }>;
+    verticalAlign?: RechartsPrimitive.LegendProps["verticalAlign"];
+    hideIcon?: boolean;
+    nameKey?: string;
+  }
 >(
   (
     { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey },
@@ -311,7 +325,13 @@ const ChartLegendContent = React.forwardRef<
           className,
         )}
       >
-        {(payload as Array<{ value?: string | number; dataKey?: string | number; color?: string }>).map((item) => {
+        {(
+          payload as Array<{
+            value?: string | number;
+            dataKey?: string | number;
+            color?: string;
+          }>
+        ).map((item) => {
           const key = `${nameKey || item.dataKey || "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
 

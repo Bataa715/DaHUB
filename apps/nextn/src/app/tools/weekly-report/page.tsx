@@ -148,16 +148,6 @@ function isoWeekToDates(year: number, week: number) {
   return { weekStart: fmt(monday), weekEnd: fmt(sunday) };
 }
 
-function weekInputValue(year: number, week: number) {
-  return `${year}-W${String(week).padStart(2, "0")}`;
-}
-
-function parseWeekInput(v: string): { year: number; week: number } | null {
-  const m = /^(\d{4})-W(\d{1,2})$/.exec(v);
-  if (!m) return null;
-  return { year: Number(m[1]), week: Number(m[2]) };
-}
-
 // ─── Word (.doc) export ─────────────────────────────────────────────────────
 function downloadPreviewAsDoc(filename: string) {
   if (typeof window === "undefined") return;
@@ -1702,14 +1692,6 @@ export default function WeeklyReportPage() {
     } finally {
       setSaving(false);
       setSubmitting(false);
-    }
-  };
-
-  const onWeekChange = (v: string) => {
-    const p = parseWeekInput(v);
-    if (p) {
-      setYear(p.year);
-      setWeek(p.week);
     }
   };
 

@@ -17,7 +17,6 @@ import {
   Copy,
   Eye,
   EyeOff,
-  ExternalLink,
   XCircle,
 } from "lucide-react";
 

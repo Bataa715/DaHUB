@@ -99,10 +99,6 @@ export default function TailanMinePage() {
     handleSubmit,
     handleDownload,
     images,
-    uploading,
-    imgFileRef,
-    handleImageUpload,
-    handleDeleteImage,
   } = report;
 
   return (

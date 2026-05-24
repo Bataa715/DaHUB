@@ -58,8 +58,6 @@ export interface UserCheckResult {
   exists: boolean;
   hasPassword: boolean;
   userId: string | null;
-  name: string | null;
-  department: string | null;
   isActive?: boolean;
 }
 

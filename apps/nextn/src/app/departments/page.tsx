@@ -60,78 +60,6 @@ const HERO_GRADIENTS = [
   "from-sky-500 via-cyan-600 to-teal-700",
 ];
 
-const AVATAR_GRADIENTS = [
-  "from-blue-400 to-violet-600",
-  "from-violet-400 to-indigo-600",
-  "from-emerald-400 to-teal-600",
-  "from-amber-400 to-orange-500",
-  "from-sky-400 to-blue-600",
-  "from-cyan-400 to-teal-600",
-  "from-indigo-400 to-purple-600",
-  "from-teal-400 to-emerald-600",
-  "from-orange-400 to-amber-600",
-  "from-green-400 to-emerald-600",
-];
-
-const DEPT_COLORS = [
-  {
-    pill: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/25 text-blue-600 dark:text-blue-400",
-    active:
-      "bg-blue-500/20 border-blue-500/50 text-blue-600 dark:text-blue-300",
-    header: "bg-blue-500/10 border-blue-500/20",
-    dot: "bg-blue-500",
-  },
-  {
-    pill: "bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/25 text-violet-600 dark:text-violet-400",
-    active:
-      "bg-violet-500/20 border-violet-500/50 text-violet-600 dark:text-violet-300",
-    header: "bg-violet-500/10 border-violet-500/20",
-    dot: "bg-violet-500",
-  },
-  {
-    pill: "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/25 text-emerald-600 dark:text-emerald-400",
-    active:
-      "bg-emerald-500/20 border-emerald-500/50 text-emerald-600 dark:text-emerald-300",
-    header: "bg-emerald-500/10 border-emerald-500/20",
-    dot: "bg-emerald-500",
-  },
-  {
-    pill: "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/25 text-amber-600 dark:text-amber-400",
-    active:
-      "bg-amber-500/20 border-amber-500/50 text-amber-600 dark:text-amber-300",
-    header: "bg-amber-500/10 border-amber-500/20",
-    dot: "bg-amber-500",
-  },
-  {
-    pill: "bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/25 text-rose-600 dark:text-rose-400",
-    active:
-      "bg-rose-500/20 border-rose-500/50 text-rose-600 dark:text-rose-300",
-    header: "bg-rose-500/10 border-rose-500/20",
-    dot: "bg-rose-500",
-  },
-  {
-    pill: "bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/25 text-cyan-600 dark:text-cyan-400",
-    active:
-      "bg-cyan-500/20 border-cyan-500/50 text-cyan-600 dark:text-cyan-300",
-    header: "bg-cyan-500/10 border-cyan-500/20",
-    dot: "bg-cyan-500",
-  },
-  {
-    pill: "bg-pink-500/10 hover:bg-pink-500/20 border-pink-500/25 text-pink-600 dark:text-pink-400",
-    active:
-      "bg-pink-500/20 border-pink-500/50 text-pink-600 dark:text-pink-300",
-    header: "bg-pink-500/10 border-pink-500/20",
-    dot: "bg-pink-500",
-  },
-  {
-    pill: "bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/25 text-indigo-600 dark:text-indigo-400",
-    active:
-      "bg-indigo-500/20 border-indigo-500/50 text-indigo-600 dark:text-indigo-300",
-    header: "bg-indigo-500/10 border-indigo-500/20",
-    dot: "bg-indigo-500",
-  },
-];
-
 const CARD_BORDER_COLORS = [
   { border: "border-blue-500", text: "text-blue-400", bg: "bg-blue-500/5" },
   {
@@ -157,12 +85,6 @@ const CARD_BORDER_COLORS = [
 
 function getHeroGradient(name: string) {
   return HERO_GRADIENTS[nameHash(name) % HERO_GRADIENTS.length];
-}
-function getAvatarGradient(name: string) {
-  return AVATAR_GRADIENTS[nameHash(name) % AVATAR_GRADIENTS.length];
-}
-function getDeptColor(index: number) {
-  return DEPT_COLORS[index % DEPT_COLORS.length];
 }
 function getCardColor(name: string) {
   return CARD_BORDER_COLORS[nameHash(name) % CARD_BORDER_COLORS.length];
@@ -830,7 +752,6 @@ export default function DepartmentsPage() {
 
   const members = department.users ?? [];
   const totalCount = members.length || department.employeeCount || 0;
-  const activeCount = members.filter((m) => m.isActive !== false).length;
   const currentUserId = (user as any).id ?? (user as any).userId ?? "";
   const heroGrad = getHeroGradient(department.name);
   const heroColor = getCardColor(department.name);

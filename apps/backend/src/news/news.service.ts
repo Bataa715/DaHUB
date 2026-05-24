@@ -2,6 +2,7 @@
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
@@ -109,14 +110,25 @@ export class NewsService {
     return { ...n, imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "" };
   }
 
-  async update(id: string, updateNewsDto: UpdateNewsDto) {
+  // [N-4] requesterId + isAdmin required — only the author or an admin may edit a news item
+  async update(
+    id: string,
+    updateNewsDto: UpdateNewsDto,
+    requesterId: string,
+    isAdmin: boolean,
+  ) {
     const existing = await this.clickhouse.query<any>(
-      `SELECT id FROM news WHERE id = {id:String} LIMIT 1`,
+      `SELECT id, authorId FROM news WHERE id = {id:String} LIMIT 1`,
       { id },
     );
 
     if (!existing || existing.length === 0) {
       throw new NotFoundException("Мэдээ олдсонгүй");
+    }
+
+    // [N-4] Ownership check
+    if (!isAdmin && existing[0].authorId !== requesterId) {
+      throw new ForbiddenException("Зөвхөн нийтлэлийн зохиогч эсвэл админ засварлах боломжтой");
     }
 
     // Image update: base64 data is too large for ClickHouse HTTP bound params.
@@ -143,10 +155,13 @@ export class NewsService {
             "image/gif",
             "image/webp",
           ];
-          if (
-            /^[A-Za-z0-9+/=]+$/.test(imageData) &&
-            ALLOWED_IMAGE_MIMES.includes(imageMime)
-          ) {
+          if (!ALLOWED_IMAGE_MIMES.includes(imageMime)) {
+            // [N-5] Reject disallowed MIME types explicitly instead of silently ignoring
+            throw new BadRequestException(
+              "Зөвшөөрөгдөөгүй зургийн формат. Зөвхөн JPEG, PNG, GIF, WebP зөвшөөрнө.",
+            );
+          }
+          if (/^[A-Za-z0-9+/=]+$/.test(imageData)) {
             await this.clickhouse.exec(
               `ALTER TABLE news UPDATE imageUrl = {imageUrl:String}, imageMime = {imageMime:String} WHERE id = {id:String}`,
               { imageUrl: imageData, imageMime, id },
@@ -253,7 +268,7 @@ export class NewsService {
     return { message: newStatus ? "Мэдээ нийтлэгдлээ" : "Мэдээ нуугдлаа" };
   }
 
-  async getByCategory(category: string) {
+  async getByCategory(category: string, limit = 100, offset = 0) {
     const news = await this.clickhouse.query<any>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
@@ -262,8 +277,9 @@ export class NewsService {
        FROM news AS n
        LEFT JOIN users u ON n.authorId = u.id
        WHERE n.category = {category:String} AND n.isPublished = 1
-       ORDER BY n.createdAt DESC`,
-      { category },
+       ORDER BY n.createdAt DESC
+       LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
+      { category, limit: Math.min(limit, 200), offset },
     );
 
     return news.map((n) => ({

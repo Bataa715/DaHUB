@@ -27,8 +27,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const ML_DASH_IDS = new Set([13, 14, 15, 16]);
 const ALERT_COLORS = [
-  "#f97316","#fb7185","#f472b6","#e879f9","#c084fc",
-  "#a78bfa","#818cf8","#6366f1","#34d399","#facc15",
+  "#f97316",
+  "#fb7185",
+  "#f472b6",
+  "#e879f9",
+  "#c084fc",
+  "#a78bfa",
+  "#818cf8",
+  "#6366f1",
+  "#34d399",
+  "#facc15",
 ];
 
 interface AlertDashboard {
@@ -42,8 +50,8 @@ interface AlertItem {
   cif: string;
   dashboardCount: number;
   totalTransactions: number;
-  totalAmount: number;  // стандарт дашборд (1-12) дүн — ML (13-16) хасагдсан
-  mlAmount: number;     // ML дашборд (13-16) дүн тусдаа
+  totalAmount: number; // стандарт дашборд (1-12) дүн — ML (13-16) хасагдсан
+  mlAmount: number; // ML дашборд (13-16) дүн тусдаа
   dashboards: AlertDashboard[];
 }
 
@@ -466,226 +474,350 @@ export default function AlertsPage() {
               ) : null
             ) : (
               <>
-                {data.alerts.length > 0 && (() => {
-                  const totalTxns = data.alerts.reduce((s, a) => s + a.totalTransactions, 0);
-                  const totalStdAmt = data.alerts.reduce((s, a) => s + getStdAmount(a), 0);
-                  const totalMLAmt = data.alerts.reduce((s, a) => s + (a.mlAmount || 0), 0);
+                {data.alerts.length > 0 &&
+                  (() => {
+                    const totalTxns = data.alerts.reduce(
+                      (s, a) => s + a.totalTransactions,
+                      0,
+                    );
+                    const totalStdAmt = data.alerts.reduce(
+                      (s, a) => s + getStdAmount(a),
+                      0,
+                    );
+                    const totalMLAmt = data.alerts.reduce(
+                      (s, a) => s + (a.mlAmount || 0),
+                      0,
+                    );
 
-                  const sevMap: Record<string, number> = { "2 DB": 0, "3 DB": 0, "4 DB": 0, "5+ DB": 0 };
-                  data.alerts.forEach((a) => {
-                    if (a.dashboardCount >= 5) sevMap["5+ DB"]++;
-                    else if (a.dashboardCount === 4) sevMap["4 DB"]++;
-                    else if (a.dashboardCount === 3) sevMap["3 DB"]++;
-                    else sevMap["2 DB"]++;
-                  });
-                  const sevData = Object.entries(sevMap)
-                    .filter(([, v]) => v > 0)
-                    .map(([name, value]) => ({ name, value }));
-                  const SEV_COLORS: Record<string, string> = {
-                    "2 DB": "#60a5fa",
-                    "3 DB": "#fbbf24",
-                    "4 DB": "#f97316",
-                    "5+ DB": "#f43f5e",
-                  };
+                    const sevMap: Record<string, number> = {
+                      "2 DB": 0,
+                      "3 DB": 0,
+                      "4 DB": 0,
+                      "5+ DB": 0,
+                    };
+                    data.alerts.forEach((a) => {
+                      if (a.dashboardCount >= 5) sevMap["5+ DB"]++;
+                      else if (a.dashboardCount === 4) sevMap["4 DB"]++;
+                      else if (a.dashboardCount === 3) sevMap["3 DB"]++;
+                      else sevMap["2 DB"]++;
+                    });
+                    const sevData = Object.entries(sevMap)
+                      .filter(([, v]) => v > 0)
+                      .map(([name, value]) => ({ name, value }));
+                    const SEV_COLORS: Record<string, string> = {
+                      "2 DB": "#60a5fa",
+                      "3 DB": "#fbbf24",
+                      "4 DB": "#f97316",
+                      "5+ DB": "#f43f5e",
+                    };
 
-                  const dbFreq: Record<string, number> = {};
-                  data.alerts.forEach((a) =>
-                    a.dashboards.forEach((d) => {
-                      const key = `DB${d.id}`;
-                      dbFreq[key] = (dbFreq[key] || 0) + 1;
-                    }),
-                  );
-                  const dbFreqData = Object.entries(dbFreq)
-                    .map(([name, count]) => ({ name, count }))
-                    .sort((a, b) => Number(a.name.slice(2)) - Number(b.name.slice(2)));
+                    const dbFreq: Record<string, number> = {};
+                    data.alerts.forEach((a) =>
+                      a.dashboards.forEach((d) => {
+                        const key = `DB${d.id}`;
+                        dbFreq[key] = (dbFreq[key] || 0) + 1;
+                      }),
+                    );
+                    const dbFreqData = Object.entries(dbFreq)
+                      .map(([name, count]) => ({ name, count }))
+                      .sort(
+                        (a, b) =>
+                          Number(a.name.slice(2)) - Number(b.name.slice(2)),
+                      );
 
-                  const top10 = [...data.alerts]
-                    .sort((a, b) => getStdAmount(b) - getStdAmount(a))
-                    .slice(0, 10)
-                    .map((a) => ({ ...a, stdAmount: getStdAmount(a) }));
+                    const top10 = [...data.alerts]
+                      .sort((a, b) => getStdAmount(b) - getStdAmount(a))
+                      .slice(0, 10)
+                      .map((a) => ({ ...a, stdAmount: getStdAmount(a) }));
 
-                  return (
-                    <div className="space-y-4">
-                      {/* Summary chips */}
-                      <div className="flex flex-wrap gap-2.5">
-                        <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
-                          <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                          <span className="text-xs text-txt-dim">Alert CIF</span>
-                          <span className="text-xl font-extrabold text-txt">{data.alerts.length}</span>
-                        </div>
-                        <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
-                          <div className="w-2 h-2 rounded-full bg-blue-400" />
-                          <span className="text-xs text-txt-dim">Нийт гүйлгээ</span>
-                          <span className="text-xl font-extrabold text-txt">{totalTxns.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
-                          <div className="w-2 h-2 rounded-full bg-amber-400" />
-                          <span className="text-xs text-txt-dim">Стандарт дүн</span>
-                          <span className="text-xl font-extrabold text-amber-400">{formatAmount(totalStdAmt)}₮</span>
-                        </div>
-                        {totalMLAmt > 0 && (
+                    return (
+                      <div className="space-y-4">
+                        {/* Summary chips */}
+                        <div className="flex flex-wrap gap-2.5">
                           <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
-                            <div className="w-2 h-2 rounded-full bg-golomt-400" />
-                            <span className="text-xs text-txt-dim">ML дүн</span>
-                            <span className="text-xl font-extrabold text-golomt-400">+{formatAmount(totalMLAmt)}₮</span>
+                            <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                            <span className="text-xs text-txt-dim">
+                              Alert CIF
+                            </span>
+                            <span className="text-xl font-extrabold text-txt">
+                              {data.alerts.length}
+                            </span>
                           </div>
-                        )}
-                      </div>
+                          <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
+                            <div className="w-2 h-2 rounded-full bg-blue-400" />
+                            <span className="text-xs text-txt-dim">
+                              Нийт гүйлгээ
+                            </span>
+                            <span className="text-xl font-extrabold text-txt">
+                              {totalTxns.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
+                            <div className="w-2 h-2 rounded-full bg-amber-400" />
+                            <span className="text-xs text-txt-dim">
+                              Стандарт дүн
+                            </span>
+                            <span className="text-xl font-extrabold text-amber-400">
+                              {formatAmount(totalStdAmt)}₮
+                            </span>
+                          </div>
+                          {totalMLAmt > 0 && (
+                            <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
+                              <div className="w-2 h-2 rounded-full bg-golomt-400" />
+                              <span className="text-xs text-txt-dim">
+                                ML дүн
+                              </span>
+                              <span className="text-xl font-extrabold text-golomt-400">
+                                +{formatAmount(totalMLAmt)}₮
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Charts row: Top CIFs bar + Severity donut */}
-                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                        {/* Top 10 CIFs horizontal bar */}
-                        <div className="lg:col-span-3 bg-surface-card border border-surface-border rounded-2xl p-5">
-                          <p className="text-sm font-bold text-txt">Top {top10.length} CIF — дүнгээр</p>
-                          <p className="text-xs text-txt-dim mb-4">Стандарт дүнгээр эрэмбэлсэн</p>
-                          <ResponsiveContainer width="100%" height={top10.length * 32 + 8}>
+                        {/* Charts row: Top CIFs bar + Severity donut */}
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                          {/* Top 10 CIFs horizontal bar */}
+                          <div className="lg:col-span-3 bg-surface-card border border-surface-border rounded-2xl p-5">
+                            <p className="text-sm font-bold text-txt">
+                              Top {top10.length} CIF — дүнгээр
+                            </p>
+                            <p className="text-xs text-txt-dim mb-4">
+                              Стандарт дүнгээр эрэмбэлсэн
+                            </p>
+                            <ResponsiveContainer
+                              width="100%"
+                              height={top10.length * 32 + 8}
+                            >
+                              <BarChart
+                                data={[...top10].reverse()}
+                                layout="vertical"
+                                margin={{
+                                  top: 0,
+                                  right: 72,
+                                  left: 0,
+                                  bottom: 0,
+                                }}
+                              >
+                                <XAxis
+                                  type="number"
+                                  tick={{ fontSize: 9, fill: "#6b7280" }}
+                                  tickFormatter={formatAmount}
+                                  axisLine={false}
+                                  tickLine={false}
+                                />
+                                <YAxis
+                                  type="category"
+                                  dataKey="cif"
+                                  width={82}
+                                  tick={{
+                                    fontSize: 9,
+                                    fontFamily: "monospace",
+                                    fill: "#9ca3af",
+                                  }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                                  content={({ active, payload }: any) => {
+                                    if (!active || !payload?.length)
+                                      return null;
+                                    const d = payload[0]?.payload;
+                                    return (
+                                      <div className="bg-surface-elevated border border-surface-border rounded-xl px-3 py-2.5 text-xs shadow-2xl space-y-1">
+                                        <p className="font-mono font-extrabold text-txt text-sm">
+                                          {d.cif}
+                                        </p>
+                                        <p className="text-txt-dim">
+                                          Дүн:{" "}
+                                          <span className="text-amber-400 font-bold">
+                                            {formatAmount(d.stdAmount)}₮
+                                          </span>
+                                        </p>
+                                        {d.mlAmount > 0 && (
+                                          <p className="text-txt-dim">
+                                            ML:{" "}
+                                            <span className="text-golomt-400 font-bold">
+                                              +{formatAmount(d.mlAmount)}₮
+                                            </span>
+                                          </p>
+                                        )}
+                                        <p className="text-txt-dim">
+                                          Гүйлгээ:{" "}
+                                          <span className="text-txt font-bold">
+                                            {d.totalTransactions}
+                                          </span>
+                                        </p>
+                                        <p className="text-txt-dim">
+                                          Dashboard:{" "}
+                                          <span className="text-golomt-400 font-bold">
+                                            {d.dashboardCount}ш
+                                          </span>
+                                        </p>
+                                      </div>
+                                    );
+                                  }}
+                                />
+                                <Bar
+                                  dataKey="stdAmount"
+                                  radius={[0, 6, 6, 0]}
+                                  maxBarSize={22}
+                                >
+                                  {[...top10].reverse().map((_, i) => (
+                                    <Cell
+                                      key={i}
+                                      fill={
+                                        ALERT_COLORS[i % ALERT_COLORS.length]
+                                      }
+                                      fillOpacity={0.9}
+                                    />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+
+                          {/* Severity donut */}
+                          <div className="lg:col-span-2 bg-surface-card border border-surface-border rounded-2xl p-5">
+                            <p className="text-sm font-bold text-txt">
+                              Severity тархалт
+                            </p>
+                            <p className="text-xs text-txt-dim mb-4">
+                              Dashboard тоогоор ангилсан
+                            </p>
+                            <div className="flex items-center justify-center gap-6">
+                              <ResponsiveContainer width={120} height={120}>
+                                <PieChart>
+                                  <Pie
+                                    data={sevData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={32}
+                                    outerRadius={54}
+                                    paddingAngle={3}
+                                    dataKey="value"
+                                  >
+                                    {sevData.map((entry, i) => (
+                                      <Cell
+                                        key={i}
+                                        fill={
+                                          SEV_COLORS[entry.name] || "#6b7280"
+                                        }
+                                      />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip
+                                    content={({ active, payload }: any) => {
+                                      if (!active || !payload?.length)
+                                        return null;
+                                      return (
+                                        <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
+                                          <p className="font-bold text-txt">
+                                            {payload[0].name}
+                                          </p>
+                                          <p className="text-txt-dim">
+                                            {payload[0].value} CIF
+                                          </p>
+                                        </div>
+                                      );
+                                    }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="space-y-2.5">
+                                {sevData.map((s) => (
+                                  <div
+                                    key={s.name}
+                                    className="flex items-center gap-2 text-xs"
+                                  >
+                                    <div
+                                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                                      style={{
+                                        backgroundColor: SEV_COLORS[s.name],
+                                      }}
+                                    />
+                                    <span className="text-txt-dim">
+                                      {s.name}
+                                    </span>
+                                    <span className="font-extrabold text-txt ml-1">
+                                      {s.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* DB hit frequency */}
+                        <div className="bg-surface-card border border-surface-border rounded-2xl p-5">
+                          <p className="text-sm font-bold text-txt">
+                            Dashboard хамрах хүрээ
+                          </p>
+                          <p className="text-xs text-txt-dim mb-4">
+                            Хэдэн CIF-д тус бүрийн дүрэм идэвхжсэн
+                          </p>
+                          <ResponsiveContainer width="100%" height={150}>
                             <BarChart
-                              data={[...top10].reverse()}
-                              layout="vertical"
-                              margin={{ top: 0, right: 72, left: 0, bottom: 0 }}
+                              data={dbFreqData}
+                              margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
                             >
                               <XAxis
-                                type="number"
-                                tick={{ fontSize: 9, fill: "#6b7280" }}
-                                tickFormatter={formatAmount}
+                                dataKey="name"
+                                tick={{ fontSize: 9, fill: "#9ca3af" }}
                                 axisLine={false}
                                 tickLine={false}
                               />
                               <YAxis
-                                type="category"
-                                dataKey="cif"
-                                width={82}
-                                tick={{ fontSize: 9, fontFamily: "monospace", fill: "#9ca3af" }}
+                                tick={{ fontSize: 9, fill: "#6b7280" }}
                                 axisLine={false}
                                 tickLine={false}
+                                allowDecimals={false}
                               />
                               <Tooltip
                                 cursor={{ fill: "rgba(255,255,255,0.04)" }}
                                 content={({ active, payload }: any) => {
                                   if (!active || !payload?.length) return null;
-                                  const d = payload[0]?.payload;
                                   return (
-                                    <div className="bg-surface-elevated border border-surface-border rounded-xl px-3 py-2.5 text-xs shadow-2xl space-y-1">
-                                      <p className="font-mono font-extrabold text-txt text-sm">{d.cif}</p>
-                                      <p className="text-txt-dim">Дүн: <span className="text-amber-400 font-bold">{formatAmount(d.stdAmount)}₮</span></p>
-                                      {d.mlAmount > 0 && <p className="text-txt-dim">ML: <span className="text-golomt-400 font-bold">+{formatAmount(d.mlAmount)}₮</span></p>}
-                                      <p className="text-txt-dim">Гүйлгээ: <span className="text-txt font-bold">{d.totalTransactions}</span></p>
-                                      <p className="text-txt-dim">Dashboard: <span className="text-golomt-400 font-bold">{d.dashboardCount}ш</span></p>
+                                    <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
+                                      <p className="font-bold text-txt">
+                                        {payload[0].payload.name}
+                                      </p>
+                                      <p className="text-txt-dim">
+                                        {payload[0].value} CIF
+                                      </p>
                                     </div>
                                   );
                                 }}
                               />
-                              <Bar dataKey="stdAmount" radius={[0, 6, 6, 0]} maxBarSize={22}>
-                                {[...top10].reverse().map((_, i) => (
-                                  <Cell key={i} fill={ALERT_COLORS[i % ALERT_COLORS.length]} fillOpacity={0.9} />
+                              <Bar
+                                dataKey="count"
+                                radius={[4, 4, 0, 0]}
+                                maxBarSize={28}
+                              >
+                                {dbFreqData.map((_, i) => (
+                                  <Cell
+                                    key={i}
+                                    fill={ALERT_COLORS[i % ALERT_COLORS.length]}
+                                    fillOpacity={0.85}
+                                  />
                                 ))}
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
 
-                        {/* Severity donut */}
-                        <div className="lg:col-span-2 bg-surface-card border border-surface-border rounded-2xl p-5">
-                          <p className="text-sm font-bold text-txt">Severity тархалт</p>
-                          <p className="text-xs text-txt-dim mb-4">Dashboard тоогоор ангилсан</p>
-                          <div className="flex items-center justify-center gap-6">
-                            <ResponsiveContainer width={120} height={120}>
-                              <PieChart>
-                                <Pie
-                                  data={sevData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={32}
-                                  outerRadius={54}
-                                  paddingAngle={3}
-                                  dataKey="value"
-                                >
-                                  {sevData.map((entry, i) => (
-                                    <Cell key={i} fill={SEV_COLORS[entry.name] || "#6b7280"} />
-                                  ))}
-                                </Pie>
-                                <Tooltip
-                                  content={({ active, payload }: any) => {
-                                    if (!active || !payload?.length) return null;
-                                    return (
-                                      <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
-                                        <p className="font-bold text-txt">{payload[0].name}</p>
-                                        <p className="text-txt-dim">{payload[0].value} CIF</p>
-                                      </div>
-                                    );
-                                  }}
-                                />
-                              </PieChart>
-                            </ResponsiveContainer>
-                            <div className="space-y-2.5">
-                              {sevData.map((s) => (
-                                <div key={s.name} className="flex items-center gap-2 text-xs">
-                                  <div
-                                    className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
-                                    style={{ backgroundColor: SEV_COLORS[s.name] }}
-                                  />
-                                  <span className="text-txt-dim">{s.name}</span>
-                                  <span className="font-extrabold text-txt ml-1">{s.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                        {/* Divider */}
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="h-px flex-1 bg-surface-border" />
+                          <span className="text-xs text-txt-dim font-medium tracking-wide uppercase">
+                            {data.alerts.length} CIF жагсаалт
+                          </span>
+                          <div className="h-px flex-1 bg-surface-border" />
                         </div>
                       </div>
-
-                      {/* DB hit frequency */}
-                      <div className="bg-surface-card border border-surface-border rounded-2xl p-5">
-                        <p className="text-sm font-bold text-txt">Dashboard хамрах хүрээ</p>
-                        <p className="text-xs text-txt-dim mb-4">Хэдэн CIF-д тус бүрийн дүрэм идэвхжсэн</p>
-                        <ResponsiveContainer width="100%" height={150}>
-                          <BarChart
-                            data={dbFreqData}
-                            margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
-                          >
-                            <XAxis
-                              dataKey="name"
-                              tick={{ fontSize: 9, fill: "#9ca3af" }}
-                              axisLine={false}
-                              tickLine={false}
-                            />
-                            <YAxis
-                              tick={{ fontSize: 9, fill: "#6b7280" }}
-                              axisLine={false}
-                              tickLine={false}
-                              allowDecimals={false}
-                            />
-                            <Tooltip
-                              cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                              content={({ active, payload }: any) => {
-                                if (!active || !payload?.length) return null;
-                                return (
-                                  <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
-                                    <p className="font-bold text-txt">{payload[0].payload.name}</p>
-                                    <p className="text-txt-dim">{payload[0].value} CIF</p>
-                                  </div>
-                                );
-                              }}
-                            />
-                            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={28}>
-                              {dbFreqData.map((_, i) => (
-                                <Cell key={i} fill={ALERT_COLORS[i % ALERT_COLORS.length]} fillOpacity={0.85} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="flex items-center gap-3 py-1">
-                        <div className="h-px flex-1 bg-surface-border" />
-                        <span className="text-xs text-txt-dim font-medium tracking-wide uppercase">
-                          {data.alerts.length} CIF жагсаалт
-                        </span>
-                        <div className="h-px flex-1 bg-surface-border" />
-                      </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
 
                 {data.totalAlerts === 0 && (
                   <div className="text-center py-12">
@@ -741,9 +873,7 @@ export default function AlertsPage() {
                           <p className="text-[15px] font-extrabold text-amber-400">
                             {formatAmount(getStdAmount(alert))}₮
                           </p>
-                          <p className="text-xs text-txt-dim">
-                            стандарт дүн
-                          </p>
+                          <p className="text-xs text-txt-dim">стандарт дүн</p>
                           {(alert.mlAmount ?? 0) > 0 && (
                             <p className="text-xs text-golomt-400/70">
                               +ML {formatAmount(alert.mlAmount ?? 0)}₮

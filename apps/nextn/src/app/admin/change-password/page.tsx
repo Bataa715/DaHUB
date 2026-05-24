@@ -64,7 +64,8 @@ export default function AdminChangePasswordPage() {
       setConfirmPassword("");
     } catch (error) {
       let message = "Нууц үг солихоор алдаа гарлаа";
-      if (axios.isAxiosError(error)) message = error.response?.data?.message ?? message;
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
       toast({ title: "Алдаа", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);

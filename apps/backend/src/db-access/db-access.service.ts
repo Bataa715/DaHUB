@@ -828,7 +828,6 @@ export class DbAccessService {
       grantedByName: g.grantedByName,
       grantedAt: g.grantedAt,
       isActive: !!g.isActive,
-      chPassword: this.decryptPwd(g.chPassword),
     };
   };
 }

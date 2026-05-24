@@ -47,8 +47,6 @@ import {
   DEFAULT_S2_KPI,
   DEFAULT_S3_KPI,
   DEFAULT_S4_KPI,
-  Section42Row,
-  Section43Row,
   KpiSubSection,
   emptySection,
   scoreLabel,

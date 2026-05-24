@@ -12,8 +12,6 @@ import {
   Calendar,
   Clock,
   User,
-  ArrowRight,
-  Shield,
   ChevronRight,
 } from "lucide-react";
 import Image from "next/image";

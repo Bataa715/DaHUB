@@ -61,7 +61,7 @@ export default function RiskAssessmentReportPage() {
   const [selectedHistoryRows, setSelectedHistoryRows] = useState<
     RiskCurrentRow[]
   >([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [, setHistoryOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -74,7 +74,9 @@ export default function RiskAssessmentReportPage() {
   const [viewHistoryId, setViewHistoryId] = useState<string | null>(null);
   const [viewHistoryRows, setViewHistoryRows] = useState<RiskCurrentRow[]>([]);
   const [viewHistoryLoading, setViewHistoryLoading] = useState(false);
-  const [historyViewRiskFilter, setHistoryViewRiskFilter] = useState<"all" | RiskLevel>("all");
+  const [historyViewRiskFilter, setHistoryViewRiskFilter] = useState<
+    "all" | RiskLevel
+  >("all");
 
   // Устгах нууц үг modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -312,7 +314,12 @@ export default function RiskAssessmentReportPage() {
 
             <div className="flex-1" />
 
-            {menuOpen && <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />}
+            {menuOpen && (
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setMenuOpen(false)}
+              />
+            )}
             {/* 3-dot click menu */}
             <div className="relative">
               <button
@@ -411,7 +418,8 @@ export default function RiskAssessmentReportPage() {
                                 : "text-muted-foreground/40 hover:text-blue-500"
                             }`}
                           >
-                            {viewHistoryLoading && viewHistoryId !== h.id ? null : (
+                            {viewHistoryLoading &&
+                            viewHistoryId !== h.id ? null : (
                               <Eye className="w-3.5 h-3.5" />
                             )}
                           </button>
@@ -464,9 +472,12 @@ export default function RiskAssessmentReportPage() {
                 <Eye className="w-4 h-4 text-blue-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold truncate">{viewHistoryEntry.name}</div>
+                <div className="text-sm font-bold truncate">
+                  {viewHistoryEntry.name}
+                </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
-                  {viewHistoryEntry.pDateBeg} → {viewHistoryEntry.pDate} · {viewHistoryEntry.branchCount} салбар
+                  {viewHistoryEntry.pDateBeg} → {viewHistoryEntry.pDate} ·{" "}
+                  {viewHistoryEntry.branchCount} салбар
                 </div>
               </div>
               <button
@@ -580,20 +591,27 @@ export default function RiskAssessmentReportPage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold">Тайлан устгах</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Үргэлжлүүлэхийн түлд нууц үг оруулна уу</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Үргэлжлүүлэхийн түлд нууц үг оруулна уу
+                </p>
               </div>
             </div>
             <input
               type="password"
               value={deletePassword}
-              onChange={(e) => { setDeletePassword(e.target.value); setDeletePasswordError(""); }}
+              onChange={(e) => {
+                setDeletePassword(e.target.value);
+                setDeletePasswordError("");
+              }}
               onKeyDown={(e) => e.key === "Enter" && doDeleteHistory()}
               placeholder="Нууц үг"
               autoFocus
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
             />
             {deletePasswordError && (
-              <p className="text-xs text-red-500 mt-1.5">{deletePasswordError}</p>
+              <p className="text-xs text-red-500 mt-1.5">
+                {deletePasswordError}
+              </p>
             )}
             <div className="flex justify-end gap-2 mt-4">
               <button

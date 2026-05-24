@@ -41,7 +41,9 @@ export default function MainLayout({
         <div className="animated-border-wrapper">
           <div className="flex flex-col min-h-screen w-full overflow-x-hidden bg-background rounded-2xl">
             <Header />
-            <main id="main-content" className="relative flex-1">{children}</main>
+            <main id="main-content" className="relative flex-1">
+              {children}
+            </main>
             <Footer />
           </div>
         </div>

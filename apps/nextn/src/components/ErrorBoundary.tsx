@@ -34,9 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
         this.props.fallback ?? (
           <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="text-center space-y-3 p-8">
-              <p className="text-2xl font-bold text-foreground">
-                Алдаа гарлаа
-              </p>
+              <p className="text-2xl font-bold text-foreground">Алдаа гарлаа</p>
               <p className="text-muted-foreground text-sm max-w-xs">
                 {this.state.error?.message ?? "Тодорхойгүй алдаа"}
               </p>

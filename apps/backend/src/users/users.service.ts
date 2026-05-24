@@ -132,7 +132,18 @@ export class UsersService {
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
 
-    const toolsJson = JSON.stringify(grantableTools ?? []);
+    // [H-5] Only persist known-valid tool names
+    const VALID_TOOLS = [
+      "tailan", "tailan_dept_head",
+      "db_access_requester", "db_access_granter", "pivot",
+      "sanamsargui-tuuwer", "excel_report", "data_doc", "alert_box",
+      "python_api_tools", "reports", "risk_assessment",
+      "weekly_report_audit", "weekly_report_daa", "weekly_report_director",
+    ];
+    const sanitizedTools = (grantableTools ?? []).filter((t) =>
+      VALID_TOOLS.includes(t),
+    );
+    const toolsJson = JSON.stringify(sanitizedTools);
 
     await this.clickhouse.exec(
       `ALTER TABLE users UPDATE isAdmin = {isAdmin:UInt8}, isSuperAdmin = {isSuperAdmin:UInt8}, grantableTools = {grantableTools:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}`,
@@ -149,7 +160,7 @@ export class UsersService {
       id,
       isAdmin,
       isSuperAdmin,
-      grantableTools: grantableTools ?? [],
+      grantableTools: sanitizedTools,
     };
   }
 

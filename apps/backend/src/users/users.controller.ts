@@ -24,17 +24,13 @@ import { AuditLogService } from "../audit/audit-log.service";
 
 // B-8: Whitelist of valid tool names — prevents granting fake/invented tools
 const VALID_TOOLS = [
-  "todo",
   "tailan",
   "tailan_dept_head",
-  "english",
-  "chess",
   "db_access_requester",
   "db_access_granter",
   "pivot",
   "sanamsargui-tuuwer",
   "excel_report",
-  "pdf_to_text",
   "data_doc",
   "alert_box",
   "python_api_tools",
@@ -55,8 +51,8 @@ export class UsersController {
   /** Admin: full user list with details */
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Get()
-  findAll(@Query("page") page = 1, @Query("limit") limit = 1000) {
-    const take = Math.min(Number(limit), 5000);
+  findAll(@Query("page") page = 1, @Query("limit") limit = 100) {
+    const take = Math.min(Number(limit), 200);
     const skip = (Number(page) - 1) * take;
     return this.usersService.findAll(take, skip);
   }

@@ -174,7 +174,6 @@ export class TailanService {
         year,
         quarter,
         sectionsJson: JSON.stringify(sections),
-        savedBy: user.id,
         savedByName: user.name,
         updatedAt: now,
       },

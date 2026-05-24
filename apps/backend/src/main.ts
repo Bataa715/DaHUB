@@ -1,10 +1,10 @@
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe, Logger } from "@nestjs/common";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 import * as express from "express";
 import helmet from "helmet";
+import * as cookieParser from "cookie-parser";
 
 // [SEC-3] Validate required env vars for external services in production.
 // Prevents silent fallback to localhost (which could leak data to wrong host
@@ -70,6 +70,9 @@ async function bootstrap() {
     }),
   );
 
+  // Parse cookies (required for HttpOnly token cookies)
+  app.use(cookieParser());
+
   // [M-5] Reduced /users from 10mb to 6mb (profile image limit is 5MB after base64 overhead)
   app.use("/users", express.json({ limit: "6mb" }));
   app.use("/users", express.urlencoded({ limit: "6mb", extended: true }));
@@ -122,33 +125,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  // [MED-3] Swagger/OpenAPI docs — disabled in production to reduce attack surface
-  if (process.env.NODE_ENV !== "production") {
-    const config = new DocumentBuilder()
-      .setTitle("Internal Audit API")
-      .setDescription("API documentation for Internal Audit Management System")
-      .setVersion("1.0")
-      .addBearerAuth(
-        {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
-          name: "JWT",
-          description: "Enter JWT token",
-          in: "header",
-        },
-        "JWT-auth",
-      )
-      .addTag("auth", "Authentication endpoints")
-      .addTag("users", "User management")
-      .addTag("departments", "Department management")
-      .addTag("news", "News management")
-      .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup("api-docs", app, document);
-    logger.log(` Swagger docs available at /api-docs (dev only)`);
-  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

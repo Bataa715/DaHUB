@@ -321,9 +321,6 @@ export function LoginFlow({
                     <h2 className="text-2xl font-bold text-foreground">
                       Нууц үг оруулах
                     </h2>
-                    <p className="text-muted-foreground mt-2">
-                      {checkedUser.name}
-                    </p>
                     <code className="text-xs text-primary">
                       {checkedUser.userId}
                     </code>

@@ -17,15 +17,6 @@ import type {
   RowInlineImage,
 } from "./tailan.types";
 
-// Format stored "YYYY-MM-DD – YYYY-MM-DD" → "YYYY.MM.DD-YYYY.MM.DD"
-function fmtPeriod(period: string): string {
-  const [s, e] = period.split(" \u2013 ");
-  const fmt = (d?: string) => (d ? d.replace(/-/g, ".") : "");
-  if (!s && !e) return "";
-  if (!e) return fmt(s);
-  return `${fmt(s)}-${fmt(e)}`;
-}
-
 export const ROMAN_NUMS = [
   "I",
   "II",
@@ -1373,9 +1364,6 @@ export function buildWordHtml(p: BuildWordHtmlProps): string {
       body += `<tr>${[5, 30, 15, 20, 30].map((w) => tdL("&nbsp;", `${w}%`)).join("")}</tr>`;
     } else {
       p.section1Dashboards.forEach((t, idx) => {
-        const nums1 = p.section1Dashboards
-          .map((x) => parseFloat(x.completion))
-          .filter((n) => !isNaN(n));
         body +=
           `<tr>` +
           tdC(`${idx + 1}`, "5%") +

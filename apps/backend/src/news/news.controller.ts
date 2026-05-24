@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -14,7 +15,7 @@ import {
 import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
 import { Response } from "express";
 import { NewsService } from "./news.service";
-import { CreateNewsDto } from "./dto/news.dto";
+import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("news")
@@ -59,13 +60,30 @@ export class NewsController {
     return this.newsService.create(createNewsDto, req.user.id);
   }
 
-  // Public — image tags cannot send auth headers
+  // Authenticated user or admin can edit news (ownership enforced in service)
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id")
+  async update(
+    @Param("id") id: string,
+    @Body() updateNewsDto: UpdateNewsDto,
+    @Request() req,
+  ) {
+    return this.newsService.update(
+      id,
+      updateNewsDto,
+      req.user.id,
+      !!req.user.isAdmin,
+    );
+  }
+
+  // [N-6] Authenticated — image tags use same-origin /api proxy so cookie is sent
+  @UseGuards(JwtAuthGuard)
   @Get(":id/image")
   async getNewsImage(@Param("id") id: string, @Res() res: Response) {
     const result = await this.newsService.getNewsImage(id);
     if (!result) throw new NotFoundException("Зураг олдсонгүй");
     res.set("Content-Type", result.mimeType);
-    res.set("Cache-Control", "public, max-age=3600");
+    res.set("Cache-Control", "private, max-age=3600");
     res.send(result.buffer);
   }
 

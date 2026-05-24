@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
 import type ExcelJS from "exceljs";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -65,14 +64,45 @@ function extractCode(value: unknown, len: number): string {
   return s.slice(0, len).toUpperCase();
 }
 
+// Parse CSV text into rows (handles quoted fields)
+function parseCsv(text: string): unknown[][] {
+  const rows: unknown[][] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const cells: string[] = [];
+    let cell = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { cell += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (ch === "," && !inQuotes) {
+        cells.push(cell.trim());
+        cell = "";
+      } else {
+        cell += ch;
+      }
+    }
+    cells.push(cell.trim());
+    rows.push(cells);
+  }
+  return rows;
+}
+
 // Extract 4-digit year from various date representations
 function toYear(value: unknown): number | null {
   if (value == null) return null;
+  // ExcelJS returns date cells as Date objects
+  if (value instanceof Date) {
+    return value.getFullYear();
+  }
   if (typeof value === "number") {
-    // Excel serial date
+    // Excel serial date: Unix epoch = serial 25569 (Jan 1 1970)
     try {
-      const d = XLSX.SSF.parse_date_code(value);
-      if (d && d.y) return d.y;
+      const d = new Date(Math.round((value - 25569) * 86400 * 1000));
+      const y = d.getUTCFullYear();
+      if (y >= 1900 && y <= 2100) return y;
     } catch {
       // ignore
     }
@@ -196,19 +226,28 @@ export default function PivotPage() {
     }
     setError(null);
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array", cellDates: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const jsonRows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
-        header: 1,
-        raw: true,
-      });
+    reader.onload = async (e) => {
+      const arrayBuffer = e.target?.result as ArrayBuffer;
+      let jsonRows: unknown[][];
+      if (file.name.match(/\.csv$/i)) {
+        const text = new TextDecoder().decode(arrayBuffer);
+        jsonRows = parseCsv(text);
+      } else {
+        const ExcelJSMod = await import("exceljs");
+        const wb = new ExcelJSMod.default.Workbook();
+        await wb.xlsx.load(arrayBuffer);
+        const ws = wb.worksheets[0];
+        const rows: unknown[][] = [];
+        ws.eachRow((row) => {
+          rows.push((row.values as unknown[]).slice(1));
+        });
+        jsonRows = rows;
+      }
       if (jsonRows.length < 2) {
         setError(t("pivotNoData"));
         return;
       }
-      const hdrs = (jsonRows[0] as string[]).map(String);
+      const hdrs = (jsonRows[0] as unknown[]).map(String);
       const rows = jsonRows.slice(1) as unknown[][];
       setHeaders(hdrs);
       setFileData(rows);
@@ -220,6 +259,7 @@ export default function PivotPage() {
       setSelectedYear("all");
     };
     reader.readAsArrayBuffer(file);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDrop = useCallback(
@@ -402,12 +442,6 @@ export default function PivotPage() {
       (row) =>
         extractCode((row as unknown[])[codeIdx], prefixLen) === selectedPrefix,
     );
-
-    const RED_FILL: ExcelJS.Fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFFCE4E4" },
-    };
 
     for (const pivotRow of group.rows) {
       const year = pivotRow.year;

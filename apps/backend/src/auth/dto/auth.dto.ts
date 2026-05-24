@@ -1,19 +1,13 @@
-import {
+﻿import {
   IsString,
   MinLength,
   MaxLength,
   IsNotEmpty,
+  IsOptional,
   Matches,
 } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
 
 export class SignupDto {
-  @ApiProperty({
-    example: "Password123!",
-    description:
-      "User password (min 8 chars, must contain uppercase, lowercase, number, special char)",
-    minLength: 8,
-  })
   @IsString()
   @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   @Matches(
@@ -25,80 +19,54 @@ export class SignupDto {
   )
   password: string;
 
-  @ApiProperty({ example: "Болд-Эрдэнэ", description: "Full name of the user" })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: "Удирдлага", description: "Department name" })
   @IsString()
   @IsNotEmpty()
   department: string;
 
-  @ApiProperty({ example: "Менежер", description: "Job position" })
   @IsString()
   @IsNotEmpty()
   position: string;
 }
 
 export class RefreshTokenDto {
-  @ApiProperty({
-    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    description: "Refresh token",
-  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 export class LoginDto {
-  @ApiProperty({ example: "Удирдлага", description: "Department name" })
   @IsString()
   @IsNotEmpty()
   department: string;
 
-  @ApiProperty({ example: "Болд-Эрдэнэ", description: "Username" })
   @IsString()
   @IsNotEmpty()
   username: string;
 
-  @ApiProperty({
-    example: "Password123!",
-    description:
-      "Password (min 8 chars, must contain uppercase, lowercase, number, special char)",
-    minLength: 8,
-  })
   @IsString()
   @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   password: string;
 }
 
 export class LoginByIdDto {
-  @ApiProperty({ example: "DAG-EAH-Bold-Erdene", description: "User ID" })
   @IsString()
   @IsNotEmpty()
   userId: string;
 
-  @ApiProperty({
-    example: "user123",
-    description: "Password (min 8 characters)",
-  })
   @IsString()
   @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   password: string;
 }
 
 export class AdminLoginDto {
-  @ApiProperty({ example: "admin-userid", description: "Admin user ID" })
   @IsString()
   @IsNotEmpty()
   username: string;
 
-  @ApiProperty({
-    example: "AdminPassword123!",
-    description: "Admin password",
-    minLength: 1,
-  })
   @IsString()
   @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   password: string;
@@ -106,10 +74,6 @@ export class AdminLoginDto {
 
 // New DTOs for registration flow
 export class CheckUserDto {
-  @ApiProperty({
-    example: "DAG-EAH-Bold-Erdene",
-    description: "User ID to check",
-  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
@@ -118,19 +82,16 @@ export class CheckUserDto {
 }
 
 export class RegisterUserDto {
-  @ApiProperty({ example: "Удирдлага", description: "Department name" })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   department: string;
 
-  @ApiProperty({ example: "Менежер", description: "Job position" })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   position: string;
 
-  @ApiProperty({ example: "Болд-Эрдэнэ", description: "Full name" })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
@@ -138,17 +99,10 @@ export class RegisterUserDto {
 }
 
 export class SetPasswordDto {
-  @ApiProperty({ example: "DAG-EAH-Bold-Erdene", description: "User ID" })
   @IsString()
   @IsNotEmpty()
   userId: string;
 
-  @ApiProperty({
-    example: "Password123!",
-    description:
-      "New password (min 8 chars, must contain uppercase, lowercase, number, special char)",
-    minLength: 8,
-  })
   @IsString()
   @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   @Matches(
@@ -159,20 +113,18 @@ export class SetPasswordDto {
     },
   )
   password: string;
+
+  // [N-3] One-time claim token issued at registration — prevents account hijacking
+  @IsString()
+  @IsNotEmpty()
+  claimToken: string;
 }
 
 export class ChangePasswordDto {
-  @ApiProperty({ example: "OldPassword123!", description: "Current password" })
   @IsString()
   @IsNotEmpty()
   currentPassword: string;
 
-  @ApiProperty({
-    example: "NewPassword123!",
-    description:
-      "New password (min 8 chars, must contain uppercase, lowercase, number, special char)",
-    minLength: 8,
-  })
   @IsString()
   @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
   @Matches(

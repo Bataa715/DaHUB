@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -136,7 +135,7 @@ export default function DbAccessManagePage() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const [, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   // Permission guard
@@ -162,7 +161,6 @@ export default function DbAccessManagePage() {
   const [reviewLoading, setReviewLoading] = useState(false);
 
   const [revokingId, setRevokingId] = useState<string | null>(null);
-  const [deletingHistory, setDeletingHistory] = useState(false);
   const [cleaningChUser, setCleaningChUser] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -259,26 +257,7 @@ export default function DbAccessManagePage() {
     }
   };
 
-  const handleDeleteHistory = async () => {
-    if (!confirm(t("dbManageHistoryConfirm"))) return;
-    try {
-      setDeletingHistory(true);
-      await dbAccessApi.deleteRequestHistory();
-      toast({ title: t("dbManageHistoryDeleted") });
-      loadRequests(tab === "all");
-    } catch (err: any) {
-      toast({
-        title: t("dbAccessValidationTitle"),
-        description: err?.response?.data?.message ?? t("dbManageDeleteError"),
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingHistory(false);
-    }
-  };
-
   const handleRevoke = async (group: GrantGroup) => {
-    const tblList = group.tables.join(", ");
     if (!confirm(t("dbManageConfirmDelete"))) return;
     try {
       setRevokingId(group.requestId);

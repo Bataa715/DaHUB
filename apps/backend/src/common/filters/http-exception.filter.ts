@@ -48,15 +48,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
-    // Send safe response to client
     // [LOW-6] Strip query string from path — query params may contain sensitive data (tokens, IDs)
     const safePath = request.url.split("?")[0];
+
+    // [SEC] Return generic messages for all status codes to prevent information
+    // leakage (internal paths, user IDs, DB column names, etc.).
+    // Original message is already logged above for debugging.
+    const SAFE_MESSAGES: Record<number, string> = {
+      400: "Хүсэлт буруу байна",
+      401: "Нэвтрэх шаардлагатай",
+      403: "Энэ үйлдлийг гүйцэтгэх эрх байхгүй",
+      404: "Хайсан мэдээлэл олдсонгүй",
+      409: "Давхар бүртгэл",
+      422: "Өгөгдлийн формат буруу",
+      429: "Хэт олон хүсэлт. Түр хүлээнэ үү",
+      500: "Серверийн алдаа гарлаа",
+    };
+    const safeMessage = SAFE_MESSAGES[status] ?? "Алдаа гарлаа";
+
     response.status(status).json({
       statusCode: status,
-      message:
-        status === HttpStatus.INTERNAL_SERVER_ERROR
-          ? "Серверийн алдаа гарлаа"
-          : message,
+      message: safeMessage,
       timestamp: new Date().toISOString(),
       path: safePath,
     });

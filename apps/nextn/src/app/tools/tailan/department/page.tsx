@@ -21,7 +21,6 @@ import {
   getCurrentYear,
   scoreLabel,
   emptySection,
-  SectionReport,
 } from "./_types";
 import { SectionEditor } from "./_SectionEditor";
 import { WordPreview } from "./_WordPreview";
@@ -70,7 +69,6 @@ export default function TailanBscPage() {
     saving,
     lastSaved,
     toast,
-    showToast,
     updateSection,
     negtgelKpi,
     updateNegtgelRow,

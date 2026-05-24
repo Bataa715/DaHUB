@@ -1,18 +1,3 @@
-export interface EnglishWord {
-  id: string;
-  word: string;
-  translation: string;
-  definition: string;
-  example: string;
-  partOfSpeech: string;
-  difficulty: number;
-  totalReviews: number;
-  correctReviews: number;
-  lastReviewedAt: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export type Exercise = {
   id?: string;
   name: string;

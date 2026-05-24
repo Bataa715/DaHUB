@@ -370,75 +370,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY (userId, year, quarter)
       `);
 
-      // Migrate existing tailan_reports: add extraDataJson if missing
-      try {
-        await this.exec(
-          `ALTER TABLE tailan_reports ADD COLUMN IF NOT EXISTS extraDataJson String DEFAULT '{}'`,
-        );
-      } catch {}
-
-      // Migrate users: drop email column if it exists
-      try {
-        await this.exec(`ALTER TABLE users DROP COLUMN IF EXISTS email`);
-      } catch {}
-
-      // Migrate users: add isSuperAdmin if missing
-      try {
-        await this.exec(
-          `ALTER TABLE users ADD COLUMN IF NOT EXISTS isSuperAdmin UInt8 DEFAULT 0`,
-        );
-      } catch {}
-
-      // Migrate users: add grantableTools if missing
-      try {
-        await this.exec(
-          `ALTER TABLE users ADD COLUMN IF NOT EXISTS grantableTools String DEFAULT '[]'`,
-        );
-      } catch {}
-
-      // Create chess_invitations table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS chess_invitations (
-          id String,
-          fromUserId String,
-          fromUserName String,
-          toUserId String,
-          toUserName String,
-          status String DEFAULT 'pending',
-          seq UInt64,
-          createdAt DateTime DEFAULT now()
-        ) ENGINE = MergeTree() ORDER BY (id, seq)
-      `);
-
-      // Create chess_games table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS chess_games (
-          id String,
-          whiteUserId String,
-          whiteUserName String,
-          blackUserId String,
-          blackUserName String,
-          moves String DEFAULT '[]',
-          status String DEFAULT 'active',
-          resultReason String DEFAULT '',
-          whiteTimeMs UInt32 DEFAULT 600000,
-          blackTimeMs UInt32 DEFAULT 600000,
-          lastMoveAt String DEFAULT '',
-          seq UInt64,
-          createdAt DateTime DEFAULT now()
-        ) ENGINE = MergeTree() ORDER BY (id, seq)
-      `);
-      // Migrate existing chess_games tables (add timer columns if missing)
-      await this.exec(
-        `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS whiteTimeMs UInt32 DEFAULT 600000`,
-      ).catch(() => {});
-      await this.exec(
-        `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS blackTimeMs UInt32 DEFAULT 600000`,
-      ).catch(() => {});
-      await this.exec(
-        `ALTER TABLE chess_games ADD COLUMN IF NOT EXISTS lastMoveAt String DEFAULT ''`,
-      ).catch(() => {});
-
       // Create english_words table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS english_words (
@@ -449,7 +380,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           example String DEFAULT '',
           partOfSpeech String DEFAULT '',
           difficulty UInt8 DEFAULT 1,
-          userId String,
           totalReviews UInt32 DEFAULT 0,
           correctReviews UInt32 DEFAULT 0,
           lastReviewedAt DateTime DEFAULT '1970-01-01 00:00:00',
@@ -478,7 +408,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           year UInt16,
           quarter UInt8,
           sectionsJson String DEFAULT '{}',
-          savedBy String DEFAULT '',
           savedByName String DEFAULT '',
           updatedAt DateTime DEFAULT now()
         ) ENGINE = ReplacingMergeTree(updatedAt)
@@ -499,15 +428,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ) ENGINE = MergeTree() ORDER BY (departmentId, uploadedAt)
       `);
 
-      // ── Column migrations (idempotent) ─────────────────────────────────
-      await this.exec(
-        `ALTER TABLE access_grants ADD COLUMN IF NOT EXISTS chPassword String DEFAULT ''`,
-      );
-      // Migrate news: add imageMime if missing
-      await this.exec(
-        `ALTER TABLE news ADD COLUMN IF NOT EXISTS imageMime String DEFAULT ''`,
-      ).catch(() => {});
-
       try {
         await this.provisionServiceUsers();
       } catch (provisionErr: any) {
@@ -527,7 +447,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.logger.log(
-        "Schema tables initialized (departments, users, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, chess_invitations, chess_games, dept_bsc_reports, department_photos, english_words, login_attempts)",
+        "Schema tables initialized (departments, users, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, department_photos, english_words, login_attempts)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);

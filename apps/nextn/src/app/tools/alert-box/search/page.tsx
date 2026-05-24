@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { abSearchByCif } from "../_lib/api";
 import {
   Search,
@@ -33,7 +33,6 @@ interface SearchResult {
 
 function SearchContent() {
   const { t } = useLanguage();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [cif, setCif] = useState("");

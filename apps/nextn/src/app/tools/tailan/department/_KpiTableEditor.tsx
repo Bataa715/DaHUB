@@ -7,7 +7,6 @@ import {
   Section2TaskRow,
   Section14Row,
   Section23Row,
-  Section42Row,
   Section43Row,
   RichTextItem,
   RichTextContent,
@@ -458,60 +457,6 @@ export function KpiTableEditor({
               ...sub,
               richTextRows: (sub.richTextRows ?? []).map((item, i) =>
                 i !== ii ? item : { ...item, title: value },
-              ),
-            },
-      ),
-    );
-
-  const addBullet = (si: number, ii: number) =>
-    onChange(
-      subSections.map((sub, s) =>
-        s !== si
-          ? sub
-          : {
-              ...sub,
-              richTextRows: (sub.richTextRows ?? []).map((item, i) =>
-                i !== ii ? item : { ...item, bullets: [...item.bullets, ""] },
-              ),
-            },
-      ),
-    );
-
-  const updateBullet = (si: number, ii: number, bi: number, value: string) =>
-    onChange(
-      subSections.map((sub, s) =>
-        s !== si
-          ? sub
-          : {
-              ...sub,
-              richTextRows: (sub.richTextRows ?? []).map((item, i) =>
-                i !== ii
-                  ? item
-                  : {
-                      ...item,
-                      bullets: item.bullets.map((b, bj) =>
-                        bj !== bi ? b : value,
-                      ),
-                    },
-              ),
-            },
-      ),
-    );
-
-  const removeBullet = (si: number, ii: number, bi: number) =>
-    onChange(
-      subSections.map((sub, s) =>
-        s !== si
-          ? sub
-          : {
-              ...sub,
-              richTextRows: (sub.richTextRows ?? []).map((item, i) =>
-                i !== ii
-                  ? item
-                  : {
-                      ...item,
-                      bullets: item.bullets.filter((_, bj) => bj !== bi),
-                    },
               ),
             },
       ),

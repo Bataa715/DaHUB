@@ -139,7 +139,9 @@ export default function ReportsPage() {
             <p className="text-muted-foreground font-medium text-lg">
               {t("reportsNoAccess")}
             </p>
-            <p className="text-muted-foreground/50 text-sm">{t("reportsContactAdmin")}</p>
+            <p className="text-muted-foreground/50 text-sm">
+              {t("reportsContactAdmin")}
+            </p>
           </div>
         ) : (
           <>

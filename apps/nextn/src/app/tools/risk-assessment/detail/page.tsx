@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { riskApi, type RiskHistoryEntry, type RiskCurrentRow } from "@/lib/api";
+import { riskApi, type RiskHistoryEntry } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
@@ -388,9 +388,12 @@ export default function RiskAssessmentDetailPage() {
               <Eye className="w-4 h-4 text-blue-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold truncate">{viewHistoryEntry.name}</div>
+              <div className="text-sm font-bold truncate">
+                {viewHistoryEntry.name}
+              </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
-                {viewHistoryEntry.pDateBeg} → {viewHistoryEntry.pDate} · {viewHistoryEntry.branchCount} салбар
+                {viewHistoryEntry.pDateBeg} → {viewHistoryEntry.pDate} ·{" "}
+                {viewHistoryEntry.branchCount} салбар
               </div>
             </div>
             <button
@@ -423,11 +426,13 @@ export default function RiskAssessmentDetailPage() {
                     ? `${grouped.length} салбар`
                     : `${filteredRows.length} мөр`}
                 </span>
-                {search && filteredRows.length !== (viewHistoryId ? viewHistoryRows : rows).length && (
-                  <span className="text-muted-foreground/70 tabular-nums">
-                    / {(viewHistoryId ? viewHistoryRows : rows).length}
-                  </span>
-                )}
+                {search &&
+                  filteredRows.length !==
+                    (viewHistoryId ? viewHistoryRows : rows).length && (
+                    <span className="text-muted-foreground/70 tabular-nums">
+                      / {(viewHistoryId ? viewHistoryRows : rows).length}
+                    </span>
+                  )}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -506,7 +511,12 @@ export default function RiskAssessmentDetailPage() {
                 CSV
               </button>
               {/* Хадгалсан улирал харах */}
-              {menuOpen && <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />}
+              {menuOpen && (
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setMenuOpen(false)}
+                />
+              )}
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
@@ -569,8 +579,11 @@ export default function RiskAssessmentDetailPage() {
                                   {h.name}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                                  {h.pDateBeg} → {h.pDate} · {h.branchCount} салбар
-                                  {h.createdByName ? ` · ${h.createdByName}` : ""}
+                                  {h.pDateBeg} → {h.pDate} · {h.branchCount}{" "}
+                                  салбар
+                                  {h.createdByName
+                                    ? ` · ${h.createdByName}`
+                                    : ""}
                                 </div>
                               </div>
                             </button>
@@ -632,7 +645,9 @@ export default function RiskAssessmentDetailPage() {
                     <th className="px-2 py-2 text-center">SUBID</th>
                     <th className="px-2 py-2 text-center">Score</th>
                     <th className="px-2 py-2 text-left">OP_TYPE</th>
-                    {!viewHistoryId && <th className="px-2 py-2 text-center"></th>}
+                    {!viewHistoryId && (
+                      <th className="px-2 py-2 text-center"></th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -709,40 +724,40 @@ export default function RiskAssessmentDetailPage() {
                           {r.OPERATION_TYPE}
                         </td>
                         {!viewHistoryId && (
-                        <td className="px-2 py-1.5 text-center">
-                          {isEditing ? (
-                            <div className="flex items-center gap-1">
-                              {isSaving ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => commitEdit(rowKey)}
-                                    className="text-emerald-600 hover:text-emerald-500"
-                                    title="Хадгалах"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={cancelEdit}
-                                    className="text-muted-foreground hover:text-foreground"
-                                    title="Цуцлах"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => startEdit(rowKey, r.RESULT)}
-                              className={`text-muted-foreground/40 hover:text-foreground transition-colors ${isManual ? "text-amber-500/60 hover:text-amber-500" : ""}`}
-                              title="Энэ мөрийн RESULT засах"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
-                          )}
-                        </td>
+                          <td className="px-2 py-1.5 text-center">
+                            {isEditing ? (
+                              <div className="flex items-center gap-1">
+                                {isSaving ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => commitEdit(rowKey)}
+                                      className="text-emerald-600 hover:text-emerald-500"
+                                      title="Хадгалах"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={cancelEdit}
+                                      className="text-muted-foreground hover:text-foreground"
+                                      title="Цуцлах"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => startEdit(rowKey, r.RESULT)}
+                                className={`text-muted-foreground/40 hover:text-foreground transition-colors ${isManual ? "text-amber-500/60 hover:text-amber-500" : ""}`}
+                                title="Энэ мөрийн RESULT засах"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
+                          </td>
                         )}
                       </tr>
                     );
@@ -810,7 +825,9 @@ export default function RiskAssessmentDetailPage() {
                               <th className="px-2 py-1.5 text-center">SUBID</th>
                               <th className="px-2 py-1.5 text-center">Score</th>
                               <th className="px-2 py-1.5 text-left">OP_TYPE</th>
-                              {!viewHistoryId && <th className="px-2 py-1.5 text-center"></th>}
+                              {!viewHistoryId && (
+                                <th className="px-2 py-1.5 text-center"></th>
+                              )}
                             </tr>
                           </thead>
                           <tbody>
@@ -869,40 +886,58 @@ export default function RiskAssessmentDetailPage() {
                                   <td className="px-2 py-1.5 text-[10px] text-muted-foreground">
                                     {r.OPERATION_TYPE}
                                   </td>
-                                  {!viewHistoryId && (() => {
-                                    const rowKey = (r as any).rowKey ?? `${r.BRANCHID}|${r.SUBID}|${r.SOLID}`;
-                                    const isEditing = editingKey === rowKey;
-                                    const isSaving = savingKey === rowKey;
-                                    const isManual = Number((r as any).isManual) === 1;
-                                    return (
-                                      <td className="px-2 py-1.5 text-center">
-                                        {isEditing ? (
-                                          <div className="flex items-center gap-1">
-                                            {isSaving ? (
-                                              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                                            ) : (
-                                              <>
-                                                <button onClick={() => commitEdit(rowKey)} className="text-emerald-600 hover:text-emerald-500" title="Хадгалах">
-                                                  <Check className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground" title="Цуцлах">
-                                                  <X className="w-3.5 h-3.5" />
-                                                </button>
-                                              </>
-                                            )}
-                                          </div>
-                                        ) : isEditing === false && editingKey !== null && editingKey !== rowKey ? null : (
-                                          <button
-                                            onClick={() => startEdit(rowKey, r.RESULT)}
-                                            className={`text-muted-foreground/40 hover:text-foreground transition-colors ${isManual ? "text-amber-500/60 hover:text-amber-500" : ""}`}
-                                            title="Энэ мөрийн RESULT засах"
-                                          >
-                                            <Pencil className="w-3 h-3" />
-                                          </button>
-                                        )}
-                                      </td>
-                                    );
-                                  })()}
+                                  {!viewHistoryId &&
+                                    (() => {
+                                      const rowKey =
+                                        (r as any).rowKey ??
+                                        `${r.BRANCHID}|${r.SUBID}|${r.SOLID}`;
+                                      const isEditing = editingKey === rowKey;
+                                      const isSaving = savingKey === rowKey;
+                                      const isManual =
+                                        Number((r as any).isManual) === 1;
+                                      return (
+                                        <td className="px-2 py-1.5 text-center">
+                                          {isEditing ? (
+                                            <div className="flex items-center gap-1">
+                                              {isSaving ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                                              ) : (
+                                                <>
+                                                  <button
+                                                    onClick={() =>
+                                                      commitEdit(rowKey)
+                                                    }
+                                                    className="text-emerald-600 hover:text-emerald-500"
+                                                    title="Хадгалах"
+                                                  >
+                                                    <Check className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    onClick={cancelEdit}
+                                                    className="text-muted-foreground hover:text-foreground"
+                                                    title="Цуцлах"
+                                                  >
+                                                    <X className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </>
+                                              )}
+                                            </div>
+                                          ) : isEditing === false &&
+                                            editingKey !== null &&
+                                            editingKey !== rowKey ? null : (
+                                            <button
+                                              onClick={() =>
+                                                startEdit(rowKey, r.RESULT)
+                                              }
+                                              className={`text-muted-foreground/40 hover:text-foreground transition-colors ${isManual ? "text-amber-500/60 hover:text-amber-500" : ""}`}
+                                              title="Энэ мөрийн RESULT засах"
+                                            >
+                                              <Pencil className="w-3 h-3" />
+                                            </button>
+                                          )}
+                                        </td>
+                                      );
+                                    })()}
                                 </tr>
                               ))}
                           </tbody>
@@ -933,20 +968,27 @@ export default function RiskAssessmentDetailPage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold">Тайлан устгах</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Үргэлжлүүлэхийн түлд нууц үг оруулна уу</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Үргэлжлүүлэхийн түлд нууц үг оруулна уу
+                </p>
               </div>
             </div>
             <input
               type="password"
               value={deletePassword}
-              onChange={(e) => { setDeletePassword(e.target.value); setDeletePasswordError(""); }}
+              onChange={(e) => {
+                setDeletePassword(e.target.value);
+                setDeletePasswordError("");
+              }}
               onKeyDown={(e) => e.key === "Enter" && doDeleteHistory()}
               placeholder="Нууц үг"
               autoFocus
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
             />
             {deletePasswordError && (
-              <p className="text-xs text-red-500 mt-1.5">{deletePasswordError}</p>
+              <p className="text-xs text-red-500 mt-1.5">
+                {deletePasswordError}
+              </p>
             )}
             <div className="flex justify-end gap-2 mt-4">
               <button

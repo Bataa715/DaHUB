@@ -238,16 +238,14 @@ export default function AdminToolsPage() {
   // Sub-admin: restrict visible tools to their grantableTools list
   const isSuperAdmin = user?.isSuperAdmin;
   const subAdminTools: string[] | null =
-    user?.isAdmin && !isSuperAdmin
-      ? (user?.grantableTools ?? [])
-      : null;
+    user?.isAdmin && !isSuperAdmin ? (user?.grantableTools ?? []) : null;
   const visibleTools =
     subAdminTools !== null
       ? AVAILABLE_TOOLS.filter((t) => subAdminTools.includes(t.id))
       : AVAILABLE_TOOLS;
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("current");

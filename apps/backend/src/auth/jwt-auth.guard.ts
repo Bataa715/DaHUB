@@ -20,10 +20,8 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
 
   handleRequest(err, user, info) {
     if (err || !user) {
-      // Only log errors in development
-      if (process.env.NODE_ENV === "development") {
-        this.logger.warn("Authentication failed", { reason: info?.message });
-      }
+      // [L-3] Log auth failures in all environments for security monitoring
+      this.logger.warn("Authentication failed", { reason: info?.message });
       throw err || new UnauthorizedException("Invalid credentials");
     }
     return user;

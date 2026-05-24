@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { tailanApi } from "@/lib/api";
 import { WordPreview } from "../mine/_components/WordPreview";
 import type {
@@ -27,7 +26,6 @@ import {
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
-import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -68,7 +66,6 @@ function fmtDate(iso: string | null | undefined): string {
 }
 
 export default function DeptViewPage() {
-  const router = useRouter();
   const { t, language } = useLanguage();
 
   const now = new Date();
