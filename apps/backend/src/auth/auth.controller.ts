@@ -164,7 +164,7 @@ export class AuthController {
     return this.authService.getUsersByDepartment(department);
   }
 
-  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @UseGuards(ThrottlerGuard)
   @Get("search")
   async searchUsers(@Query("q") query: string) {
     return this.authService.searchUsersByUserId(query, false);

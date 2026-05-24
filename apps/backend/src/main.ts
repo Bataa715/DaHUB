@@ -4,7 +4,7 @@ import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 import * as express from "express";
 import helmet from "helmet";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 
 // [SEC-3] Validate required env vars for external services in production.
 // Prevents silent fallback to localhost (which could leak data to wrong host

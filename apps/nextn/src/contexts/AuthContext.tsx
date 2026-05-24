@@ -90,17 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const adminPath = isAdminPath();
-    const userCookie = adminPath ? Cookies.get("adminUser") : Cookies.get("user");
-    // [N-2] token/refreshToken are HttpOnly — not readable by JS.
-    // Use the user display cookie as the session presence indicator.
-    if (!userCookie) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
 
     // Always re-issue the access token on load so the JWT cookie has the
     // latest allowedTools (in case an admin granted/revoked tools).
+    // If userCookie is missing but the HttpOnly refreshToken is still valid,
+    // doRefresh will restore the session instead of flashing "please log in".
     const doRefresh = async () => {
       const userKey = adminPath ? "adminUser" : "user";
       // [N-2] No refreshToken arg — browser sends HttpOnly cookie automatically

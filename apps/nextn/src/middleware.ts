@@ -63,6 +63,10 @@ export async function middleware(request: NextRequest) {
     (adminPayload["isAdmin"] === true || adminPayload["isAdmin"] === 1);
   const isUserAuth = !!userPayload && !userPayload["isAdmin"];
 
+  // If the access token is expired but a refresh token exists, let the
+  // client through so AuthContext can silently refresh it on mount.
+  const hasRefreshToken = !!request.cookies.get("refreshToken")?.value;
+
   //  Admin routes
   if (isAdminRoute) {
     if (!isAdminAuth) {
@@ -83,7 +87,7 @@ export async function middleware(request: NextRequest) {
   }
 
   //  Protected non-admin routes
-  if (!isUserAuth && !isPublicRoute && !isAdminRoute) {
+  if (!isUserAuth && !hasRefreshToken && !isPublicRoute && !isAdminRoute) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
