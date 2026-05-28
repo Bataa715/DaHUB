@@ -127,7 +127,7 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
+  await app.listen(port, "0.0.0.0");
   logger.log(` Backend сервер ${port} порт дээр ажиллаж эхэллээ`);
   logger.log(` Security: SQL Injection protection enabled`);
   logger.log(` Environment: ${process.env.NODE_ENV || "development"}`);

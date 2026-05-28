@@ -18,10 +18,15 @@ const api = axios.create({
 // [N-2] No request interceptor for Authorization header —
 // HttpOnly cookies are sent automatically by the browser.
 
+// Shared in-flight refresh promise — prevents concurrent 401s from each
+// triggering their own /auth/refresh call.
+let _refreshPromise: Promise<any> | null = null;
+
 // Response interceptor — silent token refresh on 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (typeof window === "undefined") return Promise.reject(error);
     const originalRequest = error.config;
     const isAdmin =
       typeof window !== "undefined" &&
@@ -29,36 +34,46 @@ api.interceptors.response.use(
     const userKey = isAdmin ? "adminUser" : "user";
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+      // Don't retry auth management endpoints — causes extra round-trips and loops
+      const url = originalRequest.url ?? "";
+      const isAuthMgmt =
+        url.endsWith("/auth/logout") || url.endsWith("/auth/refresh");
+      if (!isAuthMgmt) {
+        originalRequest._retry = true;
 
-      try {
-        // [N-2] No body needed — browser sends HttpOnly refreshToken cookie automatically
-        const refreshRes = await axios.post(
-          `${API_URL}/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
-        // Update the user display cookie from the refresh response
-        const freshUser = refreshRes.data?.user;
-        if (freshUser) {
-          const secure =
-            typeof window !== "undefined" &&
-            window.location.protocol === "https:";
-          Cookies.set(userKey, JSON.stringify(freshUser), {
-            expires: 3,
-            sameSite: "strict",
-            secure,
-          });
-        }
-        // Retry original — browser sends new HttpOnly token cookie automatically
-        return api(originalRequest);
-      } catch {
-        Cookies.remove(userKey);
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("auth:session-expired"));
-          const loginPath = isAdmin ? "/admin/login" : "/login";
-          if (!window.location.pathname.startsWith(loginPath)) {
-            window.location.replace(loginPath);
+        try {
+          // Reuse an in-flight refresh so concurrent 401s share one network call
+          if (!_refreshPromise) {
+            _refreshPromise = axios
+              .post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
+              .finally(() => {
+                _refreshPromise = null;
+              });
+          }
+          // [N-2] No body needed — browser sends HttpOnly refreshToken cookie automatically
+          const refreshRes = await _refreshPromise;
+          // Update the user display cookie from the refresh response
+          const freshUser = refreshRes.data?.user;
+          if (freshUser) {
+            const secure =
+              typeof window !== "undefined" &&
+              window.location.protocol === "https:";
+            Cookies.set(userKey, JSON.stringify(freshUser), {
+              expires: 3,
+              sameSite: "strict",
+              secure,
+            });
+          }
+          // Retry original — browser sends new HttpOnly token cookie automatically
+          return api(originalRequest);
+        } catch {
+          Cookies.remove(userKey);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("auth:session-expired"));
+            const loginPath = isAdmin ? "/admin/login" : "/login";
+            if (!window.location.pathname.startsWith(loginPath)) {
+              window.location.replace(loginPath);
+            }
           }
         }
       }
@@ -893,6 +908,23 @@ export const riskApi = {
   deleteHistory: async (id: string): Promise<void> => {
     await api.delete(`/risk-assessment/history/${id}`);
   },
+
+  // ── Indicator holds ───────────────────────────────────────────────────────
+
+  /** Тухайн сарын hold жагсаалтыг авах (period = "YYYY-MM") */
+  listHolds: async (period: string): Promise<{ indicatorId: string; isHeld: number }[]> => {
+    const res = await api.get(`/risk-assessment/holds`, { params: { period } });
+    return res.data ?? [];
+  },
+
+  /** Тухайн үзүүлэлтийг hold/unhold хийх */
+  setHold: async (body: {
+    indicatorId: string;
+    period: string;
+    isHeld: boolean;
+  }): Promise<void> => {
+    await api.put(`/risk-assessment/holds`, body);
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1004,5 +1036,89 @@ export const weeklyReportApi = {
       sections,
     });
     return res.data;
+  },
+};
+
+// ── Risk Indicator Config API ─────────────────────────────────────────────────
+
+export interface IndicatorConfig {
+  id: string;
+  subid: string;
+  name: string;
+  group_num: number;
+  sort_order: number;
+  weight: number;
+  is_manual: 0 | 1;
+  is_judgment: 0 | 1;
+  is_active: 0 | 1;
+  score_scale: string; // JSON
+  hint: string;
+  updated_by: string;
+  seq: number;
+  updated_at: string;
+}
+
+export interface GroupConfig {
+  region: string;
+  group_num: number;
+  weight: number;
+  label: string;
+  seq: number;
+  updated_at: string;
+}
+
+export const riskIndicatorConfigApi = {
+  list: async (): Promise<IndicatorConfig[]> => {
+    const res = await api.get("/risk-indicator-config");
+    return res.data;
+  },
+
+  create: async (
+    dto: Omit<
+      IndicatorConfig,
+      "id" | "seq" | "updated_at" | "is_active" | "updated_by"
+    >,
+  ): Promise<IndicatorConfig> => {
+    const res = await api.post("/risk-indicator-config", dto);
+    return res.data;
+  },
+
+  update: async (
+    id: string,
+    dto: Partial<IndicatorConfig>,
+  ): Promise<IndicatorConfig> => {
+    const res = await api.patch(`/risk-indicator-config/${id}`, dto);
+    return res.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/risk-indicator-config/${id}`);
+  },
+
+  reorder: async (ids: string[]): Promise<void> => {
+    await api.post("/risk-indicator-config/reorder", { ids });
+  },
+
+  seed: async (): Promise<{ count: number }> => {
+    const res = await api.post("/risk-indicator-config/seed");
+    return res.data;
+  },
+
+  listGroupConfig: async (): Promise<GroupConfig[]> => {
+    const res = await api.get("/risk-indicator-config/group-config");
+    return res.data;
+  },
+
+  upsertGroupConfig: async (dto: {
+    region: string;
+    group_num: number;
+    weight: number;
+    label: string;
+  }): Promise<void> => {
+    await api.post("/risk-indicator-config/group-config", dto);
+  },
+
+  seedGroups: async (): Promise<void> => {
+    await api.post("/risk-indicator-config/seed-groups");
   },
 };

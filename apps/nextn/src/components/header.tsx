@@ -24,10 +24,10 @@ import {
   Newspaper,
   User as UserIcon,
   Globe,
+  BarChart2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
@@ -44,12 +44,10 @@ import {
 import { useTheme } from "next-themes";
 import { themes } from "@/lib/themes";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { authApi } from "@/lib/api";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -71,6 +69,11 @@ const Header = () => {
     { href: "/admin/users", label: t("navUsers"), icon: Users },
     { href: "/admin/departments", label: t("navDepartments"), icon: Building2 },
     { href: "/admin/tools", label: t("navTools"), icon: Wrench },
+    {
+      href: "/admin/risk-indicators",
+      label: "Эрсдэлийн үзүүлэлт",
+      icon: BarChart2,
+    },
   ];
 
   // Үндсэн menu
@@ -99,19 +102,9 @@ const Header = () => {
   const mainLinks = isAdminPage ? adminLinks : regularLinks;
 
   const handleLogout = async () => {
-    try {
-      const isAdmin = user?.isAdmin;
-      try {
-        await authApi.logout();
-      } catch {
-        // Ignore backend errors — proceed with local cleanup
-      }
-      logout();
-      window.location.href = isAdmin ? "/admin/login" : "/login";
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({ title: t("logoutError"), variant: "destructive" });
-    }
+    const loginPath = pathname.startsWith("/admin") ? "/admin/login" : "/login";
+    await logout();
+    window.location.href = loginPath;
   };
 
   const handleThemeChange = (newTheme: string) => {

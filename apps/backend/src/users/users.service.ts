@@ -134,11 +134,21 @@ export class UsersService {
 
     // [H-5] Only persist known-valid tool names
     const VALID_TOOLS = [
-      "tailan", "tailan_dept_head",
-      "db_access_requester", "db_access_granter", "pivot",
-      "sanamsargui-tuuwer", "excel_report", "data_doc", "alert_box",
-      "python_api_tools", "reports", "risk_assessment",
-      "weekly_report_audit", "weekly_report_daa", "weekly_report_director",
+      "tailan",
+      "tailan_dept_head",
+      "db_access_requester",
+      "db_access_granter",
+      "pivot",
+      "sanamsargui-tuuwer",
+      "excel_report",
+      "data_doc",
+      "alert_box",
+      "python_api_tools",
+      "reports",
+      "risk_assessment",
+      "weekly_report_audit",
+      "weekly_report_daa",
+      "weekly_report_director",
     ];
     const sanitizedTools = (grantableTools ?? []).filter((t) =>
       VALID_TOOLS.includes(t),

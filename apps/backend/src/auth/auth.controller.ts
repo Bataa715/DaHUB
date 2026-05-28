@@ -10,7 +10,7 @@
   Res,
   UnauthorizedException,
 } from "@nestjs/common";
-import { ThrottlerGuard, SkipThrottle, Throttle } from "@nestjs/throttler";
+import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
 import { Response } from "express";
 import { AuthService } from "./auth.service";
 import {
@@ -60,7 +60,12 @@ export class AuthController {
   // [N-2] Clear both token cookies on logout / session expiry
   private clearAuthCookies(res: Response, isAdmin = false): void {
     const isProd = process.env.NODE_ENV === "production";
-    const opts = { httpOnly: true, secure: isProd, sameSite: "strict" as const, path: "/" };
+    const opts = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "strict" as const,
+      path: "/",
+    };
     res.clearCookie(isAdmin ? "adminToken" : "token", opts);
     res.clearCookie(isAdmin ? "adminRefreshToken" : "refreshToken", opts);
   }
@@ -200,7 +205,9 @@ export class AuthController {
       req.cookies?.adminRefreshToken ||
       refreshTokenDto.refreshToken;
     if (!token) throw new UnauthorizedException("Refresh token not found");
-    const result = await this.authService.refreshAccessToken({ refreshToken: token });
+    const result = await this.authService.refreshAccessToken({
+      refreshToken: token,
+    });
     const isAdmin = !!result.user?.isAdmin;
     this.setAuthCookies(res, result.accessToken, result.refreshToken, isAdmin);
     return { user: result.user, success: true };
@@ -208,10 +215,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post("logout")
-  async logout(
-    @Request() req,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async logout(@Request() req, @Res({ passthrough: true }) res: Response) {
     const isAdmin = !!req.user?.isAdmin;
     this.clearAuthCookies(res, isAdmin);
     // Also clear the other side in case both were set

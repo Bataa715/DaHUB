@@ -76,9 +76,9 @@ export function useSampling() {
       const rows: unknown[][] = [];
       ws.eachRow((row) => {
         rows.push(
-          (row.values as unknown[]).slice(1).map((v) =>
-            v instanceof Date ? v.toISOString().slice(0, 10) : v,
-          ),
+          (row.values as unknown[])
+            .slice(1)
+            .map((v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v)),
         );
       });
       if (rows.length < 2) {

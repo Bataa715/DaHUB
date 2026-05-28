@@ -128,7 +128,9 @@ export class NewsService {
 
     // [N-4] Ownership check
     if (!isAdmin && existing[0].authorId !== requesterId) {
-      throw new ForbiddenException("Зөвхөн нийтлэлийн зохиогч эсвэл админ засварлах боломжтой");
+      throw new ForbiddenException(
+        "Зөвхөн нийтлэлийн зохиогч эсвэл админ засварлах боломжтой",
+      );
     }
 
     // Image update: base64 data is too large for ClickHouse HTTP bound params.

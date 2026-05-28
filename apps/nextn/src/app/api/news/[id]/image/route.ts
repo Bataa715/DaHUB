@@ -13,8 +13,7 @@ export async function GET(
   const { id } = await params;
   // Admin users have their JWT in "adminToken"; regular users in "token"
   const token =
-    req.cookies.get("token")?.value ??
-    req.cookies.get("adminToken")?.value;
+    req.cookies.get("token")?.value ?? req.cookies.get("adminToken")?.value;
   if (!token) {
     return new NextResponse(null, { status: 401 });
   }

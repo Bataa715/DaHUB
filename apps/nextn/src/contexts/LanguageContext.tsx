@@ -786,6 +786,8 @@ export const translations = {
     wr_daaSection2: "Гомдол хүсэлтийн мэдээлэл",
     wr_daaSection3: "Дагаж хэрэгжилтийн мэдээлэл",
     wr_directorSubtitle: "Захирлын нэгдсэн харагдац",
+    eng_deleteTitle: "Устгах",
+    eng_editTitle: "Засах",
   },
   en: {
     // Navigation & common
@@ -1567,6 +1569,8 @@ export const translations = {
     wr_daaSection2: "Complaint & request information",
     wr_daaSection3: "Follow-up implementation information",
     wr_directorSubtitle: "Director's consolidated view",
+    eng_deleteTitle: "Delete",
+    eng_editTitle: "Edit",
   },
 } as const;
 

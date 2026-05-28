@@ -114,6 +114,17 @@ export class RiskAssessmentService implements OnModuleInit {
       ) ENGINE = ReplacingMergeTree(createdAt)
         ORDER BY id
     `);
+
+    await this.clickhouse.exec(`
+      CREATE TABLE IF NOT EXISTS risk_indicator_holds (
+        indicatorId  String,
+        period       String,
+        isHeld       UInt8 DEFAULT 1,
+        updatedBy    String DEFAULT '',
+        updatedAt    DateTime DEFAULT now()
+      ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY (indicatorId, period)
+    `);
   }
 
   private static readonly DEFAULT_BRANCH_IDS: readonly number[] = [
@@ -520,5 +531,38 @@ export class RiskAssessmentService implements OnModuleInit {
     if (d instanceof Date) return d.toISOString().slice(0, 10);
     const s = String(d);
     return s.length >= 10 ? s.slice(0, 10) : s;
+  }
+
+  // ── Indicator holds ──────────────────────────────────────────────────────
+
+  async listHolds(period: string): Promise<{ indicatorId: string; isHeld: number }[]> {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT indicatorId, isHeld
+       FROM risk_indicator_holds FINAL
+       WHERE period = {period:String} AND isHeld = 1`,
+      { period },
+    );
+    return rows.map((r: any) => ({
+      indicatorId: String(r.indicatorId),
+      isHeld: Number(r.isHeld),
+    }));
+  }
+
+  async setHold(
+    indicatorId: string,
+    period: string,
+    isHeld: boolean,
+    updatedBy: string,
+  ): Promise<void> {
+    await this.clickhouse.exec(
+      `INSERT INTO risk_indicator_holds (indicatorId, period, isHeld, updatedBy, updatedAt)
+       VALUES ({indicatorId:String}, {period:String}, {isHeld:UInt8}, {updatedBy:String}, now())`,
+      {
+        indicatorId,
+        period,
+        isHeld: isHeld ? 1 : 0,
+        updatedBy,
+      },
+    );
   }
 }

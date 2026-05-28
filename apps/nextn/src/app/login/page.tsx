@@ -217,8 +217,7 @@ export default function LoginPage() {
         throw new Error(data.message || "Нууц үг тохируулахад алдаа гарлаа");
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
       const secure =
-        typeof window !== "undefined" &&
-        window.location.protocol === "https:";
+        typeof window !== "undefined" && window.location.protocol === "https:";
       Cookies.set("user", JSON.stringify(data.user), {
         expires: 3,
         sameSite: "strict",
@@ -298,8 +297,7 @@ export default function LoginPage() {
         throw new Error(data.message || "Нэвтрэхэд алдаа гарлаа");
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
       const secure =
-        typeof window !== "undefined" &&
-        window.location.protocol === "https:";
+        typeof window !== "undefined" && window.location.protocol === "https:";
       Cookies.set("user", JSON.stringify(data.user), {
         expires: 3,
         sameSite: "strict",

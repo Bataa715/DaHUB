@@ -1393,7 +1393,7 @@ function WeeklyPreviewDoc({
   weekStart,
   weekEnd,
   departmentName,
-  userName,
+  userName: _userName,
 }: {
   role: "audit" | "daa";
   sections: AuditSections | DaaSections;

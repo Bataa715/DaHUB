@@ -8,25 +8,23 @@ import {
   Fragment,
   useRef,
 } from "react";
-import { Download, Loader2, X, Hand } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import Cookies from "js-cookie";
 import { riskApi } from "@/lib/api";
 import {
   aggregateBranch,
   riskLevelClass,
-  WEIGHTS,
   type BranchAggregate,
   type RiskLevel,
 } from "./scoring-rules";
+import { type ManualMap } from "./indicator-catalog";
 import {
-  evaluateBranch,
-  CATALOG_BY_GROUP,
-  INDICATOR_CATALOG,
-  GROUP_LABEL,
-  type CatalogGroup,
-  type BranchCatalogResult,
-  type ManualMap,
-} from "./indicator-catalog";
+  useIndicatorConfig,
+  evaluateBranchDynamic,
+  computeGroupScoresDynamic,
+  type DynamicCatalogIndicator,
+  type DynamicWeights,
+} from "./use-indicator-config";
 
 // localStorage key зайлсхийж — ClickHouse-д хадгалдаг болсон
 // (backward-compat: localStorage-д юу байвал нэг удаа migrate хийнэ)
@@ -47,6 +45,7 @@ interface Props {
   previousScoredRows?: AnyRow[];
   previousFetchedAt?: string | null;
   previousHistoryName?: string | null;
+  pDate?: string;
 }
 
 const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
@@ -77,16 +76,14 @@ export default function ReportView({
   riskFilter,
   setRiskFilter,
   previousScoredRows = [],
-  previousFetchedAt,
+  previousFetchedAt: _previousFetchedAt,
   previousHistoryName,
+  pDate,
 }: Props) {
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
   const [manualLoading, setManualLoading] = useState(false);
-  // Аль тайлангийн хүснэгтийн гарын үзүүлэлт оруулах modal нээгдсэн байна
-  const [manualTableOpen, setManualTableOpen] = useState<"UB" | "LOC" | null>(
-    null,
-  );
+  const dynamicConfig = useIndicatorConfig();
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // beforeunload flush-д зориулж pending payload-уудыг хянана
@@ -94,16 +91,17 @@ export default function ReportView({
     Record<string, { branchId: string; indicatorId: string; value: number }>
   >({});
 
-  // ESC товчоор modal хаах
+  // ── Indicator hold state ──────────────────────────────────────────────────
+  const holdPeriod = pDate ? pDate.slice(0, 7) : "";
+  const [heldIds, setHeldIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (manualTableOpen) setManualTableOpen(null);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [manualTableOpen]);
+    if (!holdPeriod) return;
+    riskApi
+      .listHolds(holdPeriod)
+      .then((data) => setHeldIds(new Set(data.map((d) => d.indicatorId))))
+      .catch(() => {});
+  }, [holdPeriod]);
 
   useEffect(() => {
     const handleUnload = () => {
@@ -213,24 +211,31 @@ export default function ReportView({
 
   // Catalog-аас (auto + manual) бүлэг тус бүрийн жигнэсэн оноог тооцоолох
   const branchEvals = useMemo(() => {
-    const m = new Map<string, BranchCatalogResult>();
-    for (const id of rowsByBranch.keys()) {
-      m.set(id, evaluateBranch(id, rowsByBranch.get(id) || [], manualMap[id]));
+    if (!dynamicConfig.loaded)
+      return new Map<string, Record<1 | 2 | 3 | 4 | 5, number | null>>();
+    const m = new Map<string, Record<1 | 2 | 3 | 4 | 5, number | null>>();
+    for (const [id, rows] of rowsByBranch) {
+      const vals = evaluateBranchDynamic(
+        dynamicConfig.catalog,
+        rows,
+        manualMap[id],
+      );
+      m.set(id, computeGroupScoresDynamic(dynamicConfig.catalog, vals, heldIds));
     }
     return m;
-  }, [rowsByBranch, manualMap]);
+  }, [rowsByBranch, manualMap, dynamicConfig, heldIds]);
 
   // baseAggregates дээр catalog-оор тооцсон group score-уудыг override
   const aggregates = useMemo<BranchAggregate[]>(() => {
     return baseAggregates.map((b) => {
       const ev = branchEvals.get(b.branchId);
       if (!ev) return b;
-      const w = WEIGHTS[b.region];
-      const s1 = ev.groupScores[1] ?? b.s1;
-      const s2 = ev.groupScores[2] ?? b.s2;
-      const s3 = ev.groupScores[3] ?? b.s3;
-      const s4 = ev.groupScores[4] ?? b.s4 ?? 0;
-      const j = ev.groupScores[5] ?? b.j ?? 0;
+      const w = dynamicConfig.weights[b.region];
+      const s1 = ev[1] ?? b.s1;
+      const s2 = ev[2] ?? b.s2;
+      const s3 = ev[3] ?? b.s3;
+      const s4 = ev[4] ?? b.s4 ?? 0;
+      const j = ev[5] ?? b.j ?? 0;
       // Total: одоо байгаа UB/LOC group жинг хадгална
       let total: number | null = null;
       if (s1 != null && s2 != null && s3 != null) {
@@ -269,8 +274,6 @@ export default function ReportView({
 
   const ub = filtered.filter((b) => b.region === "UB");
   const loc = filtered.filter((b) => b.region === "LOC");
-  const allUb = aggregates.filter((b) => b.region === "UB");
-  const allLoc = aggregates.filter((b) => b.region === "LOC");
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
@@ -471,7 +474,9 @@ export default function ReportView({
         rows={ub}
         previousAggMap={previousAggMap}
         manualMap={manualMap}
-        onOpenManual={() => setManualTableOpen("UB")}
+        weights={dynamicConfig.weights}
+        setManualValue={setManualValue}
+        catalog={dynamicConfig.catalog}
       />
 
       <ReportTable
@@ -480,7 +485,9 @@ export default function ReportView({
         rows={loc}
         previousAggMap={previousAggMap}
         manualMap={manualMap}
-        onOpenManual={() => setManualTableOpen("LOC")}
+        weights={dynamicConfig.weights}
+        setManualValue={setManualValue}
+        catalog={dynamicConfig.catalog}
       />
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -520,258 +527,6 @@ export default function ReportView({
           <SRow label="Нийт" v={summary.cur.Нийт} bold />
         </SummaryBlock>
       </div>
-
-      {manualTableOpen && (
-        <AllBranchesManualModal
-          title={
-            manualTableOpen === "UB"
-              ? "Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд"
-              : "Орон нутгийн Бизнес төв, салбар, тооцооны төвүүд"
-          }
-          rows={manualTableOpen === "UB" ? allUb : allLoc}
-          manualMap={manualMap}
-          setManualValue={setManualValue}
-          onClose={() => setManualTableOpen(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Бүх салбарын гарын үзүүлэлт оруулах modal ────────────────────────────
-function AllBranchesManualModal({
-  title,
-  rows,
-  manualMap,
-  setManualValue,
-  onClose,
-}: {
-  title: string;
-  rows: BranchAggregate[];
-  manualMap: ManualMap;
-  setManualValue: (branchId: string, indicatorId: string, v: number) => void;
-  onClose: () => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string>(rows[0]?.branchId ?? "");
-
-  const ALL_MANUAL = useMemo(
-    () =>
-      INDICATOR_CATALOG.filter(
-        (ind) => ind.autoSubid == null && ind.weight > 0,
-      ),
-    [],
-  );
-  const MANUAL_TOTAL = ALL_MANUAL.length;
-
-  const fillCount = (branchId: string) => {
-    const m = manualMap[branchId] || {};
-    return ALL_MANUAL.filter((ind) => (m[ind.id] ?? 0) > 0).length;
-  };
-
-  const filteredRows = rows.filter(
-    (b) =>
-      b.branchName.toLowerCase().includes(search.toLowerCase()) ||
-      String(b.solid ?? "")
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
-
-  const selectedBranch = rows.find((b) => b.branchId === selectedId);
-  const selectedManual = selectedId ? manualMap[selectedId] || {} : {};
-
-  const GROUPS: CatalogGroup[] = [1, 2, 3, 4, 5];
-  const manualByGroup = (group: CatalogGroup) =>
-    CATALOG_BY_GROUP[group].filter((ind) => ind.autoSubid == null);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-5xl h-[88vh] flex flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-              <Hand className="w-4 h-4 text-amber-500" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold">Гарын үзүүлэлт оруулах</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-md">
-                {title} · {rows.length} салбар
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-            title="Хаах (ESC)"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Body: 2 panel */}
-        <div className="flex flex-1 min-h-0">
-          {/* Left: branch list */}
-          <div className="w-52 flex-shrink-0 border-r border-border flex flex-col bg-muted/20">
-            <div className="p-2 border-b border-border flex-shrink-0">
-              <input
-                type="text"
-                placeholder="Хайх..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-              />
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {filteredRows.map((b) => {
-                const filled = fillCount(b.branchId);
-                const pct = MANUAL_TOTAL > 0 ? filled / MANUAL_TOTAL : 0;
-                const isSelected = b.branchId === selectedId;
-                return (
-                  <button
-                    key={b.branchId}
-                    onClick={() => setSelectedId(b.branchId)}
-                    className={`w-full text-left px-3 py-2.5 border-b border-border/40 transition-colors hover:bg-accent/40 flex flex-col gap-1 ${
-                      isSelected
-                        ? "bg-amber-500/10 border-l-2 border-l-amber-500"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-medium truncate flex-1 text-left">
-                        {b.branchName}
-                      </span>
-                      <span
-                        className={`text-[10px] tabular-nums flex-shrink-0 ${
-                          filled === MANUAL_TOTAL
-                            ? "text-emerald-500"
-                            : filled > 0
-                              ? "text-amber-500"
-                              : "text-muted-foreground/40"
-                        }`}
-                      >
-                        {filled}/{MANUAL_TOTAL}
-                      </span>
-                    </div>
-                    <div className="h-1 rounded-full bg-border overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          pct === 1
-                            ? "bg-emerald-500"
-                            : pct > 0
-                              ? "bg-amber-500"
-                              : ""
-                        }`}
-                        style={{ width: `${Math.max(pct * 100, 0)}%` }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-              {filteredRows.length === 0 && (
-                <p className="px-3 py-6 text-xs text-muted-foreground italic text-center">
-                  Олдсонгүй
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Right: indicator inputs for selected branch */}
-          {selectedBranch ? (
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <div className="flex items-center gap-2 pb-3 border-b border-border">
-                <span className="text-sm font-semibold">
-                  {selectedBranch.branchName}
-                </span>
-                {selectedBranch.solid && (
-                  <span className="text-xs text-muted-foreground">
-                    ({selectedBranch.solid})
-                  </span>
-                )}
-                <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">
-                  {fillCount(selectedBranch.branchId)}/{MANUAL_TOTAL} оруулсан
-                </span>
-              </div>
-
-              {GROUPS.map((group) => {
-                const inds = manualByGroup(group);
-                if (inds.length === 0) return null;
-                const filledInGroup = inds.filter(
-                  (ind) => (selectedManual[ind.id] ?? 0) > 0,
-                ).length;
-                return (
-                  <div
-                    key={group}
-                    className="rounded-xl border border-border overflow-hidden"
-                  >
-                    <div className="px-3.5 py-2 bg-muted/40 border-b border-border flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                        {GROUP_LABEL[group]}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">
-                        {filledInGroup}/{inds.length}
-                      </span>
-                    </div>
-                    <table className="w-full text-xs">
-                      <tbody>
-                        {inds.map((ind) => {
-                          const val = selectedManual[ind.id] ?? 0;
-                          return (
-                            <tr
-                              key={ind.id}
-                              className="border-t border-border/50 hover:bg-accent/20"
-                            >
-                              <td className="px-3.5 py-2.5 font-medium text-foreground">
-                                {ind.name}
-                                {ind.hint && (
-                                  <div className="text-[9px] text-muted-foreground font-normal mt-0.5">
-                                    {ind.hint}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5 text-right text-muted-foreground w-12 tabular-nums">
-                                {ind.weight > 0 ? `${ind.weight}%` : "—"}
-                              </td>
-                              <td className="px-3 py-2.5 text-right w-28">
-                                <input
-                                  type="number"
-                                  step="0.5"
-                                  min={0}
-                                  max={5}
-                                  value={val || ""}
-                                  placeholder="0–5"
-                                  onChange={(e) =>
-                                    setManualValue(
-                                      selectedBranch.branchId,
-                                      ind.id,
-                                      Number(e.target.value) || 0,
-                                    )
-                                  }
-                                  className="w-20 px-2 py-1.5 text-right text-xs rounded-lg border border-border bg-background text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-colors"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-              Салбар сонгоно уу
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -783,19 +538,41 @@ function ReportTable({
   rows,
   previousAggMap,
   manualMap,
-  onOpenManual,
+  weights,
+  setManualValue,
+  catalog,
 }: {
   title: string;
   region: "UB" | "LOC";
   rows: BranchAggregate[];
   previousAggMap: Map<string, BranchAggregate>;
   manualMap: ManualMap;
-  onOpenManual: () => void;
+  weights: DynamicWeights;
+  setManualValue: (
+    branchId: string,
+    indicatorId: string,
+    value: number,
+  ) => void;
+  catalog: DynamicCatalogIndicator[];
 }) {
-  const w = WEIGHTS[region];
+  const w = weights[region];
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
-  const manualBranchCount = rows.filter(
-    (b) => Object.keys(manualMap[b.branchId] || {}).length > 0,
+  const [editingJBranch, setEditingJBranch] = useState<string | null>(null);
+  const [editJValue, setEditJValue] = useState<string>("");
+  const judgmentInd = catalog.find((ind) => ind.is_judgment);
+  const commitJ = (branchId: string) => {
+    if (judgmentInd) {
+      const v = parseFloat(editJValue);
+      setManualValue(
+        branchId,
+        judgmentInd.id,
+        isNaN(v) ? 0 : Math.min(5, Math.max(0, v)),
+      );
+    }
+    setEditingJBranch(null);
+  };
+  const filledJCount = rows.filter(
+    (b) => judgmentInd && (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0,
   ).length;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
@@ -847,22 +624,18 @@ function ReportTable({
               {(w.j * 100).toFixed(0)}%
             </b>
           </span>
-          <button
-            onClick={onOpenManual}
-            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all ${
-              manualBranchCount > 0
-                ? "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
-                : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+          <span
+            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold ${
+              filledJCount > 0
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                : "border-border text-muted-foreground/50"
             }`}
           >
-            <Hand className="w-3 h-3" />
-            Гарын үзүүлэлт оруулах
-            {manualBranchCount > 0 && (
-              <span className="bg-amber-500 text-white rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold">
-                {manualBranchCount}
-              </span>
-            )}
-          </button>
+            Үнэлэмж: {filledJCount}/{rows.length}
+            <span className="text-[9px] text-muted-foreground/60 font-normal">
+              (нүд клик — засах)
+            </span>
+          </span>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -924,8 +697,45 @@ function ReportTable({
                     <td className="px-2 py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
                       {fmt(b.s4 ?? null)}
                     </td>
-                    <td className="px-2 py-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-400">
-                      {fmt(b.j ?? null)}
+                    <td className="px-2 py-2 text-right tabular-nums">
+                      {editingJBranch === b.branchId ? (
+                        <input
+                          type="number"
+                          step="0.5"
+                          min={0}
+                          max={5}
+                          autoFocus
+                          value={editJValue}
+                          onChange={(e) => setEditJValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitJ(b.branchId);
+                            if (e.key === "Escape") setEditingJBranch(null);
+                          }}
+                          onBlur={() => commitJ(b.branchId)}
+                          className="w-16 px-2 py-1 text-right text-xs rounded-lg border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-rose-600 dark:text-rose-400 font-bold"
+                        />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingJBranch(b.branchId);
+                            setEditJValue(
+                              judgmentInd
+                                ? String(
+                                    manualMap[b.branchId]?.[judgmentInd.id] ||
+                                      "",
+                                  )
+                                : String(b.j || ""),
+                            );
+                          }}
+                          className="group/jbtn inline-flex items-center justify-end gap-1 w-full font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
+                          title="Клик — засах"
+                        >
+                          {b.j != null && b.j > 0 ? b.j.toFixed(2) : "—"}
+                          <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
+                            ✎
+                          </span>
+                        </button>
+                      )}
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums font-bold">
                       <span

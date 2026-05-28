@@ -520,6 +520,7 @@ export default function RiskAssessmentReportPage() {
             previousScoredRows={previousScoredRows}
             previousHistoryName={selectedEntry?.name ?? null}
             previousFetchedAt={selectedEntry?.oracleFetchedAt ?? null}
+            pDate={pDate}
           />
         )}
       </div>

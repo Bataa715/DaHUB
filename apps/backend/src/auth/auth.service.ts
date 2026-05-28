@@ -8,7 +8,6 @@
   BadRequestException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { ConfigService } from "@nestjs/config";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
@@ -107,7 +106,6 @@ export class AuthService {
   constructor(
     private clickhouse: ClickHouseService,
     private jwtService: JwtService,
-    private configService: ConfigService,
     private auditLogService: AuditLogService,
   ) {}
 

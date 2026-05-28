@@ -91,7 +91,7 @@ export function WordPreview({
   section5Tasks,
   section6Activities,
   section7Text,
-  images,
+  images: _images,
   hiddenSections,
 }: WordPreviewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);

@@ -53,6 +53,7 @@ interface Tool {
   gradient: string;
   category: "free" | "work";
   adminPath?: string;
+  adminLabel?: string;
 }
 
 const AVAILABLE_TOOLS: Tool[] = [
@@ -149,6 +150,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     gradient: "bg-gradient-to-br from-emerald-500/20 to-violet-500/20",
     category: "work",
     adminPath: "/admin/reports",
+    adminLabel: "Тайлан →",
   },
   {
     id: "pdf_to_text",
@@ -188,6 +190,8 @@ const AVAILABLE_TOOLS: Tool[] = [
     color: "from-rose-500 to-orange-500",
     gradient: "bg-gradient-to-br from-rose-500/20 to-orange-500/20",
     category: "work",
+    adminPath: "/admin/risk-indicators",
+    adminLabel: "Тохиргоо →",
   },
   {
     id: "weekly_report_audit",
@@ -231,7 +235,7 @@ interface User {
 }
 
 export default function AdminToolsPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
 
@@ -506,7 +510,7 @@ export default function AdminToolsPage() {
     0,
   );
 
-  if (!mounted) {
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-slate-600" />
@@ -649,7 +653,7 @@ export default function AdminToolsPage() {
                             onClick={(e) => e.stopPropagation()}
                             className="text-xs text-slate-400 hover:text-white transition-colors"
                           >
-                            Тайлан →
+                            {tool.adminLabel ?? "Тохиргоо →"}
                           </Link>
                         ) : (
                           <span className="text-xs text-slate-600">{pct}%</span>

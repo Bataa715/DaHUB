@@ -75,8 +75,12 @@ function parseCsv(text: string): unknown[][] {
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
       if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') { cell += '"'; i++; }
-        else { inQuotes = !inQuotes; }
+        if (inQuotes && line[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
       } else if (ch === "," && !inQuotes) {
         cells.push(cell.trim());
         cell = "";
@@ -259,7 +263,7 @@ export default function PivotPage() {
       setSelectedYear("all");
     };
     reader.readAsArrayBuffer(file);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDrop = useCallback(

@@ -11,12 +11,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   constructor(
     private authService: AuthService,
-    private configService: ConfigService,
+    configService: ConfigService,
   ) {
     super({
-      // [N-2] Try HttpOnly cookie first, fall back to Bearer header (Swagger/API tools)
+      // [N-2] Try HttpOnly adminToken first (admin routes), fall back to user token, then Bearer header
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => req?.cookies?.token ?? req?.cookies?.adminToken ?? null,
+        (req: Request) =>
+          req?.cookies?.adminToken ?? req?.cookies?.token ?? null,
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,

@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
@@ -85,6 +86,26 @@ export class RiskAssessmentController {
   @Delete("history/:id")
   async deleteHistory(@Param("id") id: string) {
     await this.service.deleteHistory(id);
+    return { ok: true };
+  }
+
+  // ── Indicator holds ───────────────────────────────────────────────────────
+  @Get("holds")
+  async listHolds(@Query("period") period: string) {
+    return this.service.listHolds(period ?? "");
+  }
+
+  @Put("holds")
+  async setHold(
+    @Body() body: { indicatorId: string; period: string; isHeld: boolean },
+    @Request() req,
+  ) {
+    await this.service.setHold(
+      body.indicatorId,
+      body.period,
+      body.isHeld,
+      req.user.id,
+    );
     return { ok: true };
   }
 }

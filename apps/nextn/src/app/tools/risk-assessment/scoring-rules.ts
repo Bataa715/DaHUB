@@ -545,6 +545,120 @@ export function computeScore(
   return { score: "Үнэлэхгүй", label: "тодорхойлогдоогүй", rule };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Dynamic score computation — uses JSON ScoreScale from DB instead of
+// hardcoded INDICATOR_RULES. Shared format with risk-indicator-config backend.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DynamicScaleRule {
+  min?: number | null;
+  max?: number | null;
+  matchType?: "exact" | "contains";
+  values?: string[];
+  score: number; // 1-5, or 0 = "Үнэлэхгүй"
+  label: string;
+}
+
+export interface DynamicScoreScale {
+  type: "numeric" | "string" | "both" | "manual" | "no_score";
+  rules?: DynamicScaleRule[];
+  numericRules?: DynamicScaleRule[];
+  stringRules?: DynamicScaleRule[];
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export function computeScoreDynamic(
+  scaleJson: string,
+  result: any,
+  resultType?: string | null,
+): { score: ScoreResult; label: string | null } {
+  let scale: DynamicScoreScale;
+  try {
+    scale = JSON.parse(scaleJson);
+  } catch {
+    return { score: null, label: null };
+  }
+
+  if (scale.type === "no_score" || scale.type === "manual") {
+    return { score: null, label: null };
+  }
+
+  const raw = result == null ? "" : String(result).trim();
+  const isStringType = (resultType || "").toUpperCase() === "STRING";
+
+  const matchRule = (rule: DynamicScaleRule, s: string): boolean => {
+    if (!rule.values?.length) return false;
+    const t = s.toLowerCase().trim();
+    if (rule.matchType === "contains") {
+      return rule.values.some((v) => t.includes(v.toLowerCase()));
+    }
+    // default: exact
+    return rule.values.some((v) => v.toLowerCase().trim() === t);
+  };
+
+  const applyNumericRules = (
+    rules: DynamicScaleRule[],
+  ): { score: ScoreResult; label: string | null } | null => {
+    const n = Number(raw.replace(",", "."));
+    if (!Number.isFinite(n)) return null;
+    const sorted = [...rules].sort((a, b) => b.score - a.score);
+    for (const r of sorted) {
+      const minOk = r.min == null || n >= r.min;
+      const maxOk = r.max == null || n < r.max;
+      if (minOk && maxOk) {
+        return {
+          score: r.score === 0 ? "Үнэлэхгүй" : (r.score as ScoreValue),
+          label: r.label,
+        };
+      }
+    }
+    return null;
+  };
+
+  const applyStringRules = (
+    rules: DynamicScaleRule[],
+  ): { score: ScoreResult; label: string | null } | null => {
+    for (const r of rules) {
+      if (matchRule(r, raw)) {
+        return {
+          score: r.score === 0 ? "Үнэлэхгүй" : (r.score as ScoreValue),
+          label: r.label,
+        };
+      }
+    }
+    return null;
+  };
+
+  if (scale.type === "string") {
+    const hit = applyStringRules(scale.rules ?? []);
+    if (hit) return hit;
+  } else if (scale.type === "numeric") {
+    if (isStringType) {
+      const hit = applyStringRules(scale.rules ?? []);
+      if (hit) return hit;
+    }
+    const hit = applyNumericRules(scale.rules ?? []);
+    if (hit) return hit;
+    if (!isStringType) {
+      const sHit = applyStringRules(scale.rules ?? []);
+      if (sHit) return sHit;
+    }
+  } else if (scale.type === "both") {
+    if (isStringType || isNaN(Number(raw.replace(",", ".")))) {
+      const hit = applyStringRules(scale.stringRules ?? []);
+      if (hit) return hit;
+    }
+    const hit = applyNumericRules(scale.numericRules ?? []);
+    if (hit) return hit;
+    const sHit = applyStringRules(scale.stringRules ?? []);
+    if (sHit) return sHit;
+  }
+
+  return { score: "Үнэлэхгүй", label: "тодорхойлогдоогүй" };
+}
+
 /** UI-д харагдах өнгө. */
 export function scoreColorClass(score: ScoreResult): string {
   if (score === 5) return "bg-red-500/15 text-red-600 border-red-500/30";

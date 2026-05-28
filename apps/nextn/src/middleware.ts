@@ -66,10 +66,12 @@ export async function middleware(request: NextRequest) {
   // If the access token is expired but a refresh token exists, let the
   // client through so AuthContext can silently refresh it on mount.
   const hasRefreshToken = !!request.cookies.get("refreshToken")?.value;
+  const hasAdminRefreshToken =
+    !!request.cookies.get("adminRefreshToken")?.value;
 
   //  Admin routes
   if (isAdminRoute) {
-    if (!isAdminAuth) {
+    if (!isAdminAuth && !hasAdminRefreshToken) {
       const response = NextResponse.redirect(
         new URL("/admin/login", request.url),
       );

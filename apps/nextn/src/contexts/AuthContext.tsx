@@ -12,8 +12,9 @@ import Cookies from "js-cookie";
 import { z } from "zod";
 import axios from "axios";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+
 /** Token expiry constants */
-const ACCESS_TOKEN_EXPIRY_DAYS = 1 / 24; // 1 hour
 const REFRESH_TOKEN_EXPIRY_DAYS = 3;
 
 /** Zod schema — guards against tampered/malformed cookie data */
@@ -59,7 +60,7 @@ interface AuthContextType {
   ) => Promise<void>;
   loginById: (userId: string, password: string) => Promise<void>;
   adminLogin: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -89,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const adminPath = isAdminPath();
 
     // Always re-issue the access token on load so the JWT cookie has the
@@ -97,9 +99,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // doRefresh will restore the session instead of flashing "please log in".
     const doRefresh = async () => {
       const userKey = adminPath ? "adminUser" : "user";
+      const loginPath = adminPath ? "/admin/login" : "/login";
+      // Already on login page — no tokens to refresh, skip to avoid loading spinner
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname === loginPath
+      ) {
+        if (isMounted) setLoading(false);
+        return;
+      }
       // [N-2] No refreshToken arg — browser sends HttpOnly cookie automatically
       try {
         const { user: freshUser } = await authApi.refreshToken();
+        if (!isMounted) return;
         const secure =
           typeof window !== "undefined" &&
           window.location.protocol === "https:";
@@ -115,39 +127,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fall through to getProfile if refresh fails
       }
 
-      authApi
-        .getProfile()
-        .then((profile) => {
-          setUser(profile);
-        })
-        .catch((error) => {
-          if (process.env.NODE_ENV !== "production") {
-            console.error("Profile fetch failed:", error);
-          }
-          if (adminPath) {
-            Cookies.remove("adminToken");
-            Cookies.remove("adminRefreshToken");
-            Cookies.remove("adminUser");
-          } else {
-            Cookies.remove("token");
-            Cookies.remove("refreshToken");
-            Cookies.remove("user");
-          }
-          setUser(null);
-          const loginPath = adminPath ? "/admin/login" : "/login";
-          if (
-            typeof window !== "undefined" &&
-            !window.location.pathname.startsWith(loginPath)
-          ) {
-            window.location.replace(loginPath);
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      try {
+        const profile = await authApi.getProfile();
+        if (isMounted) setUser(profile);
+      } catch (error) {
+        if (!isMounted) return;
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Profile fetch failed:", error);
+        }
+        if (adminPath) {
+          Cookies.remove("adminToken");
+          Cookies.remove("adminRefreshToken");
+          Cookies.remove("adminUser");
+        } else {
+          Cookies.remove("token");
+          Cookies.remove("refreshToken");
+          Cookies.remove("user");
+        }
+        setUser(null);
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.startsWith(loginPath)
+        ) {
+          window.location.replace(loginPath);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
 
     doRefresh();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // [N-2] saveUserSession only saves the user display cookie; token cookies set by backend
@@ -217,9 +229,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    // [N-2] Backend clears HttpOnly cookies; frontend clears display cookies only
-    authApi.logout().catch(() => { /* best-effort */ });
+  const logout = async () => {
+    // Call backend to clear HttpOnly token cookies. best-effort — local cleanup proceeds regardless.
+    try {
+      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+    } catch {
+      // ignore
+    }
     Cookies.remove("user");
     Cookies.remove("adminUser");
     setUser(null);

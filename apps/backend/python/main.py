@@ -42,7 +42,6 @@ import re
 import secrets
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -113,6 +112,7 @@ def _new_ch_client() -> Any:
         compress=True,
         connect_timeout=10,
         send_receive_timeout=600,
+        settings={"readonly": 1},
     )
 
 
@@ -197,7 +197,10 @@ def _make_connection(connection_type: str, cfg: dict | None) -> Any:
 
 async def _verify_api_key(request: Request) -> None:
     if not _PYTHON_API_KEY:
-        return
+        raise HTTPException(
+            status_code=503,
+            detail="Сервис тохируулагдаагүй: PYTHON_API_KEY олдсонгүй.",
+        )
     key = request.headers.get("x-api-key", "")
     if not secrets.compare_digest(key, _PYTHON_API_KEY):
         ip = request.client.host if request.client else "unknown"
@@ -467,6 +470,21 @@ _BLOCKED_STRINGS = [
     "import pathlib", "from pathlib",
     "open(", "pickle", "marshal", "shelve",
     "yaml.load", "yaml.unsafe_load",
+    # Pandas file I/O — exec 코드에서 파일/네트워크 읽기 금지
+    "pd.read_csv", "pd.read_table", "pd.read_excel", "pd.read_json",
+    "pd.read_html", "pd.read_clipboard", "pd.read_parquet",
+    "pd.read_feather", "pd.read_orc", "pd.read_hdf",
+    "pd.read_stata", "pd.read_sas", "pd.read_spss",
+    "pd.read_pickle", "pd.read_gbq", "pd.read_sql_table",
+    # DataFrame write methods — no file output from exec
+    ".to_csv(", ".to_excel(", ".to_pickle(", ".to_hdf(",
+    ".to_parquet(", ".to_feather(", ".to_orc(",
+    # NumPy file I/O
+    "np.load(", "np.save(", "np.savetxt(", "np.loadtxt(",
+    "np.fromfile(", "np.memmap(",
+    # Thread/process execution — spawned threads bypass exec timeout
+    "ThreadPoolExecutor", "import threading", "import multiprocessing",
+    "import concurrent",
 ]
 
 _BLOCKED_PATTERNS = [
@@ -574,7 +592,6 @@ def _build_namespace(conn: Any, start_date: str, end_date: str, filters: dict) -
         "conn": conn,
         "pd": pd,
         "np": np,
-        "ThreadPoolExecutor": ThreadPoolExecutor,
         "start_date": start_date or "",
         "end_date": end_date or start_date or "",
         "filters": filters or {},

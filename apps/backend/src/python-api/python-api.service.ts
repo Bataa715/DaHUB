@@ -288,6 +288,42 @@ export class PythonApiService implements OnModuleInit {
     };
   }
 
+  private async getToolsByIds(
+    ids: string[],
+  ): Promise<Map<string, PythonApiTool>> {
+    if (!ids.length) return new Map();
+    const rows = await this.clickhouse.query<PythonApiTool>(
+      `SELECT
+         id,
+         argMax(name, seq)             AS name,
+         argMax(apiPath, seq)          AS apiPath,
+         argMax(description, seq)      AS description,
+         argMax(pythonCode, seq)       AS pythonCode,
+         argMax(connectionType, seq)   AS connectionType,
+         argMax(connectionConfig, seq) AS connectionConfig,
+         argMax(outputFormat, seq)     AS outputFormat,
+         argMax(dateMode, seq)         AS dateMode,
+         argMax(color, seq)            AS color,
+         argMax(filters, seq)          AS filters,
+         argMax(isActive, seq)         AS isActive,
+         argMax(sortOrder, seq)        AS sortOrder,
+         argMax(updatedAt, seq)        AS updatedAt,
+         min(createdAt)               AS createdAt
+       FROM python_api_tools
+       WHERE id IN {ids:Array(String)}
+       GROUP BY id`,
+      { ids },
+    );
+    const map = new Map<string, PythonApiTool>();
+    for (const row of rows) {
+      map.set(row.id, {
+        ...row,
+        connectionConfig: this.decryptConfig(row.connectionConfig ?? "{}"),
+      });
+    }
+    return map;
+  }
+
   // ── Admin CRUD ─────────────────────────────────────────────────────────────
 
   async getAllTools(): Promise<PythonApiTool[]> {
@@ -449,15 +485,14 @@ export class PythonApiService implements OnModuleInit {
     );
     const now = nowCH();
     const baseSeq = Date.now();
+
+    // Single batch query instead of N individual queries
+    const toolsMap = await this.getToolsByIds(uniq);
+
     const rows: any[] = [];
     for (let i = 0; i < uniq.length; i++) {
-      const id = uniq[i];
-      let existing: PythonApiTool;
-      try {
-        existing = await this.getToolById(id);
-      } catch {
-        continue; // skip missing ids silently
-      }
+      const existing = toolsMap.get(uniq[i]);
+      if (!existing) continue;
       rows.push({
         ...existing,
         connectionConfig: this.encryptConfig(existing.connectionConfig),
