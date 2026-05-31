@@ -87,7 +87,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-slate-950">
+    <div className="h-screen flex overflow-hidden bg-background">
       {/* ── LEFT PANEL ── */}
       <div
         className="hidden lg:flex lg:w-[52%] relative flex-col items-center justify-center overflow-hidden
@@ -141,7 +141,7 @@ export default function AdminLoginPage() {
                        flex items-center justify-center mx-auto mb-7
                        shadow-2xl shadow-blue-500/40 ring-1 ring-blue-400/20"
           >
-            <Shield className="w-12 h-12 text-white drop-shadow-lg" />
+            <Shield className="w-12 h-12 text-foreground drop-shadow-lg" />
           </motion.div>
 
           <motion.p
@@ -157,7 +157,7 @@ export default function AdminLoginPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
-            className="text-3xl font-black text-white leading-tight mb-4"
+            className="text-3xl font-black text-foreground leading-tight mb-4"
           >
             DaHUB
             <br />
@@ -170,7 +170,7 @@ export default function AdminLoginPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
-            className="text-sm text-slate-400 leading-relaxed"
+            className="text-sm text-muted-foreground leading-relaxed"
           >
             Зөвхөн админ эрхтэй хэрэглэгчид нэвтрэх боломжтой. Таны мэдээлэл
             хамгаалагдсан орчинд ажиллана.
@@ -215,7 +215,7 @@ export default function AdminLoginPage() {
               className="rounded object-contain"
             />
           </div>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground/60">
             Голомт Банк — Дотоод аудит
           </span>
         </motion.div>
@@ -224,7 +224,7 @@ export default function AdminLoginPage() {
       {/* ── RIGHT PANEL ── */}
       <div
         className="flex-1 flex flex-col items-center justify-center relative overflow-hidden
-                      bg-slate-950 px-6 sm:px-12"
+                      bg-background px-6 sm:px-12"
       >
         {/* Subtle glow top-right */}
         <div className="absolute top-0 right-0 w-72 h-72 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
@@ -236,9 +236,11 @@ export default function AdminLoginPage() {
           className="lg:hidden flex items-center gap-3 mb-8"
         >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-white" />
+            <Shield className="w-5 h-5 text-foreground" />
           </div>
-          <span className="text-white font-bold text-lg">Admin Portal</span>
+          <span className="text-foreground font-bold text-lg">
+            Admin Portal
+          </span>
         </motion.div>
 
         <motion.div
@@ -250,16 +252,16 @@ export default function AdminLoginPage() {
           {/* Card glow */}
           <div className="absolute -inset-1 bg-gradient-to-br from-blue-600/15 via-indigo-600/10 to-transparent rounded-3xl blur-xl" />
 
-          <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-3xl p-8 shadow-2xl">
+          <div className="relative bg-background/80 backdrop-blur-xl border border-border/60 rounded-3xl p-8 shadow-2xl">
             {/* Header */}
             <div className="mb-7">
               <p className="text-xs font-semibold tracking-widest text-blue-400/70 uppercase mb-1.5">
                 Admin · Нэвтрэх
               </p>
-              <h1 className="text-2xl font-extrabold text-white">
+              <h1 className="text-2xl font-extrabold text-foreground">
                 Сайн байна уу 👋
               </h1>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-muted-foreground text-sm mt-1">
                 Админы мэдээллээ оруулна уу
               </p>
             </div>
@@ -282,15 +284,15 @@ export default function AdminLoginPage() {
                     name="userId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <FormLabel className="text-sm font-medium text-foreground/80 flex items-center gap-2">
                           <UserCog className="w-4 h-4 text-blue-400" />
                           Админы ID
                         </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Админы ID-ээ оруулна уу"
-                            className="h-12 bg-slate-800/60 border-slate-700 rounded-xl pl-4 pr-4
-                                       text-white placeholder:text-slate-500
+                            className="h-12 bg-muted/60 border-border rounded-xl pl-4 pr-4
+                                       text-foreground placeholder:text-muted-foreground/60
                                        focus:border-blue-500/60 focus:ring-blue-500/20 transition-all"
                             {...field}
                             autoComplete="off"
@@ -313,7 +315,7 @@ export default function AdminLoginPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <FormLabel className="text-sm font-medium text-foreground/80 flex items-center gap-2">
                           <Lock className="w-4 h-4 text-blue-400" />
                           Нууц үг
                         </FormLabel>
@@ -322,8 +324,8 @@ export default function AdminLoginPage() {
                             <Input
                               type={showPassword ? "text" : "password"}
                               placeholder="Нууц үгээ оруулна уу"
-                              className="h-12 bg-slate-800/60 border-slate-700 rounded-xl pl-4 pr-11
-                                         text-white placeholder:text-slate-500
+                              className="h-12 bg-muted/60 border-border rounded-xl pl-4 pr-11
+                                         text-foreground placeholder:text-muted-foreground/60
                                          focus:border-blue-500/60 focus:ring-blue-500/20 transition-all"
                               {...field}
                             />
@@ -331,7 +333,7 @@ export default function AdminLoginPage() {
                               type="button"
                               tabIndex={-1}
                               onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground/80 transition-colors"
                             >
                               {showPassword ? (
                                 <EyeOff className="w-4 h-4" />
@@ -356,7 +358,7 @@ export default function AdminLoginPage() {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-12 rounded-xl font-semibold text-white border-0
+                    className="w-full h-12 rounded-xl font-semibold text-foreground border-0
                                bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600
                                hover:from-blue-600 hover:via-blue-700 hover:to-indigo-700
                                shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50
@@ -379,7 +381,7 @@ export default function AdminLoginPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="text-center text-xs text-slate-600 mt-6 flex items-center justify-center gap-1.5"
+              className="text-center text-xs text-muted-foreground/40 mt-6 flex items-center justify-center gap-1.5"
             >
               <Shield className="w-3 h-3" />
               Зөвхөн зөвшөөрөгдсөн хэрэглэгчид нэвтрэх боломжтой

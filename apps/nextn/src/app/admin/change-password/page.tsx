@@ -95,12 +95,12 @@ export default function AdminChangePasswordPage() {
         onChange={(e) => onChange(e.target.value)}
         required
         placeholder={placeholder}
-        className="bg-slate-900 border-slate-800 text-white placeholder:text-slate-600 pr-10"
+        className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 pr-10"
       />
       <button
         type="button"
         onClick={onToggle}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -108,16 +108,16 @@ export default function AdminChangePasswordPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <AdminPageHeader title="Нууц үг солих" />
 
       <div className="max-w-md mx-auto px-4 py-10">
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <div className="bg-background border border-border rounded-xl p-5 space-y-4">
             <div className="space-y-1.5">
               <Label
                 htmlFor="currentPassword"
-                className="text-slate-400 text-xs"
+                className="text-muted-foreground text-xs"
               >
                 Одоогийн нууц үг
               </Label>
@@ -132,7 +132,10 @@ export default function AdminChangePasswordPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="newPassword" className="text-slate-400 text-xs">
+              <Label
+                htmlFor="newPassword"
+                className="text-muted-foreground text-xs"
+              >
                 Шинэ нууц үг
               </Label>
               <PasswordInput
@@ -148,7 +151,7 @@ export default function AdminChangePasswordPage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="confirmPassword"
-                className="text-slate-400 text-xs"
+                className="text-muted-foreground text-xs"
               >
                 Нууц үг давтах
               </Label>
@@ -170,17 +173,17 @@ export default function AdminChangePasswordPage() {
           </div>
 
           {newPassword.length > 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-              <p className="text-xs text-slate-500 font-medium mb-2">
+            <div className="bg-background border border-border rounded-xl p-4 space-y-2">
+              <p className="text-xs text-muted-foreground/60 font-medium mb-2">
                 Шаардлага
               </p>
               {requirements.map((r) => (
                 <div key={r.label} className="flex items-center gap-2">
                   <div
-                    className={`w-1.5 h-1.5 rounded-full ${r.ok ? "bg-emerald-400" : "bg-slate-700"}`}
+                    className={`w-1.5 h-1.5 rounded-full ${r.ok ? "bg-emerald-400" : "bg-secondary"}`}
                   />
                   <span
-                    className={`text-xs ${r.ok ? "text-emerald-400" : "text-slate-500"}`}
+                    className={`text-xs ${r.ok ? "text-emerald-400" : "text-muted-foreground/60"}`}
                   >
                     {r.label}
                   </span>
@@ -197,14 +200,14 @@ export default function AdminChangePasswordPage() {
                 setNewPassword("");
                 setConfirmPassword("");
               }}
-              className="flex-1 py-2.5 text-sm text-slate-400 hover:text-white border border-slate-800 rounded-xl hover:bg-slate-900 transition-colors"
+              className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-background/80 transition-colors"
             >
               Цэвэрлэх
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 py-2.5 text-sm font-semibold bg-white text-slate-950 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500 rounded-xl transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:bg-muted disabled:text-muted-foreground/60 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               Нууц үг солих

@@ -95,12 +95,12 @@ function CustomTooltip({
   payload,
 }: {
   active?: boolean;
-  payload?: any[];
+  payload?: { payload: TopRow; dataKey?: string }[];
   label?: string;
   hasAmount?: boolean;
 }) {
   if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload as TopRow;
+  const d = payload[0]?.payload;
   const isAmt = payload[0]?.dataKey === "totalAmount";
   return (
     <div className="bg-card border border-border rounded-lg px-3 py-2 text-[11px] shadow-xl">

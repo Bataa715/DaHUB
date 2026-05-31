@@ -68,7 +68,6 @@ export default function TailanBscPage() {
     sections,
     saving,
     lastSaved,
-    toast,
     updateSection,
     negtgelKpi,
     updateNegtgelRow,
@@ -92,21 +91,6 @@ export default function TailanBscPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-background via-card to-background overflow-hidden">
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-xl text-sm font-medium transition-all animate-in fade-in slide-in-from-top-2 ${
-            toast.type === "success"
-              ? "bg-emerald-600 text-white"
-              : "bg-rose-600 text-white"
-          }`}
-        >
-          <span className="text-base">
-            {toast.type === "success" ? "✓" : "✕"}
-          </span>
-          {toast.msg}
-        </div>
-      )}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 bg-card/60 backdrop-blur-sm shrink-0">
         <Link
           href="/tools/tailan"
@@ -135,7 +119,7 @@ export default function TailanBscPage() {
           <select
             value={year}
             onChange={(e) => setYear(+e.target.value)}
-            className="bg-muted border border-border rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
+            className="bg-muted border border-border rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none"
           >
             {Array.from(
               { length: getCurrentYear() - 2020 + 1 },
@@ -149,7 +133,7 @@ export default function TailanBscPage() {
           <select
             value={quarter}
             onChange={(e) => setQuarter(+e.target.value)}
-            className="bg-muted border border-border rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
+            className="bg-muted border border-border rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none"
           >
             {[1, 2, 3, 4].map((q) => (
               <option key={q} value={q}>
@@ -165,14 +149,14 @@ export default function TailanBscPage() {
           <button
             onClick={handleDbSave}
             disabled={saving}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-foreground text-xs px-3 py-1.5 rounded-lg transition-colors"
           >
             <Save className="h-3.5 w-3.5" />
             {saving ? t("tailan_savingLabel") : t("save")}
           </button>
           <button
             onClick={handleWordExport}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-foreground text-xs px-3 py-1.5 rounded-lg transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
             {t("tailan_downloadWord")}
@@ -189,7 +173,7 @@ export default function TailanBscPage() {
           {/* Toggle button */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="flex items-center justify-center h-9 w-full border-b border-border/50 text-muted-foreground hover:text-white hover:bg-white/5 transition-colors shrink-0"
+            className="flex items-center justify-center h-9 w-full border-b border-border/50 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors shrink-0"
             title={
               sidebarOpen
                 ? t("tailan_collapseSidebar")
@@ -220,7 +204,7 @@ export default function TailanBscPage() {
                   className={`flex items-start gap-2.5 w-full text-left px-2.5 py-2.5 rounded-xl transition-all duration-150 text-xs ${
                     active
                       ? COLOR_TAB_ACTIVE[def.color]
-                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground/90"
+                      : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground/90"
                   }`}
                 >
                   <SectionIcon
@@ -252,7 +236,7 @@ export default function TailanBscPage() {
                 className={`flex items-start gap-2.5 w-full text-left px-2.5 py-2.5 rounded-xl transition-all duration-150 text-xs ${
                   isEval
                     ? "bg-rose-500/20 border border-rose-500/40 text-rose-300"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground/90"
+                    : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground/90"
                 }`}
               >
                 <Award
@@ -340,7 +324,7 @@ export default function TailanBscPage() {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-5">
-            <div className="text-sm font-bold text-white mb-4">
+            <div className="text-sm font-bold text-foreground mb-4">
               {language === "en"
                 ? `Summary — Data Analytics Division Q${quarter} ${year}`
                 : `Нэгтгэл — Дата Анализийн Алба ${year} оны ${qName} улирал`}
@@ -412,7 +396,7 @@ export default function TailanBscPage() {
                                 placeholder={t(
                                   "tailan_kpiIndicatorPlaceholder",
                                 )}
-                                className="w-full bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs text-white placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60 leading-relaxed"
+                                className="w-full bg-muted/60 border border-border/50 rounded px-2 py-1 text-xs text-foreground placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60 leading-relaxed"
                               />
                             </td>
                             <td className="border border-border/50 px-1 py-1">
@@ -472,7 +456,7 @@ export default function TailanBscPage() {
                           <td className="border border-border/50 px-2 py-1.5 text-center text-muted-foreground italic">
                             {t("tailan_subtotalRow")}
                           </td>
-                          <td className="border border-border/50 px-2 py-1.5 text-center text-white font-bold">
+                          <td className="border border-border/50 px-2 py-1.5 text-center text-foreground font-bold">
                             {totalW}
                           </td>
                           <td
@@ -484,10 +468,10 @@ export default function TailanBscPage() {
                     );
                   })}
                   <tr className="bg-muted/80 font-bold">
-                    <td className="border border-border/50 px-2 py-2 text-center text-white">
+                    <td className="border border-border/50 px-2 py-2 text-center text-foreground">
                       {t("tailan_grandTotalRow")}
                     </td>
-                    <td className="border border-border/50 px-2 py-2 text-center text-white">
+                    <td className="border border-border/50 px-2 py-2 text-center text-foreground">
                       {negtgelKpi.reduce(
                         (s, g) =>
                           s +
@@ -526,7 +510,7 @@ export default function TailanBscPage() {
                     value={sig[nKey] ?? ""}
                     onChange={(e) => setSig(nKey, e.target.value)}
                     placeholder={t("tailan_namePlaceholder")}
-                    className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1.5 text-xs text-white font-bold placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60"
+                    className="flex-1 bg-muted/60 border border-border/50 rounded px-2 py-1.5 text-xs text-foreground font-bold placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60"
                   />
                   <input
                     value={sig[tKey] ?? ""}

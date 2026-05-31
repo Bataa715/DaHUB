@@ -186,7 +186,7 @@ export function LoginFlow({
                 >
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <KeyRound className="w-8 h-8 text-white" />
+                      <KeyRound className="w-8 h-8 text-foreground" />
                     </div>
                     <h2 className="text-2xl font-bold text-foreground">
                       Нэвтрэх
@@ -210,8 +210,8 @@ export function LoginFlow({
                               <User className="w-4 h-4 text-purple-400" />
                               Хэрэглэгчийн ID
                             </FormLabel>
-                            <FormControl>
-                              <div className="relative">
+                            <div className="relative">
+                              <FormControl>
                                 <Input
                                   placeholder="ID эсвэл нэрээ бичнэ үү"
                                   className={`${inputClass} font-mono`}
@@ -232,55 +232,53 @@ export function LoginFlow({
                                   }}
                                   autoComplete="off"
                                 />
-                                {isSearching && (
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                                  </div>
-                                )}
+                              </FormControl>
+                              {isSearching && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                </div>
+                              )}
 
-                                <AnimatePresence>
-                                  {showSuggestions &&
-                                    userSuggestions.length > 0 && (
-                                      <motion.div
-                                        initial={{ opacity: 0, y: -10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        className="absolute z-50 w-full mt-2 bg-popover border border-border rounded-xl shadow-xl max-h-60 overflow-y-auto"
-                                      >
-                                        {userSuggestions.map((user, index) => (
-                                          <motion.button
-                                            key={`${user.userId}-${index}`}
-                                            type="button"
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: index * 0.05 }}
-                                            onClick={() =>
-                                              handleSelectSuggestion(
-                                                user.userId,
-                                              )
-                                            }
-                                            className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors border-b border-border/50 last:border-b-0"
-                                          >
-                                            <div className="flex items-center justify-between">
-                                              <div>
-                                                <p className="text-foreground font-mono text-sm">
-                                                  {user.userId}
-                                                </p>
-                                                <p className="text-muted-foreground text-xs">
-                                                  {user.name}
-                                                </p>
-                                              </div>
-                                              <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-lg">
-                                                {user.department}
-                                              </span>
+                              <AnimatePresence>
+                                {showSuggestions &&
+                                  userSuggestions.length > 0 && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -10 }}
+                                      className="absolute z-50 w-full mt-2 bg-popover border border-border rounded-xl shadow-xl max-h-60 overflow-y-auto"
+                                    >
+                                      {userSuggestions.map((user, index) => (
+                                        <motion.button
+                                          key={`${user.userId}-${index}`}
+                                          type="button"
+                                          initial={{ opacity: 0, x: -10 }}
+                                          animate={{ opacity: 1, x: 0 }}
+                                          transition={{ delay: index * 0.05 }}
+                                          onClick={() =>
+                                            handleSelectSuggestion(user.userId)
+                                          }
+                                          className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors border-b border-border/50 last:border-b-0"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div>
+                                              <p className="text-foreground font-mono text-sm">
+                                                {user.userId}
+                                              </p>
+                                              <p className="text-muted-foreground text-xs">
+                                                {user.name}
+                                              </p>
                                             </div>
-                                          </motion.button>
-                                        ))}
-                                      </motion.div>
-                                    )}
-                                </AnimatePresence>
-                              </div>
-                            </FormControl>
+                                            <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                                              {user.department}
+                                            </span>
+                                          </div>
+                                        </motion.button>
+                                      ))}
+                                    </motion.div>
+                                  )}
+                              </AnimatePresence>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -289,7 +287,7 @@ export function LoginFlow({
                       <Button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold shadow-lg"
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-foreground font-semibold shadow-lg"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -316,7 +314,7 @@ export function LoginFlow({
                 >
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <Lock className="w-8 h-8 text-white" />
+                      <Lock className="w-8 h-8 text-foreground" />
                     </div>
                     <h2 className="text-2xl font-bold text-foreground">
                       Нууц үг оруулах
@@ -380,7 +378,7 @@ export function LoginFlow({
                       <Button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold shadow-lg"
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-foreground font-semibold shadow-lg"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -407,7 +405,7 @@ export function LoginFlow({
                 >
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <ShieldCheck className="w-8 h-8 text-white" />
+                      <ShieldCheck className="w-8 h-8 text-foreground" />
                     </div>
                     <h2 className="text-2xl font-bold text-foreground">
                       Нууц үг үүсгэх
@@ -504,7 +502,7 @@ export function LoginFlow({
                       <Button
                         type="submit"
                         disabled={isLoading || !allChecksPass}
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg disabled:opacity-50"
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-foreground font-semibold shadow-lg disabled:opacity-50"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -575,7 +573,7 @@ export function LoginFlow({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Хаах</AlertDialogCancel>
-            <AlertDialogAction className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
+            <AlertDialogAction className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-foreground">
               Ойлголоо
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   weeklyReportApi,
+  getApiErrorMessage,
   type WeeklyReport,
   type WeeklyReportRoleInfo,
 } from "@/lib/api";
@@ -1368,7 +1369,7 @@ function PvSection({
     <div className="mb-5">
       <div className="flex items-center gap-2 mb-1.5">
         <div
-          className="w-5 h-5 rounded flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+          className="w-5 h-5 rounded flex items-center justify-center text-foreground text-[9px] font-bold flex-shrink-0"
           style={{ background: "#1a2744" }}
         >
           {n}
@@ -1686,9 +1687,9 @@ export default function WeeklyReportPage() {
       } else {
         showToast(t("wr_saved"));
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      showToast(e?.response?.data?.message ?? t("wr_saveError"));
+      showToast(getApiErrorMessage(e) || t("wr_saveError"));
     } finally {
       setSaving(false);
       setSubmitting(false);
@@ -1894,7 +1895,7 @@ export default function WeeklyReportPage() {
                 {" · "}
               </>
             )}
-            {(user as any)?.department ?? ""}
+            {user?.department ?? ""}
           </p>
         </div>
       ) : (

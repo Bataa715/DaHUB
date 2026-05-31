@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { abSearchByCif } from "../_lib/api";
+import { getApiErrorMessage } from "@/lib/api";
 import {
   Search,
   Loader2,
@@ -67,8 +68,8 @@ function SearchContent() {
         to || undefined,
       );
       setResult(data);
-    } catch (e: any) {
-      setError(e?.message || "Хайлт амжилтгүй");
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e) || "Хайлт амжилтгүй");
     } finally {
       setSearching(false);
     }
@@ -152,7 +153,7 @@ function SearchContent() {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="px-5 py-2.5 rounded-lg bg-golomt-600 hover:bg-golomt-700 text-white font-semibold text-[12px] transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2.5 rounded-lg bg-golomt-600 hover:bg-golomt-700 text-foreground font-semibold text-[12px] transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {searching ? (
                 <Loader2 size={14} className="animate-spin" />

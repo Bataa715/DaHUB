@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { dbAccessApi } from "@/lib/api";
+import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,10 +124,10 @@ export default function MyGrantsPage() {
         description: "ClickHouse хандалт цуцлагдлаа",
       });
       await load();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Алдаа",
-        description: err?.response?.data?.message ?? "Хаахад алдаа гарлаа",
+        description: getApiErrorMessage(err) || "Хаахад алдаа гарлаа",
         variant: "destructive",
       });
     } finally {
@@ -161,7 +161,7 @@ export default function MyGrantsPage() {
         href="/tools/db-access"
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md">
-            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("myGrantsTitle")}

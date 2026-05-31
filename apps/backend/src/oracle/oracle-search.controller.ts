@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
   Query,
   UseGuards,
@@ -11,6 +12,7 @@ import {
 import { OracleService } from "./oracle.service";
 import { OracleConfigService } from "./oracle-config.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
 
 @UseGuards(JwtAuthGuard)
 @Controller("oracle/search")
@@ -29,6 +31,13 @@ export class OracleSearchController {
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
+  }
+
+  /** POST /oracle/search/retry-connect — зөвхөн admin: Oracle холболтыг дахин оролдох */
+  @UseGuards(AdminGuard)
+  @Post("retry-connect")
+  async retryConnect() {
+    return this.oracle.retryConnect();
   }
 
   /** GET /oracle/search/dashboards — all dashboard configs (id, name, table, enabled) */
@@ -74,14 +83,14 @@ export class OracleSearchController {
       table: string;
       matchCount: number;
       totalAmount: number;
-      rows: Record<string, any>[];
+      rows: Record<string, unknown>[];
     }[] = [];
 
-    for (const dash of dashboards) {
-      try {
+    const settled = await Promise.allSettled(
+      dashboards.map(async (dash) => {
         const fromExpr = dash.fromClause ?? dash.tableName;
         let sql = `SELECT * FROM ${fromExpr} WHERE ${dash.cifColumn} = :cif`;
-        const params: any[] = [safeCif];
+        const params: string[] = [safeCif];
 
         if (dateFrom && dash.dateColumn) {
           sql += ` AND ${dash.dateColumn} >= TO_DATE(:dfrom, 'YYYY-MM-DD')`;
@@ -95,20 +104,28 @@ export class OracleSearchController {
         const rows = await this.oracle.query(sql, params);
         if (rows.length > 0) {
           const totalAmount = dash.amountColumn
-            ? rows.reduce((s, r) => s + (Number(r[dash.amountColumn!]) || 0), 0)
+            ? rows.reduce((s, r) => s + (Number((r as Record<string, unknown>)[dash.amountColumn!]) || 0), 0)
             : 0;
-          results.push({
+          return {
             dashboardId: dash.id,
             dashboardName: dash.name,
             table: dash.tableName,
             matchCount: rows.length,
             totalAmount,
-            rows,
-          });
+            rows: rows as Record<string, unknown>[],
+          };
         }
-      } catch (err) {
+        return null;
+      }),
+    );
+
+    for (let i = 0; i < settled.length; i++) {
+      const s = settled[i];
+      if (s.status === "fulfilled" && s.value) {
+        results.push(s.value);
+      } else if (s.status === "rejected") {
         this.logger.warn(
-          `DB${dash.id} CIF query failed: ${(err as Error).message}`,
+          `DB${dashboards[i].id} CIF query failed: ${(s.reason as Error).message}`,
         );
       }
     }
@@ -161,13 +178,12 @@ export class OracleSearchController {
     const dashboards = this.config.getEnabledDashboards();
     const failedDashboards: { id: number; name: string; error: string }[] = [];
 
-    for (const dash of dashboards) {
-      try {
+    const dashResults = await Promise.allSettled(
+      dashboards.map(async (dash) => {
         let sql: string;
-        let params: any[] = [];
+        let params: string[] = [];
         const fromExpr = dash.fromClause ?? dash.tableName;
         if (safeCifFilter) {
-          // Single CIF lookup — exact match
           sql = dash.amountColumn
             ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${fromExpr} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`
             : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${fromExpr} WHERE ${dash.cifColumn} = :cif GROUP BY ${dash.cifColumn}`;
@@ -177,27 +193,30 @@ export class OracleSearchController {
             ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${fromExpr} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`
             : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${fromExpr} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`;
         }
+        const rows = await this.oracle.query<{ CIF_VAL: string; CNT: number; TOTAL_AMT: number }>(sql, params);
+        return { dash, rows };
+      }),
+    );
 
-        const rows = await this.oracle.query<{
-          CIF_VAL: string;
-          CNT: number;
-          TOTAL_AMT: number;
-        }>(sql, params);
-        for (const row of rows) {
-          const cifVal = String(row.CIF_VAL || "").trim();
-          if (!cifVal) continue;
-          if (!cifMap[cifVal]) cifMap[cifVal] = { dashboards: [] };
-          cifMap[cifVal].dashboards.push({
-            id: dash.id,
-            name: dash.name,
-            count: Number(row.CNT) || 0,
-            totalAmount: Number(row.TOTAL_AMT) || 0,
-          });
-        }
-      } catch (err) {
-        const msg = (err as Error)?.message || String(err);
-        this.logger.warn(`DB${dash.id} alerts query failed: ${msg}`);
-        failedDashboards.push({ id: dash.id, name: dash.name, error: msg });
+    for (let i = 0; i < dashResults.length; i++) {
+      const s = dashResults[i];
+      if (s.status === "rejected") {
+        const msg = (s.reason as Error)?.message || String(s.reason);
+        this.logger.warn(`DB${dashboards[i].id} alerts query failed: ${msg}`);
+        failedDashboards.push({ id: dashboards[i].id, name: dashboards[i].name, error: msg });
+        continue;
+      }
+      const { dash, rows } = s.value;
+      for (const row of rows) {
+        const cifVal = String(row.CIF_VAL || "").trim();
+        if (!cifVal) continue;
+        if (!cifMap[cifVal]) cifMap[cifVal] = { dashboards: [] };
+        cifMap[cifVal].dashboards.push({
+          id: dash.id,
+          name: dash.name,
+          count: Number(row.CNT) || 0,
+          totalAmount: Number(row.TOTAL_AMT) || 0,
+        });
       }
     }
 

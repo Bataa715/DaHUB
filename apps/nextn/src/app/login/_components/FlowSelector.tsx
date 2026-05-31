@@ -26,7 +26,7 @@ export function FlowSelector({ onSelect }: FlowSelectorProps) {
         {PARTICLE_POSITIONS.map((pos, i) => (
           <motion.div
             key={i}
-            className="absolute w-1 h-1 bg-white/20 rounded-full"
+            className="absolute w-1 h-1 bg-foreground/20 rounded-full"
             style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
             animate={{ y: [0, -30, 0], opacity: [0.2, 0.8, 0.2] }}
             transition={{
@@ -63,7 +63,7 @@ export function FlowSelector({ onSelect }: FlowSelectorProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-4xl md:text-5xl font-bold text-white mb-4"
+            className="text-4xl md:text-5xl font-bold text-foreground mb-4"
           >
             <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
               DaHUB
@@ -83,18 +83,18 @@ export function FlowSelector({ onSelect }: FlowSelectorProps) {
             className="group cursor-pointer"
           >
             <div className="relative p-1 rounded-3xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 shadow-2xl shadow-blue-500/20">
-              <div className="bg-slate-900/90 backdrop-blur-xl rounded-[22px] p-8 h-full">
+              <div className="bg-card/90 backdrop-blur-xl rounded-[22px] p-8 h-full">
                 <div className="flex flex-col items-center text-center">
                   <motion.div
                     className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/30"
                     whileHover={{ rotate: [0, -10, 10, 0] }}
                   >
-                    <UserPlus className="w-10 h-10 text-white" />
+                    <UserPlus className="w-10 h-10 text-foreground" />
                   </motion.div>
-                  <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors">
+                  <h3 className="text-2xl font-bold text-foreground mb-3 group-hover:text-blue-400 transition-colors">
                     Бүртгүүлэх
                   </h3>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     Шинээр бүртгүүлэх ба нэвтрэх ID үүсгэх
                   </p>
                   <div className="mt-6 flex items-center gap-2 text-blue-400 group-hover:gap-4 transition-all">
@@ -117,18 +117,18 @@ export function FlowSelector({ onSelect }: FlowSelectorProps) {
             className="group cursor-pointer"
           >
             <div className="relative p-1 rounded-3xl bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 shadow-2xl shadow-purple-500/20">
-              <div className="bg-slate-900/90 backdrop-blur-xl rounded-[22px] p-8 h-full">
+              <div className="bg-card/90 backdrop-blur-xl rounded-[22px] p-8 h-full">
                 <div className="flex flex-col items-center text-center">
                   <motion.div
                     className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 shadow-lg shadow-purple-500/30"
                     whileHover={{ rotate: [0, -10, 10, 0] }}
                   >
-                    <KeyRound className="w-10 h-10 text-white" />
+                    <KeyRound className="w-10 h-10 text-foreground" />
                   </motion.div>
-                  <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">
+                  <h3 className="text-2xl font-bold text-foreground mb-3 group-hover:text-purple-400 transition-colors">
                     Нэвтрэх
                   </h3>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     Бүртгэлтэй бол ID-ээрээ нэвтрэх
                   </p>
                   <div className="mt-6 flex items-center gap-2 text-purple-400 group-hover:gap-4 transition-all">

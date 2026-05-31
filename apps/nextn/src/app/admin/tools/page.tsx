@@ -512,31 +512,37 @@ export default function AdminToolsPage() {
 
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-600" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/40" />
       </div>
     );
   }
 
-  if (!user?.isAdmin) {
+  if (!user?.isAdmin && !user?.isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Shield className="w-10 h-10 mx-auto text-slate-600 mb-3" />
-          <p className="text-slate-500 text-sm">
+          <Shield className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
+          <p className="text-muted-foreground/60 text-sm">
             Та энэ хуудсыг үзэх эрхгүй байна.
           </p>
+          <a
+            href="/admin/login"
+            className="mt-3 inline-block text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Admin нэвтрэх
+          </a>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <AdminPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-md">
-            <Wrench className="w-3.5 h-3.5 text-white" />
+            <Wrench className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title="Хэрэгсэл - Эрх удирдах"
@@ -553,10 +559,14 @@ export default function AdminToolsPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3"
+              className="bg-background border border-border rounded-xl px-4 py-3"
             >
-              <p className="text-xs text-slate-500 mb-0.5">{stat.label}</p>
-              <p className="text-xl font-semibold text-white">{stat.value}</p>
+              <p className="text-xs text-muted-foreground/60 mb-0.5">
+                {stat.label}
+              </p>
+              <p className="text-xl font-semibold text-foreground">
+                {stat.value}
+              </p>
             </div>
           ))}
         </div>
@@ -566,10 +576,10 @@ export default function AdminToolsPage() {
           {/* ── Чөлөөт хэрэгслүүд ── */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+              <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest">
                 Чөлөөт
               </span>
-              <div className="flex-1 h-px bg-slate-800" />
+              <div className="flex-1 h-px bg-muted" />
             </div>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
               {visibleTools
@@ -586,23 +596,25 @@ export default function AdminToolsPage() {
                     <button
                       key={tool.id}
                       onClick={() => handleToolSelect(tool)}
-                      className="group text-left bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-xl p-4 transition-colors"
+                      className="group text-left bg-background border border-border hover:border-border/80 rounded-xl p-4 transition-colors"
                     >
-                      <p className="text-sm font-medium text-white mb-1 leading-snug">
+                      <p className="text-sm font-medium text-foreground mb-1 leading-snug">
                         {tool.name}
                       </p>
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">
+                      <p className="text-xs text-muted-foreground/60 line-clamp-2 mb-3">
                         {tool.description}
                       </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground/60">
                           {usersWithAccess.length} хэрэглэгч
                         </span>
-                        <span className="text-xs text-slate-600">{pct}%</span>
+                        <span className="text-xs text-muted-foreground/40">
+                          {pct}%
+                        </span>
                       </div>
-                      <div className="mt-2 h-0.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="mt-2 h-0.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-slate-600 transition-all"
+                          className="h-full bg-muted-foreground/60 transition-all"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -615,10 +627,10 @@ export default function AdminToolsPage() {
           {/* ── Ажлын хэрэгслүүд ── */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+              <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest">
                 Ажлын
               </span>
-              <div className="flex-1 h-px bg-slate-800" />
+              <div className="flex-1 h-px bg-muted" />
             </div>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
               {visibleTools
@@ -635,33 +647,35 @@ export default function AdminToolsPage() {
                     <button
                       key={tool.id}
                       onClick={() => handleToolSelect(tool)}
-                      className="group text-left bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-xl p-4 transition-colors"
+                      className="group text-left bg-background border border-border hover:border-border/80 rounded-xl p-4 transition-colors"
                     >
-                      <p className="text-sm font-medium text-white mb-1 leading-snug">
+                      <p className="text-sm font-medium text-foreground mb-1 leading-snug">
                         {tool.name}
                       </p>
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">
+                      <p className="text-xs text-muted-foreground/60 line-clamp-2 mb-3">
                         {tool.description}
                       </p>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground/60">
                           {usersWithAccess.length} хэрэглэгч
                         </span>
                         {tool.adminPath ? (
                           <Link
                             href={tool.adminPath}
                             onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-slate-400 hover:text-white transition-colors"
+                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
                             {tool.adminLabel ?? "Тохиргоо →"}
                           </Link>
                         ) : (
-                          <span className="text-xs text-slate-600">{pct}%</span>
+                          <span className="text-xs text-muted-foreground/40">
+                            {pct}%
+                          </span>
                         )}
                       </div>
-                      <div className="mt-2 h-0.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="mt-2 h-0.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-slate-600 transition-all"
+                          className="h-full bg-muted-foreground/60 transition-all"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -675,7 +689,7 @@ export default function AdminToolsPage() {
 
       {/* Tool Detail Sheet */}
       <Sheet open={!!selectedTool} onOpenChange={() => setSelectedTool(null)}>
-        <SheetContent className="w-full sm:max-w-md bg-slate-950 border-slate-800 p-0 flex flex-col">
+        <SheetContent className="w-full sm:max-w-md bg-background border-border p-0 flex flex-col">
           <SheetTitle className="sr-only">
             {selectedTool?.name ?? "Эрх удирдах"}
           </SheetTitle>
@@ -683,28 +697,28 @@ export default function AdminToolsPage() {
             <>
               {/* Header */}
               <div className={`bg-gradient-to-br ${selectedTool.color} p-5`}>
-                <p className="text-white/70 text-xs font-medium uppercase tracking-widest mb-1">
+                <p className="text-foreground/70 text-xs font-medium uppercase tracking-widest mb-1">
                   Эрх удирдах
                 </p>
-                <p className="text-white text-lg font-semibold leading-snug">
+                <p className="text-foreground text-lg font-semibold leading-snug">
                   {selectedTool.name}
                 </p>
-                <p className="text-white/60 text-xs mt-1 line-clamp-2">
+                <p className="text-foreground/60 text-xs mt-1 line-clamp-2">
                   {selectedTool.description}
                 </p>
                 <div className="flex gap-4 mt-3">
                   <div className="text-center">
-                    <p className="text-white text-xl font-bold leading-none">
+                    <p className="text-foreground text-xl font-bold leading-none">
                       {getUsersWithAccess(selectedTool.id).length}
                     </p>
-                    <p className="text-white/60 text-xs mt-0.5">эрхтэй</p>
+                    <p className="text-foreground/60 text-xs mt-0.5">эрхтэй</p>
                   </div>
-                  <div className="w-px bg-white/20" />
+                  <div className="w-px bg-foreground/20" />
                   <div className="text-center">
-                    <p className="text-white text-xl font-bold leading-none">
+                    <p className="text-foreground text-xl font-bold leading-none">
                       {getUsersWithoutAccess(selectedTool.id).length}
                     </p>
-                    <p className="text-white/60 text-xs mt-0.5">эрхгүй</p>
+                    <p className="text-foreground/60 text-xs mt-0.5">эрхгүй</p>
                   </div>
                 </div>
               </div>
@@ -715,16 +729,16 @@ export default function AdminToolsPage() {
                 onValueChange={setActiveTab}
                 className="flex-1 flex flex-col overflow-hidden"
               >
-                <TabsList className="grid w-full grid-cols-2 bg-slate-900 rounded-none border-b border-slate-800 h-10">
+                <TabsList className="grid w-full grid-cols-2 bg-background rounded-none border-b border-border h-10">
                   <TabsTrigger
                     value="current"
-                    className="rounded-none text-xs font-medium text-slate-500 data-[state=active]:text-white data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
+                    className="rounded-none text-xs font-medium text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
                   >
                     Эрхтэй ({getUsersWithAccess(selectedTool.id).length})
                   </TabsTrigger>
                   <TabsTrigger
                     value="grant"
-                    className="rounded-none text-xs font-medium text-slate-500 data-[state=active]:text-white data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
+                    className="rounded-none text-xs font-medium text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
                   >
                     Эрх олгох ({getUsersWithoutAccess(selectedTool.id).length})
                   </TabsTrigger>
@@ -736,21 +750,21 @@ export default function AdminToolsPage() {
                   className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex flex-col"
                 >
                   {/* Quick actions */}
-                  <div className="px-5 py-3 border-b border-slate-800 space-y-2">
+                  <div className="px-5 py-3 border-b border-border space-y-2">
                     <div className="flex gap-2">
                       <button
                         onClick={selectAllRevokeUsers}
                         disabled={
                           getUsersWithAccess(selectedTool.id).length === 0
                         }
-                        className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Бүгдийг сонгох
                       </button>
                       <button
                         onClick={() => setRevokeSelectedUsers(new Set())}
                         disabled={revokeSelectedUsers.size === 0}
-                        className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Цэвэрлэх
                       </button>
@@ -762,15 +776,15 @@ export default function AdminToolsPage() {
                         selectRevokeDepartmentUsers(value);
                       }}
                     >
-                      <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-400 text-xs h-8 focus:ring-0">
+                      <SelectTrigger className="bg-background border-border text-muted-foreground text-xs h-8 focus:ring-0">
                         <SelectValue placeholder="Хэлтсээр сонгох..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800">
+                      <SelectContent className="bg-background border-border">
                         {DEPARTMENTS.map((dept) => (
                           <SelectItem
                             key={dept}
                             value={dept}
-                            className="text-slate-300 text-xs focus:bg-slate-800 focus:text-white"
+                            className="text-foreground/80 text-xs focus:bg-muted focus:text-foreground"
                           >
                             {dept}
                           </SelectItem>
@@ -778,13 +792,13 @@ export default function AdminToolsPage() {
                       </SelectContent>
                     </Select>
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
                       <input
                         type="text"
                         value={revokeSearch}
                         onChange={(e) => setRevokeSearch(e.target.value)}
                         placeholder="Нэр, хэлтсээр хайх..."
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder:text-slate-600 pl-8 pr-3 py-1.5 focus:outline-none focus:border-slate-600"
+                        className="w-full bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/50 pl-8 pr-3 py-1.5 focus:outline-none focus:border-border"
                       />
                     </div>
                   </div>
@@ -792,20 +806,20 @@ export default function AdminToolsPage() {
                   {/* User list */}
                   <ScrollArea className="flex-1">
                     {getUsersWithAccess(selectedTool.id).length === 0 ? (
-                      <div className="text-center py-16 text-slate-600">
+                      <div className="text-center py-16 text-muted-foreground/40">
                         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
                           Одоогоор эрхтэй хэрэглэгч байхгүй
                         </p>
                         <button
                           onClick={() => setActiveTab("grant")}
-                          className="mt-3 text-xs text-slate-400 hover:text-white transition-colors underline underline-offset-2"
+                          className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
                         >
                           Эрх олгох
                         </button>
                       </div>
                     ) : getFilteredUsersWithAccess().length === 0 ? (
-                      <div className="text-center py-16 text-slate-600">
+                      <div className="text-center py-16 text-muted-foreground/40">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
                           Хайлтад тохирох хэрэглэгч олдсонгүй
@@ -821,8 +835,8 @@ export default function AdminToolsPage() {
                             transition={{ delay: index * 0.02 }}
                             className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
                               revokeSelectedUsers.has(user.id)
-                                ? "bg-slate-800"
-                                : "hover:bg-slate-900/60"
+                                ? "bg-muted"
+                                : "hover:bg-background/60"
                             }`}
                             onClick={() => toggleRevokeSelection(user.id)}
                           >
@@ -831,18 +845,18 @@ export default function AdminToolsPage() {
                               onCheckedChange={() =>
                                 toggleRevokeSelection(user.id)
                               }
-                              className="border-slate-700 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-white shrink-0"
+                              className="border-border data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-foreground shrink-0"
                             />
                             <div
-                              className={`w-7 h-7 rounded-md bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}
+                              className={`w-7 h-7 rounded-md bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-foreground text-xs font-bold shrink-0`}
                             >
                               {user.name.charAt(0)}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm text-white truncate">
+                              <p className="text-sm text-foreground truncate">
                                 {user.name}
                               </p>
-                              <p className="text-xs text-slate-500 truncate">
+                              <p className="text-xs text-muted-foreground/60 truncate">
                                 {user.department}
                               </p>
                             </div>
@@ -859,12 +873,12 @@ export default function AdminToolsPage() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 8 }}
-                        className="p-4 border-t border-slate-800"
+                        className="p-4 border-t border-border"
                       >
                         <button
                           onClick={bulkRevokeAccess}
                           disabled={isSaving}
-                          className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+                          className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-foreground text-sm font-semibold py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
                         >
                           {isSaving ? (
                             <>
@@ -889,21 +903,21 @@ export default function AdminToolsPage() {
                   className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex flex-col"
                 >
                   {/* Quick actions */}
-                  <div className="px-5 py-3 border-b border-slate-800 space-y-2">
+                  <div className="px-5 py-3 border-b border-border space-y-2">
                     <div className="flex gap-2">
                       <button
                         onClick={selectAllUsers}
                         disabled={
                           getUsersWithoutAccess(selectedTool.id).length === 0
                         }
-                        className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Бүгдийг сонгох
                       </button>
                       <button
                         onClick={() => setSelectedUsers(new Set())}
                         disabled={selectedUsers.size === 0}
-                        className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Цэвэрлэх
                       </button>
@@ -915,15 +929,15 @@ export default function AdminToolsPage() {
                         selectDepartmentUsers(value);
                       }}
                     >
-                      <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-400 text-xs h-8 focus:ring-0">
+                      <SelectTrigger className="bg-background border-border text-muted-foreground text-xs h-8 focus:ring-0">
                         <SelectValue placeholder="Хэлтсээр сонгох..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800">
+                      <SelectContent className="bg-background border-border">
                         {DEPARTMENTS.map((dept) => (
                           <SelectItem
                             key={dept}
                             value={dept}
-                            className="text-slate-300 text-xs focus:bg-slate-800 focus:text-white"
+                            className="text-foreground/80 text-xs focus:bg-muted focus:text-foreground"
                           >
                             {dept}
                           </SelectItem>
@@ -931,13 +945,13 @@ export default function AdminToolsPage() {
                       </SelectContent>
                     </Select>
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
                       <input
                         type="text"
                         value={grantSearch}
                         onChange={(e) => setGrantSearch(e.target.value)}
                         placeholder="Нэр, хэлтсээр хайх..."
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder:text-slate-600 pl-8 pr-3 py-1.5 focus:outline-none focus:border-slate-600"
+                        className="w-full bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/50 pl-8 pr-3 py-1.5 focus:outline-none focus:border-border"
                       />
                     </div>
                   </div>
@@ -945,12 +959,12 @@ export default function AdminToolsPage() {
                   {/* User list */}
                   <ScrollArea className="flex-1">
                     {getUsersWithoutAccess(selectedTool.id).length === 0 ? (
-                      <div className="text-center py-16 text-slate-600">
+                      <div className="text-center py-16 text-muted-foreground/40">
                         <Check className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">Бүх хэрэглэгчид эрхтэй байна</p>
                       </div>
                     ) : getFilteredUsersWithoutAccess().length === 0 ? (
-                      <div className="text-center py-16 text-slate-600">
+                      <div className="text-center py-16 text-muted-foreground/40">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
                           Хайлтад тохирох хэрэглэгч олдсонгүй
@@ -966,8 +980,8 @@ export default function AdminToolsPage() {
                             transition={{ delay: index * 0.02 }}
                             className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
                               selectedUsers.has(user.id)
-                                ? "bg-slate-800"
-                                : "hover:bg-slate-900/60"
+                                ? "bg-muted"
+                                : "hover:bg-background/60"
                             }`}
                             onClick={() => toggleUserSelection(user.id)}
                           >
@@ -976,16 +990,16 @@ export default function AdminToolsPage() {
                               onCheckedChange={() =>
                                 toggleUserSelection(user.id)
                               }
-                              className="border-slate-700 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-slate-900 shrink-0"
+                              className="border-border data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background shrink-0"
                             />
-                            <div className="w-7 h-7 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-medium shrink-0">
+                            <div className="w-7 h-7 rounded-md bg-muted border border-border flex items-center justify-center text-muted-foreground text-xs font-medium shrink-0">
                               {user.name.charAt(0)}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm text-white truncate">
+                              <p className="text-sm text-foreground truncate">
                                 {user.name}
                               </p>
-                              <p className="text-xs text-slate-500 truncate">
+                              <p className="text-xs text-muted-foreground/60 truncate">
                                 {user.department}
                               </p>
                             </div>
@@ -1002,12 +1016,12 @@ export default function AdminToolsPage() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 8 }}
-                        className="p-4 border-t border-slate-800"
+                        className="p-4 border-t border-border"
                       >
                         <button
                           onClick={grantAccess}
                           disabled={isSaving}
-                          className={`w-full bg-gradient-to-r ${selectedTool.color} text-white text-sm font-semibold py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2`}
+                          className={`w-full bg-gradient-to-r ${selectedTool.color} text-foreground text-sm font-semibold py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2`}
                         >
                           {isSaving ? (
                             <>

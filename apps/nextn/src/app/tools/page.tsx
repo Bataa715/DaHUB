@@ -196,10 +196,10 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
               <div
                 className={`w-9 h-9 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shadow-md`}
               >
-                <Icon className="w-4 h-4 text-white" />
+                <Icon className="w-4 h-4 text-foreground" />
               </div>
               <span
-                className={`px-2 py-0.5 rounded-full text-[9px] font-semibold bg-gradient-to-r ${tool.gradient} text-white opacity-80 group-hover:opacity-100 transition-opacity`}
+                className={`px-2 py-0.5 rounded-full text-[9px] font-semibold bg-gradient-to-r ${tool.gradient} text-foreground opacity-80 group-hover:opacity-100 transition-opacity`}
               >
                 {tool.tag}
               </span>
@@ -318,7 +318,7 @@ export default function ToolsPage() {
           <div className="w-20 h-20 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {t("needLogin")}
           </h2>
           <p className="text-muted-foreground">{t("needLoginToolsDesc")}</p>
@@ -341,7 +341,7 @@ export default function ToolsPage() {
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-xl shadow-purple-500/30">
-              <Wrench className="w-6 h-6 text-white" />
+              <Wrench className="w-6 h-6 text-foreground" />
             </div>
             <div>
               <p className="text-xs text-purple-400/80 font-medium flex items-center gap-1.5 mb-0.5">

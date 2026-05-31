@@ -16,6 +16,7 @@ import {
   riskLevelClass,
   type BranchAggregate,
   type RiskLevel,
+  type OracleValue,
 } from "./scoring-rules";
 import { type ManualMap } from "./indicator-catalog";
 import {
@@ -30,12 +31,12 @@ import {
 // (backward-compat: localStorage-д юу байвал нэг удаа migrate хийнэ)
 
 type AnyRow = {
-  SOLID?: any;
-  BRANCHID?: any;
-  BRANCHNAME?: any;
-  SUBID?: any;
-  RESULT?: any;
-  RESULT_TYPE?: any;
+  SOLID?: OracleValue;
+  BRANCHID?: OracleValue;
+  BRANCHNAME?: OracleValue;
+  SUBID?: OracleValue;
+  RESULT?: OracleValue;
+  RESULT_TYPE?: OracleValue;
 };
 
 interface Props {
@@ -46,6 +47,16 @@ interface Props {
   previousFetchedAt?: string | null;
   previousHistoryName?: string | null;
   pDate?: string;
+  /** Унших горим — аудиторын үнэлэмж засах UI харагдахгүй */
+  readOnly?: boolean;
+  /** Гарын утгуудыг API-аас биш гадаас дамжуулах (work session горим) */
+  initialManualMap?: import("./indicator-catalog").ManualMap;
+  /** Гарын үнэлэмж хадгалах custom функц (work session горим) */
+  saveIndicatorFn?: (
+    branchId: string,
+    indicatorId: string,
+    value: number,
+  ) => void;
 }
 
 const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
@@ -79,6 +90,9 @@ export default function ReportView({
   previousFetchedAt: _previousFetchedAt,
   previousHistoryName,
   pDate,
+  readOnly = false,
+  initialManualMap,
+  saveIndicatorFn,
 }: Props) {
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
@@ -100,7 +114,7 @@ export default function ReportView({
     riskApi
       .listHolds(holdPeriod)
       .then((data) => setHeldIds(new Set(data.map((d) => d.indicatorId))))
-      .catch(() => {});
+      .catch(() => { /* intentional: hold state is UI-only; failure leaves holds unset */ });
   }, [holdPeriod]);
 
   useEffect(() => {
@@ -116,17 +130,18 @@ export default function ReportView({
         window.location.pathname.startsWith("/admin") ? "adminToken" : "token",
       );
       const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!baseUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
+      if (!baseUrl) return;
       for (const p of payloads) {
         fetch(`${baseUrl}/risk-assessment/manual-indicators`, {
           method: "PUT",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(p),
           keepalive: true,
-        }).catch(() => {});
+        }).catch(() => { /* intentional: keepalive fire-and-forget on beforeunload */ });
       }
     };
     window.addEventListener("beforeunload", handleUnload);
@@ -134,7 +149,13 @@ export default function ReportView({
   }, []);
 
   // ClickHouse-аас гарын утгуудыг ачаалах (нэг удаа)
+  // initialManualMap өгөгдсөн бол (work session горим) fetch хийхгүй
   useEffect(() => {
+    if (initialManualMap !== undefined) {
+      setManualMap(initialManualMap);
+      return;
+    }
+    if (readOnly) return;
     setManualLoading(true);
     riskApi
       .listManualIndicators()
@@ -152,10 +173,11 @@ export default function ReportView({
         } catch {}
       })
       .finally(() => setManualLoading(false));
-  }, []);
+  }, [initialManualMap, readOnly]);
 
   const setManualValue = useCallback(
     (branchId: string, indicatorId: string, value: number) => {
+      if (readOnly) return;
       // 1) UI-г шууд шинэчлэх
       setManualMap((prev) => {
         const next = { ...prev };
@@ -166,9 +188,8 @@ export default function ReportView({
         else next[branchId] = branch;
         return next;
       });
-      // 2) 600ms debounce-тайгаар backend-рүү хадгалах
+      // 2) 600ms debounce-тайгаар backend-рүү хадгалах (saveIndicatorFn байсан ч)
       const key = `${branchId}::${indicatorId}`;
-      // beforeunload flush-д зориулж хянана
       if (!value || value <= 0) {
         delete pendingSavePayloads.current[key];
       } else {
@@ -177,12 +198,16 @@ export default function ReportView({
       clearTimeout(saveTimers.current[key]);
       saveTimers.current[key] = setTimeout(() => {
         delete pendingSavePayloads.current[key];
-        riskApi
-          .upsertManualIndicator({ branchId, indicatorId, value })
-          .catch(console.error);
+        if (saveIndicatorFn) {
+          saveIndicatorFn(branchId, indicatorId, value);
+        } else {
+          riskApi
+            .upsertManualIndicator({ branchId, indicatorId, value })
+            .catch(console.error);
+        }
       }, 600);
     },
-    [],
+    [readOnly, saveIndicatorFn],
   );
 
   // Базын aggregate-уудыг авах (Oracle-аас ирсэн SUBID 11-аар бүс/зэрэглэл, мөн
@@ -220,7 +245,10 @@ export default function ReportView({
         rows,
         manualMap[id],
       );
-      m.set(id, computeGroupScoresDynamic(dynamicConfig.catalog, vals, heldIds));
+      m.set(
+        id,
+        computeGroupScoresDynamic(dynamicConfig.catalog, vals, heldIds),
+      );
     }
     return m;
   }, [rowsByBranch, manualMap, dynamicConfig, heldIds]);
@@ -236,12 +264,31 @@ export default function ReportView({
       const s3 = ev[3] ?? b.s3;
       const s4 = ev[4] ?? b.s4 ?? 0;
       const j = ev[5] ?? b.j ?? 0;
-      // Total: одоо байгаа UB/LOC group жинг хадгална
-      let total: number | null = null;
-      if (s1 != null && s2 != null && s3 != null) {
-        total =
-          s1 * w.s1 + s2 * w.s2 + s3 * w.s3 + (s4 || 0) * w.s4 + (j || 0) * w.j;
+      // Total: normalize by sum of applied weights so missing groups don't
+      // deflate the result (matches computeTotal in scoring-rules.ts).
+      let vsum = 0,
+        wsum = 0;
+      if (s1 != null) {
+        vsum += s1 * w.s1;
+        wsum += w.s1;
       }
+      if (s2 != null) {
+        vsum += s2 * w.s2;
+        wsum += w.s2;
+      }
+      if (s3 != null) {
+        vsum += s3 * w.s3;
+        wsum += w.s3;
+      }
+      if (s4 > 0) {
+        vsum += s4 * w.s4;
+        wsum += w.s4;
+      }
+      if (j > 0) {
+        vsum += j * w.j;
+        wsum += w.j;
+      }
+      const total: number | null = wsum > 0 ? vsum / wsum : null;
       const level: RiskLevel | "" =
         total == null
           ? ""
@@ -272,8 +319,14 @@ export default function ReportView({
     [aggregates, riskFilter],
   );
 
-  const ub = filtered.filter((b) => b.region === "UB");
-  const loc = filtered.filter((b) => b.region === "LOC");
+  const ub = useMemo(
+    () => filtered.filter((b) => b.region === "UB"),
+    [filtered],
+  );
+  const loc = useMemo(
+    () => filtered.filter((b) => b.region === "LOC"),
+    [filtered],
+  );
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
@@ -382,6 +435,15 @@ export default function ReportView({
 
   return (
     <div className="space-y-5 p-4 sm:p-5">
+      {/* ── Fallback config анхааруулга ── */}
+      {dynamicConfig.isFallback && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-[12px] text-amber-400">
+          <span className="text-base">⚠</span>
+          <span>
+            <b>Offline горим:</b> Үзүүлэлтийн тохиргоог серверээс авч чадаагүй — суурилагдсан анхдагч тохиргоог ашиглаж байна. Сүлжээний холболт болон backend-ийг шалгана уу.
+          </span>
+        </div>
+      )}
       {/* ── Toolbar ── */}
       <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -458,7 +520,7 @@ export default function ReportView({
           </div>
 
           <div className="flex items-center gap-3 flex-wrap text-[11px]">
-            {manualLoading && (
+            {!readOnly && manualLoading && (
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Гарын утга ачаалж байна…
@@ -477,6 +539,7 @@ export default function ReportView({
         weights={dynamicConfig.weights}
         setManualValue={setManualValue}
         catalog={dynamicConfig.catalog}
+        readOnly={readOnly}
       />
 
       <ReportTable
@@ -488,6 +551,7 @@ export default function ReportView({
         weights={dynamicConfig.weights}
         setManualValue={setManualValue}
         catalog={dynamicConfig.catalog}
+        readOnly={readOnly}
       />
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -541,6 +605,7 @@ function ReportTable({
   weights,
   setManualValue,
   catalog,
+  readOnly = false,
 }: {
   title: string;
   region: "UB" | "LOC";
@@ -554,6 +619,7 @@ function ReportTable({
     value: number,
   ) => void;
   catalog: DynamicCatalogIndicator[];
+  readOnly?: boolean;
 }) {
   const w = weights[region];
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
@@ -661,7 +727,15 @@ function ReportTable({
                 Score 4
               </th>
               <th className="px-2 py-2 text-right font-semibold text-rose-600 dark:text-rose-400">
-                Judgement
+                <div className="flex flex-col items-end gap-0.5">
+                  {!readOnly && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-emerald-500"
+                      title="Гараар оруулах боломжтой"
+                    />
+                  )}
+                  Judgement
+                </div>
               </th>
               <th className="px-2 py-2 text-right font-semibold">Total</th>
               <th className="px-2 py-2 text-right font-semibold text-muted-foreground/70">
@@ -698,7 +772,11 @@ function ReportTable({
                       {fmt(b.s4 ?? null)}
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums">
-                      {editingJBranch === b.branchId ? (
+                      {readOnly ? (
+                        <span className="font-bold text-rose-700 dark:text-rose-400">
+                          {b.j != null && b.j > 0 ? b.j.toFixed(2) : "—"}
+                        </span>
+                      ) : editingJBranch === b.branchId ? (
                         <input
                           type="number"
                           step="0.5"
@@ -727,12 +805,15 @@ function ReportTable({
                                 : String(b.j || ""),
                             );
                           }}
-                          className="group/jbtn inline-flex items-center justify-end gap-1 w-full font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
+                          className="group/jbtn flex flex-col items-end w-full gap-0.5 font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
                           title="Клик — засах"
                         >
-                          {b.j != null && b.j > 0 ? b.j.toFixed(2) : "—"}
-                          <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
-                            ✎
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 group-hover/jbtn:bg-emerald-400" />
+                          <span className="inline-flex items-center gap-1">
+                            {b.j != null && b.j > 0 ? b.j.toFixed(2) : "—"}
+                            <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
+                              ✎
+                            </span>
                           </span>
                         </button>
                       )}

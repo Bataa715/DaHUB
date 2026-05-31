@@ -139,7 +139,7 @@ export default function LoginPage() {
     searchDebounceRef.current = setTimeout(async () => {
       try {
         const response = await fetch(
-          `${API_URL}/auth/search?q=${encodeURIComponent(query)}`,
+          `/api/auth/search?q=${encodeURIComponent(query)}`,
         );
         const data = await response.json();
         if (data.users && data.users.length > 0) {

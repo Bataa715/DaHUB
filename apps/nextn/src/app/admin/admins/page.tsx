@@ -54,7 +54,7 @@ interface AllUser {
 
 export default function AdminsPage() {
   const { user } = useAuth();
-  const isSuperAdmin = (user as any)?.isSuperAdmin;
+  const isSuperAdmin = user?.isSuperAdmin;
 
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [allUsers, setAllUsers] = useState<AllUser[]>([]);
@@ -82,7 +82,7 @@ export default function AdminsPage() {
     try {
       const data = await usersApi.getAdmins();
       setAdmins(
-        data.map((a: any) => ({
+        data.map((a: AdminUser) => ({
           ...a,
           grantableTools: a.grantableTools ?? [],
         })),
@@ -213,7 +213,7 @@ export default function AdminsPage() {
     tools: string[];
     setTools: (v: string[]) => void;
   }) => (
-    <div className="space-y-2 rounded-xl bg-slate-800/50 p-3 border border-slate-700 max-h-52 overflow-y-auto">
+    <div className="space-y-2 rounded-xl bg-muted/50 p-3 border border-border max-h-52 overflow-y-auto">
       {ALL_TOOLS.map((tool) => {
         const checked = tools.includes(tool.id);
         return (
@@ -226,12 +226,12 @@ export default function AdminsPage() {
               className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
                 checked
                   ? "bg-emerald-500 border-emerald-500"
-                  : "border-slate-600 group-hover:border-emerald-500/50"
+                  : "border-border/70 group-hover:border-emerald-500/50"
               }`}
             >
               {checked && (
                 <svg
-                  className="w-2.5 h-2.5 text-white"
+                  className="w-2.5 h-2.5 text-foreground"
                   fill="none"
                   viewBox="0 0 12 12"
                 >
@@ -246,7 +246,7 @@ export default function AdminsPage() {
               )}
             </span>
             <span
-              className={`text-sm select-none transition-colors ${checked ? "text-white" : "text-slate-400 group-hover:text-slate-300"}`}
+              className={`text-sm select-none transition-colors ${checked ? "text-foreground" : "text-muted-foreground group-hover:text-foreground/80"}`}
             >
               {tool.name}
             </span>
@@ -257,14 +257,14 @@ export default function AdminsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <AdminPageHeader
         title="Админ удирдлага"
         rightContent={
           isSuperAdmin ? (
             <button
               onClick={() => setShowAddSheet(true)}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-3 py-1.5 rounded-lg text-sm transition-colors"
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold px-3 py-1.5 rounded-lg text-sm transition-colors"
             >
               Админ нэмэх
             </button>
@@ -298,7 +298,9 @@ export default function AdminsPage() {
               key={stat.label}
               className={`rounded-xl border px-4 py-3 ${stat.bg}`}
             >
-              <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
+              <p className="text-xs text-muted-foreground/60 mb-1">
+                {stat.label}
+              </p>
               <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
             </div>
           ))}
@@ -333,7 +335,7 @@ export default function AdminsPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ delay: i * 0.04 }}
-                    className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"
+                    className="bg-background border border-border rounded-xl overflow-hidden"
                   >
                     <div className="p-4 flex items-center gap-4">
                       <div
@@ -349,7 +351,7 @@ export default function AdminsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-white font-medium">
+                          <span className="text-foreground font-medium">
                             {admin.name || admin.userId}
                           </span>
                           {admin.isSuperAdmin ? (
@@ -362,12 +364,12 @@ export default function AdminsPage() {
                             </span>
                           )}
                           {isSelf && (
-                            <span className="bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">
+                            <span className="bg-secondary text-foreground/80 text-xs px-2 py-0.5 rounded-full">
                               Та
                             </span>
                           )}
                         </div>
-                        <p className="text-slate-400 text-sm truncate">
+                        <p className="text-muted-foreground text-sm truncate">
                           {admin.userId}
                         </p>
                         {!admin.isSuperAdmin && (
@@ -375,7 +377,7 @@ export default function AdminsPage() {
                             onClick={() =>
                               setExpandedAdmin(isExpanded ? null : admin.id)
                             }
-                            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 mt-0.5 transition-colors"
+                            className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-foreground/80 mt-0.5 transition-colors"
                           >
                             {toolNames.length > 0
                               ? `${toolNames.length} хэрэгсэл олгох эрхтэй`
@@ -398,7 +400,7 @@ export default function AdminsPage() {
                                 setEditTarget(admin);
                                 setEditTools(admin.grantableTools ?? []);
                               }}
-                              className="text-xs text-slate-400 hover:text-emerald-400 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition-colors border border-slate-800"
+                              className="text-xs text-muted-foreground hover:text-emerald-400 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition-colors border border-border"
                             >
                               Эрх
                             </motion.button>
@@ -410,7 +412,7 @@ export default function AdminsPage() {
                             className={`text-xs px-2 py-1 rounded-lg transition-colors border ${
                               admin.isSuperAdmin
                                 ? "text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                                : "text-slate-400 border-slate-800 hover:text-amber-400 hover:border-amber-500/30"
+                                : "text-muted-foreground border-border hover:text-amber-400 hover:border-amber-500/30"
                             }`}
                           >
                             {admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
@@ -419,7 +421,7 @@ export default function AdminsPage() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setRemoveTarget(admin)}
-                            className="text-xs text-slate-400 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-slate-800"
+                            className="text-xs text-muted-foreground hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-border"
                           >
                             Хасах
                           </motion.button>
@@ -432,7 +434,7 @@ export default function AdminsPage() {
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="border-t border-slate-800 px-4 pb-3 overflow-hidden"
+                          className="border-t border-border px-4 pb-3 overflow-hidden"
                         >
                           {toolNames.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5 pt-3">
@@ -446,7 +448,7 @@ export default function AdminsPage() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-slate-600 text-xs pt-3">
+                            <p className="text-muted-foreground/40 text-xs pt-3">
                               Ямар ч хэрэгсэл тохируулаагүй байна.
                             </p>
                           )}
@@ -458,7 +460,7 @@ export default function AdminsPage() {
               })}
             </AnimatePresence>
             {admins.length === 0 && (
-              <div className="text-center py-16 text-slate-600 text-sm">
+              <div className="text-center py-16 text-muted-foreground/40 text-sm">
                 Одоогоор админ бүртгэгдээгүй байна
               </div>
             )}
@@ -483,34 +485,34 @@ export default function AdminsPage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-slate-900 border-l border-slate-800 z-50 overflow-y-auto"
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-background border-l border-border z-50 overflow-y-auto"
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Шинэ админ нэмэх
                   </h2>
                   <button
                     onClick={() => setShowAddSheet(false)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                   <input
                     value={addSearch}
                     onChange={(e) => setAddSearch(e.target.value)}
                     placeholder="Хэрэглэгч хайх..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500/50"
+                    className="w-full bg-muted border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-500/50"
                   />
                 </div>
 
-                <div className="space-y-1 max-h-48 overflow-y-auto mb-5 rounded-xl border border-slate-800">
+                <div className="space-y-1 max-h-48 overflow-y-auto mb-5 rounded-xl border border-border">
                   {filteredUsers.length === 0 ? (
-                    <p className="text-slate-500 text-sm p-4 text-center">
+                    <p className="text-muted-foreground/60 text-sm p-4 text-center">
                       Хэрэглэгч олдсонгүй
                     </p>
                   ) : (
@@ -520,11 +522,11 @@ export default function AdminsPage() {
                         onClick={() => setSelectedUserId(u.id)}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                           selectedUserId === u.id
-                            ? "bg-amber-500/15 text-white"
-                            : "text-slate-300 hover:bg-slate-800"
+                            ? "bg-amber-500/15 text-foreground"
+                            : "text-foreground/80 hover:bg-muted"
                         }`}
                       >
-                        <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-medium">
+                        <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-medium">
                           {(u.name || u.userId || "?")
                             .slice(0, 2)
                             .toUpperCase()}
@@ -533,7 +535,7 @@ export default function AdminsPage() {
                           <div className="text-sm font-medium truncate">
                             {u.name || u.userId}
                           </div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-muted-foreground/60">
                             {u.userId}
                           </div>
                         </div>
@@ -546,7 +548,7 @@ export default function AdminsPage() {
                 </div>
 
                 <div className="mb-5">
-                  <p className="text-slate-400 text-xs mb-2 font-medium uppercase tracking-wider">
+                  <p className="text-muted-foreground text-xs mb-2 font-medium uppercase tracking-wider">
                     Роль
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -559,7 +561,7 @@ export default function AdminsPage() {
                             ? role === "super"
                               ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
                               : "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
-                            : "border-slate-700 text-slate-400 hover:border-slate-600"
+                            : "border-border text-muted-foreground hover:border-border/80"
                         }`}
                       >
                         {role === "super" ? "Супер админ" : "Саб админ"}
@@ -570,7 +572,7 @@ export default function AdminsPage() {
 
                 {selectedRole === "sub" && (
                   <div className="mb-6">
-                    <p className="text-slate-400 text-xs mb-2 font-medium uppercase tracking-wider">
+                    <p className="text-muted-foreground text-xs mb-2 font-medium uppercase tracking-wider">
                       Олгох эрхийн хэрэгслүүд
                     </p>
                     <ToolCheckList
@@ -585,7 +587,7 @@ export default function AdminsPage() {
                   whileTap={{ scale: 0.98 }}
                   onClick={handleAddAdmin}
                   disabled={!selectedUserId || addLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-semibold py-3 rounded-xl transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:bg-secondary disabled:text-muted-foreground/60 text-black font-semibold py-3 rounded-xl transition-colors"
                 >
                   {addLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -614,28 +616,28 @@ export default function AdminsPage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-slate-900 border-l border-slate-800 z-50 overflow-y-auto"
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-background border-l border-border z-50 overflow-y-auto"
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Хэрэгсэл эрх засах
                   </h2>
                   <button
                     onClick={() => setEditTarget(null)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <p className="text-slate-400 text-sm mb-4">
-                  <span className="text-white font-medium">
+                <p className="text-muted-foreground text-sm mb-4">
+                  <span className="text-foreground font-medium">
                     {editTarget.name || editTarget.userId}
                   </span>
                   -д олгох хэрэгслийн эрхийг сонгоно уу.
                 </p>
                 <div className="mb-6">
-                  <p className="text-slate-400 text-xs mb-2 font-medium uppercase tracking-wider">
+                  <p className="text-muted-foreground text-xs mb-2 font-medium uppercase tracking-wider">
                     Олгох эрхийн хэрэгслүүд
                   </p>
                   <ToolCheckList tools={editTools} setTools={setEditTools} />
@@ -645,7 +647,7 @@ export default function AdminsPage() {
                   whileTap={{ scale: 0.98 }}
                   onClick={handleEditTools}
                   disabled={editLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-secondary disabled:text-muted-foreground/60 text-foreground font-semibold py-3 rounded-xl transition-colors"
                 >
                   {editLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -675,22 +677,22 @@ export default function AdminsPage() {
               exit={{ opacity: 0, scale: 0.9 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
+              <div className="bg-background border border-border rounded-2xl p-6 w-full max-w-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-red-400" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">
+                    <h3 className="text-foreground font-semibold">
                       Админ эрх хасах
                     </h3>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       Энэ үйлдлийг буцааж болохгүй
                     </p>
                   </div>
                 </div>
-                <p className="text-slate-300 text-sm mb-6">
-                  <span className="text-white font-medium">
+                <p className="text-foreground/80 text-sm mb-6">
+                  <span className="text-foreground font-medium">
                     {removeTarget.name || removeTarget.userId}
                   </span>
                   -н админ эрхийг хасах уу?
@@ -698,7 +700,7 @@ export default function AdminsPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setRemoveTarget(null)}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors text-sm font-medium"
+                    className="flex-1 py-2.5 rounded-xl border border-border text-foreground/80 hover:bg-muted transition-colors text-sm font-medium"
                   >
                     Болих
                   </button>
@@ -707,7 +709,7 @@ export default function AdminsPage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleRemoveAdmin}
                     disabled={removeLoading}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-slate-700 text-white text-sm font-medium transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-secondary text-foreground text-sm font-medium transition-colors"
                   >
                     {removeLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

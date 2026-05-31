@@ -18,7 +18,6 @@ export const metadata: Metadata = {
   icons: {
     icon: "/golomt.jpg",
   },
-  metadataBase: new URL("https://internalaudit.mn"),
   openGraph: {
     title: "DaHUB",
     description: "Дотоод аудитын систем - DaHUB",

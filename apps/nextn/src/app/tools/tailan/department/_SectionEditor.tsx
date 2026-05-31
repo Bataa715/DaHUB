@@ -49,7 +49,7 @@ export function SectionEditor({
     onChange({ ...report, [key]: value });
 
   const inputCls =
-    "w-full bg-muted/60 border border-border/50 rounded-xl px-3 py-2.5 text-xs text-white placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60 resize-none leading-relaxed";
+    "w-full bg-muted/60 border border-border/50 rounded-xl px-3 py-2.5 text-xs text-foreground placeholder-muted-foreground/40 focus:outline-none focus:border-blue-500/60 resize-none leading-relaxed";
 
   const kpiData =
     def.id === "s1" ? mergeKpi(report.kpiTable, DEFAULT_S1_KPI) : [];
@@ -66,7 +66,7 @@ export function SectionEditor({
   return (
     <div className="space-y-4 max-w-5xl">
       <div>
-        <div className="text-sm font-bold text-white mb-0.5">
+        <div className="text-sm font-bold text-foreground mb-0.5">
           {def.num}. {def.heading}
         </div>
         {"subtitle" in def && (def as { subtitle?: string }).subtitle && (

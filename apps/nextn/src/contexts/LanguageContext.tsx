@@ -711,6 +711,8 @@ export const translations = {
     myGrantsCopyPwd: "Нууц үг",
 
     // Risk Assessment tool
+    riskMonitorCardTitle: "Эрсдэлийн хяналт",
+    riskDoAssessCardTitle: "Эрсдэлийн үнэлгээ хийх",
     riskBranchSubtitle: "Салбарын үнэлгээ",
     riskDetailTitle: "Үнэлгээний дэлгэрэнгүй",
     riskDetailSubtitle: "Мөр бүрийн дэлгэрэнгүй",
@@ -1494,6 +1496,8 @@ export const translations = {
     myGrantsCopyPwd: "Password",
 
     // Risk Assessment tool
+    riskMonitorCardTitle: "Risk Monitoring",
+    riskDoAssessCardTitle: "Do Risk Assessment",
     riskBranchSubtitle: "Branch assessment",
     riskDetailTitle: "Assessment detail",
     riskDetailSubtitle: "Detail by row",

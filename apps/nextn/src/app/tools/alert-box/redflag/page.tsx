@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { abFetchRedFlags } from "../_lib/api";
+import { getApiErrorMessage } from "@/lib/api";
 import {
   Flag,
   Loader2,
@@ -48,8 +49,8 @@ export default function RedFlagPage() {
     try {
       const res = await abFetchRedFlags();
       setData(res);
-    } catch (e: any) {
-      setError(e?.message || t("redflagNoResult"));
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e) || t("redflagNoResult"));
     } finally {
       setLoading(false);
     }

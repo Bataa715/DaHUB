@@ -126,7 +126,7 @@ export default function DeptViewPage() {
   const submittedCount = members.filter((m) => m.status === "submitted").length;
 
   return (
-    <div className="min-h-screen bg-background text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Ambient glows */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-violet-600/8 blur-[120px]" />
@@ -158,14 +158,14 @@ export default function DeptViewPage() {
               <p className="text-[13px] text-muted-foreground leading-none mb-0.5">
                 {t("tailan_viewReportTitle")}
               </p>
-              <p className="text-[15px] font-semibold text-white truncate leading-tight">
+              <p className="text-[15px] font-semibold text-foreground truncate leading-tight">
                 {selectedMember?.userName ?? "…"}
               </p>
             </div>
           </div>
           <button
             onClick={closeDrawer}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-colors flex-shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -213,7 +213,7 @@ export default function DeptViewPage() {
         href="/tools/tailan"
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
-            <Eye className="w-3.5 h-3.5 text-white" />
+            <Eye className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("tailan_membersView")}
@@ -229,9 +229,9 @@ export default function DeptViewPage() {
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="appearance-none bg-white/[0.05] border border-border/30 rounded-xl
-                text-white text-sm font-medium px-4 py-2.5 pr-8 cursor-pointer
-                hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-violet-500/40
+              className="appearance-none bg-foreground/5 border border-border/30 rounded-xl
+                text-foreground text-sm font-medium px-4 py-2.5 pr-8 cursor-pointer
+                hover:bg-foreground/8 focus:outline-none focus:ring-2 focus:ring-violet-500/40
                 transition-colors"
             >
               {[
@@ -256,8 +256,8 @@ export default function DeptViewPage() {
                 className={`px-4 py-2.5 text-sm font-medium transition-colors
                   ${
                     quarter === i + 1
-                      ? "bg-violet-600 text-white"
-                      : "bg-muted/40 text-muted-foreground hover:bg-white/[0.08] hover:text-white"
+                      ? "bg-violet-600 text-foreground"
+                      : "bg-muted/40 text-muted-foreground hover:bg-foreground/8 hover:text-foreground"
                   }`}
               >
                 {q}
@@ -295,12 +295,12 @@ export default function DeptViewPage() {
                   key={member.userId}
                   onClick={() => openMemberReport(member)}
                   className={`group relative flex flex-col gap-3 rounded-2xl p-5 text-left
-                    bg-muted/30 hover:bg-white/[0.06]
+                    bg-muted/30 hover:bg-foreground/6
                     border transition-all duration-200 cursor-pointer overflow-hidden
                     ${
                       isSubmitted
                         ? "border-border hover:border-violet-500/40 hover:shadow-[0_0_24px_rgba(139,92,246,0.10)]"
-                        : "border-white/[0.05] hover:border-amber-500/30"
+                        : "border-border/30 hover:border-amber-500/30"
                     }`}
                 >
                   {/* Hover stripe */}
@@ -337,7 +337,7 @@ export default function DeptViewPage() {
 
                   {/* Name */}
                   <div>
-                    <p className="text-[14px] font-semibold text-white leading-snug mb-1">
+                    <p className="text-[14px] font-semibold text-foreground leading-snug mb-1">
                       {member.userName}
                     </p>
                     <p className="text-[11px] text-muted-foreground/70">

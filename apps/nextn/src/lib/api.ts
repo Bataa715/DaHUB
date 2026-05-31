@@ -20,7 +20,22 @@ const api = axios.create({
 
 // Shared in-flight refresh promise — prevents concurrent 401s from each
 // triggering their own /auth/refresh call.
-let _refreshPromise: Promise<any> | null = null;
+let _refreshPromise: Promise<unknown> | null = null;
+
+/**
+ * Axios болон ерөнхий алдааны мессежийг аюулгүй гаргаж авна.
+ * catch блокуудад `catch (e: unknown)` гэж бичихэд хэрэглэнэ.
+ */
+export function getApiErrorMessage(e: unknown): string {
+  if (axios.isAxiosError(e)) {
+    return (
+      (e.response?.data as { message?: string } | undefined)?.message ??
+      e.message
+    );
+  }
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
 
 // Response interceptor — silent token refresh on 401
 api.interceptors.response.use(
@@ -51,7 +66,7 @@ api.interceptors.response.use(
               });
           }
           // [N-2] No body needed — browser sends HttpOnly refreshToken cookie automatically
-          const refreshRes = await _refreshPromise;
+          const refreshRes = await _refreshPromise as { data?: { user?: unknown } };
           // Update the user display cookie from the refresh response
           const freshUser = refreshRes.data?.user;
           if (freshUser) {
@@ -186,7 +201,7 @@ export const usersApi = {
     return response.data;
   },
 
-  update: async (id: string, data: any) => {
+  update: async (id: string, data: Record<string, unknown>) => {
     const response = await api.patch(`/users/${id}`, data);
     return response.data;
   },
@@ -262,7 +277,7 @@ export const departmentsApi = {
     return response.data;
   },
 
-  update: async (id: string, data: any) => {
+  update: async (id: string, data: Record<string, unknown>) => {
     const response = await api.patch(`/departments/${id}`, data);
     return response.data;
   },
@@ -318,18 +333,18 @@ export const tailanApi = {
   saveDraft: async (data: {
     year: number;
     quarter: number;
-    plannedTasks: any[];
-    dynamicSections: any[];
+    plannedTasks: unknown[];
+    dynamicSections: unknown[];
     otherWork?: string;
-    teamActivities: any[];
-    section2Tasks?: any[];
-    section1Dashboards?: any[];
-    section3AutoTasks?: any[];
-    section3Dashboards?: any[];
-    section4Trainings?: any[];
+    teamActivities: unknown[];
+    section2Tasks?: unknown[];
+    section1Dashboards?: unknown[];
+    section3AutoTasks?: unknown[];
+    section3Dashboards?: unknown[];
+    section4Trainings?: unknown[];
     section4KnowledgeText?: string;
-    section5Tasks?: any[];
-    section6Activities?: any[];
+    section5Tasks?: unknown[];
+    section6Activities?: unknown[];
     section7Text?: string;
     status?: string;
   }) => {
@@ -396,10 +411,10 @@ export const tailanApi = {
   generateDeptWord: async (data: {
     year: number;
     quarter: number;
-    tasks: any[];
-    sections: any[];
-    otherEntries: any[];
-    activities: any[];
+    tasks: unknown[];
+    sections: unknown[];
+    otherEntries: unknown[];
+    activities: unknown[];
     rawSections?: Record<string, unknown>;
   }): Promise<Blob> => {
     const response = await api.post("/tailan/dept/generate-word", data, {
@@ -659,7 +674,7 @@ export const pythonToolApi = {
     endDate?: string,
     filters?: Record<string, string>,
     signal?: AbortSignal,
-  ): Promise<{ columns: string[]; rows: any[][]; totalCount: number }> => {
+  ): Promise<{ columns: string[]; rows: unknown[][]; totalCount: number }> => {
     const res = await api.post(
       "/python-api/preview",
       {
@@ -670,7 +685,7 @@ export const pythonToolApi = {
       },
       { signal },
     );
-    return res.data as { columns: string[]; rows: any[][]; totalCount: number };
+    return res.data as { columns: string[]; rows: unknown[][]; totalCount: number };
   },
 
   // ── Admin ─────────────────────────────────────────────────────────────────
@@ -820,25 +835,14 @@ export interface RiskCurrentRow {
   indicatorValue: number | null;
 }
 
-export const riskApi = {
-  /** Oracle-аас татаж current-д хадгалах */
-  branchRiskass: async (args: {
-    pDate: string;
-    pDateBeg: string;
-    branchIds?: number[];
-  }): Promise<{
-    pDate: string;
-    pDateBeg: string;
-    branchCount: number;
-    rowCount: number;
-    failed: { branchId: number; error: string }[];
-    rows: RiskCurrentRow[];
-  }> => {
-    const res = await api.post(`/risk-assessment/branch-riskass`, args);
-    return res.data;
-  },
+export interface RiskWorkSession {
+  workDate: string;
+  rowCount: number;
+  hasIndicators: boolean;
+}
 
-  /** Current table-аас бүгдийг уншина (oracle мөрүүд + manual indicator мөрүүд) */
+export const riskApi = {
+  /** Current table-аас бүгдийг уншина (өгөгдлийн мөрүүд + manual indicator мөрүүд) */
   getCurrent: async (): Promise<{
     pDate: string;
     pDateBeg: string;
@@ -850,12 +854,85 @@ export const riskApi = {
     return res.data;
   },
 
-  /** Нэг Oracle мөрийн RESULT утгыг гараар засах */
-  overrideBranchRiskassRow: async (
+  // ── Realtime (Хянах) ────────────────────────────────────────────────────
+
+  /** risk_realtime дахь өдрүүдийн жагсаалт (in-flight deduplication — MonitorTab + WorkTab зэрэг дуудна) */
+  listRealtimeDates: (() => {
+    let _inflight: Promise<string[]> | null = null;
+    return async (): Promise<string[]> => {
+      if (_inflight) return _inflight;
+      _inflight = api
+        .get(`/risk-assessment/realtime/dates`)
+        .then((res) => res.data as string[])
+        .finally(() => {
+          _inflight = null;
+        });
+      return _inflight;
+    };
+  })(),
+
+  /** Realtime хамгийн сүүлийн буюу тодорхой өдрийн өгөгдөл */
+  getRealtime: async (
+    date?: string,
+  ): Promise<{
+    fetchedDate: string;
+    rows: RiskCurrentRow[];
+    manualMap: Record<string, Record<string, number>>;
+  }> => {
+    const res = await api.get(`/risk-assessment/realtime`, {
+      params: date ? { date } : {},
+    });
+    return res.data;
+  },
+
+  // ── Work sessions (Хийх) ────────────────────────────────────────────────
+
+  /** Ажлын хуваарь байгаа өдрүүдийн жагсаалт */
+  listWorkSessions: async (): Promise<RiskWorkSession[]> => {
+    const res = await api.get(`/risk-assessment/work`);
+    return res.data;
+  },
+
+  /** risk_realtime-ийн тухайн өдрийн мөрүүдийг work session-д ачааллах */
+  loadWorkSession: async (
+    workDate: string,
+  ): Promise<{ loaded: number; alreadyExists: boolean }> => {
+    const res = await api.post(`/risk-assessment/work/load`, { workDate });
+    return res.data;
+  },
+
+  /** Work session-ийн өгөгдөл авах */
+  getWorkSession: async (
+    workDate: string,
+  ): Promise<{
+    workDate: string;
+    rows: RiskCurrentRow[];
+    manualMap: Record<string, Record<string, number>>;
+  }> => {
+    const res = await api.get(`/risk-assessment/work/${workDate}`);
+    return res.data;
+  },
+
+  /** Work session дотор аудиторын үнэлэмж хадгалах */
+  upsertWorkSessionIndicator: async (
+    workDate: string,
+    args: { branchId: string; indicatorId: string; value: number },
+  ): Promise<void> => {
+    await api.put(`/risk-assessment/work/${workDate}/indicator`, args);
+  },
+
+  /** Work session-ийг risk_assessment_current-д нэгтгэх */
+  finalizeWorkSession: async (workDate: string): Promise<RiskHistoryEntry> => {
+    const res = await api.post(`/risk-assessment/work/${workDate}/finalize`);
+    return res.data;
+  },
+
+  /** Нэг мөрийн RESULT утгыг ClickHouse-д засах */
+  overrideCurrentRow: async (
     rowKey: string,
     manualResult: string,
   ): Promise<void> => {
-    await api.patch(`/risk-assessment/branch-riskass/row`, {
+    await api.patch(`/risk-assessment/current/row`, {
       rowKey,
       manualResult,
     });
@@ -909,10 +986,20 @@ export const riskApi = {
     await api.delete(`/risk-assessment/history/${id}`);
   },
 
+  /** risk_realtime-ийн өгөгдлийг risk_assessment_current-д ачааллах */
+  loadRealtimeToCurrent: async (date: string): Promise<{ loaded: number }> => {
+    const res = await api.post(`/risk-assessment/current/load-realtime`, {
+      date,
+    });
+    return res.data;
+  },
+
   // ── Indicator holds ───────────────────────────────────────────────────────
 
   /** Тухайн сарын hold жагсаалтыг авах (period = "YYYY-MM") */
-  listHolds: async (period: string): Promise<{ indicatorId: string; isHeld: number }[]> => {
+  listHolds: async (
+    period: string,
+  ): Promise<{ indicatorId: string; isHeld: number }[]> => {
     const res = await api.get(`/risk-assessment/holds`, { params: { period } });
     return res.data ?? [];
   },

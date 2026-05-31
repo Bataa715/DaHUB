@@ -39,7 +39,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import Link from "next/link";
-import { pythonToolApi, usersApi, PythonToolAdmin, FilterDef } from "@/lib/api";
+import { pythonToolApi, usersApi, getApiErrorMessage, PythonToolAdmin, FilterDef } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Shared constants ──────────────────────────────────────────────────────────
@@ -59,8 +59,8 @@ const DATE_MODE_META = {
   none: {
     label: "Огноогүй",
     Icon: MinusCircle,
-    color: "text-slate-400",
-    bg: "bg-slate-500/10 border-slate-500/20",
+    color: "text-muted-foreground",
+    bg: "bg-muted/30 border-border/30",
   },
   single: {
     label: "Нэг огноо",
@@ -193,10 +193,10 @@ function CodeEditor({
     }
   };
   return (
-    <div className="relative flex overflow-hidden rounded-xl border border-slate-700 bg-[#0d1117] font-mono text-xs leading-5">
+    <div className="relative flex overflow-hidden rounded-xl border border-border bg-background font-mono text-xs leading-5">
       <div
         ref={lnRef}
-        className="select-none overflow-hidden border-r border-slate-800 bg-[#161b22] px-3 py-3 text-right text-slate-600"
+        className="select-none overflow-hidden border-r border-border bg-[#161b22] px-3 py-3 text-right text-muted-foreground/40"
         style={{ minWidth: "3rem" }}
         aria-hidden
       >
@@ -214,7 +214,7 @@ function CodeEditor({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         spellCheck={false}
-        className="flex-1 resize-none bg-transparent py-3 pl-3 pr-3 text-slate-200 outline-none placeholder:text-slate-700"
+        className="flex-1 resize-none bg-transparent py-3 pl-3 pr-3 text-foreground outline-none placeholder:text-muted-foreground/30"
         style={{ minHeight, lineHeight: "1.25rem", tabSize: 4 }}
       />
     </div>
@@ -258,24 +258,24 @@ function FiltersEditor({
             value={f.key}
             onChange={(e) => set(i, "key", e.target.value)}
             placeholder="key"
-            className="h-8 text-xs bg-slate-900 border-slate-700 flex-1"
+            className="h-8 text-xs bg-background border-border flex-1"
           />
           <Input
             value={f.label}
             onChange={(e) => set(i, "label", e.target.value)}
             placeholder="Нэр"
-            className="h-8 text-xs bg-slate-900 border-slate-700 flex-1"
+            className="h-8 text-xs bg-background border-border flex-1"
           />
           <Input
             value={f.placeholder ?? ""}
             onChange={(e) => set(i, "placeholder", e.target.value)}
             placeholder="Hint"
-            className="h-8 text-xs bg-slate-900 border-slate-700 flex-1"
+            className="h-8 text-xs bg-background border-border flex-1"
           />
           <button
             type="button"
             onClick={() => remove(i)}
-            className="p-1.5 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+            className="p-1.5 rounded text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -284,7 +284,7 @@ function FiltersEditor({
       <button
         type="button"
         onClick={add}
-        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 py-1"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1"
       >
         <Plus className="w-3.5 h-3.5" /> Шүүлтүүр нэмэх
       </button>
@@ -389,7 +389,7 @@ export default function AdminReportsPage() {
         usersApi.getAll(),
         pythonToolApi.adminGetPermissions(),
       ]);
-      setPUsers(users.filter((u: any) => u.isActive !== false));
+      setPUsers(users.filter((u: { isActive?: boolean }) => u.isActive !== false));
       setPPermissions(perms);
     } catch {
       toast({
@@ -554,10 +554,10 @@ export default function AdminReportsPage() {
       }
       closePanel();
       loadPy();
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: "Хадгалахад алдаа",
-        description: e?.response?.data?.message ?? e?.message,
+        description: getApiErrorMessage(e),
         variant: "destructive",
       });
     } finally {
@@ -604,10 +604,10 @@ export default function AdminReportsPage() {
     setPyTools(reordered); // optimistic
     try {
       await pythonToolApi.adminReorder(reordered.map((t) => t.id));
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: "Дарааллыг хадгалж чадсангүй",
-        description: e?.response?.data?.message ?? e?.message,
+        description: getApiErrorMessage(e),
         variant: "destructive",
       });
       loadPy(); // restore from server
@@ -628,7 +628,7 @@ export default function AdminReportsPage() {
           <span className="text-border">/</span>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-violet-600 flex items-center justify-center shadow-md">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-foreground" />
             </div>
             <span className="font-semibold text-foreground">
               Тайлан татах - Удирдах
@@ -638,7 +638,7 @@ export default function AdminReportsPage() {
             {pageTab === "templates" && (
               <button
                 onClick={openCreate}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-foreground text-sm font-medium transition-colors"
               >
                 <Plus className="w-4 h-4" /> Шинэ тайлан
               </button>
@@ -730,21 +730,21 @@ export default function AdminReportsPage() {
                         <div
                           className={`w-10 h-10 rounded-lg bg-gradient-to-br ${t.color} shrink-0 flex items-center justify-center shadow`}
                         >
-                          <Code2 className="w-5 h-5 text-white" />
+                          <Code2 className="w-5 h-5 text-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm truncate">
                               {t.name}
                             </span>
-                            <code className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-violet-300 font-mono">
+                            <code className="text-xs px-1.5 py-0.5 rounded bg-muted text-violet-300 font-mono">
                               /python-api/run/{t.apiPath}
                             </code>
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 font-mono">
                               Python
                             </span>
                             {!t.isActive && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
                                 Идэвхгүй
                               </span>
                             )}
@@ -781,7 +781,7 @@ export default function AdminReportsPage() {
                               onClick={() => movePy(t.id, -1)}
                               disabled={idx === 0}
                               title="Дээш"
-                              className="p-1 rounded text-slate-400 hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
                             </button>
@@ -789,7 +789,7 @@ export default function AdminReportsPage() {
                               onClick={() => movePy(t.id, 1)}
                               disabled={idx === pyTools.length - 1}
                               title="Доош"
-                              className="p-1 rounded text-slate-400 hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />
                             </button>
@@ -797,7 +797,7 @@ export default function AdminReportsPage() {
                           <button
                             onClick={() => handleTogglePy(t)}
                             disabled={toggling === t.id}
-                            className={`p-2 rounded-lg transition-colors ${t.isActive ? "text-emerald-400 hover:bg-emerald-500/10" : "text-slate-500 hover:bg-slate-500/10"}`}
+                            className={`p-2 rounded-lg transition-colors ${t.isActive ? "text-emerald-400 hover:bg-emerald-500/10" : "text-muted-foreground/60 hover:bg-muted/30"}`}
                           >
                             {toggling === t.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -809,7 +809,7 @@ export default function AdminReportsPage() {
                           </button>
                           <button
                             onClick={() => openEditPy(t)}
-                            className="p-2 rounded-lg text-slate-400 hover:text-foreground hover:bg-accent transition-colors"
+                            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -818,7 +818,7 @@ export default function AdminReportsPage() {
                               setDeletePyTarget(t);
                               setConfirmDelete(false);
                             }}
-                            className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            className="p-2 rounded-lg text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -838,7 +838,7 @@ export default function AdminReportsPage() {
             {pLoading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-                <span className="ml-3 text-sm text-slate-400">
+                <span className="ml-3 text-sm text-muted-foreground">
                   Ачаалж байна...
                 </span>
               </div>
@@ -878,13 +878,13 @@ export default function AdminReportsPage() {
                                 color: t.color,
                               })
                             }
-                            className="group text-left bg-card border border-border hover:border-slate-500/60 rounded-xl p-4 transition-all hover:bg-accent"
+                            className="group text-left bg-card border border-border hover:border-border/60 rounded-xl p-4 transition-all hover:bg-accent"
                           >
                             <div className="flex items-start gap-3 mb-3">
                               <div
                                 className={`w-9 h-9 rounded-lg bg-gradient-to-br ${t.color} flex items-center justify-center shrink-0`}
                               >
-                                <Code2 className="w-4 h-4 text-white" />
+                                <Code2 className="w-4 h-4 text-foreground" />
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-sm truncate">
@@ -896,7 +896,7 @@ export default function AdminReportsPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                              <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                                 <div
                                   className={`h-full bg-gradient-to-r ${t.color} transition-all`}
                                   style={{ width: `${pct}%` }}
@@ -925,7 +925,7 @@ export default function AdminReportsPage() {
           open={!!pSelectedTemplate}
           onOpenChange={(o) => !o && setPSelectedTemplate(null)}
         >
-          <SheetContent className="w-full sm:max-w-md bg-slate-950 border-slate-800 p-0 flex flex-col">
+          <SheetContent className="w-full sm:max-w-md bg-background border-border p-0 flex flex-col">
             <SheetTitle className="sr-only">
               {pSelectedTemplate?.name ?? "Эрх удирдах"}
             </SheetTitle>
@@ -940,29 +940,33 @@ export default function AdminReportsPage() {
                     <div
                       className={`bg-gradient-to-br ${pSelectedTemplate.color} p-5`}
                     >
-                      <p className="text-white/70 text-xs font-medium uppercase tracking-widest mb-1">
+                      <p className="text-foreground/70 text-xs font-medium uppercase tracking-widest mb-1">
                         Эрх удирдах
                       </p>
-                      <p className="text-white text-lg font-semibold leading-snug">
+                      <p className="text-foreground text-lg font-semibold leading-snug">
                         {pSelectedTemplate.name}
                       </p>
                       <div className="flex gap-4 mt-3">
                         <div className="text-center">
-                          <p className="text-white text-xl font-bold leading-none">
+                          <p className="text-foreground text-xl font-bold leading-none">
                             {withAccess.length}
                           </p>
-                          <p className="text-white/60 text-xs mt-0.5">эрхтэй</p>
+                          <p className="text-foreground/60 text-xs mt-0.5">
+                            эрхтэй
+                          </p>
                         </div>
-                        <div className="w-px bg-white/20" />
+                        <div className="w-px bg-foreground/20" />
                         <div className="text-center">
-                          <p className="text-white text-xl font-bold leading-none">
+                          <p className="text-foreground text-xl font-bold leading-none">
                             {withoutAccess.length}
                           </p>
-                          <p className="text-white/60 text-xs mt-0.5">эрхгүй</p>
+                          <p className="text-foreground/60 text-xs mt-0.5">
+                            эрхгүй
+                          </p>
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 border-b border-slate-800 bg-slate-900">
+                    <div className="grid grid-cols-2 border-b border-border bg-background">
                       {(["with", "without"] as const).map((tab) => (
                         <button
                           key={tab}
@@ -970,7 +974,7 @@ export default function AdminReportsPage() {
                             setPSheetTab(tab);
                             setPSelectedUsers(new Set());
                           }}
-                          className={`py-2.5 text-xs font-medium transition-colors border-b-2 ${pSheetTab === tab ? "border-white text-white" : "border-transparent text-slate-500 hover:text-slate-300"}`}
+                          className={`py-2.5 text-xs font-medium transition-colors border-b-2 ${pSheetTab === tab ? "border-white text-foreground" : "border-transparent text-muted-foreground/60 hover:text-foreground/80"}`}
                         >
                           {tab === "with"
                             ? `Эрхтэй (${withAccess.length})`
@@ -981,12 +985,12 @@ export default function AdminReportsPage() {
                     {pSheetTab === "with" && (
                       <ScrollArea className="flex-1">
                         {withAccess.length === 0 ? (
-                          <div className="text-center py-16 text-slate-600">
+                          <div className="text-center py-16 text-muted-foreground/40">
                             <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
                             <p className="text-sm">Эрхтэй хэрэглэгч байхгүй</p>
                             <button
                               onClick={() => setPSheetTab("without")}
-                              className="mt-2 text-xs text-slate-400 hover:text-white underline underline-offset-2"
+                              className="mt-2 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
                             >
                               Эрх олгох
                             </button>
@@ -999,21 +1003,21 @@ export default function AdminReportsPage() {
                               return (
                                 <div
                                   key={u.id}
-                                  className="flex items-center justify-between px-5 py-3 group hover:bg-slate-900/60"
+                                  className="flex items-center justify-between px-5 py-3 group hover:bg-background/60"
                                 >
                                   <div className="flex items-center gap-3 min-w-0">
                                     <div
-                                      className={`w-8 h-8 rounded-lg bg-gradient-to-br ${pSelectedTemplate.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}
+                                      className={`w-8 h-8 rounded-lg bg-gradient-to-br ${pSelectedTemplate.color} flex items-center justify-center text-foreground text-xs font-bold shrink-0`}
                                     >
                                       {(u.name || u.userId || "?")
                                         .charAt(0)
                                         .toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
-                                      <p className="text-sm font-medium text-white truncate">
+                                      <p className="text-sm font-medium text-foreground truncate">
                                         {u.name || u.userId}
                                       </p>
-                                      <p className="text-xs text-slate-500 truncate">
+                                      <p className="text-xs text-muted-foreground/60 truncate">
                                         {u.department}
                                       </p>
                                     </div>
@@ -1027,7 +1031,7 @@ export default function AdminReportsPage() {
                                     <button
                                       onClick={() => revokeUser(u.id)}
                                       disabled={busy}
-                                      className="text-xs text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2 disabled:opacity-40"
+                                      className="text-xs text-muted-foreground/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2 disabled:opacity-40"
                                     >
                                       {busy ? (
                                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -1045,7 +1049,7 @@ export default function AdminReportsPage() {
                     )}
                     {pSheetTab === "without" && (
                       <div className="flex-1 flex flex-col overflow-hidden">
-                        <div className="px-5 py-3 border-b border-slate-800 flex gap-2">
+                        <div className="px-5 py-3 border-b border-border flex gap-2">
                           <button
                             onClick={() =>
                               setPSelectedUsers(
@@ -1053,21 +1057,21 @@ export default function AdminReportsPage() {
                               )
                             }
                             disabled={withoutAccess.length === 0}
-                            className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40"
+                            className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40"
                           >
                             Бүгдийг сонгох
                           </button>
                           <button
                             onClick={() => setPSelectedUsers(new Set())}
                             disabled={pSelectedUsers.size === 0}
-                            className="flex-1 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-lg py-1.5 transition-colors disabled:opacity-40"
+                            className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40"
                           >
                             Цэвэрлэх
                           </button>
                         </div>
                         <ScrollArea className="flex-1">
                           {withoutAccess.length === 0 ? (
-                            <div className="text-center py-16 text-slate-600">
+                            <div className="text-center py-16 text-muted-foreground/40">
                               <UserCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
                               <p className="text-sm">
                                 Бүх хэрэглэгч эрхтэй байна
@@ -1087,25 +1091,25 @@ export default function AdminReportsPage() {
                                         : next.add(u.id);
                                       setPSelectedUsers(next);
                                     }}
-                                    className={`w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-900/60 transition-colors ${selected ? "bg-slate-800/40" : ""}`}
+                                    className={`w-full flex items-center gap-3 px-5 py-3 hover:bg-background/60 transition-colors ${selected ? "bg-muted/40" : ""}`}
                                   >
                                     <div
-                                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${selected ? "bg-emerald-500 border-emerald-500" : "border-slate-600"}`}
+                                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${selected ? "bg-emerald-500 border-emerald-500" : "border-border/70"}`}
                                     >
                                       {selected && (
-                                        <Check className="w-2.5 h-2.5 text-white" />
+                                        <Check className="w-2.5 h-2.5 text-foreground" />
                                       )}
                                     </div>
-                                    <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                    <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-foreground text-xs font-bold shrink-0">
                                       {(u.name || u.userId || "?")
                                         .charAt(0)
                                         .toUpperCase()}
                                     </div>
                                     <div className="min-w-0 text-left">
-                                      <p className="text-sm font-medium text-white truncate">
+                                      <p className="text-sm font-medium text-foreground truncate">
                                         {u.name || u.userId}
                                       </p>
-                                      <p className="text-xs text-slate-500 truncate">
+                                      <p className="text-xs text-muted-foreground/60 truncate">
                                         {u.department}
                                       </p>
                                     </div>
@@ -1116,11 +1120,11 @@ export default function AdminReportsPage() {
                           )}
                         </ScrollArea>
                         {pSelectedUsers.size > 0 && (
-                          <div className="px-5 py-4 border-t border-slate-800">
+                          <div className="px-5 py-4 border-t border-border">
                             <button
                               onClick={grantSelected}
                               disabled={pGranting}
-                              className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                              className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-foreground text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                             >
                               {pGranting ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -1145,7 +1149,7 @@ export default function AdminReportsPage() {
             {logsLoading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-                <span className="ml-3 text-sm text-slate-400">
+                <span className="ml-3 text-sm text-muted-foreground">
                   Ачаалж байна...
                 </span>
               </div>
@@ -1231,15 +1235,17 @@ export default function AdminReportsPage() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+              className="bg-background border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
                   <AlertTriangle className="w-5 h-5 text-red-400" />
                 </div>
                 <div>
-                  <p className="font-semibold text-white text-sm">Устгах уу?</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="font-semibold text-foreground text-sm">
+                    Устгах уу?
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     &quot;{deletePyTarget.name}&quot; тайланг устгана
                   </p>
                 </div>
@@ -1248,13 +1254,13 @@ export default function AdminReportsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setDeletePyTarget(null)}
-                    className="flex-1 py-2 text-sm rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800"
+                    className="flex-1 py-2 text-sm rounded-lg border border-border text-foreground/80 hover:bg-muted"
                   >
                     Болих
                   </button>
                   <button
                     onClick={() => setConfirmDelete(true)}
-                    className="flex-1 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-white"
+                    className="flex-1 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-foreground"
                   >
                     Устгах
                   </button>
@@ -1270,13 +1276,13 @@ export default function AdminReportsPage() {
                         setDeletePyTarget(null);
                         setConfirmDelete(false);
                       }}
-                      className="flex-1 py-2 text-sm rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800"
+                      className="flex-1 py-2 text-sm rounded-lg border border-border text-foreground/80 hover:bg-muted"
                     >
                       Болих
                     </button>
                     <button
                       onClick={handleDeletePy}
-                      className="flex-1 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold"
+                      className="flex-1 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-foreground font-semibold"
                     >
                       Тийм, устга
                     </button>
@@ -1292,36 +1298,36 @@ export default function AdminReportsPage() {
       <Sheet open={panelOpen} onOpenChange={(o) => !o && closePanel()}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-2xl bg-slate-950 border-slate-800 p-0 flex flex-col"
+          className="w-full sm:max-w-2xl bg-background border-border p-0 flex flex-col"
         >
           <SheetTitle className="sr-only">
             {editingPy ? "Python tool засах" : "Шинэ Python tool"}
           </SheetTitle>
 
           {/* Panel header */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br from-violet-500 to-indigo-600">
-              <Code2 className="w-4 h-4 text-white" />
+              <Code2 className="w-4 h-4 text-foreground" />
             </div>
             <div>
-              <p className="font-semibold text-white text-sm">
+              <p className="font-semibold text-foreground text-sm">
                 {editingPy ? "Python tool засах" : "Шинэ Python tool"}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 FastAPI дээр ажиллах Python код
               </p>
             </div>
             <div className="ml-auto flex gap-2">
               <button
                 onClick={closePanel}
-                className="px-3 py-1.5 text-slate-400 hover:text-white text-sm transition-colors"
+                className="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm transition-colors"
               >
                 Болих
               </button>
               <button
                 onClick={handleSavePy}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-foreground text-sm font-medium disabled:opacity-50 transition-colors"
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1338,7 +1344,7 @@ export default function AdminReportsPage() {
               {/* ══ PYTHON FORM ══ */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">
+                  <Label className="text-foreground/80 text-xs">
                     Харагдах нэр *
                   </Label>
                   <Input
@@ -1347,13 +1353,13 @@ export default function AdminReportsPage() {
                       setPyForm((f) => ({ ...f, name: e.target.value }))
                     }
                     placeholder="Зээлийн тайлан"
-                    className="bg-slate-900 border-slate-700 text-white"
+                    className="bg-background border-border text-foreground"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">
+                  <Label className="text-foreground/80 text-xs">
                     API зам *{" "}
-                    <span className="text-slate-500 font-normal ml-1">
+                    <span className="text-muted-foreground/60 font-normal ml-1">
                       /python-api/run/
                       <span className="text-violet-400">
                         {pyForm.apiPath || "..."}
@@ -1371,11 +1377,11 @@ export default function AdminReportsPage() {
                       }))
                     }
                     placeholder="loan-report"
-                    className="bg-slate-900 border-slate-700 text-white font-mono"
+                    className="bg-background border-border text-foreground font-mono"
                   />
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <Label className="text-slate-300 text-xs">Тайлбар</Label>
+                  <Label className="text-foreground/80 text-xs">Тайлбар</Label>
                   <Input
                     value={pyForm.description}
                     onChange={(e) =>
@@ -1385,29 +1391,33 @@ export default function AdminReportsPage() {
                       }))
                     }
                     placeholder="Tool-ийн зориулалт"
-                    className="bg-slate-900 border-slate-700 text-white"
+                    className="bg-background border-border text-foreground"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">
+                  <Label className="text-foreground/80 text-xs">
                     Холболтын төрөл
                   </Label>
                   <Select
                     value={pyForm.connectionType}
-                    onValueChange={(v: any) =>
+                    onValueChange={(v: string) =>
                       setPyForm((f) => ({
                         ...f,
-                        connectionType: v,
+                        connectionType: v as PyFormState["connectionType"],
                         connectionConfig: DEFAULT_CONN_CONFIG[v],
                       }))
                     }
                   >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-background border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-700">
+                    <SelectContent className="bg-background border-border">
                       {Object.entries(CONNECTION_META).map(([k, v]) => (
-                        <SelectItem key={k} value={k} className="text-white">
+                        <SelectItem
+                          key={k}
+                          value={k}
+                          className="text-foreground"
+                        >
                           {v.label}
                         </SelectItem>
                       ))}
@@ -1415,21 +1425,25 @@ export default function AdminReportsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">
+                  <Label className="text-foreground/80 text-xs">
                     Гаралтын төрөл
                   </Label>
                   <Select
                     value={pyForm.outputFormat}
-                    onValueChange={(v: any) =>
-                      setPyForm((f) => ({ ...f, outputFormat: v }))
+                    onValueChange={(v: string) =>
+                      setPyForm((f) => ({ ...f, outputFormat: v as PyFormState["outputFormat"] }))
                     }
                   >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-background border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-700">
+                    <SelectContent className="bg-background border-border">
                       {Object.entries(OUTPUT_META).map(([k, v]) => (
-                        <SelectItem key={k} value={k} className="text-white">
+                        <SelectItem
+                          key={k}
+                          value={k}
+                          className="text-foreground"
+                        >
                           {v.label}
                         </SelectItem>
                       ))}
@@ -1437,19 +1451,25 @@ export default function AdminReportsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">Огноо горим</Label>
+                  <Label className="text-foreground/80 text-xs">
+                    Огноо горим
+                  </Label>
                   <Select
                     value={pyForm.dateMode}
-                    onValueChange={(v: any) =>
-                      setPyForm((f) => ({ ...f, dateMode: v }))
+                    onValueChange={(v: string) =>
+                      setPyForm((f) => ({ ...f, dateMode: v as PyFormState["dateMode"] }))
                     }
                   >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-background border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-700">
+                    <SelectContent className="bg-background border-border">
                       {Object.entries(DATE_MODE_META).map(([k, v]) => (
-                        <SelectItem key={k} value={k} className="text-white">
+                        <SelectItem
+                          key={k}
+                          value={k}
+                          className="text-foreground"
+                        >
                           {v.label}
                         </SelectItem>
                       ))}
@@ -1457,22 +1477,22 @@ export default function AdminReportsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-slate-300 text-xs">Өнгө</Label>
+                  <Label className="text-foreground/80 text-xs">Өнгө</Label>
                   <Select
                     value={pyForm.color}
                     onValueChange={(v) =>
                       setPyForm((f) => ({ ...f, color: v }))
                     }
                   >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-background border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-700">
+                    <SelectContent className="bg-background border-border">
                       {COLOR_OPTIONS.map((c) => (
                         <SelectItem
                           key={c.value}
                           value={c.value}
-                          className="text-white"
+                          className="text-foreground"
                         >
                           <span
                             className={`inline-block w-3 h-3 rounded-full bg-gradient-to-r ${c.value} mr-2`}
@@ -1486,7 +1506,7 @@ export default function AdminReportsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-slate-300 text-xs">
+                <Label className="text-foreground/80 text-xs">
                   Connection Config (JSON)
                 </Label>
                 <CodeEditor
@@ -1499,7 +1519,9 @@ export default function AdminReportsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-slate-300 text-xs">Python код *</Label>
+                <Label className="text-foreground/80 text-xs">
+                  Python код *
+                </Label>
                 <CodeEditor
                   value={pyForm.pythonCode}
                   onChange={(v) => {
@@ -1510,7 +1532,7 @@ export default function AdminReportsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-slate-300 text-xs">
+                <Label className="text-foreground/80 text-xs">
                   Нэмэлт шүүлтүүрүүд
                 </Label>
                 <FiltersEditor

@@ -70,7 +70,7 @@ export default function TailanPage() {
       <ToolPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-            <ScrollText className="w-3.5 h-3.5 text-white" />
+            <ScrollText className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("tailan_title")}
@@ -94,7 +94,7 @@ export default function TailanPage() {
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
             {t("tailan_title")}
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed">
@@ -108,7 +108,7 @@ export default function TailanPage() {
           <button
             onClick={() => router.push("/tools/tailan/mine")}
             className="group relative flex items-center gap-4 rounded-2xl p-5 text-left
-              bg-muted/30 hover:bg-white/[0.06]
+              bg-muted/30 hover:bg-foreground/6
               border border-border hover:border-blue-500/40
               shadow-[0_1px_1px_rgba(0,0,0,0.3)]
               hover:shadow-[0_0_28px_rgba(59,130,246,0.12)]
@@ -130,7 +130,7 @@ export default function TailanPage() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <h2 className="text-[15px] font-semibold text-white leading-tight">
+                <h2 className="text-[15px] font-semibold text-foreground leading-tight">
                   {t("tailan_myReport")}
                 </h2>
                 <span className="text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/20 rounded-full px-2 py-0.5">
@@ -150,7 +150,7 @@ export default function TailanPage() {
             <button
               onClick={() => router.push("/tools/tailan/department")}
               className="group relative flex items-center gap-4 rounded-2xl p-5 text-left
-                bg-muted/30 hover:bg-white/[0.06]
+                bg-muted/30 hover:bg-foreground/6
                 border border-border hover:border-emerald-500/40
                 shadow-[0_1px_1px_rgba(0,0,0,0.3)]
                 hover:shadow-[0_0_28px_rgba(16,185,129,0.10)]
@@ -171,7 +171,7 @@ export default function TailanPage() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <h2 className="text-[15px] font-semibold text-white leading-tight">
+                  <h2 className="text-[15px] font-semibold text-foreground leading-tight">
                     {t("tailan_deptReport")}
                   </h2>
                   <span className="text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-full px-2 py-0.5">
@@ -192,7 +192,7 @@ export default function TailanPage() {
             <button
               onClick={() => router.push("/tools/tailan/dept-view")}
               className="group relative flex items-center gap-4 rounded-2xl p-5 text-left
-                bg-muted/30 hover:bg-white/[0.06]
+                bg-muted/30 hover:bg-foreground/6
                 border border-border hover:border-violet-500/40
                 shadow-[0_1px_1px_rgba(0,0,0,0.3)]
                 hover:shadow-[0_0_28px_rgba(139,92,246,0.10)]
@@ -213,7 +213,7 @@ export default function TailanPage() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <h2 className="text-[15px] font-semibold text-white leading-tight">
+                  <h2 className="text-[15px] font-semibold text-foreground leading-tight">
                     {t("tailan_membersView")}
                   </h2>
                   <span className="text-[10px] font-medium bg-violet-500/15 text-violet-300 border border-violet-500/20 rounded-full px-2 py-0.5">

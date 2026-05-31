@@ -93,7 +93,7 @@ export default function ReportsPage() {
           <span className="text-muted-foreground/40">/</span>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md">
-              <Code2 className="w-3.5 h-3.5 text-white" />
+              <Code2 className="w-3.5 h-3.5 text-foreground" />
             </div>
             <span className="font-semibold text-foreground">
               {t("toolReportsTitle")}
@@ -192,7 +192,7 @@ export default function ReportsPage() {
                       className="group cursor-pointer h-full"
                       onClick={() => router.push(href)}
                     >
-                      <div className="relative h-full flex flex-col rounded-2xl border border-border bg-muted/30 overflow-hidden transition-all duration-200 group-hover:border-white/[0.15] group-hover:bg-white/[0.05] group-hover:shadow-xl group-hover:shadow-black/40">
+                      <div className="relative h-full flex flex-col rounded-2xl border border-border bg-muted/30 overflow-hidden transition-all duration-200 group-hover:border-border/60 group-hover:bg-foreground/5 group-hover:shadow-xl group-hover:shadow-black/40">
                         <div
                           className={`h-1 w-full bg-gradient-to-r ${tool.color}`}
                         />
@@ -201,7 +201,7 @@ export default function ReportsPage() {
                             <div
                               className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-lg`}
                             >
-                              <Code2 className="w-6 h-6 text-white" />
+                              <Code2 className="w-6 h-6 text-foreground" />
                             </div>
                             <span className="text-[10px] px-1.5 py-0.5 rounded font-mono border bg-violet-500/10 text-violet-400 border-violet-500/20">
                               Python
@@ -226,7 +226,7 @@ export default function ReportsPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="absolute bottom-4 right-4 w-7 h-7 rounded-lg bg-white/0 group-hover:bg-muted/50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                        <div className="absolute bottom-4 right-4 w-7 h-7 rounded-lg bg-transparent group-hover:bg-muted/50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                           <Download className="w-3.5 h-3.5 text-muted-foreground" />
                         </div>
                       </div>

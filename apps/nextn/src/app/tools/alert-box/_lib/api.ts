@@ -1,42 +1,36 @@
 // DaHUB-ийн өөрийн backend-ийг ашиглана — тусдаа API URL хэрэггүй
-import Cookies from "js-cookie";
 
 const AB_API = process.env.NEXT_PUBLIC_API_URL;
 if (!AB_API) {
   throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
 }
 
-function getToken() {
-  if (typeof window === "undefined") return null;
-  return window.location.pathname.startsWith("/admin")
-    ? Cookies.get("adminToken")
-    : Cookies.get("token");
-}
-
+// HttpOnly cookie автоматаар дамжих тул credentials: 'include' хангалттай.
+// Гар аргаар Bearer token тохируулах шаардлагагүй.
 async function req(path: string, opts?: RequestInit) {
-  const token = getToken();
   const headers: Record<string, string> = {
     ...(opts?.headers as Record<string, string>),
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${AB_API}${path}`, {
     cache: "no-store",
+    credentials: "include",
     ...opts,
     headers,
   });
   const data = await res.json();
   if (!res.ok || data?.error) {
-    let msg = data?.message || data?.error || "Request failed";
+    let msg = data?.message || data?.error || "Хүсэлт амжилтгүй боллоо";
     if (data?.table) msg += ` [хүснэгт: ${data.table}]`;
     throw new Error(msg);
   }
   return data;
 }
 
-export async function abFetchAlerts(minDashboards = 2, limit = 200) {
+export async function abFetchAlerts(minDashboards = 2, limit = 200, signal?: AbortSignal) {
   return req(
     `/oracle/search/alerts?min_dashboards=${minDashboards}&limit=${limit}`,
+    { signal },
   );
 }
 

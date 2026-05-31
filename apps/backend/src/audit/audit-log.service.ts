@@ -13,7 +13,7 @@ export interface AuditLogEntry {
   userAgent?: string;
   status: "success" | "failure";
   errorMessage?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 @Injectable()

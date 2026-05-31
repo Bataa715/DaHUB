@@ -50,8 +50,8 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
         password,
         connectString,
         poolMin: 0,
-        poolMax: 10,
-        poolIncrement: 1,
+        poolMax: 15,      // Promise.allSettled нь 12 dashboard зэрэг асуух тул 15 хангалттай
+        poolIncrement: 2,
         poolTimeout: 60,
         connectTimeout: 10,
       });
@@ -82,6 +82,38 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
 
   isConnected(): boolean {
     return this.pool !== null;
+  }
+
+  isAuthFailed(): boolean {
+    return this.authFailed;
+  }
+
+  /**
+   * .env файлд зөв credential тохируулсны дараа admin дуудаж болно.
+   * authFailed тугийг дахин тохируулж, pool-г дахин үүсгэнэ.
+   */
+  async retryConnect(): Promise<{ success: boolean; message: string }> {
+    const user = process.env.ORACLE_USER;
+    const password = process.env.ORACLE_PASSWORD;
+    const connectString = process.env.ORACLE_CONNECT_STRING;
+
+    if (!user || !password || !connectString) {
+      return { success: false, message: "Oracle credential тохируулаагүй байна (.env файл шалгана уу)" };
+    }
+
+    if (this.pool) {
+      try { await this.pool.close(0); } catch (_) {}
+      this.pool = null;
+    }
+
+    this.authFailed = false;
+    await this.initPool(user, password, connectString);
+
+    if (this.pool) {
+      return { success: true, message: "Oracle холболт амжилттай сэргэлээ" };
+    } else {
+      return { success: false, message: this.authFailed ? "Нэвтрэх мэдээлэл буруу байна (ORA auth error)" : "Oracle pool үүсгэхэд алдаа гарлаа" };
+    }
   }
 
   async query<T = Record<string, any>>(

@@ -59,8 +59,8 @@ function AdminSidebar({
           whileHover={{ x: 2 }}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
             active
-              ? "bg-slate-800 text-white"
-              : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
           }`}
         >
           <span className="flex-1">{item.label}</span>
@@ -70,7 +70,7 @@ function AdminSidebar({
             </span>
           )}
           {active && (
-            <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
           )}
         </motion.div>
       </Link>
@@ -78,15 +78,17 @@ function AdminSidebar({
   };
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-slate-950 border-r border-slate-800/60 min-h-screen sticky top-0 z-30">
+    <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-background border-r border-border/50 min-h-screen sticky top-0 z-30">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-700/50">
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-border/50">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-          <Shield className="w-5 h-5 text-white" />
+          <Shield className="w-5 h-5 text-foreground" />
         </div>
         <div>
-          <p className="text-xs text-slate-500 leading-none mb-0.5">DaHUB</p>
-          <p className="text-sm font-bold text-white leading-none">
+          <p className="text-xs text-muted-foreground/60 leading-none mb-0.5">
+            DaHUB
+          </p>
+          <p className="text-sm font-bold text-foreground leading-none">
             Admin Panel
           </p>
         </div>
@@ -108,8 +110,8 @@ function AdminSidebar({
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-slate-700/50">
-        <p className="text-xs text-slate-600">DaHUB</p>
+      <div className="px-5 py-4 border-t border-border/50">
+        <p className="text-xs text-muted-foreground/40">DaHUB</p>
       </div>
     </aside>
   );
@@ -133,7 +135,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950">
+    <div className="flex min-h-screen bg-background">
       <AdminSidebar
         pathname={pathname}
         isSuperAdmin={mounted ? !!user?.isSuperAdmin : false}

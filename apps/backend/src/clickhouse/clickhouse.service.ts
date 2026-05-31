@@ -55,7 +55,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       const result = await this.client.query({
         query: "SELECT version() as version",
       });
-      const data: any = await result.json();
+      const data = await result.json() as { data: { version: string }[] };
       this.logger.log(`ClickHouse version: ${data.data[0].version}`);
 
       // Initialize schema AND provision audit_app / audit_acl (needs admin rights)
@@ -88,8 +88,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
 
       // ── 3. ACL client = runtime client (audit_app handles everything) ───────────
       this.aclClient = this.client;
-    } catch (error: any) {
-      this.logger.error("Failed to connect to ClickHouse:", error.message);
+    } catch (error: unknown) {
+      this.logger.error("Failed to connect to ClickHouse:", (error as Error).message);
       throw error;
     }
   }
@@ -104,19 +104,19 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   /**
    * Execute a SELECT query and return rows
    */
-  async query<T = any>(
+  async query<T = Record<string, unknown>>(
     query: string,
-    params?: Record<string, any>,
+    params?: Record<string, unknown>,
   ): Promise<T[]> {
     try {
       const result = await this.client.query({
         query,
         query_params: params,
       });
-      const data: any = await result.json();
-      return data.data as T[];
-    } catch (error: any) {
-      const msg = error?.message || error?.type || String(error);
+      const data = await result.json() as { data: T[] };
+      return data.data;
+    } catch (error: unknown) {
+      const msg = (error as Error)?.message || String(error);
       this.logger.error(`ClickHouse query error: ${msg}`);
       throw error;
     }
@@ -125,15 +125,15 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   /**
    * Insert data
    */
-  async insert(table: string, data: any[]) {
+  async insert(table: string, data: Record<string, unknown>[]) {
     try {
       await this.client.insert({
         table,
         values: data,
         format: "JSONEachRow",
       });
-    } catch (error: any) {
-      const msg = error?.message || error?.type || String(error);
+    } catch (error: unknown) {
+      const msg = (error as Error)?.message || String(error);
       this.logger.error(`ClickHouse insert error (${table}): ${msg}`);
       throw error;
     }
@@ -146,7 +146,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
    */
   async exec(
     sql: string,
-    params?: Record<string, any>,
+    params?: Record<string, unknown>,
     retries = 1,
     silent = false,
   ) {
@@ -154,19 +154,20 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.client.command({ query: sql, query_params: params });
         return;
-      } catch (error: any) {
-        const msg = error?.message || error?.type || String(error);
+      } catch (error: unknown) {
+        const e = error as { message?: string; type?: string; code?: string; stack?: string };
+        const msg = e?.message || e?.type || String(error);
         const isRetriable =
           msg.includes("ECONNRESET") ||
           msg.includes("socket hang up") ||
-          error?.code === "ECONNRESET";
+          e?.code === "ECONNRESET";
         if (isRetriable && attempt < retries) {
           this.logger.warn(`ClickHouse command retrying after: ${msg}`);
           await new Promise((r) => setTimeout(r, 500));
           continue;
         }
         if (!silent) {
-          this.logger.error(`ClickHouse command error: ${msg}`, error?.stack);
+          this.logger.error(`ClickHouse command error: ${msg}`, e?.stack);
         }
         throw error;
       }
@@ -190,17 +191,17 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   /**
    * Query system tables using the dedicated ACL client.
    */
-  async queryAcl<T = any>(
+  async queryAcl<T = Record<string, unknown>>(
     query: string,
-    params?: Record<string, any>,
+    params?: Record<string, unknown>,
   ): Promise<T[]> {
     const client = this.aclClient ?? this.client;
     try {
       const result = await client.query({ query, query_params: params });
-      const data: any = await result.json();
-      return data.data as T[];
-    } catch (error: any) {
-      const msg = error?.message || error?.type || String(error);
+      const data = await result.json() as { data: T[] };
+      return data.data;
+    } catch (error: unknown) {
+      const msg = (error as Error)?.message || String(error);
       this.logger.error(`ClickHouse ACL query error: ${msg}`);
       throw error;
     }

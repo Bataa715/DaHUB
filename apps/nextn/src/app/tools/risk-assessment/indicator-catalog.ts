@@ -14,6 +14,7 @@ import {
   computeScore,
   type IndicatorRule,
   type ScoreResult,
+  type OracleValue,
 } from "./scoring-rules";
 
 export type CatalogGroup = 1 | 2 | 3 | 4 | 5;
@@ -372,12 +373,12 @@ export type ManualMap = Record<string, Record<string, number>>;
 // manual[branchId]["s1-001"] = 3.5 ...
 
 export interface BranchInputRow {
-  SOLID?: any;
-  BRANCHID?: any;
-  BRANCHNAME?: any;
-  SUBID?: any;
-  RESULT?: any;
-  RESULT_TYPE?: any;
+  SOLID?: OracleValue;
+  BRANCHID?: OracleValue;
+  BRANCHNAME?: OracleValue;
+  SUBID?: OracleValue;
+  RESULT?: OracleValue;
+  RESULT_TYPE?: OracleValue;
 }
 
 export interface IndicatorValue {

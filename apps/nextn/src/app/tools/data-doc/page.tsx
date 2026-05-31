@@ -14,6 +14,7 @@ import {
   Code2,
 } from "lucide-react";
 import type { DatabaseSchema } from "@/lib/data-doc-types";
+import { getApiErrorMessage } from "@/lib/api";
 
 type FilterMode = "all" | "described" | "undescribed";
 
@@ -57,14 +58,19 @@ export default function DataDocPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/schema")
+    const ctrl = new AbortController();
+    fetch("/api/schema", { signal: ctrl.signal })
       .then((r) => r.json())
       .then((data: DatabaseSchema) => {
         setSchema(data);
         if (data.databases.length > 0) setSelectedDb(data.databases[0].name);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setSaveError("Схем ачаалахад алдаа гарлаа. Хуудас шинэчлэнэ үү.");
+      })
       .finally(() => setLoading(false));
+    return () => ctrl.abort();
   }, []);
 
   const startEdit = useCallback(
@@ -107,8 +113,8 @@ export default function DataDocPage() {
       const col = tbl?.columns.find((c) => c.name === editingCol.col);
       if (col) col.description = editingCol.value.trim() || "";
       setEditingCol(null);
-    } catch (err: any) {
-      setSaveError(err.message);
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : getApiErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -169,18 +175,18 @@ export default function DataDocPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <ToolPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md">
-            <Database className="w-3.5 h-3.5 text-white" />
+            <Database className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("dataDocDbLabel")}
@@ -231,7 +237,7 @@ export default function DataDocPage() {
                   />
                   <span
                     className={`text-sm font-mono font-semibold truncate ${
-                      isActive ? "text-white" : "text-muted-foreground/70"
+                      isActive ? "text-foreground" : "text-muted-foreground/70"
                     }`}
                   >
                     {db.name}
@@ -320,7 +326,7 @@ export default function DataDocPage() {
             {currentTable ? (
               <>
                 <div>
-                  <span className="font-mono font-bold text-white text-sm">
+                  <span className="font-mono font-bold text-foreground text-sm">
                     {currentTable.name}
                   </span>
                   <span className="text-muted-foreground/70 text-xs ml-2">
@@ -346,7 +352,7 @@ export default function DataDocPage() {
                         onClick={() => setFilter(f)}
                         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                           filter === f
-                            ? "bg-muted text-white"
+                            ? "bg-muted text-foreground"
                             : "text-muted-foreground/70 hover:text-foreground/80"
                         }`}
                       >
@@ -451,7 +457,7 @@ export default function DataDocPage() {
                               <button
                                 onClick={saveEdit}
                                 disabled={saving}
-                                className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-50 transition-colors"
+                                className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-cyan-600 hover:bg-cyan-500 text-foreground disabled:opacity-50 transition-colors"
                               >
                                 {saving ? t("dataDocSaving") : t("back")}
                               </button>

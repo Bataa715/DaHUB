@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { abFetchAlerts, abSearchByCif, abSearchAlertByCif } from "../_lib/api";
+import { getApiErrorMessage } from "@/lib/api";
 import {
   AlertTriangle,
   Loader2,
@@ -22,6 +23,7 @@ import {
   PieChart,
   Pie,
 } from "recharts";
+import type { TooltipContentProps } from "recharts";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -55,6 +57,17 @@ interface AlertItem {
   dashboards: AlertDashboard[];
 }
 
+interface CifDetailDashboard {
+  dashboardId: number;
+  dashboardName: string;
+  matchCount: number;
+  rows: Record<string, unknown>[];
+}
+interface CifDetail {
+  cif: string;
+  results: CifDetailDashboard[];
+}
+
 interface FailedDashboard {
   id: number;
   name: string;
@@ -68,6 +81,59 @@ interface AlertData {
   failedDashboards: FailedDashboard[];
 }
 
+function formatAmount(n: number) {
+  if (!n) return "0";
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}Т`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}М`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}К`;
+  return String(Math.round(n));
+}
+
+function Top10Tooltip({ active, payload }: TooltipContentProps) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload as AlertItem & { stdAmount: number };
+  return (
+    <div className="bg-surface-elevated border border-surface-border rounded-xl px-3 py-2.5 text-xs shadow-2xl space-y-1">
+      <p className="font-mono font-extrabold text-txt text-sm">{d.cif}</p>
+      <p className="text-txt-dim">
+        Дүн: <span className="text-amber-400 font-bold">{formatAmount(d.stdAmount)}₮</span>
+      </p>
+      {d.mlAmount > 0 && (
+        <p className="text-txt-dim">
+          ML: <span className="text-golomt-400 font-bold">+{formatAmount(d.mlAmount)}₮</span>
+        </p>
+      )}
+      <p className="text-txt-dim">
+        Гүйлгээ: <span className="text-txt font-bold">{d.totalTransactions}</span>
+      </p>
+      <p className="text-txt-dim">
+        Dashboard: <span className="text-golomt-400 font-bold">{d.dashboardCount}ш</span>
+      </p>
+    </div>
+  );
+}
+
+function SevTooltip({ active, payload }: TooltipContentProps) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
+      <p className="font-bold text-txt">{String(payload[0].name ?? "")}</p>
+      <p className="text-txt-dim">{payload[0].value} CIF</p>
+    </div>
+  );
+}
+
+function DbFreqTooltip({ active, payload }: TooltipContentProps) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload as { name: string; count: number };
+  return (
+    <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
+      <p className="font-bold text-txt">{d.name}</p>
+      <p className="text-txt-dim">{d.count} CIF</p>
+    </div>
+  );
+}
+
 export default function AlertsPage() {
   const router = useRouter();
   const { t } = useLanguage();
@@ -76,13 +142,13 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedCif, setExpandedCif] = useState<string | null>(null);
-  const [cifDetail, setCifDetail] = useState<Record<string, any> | null>(null);
+  const [cifDetail, setCifDetail] = useState<CifDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [minDash, setMinDash] = useState(2);
   const [cifSearch, setCifSearch] = useState("");
   const [cifSearchResult, setCifSearchResult] = useState<{
     loading: boolean;
-    alerts: any[];
+    alerts: AlertItem[];
     searched: boolean;
   }>({ loading: false, alerts: [], searched: false });
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,7 +167,7 @@ export default function AlertsPage() {
         const res = await abSearchAlertByCif(val.trim(), minDash);
         // Client-side exact match guard — backend may return unfiltered list
         const filtered = (res.alerts || []).filter(
-          (a: any) =>
+          (a: AlertItem) =>
             String(a.cif || "")
               .trim()
               .toLowerCase() === searchedVal,
@@ -117,22 +183,25 @@ export default function AlertsPage() {
     }, 400);
   };
 
-  const loadAlerts = async () => {
+  const loadAlerts = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError("");
     try {
-      const res = await abFetchAlerts(minDash, 10000);
+      const res = await abFetchAlerts(minDash, 10000, signal);
       setData(res);
-    } catch (e: any) {
-      setError(e?.message || t("alertNoResult"));
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      setError(getApiErrorMessage(e) || t("alertNoResult"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [minDash, t]);
 
   useEffect(() => {
-    loadAlerts();
-  }, []);
+    const ctrl = new AbortController();
+    loadAlerts(ctrl.signal);
+    return () => ctrl.abort();
+  }, [loadAlerts]);
 
   const handleExpand = async (cifId: string) => {
     if (expandedCif === cifId) {
@@ -153,19 +222,39 @@ export default function AlertsPage() {
     }
   };
 
-  const formatAmount = (n: number) => {
-    if (!n) return "0";
-    if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}Т`;
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}М`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}К`;
-    return String(Math.round(n));
-  };
-
   // ML dashboard (ID 13–16)-ийг хасваад стандарт дүнгийн тооцоолл
   const getStdAmount = (alert: AlertItem) =>
     alert.dashboards
       .filter((d) => !ML_DASH_IDS.has(d.id))
       .reduce((s, d) => s + (d.totalAmount || 0), 0);
+
+  const chartData = useMemo(() => {
+    if (!data?.alerts?.length) return null;
+    const alerts = data.alerts;
+
+    const totalTxns = alerts.reduce((s, a) => s + a.totalTransactions, 0);
+    const totalStdAmt = alerts.reduce((s, a) => s + getStdAmount(a), 0);
+    const totalMLAmt = alerts.reduce((s, a) => s + (a.mlAmount || 0), 0);
+
+    const sevMap: Record<string, number> = { "2 DB": 0, "3 DB": 0, "4 DB": 0, "5+ DB": 0 };
+    alerts.forEach((a) => {
+      if (a.dashboardCount >= 5) sevMap["5+ DB"]++;
+      else if (a.dashboardCount === 4) sevMap["4 DB"]++;
+      else if (a.dashboardCount === 3) sevMap["3 DB"]++;
+      else sevMap["2 DB"]++;
+    });
+    const sevData = Object.entries(sevMap).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
+
+    const dbFreq: Record<string, number> = {};
+    alerts.forEach((a) => a.dashboards.forEach((d) => { const k = `DB${d.id}`; dbFreq[k] = (dbFreq[k] || 0) + 1; }));
+    const dbFreqData = Object.entries(dbFreq).map(([name, count]) => ({ name, count })).sort((a, b) => Number(a.name.slice(2)) - Number(b.name.slice(2)));
+
+    const top10 = [...alerts].sort((a, b) => getStdAmount(b) - getStdAmount(a)).slice(0, 10).map((a) => ({ ...a, stdAmount: getStdAmount(a) }));
+    const reversedTop10 = [...top10].reverse();
+
+    return { totalTxns, totalStdAmt, totalMLAmt, sevData, dbFreqData, top10, reversedTop10 };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const getSeverityColor = (count: number) => {
     if (count >= 5) return "text-red-400 bg-red-500/10 border-red-500/25";
@@ -199,7 +288,7 @@ export default function AlertsPage() {
               </select>
             </div>
             <button
-              onClick={loadAlerts}
+              onClick={() => loadAlerts()}
               disabled={loading}
               className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50"
             >
@@ -318,7 +407,7 @@ export default function AlertsPage() {
                               </h3>
                               <p className="text-xs text-txt-dim mt-0.5">
                                 {alert.dashboards
-                                  .map((d: any) => `DB${d.id}`)
+                                  .map((d) => `DB${d.id}`)
                                   .join(", ")}
                               </p>
                             </div>
@@ -356,7 +445,7 @@ export default function AlertsPage() {
                         {expandedCif === alert.cif && (
                           <div className="border-t border-surface-border p-5 bg-surface-elevated/30">
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-3">
-                              {alert.dashboards.map((d: any) => (
+                              {alert.dashboards.map((d) => (
                                 <div
                                   key={d.id}
                                   className="bg-surface-card rounded-lg border border-surface-border p-3"
@@ -394,7 +483,7 @@ export default function AlertsPage() {
                             )}
                             {cifDetail?.results && (
                               <div className="space-y-2 mt-2">
-                                {cifDetail.results.map((dr: any) => (
+                                {cifDetail.results.map((dr: CifDetailDashboard) => (
                                   <details
                                     key={dr.dashboardId}
                                     className="bg-surface-card rounded-lg border border-surface-border overflow-hidden"
@@ -425,7 +514,7 @@ export default function AlertsPage() {
                                         </thead>
                                         <tbody>
                                           {dr.rows.map(
-                                            (row: any, ri: number) => (
+                                            (row, ri: number) => (
                                               <tr
                                                 key={ri}
                                                 className="border-t border-surface-border hover:bg-surface-elevated/30 text-xs"
@@ -434,7 +523,7 @@ export default function AlertsPage() {
                                                   {ri + 1}
                                                 </td>
                                                 {Object.values(row).map(
-                                                  (val: any, ci: number) => (
+                                                  (val, ci: number) => (
                                                     <td
                                                       key={ci}
                                                       className="px-3 py-2 text-txt whitespace-nowrap"
@@ -474,62 +563,14 @@ export default function AlertsPage() {
               ) : null
             ) : (
               <>
-                {data.alerts.length > 0 &&
-                  (() => {
-                    const totalTxns = data.alerts.reduce(
-                      (s, a) => s + a.totalTransactions,
-                      0,
-                    );
-                    const totalStdAmt = data.alerts.reduce(
-                      (s, a) => s + getStdAmount(a),
-                      0,
-                    );
-                    const totalMLAmt = data.alerts.reduce(
-                      (s, a) => s + (a.mlAmount || 0),
-                      0,
-                    );
-
-                    const sevMap: Record<string, number> = {
-                      "2 DB": 0,
-                      "3 DB": 0,
-                      "4 DB": 0,
-                      "5+ DB": 0,
-                    };
-                    data.alerts.forEach((a) => {
-                      if (a.dashboardCount >= 5) sevMap["5+ DB"]++;
-                      else if (a.dashboardCount === 4) sevMap["4 DB"]++;
-                      else if (a.dashboardCount === 3) sevMap["3 DB"]++;
-                      else sevMap["2 DB"]++;
-                    });
-                    const sevData = Object.entries(sevMap)
-                      .filter(([, v]) => v > 0)
-                      .map(([name, value]) => ({ name, value }));
+                {chartData && (() => {
+                    const { totalTxns, totalStdAmt, totalMLAmt, sevData, dbFreqData, top10, reversedTop10 } = chartData;
                     const SEV_COLORS: Record<string, string> = {
                       "2 DB": "#60a5fa",
                       "3 DB": "#fbbf24",
                       "4 DB": "#f97316",
                       "5+ DB": "#f43f5e",
                     };
-
-                    const dbFreq: Record<string, number> = {};
-                    data.alerts.forEach((a) =>
-                      a.dashboards.forEach((d) => {
-                        const key = `DB${d.id}`;
-                        dbFreq[key] = (dbFreq[key] || 0) + 1;
-                      }),
-                    );
-                    const dbFreqData = Object.entries(dbFreq)
-                      .map(([name, count]) => ({ name, count }))
-                      .sort(
-                        (a, b) =>
-                          Number(a.name.slice(2)) - Number(b.name.slice(2)),
-                      );
-
-                    const top10 = [...data.alerts]
-                      .sort((a, b) => getStdAmount(b) - getStdAmount(a))
-                      .slice(0, 10)
-                      .map((a) => ({ ...a, stdAmount: getStdAmount(a) }));
-
                     return (
                       <div className="space-y-4">
                         {/* Summary chips */}
@@ -589,7 +630,7 @@ export default function AlertsPage() {
                               height={top10.length * 32 + 8}
                             >
                               <BarChart
-                                data={[...top10].reverse()}
+                                data={reversedTop10}
                                 layout="vertical"
                                 margin={{
                                   top: 0,
@@ -619,51 +660,14 @@ export default function AlertsPage() {
                                 />
                                 <Tooltip
                                   cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                                  content={({ active, payload }: any) => {
-                                    if (!active || !payload?.length)
-                                      return null;
-                                    const d = payload[0]?.payload;
-                                    return (
-                                      <div className="bg-surface-elevated border border-surface-border rounded-xl px-3 py-2.5 text-xs shadow-2xl space-y-1">
-                                        <p className="font-mono font-extrabold text-txt text-sm">
-                                          {d.cif}
-                                        </p>
-                                        <p className="text-txt-dim">
-                                          Дүн:{" "}
-                                          <span className="text-amber-400 font-bold">
-                                            {formatAmount(d.stdAmount)}₮
-                                          </span>
-                                        </p>
-                                        {d.mlAmount > 0 && (
-                                          <p className="text-txt-dim">
-                                            ML:{" "}
-                                            <span className="text-golomt-400 font-bold">
-                                              +{formatAmount(d.mlAmount)}₮
-                                            </span>
-                                          </p>
-                                        )}
-                                        <p className="text-txt-dim">
-                                          Гүйлгээ:{" "}
-                                          <span className="text-txt font-bold">
-                                            {d.totalTransactions}
-                                          </span>
-                                        </p>
-                                        <p className="text-txt-dim">
-                                          Dashboard:{" "}
-                                          <span className="text-golomt-400 font-bold">
-                                            {d.dashboardCount}ш
-                                          </span>
-                                        </p>
-                                      </div>
-                                    );
-                                  }}
+                                  content={Top10Tooltip}
                                 />
                                 <Bar
                                   dataKey="stdAmount"
                                   radius={[0, 6, 6, 0]}
                                   maxBarSize={22}
                                 >
-                                  {[...top10].reverse().map((_, i) => (
+                                  {reversedTop10.map((_, i) => (
                                     <Cell
                                       key={i}
                                       fill={
@@ -706,22 +710,7 @@ export default function AlertsPage() {
                                       />
                                     ))}
                                   </Pie>
-                                  <Tooltip
-                                    content={({ active, payload }: any) => {
-                                      if (!active || !payload?.length)
-                                        return null;
-                                      return (
-                                        <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
-                                          <p className="font-bold text-txt">
-                                            {payload[0].name}
-                                          </p>
-                                          <p className="text-txt-dim">
-                                            {payload[0].value} CIF
-                                          </p>
-                                        </div>
-                                      );
-                                    }}
-                                  />
+                                  <Tooltip content={SevTooltip} />
                                 </PieChart>
                               </ResponsiveContainer>
                               <div className="space-y-2.5">
@@ -776,19 +765,7 @@ export default function AlertsPage() {
                               />
                               <Tooltip
                                 cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                                content={({ active, payload }: any) => {
-                                  if (!active || !payload?.length) return null;
-                                  return (
-                                    <div className="bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs shadow-xl">
-                                      <p className="font-bold text-txt">
-                                        {payload[0].payload.name}
-                                      </p>
-                                      <p className="text-txt-dim">
-                                        {payload[0].value} CIF
-                                      </p>
-                                    </div>
-                                  );
-                                }}
+                                content={DbFreqTooltip}
                               />
                               <Bar
                                 dataKey="count"
@@ -929,7 +906,7 @@ export default function AlertsPage() {
                         )}
                         {cifDetail?.results && (
                           <div className="space-y-2 mt-2">
-                            {cifDetail.results.map((dr: any) => (
+                            {cifDetail.results.map((dr: CifDetailDashboard) => (
                               <details
                                 key={dr.dashboardId}
                                 className="bg-surface-card rounded-lg border border-surface-border overflow-hidden"
@@ -961,7 +938,7 @@ export default function AlertsPage() {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {dr.rows.map((row: any, ri: number) => (
+                                      {dr.rows.map((row, ri: number) => (
                                         <tr
                                           key={ri}
                                           className="border-t border-surface-border hover:bg-surface-elevated/30"
@@ -970,7 +947,7 @@ export default function AlertsPage() {
                                             {ri + 1}
                                           </td>
                                           {Object.values(row).map(
-                                            (val: any, ci: number) => (
+                                            (val, ci: number) => (
                                               <td
                                                 key={ci}
                                                 className="px-3 py-2 text-txt whitespace-nowrap"

@@ -89,7 +89,15 @@ export async function middleware(request: NextRequest) {
   }
 
   //  Protected non-admin routes
-  if (!isUserAuth && !hasRefreshToken && !isPublicRoute && !isAdminRoute) {
+  // API routes are excluded from login redirect — they return JSON and handle
+  // auth errors themselves (or proxy to backend which enforces its own guards).
+  if (
+    !isUserAuth &&
+    !hasRefreshToken &&
+    !isPublicRoute &&
+    !isAdminRoute &&
+    !pathname.startsWith("/api/")
+  ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

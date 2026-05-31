@@ -515,7 +515,7 @@ export default function PivotPage() {
       <ToolPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-cyan-500 flex items-center justify-center">
-            <Table2 className="w-3.5 h-3.5 text-white" />
+            <Table2 className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("pivotTitle")}
@@ -594,7 +594,7 @@ export default function PivotPage() {
                     onClick={() => setSelectedYear("all")}
                     className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                       selectedYear === "all"
-                        ? "bg-cyan-500 border-cyan-500 text-white"
+                        ? "bg-cyan-500 border-cyan-500 text-foreground"
                         : "border-border bg-background text-foreground hover:border-cyan-400"
                     }`}
                   >
@@ -606,7 +606,7 @@ export default function PivotPage() {
                       onClick={() => setSelectedYear(y)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                         selectedYear === y
-                          ? "bg-cyan-500 border-cyan-500 text-white"
+                          ? "bg-cyan-500 border-cyan-500 text-foreground"
                           : "border-border bg-background text-foreground hover:border-cyan-400"
                       }`}
                     >
@@ -657,7 +657,7 @@ export default function PivotPage() {
                         onClick={() => setPrefixLen(n)}
                         className={`flex-1 py-2 rounded-md text-xs font-bold border transition-colors ${
                           prefixLen === n
-                            ? "bg-cyan-500 border-cyan-500 text-white"
+                            ? "bg-cyan-500 border-cyan-500 text-foreground"
                             : "border-border bg-background text-foreground hover:border-cyan-400"
                         }`}
                       >
@@ -720,7 +720,7 @@ export default function PivotPage() {
 
               <Button
                 onClick={handleBuild}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold"
+                className="bg-cyan-600 hover:bg-cyan-700 text-foreground font-semibold"
               >
                 <Table2 className="w-4 h-4 mr-2" />
                 {t("pivotCreateBtn")}
@@ -762,7 +762,7 @@ export default function PivotPage() {
                 <Button
                   onClick={handleExport}
                   disabled={!selectedPrefix}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-foreground disabled:opacity-40"
                 >
                   <Download className="w-4 h-4 mr-1.5" />
                   {t("pivotExportBtn")}

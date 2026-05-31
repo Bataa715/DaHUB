@@ -55,7 +55,7 @@ export default function SanamsarguiTuuwerPage() {
       <ToolPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-violet-500 flex items-center justify-center">
-            <Calculator className="w-3.5 h-3.5 text-white" />
+            <Calculator className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("sampleTitle")}
@@ -378,7 +378,7 @@ export default function SanamsarguiTuuwerPage() {
                                       }}
                                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                         s.selectedFilterValue === "all"
-                                          ? "bg-violet-500 border-violet-500 text-white"
+                                          ? "bg-violet-500 border-violet-500 text-foreground"
                                           : "border-border bg-background text-foreground hover:border-violet-400"
                                       }`}
                                     >
@@ -392,7 +392,7 @@ export default function SanamsarguiTuuwerPage() {
                                         }
                                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                           s.selectedFilterValue === v
-                                            ? "bg-violet-500 border-violet-500 text-white"
+                                            ? "bg-violet-500 border-violet-500 text-foreground"
                                             : "border-border bg-background text-foreground hover:border-violet-400"
                                         }`}
                                       >
@@ -551,7 +551,7 @@ export default function SanamsarguiTuuwerPage() {
             <Button
               onClick={s.handleCalculate}
               disabled={!s.isStratified && !s.fileData}
-              className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-5 text-base disabled:opacity-40"
+              className="w-full bg-violet-600 hover:bg-violet-700 text-foreground font-semibold py-5 text-base disabled:opacity-40"
             >
               <Shuffle className="w-4 h-4 mr-2" />
               {s.isStratified
@@ -577,7 +577,7 @@ export default function SanamsarguiTuuwerPage() {
                       onClick={s.handleExport}
                       size="sm"
                       variant="outline"
-                      className="border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                      className="border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10/30"
                     >
                       <Download className="w-4 h-4 mr-1.5" />
                       {t("pivotExportBtn")}

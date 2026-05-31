@@ -223,7 +223,7 @@ export default function CodePage() {
           <select
             value={form.language || "python"}
             onChange={(e) =>
-              setForm((f) => ({ ...f, language: e.target.value as any }))
+              setForm((f) => ({ ...f, language: e.target.value as CodeSnippet["language"] }))
             }
             className="w-full px-3 py-2 text-sm bg-muted border border-border/50 rounded-xl text-foreground/90 focus:outline-none focus:border-cyan-500/50"
           >
@@ -315,12 +315,12 @@ export default function CodePage() {
   );
 
   return (
-    <div className="min-h-screen bg-background text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <ToolPageHeader
         href="/tools/data-doc"
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md">
-            <Code2 className="w-3.5 h-3.5 text-white" />
+            <Code2 className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("dataDocCodeLib")}
@@ -332,7 +332,7 @@ export default function CodePage() {
         <div className="w-80 shrink-0 border-r border-border/50 flex flex-col bg-card">
           <div className="px-4 py-4 border-b border-border/50 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white">
+              <h2 className="text-sm font-bold text-foreground">
                 {t("dataDocCodeLib")}
               </h2>
               <button
@@ -364,7 +364,7 @@ export default function CodePage() {
                   onClick={() => setLangFilter(lang)}
                   className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
                     langFilter === lang
-                      ? "bg-muted text-white"
+                      ? "bg-muted text-foreground"
                       : "text-muted-foreground/50 hover:text-foreground/80 hover:bg-card"
                   }`}
                 >
@@ -402,7 +402,7 @@ export default function CodePage() {
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <span
                         className={`text-xs font-semibold ${
-                          isSelected ? "text-white" : "text-foreground/80"
+                          isSelected ? "text-foreground" : "text-foreground/80"
                         } leading-snug`}
                       >
                         {snippet.title}
@@ -445,7 +445,7 @@ export default function CodePage() {
           {showForm ? (
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl">
-                <h2 className="text-base font-bold text-white mb-5">
+                <h2 className="text-base font-bold text-foreground mb-5">
                   Шинэ код
                 </h2>
                 <FormPanel
@@ -457,7 +457,7 @@ export default function CodePage() {
           ) : editing && selected ? (
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl">
-                <h2 className="text-base font-bold text-white mb-5">
+                <h2 className="text-base font-bold text-foreground mb-5">
                   Код засах
                 </h2>
                 <FormPanel
@@ -473,7 +473,7 @@ export default function CodePage() {
             <div className="flex-1 overflow-hidden flex flex-col">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-border/50 shrink-0">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-bold text-white truncate">
+                  <h2 className="text-base font-bold text-foreground truncate">
                     {selected.title}
                   </h2>
                   {selected.description && (

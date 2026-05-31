@@ -20,19 +20,19 @@ export default function AdminPageHeader({
 }: AdminPageHeaderProps) {
   const { t } = useLanguage();
   return (
-    <div className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">
+    <div className="sticky top-0 z-20 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center gap-3">
         <Link
           href={href}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition-colors text-sm"
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           {t("back")}
         </Link>
-        <span className="text-slate-700">/</span>
+        <span className="text-muted-foreground/30">/</span>
         <div className="flex items-center gap-2">
           {icon}
-          <span className="font-semibold text-slate-100">{title}</span>
+          <span className="font-semibold text-foreground">{title}</span>
         </div>
         {rightContent && <div className="ml-auto">{rightContent}</div>}
       </div>

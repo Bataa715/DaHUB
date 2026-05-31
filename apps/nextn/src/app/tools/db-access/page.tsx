@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { dbAccessApi } from "@/lib/api";
+import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -170,10 +170,10 @@ export default function DbAccessRequestPage() {
       // Reset form
       setSelectedTables([]);
       setReason("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: t("dbAccessValidationTitle"),
-        description: err?.response?.data?.message ?? t("dbAccessRequestError"),
+        description: getApiErrorMessage(err) || t("dbAccessRequestError"),
         variant: "destructive",
       });
     } finally {
@@ -199,7 +199,7 @@ export default function DbAccessRequestPage() {
         href="/tools"
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-md">
-            <Database className="w-3.5 h-3.5 text-white" />
+            <Database className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("dbAccessMyGrants")}

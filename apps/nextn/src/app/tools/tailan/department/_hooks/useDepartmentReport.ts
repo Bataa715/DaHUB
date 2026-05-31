@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { tailanApi } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import {
   SECTION_DEFS,
   Q_NAMES,
@@ -26,6 +27,21 @@ import {
   KpiRow,
 } from "../_types";
 
+// ─── Dept report API response shape ──────────────────────────────────────────
+type ImgRaw = { id?: string; dataUrl?: string; width?: number; height?: number };
+type DeptReportRaw = {
+  userName?: string;
+  userId?: string;
+  id?: string;
+  plannedTasks?: Array<{ title?: string; description?: string; images?: ImgRaw[] }>;
+  section2Tasks?: Array<{ order?: number; title?: string; result?: string; period?: string; completion?: string; images?: ImgRaw[] }>;
+  section1Dashboards?: Array<{ title?: string; completion?: string; summary?: string; period?: string; images?: ImgRaw[] }>;
+  section3AutoTasks?: Array<{ title?: string; value?: string; rating?: string }>;
+  section3Dashboards?: Array<{ dashboard?: string; value?: string; rating?: string }>;
+  section4KnowledgeText?: string;
+  section4Trainings?: Array<{ training?: string; organizer?: string; type?: string; date?: string; format?: string; hours?: string; meetsAuditGoal?: string; sharedKnowledge?: string }>;
+};
+
 export function useDepartmentReport() {
   const [year, setYear] = useState(getCurrentYear);
   const [quarter, setQuarter] = useState(getCurrentQuarter);
@@ -34,14 +50,10 @@ export function useDepartmentReport() {
   const [sections, setSections] = useState<Record<string, SectionReport>>({});
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    msg: string;
-    type: "success" | "error";
-  } | null>(null);
+  const { toast } = useToast();
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    toast({ title: msg, variant: type === "error" ? "destructive" : "default" });
   };
 
   const updateSection = (id: string, updated: SectionReport) =>
@@ -87,11 +99,11 @@ export function useDepartmentReport() {
   const handleS1ApiLoad = async (_si: number): Promise<DashboardRow[]> => {
     try {
       const reports = await tailanApi.getDeptReports(year, quarter);
-      return (reports as any[]).flatMap((r: any) =>
-        (r.plannedTasks ?? []).map((t: any) => ({
+      return (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.plannedTasks ?? []).map((t) => ({
           title: t.title ?? "",
           description: t.description ?? "",
-          images: (t.images ?? []).map((img: any) => ({
+          images: (t.images ?? []).map((img) => ({
             id: img.id ?? "",
             dataUrl: img.dataUrl ?? "",
             width: img.width ?? 80,
@@ -110,15 +122,15 @@ export function useDepartmentReport() {
   ): Promise<Section2TaskRow[]> => {
     try {
       const reports = await tailanApi.getDeptReports(year, quarter);
-      return (reports as any[]).flatMap((r: any) =>
-        (r.section2Tasks ?? []).map((t: any, idx: number) => ({
+      return (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section2Tasks ?? []).map((t, idx: number) => ({
           order: t.order ?? idx + 1,
           title: t.title ?? "",
           result: t.result ?? "",
           period: t.period ?? "",
           completion: t.completion ?? "",
           employeeName: r.userName ?? "",
-          images: (t.images ?? []).map((img: any) => ({
+          images: (t.images ?? []).map((img) => ({
             id: img.id ?? "",
             dataUrl: img.dataUrl ?? "",
             width: img.width ?? 80,
@@ -136,9 +148,9 @@ export function useDepartmentReport() {
     try {
       // 1) Хувийн тайлангийн section2Tasks-аас (хуучин section 1.3-тэй дүйцэх өгөгдөл)
       const reports = await tailanApi.getDeptReports(year, quarter);
-      const newRowsFromTasks: Section14Row[] = (reports as any[]).flatMap(
-        (r: any) =>
-          (r.section2Tasks ?? []).map((t: any) => ({
+      const newRowsFromTasks: Section14Row[] = (reports as DeptReportRaw[]).flatMap(
+        (r) =>
+          (r.section2Tasks ?? []).map((t) => ({
             title: t.title ?? "",
             productType: "Өгөгдөл боловсруулалт",
             savedDays: "",
@@ -148,8 +160,8 @@ export function useDepartmentReport() {
       );
 
       // 2) Дашбоард → хувийн тайлангийн section1Dashboards-аас
-      const dashRows: Section14Row[] = (reports as any[]).flatMap((r: any) =>
-        (r.section1Dashboards ?? []).map((t: any) => ({
+      const dashRows: Section14Row[] = (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section1Dashboards ?? []).map((t) => ({
           title: t.title ?? "",
           productType: "Дашбоард",
           savedDays: "",
@@ -159,8 +171,8 @@ export function useDepartmentReport() {
       );
 
       // Тайлант хугацаанд аудитын үйл ажиллагаанд ашигласан дата бүтээгдэхүүн → section3AutoTasks
-      const usedRows: Section14Row[] = (reports as any[]).flatMap((r: any) =>
-        (r.section3AutoTasks ?? []).map((t: any) => ({
+      const usedRows: Section14Row[] = (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section3AutoTasks ?? []).map((t) => ({
           title: t.title ?? "",
           productType: "Өгөгдөл боловсруулалт",
           savedDays: "",
@@ -180,8 +192,8 @@ export function useDepartmentReport() {
     try {
       // Хувийн тайлангийн section2Tasks-аас шууд татна (local state-с хараат бус)
       const reports = await tailanApi.getDeptReports(year, quarter);
-      return (reports as any[]).flatMap((r: any) =>
-        (r.section2Tasks ?? []).map((t: any) => ({
+      return (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section2Tasks ?? []).map((t) => ({
           title: t.title ?? "",
           usage: t.completion ?? "",
           clientScore: "",
@@ -202,15 +214,15 @@ export function useDepartmentReport() {
       // (I хэсэг, 2-р дэд хэсэг — Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн)
       const reports = await tailanApi.getDeptReports(year, quarter);
       let order = 0;
-      return (reports as any[]).flatMap((r: any) =>
-        (r.section1Dashboards ?? []).map((t: any) => ({
+      return (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section1Dashboards ?? []).map((t) => ({
           order: ++order,
           title: t.title ?? "",
           result: t.completion ?? "", // гүйцэтгэл %
           completion: t.summary ?? "", // гүйцэтгэл /товч/
           period: t.period ?? "",
           employeeName: r.userName ?? "",
-          images: (t.images ?? []).map((img: any) => ({
+          images: (t.images ?? []).map((img) => ({
             id: img.id ?? "",
             dataUrl: img.dataUrl ?? "",
             width: img.width ?? 80,
@@ -228,8 +240,8 @@ export function useDepartmentReport() {
     try {
       // Хувийн тайлангийн III. Тогтмол хийгддэг ажлууд → section3AutoTasks
       const reports = await tailanApi.getDeptReports(year, quarter);
-      return (reports as any[]).flatMap((r: any) =>
-        (r.section3AutoTasks ?? []).map((t: any) => ({
+      return (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section3AutoTasks ?? []).map((t) => ({
           title: t.title ?? "",
           usage: t.value ?? "",
           clientScore: t.rating ?? "",
@@ -246,8 +258,8 @@ export function useDepartmentReport() {
     try {
       // Хувийн тайлангийн III. Тогтмол хийгддэг ажлууд → section3Dashboards
       const reports = await tailanApi.getDeptReports(year, quarter);
-      return (reports as any[]).flatMap((r: any) =>
-        (r.section3Dashboards ?? []).map((t: any) => ({
+      return (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section3Dashboards ?? []).map((t) => ({
           title: t.dashboard ?? "",
           usage: t.value ?? "",
           clientScore: t.rating ?? "",
@@ -263,9 +275,9 @@ export function useDepartmentReport() {
   const handleS4_42ApiLoad = async (_si: number): Promise<RichTextItem[]> => {
     try {
       const reports = await tailanApi.getDeptReports(year, quarter);
-      return (reports as any[])
-        .filter((r: any) => (r.section4KnowledgeText ?? "").trim())
-        .map((r: any) => ({
+      return (reports as DeptReportRaw[])
+        .filter((r) => (r.section4KnowledgeText ?? "").trim())
+        .map((r) => ({
           id: r.userId ?? r.id ?? String(Math.random()),
           title: r.userName ?? "",
           bullets: (r.section4KnowledgeText ?? "")
@@ -284,8 +296,8 @@ export function useDepartmentReport() {
   const handleS4_43ApiLoad = async (_si: number): Promise<Section43Row[]> => {
     try {
       const reports = await tailanApi.getDeptReports(year, quarter);
-      return (reports as any[]).flatMap((r: any) =>
-        (r.section4Trainings ?? []).map((t: any) => ({
+      return (reports as DeptReportRaw[]).flatMap((r) =>
+        (r.section4Trainings ?? []).map((t) => ({
           employeeName: r.userName ?? "",
           training: t.training ?? "",
           organizer: t.organizer ?? "",
@@ -324,7 +336,7 @@ export function useDepartmentReport() {
           setLastSaved(null);
         }
       })
-      .catch(() => {});
+      .catch(() => { /* silent: ignore load failures on background refresh */ });
   }, [year, quarter]);
 
   const handleDbSave = async () => {
@@ -392,8 +404,8 @@ export function useDepartmentReport() {
         sections: [],
         otherEntries: [],
         activities: [],
-        rawSections: sections,
-      } as any);
+        rawSections: sections as Record<string, unknown>,
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -427,7 +439,6 @@ export function useDepartmentReport() {
     sections,
     saving,
     lastSaved,
-    toast,
     showToast,
     updateSection,
     negtgelKpi,

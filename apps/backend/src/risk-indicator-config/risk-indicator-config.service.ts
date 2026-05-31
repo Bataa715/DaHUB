@@ -159,7 +159,7 @@ export class RiskIndicatorConfigService implements OnModuleInit {
       };
     }
 
-    await this.clickhouse.insert("risk_indicator_config", [record]);
+    await this.clickhouse.insert("risk_indicator_config", [record as unknown as Record<string, unknown>]);
     return record;
   }
 

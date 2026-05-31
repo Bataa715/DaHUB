@@ -124,11 +124,11 @@ function PhotoModal({
     >
       <button
         onClick={onClose}
-        className="absolute top-5 right-5 z-10 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+        className="absolute top-5 right-5 z-10 w-9 h-9 rounded-full bg-foreground/10 hover:bg-foreground/20 text-foreground flex items-center justify-center transition-colors"
       >
         <X className="w-4 h-4" />
       </button>
-      <div className="absolute top-5 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-white/10 text-white/70 text-xs font-medium">
+      <div className="absolute top-5 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-foreground/10 text-foreground/70 text-xs font-medium">
         {index + 1} / {photos.length}
       </div>
       {index > 0 && (
@@ -137,7 +137,7 @@ function PhotoModal({
             e.stopPropagation();
             onPrev();
           }}
-          className="absolute left-5 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+          className="absolute left-5 z-10 w-11 h-11 rounded-full bg-foreground/10 hover:bg-foreground/20 text-foreground flex items-center justify-center transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -148,7 +148,7 @@ function PhotoModal({
             e.stopPropagation();
             onNext();
           }}
-          className="absolute right-5 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+          className="absolute right-5 z-10 w-11 h-11 rounded-full bg-foreground/10 hover:bg-foreground/20 text-foreground flex items-center justify-center transition-colors"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -166,11 +166,11 @@ function PhotoModal({
         <div className="flex items-center justify-between w-full px-2">
           <div>
             {photo.caption && (
-              <p className="text-white text-sm font-semibold">
+              <p className="text-foreground text-sm font-semibold">
                 {photo.caption}
               </p>
             )}
-            <p className="text-white/50 text-xs mt-0.5">
+            <p className="text-foreground/50 text-xs mt-0.5">
               {photo.uploadedByName} ·{" "}
               {new Date(photo.uploadedAt).toLocaleDateString("mn-MN", {
                 timeZone: "Asia/Ulaanbaatar",
@@ -354,7 +354,7 @@ function DeptAlbum({ deptId, deptName }: { deptId: string; deptName: string }) {
                   e.stopPropagation();
                   handleDelete(photo.id);
                 }}
-                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -407,7 +407,7 @@ function EmployeeCard({
           className="w-20 h-20 rounded-full object-cover ring-2 ring-border"
         />
       ) : (
-        <div className="w-20 h-20 rounded-full bg-zinc-900 border-2 border-zinc-600 flex items-center justify-center text-white font-black text-xl">
+        <div className="w-20 h-20 rounded-full bg-background border-2 border-zinc-600 flex items-center justify-center text-foreground font-black text-xl">
           {getInitials(member.name)}
         </div>
       )}
@@ -752,7 +752,7 @@ export default function DepartmentsPage() {
 
   const members = department.users ?? [];
   const totalCount = members.length || department.employeeCount || 0;
-  const currentUserId = (user as any).id ?? (user as any).userId ?? "";
+  const currentUserId = user?.id ?? user?.userId ?? "";
   const heroGrad = getHeroGradient(department.name);
   const heroColor = getCardColor(department.name);
 

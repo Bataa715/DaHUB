@@ -119,7 +119,7 @@ export default function UsersPage() {
     try {
       const data = await departmentsApi.getAll();
       setDepartments(
-        (data || []).map((d: any) => ({ id: d.id, name: d.name })),
+        (data || []).map((d: { id: string; name: string }) => ({ id: d.id, name: d.name })),
       );
     } catch {}
   };
@@ -248,26 +248,26 @@ export default function UsersPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!user?.isAdmin) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-slate-500">Хандах эрхгүй</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground/60">Хандах эрхгүй</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <AdminPageHeader
         title="Хэрэглэгчид"
         rightContent={
-          <span className="text-slate-500 text-xs">
+          <span className="text-muted-foreground/60 text-xs">
             {filteredUsers.length} / {users.length}
           </span>
         }
@@ -280,16 +280,16 @@ export default function UsersPage() {
             placeholder="Нэр, хэлтэс, тушаалаар хайх..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 min-w-48 bg-slate-900 border-slate-800 text-white placeholder:text-slate-600 rounded-xl"
+            className="flex-1 min-w-48 bg-background border-border text-foreground placeholder:text-muted-foreground/50 rounded-xl"
           />
           <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger className="w-48 bg-slate-900 border-slate-800 text-slate-300 rounded-xl">
+            <SelectTrigger className="w-48 bg-background border-border text-foreground/80 rounded-xl">
               <SelectValue placeholder="Хэлтэс" />
             </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-800">
+            <SelectContent className="bg-background border-border">
               <SelectItem
                 value="all"
-                className="text-slate-300 focus:bg-slate-800"
+                className="text-foreground/80 focus:bg-muted"
               >
                 Бүх хэлтэс
               </SelectItem>
@@ -297,7 +297,7 @@ export default function UsersPage() {
                 <SelectItem
                   key={dept}
                   value={dept}
-                  className="text-slate-300 focus:bg-slate-800"
+                  className="text-foreground/80 focus:bg-muted"
                 >
                   {dept}
                 </SelectItem>
@@ -307,29 +307,29 @@ export default function UsersPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-slate-800 overflow-hidden">
+        <div className="rounded-xl border border-border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
-                <TableHead className="text-slate-500 text-xs font-medium">
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground/60 text-xs font-medium">
                   Төлөв
                 </TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">
+                <TableHead className="text-muted-foreground/60 text-xs font-medium">
                   ID
                 </TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">
+                <TableHead className="text-muted-foreground/60 text-xs font-medium">
                   Нэр
                 </TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">
+                <TableHead className="text-muted-foreground/60 text-xs font-medium">
                   Хэлтэс
                 </TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">
+                <TableHead className="text-muted-foreground/60 text-xs font-medium">
                   Албан тушаал
                 </TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium">
+                <TableHead className="text-muted-foreground/60 text-xs font-medium">
                   Сүүлд нэвтэрсэн
                 </TableHead>
-                <TableHead className="text-slate-500 text-xs font-medium text-right">
+                <TableHead className="text-muted-foreground/60 text-xs font-medium text-right">
                   Үйлдэл
                 </TableHead>
               </TableRow>
@@ -339,7 +339,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="text-center py-16 text-slate-600"
+                    className="text-center py-16 text-muted-foreground/40"
                   >
                     {searchQuery || departmentFilter !== "all"
                       ? "Хайлтын үр дүн олдсонгүй"
@@ -353,7 +353,7 @@ export default function UsersPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: index * 0.02 }}
-                    className="border-slate-800 hover:bg-slate-900/60 transition-colors"
+                    className="border-border hover:bg-background/60 transition-colors"
                   >
                     <TableCell>
                       <Switch
@@ -376,7 +376,7 @@ export default function UsersPage() {
                               if (e.key === "Enter") handleChangeUserId();
                               if (e.key === "Escape") setChangingUserIdId(null);
                             }}
-                            className="h-7 w-32 bg-slate-800 border-slate-700 text-white text-xs font-mono"
+                            className="h-7 w-32 bg-muted border-border text-foreground text-xs font-mono"
                             autoFocus
                           />
                           <button
@@ -392,7 +392,7 @@ export default function UsersPage() {
                           </button>
                           <button
                             onClick={() => setChangingUserIdId(null)}
-                            className="p-1 text-slate-500 hover:text-white"
+                            className="p-1 text-muted-foreground/60 hover:text-foreground"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -405,14 +405,14 @@ export default function UsersPage() {
                             setChangingUserIdId(userData.id);
                           }}
                         >
-                          <code className="text-xs font-mono text-slate-400 group-hover:text-white transition-colors">
+                          <code className="text-xs font-mono text-muted-foreground group-hover:text-foreground transition-colors">
                             {userData.userId || "—"}
                           </code>
-                          <Pencil className="w-2.5 h-2.5 text-slate-700 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-all" />
+                          <Pencil className="w-2.5 h-2.5 text-muted-foreground/30 group-hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm font-medium text-white">
+                    <TableCell className="text-sm font-medium text-foreground">
                       {userData.name}
                     </TableCell>
                     <TableCell>
@@ -422,15 +422,15 @@ export default function UsersPage() {
                             value={selectedDeptId}
                             onValueChange={setSelectedDeptId}
                           >
-                            <SelectTrigger className="h-7 w-44 bg-slate-800 border-slate-700 text-white text-xs">
+                            <SelectTrigger className="h-7 w-44 bg-muted border-border text-foreground text-xs">
                               <SelectValue placeholder="Хэлтэс сонгох" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-slate-800">
+                            <SelectContent className="bg-background border-border">
                               {departments.map((dept) => (
                                 <SelectItem
                                   key={dept.id}
                                   value={dept.id}
-                                  className="text-slate-300 focus:bg-slate-800 text-xs"
+                                  className="text-foreground/80 focus:bg-muted text-xs"
                                 >
                                   {dept.name}
                                 </SelectItem>
@@ -450,7 +450,7 @@ export default function UsersPage() {
                           </button>
                           <button
                             onClick={() => setChangingDeptUserId(null)}
-                            className="p-1 text-slate-500 hover:text-white"
+                            className="p-1 text-muted-foreground/60 hover:text-foreground"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -460,21 +460,23 @@ export default function UsersPage() {
                           className="flex items-center gap-1.5 group text-left"
                           onClick={() => handleChangeDept(userData)}
                         >
-                          <span className="text-sm text-slate-400 group-hover:text-white transition-colors">
+                          <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                             {userData.department ?? (
-                              <span className="text-slate-600">—</span>
+                              <span className="text-muted-foreground/40">
+                                —
+                              </span>
                             )}
                           </span>
-                          <Pencil className="w-2.5 h-2.5 text-slate-700 group-hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-all" />
+                          <Pencil className="w-2.5 h-2.5 text-muted-foreground/30 group-hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-400">
+                    <TableCell className="text-sm text-muted-foreground">
                       {userData.position || (
-                        <span className="text-slate-600">—</span>
+                        <span className="text-muted-foreground/40">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-500">
+                    <TableCell className="text-xs text-muted-foreground/60">
                       {userData.lastLoginAt ? (
                         new Date(userData.lastLoginAt).toLocaleString("mn-MN", {
                           timeZone: "Asia/Ulaanbaatar",
@@ -486,7 +488,9 @@ export default function UsersPage() {
                           second: "2-digit",
                         })
                       ) : (
-                        <span className="text-slate-600">Хэзээ ч үгүй</span>
+                        <span className="text-muted-foreground/40">
+                          Хэзээ ч үгүй
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -497,14 +501,14 @@ export default function UsersPage() {
                               setResetPasswordUser(userData);
                               setNewPassword("");
                             }}
-                            className="text-xs text-slate-500 hover:text-amber-400 px-2 py-1 rounded-lg hover:bg-amber-500/10 transition-colors"
+                            className="text-xs text-muted-foreground/60 hover:text-amber-400 px-2 py-1 rounded-lg hover:bg-amber-500/10 transition-colors"
                           >
                             Нууц үг
                           </button>
                         )}
                         <button
                           onClick={() => setDeleteUser(userData)}
-                          className="text-xs text-slate-500 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
+                          className="text-xs text-muted-foreground/60 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
                         >
                           Устгах
                         </button>
@@ -528,18 +532,20 @@ export default function UsersPage() {
           }
         }}
       >
-        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm">
+        <DialogContent className="bg-background border-border text-foreground max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-white">Нууц үг сэргээх</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              <span className="text-white font-medium">
+            <DialogTitle className="text-foreground">
+              Нууц үг сэргээх
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              <span className="text-foreground font-medium">
                 {resetPasswordUser?.name}
               </span>{" "}
               ({resetPasswordUser?.userId})
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <Label className="text-slate-400 text-xs mb-1.5 block">
+            <Label className="text-muted-foreground text-xs mb-1.5 block">
               Шинэ нууц үг
             </Label>
             <Input
@@ -547,7 +553,7 @@ export default function UsersPage() {
               placeholder="Хамгийн багадаа 6 тэмдэгт"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-600"
+              className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50"
               autoComplete="off"
             />
             {newPassword.length > 0 && newPassword.length < 6 && (
@@ -563,14 +569,14 @@ export default function UsersPage() {
                 setNewPassword("");
               }}
               disabled={isResetting}
-              className="flex-1 py-2 text-sm text-slate-400 hover:text-white border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors"
+              className="flex-1 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-muted transition-colors"
             >
               Болих
             </button>
             <button
               onClick={handleResetPassword}
               disabled={isResetting || newPassword.length < 6}
-              className="flex-1 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 rounded-xl transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:bg-secondary disabled:text-muted-foreground/60 text-black rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {isResetting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Сэргээх
@@ -581,24 +587,24 @@ export default function UsersPage() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm">
+        <AlertDialogContent className="bg-background border-border text-foreground max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">
+            <AlertDialogTitle className="text-foreground">
               Хэрэглэгч устгах
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-muted-foreground">
               "{deleteUser?.name}" хэрэглэгчийг устгахдаа итгэлтэй байна уу?
               Буцаах боломжгүй.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
+            <AlertDialogCancel className="bg-transparent border-border text-foreground/80 hover:bg-muted hover:text-foreground">
               Болих
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteUser}
               disabled={isDeleting}
-              className="bg-red-500 hover:bg-red-600 text-white border-0"
+              className="bg-red-500 hover:bg-red-600 text-foreground border-0"
             >
               {isDeleting && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />

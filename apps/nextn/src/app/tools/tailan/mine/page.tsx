@@ -115,7 +115,7 @@ export default function TailanMinePage() {
               <ArrowLeft className="h-4 w-4" />
               {t("back")}
             </Link>
-            <span className="font-semibold text-white text-sm">
+            <span className="font-semibold text-foreground text-sm">
               {t("tailan_myReportTitle")}
             </span>
           </div>
@@ -136,7 +136,7 @@ export default function TailanMinePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted text-white text-xs font-medium transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted text-foreground text-xs font-medium transition disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -148,7 +148,7 @@ export default function TailanMinePage() {
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-foreground text-xs font-medium transition disabled:opacity-50"
             >
               {downloading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -160,7 +160,7 @@ export default function TailanMinePage() {
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-foreground text-xs font-medium transition disabled:opacity-50"
             >
               {submitting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -222,7 +222,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s1")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s1Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -276,7 +276,7 @@ export default function TailanMinePage() {
                       <span className="text-xs text-muted-foreground/70 w-5 shrink-0 text-center">
                         {task.order}
                       </span>
-                      <span className="flex-1 text-sm font-bold text-white">
+                      <span className="flex-1 text-sm font-bold text-foreground">
                         {task.title ? (
                           task.title
                         ) : (
@@ -362,7 +362,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s12")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s12Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -542,7 +542,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s2")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s2Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -691,7 +691,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s3")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s3Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -905,7 +905,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s4")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s4Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -1137,7 +1137,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s5")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s5Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -1223,7 +1223,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s6")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s6Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -1324,7 +1324,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("s7")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_s7Title")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">
@@ -1369,7 +1369,7 @@ export default function TailanMinePage() {
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => toggleSection("sdyn")}
             >
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tailan_dynTitle")}
               </h3>
               <div className="flex items-center gap-2 shrink-0">

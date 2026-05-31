@@ -11,6 +11,7 @@ import {
   WEIGHTS,
   computeScoreDynamic,
   type ScoreResult,
+  type OracleValue,
 } from "./scoring-rules";
 
 // ─── Dynamic catalog entry (mirrors CatalogIndicator) ────────────────────────
@@ -36,6 +37,8 @@ export interface DynamicConfig {
   catalog: DynamicCatalogIndicator[];
   weights: DynamicWeights;
   loaded: boolean;
+  /** true бол backend-ээс авч чадаагүй тул хуучин хатуу кодын тохиргоо ашиглаж байна */
+  isFallback?: boolean;
 }
 
 // ─── Fallback: build from hardcoded catalog ──────────────────────────────────
@@ -54,7 +57,7 @@ function buildFallbackConfig(): DynamicConfig {
       hint: c.hint,
     }),
   );
-  return { catalog, weights: { ...WEIGHTS }, loaded: true };
+  return { catalog, weights: { ...WEIGHTS }, loaded: true, isFallback: true };
 }
 
 // ─── Build from DB config ─────────────────────────────────────────────────────
@@ -104,11 +107,44 @@ function buildDynamicConfig(
 
   for (const gc of groupConfigs) {
     const key = groupKey(gc.region, gc.group_num);
-    if (gc.region === "UB") wUB[key] = gc.weight;
-    else if (gc.region === "LOC") wLOC[key] = gc.weight;
+    // Admin UI stores weights as percentages (e.g. 35 for 35%);
+    // convert to decimal fraction for use in the weighted-sum formula.
+    const w = gc.weight > 1 ? gc.weight / 100 : gc.weight;
+    if (gc.region === "UB") wUB[key] = w;
+    else if (gc.region === "LOC") wLOC[key] = w;
   }
 
   return { catalog, weights: { UB: wUB, LOC: wLOC }, loaded: true };
+}
+
+// ─── Module-level cache (бүх ReportView instance хуваалцана) ─────────────────
+let _cachedConfig: DynamicConfig | null = null;
+let _loadingPromise: Promise<DynamicConfig> | null = null;
+
+function fetchConfig(): Promise<DynamicConfig> {
+  if (_cachedConfig) return Promise.resolve(_cachedConfig);
+  if (_loadingPromise) return _loadingPromise;
+  _loadingPromise = (async () => {
+    try {
+      const [indicators, groupConfigs] = await Promise.all([
+        riskIndicatorConfigApi.list(),
+        riskIndicatorConfigApi.listGroupConfig(),
+      ]);
+      const cfg =
+        indicators.length === 0
+          ? buildFallbackConfig()
+          : buildDynamicConfig(indicators, groupConfigs);
+      _cachedConfig = cfg;
+      return cfg;
+    } catch {
+      const fallback = buildFallbackConfig();
+      _cachedConfig = fallback;
+      return fallback;
+    } finally {
+      _loadingPromise = null;
+    }
+  })();
+  return _loadingPromise;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -116,33 +152,28 @@ function buildDynamicConfig(
 export function useIndicatorConfig(): DynamicConfig & {
   reload: () => Promise<void>;
 } {
-  const [config, setConfig] = useState<DynamicConfig>({
-    catalog: [],
-    weights: { ...WEIGHTS },
-    loaded: false,
-  });
-
-  const load = useCallback(async () => {
-    try {
-      const [indicators, groupConfigs] = await Promise.all([
-        riskIndicatorConfigApi.list(),
-        riskIndicatorConfigApi.listGroupConfig(),
-      ]);
-      if (indicators.length === 0) {
-        setConfig(buildFallbackConfig());
-      } else {
-        setConfig(buildDynamicConfig(indicators, groupConfigs));
-      }
-    } catch {
-      setConfig(buildFallbackConfig());
-    }
-  }, []);
+  const [config, setConfig] = useState<DynamicConfig>(
+    _cachedConfig ?? { catalog: [], weights: { ...WEIGHTS }, loaded: false },
+  );
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (_cachedConfig) {
+      setConfig(_cachedConfig);
+      return;
+    }
+    fetchConfig()
+      .then(setConfig)
+      .catch(() => setConfig(buildFallbackConfig()));
+  }, []);
 
-  return { ...config, reload: load };
+  const reload = useCallback(async () => {
+    _cachedConfig = null;
+    _loadingPromise = null;
+    const cfg = await fetchConfig();
+    setConfig(cfg);
+  }, []);
+
+  return { ...config, reload };
 }
 
 // ─── Dynamic scoring helper ───────────────────────────────────────────────────
@@ -153,7 +184,7 @@ export function useIndicatorConfig(): DynamicConfig & {
  */
 export function evaluateBranchDynamic(
   catalog: DynamicCatalogIndicator[],
-  rows: { SUBID?: any; RESULT?: any; RESULT_TYPE?: any }[],
+  rows: { SUBID?: OracleValue; RESULT?: OracleValue; RESULT_TYPE?: OracleValue }[],
   manual: Record<string, number> | undefined,
 ): Record<
   string,
@@ -217,6 +248,24 @@ export function evaluateBranchDynamic(
         }
       }
     }
+    // If still no score: check null_is_unelehgui flag.
+    // - null_is_unelehgui=true  → missing data is OK, exclude from group avg (weight redistributed)
+    // - null_is_unelehgui=false/absent → missing data means worst case → score 5
+    if (score === null) {
+      let sc: { null_is_unelehgui?: boolean } = {};
+      try {
+        sc = JSON.parse(ind.score_scale);
+      } catch {
+        /* ignore */
+      }
+      if (!sc.null_is_unelehgui) {
+        score = 5;
+        source = "auto";
+        autoRaw = autoRaw ?? "";
+        autoLabel = autoLabel ?? "Мэдээлэл байхгүй";
+      }
+    }
+
     result[ind.id] = { score, source, autoRaw, autoLabel };
   }
   return result;

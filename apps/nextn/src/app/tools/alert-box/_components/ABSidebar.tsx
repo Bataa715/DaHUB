@@ -23,10 +23,21 @@ const navItems = [
   { href: `${BASE}/dashboards`, icon: LayoutDashboard, label: "Dashboards" },
 ];
 
+interface NotifItem {
+  id: string | number;
+  title: string;
+  severity: string;
+}
+interface NotifData {
+  total: number;
+  criticalCount?: number;
+  items?: NotifItem[];
+}
+
 export default function ABSidebar() {
   const pathname = usePathname();
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any>(null);
+  const [notifications, setNotifications] = useState<NotifData | null>(null);
   const notifBtnRef = useRef<HTMLDivElement>(null);
   const notifPopupRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +60,7 @@ export default function ABSidebar() {
     const load = () =>
       abFetchNotifications(20)
         .then(setNotifications)
-        .catch(() => {});
+        .catch(() => { /* intentional: sidebar notification poll; failure just shows no badge */ });
     load();
     const interval = setInterval(load, 60000);
     return () => clearInterval(interval);
@@ -63,7 +74,7 @@ export default function ABSidebar() {
       <div className="px-4 py-4 border-b border-surface-border">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center">
-            <BellDot size={15} className="text-white" />
+            <BellDot size={15} className="text-foreground" />
           </div>
           <div>
             <p className="text-[13px] font-bold text-txt">Alert Box</p>
@@ -110,7 +121,7 @@ export default function ABSidebar() {
             <Bell size={14} />
             <span>Мэдэгдэл</span>
             {notifCount > 0 && (
-              <span className="ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className="ml-auto bg-red-500 text-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                 {notifCount > 99 ? "99+" : notifCount}
               </span>
             )}
@@ -133,11 +144,11 @@ export default function ABSidebar() {
               <X size={13} />
             </button>
           </div>
-          {notifications?.criticalCount > 0 && (
+          {(notifications?.criticalCount ?? 0) > 0 && (
             <div className="mx-3 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
               <AlertTriangle size={12} className="text-red-400" />
               <span className="text-[11px] text-red-300 font-medium">
-                {notifications.criticalCount} өндөр эрсдэл
+                {notifications?.criticalCount} өндөр эрсдэл
               </span>
             </div>
           )}
@@ -151,7 +162,7 @@ export default function ABSidebar() {
                 <p className="text-xs text-txt-dim">Мэдэгдэл байхгүй</p>
               </div>
             ) : (
-              notifications.items?.map((n: any) => (
+              notifications.items?.map((n: NotifItem) => (
                 <div
                   key={n.id}
                   className="flex items-start gap-3 px-4 py-2.5 border-b border-surface-border/50 last:border-0"

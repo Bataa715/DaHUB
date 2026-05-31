@@ -12,6 +12,9 @@
 export type ScoreGroup = "Score 1" | "Score 2" | "Score 3";
 
 export type ScoreValue = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** Oracle DB багануудын боломжит утгын төрөл */
+export type OracleValue = string | number | null;
 export type ScoreResult = ScoreValue | "Үнэлэхгүй" | null;
 
 type NumericRule = {
@@ -111,7 +114,7 @@ export const INDICATOR_RULES: IndicatorRule[] = [
       { min: 3, max: 3.5, score: 4, label: "3-3.4%" },
       { min: 2, max: 3, score: 3, label: "2-2.9%" },
       { min: 1.1, max: 2, score: 2, label: "1.1-1.9%" },
-      { max: 1.0001, score: 1, label: "≤1%" },
+      { max: 1.1, score: 1, label: "≤1%" },
     ],
   },
   {
@@ -123,7 +126,7 @@ export const INDICATOR_RULES: IndicatorRule[] = [
       { min: 3, max: 4, score: 4, label: "3-3.9%" },
       { min: 2, max: 3, score: 3, label: "2-2.9%" },
       { min: 1.1, max: 2, score: 2, label: "1.1-1.9%" },
-      { max: 1.0001, score: 1, label: "≤1%" },
+      { max: 1.1, score: 1, label: "≤1%" },
     ],
   },
   {
@@ -135,7 +138,7 @@ export const INDICATOR_RULES: IndicatorRule[] = [
       { min: 2.1, max: 2.6, score: 4, label: "2.1-2.5%" },
       { min: 1.6, max: 2.1, score: 3, label: "1.6-2%" },
       { min: 1.1, max: 1.6, score: 2, label: "1.1-1.5%" },
-      { max: 1.0001, score: 1, label: "≤1%" },
+      { max: 1.1, score: 1, label: "≤1%" },
     ],
   },
   {
@@ -505,14 +508,14 @@ export function getGroup(
 /** Үндсэн оноо тооцоологч. Үр дүн null бол энэ үзүүлэлтэд оноо хамаарахгүй. */
 export function computeScore(
   subid: number | string | null | undefined,
-  result: any,
-  resultType?: string | null,
+  result: OracleValue | undefined,
+  resultType?: OracleValue,
 ): { score: ScoreResult; label: string | null; rule?: IndicatorRule } {
   const rule = getRule(subid);
   if (!rule || rule.noScore) return { score: null, label: null, rule };
 
   const raw = result == null ? "" : String(result).trim();
-  const isStringType = (resultType || "").toUpperCase() === "STRING";
+  const isStringType = String(resultType ?? "").toUpperCase() === "STRING";
 
   // STRING дүрэм байгаа бол эхэлж шалгана
   if (rule.strings && (isStringType || isNaN(Number(raw.replace(",", "."))))) {
@@ -567,12 +570,18 @@ export interface DynamicScoreScale {
   min?: number;
   max?: number;
   step?: number;
+  /**
+   * Хэрэв true бол тухайн сард мэдээлэл байхгүй (null/хоосон) үед
+   * "Үнэлэхгүй" гэж тооцож жингийг хасдаг (weight redistributed).
+   * false/undefined бол мэдээлэл байхгүй үед хамгийн муу оноо (5) авна.
+   */
+  null_is_unelehgui?: boolean;
 }
 
 export function computeScoreDynamic(
   scaleJson: string,
-  result: any,
-  resultType?: string | null,
+  result: OracleValue | undefined,
+  resultType?: OracleValue,
 ): { score: ScoreResult; label: string | null } {
   let scale: DynamicScoreScale;
   try {
@@ -586,7 +595,7 @@ export function computeScoreDynamic(
   }
 
   const raw = result == null ? "" : String(result).trim();
-  const isStringType = (resultType || "").toUpperCase() === "STRING";
+  const isStringType = String(resultType ?? "").toUpperCase() === "STRING";
 
   const matchRule = (rule: DynamicScaleRule, s: string): boolean => {
     if (!rule.values?.length) return false;
@@ -669,7 +678,7 @@ export function scoreColorClass(score: ScoreResult): string {
   if (score === 1)
     return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
   if (score === 0 || score === "Үнэлэхгүй")
-    return "bg-slate-500/10 text-muted-foreground/70 border-border/30";
+    return "bg-muted/20 text-muted-foreground/70 border-border/30";
   return "bg-transparent text-muted-foreground border-transparent";
 }
 
@@ -772,12 +781,12 @@ export function computeTotal(
 }
 
 type AggInputRow = {
-  SOLID?: any;
-  BRANCHID?: any;
-  BRANCHNAME?: any;
-  SUBID?: any;
-  RESULT?: any;
-  RESULT_TYPE?: any;
+  SOLID?: OracleValue;
+  BRANCHID?: OracleValue;
+  BRANCHNAME?: OracleValue;
+  SUBID?: OracleValue;
+  RESULT?: OracleValue;
+  RESULT_TYPE?: OracleValue;
 };
 
 /**
@@ -822,9 +831,9 @@ export function aggregateBranch(
       acc.rating = String(r.RESULT).trim();
     }
 
-    const grp = getGroup(r.SUBID as any);
+    const grp = getGroup(r.SUBID);
     if (!grp) continue;
-    const sr = computeScore(r.SUBID as any, r.RESULT, r.RESULT_TYPE);
+    const sr = computeScore(r.SUBID, r.RESULT, r.RESULT_TYPE);
     if (typeof sr.score === "number" && sr.score > 0) {
       acc.sums[grp].sum += sr.score;
       acc.sums[grp].cnt += 1;

@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { dbAccessApi } from "@/lib/api";
+import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, type TranslationKey } from "@/contexts/LanguageContext";
 import {
   Clock,
   CheckCircle2,
@@ -172,8 +172,9 @@ export default function DbAccessManagePage() {
           ? await dbAccessApi.getAllRequests()
           : await dbAccessApi.getPendingRequests();
         setRequests(data);
-      } catch (err: any) {
-        if (err?.response?.status === 403) {
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } }).response?.status;
+        if (status === 403) {
           toast({
             title: t("accessDenied"),
             description: t("accessDeniedMsg"),
@@ -226,10 +227,10 @@ export default function DbAccessManagePage() {
       setReviewingId(null);
       setReviewNote("");
       loadRequests(tab === "all");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: t("dbAccessValidationTitle"),
-        description: err?.response?.data?.message ?? t("dbManageActionError"),
+        description: getApiErrorMessage(err) || t("dbManageActionError"),
         variant: "destructive",
       });
     } finally {
@@ -246,10 +247,10 @@ export default function DbAccessManagePage() {
       setExpandedId(null);
       setReviewingId(null);
       loadRequests(tab === "all");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: t("dbAccessValidationTitle"),
-        description: err?.response?.data?.message ?? t("dbManageDeleteError"),
+        description: getApiErrorMessage(err) || t("dbManageDeleteError"),
         variant: "destructive",
       });
     } finally {
@@ -267,10 +268,10 @@ export default function DbAccessManagePage() {
       toast({ title: t("dbManageRevoked") });
       const all = await dbAccessApi.getAllGrants();
       setAllGrants(all);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: t("dbAccessValidationTitle"),
-        description: err?.response?.data?.message ?? t("dbManageRevokeError"),
+        description: getApiErrorMessage(err) || t("dbManageRevokeError"),
         variant: "destructive",
       });
     } finally {
@@ -287,10 +288,10 @@ export default function DbAccessManagePage() {
         title: t("dbManageCleaned"),
         description: result.message,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: t("dbAccessValidationTitle"),
-        description: err?.response?.data?.message ?? t("dbManageCleanError"),
+        description: getApiErrorMessage(err) || t("dbManageCleanError"),
         variant: "destructive",
       });
     } finally {
@@ -309,7 +310,7 @@ export default function DbAccessManagePage() {
         href="/tools/db-access"
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
+            <ShieldCheck className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
         title={t("dbManageTitle")}
@@ -443,7 +444,7 @@ export default function DbAccessManagePage() {
                           className={`shrink-0 text-xs ${cfg.color}`}
                         >
                           <StatusIcon className="h-3 w-3 mr-1" />
-                          {t(cfg.labelKey as any)}
+                          {t(cfg.labelKey as TranslationKey)}
                         </Badge>
                         <button
                           className="shrink-0 p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
@@ -544,7 +545,7 @@ export default function DbAccessManagePage() {
                                   />
                                   <div className="flex gap-2">
                                     <Button
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white flex-1"
+                                      className="bg-emerald-600 hover:bg-emerald-500 text-foreground flex-1"
                                       size="sm"
                                       disabled={reviewLoading}
                                       onClick={() =>
@@ -604,7 +605,7 @@ export default function DbAccessManagePage() {
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <Button
-                                    className="bg-violet-600 hover:bg-violet-500 text-white"
+                                    className="bg-violet-600 hover:bg-violet-500 text-foreground"
                                     size="sm"
                                     onClick={() => {
                                       setReviewingId(req.id);

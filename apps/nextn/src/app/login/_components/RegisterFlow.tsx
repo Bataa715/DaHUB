@@ -170,7 +170,7 @@ export function RegisterFlow({
                 >
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <UserPlus className="w-8 h-8 text-white" />
+                      <UserPlus className="w-8 h-8 text-foreground" />
                     </div>
                     <h2 className="text-2xl font-bold text-foreground">
                       Бүртгүүлэх
@@ -323,7 +323,7 @@ export function RegisterFlow({
                       <Button
                         type="submit"
                         disabled={isLoading || !generatedUserId}
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold shadow-lg disabled:opacity-50"
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-foreground font-semibold shadow-lg disabled:opacity-50"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -350,7 +350,7 @@ export function RegisterFlow({
                 >
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <ShieldCheck className="w-8 h-8 text-white" />
+                      <ShieldCheck className="w-8 h-8 text-foreground" />
                     </div>
                     <h2 className="text-2xl font-bold text-foreground">
                       Нууц үг үүсгэх
@@ -447,7 +447,7 @@ export function RegisterFlow({
                       <Button
                         type="submit"
                         disabled={isLoading || !allChecksPass}
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg disabled:opacity-50"
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-foreground font-semibold shadow-lg disabled:opacity-50"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />

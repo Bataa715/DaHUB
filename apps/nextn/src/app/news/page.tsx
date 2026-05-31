@@ -23,6 +23,14 @@ import {
 import Image from "next/image";
 import api from "@/lib/api";
 
+interface TopPublisher {
+  rank: number;
+  authorId: string;
+  authorName: string;
+  newsCount: number;
+  totalViews: number;
+}
+
 function getImageUrl(path?: string): string | null {
   if (!path) return null;
   // [N-6] Use Next.js proxy so the server-side route can attach the HttpOnly
@@ -168,24 +176,24 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
             >
               {item.category}
             </span>
-            <span className="text-white/50 text-xs">·</span>
-            <span className="text-white/50 text-xs">
+            <span className="text-foreground/50 text-xs">·</span>
+            <span className="text-foreground/50 text-xs">
               {formatDate(item.createdAt)}
             </span>
           </div>
 
           <p
-            className="text-xs font-bold tracking-[0.3em] uppercase text-white/70"
+            className="text-xs font-bold tracking-[0.3em] uppercase text-foreground/70"
             style={{ fontFamily: "monospace" }}
           >
             {t("internalAuditLabel")}
           </p>
 
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight tracking-tight">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground leading-tight tracking-tight">
             {item.title}
           </h1>
 
-          <div className="flex items-center gap-1.5 text-white/50 text-sm">
+          <div className="flex items-center gap-1.5 text-foreground/50 text-sm">
             <Eye className="w-4 h-4" />
             <span>{item.views}</span>
           </div>
@@ -197,7 +205,7 @@ function HeroNews({ item, onClick }: { item: News; onClick: () => void }) {
           animate={{ x: [0, 3, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <span className="flex items-center gap-2 text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm px-3.5 py-2 rounded-full transition-colors group-hover:border-white/40">
+          <span className="flex items-center gap-2 text-xs font-semibold text-foreground bg-foreground/10 hover:bg-foreground/20 border border-border/70 backdrop-blur-sm px-3.5 py-2 rounded-full transition-colors group-hover:border-foreground/40">
             {t("readMore")}
             <ArrowRight className="w-3.5 h-3.5" />
           </span>
@@ -243,24 +251,24 @@ function CarouselCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" />
       </div>
 
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/10">
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-foreground/10">
         <div
           className="h-full bg-gradient-to-r from-blue-400 to-purple-400"
           style={{ width: `${20 + index * 15}%` }}
         />
       </div>
 
-      <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full">
+      <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-foreground text-xs px-2.5 py-1 rounded-full">
         {calcReadTime(item.content)} {t("minRead")}
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
-        <div className="flex items-center gap-3 text-white/70 text-xs">
+        <div className="flex items-center gap-3 text-foreground/70 text-xs">
           <span className={`w-2 h-2 rounded-full ${cat.dot} opacity-80`} />
           <Eye className="w-3.5 h-3.5" />
           <span>{item.views}</span>
         </div>
-        <h3 className="text-white font-bold text-sm leading-snug line-clamp-3">
+        <h3 className="text-foreground font-bold text-sm leading-snug line-clamp-3">
           {item.title}
         </h3>
         <span
@@ -314,12 +322,7 @@ function ChatItem({
       <motion.div
         whileHover={{ y: -2 }}
         onClick={onClick}
-        className="flex-1 max-w-2xl cursor-pointer rounded-2xl overflow-hidden transition-all"
-        style={{
-          background: "rgba(15,20,35,0.7)",
-          border: "1px solid rgba(99,102,241,0.15)",
-          backdropFilter: "blur(20px)",
-        }}
+        className="flex-1 max-w-2xl cursor-pointer rounded-2xl overflow-hidden transition-all bg-card/80 border border-golomt-500/15 backdrop-blur-xl"
       >
         <div className="flex items-stretch">
           <div className="flex-1 p-4 space-y-2">
@@ -388,7 +391,7 @@ export default function NewsPage() {
 
   // Stats modal state
   const [showStats, setShowStats] = useState(false);
-  const [topPublishers, setTopPublishers] = useState<any[]>([]);
+  const [topPublishers, setTopPublishers] = useState<TopPublisher[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
 
   useEffect(() => {
@@ -838,7 +841,7 @@ export default function NewsPage() {
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {topPublishers.map((p: any) => {
+                    {topPublishers.map((p: TopPublisher) => {
                       const isTop3 = p.rank <= 3;
                       const medals = ["", "🥇", "🥈", "🥉"];
                       return (
@@ -931,7 +934,7 @@ export default function NewsPage() {
                   {/* Brand label */}
                   <div className="absolute top-6 left-7 flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-70" />
-                    <span className="text-white/25 text-xs font-mono uppercase tracking-widest">
+                    <span className="text-foreground/25 text-xs font-mono uppercase tracking-widest">
                       DaHUB News
                     </span>
                   </div>
@@ -948,7 +951,7 @@ export default function NewsPage() {
                         </span>
                       );
                     })()}
-                    <h1 className="text-white text-2xl lg:text-3xl font-black leading-tight">
+                    <h1 className="text-foreground text-2xl lg:text-3xl font-black leading-tight">
                       {selectedNews.title}
                     </h1>
                   </div>
@@ -971,13 +974,13 @@ export default function NewsPage() {
                   >
                     <button
                       onClick={closeDetail}
-                      className="flex items-center gap-1.5 text-white/50 hover:text-white transition-colors text-sm"
+                      className="flex items-center gap-1.5 text-foreground/50 hover:text-foreground transition-colors text-sm"
                     >
                       <ArrowLeft className="w-4 h-4" />
                       <span>{t("back") || "Буцах"}</span>
                     </button>
                     <div className="flex-1" />
-                    <span className="text-white/20 text-xs hidden sm:block">
+                    <span className="text-foreground/20 text-xs hidden sm:block">
                       {calcReadTime(selectedNews.content)} {t("minuteRead")}
                     </span>
                     {/* Delete button — only if user owns this news */}
@@ -1002,7 +1005,7 @@ export default function NewsPage() {
                     />
                     <button
                       onClick={closeDetail}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-foreground/40 hover:text-foreground hover:bg-foreground/10 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1030,26 +1033,26 @@ export default function NewsPage() {
                               </span>
                             );
                           })()}
-                          <span className="text-white/30 text-xs flex items-center gap-1">
+                          <span className="text-foreground/30 text-xs flex items-center gap-1">
                             <Eye className="w-3 h-3" /> {selectedNews.views}
                           </span>
                         </div>
-                        <h2 className="text-white/90 text-xl font-bold leading-snug">
+                        <h2 className="text-foreground/90 text-xl font-bold leading-snug">
                           {selectedNews.title}
                         </h2>
                       </div>
 
                       {/* Full article content */}
                       <div
-                        className="prose prose-invert prose-sm sm:prose-base max-w-none text-white/70 leading-relaxed
-                      prose-headings:text-white prose-headings:font-bold
+                        className="prose prose-invert prose-sm sm:prose-base max-w-none text-foreground/70 leading-relaxed
+                      prose-headings:text-foreground prose-headings:font-bold
                       prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
-                      prose-strong:text-white/90
-                      prose-code:text-purple-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
-                      prose-pre:bg-white/5 prose-pre:border prose-pre:border-white/10
-                      prose-blockquote:border-l-purple-500 prose-blockquote:text-white/50
+                      prose-strong:text-foreground/90
+                      prose-code:text-purple-300 prose-code:bg-foreground/5 prose-code:px-1 prose-code:rounded
+                      prose-pre:bg-foreground/5 prose-pre:border prose-pre:border-border/50
+                      prose-blockquote:border-l-purple-500 prose-blockquote:text-foreground/50
                       prose-img:rounded-xl prose-img:mx-auto prose-img:w-full
-                      prose-table:text-sm prose-th:text-white/80 prose-td:text-white/60"
+                      prose-table:text-sm prose-th:text-foreground/80 prose-td:text-foreground/60"
                         dangerouslySetInnerHTML={{
                           __html: sanitizeHtml(selectedNews.content),
                         }}

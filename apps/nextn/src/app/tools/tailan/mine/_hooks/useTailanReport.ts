@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { tailanApi } from "@/lib/api";
+import { tailanApi, getApiErrorMessage } from "@/lib/api";
 import {
   uid,
   getCurrentYear,
@@ -146,46 +146,46 @@ export function useTailanReport(userName?: string) {
         if (!r) return;
         if (r.plannedTasks?.length)
           setPlannedTasks(
-            r.plannedTasks.map((t: any) => ({ ...t, _id: uid() })),
+            r.plannedTasks.map((t: PlannedTask) => ({ ...t, _id: uid() })),
           );
         setDynamicSections(
-          (r.dynamicSections ?? []).map((s: any) => ({ ...s, _id: uid() })),
+          (r.dynamicSections ?? []).map((s: DynSection) => ({ ...s, _id: uid() })),
         );
         if (r.section2Tasks?.length)
           setSection2Tasks(
-            r.section2Tasks.map((t: any) => ({ ...t, _id: uid() })),
+            r.section2Tasks.map((t: Section2Task) => ({ ...t, _id: uid() })),
           );
         if (r.section3AutoTasks?.length)
           setSection3AutoTasks(
-            r.section3AutoTasks.map((t: any) => ({ ...t, _id: uid() })),
+            r.section3AutoTasks.map((t: Section3AutoTask) => ({ ...t, _id: uid() })),
           );
         if (r.section3Dashboards?.length)
           setSection3Dashboards(
-            r.section3Dashboards.map((t: any) => ({ ...t, _id: uid() })),
+            r.section3Dashboards.map((t: Section3Dashboard) => ({ ...t, _id: uid() })),
           );
         if (r.section1Dashboards?.length)
           setSection1Dashboards(
-            r.section1Dashboards.map((t: any) => ({ ...t, _id: uid() })),
+            r.section1Dashboards.map((t: Section1Dashboard) => ({ ...t, _id: uid() })),
           );
         if (r.section4Trainings?.length)
           setSection4Trainings(
-            r.section4Trainings.map((t: any) => ({ ...t, _id: uid() })),
+            r.section4Trainings.map((t: Section4Training) => ({ ...t, _id: uid() })),
           );
         if (r.section4KnowledgeText)
           setSection4KnowledgeText(r.section4KnowledgeText);
         if (r.section5Tasks?.length)
           setSection5Tasks(
-            r.section5Tasks.map((t: any) => ({ ...t, _id: uid() })),
+            r.section5Tasks.map((t: Section5Task) => ({ ...t, _id: uid() })),
           );
         if (r.section6Activities?.length)
           setSection6Activities(
-            r.section6Activities.map((t: any) => ({ ...t, _id: uid() })),
+            r.section6Activities.map((t: Section6Activity) => ({ ...t, _id: uid() })),
           );
         if (r.section7Text) setSection7Text(r.section7Text);
         if (r.hiddenSections?.length)
           setHiddenSections(new Set(r.hiddenSections));
       })
-      .catch(() => {})
+      .catch(() => { console.warn("[useTailanReport] Draft load failed — starting with empty form"); })
       .finally(() => setLoaded(true));
     loadImages();
   }, [year, quarter]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -281,11 +281,8 @@ export function useTailanReport(userName?: string) {
       await tailanApi.saveDraft({ ...toDto(), status: "draft" });
       setSavedMsg("Хадгалагдлаа");
       setTimeout(() => setSavedMsg(""), 2500);
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Хадгалахад алдаа гарлаа";
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err) || "Хадгалахад алдаа гарлаа";
       setSavedMsg(`❌ ${msg}`);
       setTimeout(() => setSavedMsg(""), 5000);
     } finally {
@@ -301,9 +298,8 @@ export function useTailanReport(userName?: string) {
       await tailanApi.submitReport(year, quarter);
       setSavedMsg("Илгээгдлээ");
       setTimeout(() => setSavedMsg(""), 3000);
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message || err?.message || "Илгээхэд алдаа гарлаа";
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err) || "Илгээхэд алдаа гарлаа";
       setSavedMsg(`❌ ${msg}`);
       setTimeout(() => setSavedMsg(""), 5000);
     } finally {
