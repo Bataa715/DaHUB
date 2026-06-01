@@ -1,7 +1,7 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,9 +9,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { themes } from "@/lib/themes";
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme();
+  const { setTheme, theme: activeTheme } = useTheme();
 
   return (
     <DropdownMenu>
@@ -21,21 +22,20 @@ export function ThemeToggle() {
           size="icon"
           className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
         >
-          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
+          <Palette className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Загвар солих</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Цайвар
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Бараан
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          Систем
-        </DropdownMenuItem>
+        {themes.map((t) => (
+          <DropdownMenuItem
+            key={t.name}
+            onClick={() => setTheme(t.name)}
+            className={activeTheme === t.name ? "bg-accent text-accent-foreground font-semibold" : ""}
+          >
+            {t.labelMn}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -641,17 +641,19 @@ export function computeScoreDynamic(
   };
 
   if (scale.type === "string") {
-    const hit = applyStringRules(scale.rules ?? []);
+    const hit = applyStringRules(scale.stringRules ?? scale.rules ?? []);
     if (hit) return hit;
   } else if (scale.type === "numeric") {
+    const numRules = scale.numericRules ?? scale.rules ?? [];
+    const strRules = scale.stringRules ?? scale.rules ?? [];
     if (isStringType) {
-      const hit = applyStringRules(scale.rules ?? []);
+      const hit = applyStringRules(strRules);
       if (hit) return hit;
     }
-    const hit = applyNumericRules(scale.rules ?? []);
+    const hit = applyNumericRules(numRules);
     if (hit) return hit;
     if (!isStringType) {
-      const sHit = applyStringRules(scale.rules ?? []);
+      const sHit = applyStringRules(strRules);
       if (sHit) return sHit;
     }
   } else if (scale.type === "both") {

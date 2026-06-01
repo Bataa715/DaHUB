@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeStyleInjector } from "@/components/ThemeStyleInjector";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import MainLayout from "@/components/MainLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { themes, defaultThemeName } from "@/lib/themes";
 
 // CSS variable only — system monospace fallback (Google Fonts татахгүй)
 const jetbrainsMono = {
@@ -43,6 +45,8 @@ export default function RootLayout({
   return (
     <html lang="mn" suppressHydrationWarning>
       <head>
+        {/* All theme CSS variables — single source of truth: lib/themes.ts */}
+        <ThemeStyleInjector />
         {/* Preconnect to critical external resources */}
         <link rel="dns-prefetch" href="https://cdn.simpleicons.org" />
       </head>
@@ -58,8 +62,8 @@ export default function RootLayout({
         </a>
         <ThemeProvider
           attribute="class"
-          defaultTheme="tokyo-night"
-          themes={["default", "tokyo-night", "light"]}
+          defaultTheme={defaultThemeName}
+          themes={themes.map((t) => t.name)}
           enableSystem={false}
           disableTransitionOnChange
         >

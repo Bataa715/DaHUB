@@ -11,7 +11,6 @@ import { NewsModule } from "./news/news.module";
 import { AuditLogModule } from "./audit/audit-log.module";
 import { DbAccessModule } from "./db-access/db-access.module";
 import { TailanModule } from "./tailan/tailan.module";
-import { TuuwerModule } from "./tuuwer/tuuwer.module";
 import { OracleModule } from "./oracle/oracle.module";
 import { PythonApiModule } from "./python-api/python-api.module";
 import { RiskAssessmentModule } from "./risk-assessment/risk-assessment.module";
@@ -46,7 +45,6 @@ import configuration from "./config/configuration";
     NewsModule,
     DbAccessModule,
     TailanModule,
-    TuuwerModule,
     OracleModule,
     PythonApiModule,
     RiskAssessmentModule,

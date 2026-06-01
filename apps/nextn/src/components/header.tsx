@@ -257,13 +257,12 @@ const Header = () => {
                             <div
                               className="w-4 h-4 rounded-full ring-2 ring-white/20 shadow-lg"
                               style={{
-                                backgroundColor: `hsl(${themeOption.primary})`,
-                                boxShadow: `0 0 12px hsl(${themeOption.primary} / 0.5)`,
+                              backgroundColor: `hsl(${themeOption.tokens.primary})`,
+                                boxShadow: `0 0 12px hsl(${themeOption.tokens.primary} / 0.5)`,
                               }}
                             />
                             <span className="flex-1 font-medium">
-                              {themeOption.name.charAt(0).toUpperCase() +
-                                themeOption.name.slice(1).replace("-", " ")}
+                              {themeOption.labelMn}
                             </span>
                             {theme === themeOption.name && (
                               <Check className="h-4 w-4 text-primary" />

@@ -2,10 +2,9 @@
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
-import { CreateNewsDto, UpdateNewsDto } from "./dto/news.dto";
+import { CreateNewsDto } from "./dto/news.dto";
 import { randomUUID } from "crypto";
 
 @Injectable()
@@ -110,107 +109,6 @@ export class NewsService {
     return { ...n, imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "" };
   }
 
-  // [N-4] requesterId + isAdmin required — only the author or an admin may edit a news item
-  async update(
-    id: string,
-    updateNewsDto: UpdateNewsDto,
-    requesterId: string,
-    isAdmin: boolean,
-  ) {
-    const existing = await this.clickhouse.query<any>(
-      `SELECT id, authorId FROM news WHERE id = {id:String} LIMIT 1`,
-      { id },
-    );
-
-    if (!existing || existing.length === 0) {
-      throw new NotFoundException("Мэдээ олдсонгүй");
-    }
-
-    // [N-4] Ownership check
-    if (!isAdmin && existing[0].authorId !== requesterId) {
-      throw new ForbiddenException(
-        "Зөвхөн нийтлэлийн зохиогч эсвэл админ засварлах боломжтой",
-      );
-    }
-
-    // Image update: base64 data is too large for ClickHouse HTTP bound params.
-    // Base64 chars are [A-Za-z0-9+/=] only — safe to embed directly in SQL.
-    if (updateNewsDto.imageUrl !== undefined) {
-      if (updateNewsDto.imageUrl.startsWith("data:")) {
-        // Guard against huge payloads before running regex (ReDoS / memory protection)
-        if (updateNewsDto.imageUrl.length > 5_000_000) {
-          throw new BadRequestException(
-            "Зурагны хэмжээ хэт их байна (дээд тал нь 5MB)",
-          );
-        }
-        const matches = updateNewsDto.imageUrl.match(
-          /^data:([^;]{1,100});base64,([A-Za-z0-9+/=]+)$/,
-        );
-        if (matches) {
-          const imageData = matches[2];
-          const imageMime = matches[1];
-          // H-5: Strict MIME whitelist — reject text/html, image/svg+xml, etc.
-          // A permissive regex like /^[a-zA-Z0-9.+/-]+$/ still allows dangerous types.
-          const ALLOWED_IMAGE_MIMES = [
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-          ];
-          if (!ALLOWED_IMAGE_MIMES.includes(imageMime)) {
-            // [N-5] Reject disallowed MIME types explicitly instead of silently ignoring
-            throw new BadRequestException(
-              "Зөвшөөрөгдөөгүй зургийн формат. Зөвхөн JPEG, PNG, GIF, WebP зөвшөөрнө.",
-            );
-          }
-          if (/^[A-Za-z0-9+/=]+$/.test(imageData)) {
-            await this.clickhouse.exec(
-              `ALTER TABLE news UPDATE imageUrl = {imageUrl:String}, imageMime = {imageMime:String} WHERE id = {id:String}`,
-              { imageUrl: imageData, imageMime, id },
-            );
-          }
-        }
-      } else {
-        // Clear image
-        await this.clickhouse.exec(
-          `ALTER TABLE news UPDATE imageUrl = '', imageMime = '' WHERE id = {id:String}`,
-          { id },
-        );
-      }
-    }
-
-    // Non-image field updates — small values, safe as bound params
-    const updates: string[] = [];
-    const params: Record<string, any> = { id };
-
-    if (updateNewsDto.title) {
-      updates.push("title = {title:String}");
-      params.title = updateNewsDto.title;
-    }
-    if (updateNewsDto.content) {
-      updates.push("content = {content:String}");
-      params.content = updateNewsDto.content;
-    }
-    if (updateNewsDto.category) {
-      updates.push("category = {category:String}");
-      params.category = updateNewsDto.category;
-    }
-    if (updateNewsDto.isPublished !== undefined) {
-      updates.push("isPublished = {isPublished:UInt8}");
-      params.isPublished = updateNewsDto.isPublished ? 1 : 0;
-    }
-
-    updates.push("updatedAt = {updatedAt:String}");
-    params.updatedAt = nowCH();
-
-    await this.clickhouse.exec(
-      `ALTER TABLE news UPDATE ${updates.join(", ")} WHERE id = {id:String}`,
-      params,
-    );
-
-    return { message: "Мэдээ амжилттай шинэчлэгдлээ" };
-  }
-
   async remove(id: string) {
     const existing = await this.clickhouse.query<any>(
       `SELECT id FROM news WHERE id = {id:String} LIMIT 1`,
@@ -268,26 +166,6 @@ export class NewsService {
     );
 
     return { message: newStatus ? "Мэдээ нийтлэгдлээ" : "Мэдээ нуугдлаа" };
-  }
-
-  async getByCategory(category: string, limit = 100, offset = 0) {
-    const news = await this.clickhouse.query<any>(
-      `SELECT n.id, n.title, n.content, n.category,
-              notEmpty(n.imageUrl) AS hasImage,
-              n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
-              u.name as authorName
-       FROM news AS n
-       LEFT JOIN users u ON n.authorId = u.id
-       WHERE n.category = {category:String} AND n.isPublished = 1
-       ORDER BY n.createdAt DESC
-       LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
-      { category, limit: Math.min(limit, 200), offset },
-    );
-
-    return news.map((n) => ({
-      ...n,
-      imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "",
-    }));
   }
 
   async getNewsImage(

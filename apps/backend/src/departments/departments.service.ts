@@ -21,16 +21,6 @@ export class DepartmentsService {
     );
   }
 
-  async getPhotoData(photoId: string) {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT imageData FROM department_photos WHERE id = {id:String} LIMIT 1`,
-      { id: photoId },
-    );
-    if (!rows || rows.length === 0)
-      throw new NotFoundException("Зураг олдсонгүй");
-    return rows[0];
-  }
-
   async uploadPhoto(
     departmentId: string,
     departmentName: string,

@@ -129,12 +129,6 @@ export class DbAccessController {
     return this.dbAccessService.getGrantsByUser(userId, req.user);
   }
 
-  /** GET /db-access/grants/:id/credentials - get ClickHouse credentials for a grant */
-  @Get("grants/:id/credentials")
-  getGrantCredentials(@Param("id") id: string, @Request() req: any) {
-    return this.dbAccessService.getGrantCredentials(id, req.user);
-  }
-
   /** DELETE /db-access/grants/:id - revoke a grant (admin/granter only) */
   @Delete("grants/:id")
   revokeGrant(

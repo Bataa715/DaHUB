@@ -7,39 +7,18 @@ import {
   Body,
   Query,
   UseGuards,
-  Res,
   Request,
-  NotFoundException,
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
-import { Response } from "express";
 import { UsersService } from "./users.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
-
-// B-8: Whitelist of valid tool names — prevents granting fake/invented tools
-const VALID_TOOLS = [
-  "tailan",
-  "tailan_dept_head",
-  "db_access_requester",
-  "db_access_granter",
-  "pivot",
-  "sanamsargui-tuuwer",
-  "excel_report",
-  "data_doc",
-  "alert_box",
-  "python_api_tools",
-  "reports",
-  "risk_assessment",
-  "weekly_report_audit",
-  "weekly_report_daa",
-  "weekly_report_director",
-] as const;
+import { VALID_TOOLS, VALID_TOOLS_SET } from "../common/constants/tools";
 
 @Controller("users")
 export class UsersController {
@@ -119,7 +98,7 @@ export class UsersController {
     }
     // B-8: Strip any tool IDs not in the explicit whitelist (handles legacy IDs gracefully)
     const sanitized = tools.filter((t) =>
-      (VALID_TOOLS as readonly string[]).includes(t),
+      VALID_TOOLS_SET.has(t),
     );
     return this.usersService.updateTools(id, sanitized);
   }
@@ -178,21 +157,4 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  /** B-1: Authenticated users can only view their own avatar; admins can view any */
-  @UseGuards(JwtAuthGuard)
-  @Get(":id/avatar")
-  async getAvatar(
-    @Param("id") id: string,
-    @Res() res: Response,
-    @Request() req: any,
-  ) {
-    if (id !== req.user.id && !req.user.isAdmin) {
-      throw new ForbiddenException("Зөвхөн өөрийн аватараа харах боломжтой");
-    }
-    const result = await this.usersService.getAvatar(id);
-    if (!result) throw new NotFoundException("Avatar not found");
-    res.set("Content-Type", result.mimeType);
-    res.set("Cache-Control", "public, max-age=3600");
-    res.send(result.buffer);
-  }
 }

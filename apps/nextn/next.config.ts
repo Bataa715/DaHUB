@@ -33,18 +33,22 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            // unsafe-eval хасагдсан: Next.js 15 production build үүнгүй ажилладаг.
-            // unsafe-inline style хэрэгтэй хэвээр (Tailwind runtime).
-            // connect-src: API backend + WebSocket (HMR dev) + cdn.simpleicons.org зөвшөөрнө.
+            // Development: Next.js React Refresh (HMR) нь 'unsafe-eval' шаарддаг.
+            // Production: 'unsafe-eval' хэрэггүй — аюулгүй байдлын үүднээс хасна.
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
+              process.env.NODE_ENV === "development"
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src * blob: data:",
               "font-src 'self' data:",
               "connect-src 'self' " +
                 (process.env.NEXT_PUBLIC_API_URL ?? "") +
-                " ws://localhost:* wss://localhost:* https://cdn.simpleicons.org",
+                (process.env.NODE_ENV === "development"
+                  ? " ws://localhost:* wss://localhost:*"
+                  : "") +
+                " https://cdn.simpleicons.org",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

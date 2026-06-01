@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
   Put,
   Query,
@@ -19,32 +18,6 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 export class RiskAssessmentController {
   constructor(private service: RiskAssessmentService) {}
 
-
-  // ── Current data ──────────────────────────────────────────────────────────
-  @Get("current")
-  async getCurrent() {
-    return this.service.getCurrentData();
-  }
-  @Patch("current/row")
-  async overrideCurrentRow(
-    @Body() body: { rowKey: string; manualResult: string },
-    @Request() req,
-  ) {
-    await this.service.overrideCurrentRow(
-      body.rowKey,
-      body.manualResult,
-      req.user.id,
-    );
-    return { ok: true };
-  }
-
-  @Post("current/load-realtime")
-  async loadRealtimeToCurrent(
-    @Body() body: { date: string },
-    @Request() req,
-  ) {
-    return this.service.loadRealtimeToCurrent(body.date, req.user.id);
-  }
 
   // ── Manual indicators ─────────────────────────────────────────────────────
   @Get("manual-indicators")
@@ -113,54 +86,55 @@ export class RiskAssessmentController {
     return this.service.listRealtimeDates();
   }
 
+  @Get("realtime/lock")
+  async getLockedDate() {
+    const lockedDate = await this.service.getLockedDate();
+    return { lockedDate };
+  }
+
+  @Post("realtime/lock")
+  async lockDate(@Body() body: { date: string }, @Request() req) {
+    await this.service.lockDate(body.date, req.user.id);
+    return { ok: true };
+  }
+
+  @Delete("realtime/lock/:date")
+  async unlockDate(@Param("date") date: string) {
+    await this.service.unlockDate(date);
+    return { ok: true };
+  }
+
   @Get("realtime")
   async getRealtimeLatest(@Query("date") date?: string) {
     if (date) return this.service.getRealtimeByDate(date);
     return this.service.getRealtimeLatest();
   }
 
-  // ── Work sessions (Хийх) ─────────────────────────────────────────────────
-  @Get("work")
-  async listWorkSessions() {
-    return this.service.listWorkSessions();
+  // ── Judgement ────────────────────────────────────────────────────────────
+  @Get("judgement")
+  async listJudgements(@Query("date") date?: string) {
+    return this.service.listJudgements(date);
   }
 
-  @Post("work/load")
-  async loadWorkSession(
-    @Body() body: { workDate: string },
+  @Put("judgement")
+  async upsertJudgement(
+    @Body() body: { branchId: string; branchName: string; fetchedDate: string; score: number },
     @Request() req,
   ) {
-    return this.service.loadWorkSession(body.workDate, req.user.id);
-  }
-
-  @Get("work/:date")
-  async getWorkSession(@Param("date") date: string) {
-    return this.service.getWorkSession(date);
-  }
-
-  @Put("work/:date/indicator")
-  async upsertWorkSessionIndicator(
-    @Param("date") workDate: string,
-    @Body() body: { branchId: string; indicatorId: string; value: number },
-    @Request() req,
-  ) {
-    await this.service.upsertWorkSessionIndicator({
-      workDate,
-      ...body,
-      userId: req.user.id,
-    });
+    await this.service.upsertJudgement({ ...body, userId: req.user.id });
     return { ok: true };
   }
 
-  @Post("work/:date/finalize")
-  async finalizeWorkSession(
-    @Param("date") workDate: string,
+  @Post("history/from-realtime")
+  async saveHistoryFromRealtime(
+    @Body() body: { fetchedDate: string; name: string },
     @Request() req,
   ) {
-    return this.service.finalizeWorkSession(
-      workDate,
-      req.user.id,
-      req.user.name ?? req.user.username ?? "",
-    );
+    return this.service.saveHistoryFromRealtime({
+      fetchedDate: body.fetchedDate,
+      name: body.name,
+      userId: req.user.id,
+      userName: req.user.name ?? req.user.username ?? "",
+    });
   }
 }

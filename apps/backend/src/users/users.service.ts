@@ -8,6 +8,7 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
 import { DEPARTMENT_CODES } from "../common/constants/departments"; // [LOW-1] shared constant
+import { VALID_TOOLS_SET } from "../common/constants/tools";
 
 // [LOW-1] DEPARTMENT_CODES imported from src/common/constants/departments.ts
 
@@ -132,26 +133,9 @@ export class UsersService {
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
 
-    // [H-5] Only persist known-valid tool names
-    const VALID_TOOLS = [
-      "tailan",
-      "tailan_dept_head",
-      "db_access_requester",
-      "db_access_granter",
-      "pivot",
-      "sanamsargui-tuuwer",
-      "excel_report",
-      "data_doc",
-      "alert_box",
-      "python_api_tools",
-      "reports",
-      "risk_assessment",
-      "weekly_report_audit",
-      "weekly_report_daa",
-      "weekly_report_director",
-    ];
+    // [H-5] Only persist known-valid tool names (see common/constants/tools.ts)
     const sanitizedTools = (grantableTools ?? []).filter((t) =>
-      VALID_TOOLS.includes(t),
+      VALID_TOOLS_SET.has(t),
     );
     const toolsJson = JSON.stringify(sanitizedTools);
 
@@ -395,31 +379,5 @@ export class UsersService {
       userId: users[0].userId,
       name: users[0].name,
     };
-  }
-
-  async getAvatar(
-    id: string,
-  ): Promise<{ buffer: Buffer; mimeType: string } | null> {
-    const users = await this.clickhouse.query<any>(
-      "SELECT profileImage FROM users WHERE id = {id:String} LIMIT 1",
-      { id },
-    );
-    const profileImage: string = users[0]?.profileImage;
-    if (!profileImage) return null;
-
-    // Expect a data URL: "data:<mime>;base64,<data>"
-    const match = profileImage.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) return null;
-
-    // H-5: Whitelist MIME types — prevents Content-Type injection (stored XSS via SVG/HTML)
-    const ALLOWED_IMAGE_MIMES = [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-    ];
-    if (!ALLOWED_IMAGE_MIMES.includes(match[1])) return null;
-
-    return { buffer: Buffer.from(match[2], "base64"), mimeType: match[1] };
   }
 }

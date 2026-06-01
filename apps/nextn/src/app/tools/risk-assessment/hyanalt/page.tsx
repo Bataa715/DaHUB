@@ -62,28 +62,16 @@ const fmt = (n: number | null | undefined) =>
 
 // ── Score summary table (Score 1–4 only, no J, no Total) ────────────────────
 function ScoreTable({
-  title,
-  region,
   rows,
 }: {
-  title: string;
-  region: "UB" | "LOC";
   rows: BranchAggregate[];
 }) {
   if (rows.length === 0) return null;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20 flex items-center gap-2">
-        <span
-          className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold ${
-            region === "UB"
-              ? "bg-blue-500/15 text-blue-600 border border-blue-500/25"
-              : "bg-violet-500/15 text-violet-600 border border-violet-500/25"
-          }`}
-        >
-          {region}
-        </span>
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <Activity className="w-3.5 h-3.5 text-emerald-500" />
+        <h3 className="text-sm font-semibold">Салбаруудын оноо</h3>
         <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
           {rows.length} салбар
         </span>
@@ -151,10 +139,12 @@ function ScoreTable({
 export default function RiskAssessmentDetailPage() {
   const { t } = useLanguage();
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const [rows, setRows] = useState<RiskRow[]>([]);
   const [fetchedDate, setFetchedDate] = useState("");
   const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [loading, setLoading] = useState(true);
   const [loadingDate, setLoadingDate] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -188,12 +178,17 @@ export default function RiskAssessmentDetailPage() {
         if (cancelled) return;
         setHistoryList(hist);
         setAvailableDates(dates);
-        if (dates.length > 0) {
-          const res = await riskApi.getRealtime(dates[0]);
+        // Өнөөдрийн огноо байвал ачааллана, байхгүй бол хоосон харуулна
+        const today = new Date().toISOString().slice(0, 10);
+        if (dates.includes(today)) {
+          const res = await riskApi.getRealtime(today);
           if (cancelled) return;
           setRows(res.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
-          setFetchedDate(res.fetchedDate || dates[0]);
-          setSelectedDate(dates[0]);
+          setFetchedDate(res.fetchedDate || today);
+          setSelectedDate(today);
+        } else {
+          // Өнөөдрийн дата байхгүй — хоосон
+          setSelectedDate(today);
         }
       } catch {
         /* silent */
@@ -214,26 +209,13 @@ export default function RiskAssessmentDetailPage() {
       try {
         const res = await riskApi.getRealtime(date);
         if (!res.rows || res.rows.length === 0) {
-          // Fallback: хамгийн ойр өмнөх огноо хайх
-          const prev = availableDates
-            .filter((d) => d < date)
-            .sort()
-            .reverse();
-          if (prev.length > 0) {
-            const fb = await riskApi.getRealtime(prev[0]);
-            setRows(fb.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
-            setFetchedDate(fb.fetchedDate || prev[0]);
-            setSelectedDate(prev[0]);
-            setErrorMsg(
-              `"${date}" өгөгдөл байхгүй. "${prev[0]}" огнооны өгөгдлийг ачааллав.`,
-            );
-          } else {
-            const hint =
-              availableDates.length > 0
-                ? ` Боломжтой: ${availableDates.join(", ")}`
-                : "";
-            setErrorMsg(`"${date}" огноонд өгөгдөл олдсонгүй.${hint}`);
-          }
+          setRows([]);
+          setFetchedDate("");
+          const hint =
+            availableDates.length > 0
+              ? ` Боломжтой огнооууд: ${availableDates.slice(0, 5).join(", ")}${availableDates.length > 5 ? " ..." : ""}`
+              : "";
+          setErrorMsg(`"${date}" огноонд өгөгдөл байхгүй байна.${hint}`);
         } else {
           setRows(res.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
           setFetchedDate(res.fetchedDate || date);
@@ -321,14 +303,6 @@ export default function RiskAssessmentDetailPage() {
   );
 
   const aggregates = useMemo(() => aggregateBranch(scoredRows), [scoredRows]);
-  const ubRows = useMemo(
-    () => aggregates.filter((b) => b.region === "UB"),
-    [aggregates],
-  );
-  const locRows = useMemo(
-    () => aggregates.filter((b) => b.region === "LOC"),
-    [aggregates],
-  );
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -443,157 +417,24 @@ export default function RiskAssessmentDetailPage() {
         icon={<Activity className="w-4 h-4 text-emerald-500" />}
         title={t("riskMonitorCardTitle")}
         subtitle={t("riskDetailSubtitle")}
-      />
-      <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1600px]">
-        {/* Огнооны toolbar */}
-        <section className="rounded-xl border border-emerald-500/20 bg-card shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-border/60 bg-gradient-to-r from-emerald-500/5 to-transparent flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="text-xs font-semibold">Realtime өгөгдөл</span>
-            <span className="text-[11px] text-muted-foreground hidden sm:block">
-              — risk_realtime хүснэгтээс тухайн огноогоор ачааллана
-            </span>
-          </div>
-          <div className="px-3 py-2.5 flex flex-wrap items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-            <span className="text-xs text-muted-foreground font-medium">
-              Огноо:
-            </span>
-            <div className="flex flex-col gap-0.5">
-              <input
-                type="date"
-                list="hyanalt-dates-list"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && selectedDate) loadDate(selectedDate);
-                }}
-                disabled={loadingDate}
-                className="h-7 px-2 text-xs rounded-md border border-border bg-background text-foreground disabled:opacity-40 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
-              />
-              {availableDates.length > 0 && (
-                <span className="text-[10px] text-muted-foreground/60 leading-none">
-                  Боломжтой: {availableDates.join(", ")}
-                </span>
-              )}
-            </div>
-            <datalist id="hyanalt-dates-list">
-              {availableDates.map((d) => (
-                <option key={d} value={d} />
-              ))}
-            </datalist>
-            <button
-              onClick={() => loadDate(selectedDate)}
-              disabled={loadingDate || !selectedDate}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-foreground text-xs font-semibold disabled:opacity-40 transition-all"
-            >
-              {loadingDate ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
-              )}
-              Татах
-            </button>
-            {fetchedDate && (
-              <span className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+        rightContent={
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+            {fetchedDate ? (
+              <>
+                <span>{fetchedDate}</span>
                 <span className="relative flex w-1.5 h-1.5">
                   <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
                   <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 </span>
-                Ачааласан: {fetchedDate}
-              </span>
+              </>
+            ) : (
+              <span>{todayStr}</span>
             )}
-            <div className="flex-1" />
-            {/* Хадгалсан улиралуудын menu */}
-            {menuOpen && (
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setMenuOpen(false)}
-              />
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className={`p-1.5 rounded-md border transition-all ${
-                  viewHistoryId || menuOpen
-                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60"
-                }`}
-                title="Хадгалсан улиралууд"
-              >
-                {viewHistoryLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <MoreHorizontal className="w-4 h-4" />
-                )}
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border bg-muted/30">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      Хадгалсан улиралууд
-                    </p>
-                  </div>
-                  {viewHistoryId && (
-                    <button
-                      onClick={() => {
-                        setViewHistoryId(null);
-                        setViewHistoryRows([]);
-                        setMenuOpen(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs hover:bg-muted/40 text-muted-foreground flex items-center gap-2 border-b border-border/50"
-                    >
-                      Реалтайм өгөгдлүүд харах
-                    </button>
-                  )}
-                  {historyList.length === 0 ? (
-                    <div className="px-4 py-5 text-center text-xs text-muted-foreground">
-                      Хадгалсан өгөгдлөл байхгүй
-                    </div>
-                  ) : (
-                    <div className="max-h-60 overflow-y-auto">
-                      {historyList.map((h) => (
-                        <div
-                          key={h.id}
-                          className="flex items-center hover:bg-muted/40 border-b border-border/30 last:border-0 transition-colors"
-                        >
-                          <button
-                            onClick={() => openHistoryView(h.id)}
-                            className="flex-1 flex items-center gap-2.5 px-3 py-2.5 text-left"
-                          >
-                            <Eye
-                              className={`w-3.5 h-3.5 flex-shrink-0 ${
-                                viewHistoryId === h.id
-                                  ? "text-blue-500"
-                                  : "text-muted-foreground/50"
-                              }`}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-semibold truncate">
-                                {h.name}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground mt-0.5">
-                                {h.pDateBeg} → {h.pDate} · {h.branchCount}{" "}
-                                салбар
-                                {h.createdByName ? ` · ${h.createdByName}` : ""}
-                              </div>
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => openDeleteConfirm(h.id)}
-                            className="p-2 text-muted-foreground/40 hover:text-red-500 transition-colors flex-shrink-0"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+          </span>
+        }
+      />
+      <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1600px]">
 
         {errorMsg && (
           <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
@@ -644,30 +485,18 @@ export default function RiskAssessmentDetailPage() {
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
               <Activity className="w-6 h-6 text-muted-foreground/60" />
             </div>
-            <div className="text-sm font-semibold">
-              Realtime өгөгдөл байхгүй байна
+            <div className="text-sm font-semibold text-muted-foreground">
+              Өнөөдрийн өгөгдөл байхгүй байна
             </div>
-            <div className="text-xs mt-1.5 text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Oracle процедур ажиллаад risk_realtime хүснэгтэд өгөгдөл оруулсны
-              дараа дата татагдана.
+            <div className="text-xs text-muted-foreground/60 mt-1">
+              Airflow-с өгөгдөл ирсний дараа автоматаар харагдана
             </div>
           </div>
         )}
 
-        {/* Score summary table – Score 1–4 харуулах, J болон Total байхгүй */}
+        {/* Score summary table */}
         {!loading && scoredRows.length > 0 && (
-          <>
-            <ScoreTable
-              title="Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд"
-              region="UB"
-              rows={ubRows}
-            />
-            <ScoreTable
-              title="Орон нутгийн Бизнес төв, салбар, тооцооны төвүүд"
-              region="LOC"
-              rows={locRows}
-            />
-          </>
+          <ScoreTable rows={aggregates} />
         )}
 
         {/* Дэлгэрэнгүй өгөгдөл (нуугддаг) */}

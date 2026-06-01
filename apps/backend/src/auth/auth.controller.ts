@@ -14,7 +14,6 @@ import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
 import { Response } from "express";
 import { AuthService } from "./auth.service";
 import {
-  SignupDto,
   LoginDto,
   AdminLoginDto,
   LoginByIdDto,
@@ -25,7 +24,6 @@ import {
   RefreshTokenDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
-import { AdminGuard } from "./guards/admin.guard";
 
 @Controller("auth")
 export class AuthController {
@@ -70,13 +68,6 @@ export class AuthController {
     res.clearCookie(isAdmin ? "adminRefreshToken" : "refreshToken", opts);
   }
 
-  // Create a new user — Admin only
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @Post("signup")
-  async signup(@Body() signupDto: SignupDto) {
-    return this.authService.signup(signupDto);
-  }
-
   // Check if user exists
   @UseGuards(ThrottlerGuard)
   @Post("check-user")
@@ -102,13 +93,6 @@ export class AuthController {
     const result = await this.authService.setPassword(setPasswordDto);
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
     return { user: result.user, success: true };
-  }
-
-  // Get userId prefix for department (requires login)
-  @UseGuards(JwtAuthGuard)
-  @Get("user-id-prefix/:department")
-  async getUserIdPrefix(@Param("department") department: string) {
-    return { prefix: this.authService.getUserIdPrefix(department) };
   }
 
   @UseGuards(ThrottlerGuard)

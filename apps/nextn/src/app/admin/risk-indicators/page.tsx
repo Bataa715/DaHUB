@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   riskIndicatorConfigApi,
   riskApi,
@@ -46,6 +46,7 @@ import {
   BarChart3,
   Layers,
   PauseCircle,
+  X,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -163,6 +164,381 @@ function parseScale(raw: string): ScoreScale {
   }
 }
 
+// ── Scale Editor Components ───────────────────────────────────────────────────
+
+const SCORE_BADGE: Record<number, string> = {
+  1: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  2: "bg-lime-500/15 text-lime-500 border-lime-500/30",
+  3: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  4: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  5: "bg-red-500/15 text-red-400 border-red-500/30",
+  0: "bg-muted/20 text-muted-foreground/50 border-border/30",
+};
+
+const SCORE_SELECT_OPTIONS = [
+  { value: 1, label: "1 – Маш сайн" },
+  { value: 2, label: "2 – Сайн" },
+  { value: 3, label: "3 – Дунд" },
+  { value: 4, label: "4 – Хангалтгүй" },
+  { value: 5, label: "5 – Муу" },
+  { value: 0, label: "Ү – Үнэлэхгүй" },
+];
+
+function NumericRulesSection({
+  rules,
+  onChange,
+}: {
+  rules: ScoreScaleRule[];
+  onChange: (r: ScoreScaleRule[]) => void;
+}) {
+  const update = (i: number, patch: Partial<ScoreScaleRule>) =>
+    onChange(rules.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const remove = (i: number) => onChange(rules.filter((_, idx) => idx !== i));
+  const add = () =>
+    onChange([
+      ...rules,
+      { min: undefined, max: undefined, score: 3, label: "" },
+    ]);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-400/80">
+          Тоон дүрмүүд
+        </span>
+        <button
+          type="button"
+          onClick={add}
+          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500/20 transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          Нэмэх
+        </button>
+      </div>
+      {rules.length === 0 ? (
+        <div className="text-[11px] text-muted-foreground/30 text-center py-4 border border-dashed border-border/20 rounded-xl">
+          Дүрэм байхгүй — «Нэмэх» дараарай
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <div className="grid grid-cols-[68px_68px_112px_1fr_28px] gap-1.5 px-1">
+            <span className="text-[10px] text-muted-foreground/40 uppercase">
+              Min
+            </span>
+            <span className="text-[10px] text-muted-foreground/40 uppercase">
+              Max
+            </span>
+            <span className="text-[10px] text-muted-foreground/40 uppercase">
+              Оноо
+            </span>
+            <span className="text-[10px] text-muted-foreground/40 uppercase">
+              Тайлбар
+            </span>
+            <span />
+          </div>
+          {rules.map((rule, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[68px_68px_112px_1fr_28px] gap-1.5 items-center group"
+            >
+              <Input
+                type="number"
+                value={rule.min ?? ""}
+                onChange={(e) =>
+                  update(i, {
+                    min:
+                      e.target.value === ""
+                        ? undefined
+                        : Number(e.target.value),
+                  })
+                }
+                placeholder="—"
+                className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/80 placeholder:text-muted-foreground/20 px-2"
+              />
+              <Input
+                type="number"
+                value={rule.max ?? ""}
+                onChange={(e) =>
+                  update(i, {
+                    max:
+                      e.target.value === ""
+                        ? undefined
+                        : Number(e.target.value),
+                  })
+                }
+                placeholder="—"
+                className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/80 placeholder:text-muted-foreground/20 px-2"
+              />
+              <select
+                value={rule.score}
+                onChange={(e) => update(i, { score: Number(e.target.value) })}
+                className={`h-7 text-xs rounded-lg border px-2 font-medium ${
+                  SCORE_BADGE[rule.score] ??
+                  "bg-foreground/5 border-border/40 text-foreground/80"
+                }`}
+              >
+                {SCORE_SELECT_OPTIONS.map((o) => (
+                  <option
+                    key={o.value}
+                    value={o.value}
+                    className="bg-background text-foreground"
+                  >
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <Input
+                value={rule.label}
+                onChange={(e) => update(i, { label: e.target.value })}
+                placeholder="Тайлбар..."
+                className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/80 placeholder:text-muted-foreground/20"
+              />
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground/20 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StringRulesSection({
+  rules,
+  onChange,
+}: {
+  rules: ScoreScaleRule[];
+  onChange: (r: ScoreScaleRule[]) => void;
+}) {
+  const update = (i: number, patch: Partial<ScoreScaleRule>) =>
+    onChange(rules.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const remove = (i: number) => onChange(rules.filter((_, idx) => idx !== i));
+  const add = () =>
+    onChange([
+      ...rules,
+      { matchType: "exact" as const, values: [], score: 3, label: "" },
+    ]);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-violet-400/80">
+          Мөр дүрмүүд
+        </span>
+        <button
+          type="button"
+          onClick={add}
+          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 hover:bg-violet-500/20 transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          Нэмэх
+        </button>
+      </div>
+      {rules.length === 0 ? (
+        <div className="text-[11px] text-muted-foreground/30 text-center py-4 border border-dashed border-border/20 rounded-xl">
+          Дүрэм байхгүй — «Нэмэх» дараарай
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rules.map((rule, i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-border/30 bg-foreground/[0.02] p-2.5 space-y-1.5"
+            >
+              <div className="flex items-center gap-2">
+                <select
+                  value={rule.matchType ?? "exact"}
+                  onChange={(e) =>
+                    update(i, {
+                      matchType: e.target.value as "exact" | "contains",
+                    })
+                  }
+                  className="h-7 flex-1 text-xs rounded-lg bg-foreground/5 border border-border/40 text-foreground/80 px-2"
+                >
+                  <option value="exact" className="bg-background">
+                    Яг тохирно
+                  </option>
+                  <option value="contains" className="bg-background">
+                    Агуулна
+                  </option>
+                </select>
+                <select
+                  value={rule.score}
+                  onChange={(e) => update(i, { score: Number(e.target.value) })}
+                  className={`h-7 w-[132px] text-xs rounded-lg border px-2 font-medium ${
+                    SCORE_BADGE[rule.score] ??
+                    "bg-foreground/5 border-border/40 text-foreground/80"
+                  }`}
+                >
+                  {SCORE_SELECT_OPTIONS.map((o) => (
+                    <option
+                      key={o.value}
+                      value={o.value}
+                      className="bg-background text-foreground"
+                    >
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => remove(i)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground/20 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <Input
+                value={(rule.values ?? []).join(", ")}
+                onChange={(e) => {
+                  const vals = e.target.value
+                    .split(",")
+                    .map((v) => v.trim())
+                    .filter(Boolean);
+                  update(i, { values: vals });
+                }}
+                placeholder="утга1, утга2, ..."
+                className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/70 placeholder:text-muted-foreground/30"
+              />
+              <Input
+                value={rule.label}
+                onChange={(e) => update(i, { label: e.target.value })}
+                placeholder="Тайлбар..."
+                className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/70 placeholder:text-muted-foreground/30"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScaleEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (json: string) => void;
+}) {
+  const [scale, setScale] = useState<ScoreScale>(() => parseScale(value));
+  const isMounted = useRef(false);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Fire onChange only on user edits, not on initial mount
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    onChangeRef.current(JSON.stringify(scale));
+  }, [scale]);
+
+  // Always read from numericRules/stringRules; fall back to legacy rules field
+  const numericRules = scale.numericRules ?? scale.rules ?? [];
+  const stringRules =
+    scale.stringRules ?? (scale.type === "string" ? scale.rules : []) ?? [];
+
+  const setNumericRules = (rules: ScoreScaleRule[]) =>
+    setScale((s) => {
+      const next: ScoreScale = { ...s, numericRules: rules };
+      delete (next as unknown as Record<string, unknown>).rules;
+      return next;
+    });
+
+  const setStringRules = (rules: ScoreScaleRule[]) =>
+    setScale((s) => {
+      const next: ScoreScale = { ...s, stringRules: rules };
+      delete (next as unknown as Record<string, unknown>).rules;
+      return next;
+    });
+
+  return (
+    <div className="space-y-3">
+      {/* ── Type selector ──────────────────────────────────────────────── */}
+      <div className="space-y-1.5">
+        <Label className="text-muted-foreground/60 text-[11px] uppercase tracking-wider">
+          Оноо тооцоолох арга
+        </Label>
+        <div className="flex flex-wrap gap-1.5">
+          {(["numeric", "string", "both"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setScale((s) => ({ ...s, type: t }))}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                scale.type === t
+                  ? (SCALE_TYPE_BADGE_CLASS[t] ??
+                    "bg-foreground/10 text-foreground border-border/50")
+                  : "border-border/30 text-muted-foreground/50 hover:border-border/50 hover:text-foreground/70 bg-transparent"
+              }`}
+            >
+              {SCALE_TYPE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── null_is_unelehgui toggle ────────────────────────────────────── */}
+      <label className="flex items-center gap-2.5 cursor-pointer w-fit select-none">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!!scale.null_is_unelehgui}
+          onClick={() =>
+            setScale((s) => ({
+              ...s,
+              null_is_unelehgui: !s.null_is_unelehgui,
+            }))
+          }
+          className={`relative w-9 h-5 rounded-full border transition-all shrink-0 ${
+            scale.null_is_unelehgui
+              ? "bg-sky-500/30 border-sky-500/50"
+              : "bg-foreground/5 border-border/40"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 w-4 h-4 rounded-full transition-all shadow-sm ${
+              scale.null_is_unelehgui
+                ? "left-[18px] bg-sky-400"
+                : "left-0.5 bg-foreground/30"
+            }`}
+          />
+        </button>
+        <span className="text-[11px] text-muted-foreground/60">
+          Хоосон утга →{" "}
+          <span className="text-sky-400/80 font-medium">"Үнэлэхгүй"</span>
+          <span className="text-muted-foreground/40 ml-1">(жин хасагдана)</span>
+        </span>
+      </label>
+
+      {/* ── Rules ──────────────────────────────────────────────────────── */}
+      {scale.type === "numeric" && (
+        <NumericRulesSection rules={numericRules} onChange={setNumericRules} />
+      )}
+      {scale.type === "string" && (
+        <StringRulesSection rules={stringRules} onChange={setStringRules} />
+      )}
+      {scale.type === "both" && (
+        <div className="space-y-3">
+          <NumericRulesSection
+            rules={numericRules}
+            onChange={setNumericRules}
+          />
+          <div className="border-t border-border/20" />
+          <StringRulesSection rules={stringRules} onChange={setStringRules} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function RiskIndicatorsPage() {
@@ -218,7 +594,9 @@ export default function RiskIndicatorsPage() {
     riskApi
       .listHolds(holdsPeriod)
       .then((data) => setHeldIds(new Set(data.map((d) => d.indicatorId))))
-      .catch(() => { /* intentional: hold state is UI-only; failure leaves holds unset */ })
+      .catch(() => {
+        /* intentional: hold state is UI-only; failure leaves holds unset */
+      })
       .finally(() => setHoldsLoading(false));
   }, [holdsPeriod]);
 
@@ -436,7 +814,7 @@ export default function RiskIndicatorsPage() {
               className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-foreground/10 rounded-lg text-sm px-4 h-8 transition-all"
             >
               <PauseCircle className="w-3.5 h-3.5 mr-1.5" />
-              Сарын hold
+              Hold
               {heldIds.size > 0 && (
                 <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400">
                   {heldIds.size}
@@ -627,87 +1005,149 @@ export default function RiskIndicatorsPage() {
 
           {/* ── Tab 2: Holds ────────────────────────────────────────── */}
           <TabsContent value="holds" className="mt-0">
-            <div className="flex items-center justify-between mb-4 gap-4">
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Сарын үзүүлэлт hold
-                </p>
-                <p className="text-xs text-muted-foreground/50 mt-0.5">
-                  Hold хийгдсэн үзүүлэлт тухайн сарын тооцооноос хасагдаж,
-                  үлдсэн жин харьцангуйгаар тооцогдоно.
+            {/* Header bar */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-muted-foreground/40 mt-0.5">
+                  Hold хийсэн үзүүлэлт тухайн сарын тооцооноос хасагдаж, үлдсэн
+                  жин харьцангуйгаар тооцогдоно.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {holdsLoading && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/40" />
+                  <Loader2 className="w-3 h-3 animate-spin text-muted-foreground/30" />
                 )}
                 <input
                   type="month"
                   value={holdsPeriod}
                   onChange={(e) => setHoldsPeriod(e.target.value)}
-                  className="h-8 px-3 rounded-lg bg-foreground/5 border border-border/40 text-foreground/80 text-sm focus:border-border/60 focus:outline-none"
+                  className="h-8 px-3 rounded-lg bg-foreground/5 border border-border/40 text-foreground/70 text-sm focus:border-border/60 focus:outline-none tabular-nums"
                 />
               </div>
             </div>
 
+            {/* Summary pill */}
+            {heldIds.size > 0 && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
+                <PauseCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[12px] text-amber-300/90">
+                  <strong className="font-semibold">{heldIds.size}</strong>{" "}
+                  үзүүлэлт hold хийгдсэн байна — тооцооноос хасагдана.
+                </span>
+                <button
+                  onClick={() => {
+                    [...heldIds].forEach((id) => toggleHold(id));
+                  }}
+                  className="ml-auto text-[11px] text-amber-400/60 hover:text-amber-400 transition-colors"
+                >
+                  Бүгдийг цуцлах
+                </button>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/30" />
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/20" />
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {([1, 2, 3, 4, 5] as const).map((grp) => {
-                  const grpInds = indicators.filter(
-                    (ind) => ind.group_num === grp,
-                  );
+                  const grpInds = indicators
+                    .filter((ind) => ind.group_num === grp)
+                    .sort((a, b) => a.sort_order - b.sort_order);
                   if (grpInds.length === 0) return null;
                   const accent = GROUP_ACCENT[grp];
                   const heldCount = grpInds.filter((ind) =>
                     heldIds.has(ind.id),
                   ).length;
+
                   return (
                     <div
                       key={grp}
-                      className={`rounded-xl border ${accent.ring} ring-1 overflow-hidden bg-card`}
+                      className="rounded-xl border border-border/30 bg-card overflow-hidden"
                     >
-                      <div
-                        className={`px-4 py-2.5 border-b border-border/20 flex items-center gap-2 ${accent.bg}`}
-                      >
+                      {/* Group label row */}
+                      <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border/15 bg-foreground/[0.015]">
                         <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${accent.bg} ${accent.text} ring-1 ${accent.ring}`}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${accent.bg} ${accent.text}`}
                         >
                           {GROUP_SHORT[grp]}
                         </span>
-                        <span className={`text-sm font-medium ${accent.text}`}>
+                        <span className="text-[12px] font-medium text-foreground/60">
                           {GROUP_LABELS[grp]}
                         </span>
-                        {heldCount > 0 && (
-                          <span className="ml-auto text-[10px] font-bold text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/20">
-                            {heldCount} hold
-                          </span>
-                        )}
+                        <span className="text-[11px] text-muted-foreground/30 ml-auto tabular-nums">
+                          {grpInds.length} үзүүлэлт
+                          {heldCount > 0 && (
+                            <span className="ml-2 text-amber-400/80 font-semibold">
+                              · {heldCount} hold
+                            </span>
+                          )}
+                        </span>
                       </div>
-                      <div className="px-4 py-3 flex flex-wrap gap-2">
+
+                      {/* Indicator toggle rows */}
+                      <div className="divide-y divide-border/10">
                         {grpInds.map((ind) => {
                           const held = heldIds.has(ind.id);
                           return (
                             <button
                               key={ind.id}
                               onClick={() => toggleHold(ind.id)}
-                              title={ind.hint ?? ind.name}
-                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                                 held
-                                  ? "bg-amber-500/10 border-amber-500/30 text-amber-300 line-through"
-                                  : "bg-foreground/[0.03] border-border/40 text-foreground/80 hover:border-border/60 hover:bg-foreground/[0.05]"
+                                  ? "bg-amber-500/5 hover:bg-amber-500/8"
+                                  : "hover:bg-foreground/[0.02]"
                               }`}
                             >
-                              {held && (
-                                <PauseCircle className="w-3 h-3 text-amber-400 shrink-0" />
-                              )}
-                              <span>{ind.name}</span>
-                              <span className="opacity-40 text-[10px]">
+                              {/* Toggle indicator */}
+                              <span
+                                className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${
+                                  held
+                                    ? "bg-amber-500/20 border-amber-500/40"
+                                    : "border-border/40 bg-transparent"
+                                }`}
+                              >
+                                {held && (
+                                  <PauseCircle className="w-2.5 h-2.5 text-amber-400" />
+                                )}
+                              </span>
+
+                              {/* subid */}
+                              <code
+                                className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded shrink-0 ${accent.bg} ${accent.text}`}
+                              >
+                                {ind.subid}
+                              </code>
+
+                              {/* name */}
+                              <span
+                                className={`flex-1 text-[12px] min-w-0 truncate transition-colors ${
+                                  held
+                                    ? "text-amber-300/70 line-through"
+                                    : "text-foreground/75"
+                                }`}
+                              >
+                                {ind.name}
+                              </span>
+
+                              {/* weight */}
+                              <span
+                                className={`text-[11px] tabular-nums shrink-0 ${
+                                  held
+                                    ? "text-amber-400/50"
+                                    : "text-muted-foreground/30"
+                                }`}
+                              >
                                 {ind.weight}%
                               </span>
+
+                              {/* hold label */}
+                              {held && (
+                                <span className="text-[10px] font-semibold text-amber-400/70 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shrink-0">
+                                  HOLD
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -827,6 +1267,23 @@ export default function RiskIndicatorsPage() {
                 onChange={(e) => setForm({ ...form, hint: e.target.value })}
                 placeholder="Нэмэлт тайлбар..."
                 className="bg-foreground/5 border-border/50 text-foreground placeholder:text-muted-foreground/40 h-9 rounded-xl"
+              />
+            </div>
+
+            {/* Scale editor */}
+            <div className="pt-1 border-t border-border/20 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-3.5 h-3.5 text-muted-foreground/40" />
+                <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
+                  Оноо тооцоолох бүтэц
+                </span>
+              </div>
+              <ScaleEditor
+                key={editingId ?? "new"}
+                value={form.score_scale}
+                onChange={(json) =>
+                  setForm((f) => ({ ...f, score_scale: json }))
+                }
               />
             </div>
           </div>

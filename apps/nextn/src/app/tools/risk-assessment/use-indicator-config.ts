@@ -248,17 +248,16 @@ export function evaluateBranchDynamic(
         }
       }
     }
-    // If still no score: check null_is_unelehgui flag.
-    // - null_is_unelehgui=true  → missing data is OK, exclude from group avg (weight redistributed)
-    // - null_is_unelehgui=false/absent → missing data means worst case → score 5
-    if (score === null) {
+    // If still no score: only force score 5 when null_is_unelehgui is explicitly false.
+    // By default (flag absent) missing data = Үнэлэхгүй (weight redistributed).
+    if (score === null && !ind.is_manual) {
       let sc: { null_is_unelehgui?: boolean } = {};
       try {
         sc = JSON.parse(ind.score_scale);
       } catch {
         /* ignore */
       }
-      if (!sc.null_is_unelehgui) {
+      if (sc.null_is_unelehgui === false) {
         score = 5;
         source = "auto";
         autoRaw = autoRaw ?? "";

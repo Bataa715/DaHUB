@@ -20,15 +20,23 @@ import {
 } from "./risk-indicator-config.service";
 
 @Controller("risk-indicator-config")
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard)
 export class RiskIndicatorConfigController {
   constructor(private readonly svc: RiskIndicatorConfigService) {}
 
+  /** GET /risk-indicator-config — бүх нэвтэрсэн хэрэглэгч уншиж болно */
   @Get()
   list(): Promise<IndicatorConfig[]> {
     return this.svc.listIndicators();
   }
 
+  /** GET /risk-indicator-config/group-config — бүх нэвтэрсэн хэрэглэгч уншиж болно */
+  @Get("group-config")
+  listGroups(): Promise<GroupConfig[]> {
+    return this.svc.listGroupConfig();
+  }
+
+  @UseGuards(AdminGuard)
   @Post()
   create(
     @Body()
@@ -43,6 +51,7 @@ export class RiskIndicatorConfigController {
     return this.svc.upsertIndicator({ ...dto, id: undefined }, user.id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(":id")
   update(
     @Param("id") id: string,
@@ -52,6 +61,7 @@ export class RiskIndicatorConfigController {
     return this.svc.upsertIndicator({ ...dto, id } as any, user.id);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
@@ -61,6 +71,7 @@ export class RiskIndicatorConfigController {
     return this.svc.deleteIndicator(id, user.id);
   }
 
+  @UseGuards(AdminGuard)
   @Post("reorder")
   @HttpCode(HttpStatus.NO_CONTENT)
   reorder(
@@ -70,18 +81,4 @@ export class RiskIndicatorConfigController {
     return this.svc.reorderIndicators(body.ids, user.id);
   }
 
-  @Get("group-config")
-  listGroups(): Promise<GroupConfig[]> {
-    return this.svc.listGroupConfig();
-  }
-
-  @Post("group-config")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  upsertGroup(
-    @Body()
-    dto: { region: string; group_num: number; weight: number; label: string },
-    @CurrentUser() user: { id: string },
-  ): Promise<void> {
-    return this.svc.upsertGroupConfig(dto, user.id);
-  }
 }

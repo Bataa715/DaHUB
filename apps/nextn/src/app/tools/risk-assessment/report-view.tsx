@@ -8,7 +8,7 @@ import {
   Fragment,
   useRef,
 } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { ChevronDown, Download, Loader2 } from "lucide-react";
 import Cookies from "js-cookie";
 import { riskApi } from "@/lib/api";
 import {
@@ -319,15 +319,6 @@ export default function ReportView({
     [aggregates, riskFilter],
   );
 
-  const ub = useMemo(
-    () => filtered.filter((b) => b.region === "UB"),
-    [filtered],
-  );
-  const loc = useMemo(
-    () => filtered.filter((b) => b.region === "LOC"),
-    [filtered],
-  );
-
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
     const prevBase = aggregateBranch(previousScoredRows);
@@ -531,27 +522,15 @@ export default function ReportView({
       </div>
 
       <ReportTable
-        title="Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд"
-        region="UB"
-        rows={ub}
+        title="Бүх салбар, тооцооны төвүүд"
+        rows={filtered}
         previousAggMap={previousAggMap}
         manualMap={manualMap}
         weights={dynamicConfig.weights}
         setManualValue={setManualValue}
         catalog={dynamicConfig.catalog}
         readOnly={readOnly}
-      />
-
-      <ReportTable
-        title="Орон нутгийн Бизнес төв, салбар, тооцооны төвүүд"
-        region="LOC"
-        rows={loc}
-        previousAggMap={previousAggMap}
-        manualMap={manualMap}
-        weights={dynamicConfig.weights}
-        setManualValue={setManualValue}
-        catalog={dynamicConfig.catalog}
-        readOnly={readOnly}
+        rawRowsByBranch={rowsByBranch}
       />
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -606,9 +585,10 @@ function ReportTable({
   setManualValue,
   catalog,
   readOnly = false,
+  rawRowsByBranch,
 }: {
   title: string;
-  region: "UB" | "LOC";
+  region?: "UB" | "LOC";
   rows: BranchAggregate[];
   previousAggMap: Map<string, BranchAggregate>;
   manualMap: ManualMap;
@@ -620,11 +600,13 @@ function ReportTable({
   ) => void;
   catalog: DynamicCatalogIndicator[];
   readOnly?: boolean;
+  rawRowsByBranch: Map<string, AnyRow[]>;
 }) {
-  const w = weights[region];
+  const w = region ? weights[region] : weights["UB"];
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
   const [editingJBranch, setEditingJBranch] = useState<string | null>(null);
   const [editJValue, setEditJValue] = useState<string>("");
+  const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
   const judgmentInd = catalog.find((ind) => ind.is_judgment);
   const commitJ = (branchId: string) => {
     if (judgmentInd) {
@@ -644,15 +626,17 @@ function ReportTable({
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <span
-            className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold ${
-              region === "UB"
-                ? "bg-blue-500/15 text-blue-600 border border-blue-500/25"
-                : "bg-violet-500/15 text-violet-600 border border-violet-500/25"
-            }`}
-          >
-            {region}
-          </span>
+          {region && (
+            <span
+              className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold ${
+                region === "UB"
+                  ? "bg-blue-500/15 text-blue-600 border border-blue-500/25"
+                  : "bg-violet-500/15 text-violet-600 border border-violet-500/25"
+              }`}
+            >
+              {region === "UB" ? "УБ" : "Хөдөө"}
+            </span>
+          )}
           <h3 className="text-sm font-semibold">{title}</h3>
           <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
             {rows.length} салбар
@@ -698,9 +682,6 @@ function ReportTable({
             }`}
           >
             Үнэлэмж: {filledJCount}/{rows.length}
-            <span className="text-[9px] text-muted-foreground/60 font-normal">
-              (нүд клик — засах)
-            </span>
           </span>
         </div>
       </div>
@@ -708,6 +689,9 @@ function ReportTable({
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-xs uppercase text-muted-foreground sticky top-0 z-10">
             <tr>
+              <th className="px-2 py-2 text-center font-semibold w-8 text-sky-500/70" title="Дэлгэрэнгүй харах">
+                ⊕
+              </th>
               <th className="px-2 py-2 text-left font-semibold">№</th>
               <th className="px-2 py-2 text-left font-semibold">SOL</th>
               <th className="px-2 py-2 text-left font-semibold">
@@ -752,9 +736,26 @@ function ReportTable({
                 prev && b.total != null && prev.total != null
                   ? b.total - prev.total
                   : null;
+              const isExpanded = expandedBranchId === b.branchId;
               return (
                 <Fragment key={b.branchId}>
-                  <tr className="border-t border-border hover:bg-accent/30">
+                  <tr
+                    className={`border-t border-border hover:bg-accent/30 cursor-pointer select-none ${isExpanded ? "bg-sky-500/5" : ""}`}
+                    onClick={() => setExpandedBranchId(isExpanded ? null : b.branchId)}
+                  >
+                    <td className="px-1 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setExpandedBranchId(isExpanded ? null : b.branchId)}
+                        title="Дэлгэрэнгүй харах"
+                        className={`inline-flex items-center justify-center w-6 h-6 rounded-md border transition-all ${
+                          isExpanded
+                            ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                            : "border-border bg-muted/40 text-muted-foreground hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-500"
+                        }`}
+                      >
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      </button>
+                    </td>
                     <td className="px-2 py-2 tabular-nums text-muted-foreground font-semibold">
                       {i + 1}
                     </td>
@@ -867,13 +868,24 @@ function ReportTable({
                             : `▼ ${diff.toFixed(2)}`}
                     </td>
                   </tr>
+                  {/* ── Дэлгэрэнгүй мөр ── */}
+                  {isExpanded && (
+                    <IndicatorDetailRow
+                      branchId={b.branchId}
+                      branchName={b.branchName}
+                      catalog={catalog}
+                      rawRows={rawRowsByBranch.get(b.branchId) ?? []}
+                      manualValues={manualMap[b.branchId]}
+                      colSpan={14}
+                    />
+                  )}
                 </Fragment>
               );
             })}
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={13}
+                  colSpan={14}
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   <div className="text-xs">
@@ -886,6 +898,111 @@ function ReportTable({
         </table>
       </div>
     </div>
+  );
+}
+
+// ── Дэлгэрэнгүй: нэг салбарын бүх үзүүлэлтийн утга + score ─────────────────
+const GROUP_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: "S1", color: "text-sky-600 dark:text-sky-400 bg-sky-500/10 border-sky-500/25" },
+  2: { label: "S2", color: "text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/25" },
+  3: { label: "S3", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/25" },
+  4: { label: "S4", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25" },
+  5: { label: "J", color: "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/25" },
+};
+
+function IndicatorDetailRow({
+  branchId,
+  branchName,
+  catalog,
+  rawRows,
+  manualValues,
+  colSpan,
+}: {
+  branchId: string;
+  branchName: string;
+  catalog: DynamicCatalogIndicator[];
+  rawRows: AnyRow[];
+  manualValues: Record<string, number> | undefined;
+  colSpan: number;
+}) {
+  const evals = useMemo(
+    () => evaluateBranchDynamic(catalog, rawRows, manualValues),
+    [catalog, rawRows, manualValues],
+  );
+
+  const grouped = useMemo(() => {
+    const g: Record<number, { ind: DynamicCatalogIndicator; ev: { score: number | null; source: string; autoRaw?: string; autoLabel?: string | null } }[]> = {};
+    for (const ind of catalog) {
+      const ev = evals[ind.id] ?? { score: null, source: "none" };
+      const grp = ind.group;
+      if (!g[grp]) g[grp] = [];
+      g[grp].push({ ind, ev });
+    }
+    return g;
+  }, [catalog, evals]);
+
+  return (
+    <tr className="border-t border-sky-500/20 bg-sky-500/3">
+      <td colSpan={colSpan} className="px-0 py-0">
+        <div className="px-4 py-3 space-y-3">
+          <div className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+            {branchName} — үзүүлэлтийн дэлгэрэнгүй
+          </div>
+          {([1, 2, 3, 4, 5] as const).map((grp) => {
+            const items = grouped[grp];
+            if (!items || items.length === 0) return null;
+            const gl = GROUP_LABELS[grp];
+            return (
+              <div key={grp}>
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold mb-1.5 ${gl.color}`}>
+                  {gl.label}
+                </div>
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="text-muted-foreground/60 uppercase text-[10px]">
+                      <th className="text-left py-0.5 pr-3 font-semibold w-8">ID</th>
+                      <th className="text-left py-0.5 pr-3 font-semibold">Үзүүлэлтийн нэр</th>
+                      <th className="text-right py-0.5 pr-3 font-semibold">Утга (RESULT)</th>
+                      <th className="text-center py-0.5 font-semibold w-16">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map(({ ind, ev }) => (
+                      <tr key={ind.id} className="border-t border-border/30 hover:bg-accent/20">
+                        <td className="py-1 pr-3 text-muted-foreground/50 font-mono tabular-nums">{ind.subid || ind.id}</td>
+                        <td className="py-1 pr-3 font-medium text-foreground/90">{ind.name}</td>
+                        <td className="py-1 pr-3 tabular-nums font-semibold text-right text-foreground">
+                          {ev.autoRaw !== undefined
+                            ? ev.autoRaw || "—"
+                            : ind.is_manual
+                              ? <span className="text-muted-foreground/40 italic">гараар</span>
+                              : "—"}
+                        </td>
+                        <td className="py-1 text-center tabular-nums font-bold">
+                          {ev.score != null && ev.score > 0 ? (
+                            <span className={
+                              ev.score <= 1.5 ? "text-emerald-600 dark:text-emerald-400" :
+                              ev.score <= 2.5 ? "text-lime-600 dark:text-lime-400" :
+                              ev.score <= 3.5 ? "text-amber-600 dark:text-amber-400" :
+                              ev.score <= 4.5 ? "text-orange-600 dark:text-orange-400" :
+                                               "text-rose-600 dark:text-rose-400"
+                            }>
+                              {ev.score.toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      </td>
+    </tr>
   );
 }
 

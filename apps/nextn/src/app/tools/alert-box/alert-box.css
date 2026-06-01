@@ -1,29 +1,9 @@
-/* GolomtTableui CSS variables scoped to .ab-theme */
+/* GolomtTableui — surface/txt CSS variables are injected by ThemeStyleInjector */
+/* Non-variable styles: fonts, scrollbar, animations */
 .ab-theme {
-  --surface: #111118;
-  --surface-card: #18181f;
-  --surface-elevated: #1e1e28;
-  --surface-border: #2a2a3a;
-  --surface-hover: #222230;
-  --txt: #e4e4ec;
-  --txt-muted: #7c7c96;
-  --txt-dim: #55556b;
-
   font-family: "JetBrains Mono", monospace;
   background: var(--surface);
   color: var(--txt);
-}
-
-/* Light mode overrides */
-html.light .ab-theme {
-  --surface: #f0f1f5;
-  --surface-card: #ffffff;
-  --surface-elevated: #f4f5f8;
-  --surface-border: #d1d5db;
-  --surface-hover: #e8eaf0;
-  --txt: #1a1a2e;
-  --txt-muted: #6b7280;
-  --txt-dim: #9ca3af;
 }
 
 .ab-theme ::-webkit-scrollbar {

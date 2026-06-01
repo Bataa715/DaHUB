@@ -118,16 +118,6 @@ export default api;
 
 // Auth APIs
 export const authApi = {
-  createUser: async (data: {
-    password: string;
-    name: string;
-    department: string;
-    position: string;
-  }) => {
-    const response = await api.post("/auth/signup", data);
-    return response.data;
-  },
-
   login: async (department: string, username: string, password: string) => {
     const response = await api.post("/auth/login", {
       department,
@@ -814,7 +804,6 @@ export interface RiskCurrentRow {
   rowKey: string;
   rowType: "oracle" | "manual_indicator";
   fetchedAt: string;
-  updatedBy: string;
   pDate: string;
   pDateBeg: string;
   SOLID: string;
@@ -830,30 +819,11 @@ export interface RiskCurrentRow {
   SUBID: string;
   OPERATION_TYPE: string;
   isManual: number;
-  manualResult: string;
   indicatorId: string;
   indicatorValue: number | null;
 }
 
-export interface RiskWorkSession {
-  workDate: string;
-  rowCount: number;
-  hasIndicators: boolean;
-}
-
 export const riskApi = {
-  /** Current table-аас бүгдийг уншина (өгөгдлийн мөрүүд + manual indicator мөрүүд) */
-  getCurrent: async (): Promise<{
-    pDate: string;
-    pDateBeg: string;
-    oracleFetchedAt: string | null;
-    rows: RiskCurrentRow[];
-    manualMap: Record<string, Record<string, number>>;
-  }> => {
-    const res = await api.get(`/risk-assessment/current`);
-    return res.data;
-  },
-
   // ── Realtime (Хянах) ────────────────────────────────────────────────────
 
   /** risk_realtime дахь өдрүүдийн жагсаалт (in-flight deduplication — MonitorTab + WorkTab зэрэг дуудна) */
@@ -885,57 +855,46 @@ export const riskApi = {
     return res.data;
   },
 
-  // ── Work sessions (Хийх) ────────────────────────────────────────────────
-
-  /** Ажлын хуваарь байгаа өдрүүдийн жагсаалт */
-  listWorkSessions: async (): Promise<RiskWorkSession[]> => {
-    const res = await api.get(`/risk-assessment/work`);
+  /** Lock хийгдсэн огноог авах */
+  getRealtimeLock: async (): Promise<{ lockedDate: string | null }> => {
+    const res = await api.get(`/risk-assessment/realtime/lock`);
     return res.data;
   },
 
-  /** risk_realtime-ийн тухайн өдрийн мөрүүдийг work session-д ачааллах */
-  loadWorkSession: async (
-    workDate: string,
-  ): Promise<{ loaded: number; alreadyExists: boolean }> => {
-    const res = await api.post(`/risk-assessment/work/load`, { workDate });
-    return res.data;
+  /** Огноог lock хийх */
+  lockRealtimeDate: async (date: string): Promise<void> => {
+    await api.post(`/risk-assessment/realtime/lock`, { date });
   },
 
-  /** Work session-ийн өгөгдөл авах */
-  getWorkSession: async (
-    workDate: string,
-  ): Promise<{
-    workDate: string;
-    rows: RiskCurrentRow[];
-    manualMap: Record<string, Record<string, number>>;
-  }> => {
-    const res = await api.get(`/risk-assessment/work/${workDate}`);
-    return res.data;
+  /** Огноог unlock хийх */
+  unlockRealtimeDate: async (date: string): Promise<void> => {
+    await api.delete(`/risk-assessment/realtime/lock/${date}`);
   },
 
-  /** Work session дотор аудиторын үнэлэмж хадгалах */
-  upsertWorkSessionIndicator: async (
-    workDate: string,
-    args: { branchId: string; indicatorId: string; value: number },
-  ): Promise<void> => {
-    await api.put(`/risk-assessment/work/${workDate}/indicator`, args);
-  },
-
-  /** Work session-ийг risk_assessment_current-д нэгтгэх */
-  finalizeWorkSession: async (workDate: string): Promise<RiskHistoryEntry> => {
-    const res = await api.post(`/risk-assessment/work/${workDate}/finalize`);
-    return res.data;
-  },
-
-  /** Нэг мөрийн RESULT утгыг ClickHouse-д засах */
-  overrideCurrentRow: async (
-    rowKey: string,
-    manualResult: string,
-  ): Promise<void> => {
-    await api.patch(`/risk-assessment/current/row`, {
-      rowKey,
-      manualResult,
+  /** Аудиторын үнэлэмжийн жагсаалт */
+  listJudgements: async (date?: string): Promise<
+    { branchId: string; branchName: string; fetchedDate: string; score: number }[]
+  > => {
+    const res = await api.get(`/risk-assessment/judgement`, {
+      params: date ? { date } : {},
     });
+    return res.data;
+  },
+
+  /** Аудиторын үнэлэмж хадгалах */
+  upsertJudgement: async (args: {
+    branchId: string;
+    branchName: string;
+    fetchedDate: string;
+    score: number;
+  }): Promise<void> => {
+    await api.put(`/risk-assessment/judgement`, args);
+  },
+
+  /** Realtime дата + judgement ашиглан history-д хадгалах */
+  saveHistoryFromRealtime: async (fetchedDate: string, name: string): Promise<RiskHistoryEntry> => {
+    const res = await api.post(`/risk-assessment/history/from-realtime`, { fetchedDate, name });
+    return res.data;
   },
 
   /** Гарын үзүүлэлтийн бүх утгыг авах */
@@ -984,14 +943,6 @@ export const riskApi = {
   /** History бичлэг устгах */
   deleteHistory: async (id: string): Promise<void> => {
     await api.delete(`/risk-assessment/history/${id}`);
-  },
-
-  /** risk_realtime-ийн өгөгдлийг risk_assessment_current-д ачааллах */
-  loadRealtimeToCurrent: async (date: string): Promise<{ loaded: number }> => {
-    const res = await api.post(`/risk-assessment/current/load-realtime`, {
-      date,
-    });
-    return res.data;
   },
 
   // ── Indicator holds ───────────────────────────────────────────────────────
@@ -1063,34 +1014,11 @@ export const weeklyReportApi = {
     return res.data as { id: string; status: string; savedAt: string };
   },
 
-  submit: async (year: number, weekNumber: number) => {
-    const res = await api.post("/weekly-report/submit", { year, weekNumber });
-    return res.data;
-  },
-
-  listMine: async (): Promise<WeeklyReport[]> => {
-    const res = await api.get("/weekly-report/my");
-    return res.data;
-  },
-
   getMine: async (
     year: number,
     weekNumber: number,
   ): Promise<WeeklyReport | null> => {
     const res = await api.get(`/weekly-report/my/${year}/${weekNumber}`);
-    return res.data;
-  },
-
-  listWeeks: async (): Promise<
-    {
-      year: number;
-      weekNumber: number;
-      weekStart: string;
-      weekEnd: string;
-      cnt: number;
-    }[]
-  > => {
-    const res = await api.get("/weekly-report/weeks");
     return res.data;
   },
 
@@ -1100,17 +1028,6 @@ export const weeklyReportApi = {
   ): Promise<WeeklyReport[]> => {
     const res = await api.get(
       `/weekly-report/consolidated?year=${year}&week=${weekNumber}`,
-    );
-    return res.data;
-  },
-
-  getMember: async (
-    userId: string,
-    year: number,
-    weekNumber: number,
-  ): Promise<WeeklyReport> => {
-    const res = await api.get(
-      `/weekly-report/member/${userId}/${year}/${weekNumber}`,
     );
     return res.data;
   },
@@ -1186,26 +1103,9 @@ export const riskIndicatorConfigApi = {
     await api.post("/risk-indicator-config/reorder", { ids });
   },
 
-  seed: async (): Promise<{ count: number }> => {
-    const res = await api.post("/risk-indicator-config/seed");
-    return res.data;
-  },
-
   listGroupConfig: async (): Promise<GroupConfig[]> => {
     const res = await api.get("/risk-indicator-config/group-config");
     return res.data;
   },
 
-  upsertGroupConfig: async (dto: {
-    region: string;
-    group_num: number;
-    weight: number;
-    label: string;
-  }): Promise<void> => {
-    await api.post("/risk-indicator-config/group-config", dto);
-  },
-
-  seedGroups: async (): Promise<void> => {
-    await api.post("/risk-indicator-config/seed-groups");
-  },
 };

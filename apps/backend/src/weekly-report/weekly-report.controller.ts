@@ -28,23 +28,6 @@ export class WeeklyReportController {
     return this.svc.save(req.user, dto);
   }
 
-  @Post("submit")
-  submit(
-    @Body() body: { year: number; weekNumber: number },
-    @Request() req: any,
-  ) {
-    return this.svc.submit(
-      req.user,
-      Number(body.year),
-      Number(body.weekNumber),
-    );
-  }
-
-  @Get("my")
-  listMine(@Request() req: any) {
-    return this.svc.listMine(req.user);
-  }
-
   @Get("my/:year/:week")
   getMine(
     @Param("year") year: string,
@@ -54,12 +37,6 @@ export class WeeklyReportController {
     return this.svc.getMine(req.user, Number(year), Number(week));
   }
 
-  // ── Director (consolidated) ──
-  @Get("weeks")
-  weeks(@Request() req: any) {
-    return this.svc.listSubmittedWeeks(req.user);
-  }
-
   @Get("consolidated")
   consolidated(
     @Query("year") year: string,
@@ -67,21 +44,6 @@ export class WeeklyReportController {
     @Request() req: any,
   ) {
     return this.svc.getConsolidated(req.user, Number(year), Number(week));
-  }
-
-  @Get("member/:userId/:year/:week")
-  member(
-    @Param("userId") userId: string,
-    @Param("year") year: string,
-    @Param("week") week: string,
-    @Request() req: any,
-  ) {
-    return this.svc.getMemberReport(
-      req.user,
-      userId,
-      Number(year),
-      Number(week),
-    );
   }
 
   @Post("director-edit/:id")

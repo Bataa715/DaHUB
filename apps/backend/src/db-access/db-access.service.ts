@@ -716,37 +716,6 @@ export class DbAccessService {
     return { success: true };
   }
 
-  /** Get ClickHouse credentials for a specific grant (owner or admin only) */
-  async getGrantCredentials(grantId: string, requester: any) {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT * FROM access_grants FINAL WHERE id = {id:String} LIMIT 1`,
-      { id: grantId },
-    );
-    const grant = rows[0];
-    if (!grant) throw new NotFoundException("Grant олдсонгүй");
-
-    // Only the grant owner or an admin/granter can view credentials
-    const isOwner = grant.userId === requester.id;
-    if (!isOwner && !this.canGrantAccess(requester)) {
-      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
-    }
-
-    return {
-      username: grant.userUserId,
-      chPassword: (() => {
-        const pwd = this.decryptPwd(grant.chPassword);
-        return pwd ? pwd.slice(0, 4) + "****" + pwd.slice(-4) : "";
-      })(),
-      chPasswordFull: this.decryptPwd(grant.chPassword),
-      tableName: grant.tableName,
-      host: this.resolveChHost(),
-      port: this.resolveChPort(),
-      playUrl:
-        process.env.CLICKHOUSE_PLAY_URL ??
-        `${process.env.CLICKHOUSE_HOST ?? "http://localhost:8123"}/play`,
-    };
-  }
-
   /** List users who can grant access.
    * [HIGH-4] Uses has(JSONExtractArrayRaw()) for exact element matching instead
    * of LIKE '%db_access_granter%' which could false-match partial tool names.

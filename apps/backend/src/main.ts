@@ -14,7 +14,7 @@ function validateProductionEnv() {
   // PYTHON_SERVICE_URL or PYTHON_API_URL (accepts either of the two names)
   const hasPython =
     !!process.env.PYTHON_SERVICE_URL || !!process.env.PYTHON_API_URL;
-  const required = ["CLICKHOUSE_HOST", "JWT_SECRET", "CORS_ORIGINS"];
+  const required = ["CLICKHOUSE_HOST", "CLICKHOUSE_PASSWORD", "JWT_SECRET", "CORS_ORIGINS"];
   const missing = required.filter((k) => !process.env[k]);
   if (!hasPython) missing.unshift("PYTHON_SERVICE_URL (or PYTHON_API_URL)");
   if (missing.length > 0) {

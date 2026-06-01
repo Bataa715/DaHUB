@@ -11,7 +11,6 @@ export interface RiskCurrentRow {
   rowKey: string;
   rowType: "oracle" | "manual_indicator";
   fetchedAt: string;
-  updatedBy: string;
   pDate: string;
   pDateBeg: string;
   SOLID: string;
@@ -27,7 +26,6 @@ export interface RiskCurrentRow {
   SUBID: string;
   OPERATION_TYPE: string;
   isManual: number;
-  manualResult: string;
   indicatorId: string;
   indicatorValue: number | null;
 }
@@ -71,7 +69,6 @@ export class RiskAssessmentService implements OnModuleInit {
         rowKey           String,
         rowType          String DEFAULT 'oracle',
         fetchedAt        DateTime DEFAULT now(),
-        updatedBy        String DEFAULT '',
         pDate            String DEFAULT '',
         pDateBeg         String DEFAULT '',
         SOLID            String DEFAULT '',
@@ -87,7 +84,6 @@ export class RiskAssessmentService implements OnModuleInit {
         SUBID            String DEFAULT '',
         OPERATION_TYPE   String DEFAULT '',
         isManual         UInt8 DEFAULT 0,
-        manualResult     String DEFAULT '',
         indicatorId      String DEFAULT '',
         indicatorValue   Nullable(Float64)
       ) ENGINE = ReplacingMergeTree(fetchedAt)
@@ -143,6 +139,29 @@ export class RiskAssessmentService implements OnModuleInit {
       ) ENGINE = ReplacingMergeTree(fetchedAt)
         ORDER BY (fetchedDate, rowKey)
     `);
+
+    // Тухайн огноог "lock" хийсэн тэмдэглэл
+    await this.clickhouse.exec(`
+      CREATE TABLE IF NOT EXISTS risk_realtime_locks (
+        fetchedDate String,
+        lockedBy    String DEFAULT '',
+        lockedAt    DateTime DEFAULT now()
+      ) ENGINE = ReplacingMergeTree(lockedAt)
+        ORDER BY fetchedDate
+    `);
+
+    // Аудиторын үнэлэмж (judgement) — нэг салбар нэг огноо нэг оноо
+    await this.clickhouse.exec(`
+      CREATE TABLE IF NOT EXISTS risk_judgement (
+        branchId   String,
+        branchName String DEFAULT '',
+        fetchedDate String,
+        score      Float64 DEFAULT 0,
+        updatedBy  String DEFAULT '',
+        updatedAt  DateTime DEFAULT now()
+      ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY (fetchedDate, branchId)
+    `);
   }
 
   async getCurrentData(): Promise<{
@@ -153,11 +172,17 @@ export class RiskAssessmentService implements OnModuleInit {
     manualMap: Record<string, Record<string, number>>;
   }> {
     const rows = await this.clickhouse.query<any>(
-      `SELECT rowKey, rowType, toString(fetchedAt) AS fetchedAt, updatedBy,
+      `SELECT rowKey, rowType, toString(fetchedAt) AS fetchedAt,
               pDate, pDateBeg, SOLID, BRANCHNAME, BRANCHID, PARENTBRANCH,
               RESULT, RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE,
-              ID, SUBID, OPERATION_TYPE, isManual, manualResult, indicatorId, indicatorValue
+              ID, SUBID, OPERATION_TYPE, isManual, indicatorId, indicatorValue
        FROM risk_assessment_current FINAL
+       WHERE rowType != 'oracle'
+          OR toDateTime(fetchedAt) = (
+               SELECT max(toDateTime(fetchedAt))
+               FROM risk_assessment_current FINAL
+               WHERE rowType = 'oracle'
+             )
        ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
     );
     const oracleRow = rows.find((r: any) => r.rowType === "oracle");
@@ -217,7 +242,6 @@ export class RiskAssessmentService implements OnModuleInit {
         rowKey,
         rowType: "manual_indicator",
         fetchedAt: nowCH(),
-        updatedBy: userId,
         pDate: "",
         pDateBeg: "",
         SOLID: "",
@@ -233,7 +257,6 @@ export class RiskAssessmentService implements OnModuleInit {
         SUBID: "",
         OPERATION_TYPE: "",
         isManual: 1,
-        manualResult: "",
         indicatorId,
         indicatorValue: Math.min(5, Math.max(0, value)),
       },
@@ -339,49 +362,7 @@ export class RiskAssessmentService implements OnModuleInit {
     );
   }
 
-  /** Нэг мөрийн RESULT утгыг ClickHouse-д шууд засах */
-  async overrideCurrentRow(
-    rowKey: string,
-    manualResult: string,
-    changedBy: string,
-  ): Promise<void> {
-    const existing = await this.clickhouse.query<any>(
-      `SELECT rowKey, pDate, pDateBeg, SOLID, BRANCHNAME, BRANCHID, PARENTBRANCH,
-              RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE, ID, SUBID, OPERATION_TYPE
-       FROM risk_assessment_current FINAL WHERE rowKey = {k:String} LIMIT 1`,
-      { k: rowKey },
-    );
-    if (existing.length === 0)
-      throw new Error(`Мөр олдсонгүй: rowKey=${rowKey}`);
-    const r = existing[0];
-    await this.clickhouse.insert("risk_assessment_current", [
-      {
-        rowKey,
-        rowType: "oracle",
-        fetchedAt: nowCH(),
-        updatedBy: changedBy,
-        pDate: r.pDate,
-        pDateBeg: r.pDateBeg,
-        SOLID: r.SOLID,
-        BRANCHNAME: r.BRANCHNAME,
-        BRANCHID: r.BRANCHID,
-        PARENTBRANCH: r.PARENTBRANCH,
-        RESULT: manualResult,
-        RESULT_TYPE: r.RESULT_TYPE,
-        DESCRIPTION_TEXT: r.DESCRIPTION_TEXT,
-        P_DATEBEG: r.P_DATEBEG,
-        P_DATE: r.P_DATE,
-        ID: r.ID,
-        SUBID: r.SUBID,
-        OPERATION_TYPE: r.OPERATION_TYPE,
-        isManual: 1,
-        manualResult,
-        indicatorId: "",
-        indicatorValue: null,
-      },
-    ]);
-    this.logger.log(`overrideCurrentRow: ${rowKey} → "${manualResult}" by ${changedBy}`);
-  }
+
 
   // ── Indicator holds ──────────────────────────────────────────────────────
 
@@ -449,293 +430,125 @@ export class RiskAssessmentService implements OnModuleInit {
     manualMap: Record<string, Record<string, number>>;
   }> {
     const rows = await this.clickhouse.query<any>(
-      `SELECT rowKey, 'oracle' AS rowType, toString(fetchedAt) AS fetchedAt, '' AS updatedBy,
+      `SELECT rowKey, 'oracle' AS rowType, toString(fetchedAt) AS fetchedAt,
               '' AS pDate, '' AS pDateBeg,
               SOLID, BRANCHNAME, BRANCHID, PARENTBRANCH,
               RESULT, RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE,
               ID, SUBID, OPERATION_TYPE,
-              0 AS isManual, '' AS manualResult, '' AS indicatorId, NULL AS indicatorValue
+              0 AS isManual, '' AS indicatorId, NULL AS indicatorValue
        FROM risk_realtime FINAL
        WHERE fetchedDate = {d:String}
        ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
+      // Note: ID column removed (unused), updatedBy/manualResult removed
       { d: fetchedDate },
     );
     return { fetchedDate, rows, manualMap: {} };
   }
 
-  /** risk_realtime-ийн өгөгдлийг risk_assessment_current-д ачааллах */
-  async loadRealtimeToCurrent(
-    fetchedDate: string,
-    userId: string,
-  ): Promise<{ loaded: number }> {
-    const source = await this.getRealtimeByDate(fetchedDate);
-    if (source.rows.length === 0) {
-      throw new Error(
-        `${fetchedDate} өдрийн realtime өгөгдөл risk_realtime хүснэгтэд байхгүй байна`,
-      );
-    }
-    const now = nowCH();
-    // Хүснэгтийг бүрэн цэвэрлээд шинэ мөрүүдийг бичнэ
-    await this.clickhouse.insert(
-      "risk_assessment_current",
-      source.rows.map((r: any) => ({
-        rowKey: r.rowKey,
-        rowType: "oracle",
-        fetchedAt: now,
-        updatedBy: userId,
-        pDate: r.P_DATE ?? "",
-        pDateBeg: r.P_DATEBEG ?? "",
-        SOLID: r.SOLID ?? "",
-        BRANCHNAME: r.BRANCHNAME ?? "",
-        BRANCHID: r.BRANCHID ?? "",
-        PARENTBRANCH: r.PARENTBRANCH ?? "",
-        RESULT: r.RESULT ?? "",
-        RESULT_TYPE: r.RESULT_TYPE ?? "",
-        DESCRIPTION_TEXT: r.DESCRIPTION_TEXT ?? "",
-        P_DATEBEG: r.P_DATEBEG ?? "",
-        P_DATE: r.P_DATE ?? "",
-        ID: r.ID ?? "",
-        SUBID: r.SUBID ?? "",
-        OPERATION_TYPE: r.OPERATION_TYPE ?? "",
-        isManual: 0,
-        manualResult: "",
-        indicatorId: "",
-        indicatorValue: null,
-      })),
-    );
-    this.logger.log(
-      `loadRealtimeToCurrent: "${fetchedDate}" (${source.rows.length} мөр) by ${userId}`,
-    );
-    return { loaded: source.rows.length };
+  // ── Lock ──────────────────────────────────────────────────────────────────
+
+  /** Тухайн огноог lock хийх */
+  async lockDate(fetchedDate: string, userId: string): Promise<void> {
+    await this.clickhouse.insert('risk_realtime_locks', [{
+      fetchedDate, lockedBy: userId, lockedAt: nowCH(),
+    }]);
+    this.logger.log(`lockDate: "${fetchedDate}" by ${userId}`);
   }
 
-  // ── Work sessions (Хийх) ─────────────────────────────────────────────────
+  /** Тухайн огноог unlock хийх */
+  async unlockDate(fetchedDate: string): Promise<void> {
+    await this.clickhouse.exec(
+      `ALTER TABLE risk_realtime_locks DELETE WHERE fetchedDate = {d:String}`,
+      { d: fetchedDate },
+    );
+    this.logger.log(`unlockDate: "${fetchedDate}"`);
+  }
 
-  /** Ажлын хуваарь байгаа өдрүүдийн жагсаалт */
-  async listWorkSessions(): Promise<
-    { workDate: string; rowCount: number; hasIndicators: boolean }[]
+  /** Одоо lock хийгдсэн огноог авах (байхгүй бол null) */
+  async getLockedDate(): Promise<string | null> {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT fetchedDate FROM risk_realtime_locks FINAL ORDER BY lockedAt DESC LIMIT 1`,
+    );
+    return rows[0]?.fetchedDate ?? null;
+  }
+
+  // ── Judgement ─────────────────────────────────────────────────────────────
+
+  /** Тодорхой огноогийн бүх салбарын аудиторын үнэлэмжийг авах */
+  async listJudgements(fetchedDate?: string): Promise<
+    { branchId: string; branchName: string; fetchedDate: string; score: number }[]
   > {
     const rows = await this.clickhouse.query<any>(
-      `SELECT workDate,
-              countIf(rowType = 'oracle') AS oracleCount,
-              countIf(rowType = 'manual_indicator') AS indicatorCount
-       FROM risk_work_sessions FINAL
-       GROUP BY workDate
-       ORDER BY workDate DESC
-       LIMIT 90`,
+      fetchedDate
+        ? `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE fetchedDate = {d:String} ORDER BY branchId`
+        : `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL ORDER BY fetchedDate DESC, branchId`,
+      fetchedDate ? { d: fetchedDate } : {},
     );
     return rows.map((r: any) => ({
-      workDate: String(r.workDate),
-      rowCount: Number(r.oracleCount ?? 0),
-      hasIndicators: Number(r.indicatorCount ?? 0) > 0,
+      branchId: String(r.branchId),
+      branchName: String(r.branchName ?? ''),
+      fetchedDate: String(r.fetchedDate),
+      score: Number(r.score ?? 0),
     }));
   }
 
-  /** risk_realtime-ийн тухайн өдрийн мөрүүдийг work session-д ачааллах */
-  async loadWorkSession(
-    workDate: string,
-    userId: string,
-  ): Promise<{ loaded: number; alreadyExists: boolean }> {
-    // Аль хэдэн байгаа эсэхийг шалгах
-    const existing = await this.clickhouse.query<any>(
-      `SELECT count() AS cnt FROM risk_work_sessions FINAL
-       WHERE workDate = {d:String} AND rowType = 'oracle'`,
-      { d: workDate },
-    );
-    const alreadyExists = Number(existing[0]?.cnt ?? 0) > 0;
-    if (alreadyExists) return { loaded: 0, alreadyExists: true };
-
-    const source = await this.getRealtimeByDate(workDate);
-    if (source.rows.length === 0) {
-      throw new Error(
-        `${workDate} өдрийн realtime өгөгдөл risk_realtime хүснэгтэд байхгүй байна`,
-      );
-    }
-    const updatedAt = nowCH();
-    const batch = source.rows.map((r) => ({
-      workDate,
-      rowKey: `ws:${workDate}:oracle:${r.BRANCHID}:${r.SUBID}:${r.SOLID}`,
-      rowType: "oracle" as const,
-      updatedAt,
-      updatedBy: userId,
-      SOLID: r.SOLID,
-      BRANCHNAME: r.BRANCHNAME,
-      BRANCHID: r.BRANCHID,
-      PARENTBRANCH: r.PARENTBRANCH,
-      RESULT: r.RESULT,
-      RESULT_TYPE: r.RESULT_TYPE,
-      DESCRIPTION_TEXT: r.DESCRIPTION_TEXT,
-      P_DATEBEG: r.P_DATEBEG,
-      P_DATE: r.P_DATE,
-      ID: r.ID,
-      SUBID: r.SUBID,
-      OPERATION_TYPE: r.OPERATION_TYPE,
-      isManual: 0,
-      manualResult: "",
-      indicatorId: "",
-      indicatorValue: null,
-    }));
-    const CHUNK = 1000;
-    for (let i = 0; i < batch.length; i += CHUNK) {
-      await this.clickhouse.insert("risk_work_sessions", batch.slice(i, i + CHUNK));
-    }
-    this.logger.log(`loadWorkSession: ${workDate} — ${batch.length} мөр`);
-    return { loaded: batch.length, alreadyExists: false };
-  }
-
-  /** Тодорхой өдрийн work session өгөгдөл авах */
-  async getWorkSession(workDate: string): Promise<{
-    workDate: string;
-    rows: RiskCurrentRow[];
-    manualMap: Record<string, Record<string, number>>;
-  }> {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT rowKey, rowType, toString(updatedAt) AS fetchedAt, updatedBy,
-              '' AS pDate, '' AS pDateBeg,
-              SOLID, BRANCHNAME, BRANCHID, PARENTBRANCH,
-              RESULT, RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE,
-              ID, SUBID, OPERATION_TYPE, isManual, manualResult, indicatorId, indicatorValue
-       FROM risk_work_sessions FINAL
-       WHERE workDate = {d:String}
-       ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
-      { d: workDate },
-    );
-    const manualMap: Record<string, Record<string, number>> = {};
-    for (const r of rows) {
-      if (r.rowType === "manual_indicator" && r.indicatorId && r.BRANCHID) {
-        (manualMap[r.BRANCHID] ?? (manualMap[r.BRANCHID] = {}))[r.indicatorId] =
-          Number(r.indicatorValue ?? 0);
-      }
-    }
-    return { workDate, rows, manualMap };
-  }
-
-  /** Work session дотор аудиторын үнэлэмжийг хадгалах */
-  async upsertWorkSessionIndicator(args: {
-    workDate: string;
+  /** Аудиторын үнэлэмжийг хадгалах */
+  async upsertJudgement(args: {
     branchId: string;
-    indicatorId: string;
-    value: number;
+    branchName: string;
+    fetchedDate: string;
+    score: number;
     userId: string;
   }): Promise<void> {
-    const { workDate, branchId, indicatorId, value, userId } = args;
-    if (!branchId || !indicatorId || !workDate) return;
-    const rowKey = `ws:${workDate}:manual:${branchId}:${indicatorId}`;
-    if (!value || value <= 0) {
-      await this.clickhouse.exec(
-        `ALTER TABLE risk_work_sessions DELETE WHERE workDate = {d:String} AND rowKey = {k:String}`,
-        { d: workDate, k: rowKey },
-      );
-      return;
-    }
-    const nameRow = await this.clickhouse.query<{ BRANCHNAME: string }>(
-      `SELECT BRANCHNAME FROM risk_work_sessions FINAL
-       WHERE workDate = {d:String} AND BRANCHID = {b:String} AND rowType = 'oracle' LIMIT 1`,
-      { d: workDate, b: branchId },
-    );
-    await this.clickhouse.insert("risk_work_sessions", [
-      {
-        workDate,
-        rowKey,
-        rowType: "manual_indicator",
-        updatedAt: nowCH(),
-        updatedBy: userId,
-        SOLID: "",
-        BRANCHNAME: nameRow[0]?.BRANCHNAME ?? "",
-        BRANCHID: branchId,
-        PARENTBRANCH: "",
-        RESULT: "",
-        RESULT_TYPE: "",
-        DESCRIPTION_TEXT: "",
-        P_DATEBEG: "",
-        P_DATE: "",
-        ID: "",
-        SUBID: "",
-        OPERATION_TYPE: "",
-        isManual: 1,
-        manualResult: "",
-        indicatorId,
-        indicatorValue: Math.min(5, Math.max(0, value)),
-      },
-    ]);
+    await this.clickhouse.insert('risk_judgement', [{
+      branchId: args.branchId,
+      branchName: args.branchName,
+      fetchedDate: args.fetchedDate,
+      score: Math.min(5, Math.max(0, args.score)),
+      updatedBy: args.userId,
+      updatedAt: nowCH(),
+    }]);
   }
 
-  /** Work session-ийг risk_assessment_current-д нэгтгэх (finalizing) */
-  async finalizeWorkSession(
-    workDate: string,
-    userId: string,
-    userName: string,
-  ): Promise<RiskHistoryEntry> {
-    const session = await this.getWorkSession(workDate);
-    if (!session.rows.some((r) => r.rowType === "oracle")) {
-      throw new Error(`${workDate} өдрийн work session хоосон байна`);
+  /** risk_realtime + risk_judgement дата ашиглан history-д хадгалах */
+  async saveHistoryFromRealtime(args: {
+    fetchedDate: string;
+    name: string;
+    userId: string;
+    userName: string;
+  }): Promise<RiskHistoryEntry> {
+    const source = await this.getRealtimeByDate(args.fetchedDate);
+    const judgements = await this.listJudgements(args.fetchedDate);
+    const manualMap: Record<string, Record<string, number>> = {};
+    for (const j of judgements) {
+      if (!manualMap[j.branchId]) manualMap[j.branchId] = {};
+      manualMap[j.branchId]['j-001'] = j.score;
     }
-    // current-г арилгаад шинэ мэдээллээр солих
-    await this.clickhouse.exec(
-      `ALTER TABLE risk_assessment_current DELETE WHERE rowType = 'oracle' AND isManual = 0`,
-    );
-    const fetchedAt = nowCH();
-    const batch = session.rows
-      .filter((r) => r.rowType === "oracle")
-      .map((r) => ({
-        rowKey: `oracle:${r.BRANCHID}:${r.SUBID}:${r.SOLID}`,
-        rowType: "oracle",
-        fetchedAt,
-        updatedBy: userId,
-        pDate: workDate,
-        pDateBeg: workDate,
-        SOLID: r.SOLID,
-        BRANCHNAME: r.BRANCHNAME,
-        BRANCHID: r.BRANCHID,
-        PARENTBRANCH: r.PARENTBRANCH,
-        RESULT: r.RESULT,
-        RESULT_TYPE: r.RESULT_TYPE,
-        DESCRIPTION_TEXT: r.DESCRIPTION_TEXT,
-        P_DATEBEG: r.P_DATEBEG,
-        P_DATE: r.P_DATE,
-        ID: r.ID,
-        SUBID: r.SUBID,
-        OPERATION_TYPE: r.OPERATION_TYPE,
-        isManual: 0,
-        manualResult: "",
-        indicatorId: "",
-        indicatorValue: null,
-      }));
-    await this.clickhouse.insert("risk_assessment_current", batch);
-    // Manual indicators-г current-д шилжүүлэх
-    const manualBatch = session.rows
-      .filter((r) => r.rowType === "manual_indicator")
-      .map((r) => ({
-        rowKey: `manual:${r.BRANCHID}:${r.indicatorId}`,
-        rowType: "manual_indicator",
-        fetchedAt,
-        updatedBy: userId,
-        pDate: workDate,
-        pDateBeg: workDate,
-        SOLID: "",
-        BRANCHNAME: r.BRANCHNAME,
-        BRANCHID: r.BRANCHID,
-        PARENTBRANCH: "",
-        RESULT: "",
-        RESULT_TYPE: "",
-        DESCRIPTION_TEXT: "",
-        P_DATEBEG: "",
-        P_DATE: "",
-        ID: "",
-        SUBID: "",
-        OPERATION_TYPE: "",
-        isManual: 1,
-        manualResult: "",
-        indicatorId: r.indicatorId,
-        indicatorValue: r.indicatorValue,
-      }));
-    if (manualBatch.length > 0) {
-      await this.clickhouse.insert("risk_assessment_current", manualBatch);
-    }
-    this.logger.log(
-      `finalizeWorkSession: ${workDate} — ${batch.length} oracle + ${manualBatch.length} manual мөр`,
-    );
-    // History-д хадгалах
-    return this.saveHistory({ name: `${workDate} (auto)`, userId, userName });
+    const oracleRows = source.rows;
+    const id = randomUUID();
+    const createdAt = nowCH();
+    const branchCount = new Set(oracleRows.map((r: any) => r.BRANCHID)).size;
+    const pDate = args.fetchedDate;
+    await this.clickhouse.insert('risk_assessment_history', [{
+      id,
+      name: args.name,
+      pDate,
+      pDateBeg: '',
+      branchCount,
+      oracleFetchedAt: '',
+      rowsJson: JSON.stringify(oracleRows),
+      manualJson: JSON.stringify(manualMap),
+      createdBy: args.userId,
+      createdByName: args.userName,
+      createdAt,
+    }]);
+    this.logger.log(`saveHistoryFromRealtime: "${args.name}" date=${pDate} (${oracleRows.length} мөр) by ${args.userId}`);
+    return {
+      id, name: args.name, pDate, pDateBeg: '',
+      branchCount, oracleFetchedAt: '',
+      createdBy: args.userId, createdByName: args.userName, createdAt,
+    };
   }
+
 }
+

@@ -15,7 +15,6 @@ import { randomUUID } from "crypto";
 import { DEPARTMENT_CODES } from "../common/constants/departments"; // [LOW-1] shared constant
 import { Cron, CronExpression } from "@nestjs/schedule";
 import {
-  SignupDto,
   LoginDto,
   AdminLoginDto,
   LoginByIdDto,
@@ -326,73 +325,6 @@ export class AuthService {
   }
 
   // ─── Public Methods ─────────────────────────────────────────────────────────
-
-  async signup(signupDto: SignupDto) {
-    const { password, name, department, position } = signupDto;
-    const userId = await this.generateUserId(department, name);
-
-    // Only conflict if an active user exists — handles the case where a deleted
-    // user's row is still physically present due to async ClickHouse mutation.
-    const existing = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE userId = {userId:String} AND isActive = 1 LIMIT 1",
-      { userId },
-    );
-    if (existing[0]) {
-      throw new ConflictException(
-        `Энэ хэрэглэгчийн ID (${userId}) аль хэдийн бүртгэлтэй байна`,
-      );
-    }
-
-    return this.createUser(password, name, department, position, userId);
-  }
-
-  private async createUser(
-    password: string,
-    name: string,
-    department: string,
-    position: string,
-    usrId: string,
-  ) {
-    const hashedPassword = await bcrypt.hash(password, 13);
-    const dept = await this.ensureDepartment(department);
-    const id = randomUUID();
-    const now = nowCH();
-
-    await this.clickhouse.insert("users", [
-      {
-        id,
-        userId: usrId,
-        password: hashedPassword,
-        name,
-        position,
-        departmentId: dept.id,
-        isAdmin: 0,
-        isActive: 1,
-        allowedTools: JSON.stringify([]),
-        profileImage: "",
-        lastLoginAt: null,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ]);
-
-    const fakeUser = {
-      id,
-      userId: usrId,
-      departmentName: department,
-      departmentId: dept.id,
-      isAdmin: 0,
-      allowedTools: JSON.stringify([]),
-      name,
-      position,
-    };
-    // Do NOT return tokens: admin-created accounts must authenticate themselves.
-    // Returning a JWT here would give the calling admin a live token for another user.
-    return {
-      user: this.formatUserResponse(fakeUser),
-      message: "Хэрэглэгч амжилттай үүслээ",
-    };
-  }
 
   async login(loginDto: LoginDto, clientIp = "unknown") {
     const { department, username, password } = loginDto;
@@ -787,12 +719,6 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
-  }
-
-  getUserIdPrefix(department: string): string {
-    const deptCode = DEPARTMENT_CODES[department] || "USR";
-    if (department === "Удирдлага") return `.`;
-    return `DAG-${deptCode}-`;
   }
 
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {

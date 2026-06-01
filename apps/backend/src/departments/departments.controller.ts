@@ -62,11 +62,6 @@ export class DepartmentsController {
     return this.departmentsService.getPhotos(id);
   }
 
-  @Get(":id/photos/:photoId/data")
-  getPhotoData(@Param("photoId") photoId: string) {
-    return this.departmentsService.getPhotoData(photoId);
-  }
-
   @Post(":id/photos")
   async uploadPhoto(
     @Param("id") id: string,
