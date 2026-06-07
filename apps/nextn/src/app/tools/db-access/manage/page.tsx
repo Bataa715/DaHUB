@@ -173,7 +173,8 @@ export default function DbAccessManagePage() {
           : await dbAccessApi.getPendingRequests();
         setRequests(data);
       } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } }).response?.status;
+        const status = (err as { response?: { status?: number } }).response
+          ?.status;
         if (status === 403) {
           toast({
             title: t("accessDenied"),

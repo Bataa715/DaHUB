@@ -66,7 +66,9 @@ api.interceptors.response.use(
               });
           }
           // [N-2] No body needed — browser sends HttpOnly refreshToken cookie automatically
-          const refreshRes = await _refreshPromise as { data?: { user?: unknown } };
+          const refreshRes = (await _refreshPromise) as {
+            data?: { user?: unknown };
+          };
           // Update the user display cookie from the refresh response
           const freshUser = refreshRes.data?.user;
           if (freshUser) {
@@ -274,42 +276,6 @@ export const departmentsApi = {
 
   delete: async (id: string) => {
     const response = await api.delete(`/departments/${id}`);
-    return response.data;
-  },
-
-  // Photo album
-  getPhotos: async (deptId: string) => {
-    const response = await api.get(`/departments/${deptId}/photos`);
-    return response.data as {
-      id: string;
-      departmentId: string;
-      departmentName: string;
-      uploadedBy: string;
-      uploadedByName: string;
-      caption: string;
-      imageData: string;
-      uploadedAt: string;
-    }[];
-  },
-
-  uploadPhoto: async (
-    deptId: string,
-    departmentName: string,
-    imageData: string,
-    caption?: string,
-  ) => {
-    const response = await api.post(`/departments/${deptId}/photos`, {
-      imageData,
-      caption: caption ?? "",
-      departmentName,
-    });
-    return response.data;
-  },
-
-  deletePhoto: async (deptId: string, photoId: string) => {
-    const response = await api.delete(
-      `/departments/${deptId}/photos/${photoId}`,
-    );
     return response.data;
   },
 };
@@ -675,7 +641,11 @@ export const pythonToolApi = {
       },
       { signal },
     );
-    return res.data as { columns: string[]; rows: unknown[][]; totalCount: number };
+    return res.data as {
+      columns: string[];
+      rows: unknown[][];
+      totalCount: number;
+    };
   },
 
   // ── Admin ─────────────────────────────────────────────────────────────────
@@ -872,8 +842,15 @@ export const riskApi = {
   },
 
   /** Аудиторын үнэлэмжийн жагсаалт */
-  listJudgements: async (date?: string): Promise<
-    { branchId: string; branchName: string; fetchedDate: string; score: number }[]
+  listJudgements: async (
+    date?: string,
+  ): Promise<
+    {
+      branchId: string;
+      branchName: string;
+      fetchedDate: string;
+      score: number;
+    }[]
   > => {
     const res = await api.get(`/risk-assessment/judgement`, {
       params: date ? { date } : {},
@@ -892,8 +869,14 @@ export const riskApi = {
   },
 
   /** Realtime дата + judgement ашиглан history-д хадгалах */
-  saveHistoryFromRealtime: async (fetchedDate: string, name: string): Promise<RiskHistoryEntry> => {
-    const res = await api.post(`/risk-assessment/history/from-realtime`, { fetchedDate, name });
+  saveHistoryFromRealtime: async (
+    fetchedDate: string,
+    name: string,
+  ): Promise<RiskHistoryEntry> => {
+    const res = await api.post(`/risk-assessment/history/from-realtime`, {
+      fetchedDate,
+      name,
+    });
     return res.data;
   },
 
@@ -915,12 +898,6 @@ export const riskApi = {
   },
 
   // ── History ──────────────────────────────────────────────────────────────
-
-  /** Current байдлыг нэр өгч History-д хадгалах */
-  saveHistory: async (name: string): Promise<RiskHistoryEntry> => {
-    const res = await api.post(`/risk-assessment/history`, { name });
-    return res.data;
-  },
 
   /** History жагсаалт (meta-г л буцаана, rows байхгүй) */
   listHistory: async (): Promise<RiskHistoryEntry[]> => {
@@ -963,85 +940,43 @@ export const riskApi = {
   }): Promise<void> => {
     await api.put(`/risk-assessment/holds`, body);
   },
-};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Weekly Report API
-// ─────────────────────────────────────────────────────────────────────────────
-export type WeeklyReportRole = "audit" | "daa" | "director" | "none";
+  // ── ETL pre-computed branch scores ────────────────────────────────────────
 
-export interface WeeklyReportRoleInfo {
-  role: WeeklyReportRole;
-  departmentId: string;
-  departmentName: string;
-  canWrite: boolean;
-  canViewAll: boolean;
-}
-
-export interface WeeklyReport {
-  id: string;
-  userId: string;
-  userName: string;
-  departmentId: string;
-  departmentName: string;
-  role: string;
-  year: number;
-  weekNumber: number;
-  weekStart: string;
-  weekEnd: string;
-  status: "draft" | "submitted";
-  sections: Record<string, unknown>;
-  submittedAt?: string;
-  updatedAt?: string;
-}
-
-export const weeklyReportApi = {
-  getRole: async (): Promise<WeeklyReportRoleInfo> => {
-    const res = await api.get("/weekly-report/role");
-    return res.data;
-  },
-
-  save: async (data: {
-    year: number;
-    weekNumber: number;
-    weekStart: string;
-    weekEnd: string;
-    role: "audit" | "daa";
-    sections: Record<string, unknown>;
-    status?: "draft" | "submitted";
-  }) => {
-    const res = await api.post("/weekly-report/save", data);
-    return res.data as { id: string; status: string; savedAt: string };
-  },
-
-  getMine: async (
-    year: number,
-    weekNumber: number,
-  ): Promise<WeeklyReport | null> => {
-    const res = await api.get(`/weekly-report/my/${year}/${weekNumber}`);
-    return res.data;
-  },
-
-  consolidated: async (
-    year: number,
-    weekNumber: number,
-  ): Promise<WeeklyReport[]> => {
-    const res = await api.get(
-      `/weekly-report/consolidated?year=${year}&week=${weekNumber}`,
-    );
-    return res.data;
-  },
-
-  directorEdit: async (
-    reportId: string,
-    sections: Record<string, unknown>,
-  ): Promise<{ id: string; savedAt: string }> => {
-    const res = await api.post(`/weekly-report/director-edit/${reportId}`, {
-      sections,
+  /** ETL-аас тооцоолсон оноог ClickHouse-с авах */
+  getBranchScores: async (date?: string): Promise<BranchScore[]> => {
+    const res = await api.get(`/risk-assessment/branch-scores`, {
+      params: date ? { date } : {},
     });
-    return res.data;
+    return res.data ?? [];
+  },
+
+  /** ETL-аас тооцоолсон оноог ClickHouse-д хадгалах */
+  upsertBranchScores: async (
+    fetchDate: string,
+    scores: Omit<BranchScore, "fetchDate">[],
+  ): Promise<void> => {
+    await api.post(`/risk-assessment/branch-scores`, { fetchDate, scores });
   },
 };
+
+// ── ETL pre-computed branch scores ──────────────────────────────────────────
+
+export interface BranchScore {
+  fetchDate: string;
+  branchId: string;
+  branchName: string;
+  solid: string;
+  rating: string;
+  region: string;
+  s1: number | null;
+  s2: number | null;
+  s3: number | null;
+  s4: number;
+  j: number;
+  total: number | null;
+  level: string;
+}
 
 // ── Risk Indicator Config API ─────────────────────────────────────────────────
 
@@ -1107,5 +1042,44 @@ export const riskIndicatorConfigApi = {
     const res = await api.get("/risk-indicator-config/group-config");
     return res.data;
   },
+};
 
+export const newsReactionsApi = {
+  get: async (newsId: string) => {
+    const r = await api.get(`/news/${newsId}/reactions`);
+    return r.data as {
+      counts: Record<string, number>;
+      myReaction: string | null;
+    };
+  },
+  react: async (newsId: string, emoji: string) => {
+    const r = await api.post(`/news/${newsId}/react`, { emoji });
+    return r.data;
+  },
+  remove: async (newsId: string) => {
+    const r = await api.delete(`/news/${newsId}/react`);
+    return r.data;
+  },
+};
+
+export const newsCommentsApi = {
+  get: async (newsId: string) => {
+    const r = await api.get(`/news/${newsId}/comments`);
+    return r.data as {
+      id: string;
+      newsId: string;
+      authorId: string;
+      authorName: string;
+      content: string;
+      createdAt: string;
+    }[];
+  },
+  add: async (newsId: string, content: string) => {
+    const r = await api.post(`/news/${newsId}/comments`, { content });
+    return r.data;
+  },
+  delete: async (newsId: string, commentId: string) => {
+    const r = await api.delete(`/news/${newsId}/comments/${commentId}`);
+    return r.data;
+  },
 };

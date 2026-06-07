@@ -114,7 +114,9 @@ export default function DataDocPage() {
       if (col) col.description = editingCol.value.trim() || "";
       setEditingCol(null);
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : getApiErrorMessage(err));
+      setSaveError(
+        err instanceof Error ? err.message : getApiErrorMessage(err),
+      );
     } finally {
       setSaving(false);
     }

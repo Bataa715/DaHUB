@@ -1,4 +1,4 @@
-﻿import {
+import {
   Controller,
   Post,
   Body,
@@ -11,7 +11,7 @@
   UnauthorizedException,
 } from "@nestjs/common";
 import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
-import { Response } from "express";
+import { Request as ExpressRequest, Response } from "express";
 import { AuthService } from "./auth.service";
 import {
   LoginDto,
@@ -99,7 +99,7 @@ export class AuthController {
   @Post("login")
   async login(
     @Body() loginDto: LoginDto,
-    @Request() req: any,
+    @Request() req: ExpressRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.login(loginDto, this.clientIp(req));
@@ -111,7 +111,7 @@ export class AuthController {
   @Post("login-by-id")
   async loginById(
     @Body() loginByIdDto: LoginByIdDto,
-    @Request() req: any,
+    @Request() req: ExpressRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.loginById(
@@ -126,7 +126,7 @@ export class AuthController {
   @Post("admin-login")
   async adminLogin(
     @Body() adminLoginDto: AdminLoginDto,
-    @Request() req: any,
+    @Request() req: ExpressRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.adminLogin(
@@ -139,7 +139,7 @@ export class AuthController {
 
   // [H-4] Extract caller IP for brute-force lockout key. Honours X-Forwarded-For
   // when behind a trusted reverse proxy (set TRUST_PROXY=1 + app.set('trust proxy')).
-  private clientIp(req: any): string {
+  private clientIp(req: ExpressRequest): string {
     const xff = (req.headers?.["x-forwarded-for"] || "")
       .toString()
       .split(",")[0]
@@ -149,8 +149,16 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get("departments/:department/users")
-  async getUsersByDepartment(@Param("department") department: string) {
-    return this.authService.getUsersByDepartment(department);
+  async getUsersByDepartment(
+    @Param("department") department: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return this.authService.getUsersByDepartment(
+      department,
+      Number(limit) || 100,
+      Number(offset) || 0,
+    );
   }
 
   @UseGuards(ThrottlerGuard)
@@ -161,7 +169,9 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get("me")
-  async getProfile(@Request() req) {
+  async getProfile(
+    @Request() req: ExpressRequest & { user: Record<string, unknown> },
+  ) {
     return req.user;
   }
 
@@ -169,10 +179,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post("change-password")
   async changePassword(
-    @Request() req,
+    @Request() req: ExpressRequest & { user: Record<string, unknown> },
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
-    return this.authService.changePassword(req.user.id, changePasswordDto);
+    return this.authService.changePassword(
+      req.user.id as string,
+      changePasswordDto,
+    );
   }
 
   // 30 requests/min — enough for silent auto-refresh but limits token-grinding attacks
@@ -180,7 +193,7 @@ export class AuthController {
   @Post("refresh")
   async refresh(
     @Body() refreshTokenDto: RefreshTokenDto,
-    @Request() req: any,
+    @Request() req: ExpressRequest & { cookies: Record<string, string> },
     @Res({ passthrough: true }) res: Response,
   ) {
     // [N-2] Cookie takes priority; fall back to body (Swagger / API tools)
@@ -199,11 +212,14 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post("logout")
-  async logout(@Request() req, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @Request() req: ExpressRequest & { user: Record<string, unknown> },
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const isAdmin = !!req.user?.isAdmin;
     this.clearAuthCookies(res, isAdmin);
     // Also clear the other side in case both were set
     this.clearAuthCookies(res, !isAdmin);
-    return this.authService.revokeRefreshTokens(req.user.id);
+    return this.authService.revokeRefreshTokens(req.user.id as string);
   }
 }

@@ -578,7 +578,7 @@ export class DbAccessService {
 
   // ─── Access Grants ───────────────────────────────────────────────────────────
 
-  /** Get active grants for the current user */
+  /** Get active grants for the current user (includes decrypted chPassword for credentials display) */
   async getMyGrants(userId: string) {
     const rows = await this.clickhouse.query<any>(
       `SELECT *
@@ -589,7 +589,10 @@ export class DbAccessService {
        ORDER BY grantedAt DESC`,
       { userId },
     );
-    return rows.map(this.formatGrant);
+    return rows.map((r) => ({
+      ...this.formatGrant(r),
+      chPassword: this.decryptPwd(r.chPassword),
+    }));
   }
 
   /** Get all active grants (admin view) */

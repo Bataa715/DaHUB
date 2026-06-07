@@ -39,21 +39,16 @@ import {
   ArrowDown,
 } from "lucide-react";
 import Link from "next/link";
-import { pythonToolApi, usersApi, getApiErrorMessage, PythonToolAdmin, FilterDef } from "@/lib/api";
+import {
+  pythonToolApi,
+  usersApi,
+  getApiErrorMessage,
+  PythonToolAdmin,
+  FilterDef,
+} from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Shared constants ──────────────────────────────────────────────────────────
-
-const COLOR_OPTIONS = [
-  { label: "Ногоон", value: "from-emerald-500 to-teal-500" },
-  { label: "Цэнхэр", value: "from-blue-500 to-cyan-500" },
-  { label: "Нил ягаан", value: "from-violet-500 to-indigo-500" },
-  { label: "Улаан", value: "from-rose-500 to-pink-500" },
-  { label: "Шар", value: "from-amber-500 to-orange-500" },
-  { label: "Ягаан", value: "from-pink-500 to-rose-500" },
-  { label: "Хоёр ногоон", value: "from-green-500 to-emerald-500" },
-  { label: "Тэнгэрлэг", value: "from-sky-500 to-blue-500" },
-];
 
 const DATE_MODE_META = {
   none: {
@@ -303,7 +298,6 @@ interface PyFormState {
   connectionConfig: string;
   outputFormat: "excel" | "csv";
   dateMode: "none" | "single" | "range";
-  color: string;
   filters: string;
 }
 
@@ -316,7 +310,6 @@ const EMPTY_PY_FORM: PyFormState = {
   connectionConfig: DEFAULT_CONN_CONFIG.clickhouse,
   outputFormat: "excel",
   dateMode: "none",
-  color: "from-blue-500 to-cyan-500",
   filters: "[]",
 };
 
@@ -389,7 +382,9 @@ export default function AdminReportsPage() {
         usersApi.getAll(),
         pythonToolApi.adminGetPermissions(),
       ]);
-      setPUsers(users.filter((u: { isActive?: boolean }) => u.isActive !== false));
+      setPUsers(
+        users.filter((u: { isActive?: boolean }) => u.isActive !== false),
+      );
       setPPermissions(perms);
     } catch {
       toast({
@@ -513,7 +508,6 @@ export default function AdminReportsPage() {
           : DEFAULT_CONN_CONFIG[t.connectionType ?? "clickhouse"],
       outputFormat: (t.outputFormat ?? "excel") as PyFormState["outputFormat"],
       dateMode: (t.dateMode ?? "none") as PyFormState["dateMode"],
-      color: t.color,
       filters: t.filters ?? "[]",
     });
     setPanelOpen(true);
@@ -543,6 +537,7 @@ export default function AdminReportsPage() {
     try {
       const payload = {
         ...pyForm,
+        color: editingPy?.color ?? "from-blue-500 to-cyan-500",
         connectionConfig: JSON.stringify(JSON.parse(pyForm.connectionConfig)),
       };
       if (editingPy) {
@@ -1431,7 +1426,10 @@ export default function AdminReportsPage() {
                   <Select
                     value={pyForm.outputFormat}
                     onValueChange={(v: string) =>
-                      setPyForm((f) => ({ ...f, outputFormat: v as PyFormState["outputFormat"] }))
+                      setPyForm((f) => ({
+                        ...f,
+                        outputFormat: v as PyFormState["outputFormat"],
+                      }))
                     }
                   >
                     <SelectTrigger className="bg-background border-border text-foreground">
@@ -1457,7 +1455,10 @@ export default function AdminReportsPage() {
                   <Select
                     value={pyForm.dateMode}
                     onValueChange={(v: string) =>
-                      setPyForm((f) => ({ ...f, dateMode: v as PyFormState["dateMode"] }))
+                      setPyForm((f) => ({
+                        ...f,
+                        dateMode: v as PyFormState["dateMode"],
+                      }))
                     }
                   >
                     <SelectTrigger className="bg-background border-border text-foreground">
@@ -1471,33 +1472,6 @@ export default function AdminReportsPage() {
                           className="text-foreground"
                         >
                           {v.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-foreground/80 text-xs">Өнгө</Label>
-                  <Select
-                    value={pyForm.color}
-                    onValueChange={(v) =>
-                      setPyForm((f) => ({ ...f, color: v }))
-                    }
-                  >
-                    <SelectTrigger className="bg-background border-border text-foreground">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border-border">
-                      {COLOR_OPTIONS.map((c) => (
-                        <SelectItem
-                          key={c.value}
-                          value={c.value}
-                          className="text-foreground"
-                        >
-                          <span
-                            className={`inline-block w-3 h-3 rounded-full bg-gradient-to-r ${c.value} mr-2`}
-                          />
-                          {c.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

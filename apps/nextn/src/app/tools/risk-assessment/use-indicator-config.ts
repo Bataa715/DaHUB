@@ -184,7 +184,11 @@ export function useIndicatorConfig(): DynamicConfig & {
  */
 export function evaluateBranchDynamic(
   catalog: DynamicCatalogIndicator[],
-  rows: { SUBID?: OracleValue; RESULT?: OracleValue; RESULT_TYPE?: OracleValue }[],
+  rows: {
+    SUBID?: OracleValue;
+    RESULT?: OracleValue;
+    RESULT_TYPE?: OracleValue;
+  }[],
   manual: Record<string, number> | undefined,
 ): Record<
   string,

@@ -97,9 +97,7 @@ export class UsersController {
       throw new BadRequestException("allowedTools тооц байна");
     }
     // B-8: Strip any tool IDs not in the explicit whitelist (handles legacy IDs gracefully)
-    const sanitized = tools.filter((t) =>
-      VALID_TOOLS_SET.has(t),
-    );
+    const sanitized = tools.filter((t) => VALID_TOOLS_SET.has(t));
     return this.usersService.updateTools(id, sanitized);
   }
 
@@ -156,5 +154,4 @@ export class UsersController {
   remove(@Param("id") id: string) {
     return this.usersService.remove(id);
   }
-
 }

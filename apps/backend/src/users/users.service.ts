@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   Logger,
   NotFoundException,
@@ -7,35 +7,10 @@
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
-import { DEPARTMENT_CODES } from "../common/constants/departments"; // [LOW-1] shared constant
 import { VALID_TOOLS_SET } from "../common/constants/tools";
+import { buildUserId, safeParseTools } from "../common/utils/user-utils";
 
-// [LOW-1] DEPARTMENT_CODES imported from src/common/constants/departments.ts
-
-function buildUserId(department: string, name: string): string {
-  const deptCode = DEPARTMENT_CODES[department] || "USR";
-  const namePart = name
-    .split("-")
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
-    .join("-")
-    .replace(/\s+/g, "");
-  if (department === "Удирдлага") return `.${namePart}-${deptCode}`;
-  if (department === "Дата анализын алба") return `${deptCode}-${namePart}`;
-  return `DAG-${deptCode}-${namePart}`;
-}
-
-/** Safe JSON.parse for allowedTools — ClickHouse returns a String column.
- * Returns [] if the value is missing, already an array, or corrupt JSON. */
-function safeParseTools(raw: unknown): string[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw as string[];
-  try {
-    const parsed = JSON.parse(raw as string);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
+// [LOW-1] buildUserId and safeParseTools moved to src/common/utils/user-utils.ts
 
 @Injectable()
 export class UsersService {
@@ -114,9 +89,7 @@ export class UsersService {
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
       isActive: !!user.isActive,
-      grantableTools: user.grantableTools
-        ? JSON.parse(user.grantableTools)
-        : [],
+      grantableTools: safeParseTools(user.grantableTools),
       createdAt: user.createdAt,
     }));
   }

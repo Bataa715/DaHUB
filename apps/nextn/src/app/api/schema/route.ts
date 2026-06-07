@@ -9,7 +9,10 @@ export async function GET() {
     const schema = parseSchema();
     return NextResponse.json(schema);
   } catch (err: unknown) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
   }
 }
 
@@ -76,6 +79,9 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
   }
 }

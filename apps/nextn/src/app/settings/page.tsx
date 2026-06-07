@@ -3,230 +3,97 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Lock,
-  Eye,
-  EyeOff,
-  KeyRound,
-  Camera,
-  Upload,
-  Loader2,
-  Settings as SettingsIcon,
-  Shield,
-  Star,
-  Globe,
-} from "lucide-react";
+import { Eye, EyeOff, Loader2, Check } from "lucide-react";
 import { usersApi } from "@/lib/api";
 import api from "@/lib/api";
 import axios from "axios";
-import BackButton from "@/components/shared/BackButton";
-import { motion } from "framer-motion";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+type Tab = "profile" | "password";
 
 export default function SettingsPage() {
   const { user, loading, refreshUser } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [tab, setTab] = useState<Tab>("profile");
+
+  // Profile image
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Password
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
-  const passwordRequirements = [
-    t("passwordReq1"),
-    t("passwordReq2"),
-    t("passwordReq3"),
-    t("passwordReq4"),
-    t("passwordReq5"),
-  ];
-
-  const validatePassword = (password: string) => {
-    const minLength = password.length >= 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`]/.test(
-      password,
-    );
-
-    return (
-      minLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar
-    );
-  };
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast({
-        title: t("error"),
-        description: t("passwordFillAll"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: t("error"),
-        description: t("passwordMismatch"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!validatePassword(newPassword)) {
-      toast({
-        title: t("error"),
-        description: t("passwordInvalid"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsChangingPassword(true);
-
-    try {
-      await api.post("/auth/change-password", {
-        currentPassword,
-        newPassword,
-      });
-
-      toast({ title: t("success"), description: t("passwordChanged") });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (error) {
-      console.error("Error changing password:", error);
-      let message = t("passwordChangeBtn");
-      if (axios.isAxiosError(error))
-        message = error.response?.data?.message ?? message;
-      toast({
-        title: t("error"),
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
+  const validatePassword = (p: string) =>
+    p.length >= 8 &&
+    /[A-Z]/.test(p) &&
+    /[a-z]/.test(p) &&
+    /\d/.test(p) &&
+    /[@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`]/.test(p);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Алдаа",
-        description: "Зургийн хэмжээ 5MB-аас бага байх ёстой",
+        title: t("error"),
+        description: t("imageTooBig"),
         variant: "destructive",
       });
       return;
     }
-
-    // Check file type
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Алдаа",
-        description: "Зөвхөн зураг файл сонгоно уу",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = reader.result as string;
-
-      // Compress image by resizing
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-
-        // Max dimensions - smaller for better compression
-        const MAX_WIDTH = 300;
-        const MAX_HEIGHT = 300;
-
-        let width = img.width;
-        let height = img.height;
-
-        // Calculate new dimensions
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
+        const max = 300;
+        let w = img.width,
+          h = img.height;
+        if (w > h) {
+          if (w > max) {
+            h = (h * max) / w;
+            w = max;
           }
         } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
+          if (h > max) {
+            w = (w * max) / h;
+            h = max;
           }
         }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        // Convert to base64 with higher compression
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-        setImagePreview(compressedBase64);
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        setImagePreview(canvas.toDataURL("image/jpeg", 0.6));
       };
-
-      img.src = base64String;
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
 
   const handleImageUpload = async () => {
     if (!imagePreview || !user) return;
-
     setIsUploadingImage(true);
-
     try {
       await usersApi.update(user.id, { profileImage: imagePreview });
-
       toast({ title: t("success"), description: t("imageSuccess") });
       await refreshUser();
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
-      console.error("Error uploading profile image:", error);
-      let errorMessage = t("imageError");
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 413) errorMessage = t("imageTooBig");
-        else if (error.response?.data?.message)
-          errorMessage = error.response.data.message;
-      } else if (
-        error instanceof Error &&
-        error.message.includes("too large")
-      ) {
-        errorMessage = t("imageTooBig");
-      }
-      toast({
-        title: t("error"),
-        description: errorMessage,
-        variant: "destructive",
-      });
+      let msg = t("imageError");
+      if (axios.isAxiosError(error) && error.response?.status === 413)
+        msg = t("imageTooBig");
+      toast({ title: t("error"), description: msg, variant: "destructive" });
     } finally {
       setIsUploadingImage(false);
     }
@@ -234,16 +101,12 @@ export default function SettingsPage() {
 
   const handleRemoveImage = async () => {
     if (!user) return;
-
     setIsUploadingImage(true);
-
     try {
       await usersApi.update(user.id, { profileImage: "" });
-
       toast({ title: t("success"), description: t("imageRemoved") });
       await refreshUser();
-    } catch (error) {
-      console.error("Error removing profile image:", error);
+    } catch {
       toast({
         title: t("error"),
         description: t("imageError"),
@@ -254,360 +117,271 @@ export default function SettingsPage() {
     }
   };
 
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: t("error"),
+        description: t("passwordFillAll"),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: t("error"),
+        description: t("passwordMismatch"),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!validatePassword(newPassword)) {
+      toast({
+        title: t("error"),
+        description: t("passwordInvalid"),
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await api.post("/auth/change-password", { currentPassword, newPassword });
+      toast({ title: t("success"), description: t("passwordChanged") });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      let msg = t("passwordChangeBtn");
+      if (axios.isAxiosError(error)) msg = error.response?.data?.message ?? msg;
+      toast({ title: t("error"), description: msg, variant: "destructive" });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Lock className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl text-foreground">Нэвтрэх шаардлагатай</h2>
-        </div>
-      </div>
-    );
-  }
+  if (!user) return null;
+
+  const initials = user.name?.[0]?.toUpperCase() ?? "?";
+
+  const TABS: { key: Tab; label: string }[] = [
+    { key: "profile", label: "Профайл" },
+    { key: "password", label: "Нууц үг" },
+  ];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <BackButton />
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4 mb-8"
-        >
-          <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30">
-            <SettingsIcon className="w-8 h-8 text-foreground" />
+    <div className="min-h-[60vh] flex items-start justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        {/* Modal card */}
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          {/* User identity strip */}
+          <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-border">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={user.profileImage} alt={user.name} />
+              <AvatarFallback className="bg-muted text-foreground text-sm font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="text-foreground text-sm font-semibold truncate">
+                {user.name}
+              </p>
+              <p className="text-muted-foreground text-xs truncate">
+                {user.userId} · {user.department}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              {t("settingsTitle")}
-            </h1>
-            <p className="text-muted-foreground flex items-center gap-2">
-              <Star className="w-4 h-4 text-purple-500" />
-              {t("settingsSubtitle")}
-            </p>
-          </div>
-        </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Profile Image Section */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <Camera className="w-5 h-5 text-purple-500" />
-                  {t("profileImage")}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {t("profileImageDesc")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-col items-center gap-4">
-                  <Avatar className="w-32 h-32 border-4 border-purple-500/30 shadow-lg shadow-purple-500/20">
+          {/* Tabs */}
+          <div className="flex border-b border-border">
+            {TABS.map((tb) => (
+              <button
+                key={tb.key}
+                onClick={() => setTab(tb.key)}
+                className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${
+                  tab === tb.key
+                    ? "text-foreground border-b-2 border-foreground -mb-px"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tb.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div className="px-6 py-5">
+            {/* ── Profile photo ── */}
+            {tab === "profile" && (
+              <div className="space-y-5">
+                <div className="flex flex-col items-center gap-3">
+                  <Avatar className="w-20 h-20">
                     <AvatarImage
-                      src={imagePreview || user.profileImage}
+                      src={imagePreview ?? user.profileImage}
                       alt={user.name}
                     />
-                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-foreground text-3xl">
-                      {user.name?.[0]?.toUpperCase()}
+                    <AvatarFallback className="bg-muted text-foreground text-2xl font-semibold">
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
-
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-foreground font-semibold flex items-center gap-2">
-                      {user.isAdmin && (
-                        <Shield className="w-4 h-4 text-blue-500" />
-                      )}
-                      {user.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {user.userId}
-                    </p>
-                    <p className="text-xs text-muted-foreground/70">
-                      {user.department}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
-                    onChange={handleImageSelect}
+                    accept="image/jpeg,image/png,image/gif,image/webp"
                     className="hidden"
+                    onChange={handleImageSelect}
                   />
-
                   {!imagePreview ? (
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                      disabled={isUploadingImage}
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {t("changeImage")}
-                    </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <Button
-                        onClick={handleImageUpload}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
                         disabled={isUploadingImage}
+                        className="px-4 py-1.5 rounded-lg border border-border bg-muted text-foreground text-xs font-medium hover:bg-muted/80 transition-colors disabled:opacity-50"
+                      >
+                        {t("changeImage")}
+                      </button>
+                      {user.profileImage && (
+                        <button
+                          onClick={handleRemoveImage}
+                          disabled={isUploadingImage}
+                          className="px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-medium hover:text-red-500 hover:border-red-300 dark:hover:border-red-700 transition-colors disabled:opacity-50"
+                        >
+                          {isUploadingImage ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            t("removeImage")
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleImageUpload}
+                        disabled={isUploadingImage}
+                        className="px-4 py-1.5 rounded-lg bg-foreground text-background text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
                       >
                         {isUploadingImage ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <Upload className="w-4 h-4 mr-2" />
+                          <Check className="w-3.5 h-3.5" />
                         )}
                         Хадгалах
-                      </Button>
-                      <Button
+                      </button>
+                      <button
                         onClick={() => {
                           setImagePreview(null);
-                          if (fileInputRef.current) {
+                          if (fileInputRef.current)
                             fileInputRef.current.value = "";
-                          }
                         }}
-                        variant="outline"
-                        className="w-full"
                         disabled={isUploadingImage}
+                        className="px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-medium hover:text-foreground transition-colors"
                       >
                         {t("cancel")}
-                      </Button>
+                      </button>
                     </div>
                   )}
-
-                  {user.profileImage && !imagePreview && (
-                    <Button
-                      onClick={handleRemoveImage}
-                      variant="destructive"
-                      className="w-full"
-                      disabled={isUploadingImage}
-                    >
-                      {isUploadingImage ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        t("removeImage")
-                      )}
-                    </Button>
-                  )}
                 </div>
+                <p className="text-muted-foreground text-[11px] text-center leading-relaxed">
+                  {t("imageHint1")} · {t("imageHint3")}
+                </p>
+              </div>
+            )}
 
-                <div className="text-xs text-muted-foreground/70 space-y-1">
-                  <p>• {t("imageHint1")}</p>
-                  <p>• {t("imageHint2")}</p>
-                  <p>• {t("imageHint3")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+            {/* ── Password ── */}
+            {tab === "password" && (
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                {[
+                  {
+                    label: t("currentPassword"),
+                    value: currentPassword,
+                    set: setCurrentPassword,
+                    show: showCurrent,
+                    toggle: () => setShowCurrent((v) => !v),
+                    placeholder: t("currentPasswordPlaceholder"),
+                  },
+                  {
+                    label: t("newPassword"),
+                    value: newPassword,
+                    set: setNewPassword,
+                    show: showNew,
+                    toggle: () => setShowNew((v) => !v),
+                    placeholder: t("newPasswordPlaceholder"),
+                  },
+                  {
+                    label: t("confirmPassword"),
+                    value: confirmPassword,
+                    set: setConfirmPassword,
+                    show: showConfirm,
+                    toggle: () => setShowConfirm((v) => !v),
+                    placeholder: t("confirmPasswordPlaceholder"),
+                  },
+                ].map((field, i) => (
+                  <div key={i} className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground/70 block">
+                      {field.label}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={field.show ? "text" : "password"}
+                        value={field.value}
+                        onChange={(e) => field.set(e.target.value)}
+                        placeholder={field.placeholder}
+                        className="w-full rounded-xl px-3 py-2 pr-10 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={field.toggle}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {field.show ? (
+                          <EyeOff className="w-3.5 h-3.5" />
+                        ) : (
+                          <Eye className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
 
-          {/* Password Change Section */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <KeyRound className="w-5 h-5 text-blue-500" />
-                  {t("changePassword")}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {t("changePasswordDesc")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                  {/* Current Password */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="currentPassword"
-                      className="text-foreground/80"
+                <div className="rounded-xl bg-muted px-4 py-3 space-y-1.5">
+                  {[
+                    t("passwordReq1"),
+                    t("passwordReq2"),
+                    t("passwordReq3"),
+                    t("passwordReq4"),
+                    t("passwordReq5"),
+                  ].map((req, i) => (
+                    <p
+                      key={i}
+                      className="text-[11px] text-muted-foreground flex items-center gap-1.5"
                     >
-                      {t("currentPassword")}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="currentPassword"
-                        type={showCurrentPassword ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="pr-10"
-                        placeholder={t("currentPasswordPlaceholder")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowCurrentPassword(!showCurrentPassword)
-                        }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showCurrentPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* New Password */}
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword" className="text-foreground/80">
-                      {t("newPassword")}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="newPassword"
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="pr-10"
-                        placeholder={t("newPasswordPlaceholder")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showNewPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Confirm Password */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="confirmPassword"
-                      className="text-foreground/80"
-                    >
-                      {t("confirmPassword")}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="pr-10"
-                        placeholder={t("confirmPasswordPlaceholder")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Password Requirements */}
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                    <p className="text-sm font-medium text-foreground/80 mb-2">
-                      {t("passwordRequirements")}
+                      <span className="w-1 h-1 rounded-full bg-muted-foreground/50 flex-shrink-0" />
+                      {req}
                     </p>
-                    {passwordRequirements.map((req, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span className="text-xs text-muted-foreground">
-                          {req}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-                    disabled={isChangingPassword}
-                  >
-                    {isChangingPassword ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {t("passwordChanging")}
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-4 h-4 mr-2" />
-                        {t("passwordChangeBtn")}
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </motion.div>
-          {/* Language Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="md:col-span-2"
-          >
-            <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <Globe className="w-5 h-5 text-emerald-500" />
-                  {t("language")}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {t("languageDesc")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setLanguage("mn")}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                      language === "mn"
-                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                        : "bg-muted/50 border-border text-muted-foreground hover:border-border/60"
-                    }`}
-                  >
-                    🇲🇳 {t("mongolian")}
-                  </button>
-                  <button
-                    onClick={() => setLanguage("en")}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                      language === "en"
-                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                        : "bg-muted/50 border-border text-muted-foreground hover:border-border/60"
-                    }`}
-                  >
-                    🇺🇸 {t("english")}
-                  </button>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="w-full py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {isChangingPassword && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  {t("passwordChangeBtn")}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>

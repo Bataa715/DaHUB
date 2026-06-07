@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { pythonToolApi, getApiErrorMessage, PythonTool, FilterDef } from "@/lib/api";
+import {
+  pythonToolApi,
+  getApiErrorMessage,
+  PythonTool,
+  FilterDef,
+} from "@/lib/api";
 import { isAxiosError } from "axios";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -143,11 +148,14 @@ export default function ReportDetailPage() {
       // Кэнсэлэхд алдаа биш
       if (
         controller.signal.aborted ||
-        (isAxiosError(e) && (e.code === "ERR_CANCELED" || e.name === "CanceledError"))
+        (isAxiosError(e) &&
+          (e.code === "ERR_CANCELED" || e.name === "CanceledError"))
       ) {
         toast({ title: t("reportsDownloadCanceled") });
       } else if (isAxiosError(e) && e.response?.data instanceof Blob) {
-        const text = await (e.response.data as Blob).text().catch(() => e.message);
+        const text = await (e.response.data as Blob)
+          .text()
+          .catch(() => e.message);
         setDownloadError(text.slice(0, 300));
       } else {
         setDownloadError(getApiErrorMessage(e).slice(0, 300));
@@ -192,7 +200,8 @@ export default function ReportDetailPage() {
     } catch (e: unknown) {
       if (
         controller.signal.aborted ||
-        (isAxiosError(e) && (e.code === "ERR_CANCELED" || e.name === "CanceledError"))
+        (isAxiosError(e) &&
+          (e.code === "ERR_CANCELED" || e.name === "CanceledError"))
       ) {
         setPreview({ status: "idle", columns: [], rows: [], totalCount: 0 });
         toast({ title: t("reportsPreviewCanceled") });

@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
                 ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
                 : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src * blob: data:",
+              "img-src 'self' blob: data: http://localhost:3001 https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pinimg.com https://api.dicebear.com https://cdn.simpleicons.org https://api.qrserver.com",
               "font-src 'self' data:",
               "connect-src 'self' " +
                 (process.env.NEXT_PUBLIC_API_URL ?? "") +

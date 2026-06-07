@@ -70,14 +70,11 @@ function buildCSS(): string {
 
   for (const theme of themes) {
     // Main theme selector
-    const sel =
-      theme.name === "default" ? ":root" : `html.${theme.name}`;
+    const sel = theme.name === "default" ? ":root" : `html.${theme.name}`;
 
     // Surface selector (scoped to .ab-theme)
     const surfSel =
-      theme.name === "default"
-        ? ".ab-theme"
-        : `html.${theme.name} .ab-theme`;
+      theme.name === "default" ? ".ab-theme" : `html.${theme.name} .ab-theme`;
 
     blocks.push(
       `${sel} {\n${shadcnVars(theme.tokens)}\n}`,

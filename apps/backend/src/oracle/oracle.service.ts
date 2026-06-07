@@ -50,7 +50,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
         password,
         connectString,
         poolMin: 0,
-        poolMax: 15,      // Promise.allSettled нь 12 dashboard зэрэг асуух тул 15 хангалттай
+        poolMax: 15, // Promise.allSettled нь 12 dashboard зэрэг асуух тул 15 хангалттай
         poolIncrement: 2,
         poolTimeout: 60,
         connectTimeout: 10,
@@ -98,11 +98,16 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     const connectString = process.env.ORACLE_CONNECT_STRING;
 
     if (!user || !password || !connectString) {
-      return { success: false, message: "Oracle credential тохируулаагүй байна (.env файл шалгана уу)" };
+      return {
+        success: false,
+        message: "Oracle credential тохируулаагүй байна (.env файл шалгана уу)",
+      };
     }
 
     if (this.pool) {
-      try { await this.pool.close(0); } catch (_) {}
+      try {
+        await this.pool.close(0);
+      } catch (_) {}
       this.pool = null;
     }
 
@@ -112,7 +117,12 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     if (this.pool) {
       return { success: true, message: "Oracle холболт амжилттай сэргэлээ" };
     } else {
-      return { success: false, message: this.authFailed ? "Нэвтрэх мэдээлэл буруу байна (ORA auth error)" : "Oracle pool үүсгэхэд алдаа гарлаа" };
+      return {
+        success: false,
+        message: this.authFailed
+          ? "Нэвтрэх мэдээлэл буруу байна (ORA auth error)"
+          : "Oracle pool үүсгэхэд алдаа гарлаа",
+      };
     }
   }
 

@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -43,7 +43,7 @@ export class NewsService {
         id,
         title: createNewsDto.title,
         content: createNewsDto.content,
-        category: createNewsDto.category || "Ерөнхий",
+        category: createNewsDto.category || "Аудит",
         imageUrl: imageData,
         imageMime,
         authorId,
@@ -67,7 +67,7 @@ export class NewsService {
        FROM news AS n
        LEFT JOIN users u ON n.authorId = u.id
        ${filter}
-       ORDER BY n.createdAt DESC
+       ORDER BY n.views DESC, n.createdAt DESC
        LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
       { limit, offset },
     );
@@ -213,5 +213,91 @@ export class NewsService {
       newsCount: Number(r.newsCount),
       totalViews: Number(r.totalViews),
     }));
+  }
+
+  async getReactions(newsId: string, userId: string) {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT emoji, count() as cnt FROM news_reactions
+       WHERE newsId = {newsId:String}
+       GROUP BY emoji`,
+      { newsId },
+    );
+    const myRow = await this.clickhouse.query<any>(
+      `SELECT emoji FROM news_reactions
+       WHERE newsId = {newsId:String} AND userId = {userId:String}
+       LIMIT 1`,
+      { newsId, userId },
+    );
+    const counts: Record<string, number> = {};
+    for (const r of rows) counts[r.emoji] = Number(r.cnt);
+    return { counts, myReaction: myRow[0]?.emoji ?? null };
+  }
+
+  async react(newsId: string, userId: string, emoji: string) {
+    const ALLOWED = ["👍", "❤️", "😮", "💡", "🔥"];
+    if (!ALLOWED.includes(emoji))
+      throw new BadRequestException("Invalid emoji");
+    await this.clickhouse.insert("news_reactions", [
+      { newsId, userId, emoji, createdAt: nowCH() },
+    ]);
+    return { ok: true };
+  }
+
+  async removeReaction(newsId: string, userId: string) {
+    await this.clickhouse.exec(
+      `ALTER TABLE news_reactions DELETE WHERE newsId = {newsId:String} AND userId = {userId:String}`,
+      { newsId, userId },
+    );
+    return { ok: true };
+  }
+
+  async getComments(newsId: string) {
+    return this.clickhouse.query<any>(
+      `SELECT id, newsId, authorId, authorName, content, createdAt
+       FROM news_comments
+       WHERE newsId = {newsId:String}
+       ORDER BY createdAt ASC`,
+      { newsId },
+    );
+  }
+
+  async addComment(
+    newsId: string,
+    authorId: string,
+    authorName: string,
+    content: string,
+  ) {
+    if (!content?.trim())
+      throw new BadRequestException("Comment cannot be empty");
+    if (content.length > 1000)
+      throw new BadRequestException("Comment too long");
+    const id = randomUUID();
+    await this.clickhouse.insert("news_comments", [
+      {
+        id,
+        newsId,
+        authorId,
+        authorName,
+        content: content.trim(),
+        createdAt: nowCH(),
+      },
+    ]);
+    return { id, ok: true };
+  }
+
+  async deleteComment(commentId: string, userId: string) {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT id, authorId FROM news_comments WHERE id = {id:String} LIMIT 1`,
+      { id: commentId },
+    );
+    if (!rows || rows.length === 0)
+      throw new NotFoundException("Comment not found");
+    if (rows[0].authorId !== userId)
+      throw new BadRequestException("Not your comment");
+    await this.clickhouse.exec(
+      `ALTER TABLE news_comments DELETE WHERE id = {id:String}`,
+      { id: commentId },
+    );
+    return { ok: true };
   }
 }

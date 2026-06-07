@@ -18,7 +18,6 @@ import {
   Database,
   BellDot,
   ShieldAlert,
-  CalendarRange,
 } from "lucide-react";
 
 interface Tool {
@@ -128,21 +127,6 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       glow: "shadow-rose-500/20 group-hover:shadow-rose-500/40",
       tag: "Risk",
     },
-    {
-      id: "weekly_report",
-      matchIds: [
-        "weekly_report_audit",
-        "weekly_report_daa",
-        "weekly_report_director",
-      ],
-      title: t("toolWeeklyReportTitle"),
-      description: t("toolWeeklyReportDesc"),
-      icon: CalendarRange,
-      href: "/tools/weekly-report",
-      gradient: "from-indigo-500 to-purple-500",
-      glow: "shadow-indigo-500/20 group-hover:shadow-indigo-500/40",
-      tag: "Report",
-    },
   ];
 }
 
@@ -206,12 +190,9 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
             </div>
             {/* text */}
             <div className="flex-1">
-              <h2 className="text-sm font-bold text-foreground mb-1 leading-snug">
+              <h2 className="text-sm font-bold text-foreground leading-snug">
                 {tool.title}
               </h2>
-              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                {tool.description}
-              </p>
             </div>
             {/* bottom cta */}
             <div className="mt-3 flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground opacity-70 group-hover:opacity-100 transition-all">

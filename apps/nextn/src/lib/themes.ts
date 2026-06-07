@@ -95,55 +95,55 @@ const deepSpaceTheme: ThemeDef = {
   labelMn: "Сансар",
   isDark: true,
   tokens: {
-    background:               "240 10% 3.9%",
-    foreground:               "0 0% 98%",
-    card:                     "240 10% 5.5%",
-    cardForeground:           "0 0% 98%",
-    popover:                  "240 10% 5.5%",
-    popoverForeground:        "0 0% 98%",
+    background: "240 10% 3.9%",
+    foreground: "0 0% 98%",
+    card: "240 10% 5.5%",
+    cardForeground: "0 0% 98%",
+    popover: "240 10% 5.5%",
+    popoverForeground: "0 0% 98%",
 
-    primary:                  "251 78% 79%",    // soft indigo #a5b4fc
-    primaryForeground:        "251 78% 12%",
+    primary: "251 78% 79%", // soft indigo #a5b4fc
+    primaryForeground: "251 78% 12%",
 
-    secondary:                "240 4% 16%",
-    secondaryForeground:      "0 0% 98%",
-    muted:                    "240 4% 16%",
-    mutedForeground:          "240 5% 65%",
+    secondary: "240 4% 16%",
+    secondaryForeground: "0 0% 98%",
+    muted: "240 4% 16%",
+    mutedForeground: "240 5% 65%",
 
-    accent:                   "182 100% 74%",   // cyan #67e8f9
-    accentForeground:         "182 100% 18%",
+    accent: "182 100% 74%", // cyan #67e8f9
+    accentForeground: "182 100% 18%",
 
-    destructive:              "0 62% 30%",
-    destructiveForeground:    "0 0% 98%",
+    destructive: "0 62% 30%",
+    destructiveForeground: "0 0% 98%",
 
-    border:                   "240 4% 16%",
-    input:                    "240 4% 16%",
-    ring:                     "251 78% 79%",
-    radius:                   "0.8rem",
+    border: "240 4% 16%",
+    input: "240 4% 16%",
+    ring: "251 78% 79%",
+    radius: "0.8rem",
 
-    chart1:                   "251 78% 79%",    // indigo
-    chart2:                   "182 100% 74%",   // cyan
-    chart3:                   "130 80% 68%",    // green
-    chart4:                   "38 95% 72%",     // amber
-    chart5:                   "354 70% 72%",    // rose
+    chart1: "251 78% 79%", // indigo
+    chart2: "182 100% 74%", // cyan
+    chart3: "130 80% 68%", // green
+    chart4: "38 95% 72%", // amber
+    chart5: "354 70% 72%", // rose
 
-    sidebarBackground:        "240 10% 3.9%",
-    sidebarForeground:        "0 0% 98%",
-    sidebarPrimary:           "251 78% 79%",
+    sidebarBackground: "240 10% 3.9%",
+    sidebarForeground: "0 0% 98%",
+    sidebarPrimary: "251 78% 79%",
     sidebarPrimaryForeground: "251 78% 12%",
-    sidebarAccent:            "240 4% 16%",
-    sidebarAccentForeground:  "0 0% 98%",
-    sidebarBorder:            "240 4% 16%",
-    sidebarRing:              "251 78% 79%",
+    sidebarAccent: "240 4% 16%",
+    sidebarAccentForeground: "0 0% 98%",
+    sidebarBorder: "240 4% 16%",
+    sidebarRing: "251 78% 79%",
 
-    surface:                  "#111118",
-    surfaceCard:              "#18181f",
-    surfaceElevated:          "#1e1e28",
-    surfaceBorder:            "#2a2a3a",
-    surfaceHover:             "#222230",
-    txt:                      "#e4e4ec",
-    txtMuted:                 "#7c7c96",
-    txtDim:                   "#55556b",
+    surface: "#111118",
+    surfaceCard: "#18181f",
+    surfaceElevated: "#1e1e28",
+    surfaceBorder: "#2a2a3a",
+    surfaceHover: "#222230",
+    txt: "#e4e4ec",
+    txtMuted: "#7c7c96",
+    txtDim: "#55556b",
   },
 };
 
@@ -157,55 +157,55 @@ const tokyoNightTheme: ThemeDef = {
   labelMn: "Токио шөнө",
   isDark: true,
   tokens: {
-    background:               "222 47% 11%",    // #1a1b2e
-    foreground:               "214 33% 91%",    // #c9d1d9
-    card:                     "222 47% 14%",
-    cardForeground:           "214 33% 91%",
-    popover:                  "222 47% 13%",
-    popoverForeground:        "214 33% 91%",
+    background: "222 47% 11%", // #1a1b2e
+    foreground: "214 33% 91%", // #c9d1d9
+    card: "222 47% 14%",
+    cardForeground: "214 33% 91%",
+    popover: "222 47% 13%",
+    popoverForeground: "214 33% 91%",
 
-    primary:                  "195 100% 75%",   // sky #7dcfff
-    primaryForeground:        "222 47% 5%",
+    primary: "195 100% 75%", // sky #7dcfff
+    primaryForeground: "222 47% 5%",
 
-    secondary:                "222 47% 20%",
-    secondaryForeground:      "214 33% 91%",
-    muted:                    "222 47% 20%",
-    mutedForeground:          "220 15% 58%",
+    secondary: "222 47% 20%",
+    secondaryForeground: "214 33% 91%",
+    muted: "222 47% 20%",
+    mutedForeground: "220 15% 58%",
 
-    accent:                   "265 89% 78%",    // purple #bb9af7
-    accentForeground:         "222 47% 5%",
+    accent: "265 89% 78%", // purple #bb9af7
+    accentForeground: "222 47% 5%",
 
-    destructive:              "354 70% 54%",    // #f7768e
-    destructiveForeground:    "214 33% 91%",
+    destructive: "354 70% 54%", // #f7768e
+    destructiveForeground: "214 33% 91%",
 
-    border:                   "222 47% 24%",
-    input:                    "222 47% 24%",
-    ring:                     "195 100% 75%",
-    radius:                   "0.8rem",
+    border: "222 47% 24%",
+    input: "222 47% 24%",
+    ring: "195 100% 75%",
+    radius: "0.8rem",
 
-    chart1:                   "195 100% 75%",   // sky
-    chart2:                   "142 76% 68%",    // green #9ece6a
-    chart3:                   "265 89% 78%",    // purple
-    chart4:                   "38 92% 72%",     // gold #e0af68
-    chart5:                   "354 70% 72%",    // rose
+    chart1: "195 100% 75%", // sky
+    chart2: "142 76% 68%", // green #9ece6a
+    chart3: "265 89% 78%", // purple
+    chart4: "38 92% 72%", // gold #e0af68
+    chart5: "354 70% 72%", // rose
 
-    sidebarBackground:        "222 47% 8%",
-    sidebarForeground:        "214 33% 91%",
-    sidebarPrimary:           "195 100% 75%",
+    sidebarBackground: "222 47% 8%",
+    sidebarForeground: "214 33% 91%",
+    sidebarPrimary: "195 100% 75%",
     sidebarPrimaryForeground: "222 47% 5%",
-    sidebarAccent:            "222 47% 18%",
-    sidebarAccentForeground:  "214 33% 91%",
-    sidebarBorder:            "222 47% 22%",
-    sidebarRing:              "195 100% 75%",
+    sidebarAccent: "222 47% 18%",
+    sidebarAccentForeground: "214 33% 91%",
+    sidebarBorder: "222 47% 22%",
+    sidebarRing: "195 100% 75%",
 
-    surface:                  "#1a1b2e",
-    surfaceCard:              "#16213e",
-    surfaceElevated:          "#1e2640",
-    surfaceBorder:            "#2d3561",
-    surfaceHover:             "#232a50",
-    txt:                      "#cdd6f4",
-    txtMuted:                 "#7f849c",
-    txtDim:                   "#585b70",
+    surface: "#1a1b2e",
+    surfaceCard: "#16213e",
+    surfaceElevated: "#1e2640",
+    surfaceBorder: "#2d3561",
+    surfaceHover: "#232a50",
+    txt: "#cdd6f4",
+    txtMuted: "#7f849c",
+    txtDim: "#585b70",
   },
 };
 
@@ -220,56 +220,56 @@ const cleanLightTheme: ThemeDef = {
   labelMn: "Цайвар",
   isDark: false,
   tokens: {
-    background:               "0 0% 100%",       // pure white
-    foreground:               "222 47% 8%",       // #0a0f1e — very dark navy (WCAG AAA)
-    card:                     "0 0% 100%",
-    cardForeground:           "222 47% 8%",
-    popover:                  "0 0% 100%",
-    popoverForeground:        "222 47% 8%",
+    background: "0 0% 100%", // pure white
+    foreground: "222 47% 8%", // #0a0f1e — very dark navy (WCAG AAA)
+    card: "0 0% 100%",
+    cardForeground: "222 47% 8%",
+    popover: "0 0% 100%",
+    popoverForeground: "222 47% 8%",
 
-    primary:                  "221 83% 53%",      // #2563eb — blue-600, trusted & vivid
-    primaryForeground:        "0 0% 100%",
+    primary: "221 83% 53%", // #2563eb — blue-600, trusted & vivid
+    primaryForeground: "0 0% 100%",
 
-    secondary:                "210 16% 96%",      // #f1f5f9 slate-100
-    secondaryForeground:      "222 47% 12%",
+    secondary: "210 16% 96%", // #f1f5f9 slate-100
+    secondaryForeground: "222 47% 12%",
 
-    muted:                    "210 16% 96%",      // #f1f5f9
-    mutedForeground:          "215 20% 35%",      // #475569 slate-600 — readable
+    muted: "210 16% 96%", // #f1f5f9
+    mutedForeground: "215 20% 35%", // #475569 slate-600 — readable
 
-    accent:                   "213 93% 97%",      // #eff6ff pale blue
-    accentForeground:         "221 83% 38%",      // deep blue
+    accent: "213 93% 97%", // #eff6ff pale blue
+    accentForeground: "221 83% 38%", // deep blue
 
-    destructive:              "0 84% 50%",        // #ef4444 red-500
-    destructiveForeground:    "0 0% 100%",
+    destructive: "0 84% 50%", // #ef4444 red-500
+    destructiveForeground: "0 0% 100%",
 
-    border:                   "214 32% 88%",      // #e2e8f0 slate-200
-    input:                    "214 32% 78%",      // slightly darker for visibility
-    ring:                     "221 83% 53%",
-    radius:                   "0.8rem",
+    border: "214 32% 88%", // #e2e8f0 slate-200
+    input: "214 32% 78%", // slightly darker for visibility
+    ring: "221 83% 53%",
+    radius: "0.8rem",
 
-    chart1:                   "221 83% 53%",      // blue
-    chart2:                   "142 72% 40%",      // green  #16a34a
-    chart3:                   "262 83% 58%",      // purple #7c3aed
-    chart4:                   "32 95% 50%",       // amber  #f59e0b
-    chart5:                   "0 84% 58%",        // red    #dc2626
+    chart1: "221 83% 53%", // blue
+    chart2: "142 72% 40%", // green  #16a34a
+    chart3: "262 83% 58%", // purple #7c3aed
+    chart4: "32 95% 50%", // amber  #f59e0b
+    chart5: "0 84% 58%", // red    #dc2626
 
-    sidebarBackground:        "210 20% 98%",      // #f8fafc slate-50
-    sidebarForeground:        "222 47% 8%",
-    sidebarPrimary:           "221 83% 53%",
+    sidebarBackground: "210 20% 98%", // #f8fafc slate-50
+    sidebarForeground: "222 47% 8%",
+    sidebarPrimary: "221 83% 53%",
     sidebarPrimaryForeground: "0 0% 100%",
-    sidebarAccent:            "210 16% 93%",
-    sidebarAccentForeground:  "222 47% 12%",
-    sidebarBorder:            "214 32% 88%",
-    sidebarRing:              "221 83% 53%",
+    sidebarAccent: "210 16% 93%",
+    sidebarAccentForeground: "222 47% 12%",
+    sidebarBorder: "214 32% 88%",
+    sidebarRing: "221 83% 53%",
 
-    surface:                  "#f8fafc",           // slate-50
-    surfaceCard:              "#ffffff",
-    surfaceElevated:          "#f1f5f9",           // slate-100
-    surfaceBorder:            "#e2e8f0",           // slate-200
-    surfaceHover:             "#eff6ff",           // blue-50
-    txt:                      "#0f172a",           // slate-900 — max contrast
-    txtMuted:                 "#64748b",           // slate-500
-    txtDim:                   "#94a3b8",           // slate-400
+    surface: "#f8fafc", // slate-50
+    surfaceCard: "#ffffff",
+    surfaceElevated: "#f1f5f9", // slate-100
+    surfaceBorder: "#e2e8f0", // slate-200
+    surfaceHover: "#eff6ff", // blue-50
+    txt: "#0f172a", // slate-900 — max contrast
+    txtMuted: "#64748b", // slate-500
+    txtDim: "#94a3b8", // slate-400
   },
 };
 
@@ -282,4 +282,3 @@ export const themes: ThemeDef[] = [
 ];
 
 export const defaultThemeName = "tokyo-night";
-

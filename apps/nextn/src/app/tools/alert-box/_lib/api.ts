@@ -27,7 +27,11 @@ async function req(path: string, opts?: RequestInit) {
   return data;
 }
 
-export async function abFetchAlerts(minDashboards = 2, limit = 200, signal?: AbortSignal) {
+export async function abFetchAlerts(
+  minDashboards = 2,
+  limit = 200,
+  signal?: AbortSignal,
+) {
   return req(
     `/oracle/search/alerts?min_dashboards=${minDashboards}&limit=${limit}`,
     { signal },

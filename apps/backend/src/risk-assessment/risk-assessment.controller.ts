@@ -18,7 +18,6 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 export class RiskAssessmentController {
   constructor(private service: RiskAssessmentService) {}
 
-
   // ── Manual indicators ─────────────────────────────────────────────────────
   @Get("manual-indicators")
   async listManualIndicators() {
@@ -35,15 +34,6 @@ export class RiskAssessmentController {
   }
 
   // ── History ───────────────────────────────────────────────────────────────
-  @Post("history")
-  async saveHistory(@Body() body: { name: string }, @Request() req) {
-    return this.service.saveHistory({
-      name: body.name,
-      userId: req.user.id,
-      userName: req.user.name ?? req.user.username ?? "",
-    });
-  }
-
   @Get("history")
   async listHistory() {
     return this.service.listHistory();
@@ -118,7 +108,13 @@ export class RiskAssessmentController {
 
   @Put("judgement")
   async upsertJudgement(
-    @Body() body: { branchId: string; branchName: string; fetchedDate: string; score: number },
+    @Body()
+    body: {
+      branchId: string;
+      branchName: string;
+      fetchedDate: string;
+      score: number;
+    },
     @Request() req,
   ) {
     await this.service.upsertJudgement({ ...body, userId: req.user.id });
@@ -136,5 +132,36 @@ export class RiskAssessmentController {
       userId: req.user.id,
       userName: req.user.name ?? req.user.username ?? "",
     });
+  }
+
+  // ── ETL pre-computed branch scores ────────────────────────────────────────
+  @Get("branch-scores")
+  async getBranchScores(@Query("date") date?: string) {
+    return this.service.getBranchScores(date);
+  }
+
+  @Post("branch-scores")
+  async upsertBranchScores(
+    @Body()
+    body: {
+      fetchDate: string;
+      scores: {
+        branchId: string;
+        branchName: string;
+        solid: string;
+        rating: string;
+        region: string;
+        s1: number | null;
+        s2: number | null;
+        s3: number | null;
+        s4: number;
+        j: number;
+        total: number | null;
+        level: string;
+      }[];
+    },
+  ) {
+    await this.service.upsertBranchScores(body.fetchDate, body.scores);
+    return { ok: true };
   }
 }

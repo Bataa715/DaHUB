@@ -55,7 +55,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       const result = await this.client.query({
         query: "SELECT version() as version",
       });
-      const data = await result.json() as { data: { version: string }[] };
+      const data = (await result.json()) as { data: { version: string }[] };
       this.logger.log(`ClickHouse version: ${data.data[0].version}`);
 
       // Initialize schema AND provision audit_app / audit_acl (needs admin rights)
@@ -89,7 +89,10 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // ── 3. ACL client = runtime client (audit_app handles everything) ───────────
       this.aclClient = this.client;
     } catch (error: unknown) {
-      this.logger.error("Failed to connect to ClickHouse:", (error as Error).message);
+      this.logger.error(
+        "Failed to connect to ClickHouse:",
+        (error as Error).message,
+      );
       throw error;
     }
   }
@@ -113,7 +116,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         query,
         query_params: params,
       });
-      const data = await result.json() as { data: T[] };
+      const data = (await result.json()) as { data: T[] };
       return data.data;
     } catch (error: unknown) {
       const msg = (error as Error)?.message || String(error);
@@ -155,7 +158,12 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         await this.client.command({ query: sql, query_params: params });
         return;
       } catch (error: unknown) {
-        const e = error as { message?: string; type?: string; code?: string; stack?: string };
+        const e = error as {
+          message?: string;
+          type?: string;
+          code?: string;
+          stack?: string;
+        };
         const msg = e?.message || e?.type || String(error);
         const isRetriable =
           msg.includes("ECONNRESET") ||
@@ -198,7 +206,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     const client = this.aclClient ?? this.client;
     try {
       const result = await client.query({ query, query_params: params });
-      const data = await result.json() as { data: T[] };
+      const data = (await result.json()) as { data: T[] };
       return data.data;
     } catch (error: unknown) {
       const msg = (error as Error)?.message || String(error);
@@ -258,7 +266,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           id String,
           title String,
           content String,
-          category String DEFAULT 'Ерөнхий',
+          category String DEFAULT 'Аудит',
           imageUrl String,
           imageMime String DEFAULT '',
           authorId String,
@@ -268,6 +276,30 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           updatedAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY createdAt
+      `);
+
+      // Create news_reactions table
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS news_reactions (
+          newsId String,
+          userId String,
+          emoji String,
+          createdAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(createdAt)
+        ORDER BY (newsId, userId)
+      `);
+
+      // Create news_comments table
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS news_comments (
+          id String,
+          newsId String,
+          authorId String,
+          authorName String,
+          content String,
+          createdAt DateTime DEFAULT now()
+        ) ENGINE = MergeTree()
+        ORDER BY (newsId, createdAt)
       `);
 
       // Create refresh_tokens table
@@ -371,25 +403,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY (userId, year, quarter)
       `);
 
-      // Create english_words table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS english_words (
-          id String,
-          word String,
-          translation String,
-          definition String DEFAULT '',
-          example String DEFAULT '',
-          partOfSpeech String DEFAULT '',
-          difficulty UInt8 DEFAULT 1,
-          totalReviews UInt32 DEFAULT 0,
-          correctReviews UInt32 DEFAULT 0,
-          lastReviewedAt DateTime DEFAULT '1970-01-01 00:00:00',
-          createdAt DateTime DEFAULT now(),
-          updatedAt DateTime DEFAULT now()
-        ) ENGINE = ReplacingMergeTree(updatedAt)
-        ORDER BY id
-      `);
-
       // Create login_attempts table for brute-force protection
       await this.exec(`
         CREATE TABLE IF NOT EXISTS login_attempts (
@@ -415,20 +428,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY (departmentId, year, quarter)
       `);
 
-      // Create department_photos table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS department_photos (
-          id String,
-          departmentId String,
-          departmentName String,
-          uploadedBy String,
-          uploadedByName String,
-          imageData String,
-          caption String DEFAULT '',
-          uploadedAt DateTime DEFAULT now()
-        ) ENGINE = MergeTree() ORDER BY (departmentId, uploadedAt)
-      `);
-
       try {
         await this.provisionServiceUsers();
       } catch (provisionErr: any) {
@@ -448,7 +447,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.logger.log(
-        "Schema tables initialized (departments, users, news, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, department_photos, english_words, login_attempts)",
+        "Schema tables initialized (departments, users, news, news_reactions, news_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);

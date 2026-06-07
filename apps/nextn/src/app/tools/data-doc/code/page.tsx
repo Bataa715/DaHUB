@@ -223,7 +223,10 @@ export default function CodePage() {
           <select
             value={form.language || "python"}
             onChange={(e) =>
-              setForm((f) => ({ ...f, language: e.target.value as CodeSnippet["language"] }))
+              setForm((f) => ({
+                ...f,
+                language: e.target.value as CodeSnippet["language"],
+              }))
             }
             className="w-full px-3 py-2 text-sm bg-muted border border-border/50 rounded-xl text-foreground/90 focus:outline-none focus:border-cyan-500/50"
           >

@@ -7,7 +7,6 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -18,28 +17,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import {
-  Loader2,
-  Building2,
-  Users,
-  UserCheck,
-  TrendingUp,
-  Pencil,
-  Trash2,
-  ChevronRight,
-  BadgeCheck,
-  BarChart3,
-  Shield,
-  Briefcase,
-  BookOpen,
-  FlaskConical,
-  Landmark,
-  Globe,
-  Layers,
-  Search,
-} from "lucide-react";
+import { Loader2, Building2, Users, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from "framer-motion";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 
 interface DepartmentUser {
@@ -61,163 +40,22 @@ interface DepartmentData {
   updatedAt?: string;
 }
 
-// Хэлтэс бүрт өнгө + дүрс автоматаар
-const DEPT_PALETTES = [
-  {
-    bg: "bg-blue-500/15",
-    border: "border-blue-500/30",
-    icon: "bg-blue-500/20 text-blue-400",
-    bar: "bg-blue-500",
-    ring: "ring-blue-500/30",
-    accent: "text-blue-400",
-  },
-  {
-    bg: "bg-violet-500/15",
-    border: "border-violet-500/30",
-    icon: "bg-violet-500/20 text-violet-400",
-    bar: "bg-violet-500",
-    ring: "ring-violet-500/30",
-    accent: "text-violet-400",
-  },
-  {
-    bg: "bg-emerald-500/15",
-    border: "border-emerald-500/30",
-    icon: "bg-emerald-500/20 text-emerald-400",
-    bar: "bg-emerald-500",
-    ring: "ring-emerald-500/30",
-    accent: "text-emerald-400",
-  },
-  {
-    bg: "bg-amber-500/15",
-    border: "border-amber-500/30",
-    icon: "bg-amber-500/20 text-amber-400",
-    bar: "bg-amber-500",
-    ring: "ring-amber-500/30",
-    accent: "text-amber-400",
-  },
-  {
-    bg: "bg-rose-500/15",
-    border: "border-rose-500/30",
-    icon: "bg-rose-500/20 text-rose-400",
-    bar: "bg-rose-500",
-    ring: "ring-rose-500/30",
-    accent: "text-rose-400",
-  },
-  {
-    bg: "bg-cyan-500/15",
-    border: "border-cyan-500/30",
-    icon: "bg-cyan-500/20 text-cyan-400",
-    bar: "bg-cyan-500",
-    ring: "ring-cyan-500/30",
-    accent: "text-cyan-400",
-  },
-  {
-    bg: "bg-orange-500/15",
-    border: "border-orange-500/30",
-    icon: "bg-orange-500/20 text-orange-400",
-    bar: "bg-orange-500",
-    ring: "ring-orange-500/30",
-    accent: "text-orange-400",
-  },
-  {
-    bg: "bg-teal-500/15",
-    border: "border-teal-500/30",
-    icon: "bg-teal-500/20 text-teal-400",
-    bar: "bg-teal-500",
-    ring: "ring-teal-500/30",
-    accent: "text-teal-400",
-  },
-];
-
-const DEPT_ICONS = [
-  Building2,
-  Shield,
-  Briefcase,
-  BookOpen,
-  FlaskConical,
-  Landmark,
-  Globe,
-  Layers,
-  BarChart3,
-];
-
-function getDeptStyle(index: number) {
-  return DEPT_PALETTES[index % DEPT_PALETTES.length];
-}
-
-function DeptIcon({ index, className }: { index: number; className?: string }) {
-  const Icon = DEPT_ICONS[index % DEPT_ICONS.length];
-  return <Icon className={className ?? "w-5 h-5"} />;
-}
-
-function AvatarRow({
-  users,
-  max = 5,
-}: {
-  users: DepartmentUser[];
-  max?: number;
-}) {
-  const shown = users.slice(0, max);
-  const rest = users.length - max;
-  return (
-    <div className="flex items-center -space-x-2">
-      {shown.map((u, i) => (
-        <div
-          key={u.id}
-          style={{ zIndex: max - i }}
-          className="relative w-6 h-6 rounded-full bg-secondary border-2 border-background flex items-center justify-center text-[9px] font-bold text-foreground/80 uppercase"
-          title={u.name}
-        >
-          {u.name.charAt(0)}
-        </div>
-      ))}
-      {rest > 0 && (
-        <div
-          className="relative w-6 h-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-[9px] font-bold text-muted-foreground"
-          style={{ zIndex: 0 }}
-        >
-          +{rest}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function AdminDepartmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
-  const [filteredDepts, setFilteredDepts] = useState<DepartmentData[]>([]);
-  const [search, setSearch] = useState("");
+
   const [selectedDepartment, setSelectedDepartment] =
     useState<DepartmentData | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    employeeCount: 0,
-  });
+  const [formData, setFormData] = useState({ name: "" });
 
   useEffect(() => {
     loadDepartments();
   }, []);
-
-  useEffect(() => {
-    const q = search.trim().toLowerCase();
-    setFilteredDepts(
-      q
-        ? departments.filter(
-            (d) =>
-              d.name.toLowerCase().includes(q) ||
-              d.description?.toLowerCase().includes(q),
-          )
-        : departments,
-    );
-  }, [search, departments]);
 
   const loadDepartments = async () => {
     try {
@@ -238,20 +76,14 @@ export default function AdminDepartmentsPage() {
     }
   };
 
-  const handleViewDepartment = (dept: DepartmentData, index: number) => {
+  const handleViewDepartment = (dept: DepartmentData) => {
     setSelectedDepartment(dept);
-    setSelectedIndex(index);
     setIsViewOpen(true);
   };
 
-  const handleEditDepartment = (dept: DepartmentData, index?: number) => {
+  const handleEditDepartment = (dept: DepartmentData) => {
     setSelectedDepartment(dept);
-    if (index !== undefined) setSelectedIndex(index);
-    setFormData({
-      name: dept.name || "",
-      description: dept.description || "",
-      employeeCount: dept.employeeCount || 0,
-    });
+    setFormData({ name: dept.name || "" });
     setIsEditOpen(true);
   };
 
@@ -259,7 +91,10 @@ export default function AdminDepartmentsPage() {
     if (!selectedDepartment) return;
     setIsSaving(true);
     try {
-      await departmentsApi.update(selectedDepartment.id, formData);
+      await departmentsApi.update(selectedDepartment.id, {
+        ...formData,
+        description: selectedDepartment.description,
+      });
       toast({
         title: "Амжилттай",
         description: "Хэлтсийн мэдээлэл шинэчлэгдлээ.",
@@ -296,280 +131,81 @@ export default function AdminDepartmentsPage() {
     }
   };
 
-  const totalEmployees = departments.reduce(
-    (sum, d) => sum + (d.users?.length || 0),
-    0,
-  );
-  const activeEmployees = departments.reduce(
-    (sum, d) =>
-      sum + (d.users?.filter((u) => u.isActive !== false).length || 0),
-    0,
-  );
-  const avgPerDept = Math.round(
-    totalEmployees / Math.max(departments.length, 1),
-  );
-
-  const stats = [
-    {
-      label: "Нийт хэлтэс",
-      value: departments.length,
-      icon: Building2,
-      color: "text-blue-400",
-      bg: "bg-blue-500/10 border-blue-500/20",
-    },
-    {
-      label: "Нийт ажилтан",
-      value: totalEmployees,
-      icon: Users,
-      color: "text-violet-400",
-      bg: "bg-violet-500/10 border-violet-500/20",
-    },
-    {
-      label: "Идэвхтэй",
-      value: activeEmployees,
-      icon: UserCheck,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10 border-emerald-500/20",
-    },
-    {
-      label: "Дундаж / хэлтэс",
-      value: avgPerDept,
-      icon: TrendingUp,
-      color: "text-amber-400",
-      bg: "bg-amber-500/10 border-amber-500/20",
-    },
-  ];
-
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground/60">Ачаалж байна…</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (!user?.isAdmin) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-red-500" />
-          </div>
-          <p className="text-muted-foreground text-sm">Хандах эрхгүй</p>
-        </div>
-      </div>
-    );
-  }
+  if (!user?.isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <AdminPageHeader title="Хэлтсүүд" />
+    <div className="min-h-screen bg-background">
+      <AdminPageHeader
+        title="Хэлтсүүд"
+        rightContent={
+          <span className="text-muted-foreground/60 text-xs">
+            {departments.length} хэлтэс
+          </span>
+        }
+      />
 
-      <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {stats.map((s, i) => (
-            <motion.div
-              key={s.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className={`rounded-2xl border p-4 ${s.bg}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-muted-foreground font-medium">
-                  {s.label}
-                </p>
-                <s.icon className={`w-4 h-4 ${s.color}`} />
-              </div>
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Хэлтэс хайх…"
-              className="pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 w-56 transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
-            <span>{filteredDepts.length} хэлтэс</span>
-          </div>
-        </div>
-
+      <div className="max-w-[1400px] mx-auto px-4 py-6">
         {/* Grid */}
-        {filteredDepts.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="rounded-2xl border border-dashed border-border py-24 text-center"
-          >
-            <div className="inline-flex w-14 h-14 rounded-2xl bg-background border border-border items-center justify-center mb-3">
-              <Building2 className="w-6 h-6 text-muted-foreground/40" />
-            </div>
-            <p className="text-muted-foreground/60 text-sm">
-              {search ? "Хайлтын үр дүн олдсонгүй" : "Хэлтэс байхгүй байна"}
+        {departments.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border py-20 text-center">
+            <Building2 className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground/50">
+              Хэлтэс байхгүй байна
             </p>
-          </motion.div>
+          </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <AnimatePresence>
-              {filteredDepts.map((dept, index) => {
-                const palette = getDeptStyle(index);
-                const userCount = dept.users?.length || 0;
-                const activeCount =
-                  dept.users?.filter((u) => u.isActive !== false).length || 0;
-                const pct =
-                  totalEmployees > 0 ? (userCount / totalEmployees) * 100 : 0;
-
-                return (
-                  <motion.div
-                    key={dept.id}
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ delay: index * 0.04 }}
-                    whileHover={{ y: -2 }}
-                    className={`relative rounded-2xl border bg-background/80 hover:bg-background/80 cursor-pointer group transition-all duration-200 overflow-hidden ${palette.border}`}
-                    onClick={() => handleViewDepartment(dept, index)}
-                  >
-                    {/* Top accent bar */}
+          <div className="grid gap-2 grid-cols-5">
+            {departments.map((dept) => {
+              const userCount = dept.users?.length || 0;
+              return (
+                <div
+                  key={dept.id}
+                  className="rounded-xl border border-border bg-card px-4 py-5 flex flex-col gap-3 cursor-pointer hover:bg-accent/30 transition-colors group min-h-[120px]"
+                  onClick={() => handleViewDepartment(dept)}
+                >
+                  <div className="flex items-start justify-between gap-2">
                     <div
-                      className={`absolute top-0 left-0 right-0 h-0.5 ${palette.bar} opacity-60`}
-                    />
-
-                    <div className="p-4 space-y-4">
-                      {/* Header */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${palette.icon}`}
-                          >
-                            <DeptIcon index={index} className="w-4.5 h-4.5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm text-foreground leading-snug truncate group-hover:text-foreground">
-                              {dept.name}
-                            </p>
-                            {dept.description && (
-                              <p className="text-[11px] text-muted-foreground/60 mt-0.5 line-clamp-1">
-                                {dept.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div
-                          className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditDepartment(dept, index);
-                            }}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-secondary transition-colors"
-                            title="Засах"
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteDepartment(e, dept)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Устгах"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Employee stats */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="text-center">
-                            <p
-                              className={`text-lg font-bold leading-none ${palette.accent}`}
-                            >
-                              {userCount}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                              ажилтан
-                            </p>
-                          </div>
-                          {activeCount > 0 && (
-                            <>
-                              <div className="w-px h-6 bg-muted" />
-                              <div className="text-center">
-                                <p className="text-lg font-bold text-emerald-400 leading-none">
-                                  {activeCount}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                                  идэвхтэй
-                                </p>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        {dept.users && dept.users.length > 0 && (
-                          <AvatarRow users={dept.users} />
-                        )}
-                      </div>
-
-                      {/* Progress + chevron */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground/40">
-                            Нийт ажилтны хувь
-                          </span>
-                          <span
-                            className={`text-[10px] font-semibold ${palette.accent}`}
-                          >
-                            {pct.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="h-1 bg-muted rounded-full overflow-hidden">
-                          <motion.div
-                            className={`h-full rounded-full ${palette.bar}`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${pct}%` }}
-                            transition={{
-                              duration: 0.9,
-                              delay: 0.3 + index * 0.04,
-                              ease: "easeOut",
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Footer */}
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] text-muted-foreground/40">
-                          {dept.createdAt
-                            ? new Date(dept.createdAt).toLocaleDateString(
-                                "mn-MN",
-                              )
-                            : "—"}
-                        </span>
-                        <span
-                          className={`flex items-center gap-0.5 text-[11px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity ${palette.accent}`}
-                        >
-                          Дэлгэрэнгүй <ChevronRight className="w-3 h-3" />
-                        </span>
-                      </div>
+                      className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditDepartment(dept);
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-secondary transition-colors"
+                        title="Засах"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteDepartment(e, dept)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Устгах"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground leading-snug">
+                      {dept.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground/50 mt-1">
+                      {userCount} ажилтан
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -580,155 +216,77 @@ export default function AdminDepartmentsPage() {
           <SheetTitle className="sr-only">
             {selectedDepartment?.name ?? "Хэлтэс"}
           </SheetTitle>
-          {selectedDepartment &&
-            (() => {
-              const palette = getDeptStyle(selectedIndex);
-              const userCount = selectedDepartment.users?.length || 0;
-              const activeCount =
-                selectedDepartment.users?.filter((u) => u.isActive !== false)
-                  .length || 0;
-              return (
-                <>
-                  {/* Sheet header */}
-                  <div
-                    className={`relative border-b border-border px-5 py-5 overflow-hidden`}
-                  >
-                    <div
-                      className={`absolute inset-0 ${palette.bg} opacity-40`}
-                    />
-                    <div
-                      className={`absolute top-0 left-0 right-0 h-0.5 ${palette.bar}`}
-                    />
-                    <div className="relative flex items-start gap-4">
-                      <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${palette.icon}`}
-                      >
-                        <DeptIcon index={selectedIndex} className="w-6 h-6" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest mb-1">
-                          Хэлтэс
-                        </p>
-                        <p className="text-lg font-bold text-foreground leading-snug">
-                          {selectedDepartment.name}
-                        </p>
-                        {selectedDepartment.description && (
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                            {selectedDepartment.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="relative flex gap-4 mt-4 pt-4 border-t border-border/50">
-                      <div className="text-center">
-                        <p
-                          className={`text-2xl font-bold leading-none ${palette.accent}`}
+          {selectedDepartment && (
+            <>
+              <div className="border-b border-border px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-muted-foreground/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {selectedDepartment.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground/50">
+                      {selectedDepartment.users?.length || 0} ажилтан
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <ScrollArea className="flex-1">
+                {selectedDepartment.users &&
+                selectedDepartment.users.length > 0 ? (
+                  <div className="py-2">
+                    <p className="px-5 py-2 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">
+                      Ажилтнууд
+                    </p>
+                    <div className="divide-y divide-border">
+                      {selectedDepartment.users.map((u) => (
+                        <div
+                          key={u.id}
+                          className="flex items-center gap-3 px-5 py-2.5"
                         >
-                          {userCount}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1">
-                          нийт ажилтан
-                        </p>
-                      </div>
-                      <div className="w-px bg-muted" />
-                      <div className="text-center">
-                        <p className="text-2xl font-bold leading-none text-emerald-400">
-                          {activeCount}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1">
-                          идэвхтэй
-                        </p>
-                      </div>
-                      <div className="w-px bg-muted" />
-                      <div className="text-center">
-                        <p className="text-2xl font-bold leading-none text-muted-foreground">
-                          {userCount - activeCount}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1">
-                          идэвхгүй
-                        </p>
-                      </div>
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-foreground shrink-0">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {u.name}
+                            </p>
+                            {u.position && (
+                              <p className="text-xs text-muted-foreground/50 truncate">
+                                {u.position}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  {/* Users */}
-                  <ScrollArea className="flex-1">
-                    {selectedDepartment.users &&
-                    selectedDepartment.users.length > 0 ? (
-                      <div className="py-2">
-                        <p className="px-5 py-2 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
-                          Ажилтнууд
-                        </p>
-                        <div className="divide-y divide-slate-800/50">
-                          {selectedDepartment.users.map((u, i) => (
-                            <motion.div
-                              key={u.id}
-                              initial={{ opacity: 0, x: -8 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: i * 0.04 }}
-                              className="flex items-center justify-between px-5 py-3 hover:bg-background/80/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold border ${palette.icon} ${palette.border}`}
-                                >
-                                  {u.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">
-                                    {u.name}
-                                  </p>
-                                  {u.position && (
-                                    <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-                                      {u.position}
-                                    </p>
-                                  )}
-                                  <p className="text-[10px] text-muted-foreground/40">
-                                    {u.email}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {u.isActive !== false ? (
-                                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                                    <BadgeCheck className="w-3 h-3" /> Идэвхтэй
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-semibold text-muted-foreground/60 bg-muted border border-border px-2 py-0.5 rounded-full">
-                                    Идэвхгүй
-                                  </span>
-                                )}
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-20 gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-background border border-border flex items-center justify-center">
-                          <Users className="w-5 h-5 text-muted-foreground/40" />
-                        </div>
-                        <p className="text-muted-foreground/60 text-sm">
-                          Ажилтан бүртгэгдээгүй
-                        </p>
-                      </div>
-                    )}
-                  </ScrollArea>
-
-                  <div className="border-t border-border p-4">
-                    <button
-                      onClick={() => {
-                        setIsViewOpen(false);
-                        handleEditDepartment(selectedDepartment, selectedIndex);
-                      }}
-                      className={`w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${palette.icon} border ${palette.border} hover:brightness-110`}
-                    >
-                      <Pencil className="w-3.5 h-3.5" /> Хэлтэс засах
-                    </button>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 gap-2">
+                    <Users className="w-6 h-6 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground/50">
+                      Ажилтан бүртгэгдээгүй
+                    </p>
                   </div>
-                </>
-              );
-            })()}
+                )}
+              </ScrollArea>
+
+              <div className="border-t border-border p-4">
+                <button
+                  onClick={() => {
+                    setIsViewOpen(false);
+                    handleEditDepartment(selectedDepartment);
+                  }}
+                  className="w-full py-2 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Хэлтэс засах
+                </button>
+              </div>
+            </>
+          )}
         </SheetContent>
       </Sheet>
 
@@ -736,47 +294,22 @@ export default function AdminDepartmentsPage() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="bg-background border-border text-foreground max-w-sm">
           <DialogHeader>
-            <div className="flex items-center gap-3 mb-1">
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center ${getDeptStyle(selectedIndex).icon}`}
-              >
-                <DeptIcon index={selectedIndex} />
-              </div>
-              <div>
-                <DialogTitle className="text-foreground text-base">
-                  Хэлтэс засах
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground/60 text-xs">
-                  Хэлтсийн мэдээллийг шинэчлэх
-                </DialogDescription>
-              </div>
-            </div>
+            <DialogTitle className="text-foreground text-base">
+              Хэлтэс засах
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground/60 text-xs">
+              Хэлтсийн нэрийг шинэчлэх
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs">
-                Хэлтсийн нэр
-              </Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="bg-muted border-border text-foreground focus-visible:ring-blue-500/30"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs">Тайлбар</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                rows={3}
-                placeholder="Хэлтсийн чиг үүрэг…"
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 resize-none focus-visible:ring-blue-500/30"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-muted-foreground text-xs">
+              Хэлтсийн нэр
+            </Label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ name: e.target.value })}
+              className="bg-muted border-border text-foreground focus-visible:ring-ring"
+            />
           </div>
           <DialogFooter className="gap-2 mt-2">
             <Button
@@ -786,11 +319,7 @@ export default function AdminDepartmentsPage() {
             >
               Цуцлах
             </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="bg-background text-foreground hover:bg-muted border-0"
-            >
+            <Button onClick={handleSaveEdit} disabled={isSaving}>
               {isSaving && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               )}

@@ -22,7 +22,12 @@
 }
 
 .ab-theme .skeleton {
-  background: linear-gradient(90deg, var(--surface-card) 25%, var(--surface-hover) 50%, var(--surface-card) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--surface-card) 25%,
+    var(--surface-hover) 50%,
+    var(--surface-card) 75%
+  );
   background-size: 200% 100%;
   animation: ab-shimmer 1.5s ease-in-out infinite;
 }

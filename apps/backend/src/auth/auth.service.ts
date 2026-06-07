@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   Logger,
   UnauthorizedException,
@@ -12,7 +12,7 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
-import { DEPARTMENT_CODES } from "../common/constants/departments"; // [LOW-1] shared constant
+import { buildUserId, safeParseTools } from "../common/utils/user-utils";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import {
   LoginDto,
@@ -25,7 +25,7 @@ import {
   RefreshTokenDto,
 } from "./dto/auth.dto";
 
-// [LOW-1] DEPARTMENT_CODES is now imported from src/common/constants/departments.ts
+// [LOW-1] buildUserId and safeParseTools imported from src/common/utils/user-utils.ts
 
 @Injectable()
 export class AuthService {
@@ -121,10 +121,8 @@ export class AuthService {
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
-      allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
-      grantableTools: user.grantableTools
-        ? JSON.parse(user.grantableTools)
-        : [],
+      allowedTools: safeParseTools(user.allowedTools),
+      grantableTools: safeParseTools(user.grantableTools),
       profileImage: user.profileImage || null,
       isActive: !!user.isActive,
     };
@@ -144,7 +142,7 @@ export class AuthService {
       userId: user.userId,
       isAdmin: !!user.isAdmin,
       isSuperAdmin: !!user.isSuperAdmin,
-      allowedTools: user.allowedTools ? JSON.parse(user.allowedTools) : [],
+      allowedTools: safeParseTools(user.allowedTools),
     });
   }
 
@@ -308,20 +306,8 @@ export class AuthService {
 
   // ─── Generate User ID ───────────────────────────────────────────────────────
 
-  private async generateUserId(
-    department: string,
-    name: string,
-  ): Promise<string> {
-    const deptCode = DEPARTMENT_CODES[department] || "USR";
-    const namePart = name
-      .split("-")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join("-")
-      .replace(/\s+/g, "");
-
-    if (department === "Удирдлага") return `.${namePart}-${deptCode}`;
-    if (department === "Дата анализын алба") return `${deptCode}-${namePart}`;
-    return `DAG-${deptCode}-${namePart}`;
+  private generateUserId(department: string, name: string): string {
+    return buildUserId(department, name);
   }
 
   // ─── Public Methods ─────────────────────────────────────────────────────────
@@ -548,12 +534,13 @@ export class AuthService {
     return this.formatUserResponse(user);
   }
 
-  async getUsersByDepartment(departmentName: string) {
+  async getUsersByDepartment(departmentName: string, limit = 100, offset = 0) {
     const users = await this.clickhouse.query<any>(
       `SELECT u.id, u.name, u.position
        FROM users u JOIN departments d ON u.departmentId = d.id
-       WHERE d.name = {departmentName:String} AND u.isActive = 1`,
-      { departmentName },
+       WHERE d.name = {departmentName:String} AND u.isActive = 1
+       LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
+      { departmentName, limit, offset },
     );
     return { users: users || [] };
   }
@@ -605,7 +592,7 @@ export class AuthService {
   async registerUser(registerUserDto: RegisterUserDto) {
     const { department, position, name } = registerUserDto;
 
-    const userId = await this.generateUserId(department, name);
+    const userId = this.generateUserId(department, name);
 
     const existing = await this.clickhouse.query<any>(
       "SELECT id FROM users WHERE userId = {userId:String} LIMIT 1",

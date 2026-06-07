@@ -69,4 +69,61 @@ export class NewsController {
   async remove(@Param("id") id: string, @Request() req) {
     return this.newsService.removeByOwner(id, req.user.id);
   }
+
+  // ── Reactions ────────────────────────────────────────────────────────────
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/reactions")
+  async getReactions(@Param("id") id: string, @Request() req) {
+    return this.newsService.getReactions(id, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Post(":id/react")
+  async react(
+    @Param("id") id: string,
+    @Body() body: { emoji: string },
+    @Request() req,
+  ) {
+    return this.newsService.react(id, req.user.id, body.emoji);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/react")
+  async removeReaction(@Param("id") id: string, @Request() req) {
+    return this.newsService.removeReaction(id, req.user.id);
+  }
+
+  // ── Comments ─────────────────────────────────────────────────────────────
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/comments")
+  async getComments(@Param("id") id: string) {
+    return this.newsService.getComments(id);
+  }
+
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Post(":id/comments")
+  async addComment(
+    @Param("id") id: string,
+    @Body() body: { content: string },
+    @Request() req,
+  ) {
+    return this.newsService.addComment(
+      id,
+      req.user.id,
+      req.user.name ?? "",
+      body.content,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/comments/:commentId")
+  async deleteComment(
+    @Param("id") id: string,
+    @Param("commentId") commentId: string,
+    @Request() req,
+  ) {
+    return this.newsService.deleteComment(commentId, req.user.id);
+  }
 }

@@ -1,0 +1,424 @@
+"use client";
+
+import { useMemo, useState, useEffect, useCallback } from "react";
+import {
+  riskApi,
+  getApiErrorMessage,
+  type RiskHistoryEntry,
+  type RiskCurrentRow,
+} from "@/lib/api";
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  Loader2,
+  AlertTriangle,
+  Bookmark,
+  ChevronRight,
+  Eye,
+  Trash2,
+  BookmarkCheck,
+  ClipboardList,
+  Calendar,
+} from "lucide-react";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import {
+  computeScore,
+  getGroup,
+  type ScoreResult,
+  type ScoreGroup,
+} from "../scoring-rules";
+import ReportView from "../report-view";
+
+type ScoredRow = RiskCurrentRow & {
+  __score: ScoreResult;
+  __scoreLabel: string | null;
+  __group: ScoreGroup | null;
+};
+
+function toScored(rows: RiskCurrentRow[]): ScoredRow[] {
+  return rows
+    .filter((r) => r.rowType === "oracle")
+    .map((r) => {
+      const sr = computeScore(r.SUBID, r.RESULT, r.RESULT_TYPE);
+      return {
+        ...r,
+        __score: sr.score,
+        __scoreLabel: sr.label,
+        __group: getGroup(r.SUBID),
+      };
+    });
+}
+
+export default function RiskReportsPage() {
+  const { t } = useLanguage();
+
+  const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Selected Primary Report
+  const [selectedReportId, setSelectedReportId] = useState<string>("");
+  const [reportRows, setReportRows] = useState<RiskCurrentRow[]>([]);
+  const [reportManualMap, setReportManualMap] = useState<any>({});
+  const [loadingReport, setLoadingReport] = useState(false);
+
+  // Selected Comparison Report
+  const [comparisonReportId, setComparisonReportId] = useState<string>("");
+  const [comparisonRows, setComparisonRows] = useState<RiskCurrentRow[]>([]);
+  const [comparisonManualMap, setComparisonManualMap] = useState<any>({});
+  const [loadingComparison, setLoadingComparison] = useState(false);
+
+  const [riskFilter, setRiskFilter] = useState<
+    "all" | "Өндөр" | "Дунд" | "Бага"
+  >("all");
+
+  // Delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletePasswordError, setDeletePasswordError] = useState("");
+
+  // Fetch saved reports list on mount
+  useEffect(() => {
+    let cancelled = false;
+    riskApi
+      .listHistory()
+      .then((data) => {
+        if (cancelled) return;
+        setHistoryList(data || []);
+        // Automatically select the most recent saved report if any
+        if (data && data.length > 0) {
+          setSelectedReportId(data[0].id);
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setErrorMsg("Хадгалсан тайлангуудыг уншихад алдаа гарлаа.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch primary report details
+  useEffect(() => {
+    if (!selectedReportId) {
+      setReportRows([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingReport(true);
+    setErrorMsg(null);
+    riskApi
+      .getHistory(selectedReportId)
+      .then((res) => {
+        if (cancelled) return;
+        setReportRows(res.rows || []);
+        setReportManualMap(res.manualMap || {});
+        // If comparison report is the same, clear it
+        if (comparisonReportId === selectedReportId) {
+          setComparisonReportId("");
+          setComparisonRows([]);
+          setComparisonManualMap({});
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setErrorMsg("Сонгосон тайлангийн өгөгдлийг уншихад алдаа гарлаа.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingReport(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedReportId]);
+
+  // Fetch comparison report details
+  useEffect(() => {
+    if (!comparisonReportId) {
+      setComparisonRows([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingComparison(true);
+    setErrorMsg(null);
+    riskApi
+      .getHistory(comparisonReportId)
+      .then((res) => {
+        if (cancelled) return;
+        setComparisonRows(res.rows || []);
+        setComparisonManualMap(res.manualMap || {});
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setErrorMsg("Харьцуулах тайлангийн өгөгдлийг уншихад алдаа гарлаа.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingComparison(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [comparisonReportId]);
+
+  // Delete handler
+  const openDeleteConfirm = useCallback((id: string) => {
+    setDeleteTargetId(id);
+    setDeletePassword("");
+    setDeletePasswordError("");
+    setDeleteModalOpen(true);
+  }, []);
+
+  const doDeleteHistory = useCallback(async () => {
+    if (deletePassword !== "OmnohDelete#24") {
+      setDeletePasswordError("Нууц үг буруу байна");
+      return;
+    }
+    if (!deleteTargetId) return;
+    setDeleteModalOpen(false);
+    try {
+      await riskApi.deleteHistory(deleteTargetId);
+      setHistoryList((prev) => prev.filter((h) => h.id !== deleteTargetId));
+      if (selectedReportId === deleteTargetId) {
+        setSelectedReportId("");
+        setReportRows([]);
+      }
+      if (comparisonReportId === deleteTargetId) {
+        setComparisonReportId("");
+        setComparisonRows([]);
+      }
+      alert("Тайлан амжилттай устгагдлаа.");
+    } catch (e: unknown) {
+      setErrorMsg(getApiErrorMessage(e) || "Устгахад алдаа гарлаа");
+    }
+    setDeleteTargetId(null);
+    setDeletePassword("");
+  }, [deletePassword, deleteTargetId, selectedReportId, comparisonReportId]);
+
+  const selectedReportInfo = useMemo(() => {
+    return historyList.find((h) => h.id === selectedReportId) || null;
+  }, [historyList, selectedReportId]);
+
+  const comparisonReportInfo = useMemo(() => {
+    return historyList.find((h) => h.id === comparisonReportId) || null;
+  }, [historyList, comparisonReportId]);
+
+  const primaryScoredRows = useMemo(() => toScored(reportRows), [reportRows]);
+  const comparisonScoredRows = useMemo(
+    () => toScored(comparisonRows),
+    [comparisonRows],
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
+      <ToolPageHeader
+        href="/tools/risk-assessment"
+        icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
+        title="Хадгалагдсан Эрсдэлийн Тайлангууд"
+        subtitle="Аудиторуудын үнэлж хадгалсан түүхэн болон улирлын тайлангуудыг харах, харьцуулах"
+      />
+
+      <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1800px]">
+        {errorMsg && (
+          <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 text-xs text-red-600/80">{errorMsg}</div>
+            <button
+              onClick={() => setErrorMsg(null)}
+              className="text-muted-foreground hover:text-foreground text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Toolbar with Select Dropdowns */}
+        <div className="rounded-xl border border-border bg-muted/30 p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Primary Report Select */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                Үндсэн тайлан
+              </span>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedReportId}
+                  onChange={(e) => setSelectedReportId(e.target.value)}
+                  disabled={loading || historyList.length === 0}
+                  className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer min-w-[200px]"
+                >
+                  <option value="">-- Тайлан сонгох --</option>
+                  {historyList.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.name} ({h.pDate})
+                    </option>
+                  ))}
+                </select>
+                {selectedReportId && (
+                  <button
+                    onClick={() => openDeleteConfirm(selectedReportId)}
+                    title="Энэ тайланг устгах"
+                    className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-600 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Right Arrow Separator */}
+            {selectedReportId && (
+              <div className="pt-4 hidden sm:block">
+                <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+              </div>
+            )}
+
+            {/* Comparison Report Select */}
+            {selectedReportId && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                  Харьцуулах тайлан (Өмнөх улирал)
+                </span>
+                <select
+                  value={comparisonReportId}
+                  onChange={(e) => setComparisonReportId(e.target.value)}
+                  disabled={loading || historyList.length <= 1}
+                  className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer min-w-[200px]"
+                >
+                  <option value="">-- Харьцуулахгүй --</option>
+                  {historyList
+                    .filter((h) => h.id !== selectedReportId)
+                    .map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name} ({h.pDate})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Right Status / Author Metadata */}
+          {selectedReportInfo && (
+            <div className="text-right text-xs text-muted-foreground">
+              <p>
+                Хадгалсан:{" "}
+                <span className="font-semibold text-foreground">
+                  {selectedReportInfo.createdByName || "Аудитор"}
+                </span>
+              </p>
+              <p className="text-[10px] mt-0.5">
+                Огноо: {selectedReportInfo.createdAt.slice(0, 10)}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Loading Spinner */}
+        {loading || loadingReport || loadingComparison ? (
+          <div className="flex flex-col items-center justify-center py-32 gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+            <p className="text-sm text-muted-foreground">Уншиж байна…</p>
+          </div>
+        ) : historyList.length === 0 ? (
+          /* Empty State */
+          <div className="rounded-2xl border border-border bg-card shadow-sm px-6 py-16 text-center">
+            <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
+              <Bookmark className="w-6 h-6 text-muted-foreground/60" />
+            </div>
+            <div className="text-sm font-semibold text-muted-foreground">
+              Хадгалагдсан тайлан одоогоор байхгүй байна
+            </div>
+            <div className="text-xs text-muted-foreground/60 mt-1 max-w-sm mx-auto">
+              «Эрсдэлийн үнэлгээ хийх» хуудсаар орж, аудиторын үнэлэмжийг
+              хадгалснаар энд жагсаалт харагдах болно.
+            </div>
+          </div>
+        ) : !selectedReportId ? (
+          <div className="rounded-2xl border border-border bg-card shadow-sm px-6 py-16 text-center">
+            <div className="text-sm font-semibold text-muted-foreground">
+              Дээрх цонхоор харах тайлангаа сонгоно уу
+            </div>
+          </div>
+        ) : (
+          /* Report view (ReadOnly) */
+          <ReportView
+            scoredRows={primaryScoredRows}
+            riskFilter={riskFilter}
+            setRiskFilter={setRiskFilter}
+            pDate={selectedReportInfo?.pDate}
+            readOnly={true}
+            initialManualMap={reportManualMap}
+            previousScoredRows={comparisonScoredRows}
+            previousHistoryName={comparisonReportInfo?.name ?? null}
+            previousFetchedAt={comparisonReportInfo?.createdAt ?? null}
+            previousManualMap={comparisonManualMap}
+            hideComparison={!comparisonReportId}
+          />
+        )}
+      </div>
+
+      {/* Delete Confirmation Password Modal */}
+      {deleteModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setDeleteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">
+                  Хадгалсан тайланг устгах
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Үргэлжлүүлэхийн тулд устгах нууц үгийг оруулна уу
+                </p>
+              </div>
+            </div>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => {
+                setDeletePassword(e.target.value);
+                setDeletePasswordError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && doDeleteHistory()}
+              placeholder="Нууц үг"
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
+            />
+            {deletePasswordError && (
+              <p className="text-xs text-red-500 mt-1.5">
+                {deletePasswordError}
+              </p>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
+              >
+                Болих
+              </button>
+              <button
+                onClick={doDeleteHistory}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-foreground text-xs font-semibold transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Устгах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

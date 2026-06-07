@@ -1,0 +1,52 @@
+<clickhouse>
+    <!-- Disable trace_log (most expensive) -->
+    <trace_log remove="1"/>
+
+    <!-- Disable text_log -->
+    <text_log remove="1"/>
+
+    <!-- Limit asynchronous_metric_log: keep 1 day, flush every 30s -->
+    <asynchronous_metric_log>
+        <database>system</database>
+        <table>asynchronous_metric_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <max_size_rows>50000</max_size_rows>
+        <ttl>event_date + INTERVAL 1 DAY</ttl>
+    </asynchronous_metric_log>
+
+    <!-- Limit metric_log: keep 1 day -->
+    <metric_log>
+        <database>system</database>
+        <table>metric_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <max_size_rows>10000</max_size_rows>
+        <ttl>event_date + INTERVAL 1 DAY</ttl>
+    </metric_log>
+
+    <!-- Limit query_log: keep 7 days -->
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        <max_size_rows>10000</max_size_rows>
+        <ttl>event_date + INTERVAL 7 DAY</ttl>
+    </query_log>
+
+    <!-- Limit part_log: keep 3 days -->
+    <part_log>
+        <database>system</database>
+        <table>part_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        <max_size_rows>10000</max_size_rows>
+        <ttl>event_date + INTERVAL 3 DAY</ttl>
+    </part_log>
+
+    <!-- Disable processors_profile_log -->
+    <processors_profile_log remove="1"/>
+
+    <!-- Disable background_schedule_pool_log -->
+    <background_schedule_pool_log remove="1"/>
+
+    <!-- Disable query_metric_log -->
+    <query_metric_log remove="1"/>
+</clickhouse>

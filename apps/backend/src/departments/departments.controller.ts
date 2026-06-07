@@ -7,7 +7,6 @@ import {
   Param,
   Body,
   UseGuards,
-  Request,
 } from "@nestjs/common";
 import { DepartmentsService } from "./departments.service";
 import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
@@ -53,34 +52,5 @@ export class DepartmentsController {
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.departmentsService.remove(id);
-  }
-
-  // ── Photos ────────────────────────────────────────────────────────────────
-
-  @Get(":id/photos")
-  getPhotos(@Param("id") id: string) {
-    return this.departmentsService.getPhotos(id);
-  }
-
-  @Post(":id/photos")
-  async uploadPhoto(
-    @Param("id") id: string,
-    @Body()
-    body: { imageData: string; caption?: string; departmentName?: string },
-    @Request() req,
-  ) {
-    return this.departmentsService.uploadPhoto(
-      id,
-      body.departmentName ?? "",
-      req.user.id,
-      req.user.name ?? "",
-      body.imageData,
-      body.caption ?? "",
-    );
-  }
-
-  @Delete(":id/photos/:photoId")
-  deletePhoto(@Param("photoId") photoId: string) {
-    return this.departmentsService.deletePhoto(photoId);
   }
 }

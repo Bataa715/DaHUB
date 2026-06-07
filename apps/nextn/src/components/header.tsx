@@ -12,7 +12,7 @@ import {
 } from "./ui/sheet";
 import {
   Menu,
-  Settings,
+  MoreHorizontal,
   LogOut,
   Palette,
   Check,
@@ -79,13 +79,7 @@ const Header = () => {
   // Үндсэн menu
   const regularLinks = [
     { href: "/", label: t("navHome"), icon: Home, public: true },
-    {
-      href: "/departments",
-      label: t("navDepartments"),
-      icon: Building2,
-      public: true,
-    },
-    { href: "/news", label: t("navNews"), icon: Newspaper, public: true },
+    { href: "/medleg", label: t("navNews"), icon: Newspaper, public: true },
     { href: "/tools", label: t("navTools"), icon: Wrench, public: true },
   ];
 
@@ -232,7 +226,7 @@ const Header = () => {
                     aria-label="Тохиргоо нээх"
                     aria-haspopup="menu"
                   >
-                    <Settings className="h-5 w-5" aria-hidden="true" />
+                    <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -257,7 +251,7 @@ const Header = () => {
                             <div
                               className="w-4 h-4 rounded-full ring-2 ring-white/20 shadow-lg"
                               style={{
-                              backgroundColor: `hsl(${themeOption.tokens.primary})`,
+                                backgroundColor: `hsl(${themeOption.tokens.primary})`,
                                 boxShadow: `0 0 12px hsl(${themeOption.tokens.primary} / 0.5)`,
                               }}
                             />
@@ -277,6 +271,14 @@ const Header = () => {
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>{t("navProfileSettings")}</span>
                   </DropdownMenuItem>
+                  {!isAdminPage && (
+                    <DropdownMenuItem
+                      onClick={() => router.push("/departments")}
+                    >
+                      <Building2 className="mr-2 h-4 w-4" />
+                      <span>{t("navDepartments")}</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger aria-label="Хэл солих">

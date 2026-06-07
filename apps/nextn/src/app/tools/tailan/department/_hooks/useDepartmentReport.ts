@@ -28,18 +28,57 @@ import {
 } from "../_types";
 
 // ─── Dept report API response shape ──────────────────────────────────────────
-type ImgRaw = { id?: string; dataUrl?: string; width?: number; height?: number };
+type ImgRaw = {
+  id?: string;
+  dataUrl?: string;
+  width?: number;
+  height?: number;
+};
 type DeptReportRaw = {
   userName?: string;
   userId?: string;
   id?: string;
-  plannedTasks?: Array<{ title?: string; description?: string; images?: ImgRaw[] }>;
-  section2Tasks?: Array<{ order?: number; title?: string; result?: string; period?: string; completion?: string; images?: ImgRaw[] }>;
-  section1Dashboards?: Array<{ title?: string; completion?: string; summary?: string; period?: string; images?: ImgRaw[] }>;
-  section3AutoTasks?: Array<{ title?: string; value?: string; rating?: string }>;
-  section3Dashboards?: Array<{ dashboard?: string; value?: string; rating?: string }>;
+  plannedTasks?: Array<{
+    title?: string;
+    description?: string;
+    images?: ImgRaw[];
+  }>;
+  section2Tasks?: Array<{
+    order?: number;
+    title?: string;
+    result?: string;
+    period?: string;
+    completion?: string;
+    images?: ImgRaw[];
+  }>;
+  section1Dashboards?: Array<{
+    title?: string;
+    completion?: string;
+    summary?: string;
+    period?: string;
+    images?: ImgRaw[];
+  }>;
+  section3AutoTasks?: Array<{
+    title?: string;
+    value?: string;
+    rating?: string;
+  }>;
+  section3Dashboards?: Array<{
+    dashboard?: string;
+    value?: string;
+    rating?: string;
+  }>;
   section4KnowledgeText?: string;
-  section4Trainings?: Array<{ training?: string; organizer?: string; type?: string; date?: string; format?: string; hours?: string; meetsAuditGoal?: string; sharedKnowledge?: string }>;
+  section4Trainings?: Array<{
+    training?: string;
+    organizer?: string;
+    type?: string;
+    date?: string;
+    format?: string;
+    hours?: string;
+    meetsAuditGoal?: string;
+    sharedKnowledge?: string;
+  }>;
 };
 
 export function useDepartmentReport() {
@@ -53,7 +92,10 @@ export function useDepartmentReport() {
   const { toast } = useToast();
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
-    toast({ title: msg, variant: type === "error" ? "destructive" : "default" });
+    toast({
+      title: msg,
+      variant: type === "error" ? "destructive" : "default",
+    });
   };
 
   const updateSection = (id: string, updated: SectionReport) =>
@@ -148,37 +190,40 @@ export function useDepartmentReport() {
     try {
       // 1) Хувийн тайлангийн section2Tasks-аас (хуучин section 1.3-тэй дүйцэх өгөгдөл)
       const reports = await tailanApi.getDeptReports(year, quarter);
-      const newRowsFromTasks: Section14Row[] = (reports as DeptReportRaw[]).flatMap(
-        (r) =>
-          (r.section2Tasks ?? []).map((t) => ({
-            title: t.title ?? "",
-            productType: "Өгөгдөл боловсруулалт",
-            savedDays: "",
-            group: "new" as const,
-            employeeName: r.userName ?? "",
-          })),
-      );
-
-      // 2) Дашбоард → хувийн тайлангийн section1Dashboards-аас
-      const dashRows: Section14Row[] = (reports as DeptReportRaw[]).flatMap((r) =>
-        (r.section1Dashboards ?? []).map((t) => ({
+      const newRowsFromTasks: Section14Row[] = (
+        reports as DeptReportRaw[]
+      ).flatMap((r) =>
+        (r.section2Tasks ?? []).map((t) => ({
           title: t.title ?? "",
-          productType: "Дашбоард",
+          productType: "Өгөгдөл боловсруулалт",
           savedDays: "",
           group: "new" as const,
           employeeName: r.userName ?? "",
         })),
       );
 
+      // 2) Дашбоард → хувийн тайлангийн section1Dashboards-аас
+      const dashRows: Section14Row[] = (reports as DeptReportRaw[]).flatMap(
+        (r) =>
+          (r.section1Dashboards ?? []).map((t) => ({
+            title: t.title ?? "",
+            productType: "Дашбоард",
+            savedDays: "",
+            group: "new" as const,
+            employeeName: r.userName ?? "",
+          })),
+      );
+
       // Тайлант хугацаанд аудитын үйл ажиллагаанд ашигласан дата бүтээгдэхүүн → section3AutoTasks
-      const usedRows: Section14Row[] = (reports as DeptReportRaw[]).flatMap((r) =>
-        (r.section3AutoTasks ?? []).map((t) => ({
-          title: t.title ?? "",
-          productType: "Өгөгдөл боловсруулалт",
-          savedDays: "",
-          group: "used" as const,
-          employeeName: r.userName ?? "",
-        })),
+      const usedRows: Section14Row[] = (reports as DeptReportRaw[]).flatMap(
+        (r) =>
+          (r.section3AutoTasks ?? []).map((t) => ({
+            title: t.title ?? "",
+            productType: "Өгөгдөл боловсруулалт",
+            savedDays: "",
+            group: "used" as const,
+            employeeName: r.userName ?? "",
+          })),
       );
 
       return [...newRowsFromTasks, ...dashRows, ...usedRows];
@@ -336,7 +381,9 @@ export function useDepartmentReport() {
           setLastSaved(null);
         }
       })
-      .catch(() => { /* silent: ignore load failures on background refresh */ });
+      .catch(() => {
+        /* silent: ignore load failures on background refresh */
+      });
   }, [year, quarter]);
 
   const handleDbSave = async () => {

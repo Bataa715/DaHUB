@@ -149,7 +149,10 @@ export function useTailanReport(userName?: string) {
             r.plannedTasks.map((t: PlannedTask) => ({ ...t, _id: uid() })),
           );
         setDynamicSections(
-          (r.dynamicSections ?? []).map((s: DynSection) => ({ ...s, _id: uid() })),
+          (r.dynamicSections ?? []).map((s: DynSection) => ({
+            ...s,
+            _id: uid(),
+          })),
         );
         if (r.section2Tasks?.length)
           setSection2Tasks(
@@ -157,19 +160,31 @@ export function useTailanReport(userName?: string) {
           );
         if (r.section3AutoTasks?.length)
           setSection3AutoTasks(
-            r.section3AutoTasks.map((t: Section3AutoTask) => ({ ...t, _id: uid() })),
+            r.section3AutoTasks.map((t: Section3AutoTask) => ({
+              ...t,
+              _id: uid(),
+            })),
           );
         if (r.section3Dashboards?.length)
           setSection3Dashboards(
-            r.section3Dashboards.map((t: Section3Dashboard) => ({ ...t, _id: uid() })),
+            r.section3Dashboards.map((t: Section3Dashboard) => ({
+              ...t,
+              _id: uid(),
+            })),
           );
         if (r.section1Dashboards?.length)
           setSection1Dashboards(
-            r.section1Dashboards.map((t: Section1Dashboard) => ({ ...t, _id: uid() })),
+            r.section1Dashboards.map((t: Section1Dashboard) => ({
+              ...t,
+              _id: uid(),
+            })),
           );
         if (r.section4Trainings?.length)
           setSection4Trainings(
-            r.section4Trainings.map((t: Section4Training) => ({ ...t, _id: uid() })),
+            r.section4Trainings.map((t: Section4Training) => ({
+              ...t,
+              _id: uid(),
+            })),
           );
         if (r.section4KnowledgeText)
           setSection4KnowledgeText(r.section4KnowledgeText);
@@ -179,13 +194,20 @@ export function useTailanReport(userName?: string) {
           );
         if (r.section6Activities?.length)
           setSection6Activities(
-            r.section6Activities.map((t: Section6Activity) => ({ ...t, _id: uid() })),
+            r.section6Activities.map((t: Section6Activity) => ({
+              ...t,
+              _id: uid(),
+            })),
           );
         if (r.section7Text) setSection7Text(r.section7Text);
         if (r.hiddenSections?.length)
           setHiddenSections(new Set(r.hiddenSections));
       })
-      .catch(() => { console.warn("[useTailanReport] Draft load failed — starting with empty form"); })
+      .catch(() => {
+        console.warn(
+          "[useTailanReport] Draft load failed — starting with empty form",
+        );
+      })
       .finally(() => setLoaded(true));
     loadImages();
   }, [year, quarter]); // eslint-disable-line react-hooks/exhaustive-deps

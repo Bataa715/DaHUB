@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { riskApi, getApiErrorMessage, type RiskCurrentRow, type RiskHistoryEntry } from "@/lib/api";
+import {
+  riskApi,
+  getApiErrorMessage,
+  type RiskCurrentRow,
+  type RiskHistoryEntry,
+  type BranchScore,
+} from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
@@ -61,11 +67,7 @@ const fmt = (n: number | null | undefined) =>
   n == null || n === 0 ? "—" : n.toFixed(2);
 
 // ── Score summary table (Score 1–4 only, no J, no Total) ────────────────────
-function ScoreTable({
-  rows,
-}: {
-  rows: BranchAggregate[];
-}) {
+function ScoreTable({ rows }: { rows: BranchAggregate[] }) {
   if (rows.length === 0) return null;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
@@ -149,6 +151,9 @@ export default function RiskAssessmentDetailPage() {
   const [loadingDate, setLoadingDate] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // ETL-аас pre-computed оноо — realtime date-тай тохирно
+  const [branchScores, setBranchScores] = useState<BranchScore[]>([]);
+
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
   const [viewHistoryId, setViewHistoryId] = useState<string | null>(null);
   const [viewHistoryRows, setViewHistoryRows] = useState<RiskRow[]>([]);
@@ -181,11 +186,15 @@ export default function RiskAssessmentDetailPage() {
         // Өнөөдрийн огноо байвал ачааллана, байхгүй бол хоосон харуулна
         const today = new Date().toISOString().slice(0, 10);
         if (dates.includes(today)) {
-          const res = await riskApi.getRealtime(today);
+          const [res, scores] = await Promise.all([
+            riskApi.getRealtime(today),
+            riskApi.getBranchScores(today).catch(() => []),
+          ]);
           if (cancelled) return;
           setRows(res.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
           setFetchedDate(res.fetchedDate || today);
           setSelectedDate(today);
+          setBranchScores(scores);
         } else {
           // Өнөөдрийн дата байхгүй — хоосон
           setSelectedDate(today);
@@ -207,10 +216,14 @@ export default function RiskAssessmentDetailPage() {
       setLoadingDate(true);
       setErrorMsg(null);
       try {
-        const res = await riskApi.getRealtime(date);
+        const [res, scores] = await Promise.all([
+          riskApi.getRealtime(date),
+          riskApi.getBranchScores(date).catch(() => []),
+        ]);
         if (!res.rows || res.rows.length === 0) {
           setRows([]);
           setFetchedDate("");
+          setBranchScores([]);
           const hint =
             availableDates.length > 0
               ? ` Боломжтой огнооууд: ${availableDates.slice(0, 5).join(", ")}${availableDates.length > 5 ? " ..." : ""}`
@@ -220,6 +233,7 @@ export default function RiskAssessmentDetailPage() {
           setRows(res.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
           setFetchedDate(res.fetchedDate || date);
           setSelectedDate(date);
+          setBranchScores(scores);
         }
       } catch (e: unknown) {
         setErrorMsg(getApiErrorMessage(e));
@@ -278,9 +292,7 @@ export default function RiskAssessmentDetailPage() {
         setViewHistoryRows([]);
       }
     } catch (e: unknown) {
-      setErrorMsg(
-        getApiErrorMessage(e) || "Устгахад алдаа гарлаа",
-      );
+      setErrorMsg(getApiErrorMessage(e) || "Устгахад алдаа гарлаа");
     }
     setDeleteTargetId(null);
     setDeletePassword("");
@@ -302,7 +314,28 @@ export default function RiskAssessmentDetailPage() {
     [activeRows],
   );
 
-  const aggregates = useMemo(() => aggregateBranch(scoredRows), [scoredRows]);
+  const aggregates: BranchAggregate[] = useMemo(() => {
+    // History харахад pre-computed байхгүй — browser дотор тооцно
+    if (viewHistoryId) return aggregateBranch(scoredRows);
+    // Realtime: ETL-аас ирсэн оноо байвал тэрийг ашигла
+    if (branchScores.length > 0) {
+      return branchScores.map((s) => ({
+        branchId: s.branchId,
+        branchName: s.branchName,
+        solid: s.solid,
+        rating: s.rating,
+        region: s.region as import("../scoring-rules").Region,
+        s1: s.s1,
+        s2: s.s2,
+        s3: s.s3,
+        s4: s.s4,
+        j: s.j,
+        total: s.total,
+        level: s.level as BranchAggregate["level"],
+      }));
+    }
+    return aggregateBranch(scoredRows);
+  }, [viewHistoryId, branchScores, scoredRows]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -435,7 +468,6 @@ export default function RiskAssessmentDetailPage() {
         }
       />
       <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1600px]">
-
         {errorMsg && (
           <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
@@ -495,9 +527,7 @@ export default function RiskAssessmentDetailPage() {
         )}
 
         {/* Score summary table */}
-        {!loading && scoredRows.length > 0 && (
-          <ScoreTable rows={aggregates} />
-        )}
+        {!loading && scoredRows.length > 0 && <ScoreTable rows={aggregates} />}
 
         {/* Дэлгэрэнгүй өгөгдөл (нуугддаг) */}
         {!loading && scoredRows.length > 0 && (

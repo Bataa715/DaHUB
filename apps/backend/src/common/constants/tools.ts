@@ -17,9 +17,6 @@ export const VALID_TOOLS = [
   "python_api_tools",
   "reports",
   "risk_assessment",
-  "weekly_report_audit",
-  "weekly_report_daa",
-  "weekly_report_director",
 ] as const;
 
 export type ValidTool = (typeof VALID_TOOLS)[number];

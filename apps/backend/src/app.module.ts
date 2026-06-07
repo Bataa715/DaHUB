@@ -14,7 +14,6 @@ import { TailanModule } from "./tailan/tailan.module";
 import { OracleModule } from "./oracle/oracle.module";
 import { PythonApiModule } from "./python-api/python-api.module";
 import { RiskAssessmentModule } from "./risk-assessment/risk-assessment.module";
-import { WeeklyReportModule } from "./weekly-report/weekly-report.module";
 import { RiskIndicatorConfigModule } from "./risk-indicator-config/risk-indicator-config.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
@@ -48,7 +47,6 @@ import configuration from "./config/configuration";
     OracleModule,
     PythonApiModule,
     RiskAssessmentModule,
-    WeeklyReportModule,
     RiskIndicatorConfigModule,
   ],
   controllers: [HealthController],

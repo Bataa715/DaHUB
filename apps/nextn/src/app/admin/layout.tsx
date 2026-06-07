@@ -1,117 +1,115 @@
-﻿"use client";
+"use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Shield, ChevronRight } from "lucide-react";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { Wrench, Users, Building2, Shield, Lock, LogOut } from "lucide-react";
 
-const BASE_NAV = [
-  {
-    href: "/admin/users",
-    label: "Хэрэглэгчид",
-    superOnly: false,
-    section: "main",
-  },
+const OTHER_LINKS = [
+  { href: "/admin/users", label: "Хэрэглэгчид", icon: Users, superOnly: false },
   {
     href: "/admin/departments",
     label: "Хэлтсүүд",
+    icon: Building2,
     superOnly: false,
-    section: "main",
-  },
-  {
-    href: "/admin/tools",
-    label: "Хэрэгслүүд",
-    superOnly: false,
-    section: "main",
-  },
-  {
-    href: "/admin/change-password",
-    label: "Нууц үг солих",
-    superOnly: false,
-    section: "mgmt",
   },
   {
     href: "/admin/admins",
     label: "Админ удирдлага",
+    icon: Shield,
     superOnly: true,
-    section: "mgmt",
+  },
+  {
+    href: "/admin/change-password",
+    label: "Нууц үг солих",
+    icon: Lock,
+    superOnly: false,
   },
 ];
 
-function AdminSidebar({
-  pathname,
-  isSuperAdmin,
-}: {
-  pathname: string;
-  isSuperAdmin: boolean;
-}) {
-  const nav = BASE_NAV.filter((item) => !item.superOnly || isSuperAdmin);
-  const mainNav = nav.filter((i) => i.section === "main");
-  const mgmtNav = nav.filter((i) => i.section === "mgmt");
+function AdminSidebar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
 
-  const NavItem = ({ item }: { item: (typeof BASE_NAV)[0] }) => {
-    const active = pathname.startsWith(item.href);
-    return (
-      <Link href={item.href}>
-        <motion.div
-          whileHover={{ x: 2 }}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-            active
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-          }`}
-        >
-          <span className="flex-1">{item.label}</span>
-          {item.superOnly && !active && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/20">
-              SA
-            </span>
-          )}
-          {active && (
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-          )}
-        </motion.div>
-      </Link>
-    );
+  const isTools = pathname.startsWith("/admin/tools");
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/admin/login");
   };
 
+  const visibleOthers = OTHER_LINKS.filter(
+    (l) => !l.superOnly || user?.isSuperAdmin,
+  );
+
   return (
-    <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-background border-r border-border/50 min-h-screen sticky top-0 z-30">
+    <aside className="flex flex-col w-48 shrink-0 border-r border-border bg-background min-h-screen sticky top-0">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-border/50">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-          <Shield className="w-5 h-5 text-foreground" />
+      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border">
+        <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+          <Image
+            src="/golomt.jpg"
+            alt="Golomt"
+            width={20}
+            height={20}
+            className="rounded object-contain"
+          />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground/60 leading-none mb-0.5">
-            DaHUB
-          </p>
-          <p className="text-sm font-bold text-foreground leading-none">
-            Admin Panel
-          </p>
-        </div>
+        <span className="text-sm font-semibold text-foreground">Admin</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {mainNav.map((item) => (
-          <NavItem key={item.href} item={item} />
-        ))}
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+        {/* Хэрэгсэл */}
+        <Link
+          href="/admin/tools"
+          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+            isTools
+              ? "bg-muted text-foreground font-medium"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
+        >
+          <Wrench className="w-3.5 h-3.5 shrink-0" />
+          Хэрэгсэл
+        </Link>
 
-        {/* Удирдлага section */}
-        <div className="pt-3 pb-1">
-          <div className="flex items-center gap-2 px-3 mb-1"></div>
+        {/* Бусад */}
+        <div className="pt-3 pb-1 px-3">
+          <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">
+            Бусад
+          </p>
         </div>
-        {mgmtNav.map((item) => (
-          <NavItem key={item.href} item={item} />
-        ))}
+        {visibleOthers.map((link) => {
+          const Icon = link.icon;
+          const active = pathname.startsWith(link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                active
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              {link.label}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-border/50">
-        <p className="text-xs text-muted-foreground/40">DaHUB</p>
+      <div className="px-2 py-3 border-t border-border">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5 shrink-0" />
+          Гарах
+        </button>
       </div>
     </aside>
   );
@@ -123,12 +121,6 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (pathname === "/admin/login") {
     return <>{children}</>;
@@ -136,10 +128,7 @@ export default function AdminLayout({
 
   return (
     <div className="flex min-h-screen bg-background">
-      <AdminSidebar
-        pathname={pathname}
-        isSuperAdmin={mounted ? !!user?.isSuperAdmin : false}
-      />
+      <AdminSidebar />
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );

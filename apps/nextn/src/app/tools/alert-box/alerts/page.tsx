@@ -96,18 +96,26 @@ function Top10Tooltip({ active, payload }: TooltipContentProps) {
     <div className="bg-surface-elevated border border-surface-border rounded-xl px-3 py-2.5 text-xs shadow-2xl space-y-1">
       <p className="font-mono font-extrabold text-txt text-sm">{d.cif}</p>
       <p className="text-txt-dim">
-        Дүн: <span className="text-amber-400 font-bold">{formatAmount(d.stdAmount)}₮</span>
+        Дүн:{" "}
+        <span className="text-amber-400 font-bold">
+          {formatAmount(d.stdAmount)}₮
+        </span>
       </p>
       {d.mlAmount > 0 && (
         <p className="text-txt-dim">
-          ML: <span className="text-golomt-400 font-bold">+{formatAmount(d.mlAmount)}₮</span>
+          ML:{" "}
+          <span className="text-golomt-400 font-bold">
+            +{formatAmount(d.mlAmount)}₮
+          </span>
         </p>
       )}
       <p className="text-txt-dim">
-        Гүйлгээ: <span className="text-txt font-bold">{d.totalTransactions}</span>
+        Гүйлгээ:{" "}
+        <span className="text-txt font-bold">{d.totalTransactions}</span>
       </p>
       <p className="text-txt-dim">
-        Dashboard: <span className="text-golomt-400 font-bold">{d.dashboardCount}ш</span>
+        Dashboard:{" "}
+        <span className="text-golomt-400 font-bold">{d.dashboardCount}ш</span>
       </p>
     </div>
   );
@@ -183,19 +191,22 @@ export default function AlertsPage() {
     }, 400);
   };
 
-  const loadAlerts = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await abFetchAlerts(minDash, 10000, signal);
-      setData(res);
-    } catch (e: unknown) {
-      if (e instanceof Error && e.name === "AbortError") return;
-      setError(getApiErrorMessage(e) || t("alertNoResult"));
-    } finally {
-      setLoading(false);
-    }
-  }, [minDash, t]);
+  const loadAlerts = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await abFetchAlerts(minDash, 10000, signal);
+        setData(res);
+      } catch (e: unknown) {
+        if (e instanceof Error && e.name === "AbortError") return;
+        setError(getApiErrorMessage(e) || t("alertNoResult"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [minDash, t],
+  );
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -236,24 +247,49 @@ export default function AlertsPage() {
     const totalStdAmt = alerts.reduce((s, a) => s + getStdAmount(a), 0);
     const totalMLAmt = alerts.reduce((s, a) => s + (a.mlAmount || 0), 0);
 
-    const sevMap: Record<string, number> = { "2 DB": 0, "3 DB": 0, "4 DB": 0, "5+ DB": 0 };
+    const sevMap: Record<string, number> = {
+      "2 DB": 0,
+      "3 DB": 0,
+      "4 DB": 0,
+      "5+ DB": 0,
+    };
     alerts.forEach((a) => {
       if (a.dashboardCount >= 5) sevMap["5+ DB"]++;
       else if (a.dashboardCount === 4) sevMap["4 DB"]++;
       else if (a.dashboardCount === 3) sevMap["3 DB"]++;
       else sevMap["2 DB"]++;
     });
-    const sevData = Object.entries(sevMap).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
+    const sevData = Object.entries(sevMap)
+      .filter(([, v]) => v > 0)
+      .map(([name, value]) => ({ name, value }));
 
     const dbFreq: Record<string, number> = {};
-    alerts.forEach((a) => a.dashboards.forEach((d) => { const k = `DB${d.id}`; dbFreq[k] = (dbFreq[k] || 0) + 1; }));
-    const dbFreqData = Object.entries(dbFreq).map(([name, count]) => ({ name, count })).sort((a, b) => Number(a.name.slice(2)) - Number(b.name.slice(2)));
+    alerts.forEach((a) =>
+      a.dashboards.forEach((d) => {
+        const k = `DB${d.id}`;
+        dbFreq[k] = (dbFreq[k] || 0) + 1;
+      }),
+    );
+    const dbFreqData = Object.entries(dbFreq)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => Number(a.name.slice(2)) - Number(b.name.slice(2)));
 
-    const top10 = [...alerts].sort((a, b) => getStdAmount(b) - getStdAmount(a)).slice(0, 10).map((a) => ({ ...a, stdAmount: getStdAmount(a) }));
+    const top10 = [...alerts]
+      .sort((a, b) => getStdAmount(b) - getStdAmount(a))
+      .slice(0, 10)
+      .map((a) => ({ ...a, stdAmount: getStdAmount(a) }));
     const reversedTop10 = [...top10].reverse();
 
-    return { totalTxns, totalStdAmt, totalMLAmt, sevData, dbFreqData, top10, reversedTop10 };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return {
+      totalTxns,
+      totalStdAmt,
+      totalMLAmt,
+      sevData,
+      dbFreqData,
+      top10,
+      reversedTop10,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const getSeverityColor = (count: number) => {
@@ -483,38 +519,38 @@ export default function AlertsPage() {
                             )}
                             {cifDetail?.results && (
                               <div className="space-y-2 mt-2">
-                                {cifDetail.results.map((dr: CifDetailDashboard) => (
-                                  <details
-                                    key={dr.dashboardId}
-                                    className="bg-surface-card rounded-lg border border-surface-border overflow-hidden"
-                                  >
-                                    <summary className="px-4 py-2.5 cursor-pointer hover:bg-surface-elevated/50 text-sm font-semibold text-txt">
-                                      DB{dr.dashboardId}: {dr.dashboardName} (
-                                      {dr.matchCount} {t("alertRows")})
-                                    </summary>
-                                    <div className="overflow-auto border-t border-surface-border max-h-[380px]">
-                                      <table className="text-xs border-collapse">
-                                        <thead className="sticky top-0 z-10">
-                                          <tr className="bg-surface-elevated">
-                                            <th className="px-3 py-2 text-left font-semibold text-txt-dim whitespace-nowrap bg-surface-elevated">
-                                              #
-                                            </th>
-                                            {dr.rows.length > 0 &&
-                                              Object.keys(dr.rows[0]).map(
-                                                (col: string) => (
-                                                  <th
-                                                    key={col}
-                                                    className="px-3 py-2 text-left font-semibold text-txt-dim whitespace-nowrap bg-surface-elevated"
-                                                  >
-                                                    {col}
-                                                  </th>
-                                                ),
-                                              )}
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {dr.rows.map(
-                                            (row, ri: number) => (
+                                {cifDetail.results.map(
+                                  (dr: CifDetailDashboard) => (
+                                    <details
+                                      key={dr.dashboardId}
+                                      className="bg-surface-card rounded-lg border border-surface-border overflow-hidden"
+                                    >
+                                      <summary className="px-4 py-2.5 cursor-pointer hover:bg-surface-elevated/50 text-sm font-semibold text-txt">
+                                        DB{dr.dashboardId}: {dr.dashboardName} (
+                                        {dr.matchCount} {t("alertRows")})
+                                      </summary>
+                                      <div className="overflow-auto border-t border-surface-border max-h-[380px]">
+                                        <table className="text-xs border-collapse">
+                                          <thead className="sticky top-0 z-10">
+                                            <tr className="bg-surface-elevated">
+                                              <th className="px-3 py-2 text-left font-semibold text-txt-dim whitespace-nowrap bg-surface-elevated">
+                                                #
+                                              </th>
+                                              {dr.rows.length > 0 &&
+                                                Object.keys(dr.rows[0]).map(
+                                                  (col: string) => (
+                                                    <th
+                                                      key={col}
+                                                      className="px-3 py-2 text-left font-semibold text-txt-dim whitespace-nowrap bg-surface-elevated"
+                                                    >
+                                                      {col}
+                                                    </th>
+                                                  ),
+                                                )}
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {dr.rows.map((row, ri: number) => (
                                               <tr
                                                 key={ri}
                                                 className="border-t border-surface-border hover:bg-surface-elevated/30 text-xs"
@@ -535,13 +571,13 @@ export default function AlertsPage() {
                                                   ),
                                                 )}
                                               </tr>
-                                            ),
-                                          )}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </details>
-                                ))}
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </details>
+                                  ),
+                                )}
                               </div>
                             )}
                             <button
@@ -563,8 +599,17 @@ export default function AlertsPage() {
               ) : null
             ) : (
               <>
-                {chartData && (() => {
-                    const { totalTxns, totalStdAmt, totalMLAmt, sevData, dbFreqData, top10, reversedTop10 } = chartData;
+                {chartData &&
+                  (() => {
+                    const {
+                      totalTxns,
+                      totalStdAmt,
+                      totalMLAmt,
+                      sevData,
+                      dbFreqData,
+                      top10,
+                      reversedTop10,
+                    } = chartData;
                     const SEV_COLORS: Record<string, string> = {
                       "2 DB": "#60a5fa",
                       "3 DB": "#fbbf24",

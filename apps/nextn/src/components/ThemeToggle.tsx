@@ -31,7 +31,11 @@ export function ThemeToggle() {
           <DropdownMenuItem
             key={t.name}
             onClick={() => setTheme(t.name)}
-            className={activeTheme === t.name ? "bg-accent text-accent-foreground font-semibold" : ""}
+            className={
+              activeTheme === t.name
+                ? "bg-accent text-accent-foreground font-semibold"
+                : ""
+            }
           >
             {t.labelMn}
           </DropdownMenuItem>

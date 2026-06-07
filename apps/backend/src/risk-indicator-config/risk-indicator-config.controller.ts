@@ -80,5 +80,4 @@ export class RiskIndicatorConfigController {
   ): Promise<void> {
     return this.svc.reorderIndicators(body.ids, user.id);
   }
-
 }

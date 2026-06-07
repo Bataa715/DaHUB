@@ -104,7 +104,13 @@ export class OracleSearchController {
         const rows = await this.oracle.query(sql, params);
         if (rows.length > 0) {
           const totalAmount = dash.amountColumn
-            ? rows.reduce((s, r) => s + (Number((r as Record<string, unknown>)[dash.amountColumn!]) || 0), 0)
+            ? rows.reduce(
+                (s, r) =>
+                  s +
+                  (Number((r as Record<string, unknown>)[dash.amountColumn!]) ||
+                    0),
+                0,
+              )
             : 0;
           return {
             dashboardId: dash.id,
@@ -193,7 +199,11 @@ export class OracleSearchController {
             ? `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, SUM(NVL(${dash.amountColumn}, 0)) AS TOTAL_AMT FROM ${fromExpr} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`
             : `SELECT ${dash.cifColumn} AS CIF_VAL, COUNT(*) AS CNT, 0 AS TOTAL_AMT FROM ${fromExpr} GROUP BY ${dash.cifColumn} HAVING COUNT(*) >= 1`;
         }
-        const rows = await this.oracle.query<{ CIF_VAL: string; CNT: number; TOTAL_AMT: number }>(sql, params);
+        const rows = await this.oracle.query<{
+          CIF_VAL: string;
+          CNT: number;
+          TOTAL_AMT: number;
+        }>(sql, params);
         return { dash, rows };
       }),
     );
@@ -203,7 +213,11 @@ export class OracleSearchController {
       if (s.status === "rejected") {
         const msg = (s.reason as Error)?.message || String(s.reason);
         this.logger.warn(`DB${dashboards[i].id} alerts query failed: ${msg}`);
-        failedDashboards.push({ id: dashboards[i].id, name: dashboards[i].name, error: msg });
+        failedDashboards.push({
+          id: dashboards[i].id,
+          name: dashboards[i].name,
+          error: msg,
+        });
         continue;
       }
       const { dash, rows } = s.value;

@@ -60,7 +60,9 @@ export default function ABSidebar() {
     const load = () =>
       abFetchNotifications(20)
         .then(setNotifications)
-        .catch(() => { /* intentional: sidebar notification poll; failure just shows no badge */ });
+        .catch(() => {
+          /* intentional: sidebar notification poll; failure just shows no badge */
+        });
     load();
     const interval = setInterval(load, 60000);
     return () => clearInterval(interval);

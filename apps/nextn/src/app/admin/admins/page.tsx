@@ -1,11 +1,19 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   Search,
-  X,
   AlertTriangle,
   Loader2,
   ChevronDown,
@@ -27,10 +35,7 @@ const ALL_TOOLS = [
   { id: "excel_report", name: "Excel тайлан" },
   { id: "data_doc", name: "Өгөгдлийн толь бичиг" },
   { id: "alert_box", name: "Alert Box" },
-  { id: "risk_assessment", name: "Эрсдэлийн үнэлгээ" },
-  { id: "weekly_report_audit", name: "7 хоногийн тайлан (аудит хэлтэс)" },
-  { id: "weekly_report_daa", name: "7 хоногийн тайлан (ДАА)" },
-  { id: "weekly_report_director", name: "7 хоногийн тайлан (захирал)" },
+  { id: "risk_assessment", name: "Салбарын эрсдэлийн үнэлгээ" },
 ];
 
 interface AdminUser {
@@ -41,7 +46,6 @@ interface AdminUser {
   isSuperAdmin: boolean;
   grantableTools: string[];
   department?: string;
-  createdAt?: string;
 }
 
 interface AllUser {
@@ -49,7 +53,62 @@ interface AllUser {
   name: string;
   userId: string;
   isAdmin: boolean;
-  department?: string;
+}
+
+function ToolCheckList({
+  tools,
+  setTools,
+}: {
+  tools: string[];
+  setTools: (v: string[]) => void;
+}) {
+  const toggle = (id: string) =>
+    setTools(
+      tools.includes(id) ? tools.filter((t) => t !== id) : [...tools, id],
+    );
+  return (
+    <div className="space-y-2 rounded-xl bg-muted/50 p-3 border border-border max-h-52 overflow-y-auto">
+      {ALL_TOOLS.map((tool) => {
+        const checked = tools.includes(tool.id);
+        return (
+          <label
+            key={tool.id}
+            onClick={() => toggle(tool.id)}
+            className="flex items-center gap-2.5 cursor-pointer group"
+          >
+            <span
+              className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                checked
+                  ? "bg-emerald-500 border-emerald-500"
+                  : "border-border/70 group-hover:border-emerald-500/50"
+              }`}
+            >
+              {checked && (
+                <svg
+                  className="w-2.5 h-2.5 text-foreground"
+                  fill="none"
+                  viewBox="0 0 12 12"
+                >
+                  <path
+                    d="M1 7l3.5 3.5L11 2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </span>
+            <span
+              className={`text-sm select-none transition-colors ${checked ? "text-foreground" : "text-muted-foreground group-hover:text-foreground/80"}`}
+            >
+              {tool.name}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function AdminsPage() {
@@ -60,18 +119,15 @@ export default function AdminsPage() {
   const [allUsers, setAllUsers] = useState<AllUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [addSearch, setAddSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedRole, setSelectedRole] = useState<"sub" | "super">("sub");
   const [grantableTools, setGrantableTools] = useState<string[]>([]);
   const [addLoading, setAddLoading] = useState(false);
-
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [editTools, setEditTools] = useState<string[]>([]);
   const [editLoading, setEditLoading] = useState(false);
-
   const [removeTarget, setRemoveTarget] = useState<AdminUser | null>(null);
   const [removeLoading, setRemoveLoading] = useState(false);
   const [expandedAdmin, setExpandedAdmin] = useState<string | null>(null);
@@ -105,16 +161,6 @@ export default function AdminsPage() {
     fetchAdmins();
     fetchAllUsers();
   }, [fetchAdmins, fetchAllUsers]);
-
-  const toggleTool = (
-    tools: string[],
-    setTools: (v: string[]) => void,
-    id: string,
-  ) => {
-    setTools(
-      tools.includes(id) ? tools.filter((t) => t !== id) : [...tools, id],
-    );
-  };
 
   const handleToggleSuperAdmin = async (admin: AdminUser) => {
     if (!isSuperAdmin || admin.id === user?.id) return;
@@ -203,59 +249,6 @@ export default function AdminsPage() {
       (u.userId ?? "").toLowerCase().includes(addSearch.toLowerCase()),
   );
 
-  const superAdminCount = admins.filter((a) => a.isSuperAdmin).length;
-  const subAdminCount = admins.filter((a) => !a.isSuperAdmin).length;
-
-  const ToolCheckList = ({
-    tools,
-    setTools,
-  }: {
-    tools: string[];
-    setTools: (v: string[]) => void;
-  }) => (
-    <div className="space-y-2 rounded-xl bg-muted/50 p-3 border border-border max-h-52 overflow-y-auto">
-      {ALL_TOOLS.map((tool) => {
-        const checked = tools.includes(tool.id);
-        return (
-          <label
-            key={tool.id}
-            onClick={() => toggleTool(tools, setTools, tool.id)}
-            className="flex items-center gap-2.5 cursor-pointer group"
-          >
-            <span
-              className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
-                checked
-                  ? "bg-emerald-500 border-emerald-500"
-                  : "border-border/70 group-hover:border-emerald-500/50"
-              }`}
-            >
-              {checked && (
-                <svg
-                  className="w-2.5 h-2.5 text-foreground"
-                  fill="none"
-                  viewBox="0 0 12 12"
-                >
-                  <path
-                    d="M1 7l3.5 3.5L11 2"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-            </span>
-            <span
-              className={`text-sm select-none transition-colors ${checked ? "text-foreground" : "text-muted-foreground group-hover:text-foreground/80"}`}
-            >
-              {tool.name}
-            </span>
-          </label>
-        );
-      })}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-background">
       <AdminPageHeader
@@ -264,464 +257,292 @@ export default function AdminsPage() {
           isSuperAdmin ? (
             <button
               onClick={() => setShowAddSheet(true)}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold px-3 py-1.5 rounded-lg text-sm transition-colors"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors"
             >
-              Админ нэмэх
+              + Нэмэх
             </button>
           ) : undefined
         }
       />
-      <div className="p-6">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[
-            {
-              label: "Нийт админ",
-              value: admins.length,
-              color: "text-blue-400",
-              bg: "bg-blue-500/10 border-blue-500/20",
-            },
-            {
-              label: "Супер админ",
-              value: superAdminCount,
-              color: "text-amber-400",
-              bg: "bg-amber-500/10 border-amber-500/20",
-            },
-            {
-              label: "Саб админ",
-              value: subAdminCount,
-              color: "text-emerald-400",
-              bg: "bg-emerald-500/10 border-emerald-500/20",
-            },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className={`rounded-xl border px-4 py-3 ${stat.bg}`}
-            >
-              <p className="text-xs text-muted-foreground/60 mb-1">
-                {stat.label}
-              </p>
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
 
+      <div className="max-w-[900px] mx-auto px-4 py-6 space-y-2">
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 text-red-400 flex items-center gap-2">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 flex items-center gap-2 text-sm mb-4">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
 
-        {/* Admin list */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
           </div>
+        ) : admins.length === 0 ? (
+          <p className="text-center text-sm text-muted-foreground/50 py-16">
+            Одоогоор админ бүртгэгдээгүй байна
+          </p>
         ) : (
-          <div className="space-y-3">
-            <AnimatePresence>
-              {admins.map((admin, i) => {
-                const isSelf = admin.id === user?.id;
-                const isExpanded = expandedAdmin === admin.id;
-                const toolNames = (admin.grantableTools ?? []).map(
-                  (tid) => ALL_TOOLS.find((t) => t.id === tid)?.name ?? tid,
-                );
+          admins.map((admin) => {
+            const isSelf = admin.id === user?.id;
+            const isExpanded = expandedAdmin === admin.id;
+            const toolNames = (admin.grantableTools ?? []).map(
+              (tid) => ALL_TOOLS.find((t) => t.id === tid)?.name ?? tid,
+            );
 
-                return (
-                  <motion.div
-                    key={admin.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="bg-background border border-border rounded-xl overflow-hidden"
-                  >
-                    <div className="p-4 flex items-center gap-4">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                          admin.isSuperAdmin
-                            ? "bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/40"
-                            : "bg-emerald-500/20 text-emerald-400"
-                        }`}
+            return (
+              <div
+                key={admin.id}
+                className="rounded-xl border border-border bg-card overflow-hidden"
+              >
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-foreground shrink-0">
+                    {(admin.name ?? admin.userId ?? "?")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-foreground">
+                        {admin.name || admin.userId}
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full border ${admin.isSuperAdmin ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}
                       >
-                        {(admin.name ?? admin.userId ?? "?")
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-foreground font-medium">
-                            {admin.name || admin.userId}
-                          </span>
-                          {admin.isSuperAdmin ? (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                              Супер админ
-                            </span>
-                          ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                              Саб админ
-                            </span>
-                          )}
-                          {isSelf && (
-                            <span className="bg-secondary text-foreground/80 text-xs px-2 py-0.5 rounded-full">
-                              Та
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground text-sm truncate">
-                          {admin.userId}
-                        </p>
-                        {!admin.isSuperAdmin && (
-                          <button
-                            onClick={() =>
-                              setExpandedAdmin(isExpanded ? null : admin.id)
-                            }
-                            className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-foreground/80 mt-0.5 transition-colors"
-                          >
-                            {toolNames.length > 0
-                              ? `${toolNames.length} хэрэгсэл олгох эрхтэй`
-                              : "Хэрэгсэл тохируулаагүй"}
-                            {isExpanded ? (
-                              <ChevronUp className="w-3 h-3" />
-                            ) : (
-                              <ChevronDown className="w-3 h-3" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                      {isSuperAdmin && !isSelf && (
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {!admin.isSuperAdmin && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => {
-                                setEditTarget(admin);
-                                setEditTools(admin.grantableTools ?? []);
-                              }}
-                              className="text-xs text-muted-foreground hover:text-emerald-400 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition-colors border border-border"
-                            >
-                              Эрх
-                            </motion.button>
-                          )}
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleToggleSuperAdmin(admin)}
-                            className={`text-xs px-2 py-1 rounded-lg transition-colors border ${
-                              admin.isSuperAdmin
-                                ? "text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                                : "text-muted-foreground border-border hover:text-amber-400 hover:border-amber-500/30"
-                            }`}
-                          >
-                            {admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setRemoveTarget(admin)}
-                            className="text-xs text-muted-foreground hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-border"
-                          >
-                            Хасах
-                          </motion.button>
-                        </div>
+                        {admin.isSuperAdmin ? "Супер" : "Саб"}
+                      </span>
+                      {isSelf && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                          Та
+                        </span>
                       )}
                     </div>
-                    <AnimatePresence>
-                      {isExpanded && !admin.isSuperAdmin && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="border-t border-border px-4 pb-3 overflow-hidden"
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <p className="text-xs text-muted-foreground/50">
+                        {admin.userId}
+                      </p>
+                      {!admin.isSuperAdmin && (
+                        <button
+                          onClick={() =>
+                            setExpandedAdmin(isExpanded ? null : admin.id)
+                          }
+                          className="flex items-center gap-0.5 text-[10px] text-muted-foreground/40 hover:text-foreground/60 ml-2 transition-colors"
                         >
-                          {toolNames.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5 pt-3">
-                              {toolNames.map((name) => (
-                                <span
-                                  key={name}
-                                  className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full"
-                                >
-                                  {name}
-                                </span>
-                              ))}
-                            </div>
+                          {toolNames.length > 0
+                            ? `${toolNames.length} хэрэгсэл`
+                            : "хэрэгсэл тохируулаагүй"}
+                          {isExpanded ? (
+                            <ChevronUp className="w-3 h-3" />
                           ) : (
-                            <p className="text-muted-foreground/40 text-xs pt-3">
-                              Ямар ч хэрэгсэл тохируулаагүй байна.
-                            </p>
+                            <ChevronDown className="w-3 h-3" />
                           )}
-                        </motion.div>
+                        </button>
                       )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-            {admins.length === 0 && (
-              <div className="text-center py-16 text-muted-foreground/40 text-sm">
-                Одоогоор админ бүртгэгдээгүй байна
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {/* /p-6 */}
-
-      {/* Add Admin Sheet */}
-      <AnimatePresence>
-        {showAddSheet && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowAddSheet(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-background border-l border-border z-50 overflow-y-auto"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Шинэ админ нэмэх
-                  </h2>
-                  <button
-                    onClick={() => setShowAddSheet(false)}
-                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
-                  <input
-                    value={addSearch}
-                    onChange={(e) => setAddSearch(e.target.value)}
-                    placeholder="Хэрэглэгч хайх..."
-                    className="w-full bg-muted border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-500/50"
-                  />
-                </div>
-
-                <div className="space-y-1 max-h-48 overflow-y-auto mb-5 rounded-xl border border-border">
-                  {filteredUsers.length === 0 ? (
-                    <p className="text-muted-foreground/60 text-sm p-4 text-center">
-                      Хэрэглэгч олдсонгүй
-                    </p>
-                  ) : (
-                    filteredUsers.map((u) => (
+                    </div>
+                  </div>
+                  {isSuperAdmin && !isSelf && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {!admin.isSuperAdmin && (
+                        <button
+                          onClick={() => {
+                            setEditTarget(admin);
+                            setEditTools(admin.grantableTools ?? []);
+                          }}
+                          className="text-xs text-muted-foreground/60 hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors border border-border"
+                        >
+                          Эрх
+                        </button>
+                      )}
                       <button
-                        key={u.id}
-                        onClick={() => setSelectedUserId(u.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                          selectedUserId === u.id
-                            ? "bg-amber-500/15 text-foreground"
-                            : "text-foreground/80 hover:bg-muted"
-                        }`}
+                        onClick={() => handleToggleSuperAdmin(admin)}
+                        className="text-xs text-muted-foreground/60 hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors border border-border"
                       >
-                        <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-medium">
-                          {(u.name || u.userId || "?")
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            {u.name || u.userId}
-                          </div>
-                          <div className="text-xs text-muted-foreground/60">
-                            {u.userId}
-                          </div>
-                        </div>
-                        {selectedUserId === u.id && (
-                          <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                        )}
+                        {admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
                       </button>
-                    ))
+                      <button
+                        onClick={() => setRemoveTarget(admin)}
+                        className="text-xs text-muted-foreground/60 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-border"
+                      >
+                        Хасах
+                      </button>
+                    </div>
                   )}
                 </div>
-
-                <div className="mb-5">
-                  <p className="text-muted-foreground text-xs mb-2 font-medium uppercase tracking-wider">
-                    Роль
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["sub", "super"] as const).map((role) => (
-                      <button
-                        key={role}
-                        onClick={() => setSelectedRole(role)}
-                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                          selectedRole === role
-                            ? role === "super"
-                              ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
-                              : "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
-                            : "border-border text-muted-foreground hover:border-border/80"
-                        }`}
-                      >
-                        {role === "super" ? "Супер админ" : "Саб админ"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {selectedRole === "sub" && (
-                  <div className="mb-6">
-                    <p className="text-muted-foreground text-xs mb-2 font-medium uppercase tracking-wider">
-                      Олгох эрхийн хэрэгслүүд
-                    </p>
-                    <ToolCheckList
-                      tools={grantableTools}
-                      setTools={setGrantableTools}
-                    />
+                {isExpanded && !admin.isSuperAdmin && (
+                  <div className="border-t border-border px-4 py-3">
+                    {toolNames.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {toolNames.map((name) => (
+                          <span
+                            key={name}
+                            className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/40">
+                        Ямар ч хэрэгсэл тохируулаагүй байна.
+                      </p>
+                    )}
                   </div>
                 )}
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleAddAdmin}
-                  disabled={!selectedUserId || addLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:bg-secondary disabled:text-muted-foreground/60 text-black font-semibold py-3 rounded-xl transition-colors"
-                >
-                  {addLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : null}
-                  Нэмэх
-                </motion.button>
               </div>
-            </motion.div>
-          </>
+            );
+          })
         )}
-      </AnimatePresence>
+      </div>
+
+      {/* Add Admin Sheet */}
+      <Sheet open={showAddSheet} onOpenChange={setShowAddSheet}>
+        <SheetContent className="bg-background border-border overflow-y-auto">
+          <SheetTitle className="text-base font-semibold mb-4">
+            Шинэ админ нэмэх
+          </SheetTitle>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
+              <input
+                value={addSearch}
+                onChange={(e) => setAddSearch(e.target.value)}
+                placeholder="Хэрэглэгч хайх..."
+                className="w-full bg-muted border border-border rounded-xl pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-ring"
+              />
+            </div>
+            <div className="space-y-1 max-h-48 overflow-y-auto rounded-xl border border-border">
+              {filteredUsers.length === 0 ? (
+                <p className="text-muted-foreground/60 text-sm p-4 text-center">
+                  Хэрэглэгч олдсонгүй
+                </p>
+              ) : (
+                filteredUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => setSelectedUserId(u.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${selectedUserId === u.id ? "bg-muted text-foreground" : "text-foreground/80 hover:bg-muted/50"}`}
+                  >
+                    <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                      {(u.name || u.userId || "?").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {u.name || u.userId}
+                      </div>
+                      <div className="text-xs text-muted-foreground/60">
+                        {u.userId}
+                      </div>
+                    </div>
+                    {selectedUserId === u.id && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-foreground/60 flex-shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground/60 mb-2">Роль</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(["sub", "super"] as const).map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => setSelectedRole(role)}
+                    className={`py-2 rounded-xl border text-sm font-medium transition-all ${selectedRole === role ? "bg-muted border-foreground/20 text-foreground" : "border-border text-muted-foreground hover:bg-muted/50"}`}
+                  >
+                    {role === "super" ? "Супер админ" : "Саб админ"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {selectedRole === "sub" && (
+              <div>
+                <p className="text-xs text-muted-foreground/60 mb-2">
+                  Олгох эрхийн хэрэгслүүд
+                </p>
+                <ToolCheckList
+                  tools={grantableTools}
+                  setTools={setGrantableTools}
+                />
+              </div>
+            )}
+            <button
+              onClick={handleAddAdmin}
+              disabled={!selectedUserId || addLoading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-background hover:bg-muted disabled:opacity-50 text-sm font-medium transition-colors"
+            >
+              {addLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Нэмэх
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Edit Tools Sheet */}
-      <AnimatePresence>
-        {editTarget && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setEditTarget(null)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-background border-l border-border z-50 overflow-y-auto"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Хэрэгсэл эрх засах
-                  </h2>
-                  <button
-                    onClick={() => setEditTarget(null)}
-                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <p className="text-muted-foreground text-sm mb-4">
-                  <span className="text-foreground font-medium">
-                    {editTarget.name || editTarget.userId}
-                  </span>
-                  -д олгох хэрэгслийн эрхийг сонгоно уу.
-                </p>
-                <div className="mb-6">
-                  <p className="text-muted-foreground text-xs mb-2 font-medium uppercase tracking-wider">
-                    Олгох эрхийн хэрэгслүүд
-                  </p>
-                  <ToolCheckList tools={editTools} setTools={setEditTools} />
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleEditTools}
-                  disabled={editLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-secondary disabled:text-muted-foreground/60 text-foreground font-semibold py-3 rounded-xl transition-colors"
-                >
-                  {editLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : null}
-                  Хадгалах
-                </motion.button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <Sheet
+        open={!!editTarget}
+        onOpenChange={(o) => {
+          if (!o) setEditTarget(null);
+        }}
+      >
+        <SheetContent className="bg-background border-border overflow-y-auto">
+          <SheetTitle className="text-base font-semibold mb-1">
+            Хэрэгсэл эрх засах
+          </SheetTitle>
+          <p className="text-xs text-muted-foreground/60 mb-4">
+            <span className="text-foreground font-medium">
+              {editTarget?.name || editTarget?.userId}
+            </span>
+            -д олгох хэрэгслийн эрхийг сонгоно уу.
+          </p>
+          <ToolCheckList tools={editTools} setTools={setEditTools} />
+          <button
+            onClick={handleEditTools}
+            disabled={editLoading}
+            className="w-full flex items-center justify-center gap-2 mt-4 py-2.5 rounded-xl border border-border bg-background hover:bg-muted disabled:opacity-50 text-sm font-medium transition-colors"
+          >
+            {editLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            Хадгалах
+          </button>
+        </SheetContent>
+      </Sheet>
 
-      {/* Remove Confirm Modal */}
-      <AnimatePresence>
-        {removeTarget && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+      {/* Remove Confirm Dialog */}
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(o) => {
+          if (!o) setRemoveTarget(null);
+        }}
+      >
+        <DialogContent className="bg-background border-border text-foreground max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Админ эрх хасах</DialogTitle>
+            <DialogDescription className="text-muted-foreground/60">
+              <span className="text-foreground font-medium">
+                {removeTarget?.name || removeTarget?.userId}
+              </span>
+              -н админ эрхийг хасах уу?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
               onClick={() => setRemoveTarget(null)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              className="border border-border"
             >
-              <div className="bg-background border border-border rounded-2xl p-6 w-full max-w-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-red-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-foreground font-semibold">
-                      Админ эрх хасах
-                    </h3>
-                    <p className="text-muted-foreground text-sm">
-                      Энэ үйлдлийг буцааж болохгүй
-                    </p>
-                  </div>
-                </div>
-                <p className="text-foreground/80 text-sm mb-6">
-                  <span className="text-foreground font-medium">
-                    {removeTarget.name || removeTarget.userId}
-                  </span>
-                  -н админ эрхийг хасах уу?
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setRemoveTarget(null)}
-                    className="flex-1 py-2.5 rounded-xl border border-border text-foreground/80 hover:bg-muted transition-colors text-sm font-medium"
-                  >
-                    Болих
-                  </button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleRemoveAdmin}
-                    disabled={removeLoading}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-secondary text-foreground text-sm font-medium transition-colors"
-                  >
-                    {removeLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : null}
-                    Хасах
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              Болих
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRemoveAdmin}
+              disabled={removeLoading}
+            >
+              {removeLoading && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              )}
+              Хасах
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
