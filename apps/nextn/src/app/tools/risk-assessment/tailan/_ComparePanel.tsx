@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { riskApi, type RiskHistoryEntry, type RiskCurrentRow } from "@/lib/api";
 import {
-  aggregateBranch, computeScore, INDICATOR_RULES,
+  aggregateBranch, computeScoreDynamic,
   type BranchAggregate,
 } from "../scoring-rules";
+import { useIndicatorConfig } from "../use-indicator-config";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -61,6 +62,16 @@ export default function ComparePanel({
   const [metricMode, setMetricMode] = useState<MetricMode>("total");
   const [selectedSubId, setSelectedSubId] = useState<number>(1);
 
+  const dynamicConfig = useIndicatorConfig();
+  const scoreIndicators = useMemo(
+    () => dynamicConfig.catalog.filter((r) => !r.is_manual && !r.is_judgment),
+    [dynamicConfig.catalog],
+  );
+  const selectedIndicator = useMemo(
+    () => scoreIndicators.find((r) => Number(r.subid) === selectedSubId),
+    [scoreIndicators, selectedSubId],
+  );
+
   const sortedHistory = useMemo(
     () => [...historyList].sort((a, b) => a.pDate.localeCompare(b.pDate)),
     [historyList],
@@ -92,7 +103,7 @@ export default function ComparePanel({
     for (const h of selectedReports) {
       const rows = loadedMap.get(h.id) ?? [];
       if (metricMode === "total") {
-        for (const a of aggregateBranch(rows)) {
+        for (const a of aggregateBranch(rows, {}, {}, dynamicConfig.catalog)) {
           if (!m.has(a.branchId)) m.set(a.branchId, a.branchName);
         }
       } else {
@@ -124,7 +135,7 @@ export default function ComparePanel({
     const m = new Map<string, Map<string, BranchAggregate>>();
     for (const h of selectedReports) {
       const bmap = new Map<string, BranchAggregate>();
-      for (const a of aggregateBranch(loadedMap.get(h.id) ?? []))
+      for (const a of aggregateBranch(loadedMap.get(h.id) ?? [], {}, {}, dynamicConfig.catalog))
         bmap.set(a.branchId, a);
       m.set(h.id, bmap);
     }
@@ -141,9 +152,12 @@ export default function ComparePanel({
         if (Number(r.SUBID) !== selectedSubId) continue;
         if (!r.BRANCHID) continue;
         if (metricMode === "score") {
-          const sr = computeScore(r.SUBID, r.RESULT, r.RESULT_TYPE);
-          if (typeof sr.score === "number" && sr.score > 0)
-            bmap.set(r.BRANCHID, sr.score);
+          const ind = dynamicConfig.catalog.find((c) => Number(c.subid) === selectedSubId);
+          const { score } = ind && !ind.is_manual
+            ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
+            : { score: null };
+          if (typeof score === "number" && score > 0)
+            bmap.set(r.BRANCHID, score);
         } else {
           const raw = parseFloat(String(r.RESULT));
           if (!isNaN(raw)) bmap.set(r.BRANCHID, raw);
@@ -216,11 +230,6 @@ export default function ComparePanel({
   const toggleBranch = (id: string) => {
     setSelectedBranches((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
-
-  const selectedIndicator = useMemo(
-    () => INDICATOR_RULES.find((r) => r.subid === selectedSubId),
-    [selectedSubId],
-  );
 
   if (!open) return null;
 
@@ -342,10 +351,10 @@ export default function ComparePanel({
                 </span>
                 <select value={selectedSubId} onChange={(e) => setSelectedSubId(Number(e.target.value))}
                   className="h-8 px-2.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-emerald-500/30 min-w-[280px] cursor-pointer">
-                  {(["Score 1", "Score 2", "Score 3"] as const).map((grp) => (
-                    <optgroup key={grp} label={grp}>
-                      {INDICATOR_RULES.filter((r) => r.group === grp).map((r) => (
-                        <option key={r.subid} value={r.subid}>{r.name}</option>
+                  {([1, 2, 3] as const).map((grp) => (
+                    <optgroup key={grp} label={`Score ${grp}`}>
+                      {scoreIndicators.filter((r) => r.group === grp).map((r) => (
+                        <option key={r.subid} value={Number(r.subid)}>{r.name}</option>
                       ))}
                     </optgroup>
                   ))}

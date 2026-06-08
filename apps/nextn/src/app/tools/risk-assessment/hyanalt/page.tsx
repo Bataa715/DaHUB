@@ -29,8 +29,7 @@ import {
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
-  computeScore,
-  getGroup,
+  computeScoreDynamic,
   scoreColorClass,
   scoreDisplay,
   aggregateBranch,
@@ -38,6 +37,7 @@ import {
   type ScoreResult,
   type BranchAggregate,
 } from "../scoring-rules";
+import { useIndicatorConfig } from "../use-indicator-config";
 import { CATALOG_BY_GROUP } from "../indicator-catalog";
 import StatPanel from "../tailan/_StatPanel";
 
@@ -128,7 +128,7 @@ function ScoreTable({ rows }: { rows: BranchAggregate[] }) {
                   {fmt(b.s3)}
                 </td>
                 <td className="px-2 py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
-                  {(b.s4 ?? 0) > 0 ? fmt(b.s4) : "—"}
+                  {b.s4 != null ? fmt(b.s4) : "—"}
                 </td>
               </tr>
             ))}
@@ -302,25 +302,32 @@ export default function RiskAssessmentDetailPage() {
     setDeletePassword("");
   }, [deletePassword, deleteTargetId, viewHistoryId]);
 
+  const dynamicConfig = useIndicatorConfig();
+  const { catalog } = dynamicConfig;
+
   const activeRows = viewHistoryId ? viewHistoryRows : rows;
 
   const scoredRows: ScoredRow[] = useMemo(
     () =>
       activeRows.map((r) => {
-        const sr = computeScore(r.SUBID, r.RESULT, r.RESULT_TYPE);
-        return {
-          ...r,
-          __score: sr.score,
-          __scoreLabel: sr.label,
-          __group: getGroup(r.SUBID),
-        };
+        const ind = catalog.find((c) => c.subid === String(r.SUBID ?? ""));
+        const { score, label } =
+          ind && !ind.is_manual
+            ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
+            : { score: null, label: null };
+        const grpNum = ind?.group;
+        const __group: ScoreGroup | null =
+          grpNum === 1 ? "Score 1" :
+          grpNum === 2 ? "Score 2" :
+          grpNum === 3 ? "Score 3" : null;
+        return { ...r, __score: score as ScoreResult, __scoreLabel: label, __group };
       }),
-    [activeRows],
+    [activeRows, catalog],
   );
 
   const aggregates: BranchAggregate[] = useMemo(() => {
     // History харахад pre-computed байхгүй — browser дотор тооцно
-    if (viewHistoryId) return aggregateBranch(scoredRows);
+    if (viewHistoryId) return aggregateBranch(scoredRows, {}, {}, catalog);
     // Realtime: ETL-аас ирсэн оноо байвал тэрийг ашигла
     if (branchScores.length > 0) {
       return branchScores.map((s) => ({
@@ -338,8 +345,8 @@ export default function RiskAssessmentDetailPage() {
         level: s.level as BranchAggregate["level"],
       }));
     }
-    return aggregateBranch(scoredRows);
-  }, [viewHistoryId, branchScores, scoredRows]);
+    return aggregateBranch(scoredRows, {}, {}, catalog);
+  }, [viewHistoryId, branchScores, scoredRows, catalog]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();

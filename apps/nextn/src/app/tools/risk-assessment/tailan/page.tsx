@@ -19,11 +19,11 @@ import {
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
-  computeScore,
-  getGroup,
+  computeScoreDynamic,
   type ScoreResult,
   type ScoreGroup,
 } from "../scoring-rules";
+import { useIndicatorConfig, type DynamicCatalogIndicator } from "../use-indicator-config";
 import ReportView from "../report-view";
 import ComparePanel from "./_ComparePanel";
 
@@ -33,17 +33,21 @@ type ScoredRow = RiskCurrentRow & {
   __group: ScoreGroup | null;
 };
 
-function toScored(rows: RiskCurrentRow[]): ScoredRow[] {
+function toScored(rows: RiskCurrentRow[], catalog: DynamicCatalogIndicator[]): ScoredRow[] {
   return rows
     .filter((r) => r.rowType === "oracle")
     .map((r) => {
-      const sr = computeScore(r.SUBID, r.RESULT, r.RESULT_TYPE);
-      return {
-        ...r,
-        __score: sr.score,
-        __scoreLabel: sr.label,
-        __group: getGroup(r.SUBID),
-      };
+      const ind = catalog.find((c) => c.subid === String(r.SUBID ?? ""));
+      const { score, label } =
+        ind && !ind.is_manual
+          ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
+          : { score: null, label: null };
+      const grpNum = ind?.group;
+      const __group: ScoreGroup | null =
+        grpNum === 1 ? "Score 1" :
+        grpNum === 2 ? "Score 2" :
+        grpNum === 3 ? "Score 3" : null;
+      return { ...r, __score: score as ScoreResult, __scoreLabel: label, __group };
     });
 }
 
@@ -51,6 +55,7 @@ export default function RiskReportsPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const isAdmin = user?.isAdmin === true;
+  const { catalog } = useIndicatorConfig();
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,8 +187,8 @@ export default function RiskReportsPage() {
     return historyList.find((h) => h.id === comparisonReportId) || null;
   }, [historyList, comparisonReportId]);
 
-  const primaryScoredRows = useMemo(() => toScored(reportRows), [reportRows]);
-  const comparisonScoredRows = useMemo(() => toScored(comparisonRows), [comparisonRows]);
+  const primaryScoredRows = useMemo(() => toScored(reportRows, catalog), [reportRows, catalog]);
+  const comparisonScoredRows = useMemo(() => toScored(comparisonRows, catalog), [comparisonRows, catalog]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">

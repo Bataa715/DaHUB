@@ -236,7 +236,7 @@ export default function ReportView({
 
   const getAggregates = useCallback(
     (rows: AnyRow[], mKeyMap: ManualMap) => {
-      const base = aggregateBranch(rows);
+      const base = aggregateBranch(rows, {}, {}, dynamicConfig.catalog);
       if (!dynamicConfig.loaded) return base;
 
       // Group rows by branch
@@ -267,8 +267,8 @@ export default function ReportView({
         const s1 = ev[1] ?? b.s1;
         const s2 = ev[2] ?? b.s2;
         const s3 = ev[3] ?? b.s3;
-        const s4 = ev[4] ?? b.s4 ?? 0;
-        const j = ev[5] ?? b.j ?? 0;
+        const s4 = ev[4] ?? b.s4 ?? null;
+        const j = ev[5] ?? b.j ?? null;
 
         let vsum = 0,
           wsum = 0;
@@ -284,11 +284,11 @@ export default function ReportView({
           vsum += s3 * w.s3;
           wsum += w.s3;
         }
-        if (s4 > 0) {
+        if (s4 != null) {
           vsum += s4 * w.s4;
           wsum += w.s4;
         }
-        if (j > 0) {
+        if (j != null) {
           vsum += j * w.j;
           wsum += w.j;
         }

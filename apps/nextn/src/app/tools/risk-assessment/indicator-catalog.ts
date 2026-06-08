@@ -11,8 +11,6 @@
  */
 
 import {
-  computeScore,
-  type IndicatorRule,
   type ScoreResult,
   type OracleValue,
 } from "./scoring-rules";
@@ -390,7 +388,6 @@ export interface IndicatorValue {
   /** Auto тооцооны үед үндсэн RESULT, label */
   autoRaw?: string;
   autoLabel?: string | null;
-  autoRule?: IndicatorRule;
 }
 
 export interface BranchCatalogResult {
@@ -399,111 +396,6 @@ export interface BranchCatalogResult {
   groupScores: Record<CatalogGroup, number | null>;
   /** Үзүүлэлт тус бүрийн дэлгэрэнгүй */
   values: Record<string, IndicatorValue>;
-}
-
-/**
- * Нэг салбарын Oracle мөрнүүд + хэрэглэгчийн гар утгуудаас бүлэг бүрийн
- * жигнэсэн дундаж оноог тооцоолно.
- */
-export function evaluateBranch(
-  branchId: string,
-  rows: BranchInputRow[],
-  manual: Record<string, number> | undefined,
-): BranchCatalogResult {
-  // SUBID → ScoreResult (Oracle-аас computeScore-аар татна)
-  const autoBySubid = new Map<
-    number,
-    {
-      score: ScoreResult;
-      raw: string;
-      label: string | null;
-      rule?: IndicatorRule;
-    }
-  >();
-  for (const r of rows) {
-    const sid = Number(r.SUBID);
-    if (!Number.isFinite(sid)) continue;
-    if (autoBySubid.has(sid)) continue;
-    const sr = computeScore(sid, r.RESULT, r.RESULT_TYPE);
-    autoBySubid.set(sid, {
-      score: sr.score,
-      raw: r.RESULT == null ? "" : String(r.RESULT),
-      label: sr.label,
-      rule: sr.rule,
-    });
-  }
-
-  const values: Record<string, IndicatorValue> = {};
-  const sumByGroup: Record<CatalogGroup, number> = {
-    1: 0,
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0,
-  };
-  const wByGroup: Record<CatalogGroup, number> = {
-    1: 0,
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0,
-  };
-
-  for (const ind of INDICATOR_CATALOG) {
-    let score: number | null = null;
-    let source: IndicatorValue["source"] = "none";
-    let autoRaw: string | undefined;
-    let autoLabel: string | null | undefined;
-    let autoRule: IndicatorRule | undefined;
-
-    // 1) Manual override эхний ээлжинд
-    const manualVal = manual?.[ind.id];
-    if (typeof manualVal === "number" && manualVal > 0) {
-      score = manualVal;
-      source = "manual";
-    } else if (ind.autoSubid != null) {
-      // 2) Auto Oracle-аас
-      const a = autoBySubid.get(ind.autoSubid);
-      if (a) {
-        autoRaw = a.raw;
-        autoLabel = a.label;
-        autoRule = a.rule;
-        if (typeof a.score === "number" && a.score > 0) {
-          score = a.score;
-          source = "auto";
-        }
-      }
-    }
-
-    values[ind.id] = {
-      indicator: ind,
-      score,
-      source,
-      autoRaw,
-      autoLabel,
-      autoRule,
-    };
-
-    if (score != null && ind.weight > 0) {
-      sumByGroup[ind.group] += score * ind.weight;
-      wByGroup[ind.group] += ind.weight;
-    }
-  }
-
-  const groupScores: Record<CatalogGroup, number | null> = {
-    1: null,
-    2: null,
-    3: null,
-    4: null,
-    5: null,
-  };
-  (Object.keys(groupScores) as unknown as CatalogGroup[]).forEach((g) => {
-    const w = wByGroup[g as CatalogGroup];
-    if (w > 0)
-      groupScores[g as CatalogGroup] = sumByGroup[g as CatalogGroup] / w;
-  });
-
-  return { branchId, groupScores, values };
 }
 
 /** Автомат биш (гараар оруулах) үзүүлэлтийн тоо бүлэг тус бүрд */

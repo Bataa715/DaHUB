@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { riskApi, type RiskHistoryEntry, type RiskCurrentRow } from "@/lib/api";
 import {
   aggregateBranch,
-  computeScore,
-  INDICATOR_RULES,
+  computeScoreDynamic,
 } from "../scoring-rules";
+import { useIndicatorConfig } from "../use-indicator-config";
 import {
   LineChart,
   Line,
@@ -240,11 +240,21 @@ export default function StatPanel({
   );
 
   // ── Chart data ──
+  const dynamicConfig = useIndicatorConfig();
+  const scoreIndicators = useMemo(
+    () => dynamicConfig.catalog.filter((r) => !r.is_manual && !r.is_judgment),
+    [dynamicConfig.catalog],
+  );
+  const selectedIndicator = useMemo(
+    () => scoreIndicators.find((r) => Number(r.subid) === selectedSubId),
+    [scoreIndicators, selectedSubId],
+  );
+
   const chartData = useMemo(() => {
     return rangeEntries.map((e) => {
       const point: Record<string, number | string> = { label: e.label };
       if (mode === "total") {
-        const agg = aggregateBranch(e.rows);
+        const agg = aggregateBranch(e.rows, {}, {}, dynamicConfig.catalog);
         for (const b of agg) {
           if (!activeBranchIds.includes(b.branchId)) continue;
           if (b.total != null) point[b.branchId] = parseFloat(b.total.toFixed(3));
@@ -253,8 +263,11 @@ export default function StatPanel({
         for (const r of e.rows) {
           if (Number(r.SUBID) !== selectedSubId) continue;
           if (!activeBranchIds.includes(r.BRANCHID)) continue;
-          const sr = computeScore(r.SUBID, r.RESULT, r.RESULT_TYPE);
-          if (typeof sr.score === "number" && sr.score > 0) point[r.BRANCHID] = sr.score;
+          const ind = dynamicConfig.catalog.find((c) => Number(c.subid) === selectedSubId);
+          const { score } = ind && !ind.is_manual
+            ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
+            : { score: null };
+          if (typeof score === "number" && score > 0) point[r.BRANCHID] = score;
         }
       } else {
         for (const r of e.rows) {
@@ -266,13 +279,7 @@ export default function StatPanel({
       }
       return point;
     });
-  }, [rangeEntries, mode, selectedSubId, activeBranchIds]);
-
-  const scoreIndicators = useMemo(() => INDICATOR_RULES.filter((r) => !r.noScore), []);
-  const selectedIndicator = useMemo(
-    () => scoreIndicators.find((r) => r.subid === selectedSubId),
-    [scoreIndicators, selectedSubId],
-  );
+  }, [rangeEntries, mode, selectedSubId, activeBranchIds, dynamicConfig.catalog]);
 
   const isDataMode = mode === "data";
   const showIndicatorPicker = mode === "score" || mode === "data";
@@ -390,10 +397,10 @@ export default function StatPanel({
             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Үзүүлэлт</span>
             <select value={selectedSubId} onChange={(e) => setSelectedSubId(Number(e.target.value))}
               className="h-8 px-2.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-emerald-500/30 min-w-[250px]">
-              {(["Score 1", "Score 2", "Score 3"] as const).map((grp) => (
-                <optgroup key={grp} label={grp}>
+              {([1, 2, 3] as const).map((grp) => (
+                <optgroup key={grp} label={`Score ${grp}`}>
                   {scoreIndicators.filter((r) => r.group === grp).map((r) => (
-                    <option key={r.subid} value={r.subid}>{r.name}</option>
+                    <option key={r.subid} value={Number(r.subid)}>{r.name}</option>
                   ))}
                 </optgroup>
               ))}
