@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import {
   Loader2,
@@ -30,6 +31,8 @@ export default function Hero() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -161,16 +164,16 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full border backdrop-blur-xl bg-card/60"
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full border-2 backdrop-blur-xl bg-card/60"
               style={{
-                borderColor: "rgba(99,102,241,0.3)",
+                borderColor: "rgba(99,102,241,0.5)",
               }}
             >
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
               </span>
-              <span className="text-xs font-semibold text-indigo-300">
+              <span className="text-xs font-semibold text-muted-foreground">
                 {user?.position || t("defaultEmployee")}
                 {user?.isAdmin && " · Admin"}
               </span>
@@ -195,11 +198,11 @@ export default function Hero() {
                 className="text-5xl sm:text-6xl font-black leading-none tracking-tight"
               >
                 <span
-                  className="bg-clip-text text-transparent"
-                  style={{
+                  className={isDark ? "bg-clip-text text-transparent" : "text-foreground"}
+                  style={isDark ? {
                     backgroundImage:
                       "linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)",
-                  }}
+                  } : undefined}
                 >
                   {user?.name || t("defaultUser")}
                 </span>
@@ -312,12 +315,12 @@ export default function Hero() {
 
               {/* Rotating dashed ring */}
               <motion.div
-                className="absolute -inset-3 rounded-full border border-dashed border-purple-500/30"
+                className="absolute -inset-3 rounded-full border-2 border-dashed border-purple-500/40"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               />
               <motion.div
-                className="absolute -inset-6 rounded-full border border-dashed border-blue-500/20"
+                className="absolute -inset-6 rounded-full border-2 border-dashed border-blue-500/30"
                 animate={{ rotate: -360 }}
                 transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
               />
@@ -326,7 +329,7 @@ export default function Hero() {
               <motion.div
                 className="relative w-52 h-52 sm:w-60 sm:h-60 lg:w-68 lg:h-68 rounded-full overflow-hidden shadow-2xl"
                 style={{
-                  padding: "3px",
+                  padding: "6px",
                   background:
                     "linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899)",
                 }}
@@ -375,7 +378,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="relative text-center px-8 py-4 rounded-2xl overflow-hidden bg-card/70 backdrop-blur-xl border border-border/25"
+              className="relative text-center px-8 py-4 rounded-2xl overflow-hidden bg-card/70 backdrop-blur-xl border-2 border-violet-400/50 dark:border-violet-500/50"
               style={{
                 minWidth: "220px",
               }}
@@ -416,7 +419,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+              className="relative overflow-hidden rounded-2xl border-2 border-border bg-card shadow-sm"
             >
               {/* top color strip */}
               <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-primary/0 via-primary/70 to-primary/0" />
@@ -438,7 +441,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+              className="relative overflow-hidden rounded-2xl border-2 border-border bg-card shadow-sm"
             >
               <div className="flex items-center gap-3 px-5 py-4">
                 <div className="p-2 rounded-xl bg-primary/10">
@@ -454,7 +457,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+              className="relative overflow-hidden rounded-2xl border-2 border-border bg-card shadow-sm"
             >
               <div className="flex items-center gap-3 px-5 py-4">
                 <div className="p-2 rounded-xl bg-emerald-500/15">

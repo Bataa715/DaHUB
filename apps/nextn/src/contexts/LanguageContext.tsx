@@ -56,9 +56,9 @@ export const translations = {
 
     // Navigation
     navHome: "Нүүр",
-    navDepartments: "Хэлтэс",
+    navDepartments: "Ажилтнууд",
     navNews: "Мэдлэг",
-    navTools: "Хэрэгслүүд",
+    navTools: "Хэрэгсэл",
     navAdmin: "Админ",
     navAdminPanel: "Админ самбар",
     navUsers: "Хэрэглэгч",
@@ -74,7 +74,7 @@ export const translations = {
     defaultDepartment: "Дотоод Аудитын Газар",
     defaultPosition: "Дата инженер",
     loadingText: "Ачаалж байна...",
-    toolsButton: "Хэрэгслүүд",
+    toolsButton: "Хэрэгсэл",
 
     // Auth
     needLogin: "Нэвтрэх шаардлагатай",

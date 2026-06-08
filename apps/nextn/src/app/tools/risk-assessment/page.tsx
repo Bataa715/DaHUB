@@ -40,9 +40,6 @@ export default function RiskAssessmentPage() {
               <div className="text-base font-semibold text-foreground mb-1">
                 {t("riskDoAssessCardTitle")}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Салбаруудад аудиторын үнэлэмж оруулах, хадгалах
-              </p>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
               {t("toolsOpen")} <ChevronRight className="w-3.5 h-3.5" />
@@ -64,9 +61,6 @@ export default function RiskAssessmentPage() {
               <div className="text-base font-semibold text-foreground mb-1">
                 {t("riskMonitorCardTitle")}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Бодит хугацааны салбаруудын оноо, дэлгэрэнгүй харах
-              </p>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
               {t("toolsOpen")} <ChevronRight className="w-3.5 h-3.5" />

@@ -222,7 +222,7 @@ export default function ReportView({
   const rowsByBranch = useMemo(() => {
     const m = new Map<string, AnyRow[]>();
     for (const r of scoredRows) {
-      const id = String(r.BRANCHID ?? "");
+      const id = String(r.BRANCHID || r.SOLID || "");
       if (!id) continue;
       let arr = m.get(id);
       if (!arr) {
@@ -449,56 +449,7 @@ export default function ReportView({
       )}
       {/* ── Toolbar ── */}
       <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="text-[11px] text-muted-foreground max-w-2xl space-y-1.5 leading-relaxed">
-            {!hideComparison ? (
-              <p className="flex items-start gap-1.5">
-                <span>
-                  <b className="text-foreground">Өмнөх харьцуулалт</b>:{" "}
-                  {previousScoredRows.length > 0 ? (
-                    <span className="text-emerald-700 dark:text-emerald-400">
-                      {previousHistoryName ? (
-                        <>
-                          <b className="text-violet-600 dark:text-violet-400">
-                            «{previousHistoryName}»
-                          </b>{" "}
-                          улирлын өгөгдөл ({previousScoredRows.length} мөр).
-                        </>
-                      ) : (
-                        <>
-                          Өмнөх Oracle таталтын өгөгдөл (
-                          {previousScoredRows.length} мөр).
-                        </>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground/60">
-                      Өмнөх улирал сонгогдоогүй — дээрх «Өмнөх улирал сонгох»
-                      товчоор сонгоно уу.
-                    </span>
-                  )}
-                </span>
-              </p>
-            ) : (
-              <p className="flex items-start gap-1.5">
-                <span className="text-muted-foreground/80">
-                  Салбарын эрсдэлийн үнэлгээ болон аудиторын үнэлэмж оруулах
-                  хэсэг.
-                </span>
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={downloadCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-all"
-            >
-              <Download className="w-3.5 h-3.5" /> CSV
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/40">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           {/* Risk filter */}
           <div className="flex rounded-lg border border-border overflow-hidden bg-background/60">
             {(["all", "Өндөр", "Дунд", "Бага"] as const).map((opt) => {
@@ -531,13 +482,16 @@ export default function ReportView({
             })}
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap text-[11px]">
+          <div className="flex items-center gap-2">
             {!readOnly && manualLoading && (
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Гарын утга ачаалж байна…
-              </span>
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
             )}
+            <button
+              onClick={downloadCsv}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-all"
+            >
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
           </div>
         </div>
       </div>

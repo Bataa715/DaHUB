@@ -40,8 +40,8 @@ export class NewsController {
   // Authenticated users only
   @UseGuards(JwtAuthGuard)
   @Get(":id")
-  async findOne(@Param("id") id: string) {
-    return this.newsService.findOne(id);
+  async findOne(@Param("id") id: string, @Request() req) {
+    return this.newsService.findOne(id, req.user.id);
   }
 
   // Any authenticated user can create news

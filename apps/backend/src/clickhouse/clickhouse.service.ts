@@ -278,6 +278,16 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY createdAt
       `);
 
+      // Create news_views table (unique view per user per article)
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS news_views (
+          newsId String,
+          userId String,
+          viewedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(viewedAt)
+        ORDER BY (newsId, userId)
+      `);
+
       // Create news_reactions table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS news_reactions (

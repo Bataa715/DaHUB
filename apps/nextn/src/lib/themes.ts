@@ -92,7 +92,7 @@ export type ThemeDef = {
 const deepSpaceTheme: ThemeDef = {
   name: "default",
   label: "Deep Space",
-  labelMn: "Сансар",
+  labelMn: "Dark",
   isDark: true,
   tokens: {
     background: "240 10% 3.9%",
@@ -154,7 +154,7 @@ const deepSpaceTheme: ThemeDef = {
 const tokyoNightTheme: ThemeDef = {
   name: "tokyo-night",
   label: "Tokyo Night",
-  labelMn: "Токио шөнө",
+  labelMn: "Night",
   isDark: true,
   tokens: {
     background: "222 47% 11%", // #1a1b2e
@@ -217,7 +217,7 @@ const tokyoNightTheme: ThemeDef = {
 const cleanLightTheme: ThemeDef = {
   name: "light",
   label: "Clean Light",
-  labelMn: "Цайвар",
+  labelMn: "Light",
   isDark: false,
   tokens: {
     background: "0 0% 100%", // pure white

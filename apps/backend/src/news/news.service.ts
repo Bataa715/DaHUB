@@ -78,7 +78,7 @@ export class NewsService {
     }));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId?: string) {
     const news = await this.clickhouse.query<any>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
@@ -95,15 +95,28 @@ export class NewsService {
       throw new NotFoundException("Мэдээ олдсонгүй");
     }
 
-    // Increment view count (fire-and-forget – don't block the response)
-    this.clickhouse
-      .exec(
-        "ALTER TABLE news UPDATE views = views + 1 WHERE id = {id:String}",
-        { id },
-      )
-      .catch(() => {
-        /* non-critical */
-      });
+    // Only increment view count once per user per article
+    if (userId) {
+      const alreadyViewed = await this.clickhouse
+        .query<{ cnt: string }>(
+          `SELECT count() as cnt FROM news_views
+           WHERE newsId = {newsId:String} AND userId = {userId:String}`,
+          { newsId: id, userId },
+        )
+        .catch(() => [{ cnt: "1" }]); // on error, assume already viewed
+
+      if (Number(alreadyViewed?.[0]?.cnt ?? 0) === 0) {
+        this.clickhouse
+          .insert("news_views", [{ newsId: id, userId, viewedAt: nowCH() }])
+          .catch(() => {});
+        this.clickhouse
+          .exec(
+            "ALTER TABLE news UPDATE views = views + 1 WHERE id = {id:String}",
+            { id },
+          )
+          .catch(() => {});
+      }
+    }
 
     const n = news[0];
     return { ...n, imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "" };

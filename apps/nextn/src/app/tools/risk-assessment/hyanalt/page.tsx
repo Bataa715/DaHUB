@@ -25,6 +25,7 @@ import {
   Activity,
   RefreshCw,
   Calendar,
+  BarChart2,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -38,6 +39,7 @@ import {
   type BranchAggregate,
 } from "../scoring-rules";
 import { CATALOG_BY_GROUP } from "../indicator-catalog";
+import StatPanel from "../tailan/_StatPanel";
 
 type RiskRow = RiskCurrentRow;
 
@@ -164,6 +166,8 @@ export default function RiskAssessmentDetailPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deletePasswordError, setDeletePasswordError] = useState("");
+
+  const [statOpen, setStatOpen] = useState(false);
 
   const [showDetail, setShowDetail] = useState(false);
   const [search, setSearch] = useState("");
@@ -451,19 +455,28 @@ export default function RiskAssessmentDetailPage() {
         title={t("riskMonitorCardTitle")}
         subtitle={t("riskDetailSubtitle")}
         rightContent={
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-            {fetchedDate ? (
-              <>
-                <span>{fetchedDate}</span>
-                <span className="relative flex w-1.5 h-1.5">
-                  <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
-                  <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                </span>
-              </>
-            ) : (
-              <span>{todayStr}</span>
-            )}
+          <span className="flex items-center gap-3 text-xs text-muted-foreground">
+            <button
+              onClick={() => setStatOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              Статистик
+            </button>
+            <span className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+              {fetchedDate ? (
+                <>
+                  <span>{fetchedDate}</span>
+                  <span className="relative flex w-1.5 h-1.5">
+                    <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
+                    <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  </span>
+                </>
+              ) : (
+                <span>{todayStr}</span>
+              )}
+            </span>
           </span>
         }
       />
@@ -866,6 +879,13 @@ export default function RiskAssessmentDetailPage() {
           </section>
         )}
       </div>
+
+      <StatPanel
+        open={statOpen}
+        onCloseAction={() => setStatOpen(false)}
+        historyList={historyList}
+        useRealtime={true}
+      />
 
       {/* Устгах modal */}
       {deleteModalOpen && (

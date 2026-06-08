@@ -192,7 +192,6 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         href="/tools/risk-assessment"
         icon={<ClipboardEdit className="w-4 h-4 text-rose-500" />}
         title={t("riskDoAssessCardTitle")}
-        subtitle="Салбаруудад аудиторын үнэлэмж оруулах, хадгалах хуудас"
         rightContent={
           <div className="flex items-center gap-2">
             {/* Date Picker + Refresh */}

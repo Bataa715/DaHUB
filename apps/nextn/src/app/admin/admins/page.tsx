@@ -456,7 +456,7 @@ export default function AdminsPage() {
             {selectedRole === "sub" && (
               <div>
                 <p className="text-xs text-muted-foreground/60 mb-2">
-                  Олгох эрхийн хэрэгслүүд
+                  Олгох эрхийн хэрэгсэл
                 </p>
                 <ToolCheckList
                   tools={grantableTools}

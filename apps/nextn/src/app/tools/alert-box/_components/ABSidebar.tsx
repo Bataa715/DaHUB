@@ -90,7 +90,7 @@ export default function ABSidebar() {
       {/* Nav */}
       <nav className="flex-1 px-2.5 py-2 space-y-0.5 overflow-y-auto">
         <p className="text-[9px] font-semibold text-txt-dim uppercase tracking-wider px-2 pt-1 pb-1.5">
-          Хэрэгслүүд
+          Хэрэгсэл
         </p>
         {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || pathname.startsWith(href);

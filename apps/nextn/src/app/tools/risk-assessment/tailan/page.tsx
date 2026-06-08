@@ -8,16 +8,14 @@ import {
   type RiskCurrentRow,
 } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Loader2,
   AlertTriangle,
   Bookmark,
-  ChevronRight,
-  Eye,
   Trash2,
   BookmarkCheck,
-  ClipboardList,
-  Calendar,
+  GitCompare,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -27,6 +25,7 @@ import {
   type ScoreGroup,
 } from "../scoring-rules";
 import ReportView from "../report-view";
+import ComparePanel from "./_ComparePanel";
 
 type ScoredRow = RiskCurrentRow & {
   __score: ScoreResult;
@@ -50,6 +49,8 @@ function toScored(rows: RiskCurrentRow[]): ScoredRow[] {
 
 export default function RiskReportsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin === true;
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,11 +72,11 @@ export default function RiskReportsPage() {
     "all" | "Өндөр" | "Дунд" | "Бага"
   >("all");
 
+  const [compareOpen, setCompareOpen] = useState(false);
+
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deletePasswordError, setDeletePasswordError] = useState("");
 
   // Fetch saved reports list on mount
   useEffect(() => {
@@ -117,12 +118,6 @@ export default function RiskReportsPage() {
         if (cancelled) return;
         setReportRows(res.rows || []);
         setReportManualMap(res.manualMap || {});
-        // If comparison report is the same, clear it
-        if (comparisonReportId === selectedReportId) {
-          setComparisonReportId("");
-          setComparisonRows([]);
-          setComparisonManualMap({});
-        }
       })
       .catch((e) => {
         if (cancelled) return;
@@ -140,11 +135,11 @@ export default function RiskReportsPage() {
   useEffect(() => {
     if (!comparisonReportId) {
       setComparisonRows([]);
+      setComparisonManualMap({});
       return;
     }
     let cancelled = false;
     setLoadingComparison(true);
-    setErrorMsg(null);
     riskApi
       .getHistory(comparisonReportId)
       .then((res) => {
@@ -152,31 +147,18 @@ export default function RiskReportsPage() {
         setComparisonRows(res.rows || []);
         setComparisonManualMap(res.manualMap || {});
       })
-      .catch((e) => {
-        if (cancelled) return;
-        setErrorMsg("Харьцуулах тайлангийн өгөгдлийг уншихад алдаа гарлаа.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingComparison(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingComparison(false); });
+    return () => { cancelled = true; };
   }, [comparisonReportId]);
 
   // Delete handler
   const openDeleteConfirm = useCallback((id: string) => {
     setDeleteTargetId(id);
-    setDeletePassword("");
-    setDeletePasswordError("");
     setDeleteModalOpen(true);
   }, []);
 
   const doDeleteHistory = useCallback(async () => {
-    if (deletePassword !== "OmnohDelete#24") {
-      setDeletePasswordError("Нууц үг буруу байна");
-      return;
-    }
     if (!deleteTargetId) return;
     setDeleteModalOpen(false);
     try {
@@ -186,17 +168,11 @@ export default function RiskReportsPage() {
         setSelectedReportId("");
         setReportRows([]);
       }
-      if (comparisonReportId === deleteTargetId) {
-        setComparisonReportId("");
-        setComparisonRows([]);
-      }
-      alert("Тайлан амжилттай устгагдлаа.");
     } catch (e: unknown) {
       setErrorMsg(getApiErrorMessage(e) || "Устгахад алдаа гарлаа");
     }
     setDeleteTargetId(null);
-    setDeletePassword("");
-  }, [deletePassword, deleteTargetId, selectedReportId, comparisonReportId]);
+  }, [deleteTargetId, selectedReportId]);
 
   const selectedReportInfo = useMemo(() => {
     return historyList.find((h) => h.id === selectedReportId) || null;
@@ -207,18 +183,24 @@ export default function RiskReportsPage() {
   }, [historyList, comparisonReportId]);
 
   const primaryScoredRows = useMemo(() => toScored(reportRows), [reportRows]);
-  const comparisonScoredRows = useMemo(
-    () => toScored(comparisonRows),
-    [comparisonRows],
-  );
+  const comparisonScoredRows = useMemo(() => toScored(comparisonRows), [comparisonRows]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
       <ToolPageHeader
         href="/tools/risk-assessment"
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
-        title="Хадгалагдсан Эрсдэлийн Тайлангууд"
-        subtitle="Аудиторуудын үнэлж хадгалсан түүхэн болон улирлын тайлангуудыг харах, харьцуулах"
+        title="Эрсдэлийн Тайлан"
+        rightContent={
+          <button
+            onClick={() => setCompareOpen(true)}
+            disabled={historyList.length < 2}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-semibold hover:bg-violet-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <GitCompare className="w-3.5 h-3.5" />
+            Харьцуулалт
+          </button>
+        }
       />
 
       <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1800px]">
@@ -237,18 +219,15 @@ export default function RiskReportsPage() {
 
         {/* Toolbar with Select Dropdowns */}
         <div className="rounded-xl border border-border bg-muted/30 p-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Primary Report Select */}
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                Үндсэн тайлан
-              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Тайлан сонгох</span>
               <div className="flex items-center gap-2">
                 <select
                   value={selectedReportId}
                   onChange={(e) => setSelectedReportId(e.target.value)}
                   disabled={loading || historyList.length === 0}
-                  className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer min-w-[200px]"
+                  className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer min-w-[220px]"
                 >
                   <option value="">-- Тайлан сонгох --</option>
                   {historyList.map((h) => (
@@ -257,7 +236,7 @@ export default function RiskReportsPage() {
                     </option>
                   ))}
                 </select>
-                {selectedReportId && (
+                {selectedReportId && isAdmin && (
                   <button
                     onClick={() => openDeleteConfirm(selectedReportId)}
                     title="Энэ тайланг устгах"
@@ -268,27 +247,16 @@ export default function RiskReportsPage() {
                 )}
               </div>
             </div>
-
-            {/* Right Arrow Separator */}
-            {selectedReportId && (
-              <div className="pt-4 hidden sm:block">
-                <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
-              </div>
-            )}
-
-            {/* Comparison Report Select */}
             {selectedReportId && (
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  Харьцуулах тайлан (Өмнөх улирал)
-                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">Өмнөх улирал</span>
                 <select
                   value={comparisonReportId}
                   onChange={(e) => setComparisonReportId(e.target.value)}
                   disabled={loading || historyList.length <= 1}
-                  className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer min-w-[200px]"
+                  className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer min-w-[220px]"
                 >
-                  <option value="">-- Харьцуулахгүй --</option>
+                  <option value="">— Харьцуулалтгүй —</option>
                   {historyList
                     .filter((h) => h.id !== selectedReportId)
                     .map((h) => (
@@ -300,21 +268,6 @@ export default function RiskReportsPage() {
               </div>
             )}
           </div>
-
-          {/* Right Status / Author Metadata */}
-          {selectedReportInfo && (
-            <div className="text-right text-xs text-muted-foreground">
-              <p>
-                Хадгалсан:{" "}
-                <span className="font-semibold text-foreground">
-                  {selectedReportInfo.createdByName || "Аудитор"}
-                </span>
-              </p>
-              <p className="text-[10px] mt-0.5">
-                Огноо: {selectedReportInfo.createdAt.slice(0, 10)}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Loading Spinner */}
@@ -361,7 +314,13 @@ export default function RiskReportsPage() {
         )}
       </div>
 
-      {/* Delete Confirmation Password Modal */}
+      <ComparePanel
+        open={compareOpen}
+        onCloseAction={() => setCompareOpen(false)}
+        historyList={historyList}
+      />
+
+      {/* Delete Confirmation Modal */}
       {deleteModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -371,37 +330,16 @@ export default function RiskReportsPage() {
             className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center">
                 <Trash2 className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">
-                  Хадгалсан тайланг устгах
-                </h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Үргэлжлүүлэхийн тулд устгах нууц үгийг оруулна уу
-                </p>
+                <h3 className="text-sm font-semibold">Хадгалсан тайланг устгах</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Энэ үйлдлийг буцаах боломгүй.</p>
               </div>
             </div>
-            <input
-              type="password"
-              value={deletePassword}
-              onChange={(e) => {
-                setDeletePassword(e.target.value);
-                setDeletePasswordError("");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && doDeleteHistory()}
-              placeholder="Нууц үг"
-              autoFocus
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
-            />
-            {deletePasswordError && (
-              <p className="text-xs text-red-500 mt-1.5">
-                {deletePasswordError}
-              </p>
-            )}
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteModalOpen(false)}
                 className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
@@ -410,10 +348,10 @@ export default function RiskReportsPage() {
               </button>
               <button
                 onClick={doDeleteHistory}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-foreground text-xs font-semibold transition-all"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Устгах
+                Тийм устгах
               </button>
             </div>
           </div>
