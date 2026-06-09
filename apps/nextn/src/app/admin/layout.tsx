@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Wrench, Users, Building2, Shield, Lock, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const OTHER_LINKS = [
   { href: "/admin/users", label: "Хэрэглэгчид", icon: Users, superOnly: false },
@@ -65,10 +66,10 @@ function AdminSidebar() {
         {/* Хэрэгсэл */}
         <Link
           href="/admin/tools"
-          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
             isTools
-              ? "bg-muted text-foreground font-medium"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              ? "bg-muted text-foreground font-semibold"
+              : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
           }`}
         >
           <Wrench className="w-3.5 h-3.5 shrink-0" />
@@ -88,10 +89,10 @@ function AdminSidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? "bg-muted text-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "bg-muted text-foreground font-semibold"
+                  : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
               }`}
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -102,10 +103,13 @@ function AdminSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-2 py-3 border-t border-border">
+      <div className="px-2 py-3 border-t border-border space-y-1">
+        <div className="flex items-center justify-between px-3 py-1.5">
+          <ThemeToggle small />
+        </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-foreground/70 hover:text-red-500 hover:bg-red-500/10 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5 shrink-0" />
           Гарах

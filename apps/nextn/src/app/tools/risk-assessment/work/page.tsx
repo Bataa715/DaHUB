@@ -78,28 +78,6 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const hasData = rows.some((r) => r.rowType === "oracle");
   const isLocked = lockedDate !== null && lockedDate === fetchedDate;
 
-  // manualMap: judgement scores -> ReportView
-  // catalog-аас judgment indicator-ийн бодит id-г ашигла (hardcoded "j-001" биш)
-  const manualMap = useMemo(() => {
-    const map: Record<string, Record<string, number>> = {};
-    const judgmentInd = catalog.find((c) => c.is_judgment);
-    const jid = judgmentInd?.id ?? "j-001";
-    const branchIds = [
-      ...new Set(
-        rows
-          .filter((r) => r.rowType === "oracle")
-          .map((r) => String(r.BRANCHID || r.SOLID || ""))
-          .filter(Boolean),
-      ),
-    ];
-    for (const bid of branchIds) {
-      if (judgements[bid]) {
-        map[bid] = { [jid]: judgements[bid] };
-      }
-    }
-    return map;
-  }, [rows, judgements, catalog]);
-
   // Init: lock check + load locked date if exists
   useEffect(() => {
     let cancelled = false;
@@ -199,17 +177,18 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
   // saveIndicatorFn adapter: ReportView нь (branchId, indicatorId, value) дуудна,
   // judgment indicator байвал upsertJudgement API-руу дамжуулна
-  const saveIndicatorAdapter = useCallback(
-    (branchId: string, _indicatorId: string, value: number) => {
+  // onJudgementSave: indicator ID-тай холбоогүй, зөвхөн branchId + score
+  const onJudgementSave = useCallback(
+    (branchId: string, score: number) => {
       const branchRow = rows.find(
         (r) =>
           r.rowType === "oracle" &&
-          (String(r.BRANCHID || r.SOLID || "") === branchId),
+          String(r.BRANCHID || r.SOLID || "") === branchId,
       );
       const branchName = branchRow
         ? String(branchRow.BRANCHNAME ?? branchRow.SOLID ?? branchId)
         : branchId;
-      handleJudgementChange(branchId, branchName, value);
+      handleJudgementChange(branchId, branchName, score);
     },
     [rows, handleJudgementChange],
   );
@@ -341,8 +320,8 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             riskFilter={riskFilter}
             setRiskFilter={setRiskFilter}
             pDate={fetchedDate}
-            initialManualMap={manualMap}
-            saveIndicatorFn={saveIndicatorAdapter}
+            externalJudgements={judgements}
+            onJudgementChange={onJudgementSave}
             hideComparison={true}
           />
         )}

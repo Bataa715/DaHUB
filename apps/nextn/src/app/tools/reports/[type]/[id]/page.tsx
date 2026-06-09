@@ -257,7 +257,7 @@ export default function ReportDetailPage() {
               {item.name}
             </span>
           </div>
-          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-mono border bg-violet-500/10 text-violet-400 border-violet-500/20">
+          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-mono border bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20">
             Python
           </span>
         </div>
@@ -371,7 +371,7 @@ export default function ReportDetailPage() {
                             }
                             disabled={downloading}
                             placeholder={f.placeholder ?? ""}
-                            className={`w-full rounded-xl px-3 py-2 text-foreground/90 text-xs focus:outline-none disabled:opacity-40 placeholder:text-muted-foreground/50 transition ${missing ? "bg-rose-950/60 border border-rose-500/40" : filled ? "bg-emerald-950/40 border border-emerald-500/30" : "bg-card border border-border focus:border-border/60"}`}
+                            className={`w-full rounded-xl px-3 py-2 text-foreground/90 text-xs focus:outline-none disabled:opacity-40 placeholder:text-muted-foreground/50 transition ${missing ? "bg-rose-100 dark:bg-rose-950/60 border border-rose-500/40" : filled ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30" : "bg-card border border-border focus:border-border/60"}`}
                           />
                           {missing && (
                             <p className="text-[10px] text-rose-400">
@@ -418,7 +418,7 @@ export default function ReportDetailPage() {
               )}
 
               {downloadError && (
-                <div className="rounded-xl px-3 py-2.5 text-xs bg-rose-500/8 border border-rose-500/25 text-rose-300 leading-relaxed">
+                <div className="rounded-xl px-3 py-2.5 text-xs bg-rose-500/8 border border-rose-500/25 text-rose-700 dark:text-rose-300 leading-relaxed">
                   {downloadError}
                 </div>
               )}
@@ -429,7 +429,7 @@ export default function ReportDetailPage() {
                   <button
                     type="button"
                     onClick={handleCancelPreview}
-                    className="px-4 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold transition-all flex items-center gap-1.5"
+                    className="px-4 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold transition-all flex items-center gap-1.5"
                     title={t("reportsStopBtn")}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -448,7 +448,7 @@ export default function ReportDetailPage() {
                   <button
                     type="button"
                     onClick={handleCancelDownload}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold transition-all"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold transition-all"
                     title={t("reportsStopBtn")}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -494,8 +494,8 @@ export default function ReportDetailPage() {
                     {
                       label: t("reportsStatTotal"),
                       value: preview.totalCount.toLocaleString(),
-                      cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
-                      lCls: "text-emerald-500",
+                      cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300",
+                      lCls: "text-emerald-600 dark:text-emerald-500",
                     },
                     {
                       label: "Preview",
@@ -514,8 +514,8 @@ export default function ReportDetailPage() {
                           {
                             label: t("reportsStatSize"),
                             value: sizeLabel,
-                            cls: "bg-sky-500/10 border-sky-500/20 text-sky-300",
-                            lCls: "text-sky-500",
+                            cls: "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300",
+                            lCls: "text-sky-600 dark:text-sky-500",
                           },
                         ]
                       : []),
@@ -565,10 +565,10 @@ export default function ReportDetailPage() {
 
           {preview.status === "error" && (
             <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
-              <p className="text-sm text-rose-300 font-semibold">
+              <p className="text-sm text-rose-700 dark:text-rose-300 font-semibold">
                 {t("reportsPreviewError")}
               </p>
-              <p className="text-xs text-rose-400/70 mt-1 leading-relaxed font-mono">
+              <p className="text-xs text-rose-600/70 dark:text-rose-400/70 mt-1 leading-relaxed font-mono">
                 {preview.error}
               </p>
             </div>
@@ -630,7 +630,7 @@ export default function ReportDetailPage() {
                                   null
                                 </span>
                               ) : typeof cell === "number" ? (
-                                <span className="font-mono text-sky-300/80">
+                                <span className="font-mono text-sky-700 dark:text-sky-300">
                                   {cell.toLocaleString()}
                                 </span>
                               ) : (

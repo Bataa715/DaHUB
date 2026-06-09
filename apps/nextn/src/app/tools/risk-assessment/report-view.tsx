@@ -47,11 +47,8 @@ interface Props {
   previousFetchedAt?: string | null;
   previousHistoryName?: string | null;
   pDate?: string;
-  /** Унших горим — аудиторын үнэлэмж засах UI харагдахгүй */
   readOnly?: boolean;
-  /** Гарын утгуудыг API-аас биш гадаас дамжуулах (work session горим) */
   initialManualMap?: import("./indicator-catalog").ManualMap;
-  /** Гарын үнэлэмж хадгалах custom функц (work session горим) */
   saveIndicatorFn?: (
     branchId: string,
     indicatorId: string,
@@ -59,6 +56,13 @@ interface Props {
   ) => void;
   hideComparison?: boolean;
   previousManualMap?: import("./indicator-catalog").ManualMap;
+  /**
+   * Гадаас дамжуулах аудиторын үнэлэмж (work session горим).
+   * Indicator ID-тай холбоогүйгээр шууд branchId → score map.
+   */
+  externalJudgements?: Record<string, number>;
+  /** Аудиторын үнэлэмж хадгалах callback (externalJudgements-тэй хамт ашиглана) */
+  onJudgementChange?: (branchId: string, score: number) => void;
 }
 
 const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
@@ -95,6 +99,8 @@ export default function ReportView({
   readOnly = false,
   initialManualMap,
   saveIndicatorFn,
+  externalJudgements,
+  onJudgementChange,
   hideComparison = false,
   previousManualMap = {},
 }: Props) {
@@ -102,12 +108,17 @@ export default function ReportView({
   const [manualMap, setManualMap] = useState<ManualMap>({});
   const [manualLoading, setManualLoading] = useState(false);
   const dynamicConfig = useIndicatorConfig();
+  // judgment indicator-ийн DB id (catalog ачааллагдсан үед өөрчлөгдөнө)
+  const judgmentIndId = dynamicConfig.catalog.find((c) => c.is_judgment)?.id ?? "";
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // beforeunload flush-д зориулж pending payload-уудыг хянана
   const pendingSavePayloads = useRef<
     Record<string, { branchId: string; indicatorId: string; value: number }>
   >({});
+  // initialManualMap sync: pDate өөрчлөгдсөн үед л apply хийнэ
+  // (judgements update бүрт ref өөрчлөгдөхөд useEffect давтагдахаас сэргийлнэ)
+  const lastAppliedKey = useRef<string>("__unset__");
 
   // ── Indicator hold state ──────────────────────────────────────────────────
   const holdPeriod = pDate ? pDate.slice(0, 7) : "";
@@ -122,6 +133,15 @@ export default function ReportView({
         /* intentional: hold state is UI-only; failure leaves holds unset */
       });
   }, [holdPeriod]);
+
+  // Hold хийгдсэн indicator-уудыг catalog-аас хасна —
+  // score тооцоо болон дэлгэрэнгүй харагдахгүй болно
+  const activeCatalog = useMemo(
+    () => heldIds.size > 0
+      ? dynamicConfig.catalog.filter((c) => !heldIds.has(c.id))
+      : dynamicConfig.catalog,
+    [dynamicConfig.catalog, heldIds],
+  );
 
   useEffect(() => {
     const handleUnload = () => {
@@ -157,9 +177,15 @@ export default function ReportView({
   }, []);
 
   // ClickHouse-аас гарын утгуудыг ачаалах (нэг удаа)
-  // initialManualMap өгөгдсөн бол (work session горим) fetch хийхгүй
+  // initialManualMap өгөгдсөн бол (work session горим) fetch хийхгүй.
+  // Key = pDate + judgmentIndId: pDate өөрчлөгдвөл (шинэ огноо) эсвэл catalog
+  // ачааллагдаж judgment id өөрчлөгдвөл дахин apply хийнэ.
+  // (зүгээр л judgements update болж ref өөрчлөгдсөн бол skip хийнэ)
   useEffect(() => {
     if (initialManualMap !== undefined) {
+      const key = `${pDate ?? ""}::${judgmentIndId}`;
+      if (lastAppliedKey.current === key) return;
+      lastAppliedKey.current = key;
       setManualMap(initialManualMap);
       return;
     }
@@ -181,7 +207,7 @@ export default function ReportView({
         } catch {}
       })
       .finally(() => setManualLoading(false));
-  }, [initialManualMap, readOnly]);
+  }, [initialManualMap, pDate, judgmentIndId, readOnly]);
 
   const setManualValue = useCallback(
     (branchId: string, indicatorId: string, value: number) => {
@@ -238,7 +264,7 @@ export default function ReportView({
 
   const getAggregates = useCallback(
     (rows: AnyRow[], mKeyMap: ManualMap) => {
-      const base = aggregateBranch(rows, {}, {}, dynamicConfig.catalog);
+      const base = aggregateBranch(rows, {}, {}, activeCatalog);
       if (!dynamicConfig.loaded) return base;
 
       // Group rows by branch
@@ -257,9 +283,9 @@ export default function ReportView({
       return base.map((b) => {
         const branchRows = byBranch.get(b.branchId) ?? [];
         const ev = computeGroupScoresDynamic(
-          dynamicConfig.catalog,
+          activeCatalog,
           evaluateBranchDynamic(
-            dynamicConfig.catalog,
+            activeCatalog,
             branchRows,
             mKeyMap[b.branchId],
           ),
@@ -270,7 +296,10 @@ export default function ReportView({
         const s2 = ev[2] ?? b.s2;
         const s3 = ev[3] ?? b.s3;
         const s4 = ev[4] ?? b.s4 ?? null;
-        const j = ev[5] ?? b.j ?? null;
+        // externalJudgements байвал indicator ID тооцохгүйгээр шууд ашиглана
+        const j = externalJudgements != null
+          ? ((externalJudgements[b.branchId] ?? 0) > 0 ? externalJudgements[b.branchId] : null)
+          : ev[5] ?? b.j ?? null;
 
         let vsum = 0,
           wsum = 0;
@@ -315,7 +344,7 @@ export default function ReportView({
         } as BranchAggregate;
       });
     },
-    [dynamicConfig, heldIds],
+    [dynamicConfig, activeCatalog, heldIds, externalJudgements],
   );
 
   const aggregates = useMemo<BranchAggregate[]>(() => {
@@ -331,21 +360,26 @@ export default function ReportView({
     [aggregates, riskFilter],
   );
 
-  // work горим (readOnly=false): judgement оруулсан → дээрт, дараа нь total DESC
+  // Гараар Sort дарахад л эрэмбэлнэ — judgement оруулах үед автоматаар sort хийхгүй
+  const [sortKey, setSortKey] = useState<number>(0);
   const sortedFiltered = useMemo(() => {
-    if (readOnly) return filtered;
-    const judgmentInd = dynamicConfig.catalog.find((ind) => ind.is_judgment);
+    if (readOnly || sortKey === 0) return filtered;
     return [...filtered].sort((a, b) => {
-      const aHasJ = judgmentInd
-        ? (manualMap[a.branchId]?.[judgmentInd.id] ?? 0) > 0
-        : false;
-      const bHasJ = judgmentInd
-        ? (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0
-        : false;
+      const aHasJ = externalJudgements
+        ? (externalJudgements[a.branchId] ?? 0) > 0
+        : judgmentIndId
+          ? (manualMap[a.branchId]?.[judgmentIndId] ?? 0) > 0
+          : false;
+      const bHasJ = externalJudgements
+        ? (externalJudgements[b.branchId] ?? 0) > 0
+        : judgmentIndId
+          ? (manualMap[b.branchId]?.[judgmentIndId] ?? 0) > 0
+          : false;
       if (aHasJ !== bHasJ) return aHasJ ? -1 : 1;
       return (b.total ?? 0) - (a.total ?? 0);
     });
-  }, [filtered, readOnly, manualMap, dynamicConfig.catalog]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, readOnly, sortKey]);
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
@@ -504,12 +538,23 @@ export default function ReportView({
             {!readOnly && manualLoading && (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
             )}
-            <button
-              onClick={downloadCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-all"
-            >
-              <Download className="w-3.5 h-3.5" /> CSV
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setSortKey((k) => k + 1)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-all"
+                title="Judgement оруулсан салбарыг дээрт, Total-аар эрэмбэлэх"
+              >
+                ↕ Эрэмбэлэх
+              </button>
+            )}
+            {!hideComparison && (
+              <button
+                onClick={downloadCsv}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-all"
+              >
+                <Download className="w-3.5 h-3.5" /> CSV
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -521,10 +566,12 @@ export default function ReportView({
         manualMap={manualMap}
         weights={dynamicConfig.weights}
         setManualValue={setManualValue}
-        catalog={dynamicConfig.catalog}
+        catalog={activeCatalog}
         readOnly={readOnly}
         rawRowsByBranch={rowsByBranch}
         hideComparison={hideComparison}
+        externalJudgements={externalJudgements}
+        onJudgementChange={onJudgementChange}
       />
       {/* Summary */}
       {!hideComparison && (
@@ -590,6 +637,8 @@ function ReportTable({
   readOnly = false,
   rawRowsByBranch,
   hideComparison = false,
+  externalJudgements,
+  onJudgementChange,
 }: {
   title: string;
   region?: "UB" | "LOC";
@@ -606,6 +655,8 @@ function ReportTable({
   readOnly?: boolean;
   rawRowsByBranch: Map<string, AnyRow[]>;
   hideComparison?: boolean;
+  externalJudgements?: Record<string, number>;
+  onJudgementChange?: (branchId: string, score: number) => void;
 }) {
   const w = region ? weights[region] : weights["UB"];
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
@@ -613,21 +664,36 @@ function ReportTable({
   const [editJValue, setEditJValue] = useState<string>("");
   const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
   const committingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (editingJBranch && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingJBranch]);
   const judgmentInd = catalog.find((ind) => ind.is_judgment);
   const commitJ = (branchId: string) => {
     if (committingRef.current) return;
     committingRef.current = true;
-    setTimeout(() => { committingRef.current = false; }, 50);
-    const indId = judgmentInd?.id ?? "j-001";
+    requestAnimationFrame(() => { committingRef.current = false; });
     const v = parseFloat(editJValue);
     if (!isNaN(v) && v > 0) {
-      setManualValue(branchId, indId, Math.min(5, Math.max(1, v)));
+      const clamped = Math.min(5, Math.max(1, v));
+      if (onJudgementChange) {
+        // externalJudgements горим: indicator ID хэрэггүйгээр шууд callback
+        onJudgementChange(branchId, clamped);
+      } else {
+        const indId = judgmentInd?.id ?? "j-001";
+        setManualValue(branchId, indId, clamped);
+      }
     }
     setEditingJBranch(null);
   };
-  const filledJCount = rows.filter(
-    (b) => judgmentInd && (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0,
-  ).length;
+  const filledJCount = externalJudgements
+    ? rows.filter((b) => (externalJudgements[b.branchId] ?? 0) > 0).length
+    : rows.filter(
+        (b) => judgmentInd && (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0,
+      ).length;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
@@ -792,56 +858,36 @@ function ReportTable({
                     <td className="px-2 py-2 text-right tabular-nums" onClick={(e) => e.stopPropagation()}>
                       {readOnly ? (
                         <span className="font-bold text-rose-700 dark:text-rose-400">
-                          {b.j != null && b.j > 0 ? b.j.toFixed(2) : "—"}
+                          {b.j != null && b.j > 0 ? (b.j % 1 === 0 ? b.j.toFixed(0) : b.j.toFixed(1)) : "—"}
                         </span>
                       ) : editingJBranch === b.branchId ? (
-                        <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              const cur = parseFloat(editJValue) || 0;
-                              const next = Math.max(1, Math.round((cur - 0.5) * 2) / 2);
-                              setEditJValue(String(next));
-                            }}
-                            className="w-5 h-5 flex items-center justify-center rounded bg-rose-500/10 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold transition-colors select-none"
-                          >−</button>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min={1}
-                            max={5}
-                            autoFocus
-                            value={editJValue}
-                            onChange={(e) => setEditJValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") commitJ(b.branchId);
-                              if (e.key === "Escape") setEditingJBranch(null);
-                            }}
-                            onBlur={() => commitJ(b.branchId)}
-                            className="w-12 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-rose-600 dark:text-rose-400 font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                          />
-                          <button
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              const cur = parseFloat(editJValue) || 0;
-                              const next = Math.min(5, Math.round((cur + 0.5) * 2) / 2);
-                              setEditJValue(String(next));
-                            }}
-                            className="w-5 h-5 flex items-center justify-center rounded bg-rose-500/10 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold transition-colors select-none"
-                          >+</button>
-                        </div>
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          inputMode="decimal"
+                          value={editJValue}
+                          onChange={(e) => setEditJValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); commitJ(b.branchId); }
+                            if (e.key === "Escape") setEditingJBranch(null);
+                          }}
+                          onBlur={() => commitJ(b.branchId)}
+                          className="w-14 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-rose-600 dark:text-rose-400 font-bold"
+                        />
                       ) : (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingJBranch(b.branchId);
                             setEditJValue(
-                              judgmentInd
-                                ? String(
-                                    manualMap[b.branchId]?.[judgmentInd.id] ||
-                                      "",
-                                  )
-                                : String(b.j || ""),
+                              externalJudgements
+                                ? String(externalJudgements[b.branchId] || "")
+                                : judgmentInd
+                                  ? String(
+                                      manualMap[b.branchId]?.[judgmentInd.id] ||
+                                        "",
+                                    )
+                                  : String(b.j || ""),
                             );
                           }}
                           className="group/jbtn flex flex-col items-end w-full gap-0.5 font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
@@ -849,7 +895,7 @@ function ReportTable({
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 group-hover/jbtn:bg-emerald-400" />
                           <span className="inline-flex items-center gap-1">
-                            {b.j != null && b.j > 0 ? b.j.toFixed(2) : "—"}
+                            {b.j != null && b.j > 0 ? (b.j % 1 === 0 ? b.j.toFixed(0) : b.j.toFixed(1)) : "—"}
                             <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
                               ✎
                             </span>
@@ -1091,6 +1137,15 @@ function IndicatorDetailRow({
       const grp = ind.group;
       if (!g[grp]) g[grp] = [];
       g[grp].push({ ind, ev });
+    }
+    // subid-аар эрэмбэлэх (тоон дараалал: 1, 2, 3…)
+    for (const grp of Object.keys(g)) {
+      g[Number(grp)].sort((a, b) => {
+        const na = parseFloat(a.ind.subid ?? "") || 0;
+        const nb = parseFloat(b.ind.subid ?? "") || 0;
+        if (na !== nb) return na - nb;
+        return (a.ind.subid ?? "").localeCompare(b.ind.subid ?? "");
+      });
     }
     return g;
   }, [catalog, evals]);

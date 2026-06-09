@@ -233,8 +233,8 @@ const cleanLightTheme: ThemeDef = {
     secondary: "210 16% 96%", // #f1f5f9 slate-100
     secondaryForeground: "222 47% 12%",
 
-    muted: "210 16% 96%", // #f1f5f9
-    mutedForeground: "215 20% 35%", // #475569 slate-600 — readable
+    muted: "210 16% 93%", // #f1f5f9
+    mutedForeground: "215 25% 22%", // #2d3a4a — much darker for readability with opacity
 
     accent: "213 93% 97%", // #eff6ff pale blue
     accentForeground: "221 83% 38%", // deep blue
