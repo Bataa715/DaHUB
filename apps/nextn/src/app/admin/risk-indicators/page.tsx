@@ -40,8 +40,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  ChevronUp,
-  ChevronDown,
   Search,
   BarChart3,
   Layers,
@@ -632,7 +630,12 @@ export default function RiskIndicatorsPage() {
         group: g,
         rows: indicators
           .filter((i) => i.group_num === g)
-          .sort((a, b) => a.sort_order - b.sort_order),
+          .sort((a, b) => {
+            const an = Number(a.subid);
+            const bn = Number(b.subid);
+            if (!isNaN(an) && !isNaN(bn)) return an - bn;
+            return a.subid.localeCompare(b.subid);
+          }),
         totalWeight: indicators
           .filter((i) => i.group_num === g)
           .reduce((s, i) => s + i.weight, 0),
@@ -736,40 +739,7 @@ export default function RiskIndicatorsPage() {
     }
   };
 
-  // ── Reorder — optimistic update, revert on error ───────────────────────────
-  const move = useCallback(
-    async (ind: IndicatorConfig, dir: -1 | 1) => {
-      const group = indicators
-        .filter((i) => i.group_num === ind.group_num)
-        .sort((a, b) => a.sort_order - b.sort_order);
-      const idx = group.findIndex((i) => i.id === ind.id);
-      const swapIdx = idx + dir;
-      if (swapIdx < 0 || swapIdx >= group.length) return;
-
-      const newGroup = [...group];
-      [newGroup[idx], newGroup[swapIdx]] = [newGroup[swapIdx], newGroup[idx]];
-      const reorderedIds = newGroup.map((i) => i.id);
-
-      // Optimistic: update state immediately without waiting for API
-      setIndicators((prev) => {
-        const others = prev.filter((i) => i.group_num !== ind.group_num);
-        const updated = newGroup.map((item, i) => ({ ...item, sort_order: i }));
-        return [...others, ...updated];
-      });
-
-      try {
-        await riskIndicatorConfigApi.reorder(reorderedIds);
-      } catch {
-        toast({
-          title: "Алдаа",
-          description: "Дараалал өөрчлөхөд алдаа гарлаа.",
-          variant: "destructive",
-        });
-        await loadIndicators(); // Revert to server state
-      }
-    },
-    [indicators, toast, loadIndicators],
-  );
+  // ── Reorder removed — sorted by subid ────────────────────────────────────
 
   // ── Hold toggle — optimistic ───────────────────────────────────────────────
   const toggleHold = useCallback(
@@ -922,7 +892,7 @@ export default function RiskIndicatorsPage() {
 
                       {/* Indicator rows */}
                       <div className="divide-y divide-border/15">
-                        {rows.map((ind, rowIdx) => {
+                        {rows.map((ind) => {
                           const scaleObj = parseScale(ind.score_scale);
                           const badgeClass =
                             SCALE_TYPE_BADGE_CLASS[scaleObj.type] ??
@@ -932,24 +902,6 @@ export default function RiskIndicatorsPage() {
                               key={ind.id}
                               className="flex items-center gap-3 px-4 py-2 hover:bg-foreground/[0.02] transition-colors group"
                             >
-                              {/* Reorder arrows */}
-                              <div className="flex flex-col gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  disabled={rowIdx === 0}
-                                  onClick={() => move(ind, -1)}
-                                  className="text-muted-foreground/40 hover:text-foreground/80 disabled:opacity-20 transition-colors"
-                                >
-                                  <ChevronUp className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  disabled={rowIdx === rows.length - 1}
-                                  onClick={() => move(ind, 1)}
-                                  className="text-muted-foreground/40 hover:text-foreground/80 disabled:opacity-20 transition-colors"
-                                >
-                                  <ChevronDown className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
                               {/* SubID */}
                               <code
                                 className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded shrink-0 ${accent.bg} ${accent.text}`}

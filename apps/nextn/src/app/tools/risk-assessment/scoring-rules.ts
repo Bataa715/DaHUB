@@ -9,7 +9,7 @@
  * SUBID нь Oracle-ийн жинхэнэ ID (rubric №-тэй яг таарахгүй байж болно).
  */
 
-export type ScoreGroup = "Score 1" | "Score 2" | "Score 3";
+export type ScoreGroup = "Score 1" | "Score 2" | "Score 3" | "Score 4";
 
 export type ScoreValue = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -305,18 +305,19 @@ export function aggregateBranch(
           "Score 1": { sum: 0, cnt: 0 },
           "Score 2": { sum: 0, cnt: 0 },
           "Score 3": { sum: 0, cnt: 0 },
+          "Score 4": { sum: 0, cnt: 0 },
         },
       };
       map.set(key, acc);
     }
 
-    if (Number(r.SUBID) === 11 && r.RESULT != null) {
+    if (Number(r.SUBID) === 6 && r.RESULT != null) {
       acc.rating = String(r.RESULT).trim();
     }
 
     const subidStr = String(r.SUBID ?? "");
     const ind = catalog.find((c) => c.subid === subidStr);
-    if (!ind || ind.is_manual || ind.group > 3) continue;
+    if (!ind || ind.is_manual || ind.group > 4) continue;
     const grp = `Score ${ind.group}` as ScoreGroup;
     const { score } = computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE);
     if (typeof score === "number" && score > 0) {
@@ -337,7 +338,9 @@ export function aggregateBranch(
       ? acc.sums["Score 3"].sum / acc.sums["Score 3"].cnt
       : null;
     const region = detectRegion(acc.rating);
-    const s4 = acc.branchId in score4Map ? score4Map[acc.branchId] : null;
+    const s4 = acc.sums["Score 4"].cnt
+      ? acc.sums["Score 4"].sum / acc.sums["Score 4"].cnt
+      : null;
     const j = acc.branchId in judgementMap ? judgementMap[acc.branchId] : null;
     const total = computeTotal(region, s1, s2, s3, s4, j);
     list.push({

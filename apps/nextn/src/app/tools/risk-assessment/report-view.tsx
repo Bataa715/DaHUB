@@ -196,7 +196,13 @@ export default function ReportView({
         else next[branchId] = branch;
         return next;
       });
-      // 2) 600ms debounce-тайгаар backend-рүү хадгалах (saveIndicatorFn байсан ч)
+      // 2) saveIndicatorFn байвал шууд дуудна — work/page дотроо өөрийн debounce-тай
+      //    Энэ нь judgements state-г яг тэр даруй шинэчилж initialManualMap-г синк байлгана
+      if (saveIndicatorFn) {
+        saveIndicatorFn(branchId, indicatorId, value);
+        return;
+      }
+      // 3) saveIndicatorFn байхгүй бол 600ms debounce-тайгаар API дуудна
       const key = `${branchId}::${indicatorId}`;
       if (!value || value <= 0) {
         delete pendingSavePayloads.current[key];
@@ -206,13 +212,9 @@ export default function ReportView({
       clearTimeout(saveTimers.current[key]);
       saveTimers.current[key] = setTimeout(() => {
         delete pendingSavePayloads.current[key];
-        if (saveIndicatorFn) {
-          saveIndicatorFn(branchId, indicatorId, value);
-        } else {
-          riskApi
-            .upsertManualIndicator({ branchId, indicatorId, value })
-            .catch(console.error);
-        }
+        riskApi
+          .upsertManualIndicator({ branchId, indicatorId, value })
+          .catch(console.error);
       }, 600);
     },
     [readOnly, saveIndicatorFn],
@@ -242,7 +244,7 @@ export default function ReportView({
       // Group rows by branch
       const byBranch = new Map<string, AnyRow[]>();
       for (const r of rows) {
-        const id = String(r.BRANCHID ?? "");
+        const id = String((r as any).BRANCHID || (r as any).SOLID || "");
         if (!id) continue;
         let arr = byBranch.get(id);
         if (!arr) {
@@ -306,8 +308,8 @@ export default function ReportView({
           s1,
           s2,
           s3,
-          s4: s4 ?? 0,
-          j: j ?? 0,
+          s4,
+          j,
           total,
           level,
         } as BranchAggregate;
@@ -328,6 +330,22 @@ export default function ReportView({
         : aggregates.filter((b) => b.level === riskFilter),
     [aggregates, riskFilter],
   );
+
+  // work горим (readOnly=false): judgement оруулсан → дээрт, дараа нь total DESC
+  const sortedFiltered = useMemo(() => {
+    if (readOnly) return filtered;
+    const judgmentInd = dynamicConfig.catalog.find((ind) => ind.is_judgment);
+    return [...filtered].sort((a, b) => {
+      const aHasJ = judgmentInd
+        ? (manualMap[a.branchId]?.[judgmentInd.id] ?? 0) > 0
+        : false;
+      const bHasJ = judgmentInd
+        ? (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0
+        : false;
+      if (aHasJ !== bHasJ) return aHasJ ? -1 : 1;
+      return (b.total ?? 0) - (a.total ?? 0);
+    });
+  }, [filtered, readOnly, manualMap, dynamicConfig.catalog]);
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
@@ -386,7 +404,7 @@ export default function ReportView({
     ];
     const fmt = (n: number | null) => (n == null ? "" : n.toFixed(2));
     const lines = [cols.join(",")];
-    aggregates.forEach((b, i) => {
+    sortedFiltered.forEach((b, i) => {
       const p = previousAggMap.get(b.branchId);
       const diff =
         p && b.total != null && p.total != null ? b.total - p.total : null;
@@ -498,7 +516,7 @@ export default function ReportView({
 
       <ReportTable
         title="Бүх салбар, тооцооны төвүүд"
-        rows={filtered}
+        rows={sortedFiltered}
         previousAggMap={previousAggMap}
         manualMap={manualMap}
         weights={dynamicConfig.weights}
@@ -594,15 +612,16 @@ function ReportTable({
   const [editingJBranch, setEditingJBranch] = useState<string | null>(null);
   const [editJValue, setEditJValue] = useState<string>("");
   const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
+  const committingRef = useRef(false);
   const judgmentInd = catalog.find((ind) => ind.is_judgment);
   const commitJ = (branchId: string) => {
-    if (judgmentInd) {
-      const v = parseFloat(editJValue);
-      setManualValue(
-        branchId,
-        judgmentInd.id,
-        isNaN(v) ? 0 : Math.min(5, Math.max(0, v)),
-      );
+    if (committingRef.current) return;
+    committingRef.current = true;
+    setTimeout(() => { committingRef.current = false; }, 50);
+    const indId = judgmentInd?.id ?? "j-001";
+    const v = parseFloat(editJValue);
+    if (!isNaN(v) && v > 0) {
+      setManualValue(branchId, indId, Math.min(5, Math.max(1, v)));
     }
     setEditingJBranch(null);
   };
@@ -734,15 +753,10 @@ function ReportTable({
               return (
                 <Fragment key={b.branchId}>
                   <tr
-                    className={`border-t border-border hover:bg-accent/30 cursor-pointer select-none ${isExpanded ? "bg-sky-500/5" : ""}`}
-                    onClick={() =>
-                      setExpandedBranchId(isExpanded ? null : b.branchId)
-                    }
+                    className={`border-t border-border hover:bg-accent/10 ${isExpanded ? "bg-sky-500/5" : ""}`}
                   >
                     <td
-                      className="px-1 py-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                      className="px-1 py-2 text-center">
                       <button
                         onClick={() =>
                           setExpandedBranchId(isExpanded ? null : b.branchId)
@@ -775,30 +789,51 @@ function ReportTable({
                     <td className="px-2 py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
                       {fmt(b.s4 ?? null)}
                     </td>
-                    <td className="px-2 py-2 text-right tabular-nums">
+                    <td className="px-2 py-2 text-right tabular-nums" onClick={(e) => e.stopPropagation()}>
                       {readOnly ? (
                         <span className="font-bold text-rose-700 dark:text-rose-400">
                           {b.j != null && b.j > 0 ? b.j.toFixed(2) : "—"}
                         </span>
                       ) : editingJBranch === b.branchId ? (
-                        <input
-                          type="number"
-                          step="0.5"
-                          min={0}
-                          max={5}
-                          autoFocus
-                          value={editJValue}
-                          onChange={(e) => setEditJValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") commitJ(b.branchId);
-                            if (e.key === "Escape") setEditingJBranch(null);
-                          }}
-                          onBlur={() => commitJ(b.branchId)}
-                          className="w-16 px-2 py-1 text-right text-xs rounded-lg border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-rose-600 dark:text-rose-400 font-bold"
-                        />
+                        <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const cur = parseFloat(editJValue) || 0;
+                              const next = Math.max(1, Math.round((cur - 0.5) * 2) / 2);
+                              setEditJValue(String(next));
+                            }}
+                            className="w-5 h-5 flex items-center justify-center rounded bg-rose-500/10 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold transition-colors select-none"
+                          >−</button>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min={1}
+                            max={5}
+                            autoFocus
+                            value={editJValue}
+                            onChange={(e) => setEditJValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitJ(b.branchId);
+                              if (e.key === "Escape") setEditingJBranch(null);
+                            }}
+                            onBlur={() => commitJ(b.branchId)}
+                            className="w-12 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-rose-600 dark:text-rose-400 font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
+                          <button
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const cur = parseFloat(editJValue) || 0;
+                              const next = Math.min(5, Math.round((cur + 0.5) * 2) / 2);
+                              setEditJValue(String(next));
+                            }}
+                            className="w-5 h-5 flex items-center justify-center rounded bg-rose-500/10 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold transition-colors select-none"
+                          >+</button>
+                        </div>
                       ) : (
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingJBranch(b.branchId);
                             setEditJValue(
                               judgmentInd

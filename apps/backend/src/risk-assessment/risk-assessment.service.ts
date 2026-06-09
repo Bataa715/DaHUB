@@ -403,8 +403,8 @@ export class RiskAssessmentService implements OnModuleInit {
   > {
     const rows = await this.clickhouse.query<any>(
       fetchedDate
-        ? `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE fetchedDate = {d:String} ORDER BY branchId`
-        : `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL ORDER BY fetchedDate DESC, branchId`,
+        ? `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE fetchedDate = {d:String} AND score > 0 ORDER BY branchId`
+        : `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE score > 0 ORDER BY fetchedDate DESC, branchId`,
       fetchedDate ? { d: fetchedDate } : {},
     );
     return rows.map((r: any) => ({
@@ -423,6 +423,7 @@ export class RiskAssessmentService implements OnModuleInit {
     score: number;
     userId: string;
   }): Promise<void> {
+    if (!args.branchId || args.score <= 0) return;
     await this.clickhouse.insert("risk_judgement", [
       {
         branchId: args.branchId,

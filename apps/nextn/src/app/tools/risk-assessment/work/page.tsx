@@ -79,20 +79,26 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const isLocked = lockedDate !== null && lockedDate === fetchedDate;
 
   // manualMap: judgement scores -> ReportView
+  // catalog-аас judgment indicator-ийн бодит id-г ашигла (hardcoded "j-001" биш)
   const manualMap = useMemo(() => {
     const map: Record<string, Record<string, number>> = {};
+    const judgmentInd = catalog.find((c) => c.is_judgment);
+    const jid = judgmentInd?.id ?? "j-001";
     const branchIds = [
       ...new Set(
-        rows.filter((r) => r.rowType === "oracle").map((r) => r.BRANCHID),
+        rows
+          .filter((r) => r.rowType === "oracle")
+          .map((r) => String(r.BRANCHID || r.SOLID || ""))
+          .filter(Boolean),
       ),
     ];
     for (const bid of branchIds) {
       if (judgements[bid]) {
-        map[bid] = { "j-001": judgements[bid] };
+        map[bid] = { [jid]: judgements[bid] };
       }
     }
     return map;
-  }, [rows, judgements]);
+  }, [rows, judgements, catalog]);
 
   // Init: lock check + load locked date if exists
   useEffect(() => {
@@ -189,6 +195,23 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       }, 600);
     },
     [fetchedDate],
+  );
+
+  // saveIndicatorFn adapter: ReportView нь (branchId, indicatorId, value) дуудна,
+  // judgment indicator байвал upsertJudgement API-руу дамжуулна
+  const saveIndicatorAdapter = useCallback(
+    (branchId: string, _indicatorId: string, value: number) => {
+      const branchRow = rows.find(
+        (r) =>
+          r.rowType === "oracle" &&
+          (String(r.BRANCHID || r.SOLID || "") === branchId),
+      );
+      const branchName = branchRow
+        ? String(branchRow.BRANCHNAME ?? branchRow.SOLID ?? branchId)
+        : branchId;
+      handleJudgementChange(branchId, branchName, value);
+    },
+    [rows, handleJudgementChange],
   );
 
   const scoredRows = useMemo(() => toScored(rows, catalog), [rows, catalog]);
@@ -319,7 +342,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             setRiskFilter={setRiskFilter}
             pDate={fetchedDate}
             initialManualMap={manualMap}
-            saveIndicatorFn={handleJudgementChange}
+            saveIndicatorFn={saveIndicatorAdapter}
             hideComparison={true}
           />
         )}
