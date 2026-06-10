@@ -220,4 +220,23 @@ export class RiskIndicatorConfigService implements OnModuleInit {
       ORDER BY region ASC, group_num ASC
     `);
   }
+
+  async upsertGroupConfig(
+    dto: { region: string; group_num: number; weight: number; label: string },
+  ): Promise<GroupConfig> {
+    const seq = Date.now();
+    const now = nowCH();
+    const record: GroupConfig = {
+      region: dto.region,
+      group_num: dto.group_num,
+      weight: dto.weight,
+      label: dto.label,
+      seq,
+      updated_at: now,
+    };
+    await this.clickhouse.insert("risk_group_config", [
+      record as unknown as Record<string, unknown>,
+    ]);
+    return record;
+  }
 }

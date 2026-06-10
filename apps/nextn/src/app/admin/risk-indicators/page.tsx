@@ -76,7 +76,7 @@ const GROUP_LABELS: Record<number, string> = {
   2: "Score 2",
   3: "Score 3",
   4: "Score 4",
-  5: "Score 5",
+  5: "Judgement",
 };
 const GROUP_SHORT: Record<number, string> = {
   1: "S1",
@@ -659,9 +659,9 @@ export default function RiskIndicatorsPage() {
   }, [grouped, search]);
 
   // ── Dialog handlers ────────────────────────────────────────────────────────
-  const openCreate = () => {
+  const openCreate = (initialGroup?: number) => {
     setEditingId(null);
-    setForm({ ...EMPTY_FORM });
+    setForm({ ...EMPTY_FORM, group_num: initialGroup ?? 1 });
     setDialogOpen(true);
   };
 
@@ -688,7 +688,8 @@ export default function RiskIndicatorsPage() {
 
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!form.subid.trim() || !form.name.trim()) {
+    const isJudgement = form.group_num === 5;
+    if (!isJudgement && (!form.subid.trim() || !form.name.trim())) {
       toast({
         title: "Алдаа",
         description: "SubID болон Нэр шаардлагатай.",
@@ -696,8 +697,11 @@ export default function RiskIndicatorsPage() {
       });
       return;
     }
+    // Judgement: auto name + subid
+    const autoSubid = isJudgement && !form.subid.trim() ? `j-${Date.now()}` : form.subid;
+    const autoName = isJudgement && !form.name.trim() ? "Judgement" : form.name;
     setSaving(true);
-    const payload = { ...form };
+    const payload = { ...form, subid: autoSubid, name: autoName };
     try {
       if (editingId) {
         await riskIndicatorConfigApi.update(editingId, payload);
@@ -772,364 +776,208 @@ export default function RiskIndicatorsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-[1280px] mx-auto px-5 py-6">
-        {/* Page title */}
-        <div className="mb-5">
-          <h1 className="text-base font-semibold text-foreground">
-            Эрсдэлийн үзүүлэлт
-          </h1>
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-7">
+          <h1 className="text-base font-semibold text-foreground">Эрсдэлийн үзүүлэлт</h1>
           {!loading && (
             <p className="text-xs text-muted-foreground/60 mt-0.5">
-              Нийт {indicators.length} · Нийт жин{" "}
-              <span
-                className={
-                  Math.abs(totalAllWeight - 100) > 0.01
-                    ? "text-amber-400"
-                    : "text-emerald-400"
-                }
-              >
-                {totalAllWeight}%
-                {Math.abs(totalAllWeight - 100) > 0.01 ? " ⚠" : " ✓"}
+              {indicators.length} үзүүлэлт · нийт жин{" "}
+              <span className={`font-semibold ${Math.abs(totalAllWeight - 100) > 0.01 ? "text-amber-500" : "text-emerald-500"}`}>
+                {totalAllWeight}%{Math.abs(totalAllWeight - 100) > 0.01 ? " ⚠" : " ✓"}
               </span>
             </p>
           )}
         </div>
 
         <Tabs defaultValue="indicators">
-          <TabsList className="bg-foreground/5 border border-border/40 rounded-xl p-1 gap-0.5 mb-5">
-            <TabsTrigger
-              value="indicators"
-              className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-foreground/10 rounded-lg text-sm px-4 h-8 transition-all"
-            >
-              <Layers className="w-3.5 h-3.5 mr-1.5" />
+          <TabsList className="mb-6 bg-muted/40 border border-border/40 rounded-xl h-9 p-1 gap-0.5">
+            <TabsTrigger value="indicators" className="text-xs h-7 px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground">
               Үзүүлэлтүүд
             </TabsTrigger>
-            <TabsTrigger
-              value="holds"
-              className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-foreground/10 rounded-lg text-sm px-4 h-8 transition-all"
-            >
-              <PauseCircle className="w-3.5 h-3.5 mr-1.5" />
+            <TabsTrigger value="holds" className="text-xs h-7 px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground">
               Hold
               {heldIds.size > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400">
+                <span className="ml-1.5 text-[10px] font-bold bg-amber-500/20 text-amber-500 px-1.5 rounded">
                   {heldIds.size}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              onClick={loadHistory}
-              className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-foreground/10 rounded-lg text-sm px-4 h-8 transition-all"
-            >
-              <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
-              Тайлангууд устгах
+            <TabsTrigger value="settings" onClick={loadHistory} className="text-xs h-7 px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground">
+              Тайлан
             </TabsTrigger>
           </TabsList>
 
-          {/* ── Tab 1: Indicators ───────────────────────────────────── */}
-          <TabsContent value="indicators" className="mt-0">
-            {/* Toolbar */}
-            <div className="flex items-center gap-3 mb-4">
+          {/* ── Tab 1: Indicators ── */}
+          <TabsContent value="indicators" className="mt-0 space-y-3">
+            <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Хайх... (нэр, subid)"
-                  className="pl-9 h-9 bg-foreground/5 border-border/40 text-foreground/80 placeholder:text-muted-foreground/50 text-sm rounded-xl"
+                  placeholder="Хайх..."
+                  className="pl-8 h-8 text-sm bg-foreground/[0.03] border-border/40 rounded-lg"
                 />
               </div>
               <div className="flex-1" />
-              <Button
-                size="sm"
-                onClick={openCreate}
-                className="bg-blue-600 hover:bg-blue-500 text-foreground gap-1.5 text-xs rounded-xl h-9 font-medium px-4"
-              >
-                <Plus className="w-3.5 h-3.5" /> Нэмэх
+              <Button size="sm" onClick={() => openCreate()} className="h-8 text-xs font-medium gap-1 bg-blue-600 hover:bg-blue-500 text-white px-4">
+                <Plus className="w-3 h-3" /> Нэмэх
               </Button>
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-32">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/30" />
+              <div className="flex justify-center py-24">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredGrouped.map(({ group, rows, totalWeight }) => {
-                  const accent = GROUP_ACCENT[group];
-                  return (
-                    <div
-                      key={group}
-                      className={`rounded-xl border ${accent.ring} ring-1 overflow-hidden bg-card`}
-                    >
-                      {/* Group header */}
-                      <div
-                        className={`px-4 py-2.5 border-b border-border/20 flex items-center justify-between ${accent.bg}`}
+                {filteredGrouped.map(({ group, rows, totalWeight }) => (
+                  <div key={group} className="rounded-xl border border-border/50 overflow-hidden bg-card">
+                    {/* Group header */}
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border/30 bg-muted/20">
+                      <span className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center shrink-0 ${GROUP_ACCENT[group].bg} ${GROUP_ACCENT[group].text}`}>
+                        {GROUP_SHORT[group]}
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">{GROUP_LABELS[group]}</span>
+                      <span className="text-xs text-muted-foreground/40">{rows.length} үзүүлэлт</span>
+                      <div className="flex-1" />
+                      <span className="text-xs font-semibold text-foreground/60 tabular-nums">{totalWeight}%</span>
+                      <button
+                        onClick={() => openCreate(group)}
+                        className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground/30 hover:text-foreground hover:bg-foreground/10 transition-colors ml-1"
                       >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${accent.bg} ${accent.text} ring-1 ${accent.ring}`}
-                          >
-                            {GROUP_SHORT[group]}
-                          </span>
-                          <span
-                            className={`text-[13px] font-semibold ${accent.text}`}
-                          >
-                            {GROUP_LABELS[group]}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] text-muted-foreground/50">
-                            {rows.length} үзүүлэлт
-                          </span>
-                          <span
-                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${accent.bg} ${accent.text}`}
-                          >
-                            {totalWeight}%
-                          </span>
-                        </div>
-                      </div>
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
 
-                      {/* Indicator rows */}
-                      <div className="divide-y divide-border/15">
+                    {/* Indicator rows */}
+                    {rows.length === 0 ? (
+                      <div className="px-4 py-5 text-center text-xs text-muted-foreground/30">Үзүүлэлт байхгүй</div>
+                    ) : (
+                      <div className="divide-y divide-border/25">
                         {rows.map((ind) => {
                           const scaleObj = parseScale(ind.score_scale);
-                          const badgeClass =
-                            SCALE_TYPE_BADGE_CLASS[scaleObj.type] ??
-                            SCALE_TYPE_BADGE_CLASS.manual;
+                          const badgeClass = SCALE_TYPE_BADGE_CLASS[scaleObj.type] ?? SCALE_TYPE_BADGE_CLASS.manual;
                           return (
-                            <div
-                              key={ind.id}
-                              className="flex items-center gap-3 px-4 py-2 hover:bg-foreground/[0.02] transition-colors group"
-                            >
-                              {/* SubID */}
-                              <code
-                                className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded shrink-0 ${accent.bg} ${accent.text}`}
-                              >
-                                {ind.subid}
-                              </code>
-
-                              {/* Name */}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm text-foreground truncate">
-                                  {ind.name}
-                                </p>
-                                {ind.hint && (
-                                  <p className="text-[11px] text-muted-foreground/40 truncate">
-                                    {ind.hint}
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Scale type */}
-                              <Badge
-                                className={`text-[10px] border px-1.5 py-0.5 rounded font-medium shrink-0 ${badgeClass}`}
-                              >
-                                {SCALE_TYPE_LABELS[scaleObj.type] ??
-                                  scaleObj.type}
-                              </Badge>
-
-                              {/* Weight */}
-                              <div className="w-12 text-right shrink-0">
-                                <span className="text-sm font-semibold text-foreground/80">
-                                  {ind.weight}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground/40 ml-0.5">
-                                  %
-                                </span>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => openEdit(ind)}
-                                  className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
+                            <div key={ind.id} className="flex items-center gap-3 px-4 py-2 hover:bg-muted/20 group transition-colors">
+                              <code className="text-[11px] font-mono text-muted-foreground/40 w-10 shrink-0 tabular-nums">{ind.subid}</code>
+                              <span className="flex-1 text-[13px] text-foreground/85 truncate min-w-0">{ind.name}</span>
+                              <span className={`text-[10px] border px-1.5 py-0.5 rounded font-medium shrink-0 ${badgeClass}`}>
+                                {SCALE_TYPE_LABELS[scaleObj.type] ?? scaleObj.type}
+                              </span>
+                              <span className="text-[13px] font-medium text-foreground/60 tabular-nums w-9 text-right shrink-0">{ind.weight}%</span>
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <button onClick={() => openEdit(ind)} className="p-1 rounded text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-500/10 transition-colors">
+                                  <Pencil className="w-3 h-3" />
                                 </button>
-                                <button
-                                  onClick={() => setDeleteTarget(ind.id)}
-                                  className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                <button onClick={() => setDeleteTarget(ind.id)} className="p-1 rounded text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-colors">
+                                  <Trash2 className="w-3 h-3" />
                                 </button>
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                    </div>
-                  );
-                })}
+                    )}
+                  </div>
+                ))}
 
                 {indicators.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3 rounded-xl border border-border/30">
-                    <BarChart3 className="w-8 h-8 text-muted-foreground/20" />
-                    <div className="text-center">
-                      <p className="text-muted-foreground text-sm">
-                        Үзүүлэлт олдсонгүй
-                      </p>
-                      <p className="text-muted-foreground/40 text-xs mt-1">
-                        «Нэмэх» товчоор шинэ үзүүлэлт нэмнэ үү
-                      </p>
-                    </div>
+                  <div className="rounded-xl border border-border/30 py-16 text-center">
+                    <p className="text-sm text-muted-foreground">Үзүүлэлт байхгүй байна</p>
+                    <p className="text-xs text-muted-foreground/40 mt-1">«Нэмэх» товчоор эхлэнэ үү</p>
                   </div>
                 )}
-
                 {indicators.length > 0 && filteredGrouped.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 gap-2">
-                    <Search className="w-5 h-5 text-muted-foreground/20" />
-                    <p className="text-muted-foreground/50 text-sm">
-                      «{search}» хайлтад тохирсон үзүүлэлт олдсонгүй
-                    </p>
+                  <div className="rounded-xl border border-border/30 py-12 text-center">
+                    <p className="text-sm text-muted-foreground/60">«{search}» хайлтад тохирсон үзүүлэлт олдсонгүй</p>
                   </div>
                 )}
               </div>
             )}
           </TabsContent>
 
-          {/* ── Tab 2: Holds ────────────────────────────────────────── */}
+          {/* ── Tab 2: Holds ── */}
           <TabsContent value="holds" className="mt-0">
-            {/* Header bar */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-muted-foreground/40 mt-0.5">
-                  Hold хийсэн үзүүлэлт тухайн сарын тооцооноос хасагдаж, үлдсэн
-                  жин харьцангуйгаар тооцогдоно.
-                </p>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-sm font-medium">Hold үзүүлэлтүүд</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">Hold хийсэн үзүүлэлт тухайн сарын тооцооноос хасагдана</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {holdsLoading && (
-                  <Loader2 className="w-3 h-3 animate-spin text-muted-foreground/30" />
-                )}
+              <div className="flex items-center gap-2">
+                {holdsLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground/30" />}
                 <input
                   type="month"
                   value={holdsPeriod}
                   onChange={(e) => setHoldsPeriod(e.target.value)}
-                  className="h-8 px-3 rounded-lg bg-foreground/5 border border-border/40 text-foreground/70 text-sm focus:border-border/60 focus:outline-none tabular-nums"
+                  className="h-8 px-3 text-sm rounded-lg bg-foreground/[0.03] border border-border/50 text-foreground focus:outline-none tabular-nums"
                 />
               </div>
             </div>
 
-            {/* Summary pill */}
             {heldIds.size > 0 && (
-              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
-                <PauseCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-[12px] text-amber-300/90">
-                  <strong className="font-semibold">{heldIds.size}</strong>{" "}
-                  үзүүлэлт hold хийгдсэн байна — тооцооноос хасагдана.
+              <div className="flex items-center gap-2 mb-4 px-3.5 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20 text-xs">
+                <span className="text-amber-600 dark:text-amber-400">
+                  <strong className="font-semibold">{heldIds.size}</strong> үзүүлэлт hold хийгдсэн — тооцооноос хасагдана
                 </span>
-                <button
-                  onClick={() => {
-                    [...heldIds].forEach((id) => toggleHold(id));
-                  }}
-                  className="ml-auto text-[11px] text-amber-400/60 hover:text-amber-400 transition-colors"
-                >
+                <button onClick={() => [...heldIds].forEach((id) => toggleHold(id))} className="ml-auto font-medium text-amber-500/60 hover:text-amber-500 transition-colors">
                   Бүгдийг цуцлах
                 </button>
               </div>
             )}
 
             {loading ? (
-              <div className="flex items-center justify-center py-20">
+              <div className="flex justify-center py-16">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/20" />
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {([1, 2, 3, 4, 5] as const).map((grp) => {
                   const grpInds = indicators
                     .filter((ind) => ind.group_num === grp)
-                    .sort((a, b) => a.sort_order - b.sort_order);
+                    .sort((a, b) => {
+                      const an = Number(a.subid), bn = Number(b.subid);
+                      if (!isNaN(an) && !isNaN(bn)) return an - bn;
+                      return a.subid.localeCompare(b.subid);
+                    });
                   if (grpInds.length === 0) return null;
                   const accent = GROUP_ACCENT[grp];
-                  const heldCount = grpInds.filter((ind) =>
-                    heldIds.has(ind.id),
-                  ).length;
-
+                  const heldCount = grpInds.filter((ind) => heldIds.has(ind.id)).length;
                   return (
-                    <div
-                      key={grp}
-                      className="rounded-xl border border-border/30 bg-card overflow-hidden"
-                    >
-                      {/* Group label row */}
-                      <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border/15 bg-foreground/[0.015]">
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${accent.bg} ${accent.text}`}
-                        >
+                    <div key={grp} className="rounded-xl border border-border/50 bg-card overflow-hidden">
+                      <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border/25 bg-muted/20">
+                        <span className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center ${accent.bg} ${accent.text}`}>
                           {GROUP_SHORT[grp]}
                         </span>
-                        <span className="text-[12px] font-medium text-foreground/60">
-                          {GROUP_LABELS[grp]}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground/30 ml-auto tabular-nums">
-                          {grpInds.length} үзүүлэлт
-                          {heldCount > 0 && (
-                            <span className="ml-2 text-amber-400/80 font-semibold">
-                              · {heldCount} hold
-                            </span>
-                          )}
-                        </span>
+                        <span className="text-sm font-medium text-foreground/80">{GROUP_LABELS[grp]}</span>
+                        {heldCount > 0 && (
+                          <span className="text-[11px] font-semibold text-amber-500">· {heldCount} hold</span>
+                        )}
                       </div>
-
-                      {/* Indicator toggle rows */}
-                      <div className="divide-y divide-border/10">
+                      <div className="divide-y divide-border/20">
                         {grpInds.map((ind) => {
                           const held = heldIds.has(ind.id);
                           return (
                             <button
                               key={ind.id}
                               onClick={() => toggleHold(ind.id)}
-                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                                held
-                                  ? "bg-amber-500/5 hover:bg-amber-500/8"
-                                  : "hover:bg-foreground/[0.02]"
-                              }`}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${held ? "bg-amber-500/5 hover:bg-amber-500/8" : "hover:bg-muted/20"}`}
                             >
-                              {/* Toggle indicator */}
-                              <span
-                                className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${
-                                  held
-                                    ? "bg-amber-500/20 border-amber-500/40"
-                                    : "border-border/40 bg-transparent"
-                                }`}
-                              >
+                              <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${held ? "bg-amber-500 border-amber-500" : "border-border/50 bg-transparent"}`}>
                                 {held && (
-                                  <PauseCircle className="w-2.5 h-2.5 text-amber-400" />
+                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12">
+                                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
                                 )}
                               </span>
-
-                              {/* subid */}
-                              <code
-                                className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded shrink-0 ${accent.bg} ${accent.text}`}
-                              >
-                                {ind.subid}
-                              </code>
-
-                              {/* name */}
-                              <span
-                                className={`flex-1 text-[12px] min-w-0 truncate transition-colors ${
-                                  held
-                                    ? "text-amber-300/70 line-through"
-                                    : "text-foreground/75"
-                                }`}
-                              >
+                              <code className="text-[11px] font-mono text-muted-foreground/40 w-8 shrink-0">{ind.subid}</code>
+                              <span className={`flex-1 text-[13px] min-w-0 truncate transition-colors ${held ? "text-amber-600 dark:text-amber-400 line-through" : "text-foreground/75"}`}>
                                 {ind.name}
                               </span>
-
-                              {/* weight */}
-                              <span
-                                className={`text-[11px] tabular-nums shrink-0 ${
-                                  held
-                                    ? "text-amber-400/50"
-                                    : "text-muted-foreground/30"
-                                }`}
-                              >
-                                {ind.weight}%
-                              </span>
-
-                              {/* hold label */}
+                              <span className="text-[11px] text-muted-foreground/40 tabular-nums shrink-0">{ind.weight}%</span>
                               {held && (
-                                <span className="text-[10px] font-semibold text-amber-400/70 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shrink-0">
+                                <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shrink-0">
                                   HOLD
                                 </span>
                               )}
@@ -1144,223 +992,143 @@ export default function RiskIndicatorsPage() {
             )}
           </TabsContent>
 
-          {/* ── Tab 3: Report History Management ──────────────────── */}
+          {/* ── Tab 3: Settings ── */}
           <TabsContent value="settings" className="mt-0">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold">Хадгалсан тайлангуудын жагсаалт</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Тайлан бүрийг энд устгаж болно.</p>
-                </div>
-                <Button size="sm" variant="outline" onClick={loadHistory} disabled={historyLoading} className="gap-1.5">
-                  {historyLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Loader2 className="w-3.5 h-3.5 opacity-0" />}
-                  Шинэчлэх
-                </Button>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-sm font-medium">Хадгалсан тайлангууд</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">Шаардлагагүй тайлануудыг устгана уу</p>
               </div>
-
-              {historyLoading ? (
-                <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm">Уншиж байна…</span>
-                </div>
-              ) : historyList.length === 0 ? (
-                <div className="rounded-xl border border-border bg-muted/20 py-12 text-center">
-                  <p className="text-sm text-muted-foreground">Хадгалсан тайлан байхгүй байна</p>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-muted/40 border-b border-border">
-                        <th className="px-4 py-2.5 text-left font-bold text-[11px] text-muted-foreground uppercase tracking-wide">Нэр</th>
-                        <th className="px-4 py-2.5 text-left font-bold text-[11px] text-muted-foreground uppercase tracking-wide">Огноо</th>
-                        <th className="px-4 py-2.5 text-left font-bold text-[11px] text-muted-foreground uppercase tracking-wide">Хадгалсан</th>
-                        <th className="px-3 py-2.5 w-10" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {historyList.map((h, i) => (
-                        <tr key={h.id} className={`border-b border-border/50 last:border-b-0 ${i % 2 === 1 ? "bg-muted/10" : ""} hover:bg-muted/20 transition-colors`}>
-                          <td className="px-4 py-2.5 font-medium text-foreground">{h.name}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground tabular-nums">{h.pDate}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground tabular-nums">{h.createdAt?.slice(0, 10) ?? "—"}</td>
-                          <td className="px-3 py-2">
-                            {historyDeleteTarget === h.id ? (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => doDeleteReportHistory(h.id)}
-                                  disabled={historyDeleting}
-                                  className="px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold disabled:opacity-50"
-                                >
-                                  {historyDeleting ? "..." : "Тийм"}
-                                </button>
-                                <button
-                                  onClick={() => setHistoryDeleteTarget(null)}
-                                  className="px-2 py-1 rounded border border-border text-[10px] hover:bg-muted/40"
-                                >
-                                  Болих
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setHistoryDeleteTarget(h.id)}
-                                className="p-1.5 rounded border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <Button size="sm" variant="outline" onClick={loadHistory} disabled={historyLoading} className="h-8 text-xs gap-1.5 rounded-lg">
+                {historyLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                Шинэчлэх
+              </Button>
             </div>
+            {historyLoading ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
+              </div>
+            ) : historyList.length === 0 ? (
+              <div className="rounded-xl border border-border/30 py-12 text-center">
+                <p className="text-sm text-muted-foreground">Хадгалсан тайлан байхгүй</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border/50 overflow-hidden bg-card">
+                <table className="w-full">
+                  <thead className="border-b border-border/40 bg-muted/20">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wide">Нэр</th>
+                      <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wide">Огноо</th>
+                      <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wide">Хадгалсан</th>
+                      <th className="w-28" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/25">
+                    {historyList.map((h) => (
+                      <tr key={h.id} className="hover:bg-muted/15 transition-colors">
+                        <td className="px-4 py-2.5 text-sm font-medium text-foreground">{h.name}</td>
+                        <td className="px-4 py-2.5 text-sm text-muted-foreground tabular-nums">{h.pDate}</td>
+                        <td className="px-4 py-2.5 text-sm text-muted-foreground tabular-nums">{h.createdAt?.slice(0, 10) ?? "—"}</td>
+                        <td className="px-3 py-2 text-right">
+                          {historyDeleteTarget === h.id ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button onClick={() => doDeleteReportHistory(h.id)} disabled={historyDeleting} className="h-7 px-3 text-[11px] font-semibold bg-red-500 hover:bg-red-400 text-white rounded-lg disabled:opacity-50">
+                                {historyDeleting ? "..." : "Тийм"}
+                              </button>
+                              <button onClick={() => setHistoryDeleteTarget(null)} className="h-7 px-3 text-[11px] text-muted-foreground hover:text-foreground border border-border/50 rounded-lg">
+                                Болих
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setHistoryDeleteTarget(h.id)} className="p-1.5 rounded-lg text-muted-foreground/30 hover:text-red-500 hover:bg-red-500/10 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* ── Create / Edit Dialog ─────────────────────────────────────────── */}
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          if (!open) closeDialog();
-        }}
-      >
+      {/* ── Dialog: Create/Edit ── */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
         <DialogContent className="bg-card border-border/40 text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-foreground text-base font-semibold">
+            <DialogTitle className="text-sm font-semibold">
               {editingId ? "Үзүүлэлт засах" : "Шинэ үзүүлэлт"}
             </DialogTitle>
           </DialogHeader>
-
           <div className="space-y-4 py-1">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-muted-foreground text-xs">
-                  SubID <span className="text-red-400">*</span>
-                </Label>
-                <Input
-                  value={form.subid}
-                  onChange={(e) =>
-                    !editingId && setForm({ ...form, subid: e.target.value })
-                  }
-                  readOnly={!!editingId}
-                  placeholder="UB1.1"
-                  className={`h-9 rounded-xl border-border/50 placeholder:text-muted-foreground/40 ${
-                    editingId
-                      ? "bg-foreground/[0.03] text-muted-foreground/50 cursor-default select-none"
-                      : "bg-foreground/5 text-foreground"
-                  }`}
-                />
+            {form.group_num === 5 ? (
+              <div className="space-y-4">
+                <div className="px-3.5 py-3 rounded-xl bg-emerald-500/8 border border-emerald-500/20">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                    Judgement — зөвхөн жин тохируулна. Нэр болон бусад тохиргоо автоматаар тавигдана.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Жин %</Label>
+                  <Input type="number" min={0} max={100} value={form.weight} onChange={(e) => setForm({ ...form, weight: Number(e.target.value) })} className="h-9 rounded-xl bg-foreground/5 border-border/50" autoFocus />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-muted-foreground text-xs">
-                  Нэр <span className="text-red-400">*</span>
-                </Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Үзүүлэлтийн нэр"
-                  className="bg-foreground/5 border-border/50 text-foreground placeholder:text-muted-foreground/40 h-9 rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-muted-foreground text-xs">Бүлэг</Label>
-                <Select
-                  value={String(form.group_num)}
-                  onValueChange={(v) =>
-                    setForm({ ...form, group_num: Number(v) })
-                  }
-                >
-                  <SelectTrigger className="bg-foreground/5 border-border/50 text-foreground/80 h-9 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card border-border/50">
-                    {[1, 2, 3, 4, 5].map((g) => {
-                      const accent = GROUP_ACCENT[g];
-                      return (
-                        <SelectItem
-                          key={g}
-                          value={String(g)}
-                          className="text-foreground/80 focus:bg-foreground/8"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span
-                              className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold ${accent.bg} ${accent.text}`}
-                            >
-                              {GROUP_SHORT[g]}
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">SubID <span className="text-red-400">*</span></Label>
+                    <Input value={form.subid} onChange={(e) => !editingId && setForm({ ...form, subid: e.target.value })} readOnly={!!editingId} placeholder="1, 5, 27..." className={`h-9 rounded-xl border-border/50 placeholder:text-muted-foreground/30 ${editingId ? "bg-foreground/[0.03] text-muted-foreground/50 cursor-default" : "bg-foreground/5"}`} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Нэр <span className="text-red-400">*</span></Label>
+                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Үзүүлэлтийн нэр" className="h-9 rounded-xl bg-foreground/5 border-border/50 placeholder:text-muted-foreground/30" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Бүлэг</Label>
+                    <Select value={String(form.group_num)} onValueChange={(v) => setForm({ ...form, group_num: Number(v) })}>
+                      <SelectTrigger className="h-9 rounded-xl bg-foreground/5 border-border/50 text-foreground/80"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-card border-border/50">
+                        {[1, 2, 3, 4].map((g) => (
+                          <SelectItem key={g} value={String(g)} className="text-foreground/80 focus:bg-foreground/8">
+                            <span className="flex items-center gap-2">
+                              <span className={`w-4 h-4 rounded text-[9px] font-bold flex items-center justify-center ${GROUP_ACCENT[g].bg} ${GROUP_ACCENT[g].text}`}>{GROUP_SHORT[g]}</span>
+                              {GROUP_LABELS[g]}
                             </span>
-                            {GROUP_LABELS[g]}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Жин %</Label>
+                    <Input type="number" min={0} max={100} value={form.weight} onChange={(e) => setForm({ ...form, weight: Number(e.target.value) })} className="h-9 rounded-xl bg-foreground/5 border-border/50" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Hint / Тайлбар</Label>
+                  <Input value={form.hint} onChange={(e) => setForm({ ...form, hint: e.target.value })} placeholder="Нэмэлт тайлбар..." className="h-9 rounded-xl bg-foreground/5 border-border/50 placeholder:text-muted-foreground/30" />
+                </div>
+                <div className="pt-2 border-t border-border/20 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="w-3.5 h-3.5 text-muted-foreground/40" />
+                    <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Оноо тооцоолох бүтэц</span>
+                  </div>
+                  <ScaleEditor key={editingId ?? "new"} value={form.score_scale} onChange={(json) => setForm((f) => ({ ...f, score_scale: json }))} />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-muted-foreground text-xs">Жин %</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={form.weight}
-                  onChange={(e) =>
-                    setForm({ ...form, weight: Number(e.target.value) })
-                  }
-                  className="bg-foreground/5 border-border/50 text-foreground h-9 rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs">
-                Тайлбар / Hint
-              </Label>
-              <Input
-                value={form.hint}
-                onChange={(e) => setForm({ ...form, hint: e.target.value })}
-                placeholder="Нэмэлт тайлбар..."
-                className="bg-foreground/5 border-border/50 text-foreground placeholder:text-muted-foreground/40 h-9 rounded-xl"
-              />
-            </div>
-
-            {/* Scale editor */}
-            <div className="pt-1 border-t border-border/20 space-y-2.5">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-3.5 h-3.5 text-muted-foreground/40" />
-                <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
-                  Оноо тооцоолох бүтэц
-                </span>
-              </div>
-              <ScaleEditor
-                key={editingId ?? "new"}
-                value={form.score_scale}
-                onChange={(json) =>
-                  setForm((f) => ({ ...f, score_scale: json }))
-                }
-              />
-            </div>
+            )}
           </div>
-
-          <DialogFooter className="gap-2 pt-2">
-            <button
-              onClick={closeDialog}
-              disabled={saving}
-              className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-foreground border border-border/50 rounded-xl hover:bg-foreground/5 transition-colors font-medium"
-            >
+          <DialogFooter className="gap-2 pt-1">
+            <button onClick={closeDialog} disabled={saving} className="flex-1 h-9 text-sm text-muted-foreground hover:text-foreground border border-border/50 rounded-xl hover:bg-foreground/5 transition-colors">
               Болих
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-500 disabled:bg-foreground/8 disabled:text-muted-foreground/50 text-foreground rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
+            <button onClick={handleSave} disabled={saving} className="flex-1 h-9 text-sm font-semibold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl transition-colors flex items-center justify-center gap-2">
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {editingId ? "Хадгалах" : "Нэмэх"}
             </button>
@@ -1368,38 +1136,20 @@ export default function RiskIndicatorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete Confirm ───────────────────────────────────────────────── */}
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-      >
+      {/* ── Delete Confirm ── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent className="bg-card border-border/40 text-foreground max-w-sm rounded-2xl">
           <AlertDialogHeader>
-            <div className="w-11 h-11 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-2">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-2">
               <Trash2 className="w-4 h-4 text-red-400" />
             </div>
-            <AlertDialogTitle className="text-foreground text-center">
-              Үзүүлэлт устгах
-            </AlertDialogTitle>
+            <AlertDialogTitle className="text-center text-sm">Үзүүлэлт устгах уу?</AlertDialogTitle>
           </AlertDialogHeader>
-          <p className="text-muted-foreground text-sm text-center pb-2">
-            Устгахдаа итгэлтэй байна уу?{" "}
-            <span className="text-red-400/70">Буцаах боломжгүй.</span>
-          </p>
-          <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel className="flex-1 bg-transparent border-border/50 text-foreground/80 hover:bg-foreground/5 hover:text-foreground rounded-xl">
-              Болих
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex-1 bg-red-500 hover:bg-red-400 text-foreground border-0 rounded-xl font-semibold"
-            >
-              {deleting && (
-                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-              )}
+          <p className="text-xs text-muted-foreground/60 text-center pb-2">Устгасны дараа буцаах боломжгүй.</p>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="flex-1 bg-transparent border-border/50 text-foreground/70 hover:text-foreground rounded-xl text-sm">Болих</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-500 hover:bg-red-400 text-white border-0 rounded-xl text-sm font-semibold">
+              {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
               Устгах
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   riskIndicatorConfigApi,
   type IndicatorConfig,
-  type GroupConfig,
 } from "@/lib/api";
 import { INDICATOR_CATALOG, type CatalogIndicator } from "./indicator-catalog";
 import {
@@ -57,14 +56,17 @@ function buildFallbackConfig(): DynamicConfig {
       hint: c.hint,
     }),
   );
-  return { catalog, weights: { ...WEIGHTS }, loaded: true, isFallback: true };
+  // Group weights = sum of indicator weights per group (dynamic, not hardcoded)
+  const gsum = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
+  for (const c of INDICATOR_CATALOG) gsum[c.group] = (gsum[c.group] ?? 0) + c.weight;
+  const w = { s1: gsum[1] / 100, s2: gsum[2] / 100, s3: gsum[3] / 100, s4: gsum[4] / 100, j: gsum[5] / 100 };
+  return { catalog, weights: { UB: w, LOC: w }, loaded: true, isFallback: true };
 }
 
 // ─── Build from DB config ─────────────────────────────────────────────────────
 
 function buildDynamicConfig(
   indicators: IndicatorConfig[],
-  groupConfigs: GroupConfig[],
 ): DynamicConfig {
   const catalog: DynamicCatalogIndicator[] = indicators.map((ind) => ({
     id: ind.id,
@@ -78,43 +80,12 @@ function buildDynamicConfig(
     hint: ind.hint || undefined,
   }));
 
-  // Build weights from group config — defaults to hardcoded WEIGHTS if missing
-  const wUB = {
-    s1: WEIGHTS.UB.s1,
-    s2: WEIGHTS.UB.s2,
-    s3: WEIGHTS.UB.s3,
-    s4: WEIGHTS.UB.s4,
-    j: WEIGHTS.UB.j,
-  };
-  const wLOC = {
-    s1: WEIGHTS.LOC.s1,
-    s2: WEIGHTS.LOC.s2,
-    s3: WEIGHTS.LOC.s3,
-    s4: WEIGHTS.LOC.s4,
-    j: WEIGHTS.LOC.j,
-  };
+  // Group weights = sum of indicator weights per group (from admin config, not hardcoded)
+  const gsum = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
+  for (const ind of indicators) gsum[ind.group_num] = (gsum[ind.group_num] ?? 0) + ind.weight;
+  const w = { s1: gsum[1] / 100, s2: gsum[2] / 100, s3: gsum[3] / 100, s4: gsum[4] / 100, j: gsum[5] / 100 };
 
-  const groupKey = (_region: string, gn: number): keyof typeof wUB => {
-    const map: Record<number, keyof typeof wUB> = {
-      1: "s1",
-      2: "s2",
-      3: "s3",
-      4: "s4",
-      5: "j",
-    };
-    return map[gn] ?? "s1";
-  };
-
-  for (const gc of groupConfigs) {
-    const key = groupKey(gc.region, gc.group_num);
-    // Admin UI stores weights as percentages (e.g. 35 for 35%);
-    // convert to decimal fraction for use in the weighted-sum formula.
-    const w = gc.weight > 1 ? gc.weight / 100 : gc.weight;
-    if (gc.region === "UB") wUB[key] = w;
-    else if (gc.region === "LOC") wLOC[key] = w;
-  }
-
-  return { catalog, weights: { UB: wUB, LOC: wLOC }, loaded: true };
+  return { catalog, weights: { UB: w, LOC: w }, loaded: true };
 }
 
 // ─── Module-level cache (бүх ReportView instance хуваалцана) ─────────────────
@@ -126,14 +97,11 @@ function fetchConfig(): Promise<DynamicConfig> {
   if (_loadingPromise) return _loadingPromise;
   _loadingPromise = (async () => {
     try {
-      const [indicators, groupConfigs] = await Promise.all([
-        riskIndicatorConfigApi.list(),
-        riskIndicatorConfigApi.listGroupConfig(),
-      ]);
+      const indicators = await riskIndicatorConfigApi.list();
       const cfg =
         indicators.length === 0
           ? buildFallbackConfig()
-          : buildDynamicConfig(indicators, groupConfigs);
+          : buildDynamicConfig(indicators);
       _cachedConfig = cfg;
       return cfg;
     } catch {

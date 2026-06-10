@@ -123,14 +123,23 @@ export default function ReportView({
   // ── Indicator hold state ──────────────────────────────────────────────────
   const holdPeriod = pDate ? pDate.slice(0, 7) : "";
   const [heldIds, setHeldIds] = useState<Set<string>>(new Set());
+  // holds fetch дууссан эсэх — дуусаагүй үед scoring хийхгүй
+  const [holdsLoaded, setHoldsLoaded] = useState<boolean>(!pDate);
 
   useEffect(() => {
-    if (!holdPeriod) return;
+    if (!holdPeriod) {
+      setHoldsLoaded(true);
+      return;
+    }
+    setHoldsLoaded(false);
     riskApi
       .listHolds(holdPeriod)
-      .then((data) => setHeldIds(new Set(data.map((d) => d.indicatorId))))
+      .then((data) => {
+        setHeldIds(new Set(data.map((d) => d.indicatorId)));
+        setHoldsLoaded(true);
+      })
       .catch(() => {
-        /* intentional: hold state is UI-only; failure leaves holds unset */
+        setHoldsLoaded(true); // алдаа гарвал holds хоосон гэж үзэж үргэлжлэнэ
       });
   }, [holdPeriod]);
 
@@ -265,7 +274,7 @@ export default function ReportView({
   const getAggregates = useCallback(
     (rows: AnyRow[], mKeyMap: ManualMap) => {
       const base = aggregateBranch(rows, {}, {}, activeCatalog);
-      if (!dynamicConfig.loaded) return base;
+      if (!dynamicConfig.loaded || !holdsLoaded) return base;
 
       // Group rows by branch
       const byBranch = new Map<string, AnyRow[]>();
@@ -296,10 +305,15 @@ export default function ReportView({
         const s2 = ev[2] ?? b.s2;
         const s3 = ev[3] ?? b.s3;
         const s4 = ev[4] ?? b.s4 ?? null;
-        // externalJudgements байвал indicator ID тооцохгүйгээр шууд ашиглана
+        // externalJudgements байвал indicator ID тооцохгүйгээр шууд ашиглана (work горим)
+        // Эсвэл snapshot-д хадгалагдсан "j-001" canonical key-г шууд харна (tailan горим)
+        // ev[5] ашиглахгүй — catalog ID хамаарлыг арилгана
         const j = externalJudgements != null
           ? ((externalJudgements[b.branchId] ?? 0) > 0 ? externalJudgements[b.branchId] : null)
-          : ev[5] ?? b.j ?? null;
+          : (() => {
+              const snapJ = mKeyMap[b.branchId]?.["j-001"];
+              return snapJ && snapJ > 0 ? snapJ : null;
+            })();
 
         let vsum = 0,
           wsum = 0;
@@ -344,7 +358,7 @@ export default function ReportView({
         } as BranchAggregate;
       });
     },
-    [dynamicConfig, activeCatalog, heldIds, externalJudgements],
+    [dynamicConfig, activeCatalog, heldIds, holdsLoaded, externalJudgements],
   );
 
   const aggregates = useMemo<BranchAggregate[]>(() => {
@@ -1154,6 +1168,7 @@ function IndicatorDetailRow({
       }[]
     > = {};
     for (const ind of catalog) {
+      if (ind.is_judgment || ind.group === 5) continue; // Judgement дэлгэрэнгүйд харуулахгүй
       const ev = evals[ind.id] ?? { score: null, source: "none" };
       const grp = ind.group;
       if (!g[grp]) g[grp] = [];
