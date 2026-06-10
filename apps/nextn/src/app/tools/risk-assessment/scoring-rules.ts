@@ -292,12 +292,12 @@ export function aggregateBranch(
   const map = new Map<string, Acc>();
 
   for (const r of rows) {
-    const key = String(r.BRANCHID || r.SOLID || "");
+    const key = String(r.SOLID || "");
     if (!key) continue;
     let acc = map.get(key);
     if (!acc) {
       acc = {
-        branchId: String(r.BRANCHID || r.SOLID || ""),
+        branchId: String(r.SOLID || ""),
         branchName: String(r.BRANCHNAME ?? ""),
         solid: String(r.SOLID ?? ""),
         rating: "",

@@ -250,7 +250,7 @@ export default function ReportView({
   const rowsByBranch = useMemo(() => {
     const m = new Map<string, AnyRow[]>();
     for (const r of scoredRows) {
-      const id = String(r.BRANCHID || r.SOLID || "");
+      const id = String(r.SOLID || "");
       if (!id) continue;
       let arr = m.get(id);
       if (!arr) {
@@ -270,7 +270,7 @@ export default function ReportView({
       // Group rows by branch
       const byBranch = new Map<string, AnyRow[]>();
       for (const r of rows) {
-        const id = String((r as any).BRANCHID || (r as any).SOLID || "");
+        const id = String((r as any).SOLID || "");
         if (!id) continue;
         let arr = byBranch.get(id);
         if (!arr) {
@@ -361,9 +361,16 @@ export default function ReportView({
   );
 
   // Гараар Sort дарахад л эрэмбэлнэ — judgement оруулах үед автоматаар sort хийхгүй
+  // Анхны байдал (sortKey=0): SOLID-аар тоон дарааллаар эрэмбэлнэ
   const [sortKey, setSortKey] = useState<number>(0);
   const sortedFiltered = useMemo(() => {
-    if (readOnly || sortKey === 0) return filtered;
+    const bySolid = (a: BranchAggregate, b: BranchAggregate) => {
+      const na = parseFloat(a.solid) || 0;
+      const nb = parseFloat(b.solid) || 0;
+      if (na !== nb) return na - nb;
+      return a.solid.localeCompare(b.solid);
+    };
+    if (sortKey === 0) return [...filtered].sort(bySolid);
     return [...filtered].sort((a, b) => {
       const aHasJ = externalJudgements
         ? (externalJudgements[a.branchId] ?? 0) > 0
@@ -540,11 +547,15 @@ export default function ReportView({
             )}
             {!readOnly && (
               <button
-                onClick={() => setSortKey((k) => k + 1)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-all"
-                title="Judgement оруулсан салбарыг дээрт, Total-аар эрэмбэлэх"
+                onClick={() => setSortKey((k) => k === 0 ? 1 : 0)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                  sortKey > 0
+                    ? "border-indigo-500/50 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
+                    : "border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
+                }`}
+                title={sortKey > 0 ? "SOLID дарааллаар буцах" : "Judgement оруулсан салбарыг дээрт, Total-аар эрэмбэлэх"}
               >
-                ↕ Эрэмбэлэх
+                {sortKey > 0 ? "↕ SOLID↑" : "↕ Эрэмбэлэх"}
               </button>
             )}
             {!hideComparison && (
@@ -676,15 +687,25 @@ function ReportTable({
     if (committingRef.current) return;
     committingRef.current = true;
     requestAnimationFrame(() => { committingRef.current = false; });
-    const v = parseFloat(editJValue);
-    if (!isNaN(v) && v > 0) {
-      const clamped = Math.min(5, Math.max(1, v));
+    const raw = editJValue.trim();
+    if (raw === "") {
+      // Хоосн оруулбал: үнэлэмж цэвэрлэх (score=0)
       if (onJudgementChange) {
-        // externalJudgements горим: indicator ID хэрэггүйгээр шууд callback
-        onJudgementChange(branchId, clamped);
+        onJudgementChange(branchId, 0);
       } else {
         const indId = judgmentInd?.id ?? "j-001";
-        setManualValue(branchId, indId, clamped);
+        setManualValue(branchId, indId, 0);
+      }
+    } else {
+      const v = parseFloat(raw);
+      if (!isNaN(v) && v > 0) {
+        const clamped = Math.min(5, Math.max(1, v));
+        if (onJudgementChange) {
+          onJudgementChange(branchId, clamped);
+        } else {
+          const indId = judgmentInd?.id ?? "j-001";
+          setManualValue(branchId, indId, clamped);
+        }
       }
     }
     setEditingJBranch(null);

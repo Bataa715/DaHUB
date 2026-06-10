@@ -423,13 +423,15 @@ export class RiskAssessmentService implements OnModuleInit {
     score: number;
     userId: string;
   }): Promise<void> {
-    if (!args.branchId || args.score <= 0) return;
-    await this.clickhouse.insert("risk_judgement", [
+    if (!args.branchId) return;
+    // score=0 → үнэлэмжийг цэвэрлэх (ReplacingMergeTree-д 0 score оруулна,
+    // listJudgements-ийн AND score>0 filter-ээр дараа уншихад харагдахгүй болно)
+    await this.clickhouse.insert('risk_judgement', [
       {
         branchId: args.branchId,
         branchName: args.branchName,
         fetchedDate: args.fetchedDate,
-        score: Math.min(5, Math.max(0, args.score)),
+        score: args.score <= 0 ? 0 : Math.min(5, Math.max(0, args.score)),
         updatedBy: args.userId,
         updatedAt: nowCH(),
       },

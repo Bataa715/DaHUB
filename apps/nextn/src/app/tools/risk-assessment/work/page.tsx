@@ -163,7 +163,14 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   // Handle inline judgement updates
   const handleJudgementChange = useCallback(
     (branchId: string, branchName: string, score: number) => {
-      setJudgements((prev) => ({ ...prev, [branchId]: score }));
+      setJudgements((prev) => {
+        if (score <= 0) {
+          const next = { ...prev };
+          delete next[branchId];
+          return next;
+        }
+        return { ...prev, [branchId]: score };
+      });
       if (judgementTimers.current[branchId])
         clearTimeout(judgementTimers.current[branchId]);
       judgementTimers.current[branchId] = setTimeout(() => {
