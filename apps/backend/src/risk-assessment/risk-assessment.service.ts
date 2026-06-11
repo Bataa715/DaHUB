@@ -373,7 +373,7 @@ export class RiskAssessmentService implements OnModuleInit {
    * SUBID бүрийн range_type-ийн дагуу ClickHouse-аас targetDate хүртэлх бүх
    * мөрийг татаж, салбар+SUBID тус бүрд дундаж / нийлбэр / сүүлийн тооцно.
    */
-  async getRealtimeAggregated(targetDate: string): Promise<{
+  async getRealtimeAggregated(targetDate: string, sinceDate?: string): Promise<{
     fetchedDate: string;
     rows: RiskCurrentRow[];
     manualMap: Record<string, Record<string, number>>;
@@ -408,18 +408,24 @@ export class RiskAssessmentService implements OnModuleInit {
     const result: RiskCurrentRow[] = [];
 
     for (const brows of byBranch.values()) {
-      // SUBID24 → аудит орсон огнооны дугаарыг DESCRIPTION_TEXT-ээс ол
-      const sub24Latest = [...brows.filter(r => r.SUBID === 'SUBID24')]
-        .sort((a, b) => String(b.fetchedDate).localeCompare(String(a.fetchedDate)))[0];
-      let auditDate: string | null = null;
-      if (sub24Latest) {
-        const m = String(sub24Latest.DESCRIPTION_TEXT ?? '').match(/(\d{4}-\d{2}-\d{2})/);
-        if (m) auditDate = m[1];
+      // sinceDate гараар өгөгдсөн бол тэрийг ашиглана,
+      // үгүй бол SUBID24-ийн DESCRIPTION_TEXT-ээс аудит орсон огноог олно,
+      // хоёулаа байхгүй бол сүүлийн 90 хоног
+      let since: string;
+      if (sinceDate) {
+        since = sinceDate;
+      } else {
+        const sub24Latest = [...brows.filter(r => r.SUBID === 'SUBID24')]
+          .sort((a, b) => String(b.fetchedDate).localeCompare(String(a.fetchedDate)))[0];
+        let auditDate: string | null = null;
+        if (sub24Latest) {
+          const m = String(sub24Latest.DESCRIPTION_TEXT ?? '').match(/(\d{4}-\d{2}-\d{2})/);
+          if (m) auditDate = m[1];
+        }
+        const d90 = new Date(targetDate);
+        d90.setDate(d90.getDate() - 90);
+        since = auditDate ?? d90.toISOString().slice(0, 10);
       }
-      // Аудит огноо байхгүй бол сүүлийн 90 хоног
-      const d90 = new Date(targetDate);
-      d90.setDate(d90.getDate() - 90);
-      const since = auditDate ?? d90.toISOString().slice(0, 10);
 
       // SUBID → мөрүүд
       const bySubid = new Map<string, any[]>();
