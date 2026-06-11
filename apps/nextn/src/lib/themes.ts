@@ -222,19 +222,19 @@ const cleanLightTheme: ThemeDef = {
   tokens: {
     background: "0 0% 100%", // pure white
     foreground: "222 47% 8%", // #0a0f1e — very dark navy (WCAG AAA)
-    card: "0 0% 100%",
+    card: "210 25% 98.5%", // very slight blue-gray tint to separate from background
     cardForeground: "222 47% 8%",
     popover: "0 0% 100%",
     popoverForeground: "222 47% 8%",
 
-    primary: "221 83% 53%", // #2563eb — blue-600, trusted & vivid
+    primary: "221 83% 53%", // #2563eb — blue-600
     primaryForeground: "0 0% 100%",
 
-    secondary: "210 16% 96%", // #f1f5f9 slate-100
+    secondary: "210 16% 94%", // #f1f5f9 slate-100
     secondaryForeground: "222 47% 12%",
 
-    muted: "210 16% 93%", // #f1f5f9
-    mutedForeground: "215 25% 22%", // #2d3a4a — much darker for readability with opacity
+    muted: "210 16% 90%", // slightly darker than before for visible input backgrounds
+    mutedForeground: "215 20% 38%", // solid medium-dark gray — readable at full and high opacity
 
     accent: "213 93% 97%", // #eff6ff pale blue
     accentForeground: "221 83% 38%", // deep blue
@@ -242,8 +242,8 @@ const cleanLightTheme: ThemeDef = {
     destructive: "0 84% 50%", // #ef4444 red-500
     destructiveForeground: "0 0% 100%",
 
-    border: "214 32% 88%", // #e2e8f0 slate-200
-    input: "214 32% 78%", // slightly darker for visibility
+    border: "214 32% 82%", // was 88% — more visible borders
+    input: "214 32% 74%", // was 78% — clearly visible input borders
     ring: "221 83% 53%",
     radius: "0.8rem",
 

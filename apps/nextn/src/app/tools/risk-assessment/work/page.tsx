@@ -89,7 +89,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         if (ld) {
           setSelectedDate(ld);
           const [res, judgeList] = await Promise.all([
-            riskApi.getRealtime(ld),
+            riskApi.getRealtimeAggregated(ld),
             riskApi.listJudgements(ld),
           ]);
           if (cancelled) return;
@@ -124,7 +124,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
     setErrorMsg(null);
     try {
       const [res, judgeList] = await Promise.all([
-        riskApi.getRealtime(date),
+        riskApi.getRealtimeAggregated(date),
         riskApi.listJudgements(date),
       ]);
       if (abort.signal.aborted) return;
@@ -190,7 +190,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       const branchRow = rows.find(
         (r) =>
           r.rowType === "oracle" &&
-          String(r.BRANCHID || r.SOLID || "") === branchId,
+          String(r.SOLID || "") === branchId,
       );
       const branchName = branchRow
         ? String(branchRow.BRANCHNAME ?? branchRow.SOLID ?? branchId)

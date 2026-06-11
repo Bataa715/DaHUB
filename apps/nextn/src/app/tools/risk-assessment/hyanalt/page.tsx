@@ -172,6 +172,7 @@ export default function RiskAssessmentDetailPage() {
   const [showDetail, setShowDetail] = useState(false);
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<FilterKey>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "УБ-Салбар" | "ОН-Салбар">("all");
   const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -358,12 +359,12 @@ export default function RiskAssessmentDetailPage() {
           if (r.__group !== groupFilter) return false;
         }
       }
+      if (statusFilter !== "all" && r.STATUS !== statusFilter) return false;
       if (!q) return true;
       return [
         r.SOLID,
         r.BRANCHNAME,
-        r.BRANCHID,
-        r.PARENTBRANCH,
+        r.STATUS,
         r.RESULT,
         r.DESCRIPTION_TEXT,
         r.ID,
@@ -374,40 +375,51 @@ export default function RiskAssessmentDetailPage() {
         .map((v) => String(v ?? "").toLowerCase())
         .some((s) => s.includes(q));
     });
-  }, [scoredRows, search, groupFilter]);
+  }, [scoredRows, search, groupFilter, statusFilter]);
 
   const downloadCsv = useCallback(() => {
-    const cols = [
-      "SOLID",
-      "BRANCHNAME",
-      "BRANCHID",
-      "PARENTBRANCH",
-      "RESULT",
-      "RESULT_TYPE",
-      "DESCRIPTION_TEXT",
-      "P_DATEBEG",
-      "P_DATE",
+    const headers = [
+      "№",
+      "SOL",
+      "Салбарын нэр",
+      "Статус",
+      "Утга",
+      "Утгын төрөл",
+      "Тайлбар",
+      "Эхлэх огноо",
+      "Дуусах огноо",
       "ID",
       "SUBID",
-      "OPERATION_TYPE",
-      "SCORE_GROUP",
-      "SCORE",
-      "SCORE_LABEL",
-    ] as const;
+      "Онооны бүлэг",
+      "Оноо",
+      "Онооны тайлбар",
+      "Үйлчлэлт",
+    ];
     const escape = (v: unknown) => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const csv = [
-      cols.join(","),
-      ...filteredRows.map((r) =>
-        cols
-          .map((c) => {
-            if (c === "SCORE_GROUP") return escape(r.__group ?? "");
-            if (c === "SCORE") return escape(r.__score ?? "");
-            if (c === "SCORE_LABEL") return escape(r.__scoreLabel ?? "");
-            return escape((r as unknown as Record<string, unknown>)[c]);
-          })
+      headers.join(","),
+      ...filteredRows.map((r, i) =>
+        [
+          i + 1,
+          r.SOLID,
+          r.BRANCHNAME,
+          r.STATUS,
+          r.RESULT,
+          r.RESULT_TYPE,
+          r.DESCRIPTION_TEXT,
+          r.P_DATEBEG,
+          r.P_DATE,
+          r.ID,
+          r.SUBID,
+          r.__group ?? "",
+          r.__score ?? "",
+          r.__scoreLabel ?? "",
+          r.OPERATION_TYPE,
+        ]
+          .map(escape)
           .join(","),
       ),
     ].join("\n");
@@ -428,10 +440,10 @@ export default function RiskAssessmentDetailPage() {
       { branchId: string; branchName: string; solid: string; rows: ScoredRow[] }
     >();
     for (const r of filteredRows) {
-      const key = String(r.BRANCHID ?? r.SOLID ?? "");
+      const key = String(r.SOLID ?? "");
       if (!m.has(key))
         m.set(key, {
-          branchId: String(r.BRANCHID ?? ""),
+          branchId: String(r.SOLID ?? ""),
           branchName: String(r.BRANCHNAME ?? ""),
           solid: String(r.SOLID ?? ""),
           rows: [],
@@ -593,6 +605,26 @@ export default function RiskAssessmentDetailPage() {
                         </button>
                       ))}
                     </div>
+                    {/* STATUS filter */}
+                    <div className="flex rounded-lg border border-border overflow-hidden bg-background/60">
+                      {(["all", "УБ-Салбар", "ОН-Салбар"] as const).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setStatusFilter(s)}
+                          className={`px-3 py-1.5 text-[11px] font-semibold border-r last:border-r-0 border-border transition-all ${
+                            statusFilter === s
+                              ? "bg-violet-500/15 text-violet-600 dark:text-violet-400 shadow-inner"
+                              : s === "УБ-Салбар"
+                                ? "hover:bg-accent/60 text-blue-600 dark:text-blue-400"
+                                : s === "ОН-Салбар"
+                                  ? "hover:bg-accent/60 text-emerald-600 dark:text-emerald-400"
+                                  : "hover:bg-accent/60 text-muted-foreground"
+                          }`}
+                        >
+                          {s === "all" ? "Бүгд" : s}
+                        </button>
+                      ))}
+                    </div>
                     <div className="relative">
                       <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                       <input
@@ -662,8 +694,7 @@ export default function RiskAssessmentDetailPage() {
                         <tr>
                           <th className="px-2 py-2 text-left">SOLID</th>
                           <th className="px-2 py-2 text-left">BRANCHNAME</th>
-                          <th className="px-2 py-2 text-left">BRANCHID</th>
-                          <th className="px-2 py-2 text-left">PARENT</th>
+                          <th className="px-2 py-2 text-center">СТАТУС</th>
                           <th className="px-2 py-2 text-right">RESULT</th>
                           <th className="px-2 py-2 text-center">TYPE</th>
                           <th className="px-2 py-2 text-left">DESCRIPTION</th>
@@ -682,7 +713,7 @@ export default function RiskAssessmentDetailPage() {
                       <tbody>
                         {filteredRows.map((r, i) => (
                           <tr
-                            key={`${r.BRANCHID}-${r.SUBID}-${i}`}
+                            key={`${r.SOLID}-${r.SUBID}-${i}`}
                             className="border-t border-border hover:bg-accent/30"
                           >
                             <td className="px-2 py-1.5 tabular-nums">
@@ -691,11 +722,14 @@ export default function RiskAssessmentDetailPage() {
                             <td className="px-2 py-1.5 font-medium">
                               {r.BRANCHNAME}
                             </td>
-                            <td className="px-2 py-1.5 tabular-nums">
-                              {r.BRANCHID}
-                            </td>
-                            <td className="px-2 py-1.5 text-muted-foreground">
-                              {r.PARENTBRANCH}
+                            <td className="px-2 py-1.5 text-center">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                r.STATUS === "УБ-Салбар"
+                                  ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/25"
+                                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
+                              }`}>
+                                {r.STATUS || "УБ-Салбар"}
+                              </span>
                             </td>
                             <td className="px-2 py-1.5 text-right tabular-nums font-medium">
                               {r.RESULT}
@@ -759,6 +793,15 @@ export default function RiskAssessmentDetailPage() {
                               <span className="font-semibold text-sm truncate">
                                 {g.branchName}
                               </span>
+                              {g.rows[0]?.STATUS && (
+                                <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                                  g.rows[0].STATUS === "УБ-Салбар"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25"
+                                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+                                }`}>
+                                  {g.rows[0].STATUS}
+                                </span>
+                              )}
                               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground tabular-nums">
                                 {g.branchId}
                               </span>
@@ -778,11 +821,8 @@ export default function RiskAssessmentDetailPage() {
                                     <th className="px-2 py-1.5 text-left">
                                       BRANCHNAME
                                     </th>
-                                    <th className="px-2 py-1.5 text-left">
-                                      BRANCHID
-                                    </th>
-                                    <th className="px-2 py-1.5 text-left">
-                                      PARENT
+                                    <th className="px-2 py-1.5 text-center">
+                                      СТАТУС
                                     </th>
                                     <th className="px-2 py-1.5 text-right">
                                       RESULT
@@ -831,11 +871,14 @@ export default function RiskAssessmentDetailPage() {
                                         <td className="px-2 py-1.5 font-medium">
                                           {r.BRANCHNAME}
                                         </td>
-                                        <td className="px-2 py-1.5 tabular-nums">
-                                          {r.BRANCHID}
-                                        </td>
-                                        <td className="px-2 py-1.5 text-muted-foreground">
-                                          {r.PARENTBRANCH}
+                                        <td className="px-2 py-1.5 text-center">
+                                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                            r.STATUS === "УБ-Салбар"
+                                              ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/25"
+                                              : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
+                                          }`}>
+                                            {r.STATUS || "УБ"}
+                                          </span>
                                         </td>
                                         <td className="px-2 py-1.5 text-right tabular-nums font-medium">
                                           {r.RESULT}

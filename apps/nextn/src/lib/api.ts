@@ -778,8 +778,7 @@ export interface RiskCurrentRow {
   pDateBeg: string;
   SOLID: string;
   BRANCHNAME: string;
-  BRANCHID: string;
-  PARENTBRANCH: string;
+  STATUS: string;
   RESULT: string;
   RESULT_TYPE: string;
   DESCRIPTION_TEXT: string;
@@ -821,6 +820,21 @@ export const riskApi = {
   }> => {
     const res = await api.get(`/risk-assessment/realtime`, {
       params: date ? { date } : {},
+    });
+    return res.data;
+  },
+
+  /**
+   * Range-based aggregated realtime data — work page-д ашиглана.
+   * Тухайн огноо хүртэлх бүх мөрийг range_type (last/avg/sum)-аар нэгтгэж буцаана.
+   */
+  getRealtimeAggregated: async (date: string): Promise<{
+    fetchedDate: string;
+    rows: RiskCurrentRow[];
+    manualMap: Record<string, Record<string, number>>;
+  }> => {
+    const res = await api.get(`/risk-assessment/realtime/aggregated`, {
+      params: { date },
     });
     return res.data;
   },

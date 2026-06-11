@@ -15,8 +15,7 @@ export interface RiskCurrentRow {
   pDateBeg: string;
   SOLID: string;
   BRANCHNAME: string;
-  BRANCHID: string;
-  PARENTBRANCH: string;
+  STATUS: string;
   RESULT: string;
   RESULT_TYPE: string;
   DESCRIPTION_TEXT: string;
@@ -114,8 +113,7 @@ export class RiskAssessmentService implements OnModuleInit {
         fetchedAt        DateTime DEFAULT now(),
         SOLID            String DEFAULT '',
         BRANCHNAME       String DEFAULT '',
-        BRANCHID         String DEFAULT '',
-        PARENTBRANCH     String DEFAULT '',
+        STATUS           String DEFAULT '',
         RESULT           String DEFAULT '',
         RESULT_TYPE      String DEFAULT '',
         DESCRIPTION_TEXT String DEFAULT '',
@@ -128,7 +126,20 @@ export class RiskAssessmentService implements OnModuleInit {
         ORDER BY (fetchedDate, rowKey)
     `);
 
-    // Тухайн огноог "lock" хийсэн тэмдэглэл
+    // Шинэ баганууд нэмэх / хуучин баганууд хасах (migration)
+    await this.clickhouse.exec(`
+      ALTER TABLE risk_realtime ADD COLUMN IF NOT EXISTS STATUS String DEFAULT ''
+    `).catch(() => {});
+    await this.clickhouse.exec(`
+      ALTER TABLE risk_realtime DROP COLUMN IF EXISTS BRANCHID
+    `).catch(() => {});
+    await this.clickhouse.exec(`
+      ALTER TABLE risk_realtime DROP COLUMN IF EXISTS PARENTBRANCH
+    `).catch(() => {});
+    await this.clickhouse.exec(`
+      ALTER TABLE risk_realtime DROP COLUMN IF EXISTS REGION
+    `).catch(() => {});
+
     await this.clickhouse.exec(`
       CREATE TABLE IF NOT EXISTS risk_realtime_locks (
         fetchedDate String,
@@ -344,7 +355,7 @@ export class RiskAssessmentService implements OnModuleInit {
     const rows = await this.clickhouse.query<any>(
       `SELECT rowKey, 'oracle' AS rowType, toString(fetchedAt) AS fetchedAt,
               '' AS pDate, '' AS pDateBeg,
-              SOLID, BRANCHNAME, BRANCHID, PARENTBRANCH,
+              SOLID, BRANCHNAME, STATUS,
               RESULT, RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE,
               ID, SUBID, OPERATION_TYPE,
               0 AS isManual, '' AS indicatorId, NULL AS indicatorValue
@@ -355,6 +366,114 @@ export class RiskAssessmentService implements OnModuleInit {
       { d: fetchedDate },
     );
     return { fetchedDate, rows, manualMap: {} };
+  }
+
+  /**
+   * work page-д ашиглах range-based aggregated өгөгдөл.
+   * SUBID бүрийн range_type-ийн дагуу ClickHouse-аас targetDate хүртэлх бүх
+   * мөрийг татаж, салбар+SUBID тус бүрд дундаж / нийлбэр / сүүлийн тооцно.
+   */
+  async getRealtimeAggregated(targetDate: string): Promise<{
+    fetchedDate: string;
+    rows: RiskCurrentRow[];
+    manualMap: Record<string, Record<string, number>>;
+  }> {
+    // SUBID → нэгтгэх арга ('avg' | 'sum' | 'last')
+    const RANGE_AVG = new Set([
+      'SUBID10', 'SUBID11', 'SUBID12',
+      'SUBID23', 'SUBID26',
+      'SUBID42', 'SUBID43', 'SUBID44', 'SUBID45',
+    ]);
+    const RANGE_SUM = new Set(['SUBID16', 'SUBID22', 'SUBID27', 'SUBID30', 'SUBID32']);
+
+    const allRaw = await this.clickhouse.query<any>(
+      `SELECT rowKey, toString(fetchedAt) AS fetchedAt, fetchedDate,
+              SOLID, BRANCHNAME, STATUS,
+              RESULT, RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE,
+              ID, SUBID, OPERATION_TYPE
+       FROM risk_realtime FINAL
+       WHERE fetchedDate <= {d:String}
+       ORDER BY SOLID, SUBID, fetchedDate`,
+      { d: targetDate },
+    );
+
+    // SOLID → мөрүүд
+    const byBranch = new Map<string, any[]>();
+    for (const r of allRaw) {
+      const k = String(r.SOLID ?? '');
+      if (!byBranch.has(k)) byBranch.set(k, []);
+      byBranch.get(k)!.push(r);
+    }
+
+    const result: RiskCurrentRow[] = [];
+
+    for (const brows of byBranch.values()) {
+      // SUBID24 → аудит орсон огнооны дугаарыг DESCRIPTION_TEXT-ээс ол
+      const sub24Latest = [...brows.filter(r => r.SUBID === 'SUBID24')]
+        .sort((a, b) => String(b.fetchedDate).localeCompare(String(a.fetchedDate)))[0];
+      let auditDate: string | null = null;
+      if (sub24Latest) {
+        const m = String(sub24Latest.DESCRIPTION_TEXT ?? '').match(/(\d{4}-\d{2}-\d{2})/);
+        if (m) auditDate = m[1];
+      }
+      // Аудит огноо байхгүй бол сүүлийн 90 хоног
+      const d90 = new Date(targetDate);
+      d90.setDate(d90.getDate() - 90);
+      const since = auditDate ?? d90.toISOString().slice(0, 10);
+
+      // SUBID → мөрүүд
+      const bySubid = new Map<string, any[]>();
+      for (const r of brows) {
+        const k = String(r.SUBID ?? '');
+        if (!bySubid.has(k)) bySubid.set(k, []);
+        bySubid.get(k)!.push(r);
+      }
+
+      for (const [subid, srows] of bySubid) {
+        const sorted = [...srows].sort((a, b) =>
+          String(b.fetchedDate).localeCompare(String(a.fetchedDate)));
+        const latest = sorted[0];
+        let effectiveResult = String(latest.RESULT ?? '');
+
+        if (RANGE_AVG.has(subid) || RANGE_SUM.has(subid)) {
+          const rangeRows = srows.filter(r => String(r.fetchedDate) >= since);
+          const src = rangeRows.length > 0 ? rangeRows : srows;
+          const nums = src
+            .map(r => parseFloat(String(r.RESULT ?? '').replace(/[%,\s]/g, '')))
+            .filter(n => !isNaN(n) && isFinite(n));
+          if (nums.length > 0) {
+            const val = RANGE_SUM.has(subid)
+              ? nums.reduce((a, b) => a + b, 0)
+              : nums.reduce((a, b) => a + b, 0) / nums.length;
+            effectiveResult = String(Math.round(val * 100) / 100);
+          }
+        }
+
+        result.push({
+          rowKey: String(latest.rowKey ?? ''),
+          rowType: 'oracle',
+          fetchedAt: String(latest.fetchedAt ?? ''),
+          pDate: '',
+          pDateBeg: '',
+          SOLID: String(latest.SOLID ?? ''),
+          BRANCHNAME: String(latest.BRANCHNAME ?? ''),
+          STATUS: String(latest.STATUS ?? ''),
+          RESULT: effectiveResult,
+          RESULT_TYPE: String(latest.RESULT_TYPE ?? ''),
+          DESCRIPTION_TEXT: String(latest.DESCRIPTION_TEXT ?? ''),
+          P_DATEBEG: String(latest.P_DATEBEG ?? ''),
+          P_DATE: String(latest.P_DATE ?? ''),
+          ID: String(latest.ID ?? ''),
+          SUBID: subid,
+          OPERATION_TYPE: String(latest.OPERATION_TYPE ?? ''),
+          isManual: 0,
+          indicatorId: '',
+          indicatorValue: null,
+        });
+      }
+    }
+
+    return { fetchedDate: targetDate, rows: result, manualMap: {} };
   }
 
   // ── Lock ──────────────────────────────────────────────────────────────────
@@ -455,7 +574,7 @@ export class RiskAssessmentService implements OnModuleInit {
     const oracleRows = source.rows;
     const id = randomUUID();
     const createdAt = nowCH();
-    const branchCount = new Set(oracleRows.map((r: any) => r.BRANCHID)).size;
+    const branchCount = new Set(oracleRows.map((r: any) => r.SOLID)).size;
     const pDate = args.fetchedDate;
     await this.clickhouse.insert("risk_assessment_history", [
       {
