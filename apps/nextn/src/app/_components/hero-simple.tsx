@@ -198,11 +198,17 @@ export default function Hero() {
                 className="text-5xl sm:text-6xl font-black leading-none tracking-tight"
               >
                 <span
-                  className={isDark ? "bg-clip-text text-transparent" : "text-foreground"}
-                  style={isDark ? {
-                    backgroundImage:
-                      "linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)",
-                  } : undefined}
+                  className={
+                    isDark ? "bg-clip-text text-transparent" : "text-foreground"
+                  }
+                  style={
+                    isDark
+                      ? {
+                          backgroundImage:
+                            "linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)",
+                        }
+                      : undefined
+                  }
                 >
                   {user?.name || t("defaultUser")}
                 </span>

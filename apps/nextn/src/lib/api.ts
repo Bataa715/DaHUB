@@ -824,21 +824,6 @@ export const riskApi = {
     return res.data;
   },
 
-  /**
-   * Range-based aggregated realtime data — work page-д ашиглана.
-   * Тухайн огноо хүртэлх бүх мөрийг range_type (last/avg/sum)-аар нэгтгэж буцаана.
-   */
-  getRealtimeAggregated: async (date: string, since?: string): Promise<{
-    fetchedDate: string;
-    rows: RiskCurrentRow[];
-    manualMap: Record<string, Record<string, number>>;
-  }> => {
-    const res = await api.get(`/risk-assessment/realtime/aggregated`, {
-      params: since ? { date, since } : { date },
-    });
-    return res.data;
-  },
-
   /** Lock хийгдсэн огноог авах */
   getRealtimeLock: async (): Promise<{ lockedDate: string | null }> => {
     const res = await api.get(`/risk-assessment/realtime/lock`);

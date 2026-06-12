@@ -23,7 +23,10 @@ import {
   type ScoreResult,
   type ScoreGroup,
 } from "../scoring-rules";
-import { useIndicatorConfig, type DynamicCatalogIndicator } from "../use-indicator-config";
+import {
+  useIndicatorConfig,
+  type DynamicCatalogIndicator,
+} from "../use-indicator-config";
 import ReportView from "../report-view";
 import ComparePanel from "./_ComparePanel";
 
@@ -33,7 +36,10 @@ type ScoredRow = RiskCurrentRow & {
   __group: ScoreGroup | null;
 };
 
-function toScored(rows: RiskCurrentRow[], catalog: DynamicCatalogIndicator[]): ScoredRow[] {
+function toScored(
+  rows: RiskCurrentRow[],
+  catalog: DynamicCatalogIndicator[],
+): ScoredRow[] {
   return rows
     .filter((r) => r.rowType === "oracle")
     .map((r) => {
@@ -44,10 +50,19 @@ function toScored(rows: RiskCurrentRow[], catalog: DynamicCatalogIndicator[]): S
           : { score: null, label: null };
       const grpNum = ind?.group;
       const __group: ScoreGroup | null =
-        grpNum === 1 ? "Score 1" :
-        grpNum === 2 ? "Score 2" :
-        grpNum === 3 ? "Score 3" : null;
-      return { ...r, __score: score as ScoreResult, __scoreLabel: label, __group };
+        grpNum === 1
+          ? "Score 1"
+          : grpNum === 2
+            ? "Score 2"
+            : grpNum === 3
+              ? "Score 3"
+              : null;
+      return {
+        ...r,
+        __score: score as ScoreResult,
+        __scoreLabel: label,
+        __group,
+      };
     });
 }
 
@@ -153,8 +168,12 @@ export default function RiskReportsPage() {
         setComparisonManualMap(res.manualMap || {});
       })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoadingComparison(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setLoadingComparison(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [comparisonReportId]);
 
   // Delete handler
@@ -187,8 +206,14 @@ export default function RiskReportsPage() {
     return historyList.find((h) => h.id === comparisonReportId) || null;
   }, [historyList, comparisonReportId]);
 
-  const primaryScoredRows = useMemo(() => toScored(reportRows, catalog), [reportRows, catalog]);
-  const comparisonScoredRows = useMemo(() => toScored(comparisonRows, catalog), [comparisonRows, catalog]);
+  const primaryScoredRows = useMemo(
+    () => toScored(reportRows, catalog),
+    [reportRows, catalog],
+  );
+  const comparisonScoredRows = useMemo(
+    () => toScored(comparisonRows, catalog),
+    [comparisonRows, catalog],
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
@@ -226,7 +251,9 @@ export default function RiskReportsPage() {
         <div className="rounded-xl border border-border bg-muted/30 p-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Тайлан сонгох</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                Тайлан сонгох
+              </span>
               <div className="flex items-center gap-2">
                 <select
                   value={selectedReportId}
@@ -254,7 +281,9 @@ export default function RiskReportsPage() {
             </div>
             {selectedReportId && (
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase">Өмнөх улирал</span>
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                  Өмнөх улирал
+                </span>
                 <select
                   value={comparisonReportId}
                   onChange={(e) => setComparisonReportId(e.target.value)}
@@ -312,7 +341,6 @@ export default function RiskReportsPage() {
             initialManualMap={reportManualMap}
             previousScoredRows={comparisonScoredRows}
             previousHistoryName={comparisonReportInfo?.name ?? null}
-            previousFetchedAt={comparisonReportInfo?.createdAt ?? null}
             previousManualMap={comparisonManualMap}
             hideComparison={!comparisonReportId}
           />
@@ -340,8 +368,12 @@ export default function RiskReportsPage() {
                 <Trash2 className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">Хадгалсан тайланг устгах</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Энэ үйлдлийг буцаах боломгүй.</p>
+                <h3 className="text-sm font-semibold">
+                  Хадгалсан тайланг устгах
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Энэ үйлдлийг буцаах боломгүй.
+                </p>
               </div>
             </div>
             <div className="flex justify-end gap-2">

@@ -30,6 +30,7 @@ import {
   Search,
   UserMinus,
   ShieldAlert,
+  CalendarRange,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -140,7 +141,7 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "risk_assessment",
-    name: "Салбарын эрсдэлийн үнэлгээ",
+    name: "Эрсдэлийн үнэлгээ",
     description:
       "Сар бүрийн эрсдэлийн үнэлгээ — салбаруудын оноо, гар засвар, аудит лог",
     icon: ShieldAlert,
@@ -149,6 +150,34 @@ const AVAILABLE_TOOLS: Tool[] = [
     category: "work",
     adminPath: "/admin/risk-indicators",
     adminLabel: "Тохиргоо →",
+  },
+  {
+    id: "weekly_report_audit",
+    name: "7 хоногийн тайлан (аудит хэлтэс)",
+    description: "ЕАХ / МТАХ / ЗАЧБХ-н долоо хоногийн тайлан бичих эрх",
+    icon: CalendarRange,
+    color: "from-indigo-500 to-purple-500",
+    gradient: "bg-gradient-to-br from-indigo-500/20 to-purple-500/20",
+    category: "work",
+  },
+  {
+    id: "weekly_report_daa",
+    name: "7 хоногийн тайлан (ДАА)",
+    description: "Дата анализийн алба — долоо хоногийн тайлан бичих эрх",
+    icon: CalendarRange,
+    color: "from-sky-500 to-indigo-500",
+    gradient: "bg-gradient-to-br from-sky-500/20 to-indigo-500/20",
+    category: "work",
+  },
+  {
+    id: "weekly_report_director",
+    name: "7 хоногийн тайлан (захирал)",
+    description:
+      "Газрын захирал — бүх хэлтсийн нэгдсэн тайлан харах, засах эрх",
+    icon: CalendarRange,
+    color: "from-violet-500 to-purple-500",
+    gradient: "bg-gradient-to-br from-violet-500/20 to-purple-500/20",
+    category: "work",
   },
 ];
 
@@ -477,50 +506,87 @@ export default function AdminToolsPage() {
         title="Хэрэгсэл - Эрх удирдах"
       />
 
-      <div className="container mx-auto py-6 px-4">
-        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-          {visibleTools.map((tool) => {
-            const usersWithAccess = getUsersWithAccess(tool.id);
-            const pct =
-              users.length > 0
-                ? Math.round((usersWithAccess.length / users.length) * 100)
-                : 0;
-            return (
-              <button
-                key={tool.id}
-                onClick={() => handleToolSelect(tool)}
-                className="group text-left bg-background border border-border hover:border-border/80 rounded-xl p-4 transition-colors"
-              >
-                <p className="text-sm font-medium text-foreground mb-3 leading-snug">
-                  {tool.name}
-                </p>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground/60">
-                    {usersWithAccess.length} хэрэглэгч
-                  </span>
-                  {tool.adminPath ? (
-                    <Link
-                      href={tool.adminPath}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {tool.adminLabel ?? "Тохиргоо →"}
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-muted-foreground/40">
-                      {pct}%
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 h-0.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-muted-foreground/60 transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </button>
-            );
-          })}
+      <div className="container mx-auto py-6 px-4 space-y-6">
+        {/* Stats row */}
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: "Нийт хэрэглэгч", value: users.length },
+            { label: "Эрхтэй", value: totalUsersWithAnyTool },
+            { label: "Нийт эрх", value: totalPermissions },
+            { label: "Хэрэгсэл", value: visibleTools.length },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-background border border-border rounded-xl px-4 py-3"
+            >
+              <p className="text-xs text-muted-foreground/60 mb-0.5">
+                {stat.label}
+              </p>
+              <p className="text-xl font-semibold text-foreground">
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Tool Cards */}
+        <div>
+          {/* ── Ажлын хэрэгслүүд ── */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest">
+                Ажлын
+              </span>
+              <div className="flex-1 h-px bg-muted" />
+            </div>
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+              {visibleTools.map((tool) => {
+                const usersWithAccess = getUsersWithAccess(tool.id);
+                const pct =
+                  users.length > 0
+                    ? Math.round((usersWithAccess.length / users.length) * 100)
+                    : 0;
+                return (
+                  <button
+                    key={tool.id}
+                    onClick={() => handleToolSelect(tool)}
+                    className="group text-left bg-background border border-border hover:border-border/80 rounded-xl p-4 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-foreground mb-1 leading-snug">
+                      {tool.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 line-clamp-2 mb-3">
+                      {tool.description}
+                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground/60">
+                        {usersWithAccess.length} хэрэглэгч
+                      </span>
+                      {tool.adminPath ? (
+                        <Link
+                          href={tool.adminPath}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {tool.adminLabel ?? "Тохиргоо →"}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">
+                          {pct}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 h-0.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-muted-foreground/60 transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 

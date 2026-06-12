@@ -10,10 +10,7 @@
  * оруулах шаардлагатай (UI-д "Гар" товчин дотор input харагдана).
  */
 
-import {
-  type ScoreResult,
-  type OracleValue,
-} from "./scoring-rules";
+import { type ScoreResult, type OracleValue } from "./scoring-rules";
 
 export type CatalogGroup = 1 | 2 | 3 | 4 | 5;
 

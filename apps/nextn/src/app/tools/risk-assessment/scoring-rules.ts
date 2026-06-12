@@ -17,7 +17,6 @@ export type ScoreValue = 0 | 1 | 2 | 3 | 4 | 5;
 export type OracleValue = string | number | null;
 export type ScoreResult = ScoreValue | "Үнэлэхгүй" | null;
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Dynamic score computation — uses JSON ScoreScale from DB instead of
 // hardcoded INDICATOR_RULES. Shared format with risk-indicator-config backend.
@@ -319,7 +318,11 @@ export function aggregateBranch(
     const ind = catalog.find((c) => c.subid === subidStr);
     if (!ind || ind.is_manual || ind.group > 4) continue;
     const grp = `Score ${ind.group}` as ScoreGroup;
-    const { score } = computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE);
+    const { score } = computeScoreDynamic(
+      ind.score_scale,
+      r.RESULT,
+      r.RESULT_TYPE,
+    );
     if (typeof score === "number" && score > 0) {
       acc.sums[grp].sum += score;
       acc.sums[grp].cnt += 1;

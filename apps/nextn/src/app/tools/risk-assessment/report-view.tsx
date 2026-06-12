@@ -44,7 +44,6 @@ interface Props {
   riskFilter: "all" | RiskLevel;
   setRiskFilter: React.Dispatch<React.SetStateAction<"all" | RiskLevel>>;
   previousScoredRows?: AnyRow[];
-  previousFetchedAt?: string | null;
   previousHistoryName?: string | null;
   pDate?: string;
   readOnly?: boolean;
@@ -93,7 +92,6 @@ export default function ReportView({
   riskFilter,
   setRiskFilter,
   previousScoredRows = [],
-  previousFetchedAt: _previousFetchedAt,
   previousHistoryName,
   pDate,
   readOnly = false,
@@ -109,7 +107,8 @@ export default function ReportView({
   const [manualLoading, setManualLoading] = useState(false);
   const dynamicConfig = useIndicatorConfig();
   // judgment indicator-ийн DB id (catalog ачааллагдсан үед өөрчлөгдөнө)
-  const judgmentIndId = dynamicConfig.catalog.find((c) => c.is_judgment)?.id ?? "";
+  const judgmentIndId =
+    dynamicConfig.catalog.find((c) => c.is_judgment)?.id ?? "";
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // beforeunload flush-д зориулж pending payload-уудыг хянана
@@ -146,9 +145,10 @@ export default function ReportView({
   // Hold хийгдсэн indicator-уудыг catalog-аас хасна —
   // score тооцоо болон дэлгэрэнгүй харагдахгүй болно
   const activeCatalog = useMemo(
-    () => heldIds.size > 0
-      ? dynamicConfig.catalog.filter((c) => !heldIds.has(c.id))
-      : dynamicConfig.catalog,
+    () =>
+      heldIds.size > 0
+        ? dynamicConfig.catalog.filter((c) => !heldIds.has(c.id))
+        : dynamicConfig.catalog,
     [dynamicConfig.catalog, heldIds],
   );
 
@@ -293,11 +293,7 @@ export default function ReportView({
         const branchRows = byBranch.get(b.branchId) ?? [];
         const ev = computeGroupScoresDynamic(
           activeCatalog,
-          evaluateBranchDynamic(
-            activeCatalog,
-            branchRows,
-            mKeyMap[b.branchId],
-          ),
+          evaluateBranchDynamic(activeCatalog, branchRows, mKeyMap[b.branchId]),
           heldIds,
         );
         const w = dynamicConfig.weights[b.region];
@@ -308,12 +304,15 @@ export default function ReportView({
         // externalJudgements байвал indicator ID тооцохгүйгээр шууд ашиглана (work горим)
         // Эсвэл snapshot-д хадгалагдсан "j-001" canonical key-г шууд харна (tailan горим)
         // ev[5] ашиглахгүй — catalog ID хамаарлыг арилгана
-        const j = externalJudgements != null
-          ? ((externalJudgements[b.branchId] ?? 0) > 0 ? externalJudgements[b.branchId] : null)
-          : (() => {
-              const snapJ = mKeyMap[b.branchId]?.["j-001"];
-              return snapJ && snapJ > 0 ? snapJ : null;
-            })();
+        const j =
+          externalJudgements != null
+            ? (externalJudgements[b.branchId] ?? 0) > 0
+              ? externalJudgements[b.branchId]
+              : null
+            : (() => {
+                const snapJ = mKeyMap[b.branchId]?.["j-001"];
+                return snapJ && snapJ > 0 ? snapJ : null;
+              })();
 
         let vsum = 0,
           wsum = 0;
@@ -399,7 +398,7 @@ export default function ReportView({
       if (aHasJ !== bHasJ) return aHasJ ? -1 : 1;
       return (b.total ?? 0) - (a.total ?? 0);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, readOnly, sortKey]);
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
@@ -561,13 +560,17 @@ export default function ReportView({
             )}
             {!readOnly && (
               <button
-                onClick={() => setSortKey((k) => k === 0 ? 1 : 0)}
+                onClick={() => setSortKey((k) => (k === 0 ? 1 : 0))}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
                   sortKey > 0
                     ? "border-indigo-500/50 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
                     : "border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
                 }`}
-                title={sortKey > 0 ? "SOLID дарааллаар буцах" : "Judgement оруулсан салбарыг дээрт, Total-аар эрэмбэлэх"}
+                title={
+                  sortKey > 0
+                    ? "SOLID дарааллаар буцах"
+                    : "Judgement оруулсан салбарыг дээрт, Total-аар эрэмбэлэх"
+                }
               >
                 {sortKey > 0 ? "↕ SOLID↑" : "↕ Эрэмбэлэх"}
               </button>
@@ -700,7 +703,9 @@ function ReportTable({
   const commitJ = (branchId: string) => {
     if (committingRef.current) return;
     committingRef.current = true;
-    requestAnimationFrame(() => { committingRef.current = false; });
+    requestAnimationFrame(() => {
+      committingRef.current = false;
+    });
     const raw = editJValue.trim();
     if (raw === "") {
       // Хоосн оруулбал: үнэлэмж цэвэрлэх (score=0)
@@ -727,7 +732,8 @@ function ReportTable({
   const filledJCount = externalJudgements
     ? rows.filter((b) => (externalJudgements[b.branchId] ?? 0) > 0).length
     : rows.filter(
-        (b) => judgmentInd && (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0,
+        (b) =>
+          judgmentInd && (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0,
       ).length;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
@@ -856,8 +862,7 @@ function ReportTable({
                   <tr
                     className={`border-t border-border hover:bg-accent/10 ${isExpanded ? "bg-sky-500/5" : ""}`}
                   >
-                    <td
-                      className="px-1 py-2 text-center">
+                    <td className="px-1 py-2 text-center">
                       <button
                         onClick={() =>
                           setExpandedBranchId(isExpanded ? null : b.branchId)
@@ -890,10 +895,17 @@ function ReportTable({
                     <td className="px-2 py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
                       {fmt(b.s4 ?? null)}
                     </td>
-                    <td className="px-2 py-2 text-right tabular-nums" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-2 py-2 text-right tabular-nums"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {readOnly ? (
                         <span className="font-bold text-rose-700 dark:text-rose-400">
-                          {b.j != null && b.j > 0 ? (b.j % 1 === 0 ? b.j.toFixed(0) : b.j.toFixed(1)) : "—"}
+                          {b.j != null && b.j > 0
+                            ? b.j % 1 === 0
+                              ? b.j.toFixed(0)
+                              : b.j.toFixed(1)
+                            : "—"}
                         </span>
                       ) : editingJBranch === b.branchId ? (
                         <input
@@ -903,7 +915,10 @@ function ReportTable({
                           value={editJValue}
                           onChange={(e) => setEditJValue(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") { e.preventDefault(); commitJ(b.branchId); }
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitJ(b.branchId);
+                            }
                             if (e.key === "Escape") setEditingJBranch(null);
                           }}
                           onBlur={() => commitJ(b.branchId)}
@@ -930,7 +945,11 @@ function ReportTable({
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 group-hover/jbtn:bg-emerald-400" />
                           <span className="inline-flex items-center gap-1">
-                            {b.j != null && b.j > 0 ? (b.j % 1 === 0 ? b.j.toFixed(0) : b.j.toFixed(1)) : "—"}
+                            {b.j != null && b.j > 0
+                              ? b.j % 1 === 0
+                                ? b.j.toFixed(0)
+                                : b.j.toFixed(1)
+                              : "—"}
                             <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
                               ✎
                             </span>

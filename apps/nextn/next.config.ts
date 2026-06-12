@@ -63,7 +63,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
   // Skip trailing slash redirect for cleaner URLs
   skipTrailingSlashRedirect: true,

@@ -94,15 +94,6 @@ export class RiskAssessmentController {
     return { ok: true };
   }
 
-  @Get("realtime/aggregated")
-  async getRealtimeAggregated(
-    @Query("date") date: string,
-    @Query("since") since?: string,
-  ) {
-    if (!date) return { fetchedDate: '', rows: [], manualMap: {} };
-    return this.service.getRealtimeAggregated(date, since || undefined);
-  }
-
   @Get("realtime")
   async getRealtimeLatest(@Query("date") date?: string) {
     if (date) return this.service.getRealtimeByDate(date);

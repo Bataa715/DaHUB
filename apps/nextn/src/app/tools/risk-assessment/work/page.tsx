@@ -56,7 +56,6 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const [rows, setRows] = useState<RiskCurrentRow[]>([]);
   const [fetchedDate, setFetchedDate] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const [sinceDate, setSinceDate] = useState("");
   const [lockedDate, setLockedDate] = useState<string | null>(null);
   const [judgements, setJudgements] = useState<Record<string, number>>({});
 
@@ -90,7 +89,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         if (ld) {
           setSelectedDate(ld);
           const [res, judgeList] = await Promise.all([
-            riskApi.getRealtimeAggregated(ld, sinceDate || undefined),
+            riskApi.getRealtime(ld),
             riskApi.listJudgements(ld),
           ]);
           if (cancelled) return;
@@ -112,7 +111,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   }, []);
 
   // Load Date function
-  const loadDate = useCallback(async (date: string, since?: string) => {
+  const loadDate = useCallback(async (date: string) => {
     if (!date) return;
     loadAbortRef.current?.abort();
     const abort = new AbortController();
@@ -125,7 +124,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
     setErrorMsg(null);
     try {
       const [res, judgeList] = await Promise.all([
-        riskApi.getRealtimeAggregated(date, since || undefined),
+        riskApi.getRealtime(date),
         riskApi.listJudgements(date),
       ]);
       if (abort.signal.aborted) return;
@@ -213,46 +212,29 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           <div className="flex items-center gap-2">
             {/* Date Picker + Refresh */}
             <div className="flex items-center gap-1.5">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[9px] text-muted-foreground/60 px-0.5">Үнэлгээний огноо</span>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    const d = e.target.value;
-                    setSelectedDate(d);
-                    if (d) loadDate(d, sinceDate || undefined);
-                  }}
-                  disabled={loadingDate}
-                  className="h-7 px-2 rounded-md border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-medium disabled:opacity-40 outline-none cursor-pointer"
-                />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[9px] text-muted-foreground/60 px-0.5">Аудит орсон огноо</span>
-                <input
-                  type="date"
-                  value={sinceDate}
-                  onChange={(e) => setSinceDate(e.target.value)}
-                  disabled={loadingDate}
-                  title="Range-ийн эхлэх огноо (аудит орсон огноо). Хоосон байвал автоматаар тооцно."
-                  className="h-7 px-2 rounded-md border border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-medium disabled:opacity-40 outline-none cursor-pointer"
-                />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[9px] text-transparent px-0.5">.</span>
-                <button
-                  onClick={() => selectedDate && loadDate(selectedDate, sinceDate || undefined)}
-                  disabled={loadingDate || !selectedDate}
-                  title="Дахин татах"
-                  className="flex items-center justify-center w-7 h-7 rounded-md bg-rose-600 hover:bg-rose-500 text-foreground disabled:opacity-40 transition-all"
-                >
-                  {loadingDate ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  const d = e.target.value;
+                  setSelectedDate(d);
+                  if (d) loadDate(d);
+                }}
+                disabled={loadingDate}
+                className="h-7 px-2 rounded-md border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-medium disabled:opacity-40 outline-none cursor-pointer"
+              />
+              <button
+                onClick={() => selectedDate && loadDate(selectedDate)}
+                disabled={loadingDate || !selectedDate}
+                title="Дахин татах"
+                className="flex items-center justify-center w-7 h-7 rounded-md bg-rose-600 hover:bg-rose-500 text-foreground disabled:opacity-40 transition-all"
+              >
+                {loadingDate ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+              </button>
             </div>
 
             {/* Lock / Unlock */}

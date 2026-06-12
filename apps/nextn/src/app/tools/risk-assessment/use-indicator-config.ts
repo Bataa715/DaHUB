@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  riskIndicatorConfigApi,
-  type IndicatorConfig,
-} from "@/lib/api";
+import { riskIndicatorConfigApi, type IndicatorConfig } from "@/lib/api";
 import { INDICATOR_CATALOG, type CatalogIndicator } from "./indicator-catalog";
 import {
   WEIGHTS,
@@ -58,16 +55,26 @@ function buildFallbackConfig(): DynamicConfig {
   );
   // Group weights = sum of indicator weights per group (dynamic, not hardcoded)
   const gsum = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
-  for (const c of INDICATOR_CATALOG) gsum[c.group] = (gsum[c.group] ?? 0) + c.weight;
-  const w = { s1: gsum[1] / 100, s2: gsum[2] / 100, s3: gsum[3] / 100, s4: gsum[4] / 100, j: gsum[5] / 100 };
-  return { catalog, weights: { UB: w, LOC: w }, loaded: true, isFallback: true };
+  for (const c of INDICATOR_CATALOG)
+    gsum[c.group] = (gsum[c.group] ?? 0) + c.weight;
+  const w = {
+    s1: gsum[1] / 100,
+    s2: gsum[2] / 100,
+    s3: gsum[3] / 100,
+    s4: gsum[4] / 100,
+    j: gsum[5] / 100,
+  };
+  return {
+    catalog,
+    weights: { UB: w, LOC: w },
+    loaded: true,
+    isFallback: true,
+  };
 }
 
 // ─── Build from DB config ─────────────────────────────────────────────────────
 
-function buildDynamicConfig(
-  indicators: IndicatorConfig[],
-): DynamicConfig {
+function buildDynamicConfig(indicators: IndicatorConfig[]): DynamicConfig {
   const catalog: DynamicCatalogIndicator[] = indicators.map((ind) => ({
     id: ind.id,
     subid: ind.subid,
@@ -82,8 +89,15 @@ function buildDynamicConfig(
 
   // Group weights = sum of indicator weights per group (from admin config, not hardcoded)
   const gsum = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
-  for (const ind of indicators) gsum[ind.group_num] = (gsum[ind.group_num] ?? 0) + ind.weight;
-  const w = { s1: gsum[1] / 100, s2: gsum[2] / 100, s3: gsum[3] / 100, s4: gsum[4] / 100, j: gsum[5] / 100 };
+  for (const ind of indicators)
+    gsum[ind.group_num] = (gsum[ind.group_num] ?? 0) + ind.weight;
+  const w = {
+    s1: gsum[1] / 100,
+    s2: gsum[2] / 100,
+    s3: gsum[3] / 100,
+    s4: gsum[4] / 100,
+    j: gsum[5] / 100,
+  };
 
   return { catalog, weights: { UB: w, LOC: w }, loaded: true };
 }

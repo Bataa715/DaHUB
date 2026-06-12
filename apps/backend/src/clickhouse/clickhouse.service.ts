@@ -266,7 +266,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           id String,
           title String,
           content String,
-          category String DEFAULT 'Аудит',
+          category String DEFAULT 'Ерөнхий',
           imageUrl String,
           imageMime String DEFAULT '',
           authorId String,
@@ -276,16 +276,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           updatedAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY createdAt
-      `);
-
-      // Create news_views table (unique view per user per article)
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS news_views (
-          newsId String,
-          userId String,
-          viewedAt DateTime DEFAULT now()
-        ) ENGINE = ReplacingMergeTree(viewedAt)
-        ORDER BY (newsId, userId)
       `);
 
       // Create news_reactions table

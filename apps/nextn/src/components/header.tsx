@@ -79,7 +79,7 @@ const Header = () => {
   // Үндсэн menu
   const regularLinks = [
     { href: "/", label: t("navHome"), icon: Home, public: true },
-    { href: "/medleg", label: t("navNews"), icon: Newspaper, public: true },
+    { href: "/news", label: t("navNews"), icon: Newspaper, public: true },
     { href: "/tools", label: t("navTools"), icon: Wrench, public: true },
   ];
 
