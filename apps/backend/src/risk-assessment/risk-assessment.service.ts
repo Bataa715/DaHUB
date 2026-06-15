@@ -352,15 +352,36 @@ export class RiskAssessmentService implements OnModuleInit {
     rows: RiskCurrentRow[];
     manualMap: Record<string, Record<string, number>>;
   }> {
+    // Тухайн огнооны exact мөрүүдийн зэрэгцээ өмнөх огноонуудаас
+    // fill-forward: тухайн огноогийн SOLID-уудад зориулж (SOLID, SUBID) бүрт
+    // fetchedDate <= d-ийн хамгийн сүүлийн утгыг авна.
     const rows = await this.clickhouse.query<any>(
-      `SELECT rowKey, 'oracle' AS rowType, toString(fetchedAt) AS fetchedAt,
-              '' AS pDate, '' AS pDateBeg,
-              SOLID, BRANCHNAME, STATUS,
-              RESULT, RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE,
-              ID, SUBID, OPERATION_TYPE,
-              0 AS isManual, '' AS indicatorId, NULL AS indicatorValue
+      `SELECT
+         argMax(rowKey, fetchedDate)                       AS rowKey,
+         'oracle'                                          AS rowType,
+         toString(argMax(fetchedAt, fetchedDate))          AS fetchedAt,
+         ''                                               AS pDate,
+         ''                                               AS pDateBeg,
+         SOLID,
+         argMax(BRANCHNAME, fetchedDate)                   AS BRANCHNAME,
+         argMax(STATUS, fetchedDate)                       AS STATUS,
+         argMax(RESULT, fetchedDate)                       AS RESULT,
+         argMax(RESULT_TYPE, fetchedDate)                  AS RESULT_TYPE,
+         argMax(DESCRIPTION_TEXT, fetchedDate)             AS DESCRIPTION_TEXT,
+         argMax(P_DATEBEG, fetchedDate)                    AS P_DATEBEG,
+         argMax(P_DATE, fetchedDate)                       AS P_DATE,
+         argMax(ID, fetchedDate)                           AS ID,
+         SUBID,
+         argMax(OPERATION_TYPE, fetchedDate)               AS OPERATION_TYPE,
+         0                                                AS isManual,
+         ''                                               AS indicatorId,
+         NULL                                             AS indicatorValue
        FROM riskbranch FINAL
-       WHERE fetchedDate = {d:String}
+       WHERE fetchedDate <= {d:String}
+         AND SOLID IN (
+           SELECT SOLID FROM riskbranch FINAL WHERE fetchedDate = {d:String}
+         )
+       GROUP BY SOLID, SUBID
        ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
       { d: fetchedDate },
     );

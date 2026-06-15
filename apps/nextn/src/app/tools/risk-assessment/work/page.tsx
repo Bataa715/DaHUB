@@ -12,6 +12,7 @@ import {
   LockOpen,
   ClipboardEdit,
   Activity,
+  SlidersHorizontal,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -21,6 +22,8 @@ import {
 } from "../scoring-rules";
 import { useIndicatorConfig, type DynamicCatalogIndicator } from "../use-indicator-config";
 import ReportView from "../report-view";
+import IndicatorFilterPanel from "./_IndicatorFilterPanel";
+import type { ManualMap } from "../indicator-catalog";
 
 type ScoredRow = RiskCurrentRow & {
   __score: ScoreResult;
@@ -70,13 +73,43 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const judgementTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );
+  const manualTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const loadAbortRef = useRef<AbortController | null>(null);
+
+  const [manualMap, setManualMap] = useState<ManualMap>({});
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterIndId, setFilterIndId] = useState("");
 
   const dynamicConfig = useIndicatorConfig();
   const { catalog } = dynamicConfig;
 
   const hasData = rows.some((r) => r.rowType === "oracle");
   const isLocked = lockedDate !== null && lockedDate === fetchedDate;
+
+  // Manual indicators map (гар оруулга)
+  useEffect(() => {
+    riskApi.listManualIndicators().then((data) => setManualMap(data || {})).catch(() => {});
+  }, []);
+
+  const handleManualSave = useCallback(
+    (branchId: string, indicatorId: string, value: number) => {
+      setManualMap((prev) => {
+        const next = { ...prev };
+        const branch = { ...(next[branchId] || {}) };
+        if (!value || value <= 0) delete branch[indicatorId];
+        else branch[indicatorId] = Math.min(5, Math.max(0, value));
+        if (Object.keys(branch).length === 0) delete next[branchId];
+        else next[branchId] = branch;
+        return next;
+      });
+      const key = `${branchId}::${indicatorId}`;
+      clearTimeout(manualTimers.current[key]);
+      manualTimers.current[key] = setTimeout(() => {
+        riskApi.upsertManualIndicator({ branchId, indicatorId, value }).catch(() => {});
+      }, 600);
+    },
+    [],
+  );
 
   // Init: lock check + load locked date if exists, otherwise closest available
   useEffect(() => {
@@ -253,6 +286,21 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               </button>
             </div>
 
+            {/* Indicator Filter toggle */}
+            {hasData && (
+              <button
+                onClick={() => setFilterOpen((v) => !v)}
+                className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-semibold transition-all ${
+                  filterOpen
+                    ? "border-rose-500/60 bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60"
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Шүүлтүүр
+              </button>
+            )}
+
             {/* Lock / Unlock */}
             {hasData && (
               <button
@@ -338,15 +386,26 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             )}
           </div>
         ) : (
-          <ReportView
-            scoredRows={scoredRows}
-            riskFilter={riskFilter}
-            setRiskFilter={setRiskFilter}
-            pDate={fetchedDate}
-            externalJudgements={judgements}
-            onJudgementChange={onJudgementSave}
-            hideComparison={true}
-          />
+          <>
+            {filterOpen && (
+              <IndicatorFilterPanel
+                rows={rows}
+                catalog={catalog}
+                selectedIndId={filterIndId}
+                onSelectInd={setFilterIndId}
+                onClose={() => setFilterOpen(false)}
+              />
+            )}
+            <ReportView
+              scoredRows={scoredRows}
+              riskFilter={riskFilter}
+              setRiskFilter={setRiskFilter}
+              pDate={fetchedDate}
+              externalJudgements={judgements}
+              onJudgementChange={onJudgementSave}
+              hideComparison={true}
+            />
+          </>
         )}
       </div>
     </div>

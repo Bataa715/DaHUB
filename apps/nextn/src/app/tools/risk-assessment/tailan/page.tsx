@@ -16,6 +16,7 @@ import {
   Trash2,
   BookmarkCheck,
   GitCompare,
+  FileSpreadsheet,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -29,6 +30,7 @@ import {
 } from "../use-indicator-config";
 import ReportView from "../report-view";
 import ComparePanel from "./_ComparePanel";
+import CsvExportModal from "./_CsvExportModal";
 
 type ScoredRow = RiskCurrentRow & {
   __score: ScoreResult;
@@ -93,6 +95,7 @@ export default function RiskReportsPage() {
   >("all");
 
   const [compareOpen, setCompareOpen] = useState(false);
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -222,14 +225,25 @@ export default function RiskReportsPage() {
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
         title="Эрсдэлийн Тайлан"
         rightContent={
-          <button
-            onClick={() => setCompareOpen(true)}
-            disabled={historyList.length < 2}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-semibold hover:bg-violet-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <GitCompare className="w-3.5 h-3.5" />
-            Харьцуулалт
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedReportId && primaryScoredRows.length > 0 && (
+              <button
+                onClick={() => setCsvModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                CSV татах
+              </button>
+            )}
+            <button
+              onClick={() => setCompareOpen(true)}
+              disabled={historyList.length < 2}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-semibold hover:bg-violet-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <GitCompare className="w-3.5 h-3.5" />
+              Харьцуулалт
+            </button>
+          </div>
         }
       />
 
@@ -351,6 +365,21 @@ export default function RiskReportsPage() {
         open={compareOpen}
         onCloseAction={() => setCompareOpen(false)}
         historyList={historyList}
+      />
+
+      <CsvExportModal
+        open={csvModalOpen}
+        onClose={() => setCsvModalOpen(false)}
+        primaryRows={reportRows}
+        primaryManualMap={reportManualMap}
+        primaryName={selectedReportInfo?.name ?? ""}
+        primaryDate={selectedReportInfo?.pDate ?? ""}
+        prevRows={comparisonRows}
+        prevManualMap={comparisonManualMap}
+        prevName={comparisonReportInfo?.name ?? null}
+        catalog={catalog}
+        historyList={historyList}
+        currentComparisonId={comparisonReportId}
       />
 
       {/* Delete Confirmation Modal */}

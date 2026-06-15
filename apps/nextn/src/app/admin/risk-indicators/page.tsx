@@ -391,17 +391,18 @@ function StringRulesSection({
                   <X className="w-3 h-3" />
                 </button>
               </div>
-              <Input
-                value={(rule.values ?? []).join(", ")}
+              <textarea
+                value={(rule.values ?? []).join("\n")}
                 onChange={(e) => {
                   const vals = e.target.value
-                    .split(",")
+                    .split("\n")
                     .map((v) => v.trim())
                     .filter(Boolean);
                   update(i, { values: vals });
                 }}
-                placeholder="утга1, утга2, ..."
-                className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/70 placeholder:text-muted-foreground/30"
+                rows={3}
+                placeholder={"утга1\nутга2\n..."}
+                className="w-full text-xs rounded-lg bg-foreground/5 border border-border/40 text-foreground/70 placeholder:text-muted-foreground/30 px-2.5 py-1.5 resize-y focus:outline-none focus:ring-1 focus:ring-violet-500/40"
               />
               <Input
                 value={rule.label}
