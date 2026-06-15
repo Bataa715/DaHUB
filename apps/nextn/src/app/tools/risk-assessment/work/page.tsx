@@ -61,6 +61,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const [selectedDate, setSelectedDate] = useState("");
   const [lockedDate, setLockedDate] = useState<string | null>(null);
   const [judgements, setJudgements] = useState<Record<string, number>>({});
+  const [prevJudgements, setPrevJudgements] = useState<Record<string, number>>({});
 
   const [loading, setLoading] = useState(true);
   const [loadingDate, setLoadingDate] = useState(false);
@@ -147,6 +148,18 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           const jmap: Record<string, number> = {};
           for (const j of judgeList) jmap[j.branchId] = j.score;
           setJudgements(jmap);
+          // Хамгийн ойрын өмнөх fetchedDate-ийн бүх judgement-г авах
+          const allJudge = await riskApi.listJudgements();
+          const closestPrevDate = allJudge.find(j => j.fetchedDate < targetDate)?.fetchedDate;
+          const prevMap: Record<string, number> = {};
+          if (closestPrevDate) {
+            for (const j of allJudge) {
+              if (j.fetchedDate === closestPrevDate && j.score > 0) {
+                prevMap[j.branchId] = j.score;
+              }
+            }
+          }
+          if (!cancelled) setPrevJudgements(prevMap);
         }
       } catch {
         // silent
@@ -181,6 +194,18 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       const jmap: Record<string, number> = {};
       for (const j of judgeList) jmap[j.branchId] = j.score;
       setJudgements(jmap);
+      // Хамгийн ойрын өмнөх fetchedDate-ийн бүх judgement-г авах
+      const allJudge = await riskApi.listJudgements();
+      const closestPrevDate = allJudge.find(j => j.fetchedDate < date)?.fetchedDate;
+      const prevMap: Record<string, number> = {};
+      if (closestPrevDate) {
+        for (const j of allJudge) {
+          if (j.fetchedDate === closestPrevDate && j.score > 0) {
+            prevMap[j.branchId] = j.score;
+          }
+        }
+      }
+      if (!abort.signal.aborted) setPrevJudgements(prevMap);
     } catch (e: unknown) {
       if (abort.signal.aborted) return;
       setErrorMsg(getApiErrorMessage(e));
@@ -403,6 +428,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               pDate={fetchedDate}
               externalJudgements={judgements}
               onJudgementChange={onJudgementSave}
+              previousJudgements={prevJudgements}
               hideComparison={true}
             />
           </>

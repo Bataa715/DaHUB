@@ -85,12 +85,14 @@ export class RiskIndicatorConfigService implements OnModuleInit {
   // ── Indicators ─────────────────────────────────────────────────────────────
 
   async listIndicators(): Promise<IndicatorConfig[]> {
-    return this.clickhouse.query<IndicatorConfig>(`
+    const rows = await this.clickhouse.query<IndicatorConfig>(`
       SELECT *
       FROM risk_indicator_config FINAL
       WHERE is_active = 1
       ORDER BY group_num ASC, sort_order ASC, id ASC
     `);
+    // subid-ийн trailing/leading space-г цэвэрлэх
+    return rows.map((r) => ({ ...r, subid: (r.subid ?? "").trim() }));
   }
 
   async upsertIndicator(
@@ -125,7 +127,7 @@ export class RiskIndicatorConfigService implements OnModuleInit {
       const base = existing[0] ?? {};
       record = {
         id: dto.id,
-        subid: dto.subid ?? (base as any).subid ?? dto.id,
+        subid: (dto.subid ?? (base as any).subid ?? dto.id).trim(),
         name: dto.name ?? (base as any).name ?? "",
         group_num: dto.group_num ?? (base as any).group_num ?? 1,
         sort_order: dto.sort_order ?? (base as any).sort_order ?? 0,
@@ -143,7 +145,7 @@ export class RiskIndicatorConfigService implements OnModuleInit {
       // Insert: new record
       record = {
         id: randomUUID(),
-        subid: dto.subid,
+        subid: dto.subid.trim(),
         name: dto.name,
         group_num: dto.group_num,
         sort_order: dto.sort_order ?? 0,

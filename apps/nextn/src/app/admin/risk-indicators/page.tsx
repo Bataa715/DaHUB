@@ -46,6 +46,7 @@ import {
   PauseCircle,
   X,
 } from "lucide-react";
+import { invalidateIndicatorCache } from "@/app/tools/risk-assessment/use-indicator-config";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -174,12 +175,12 @@ const SCORE_BADGE: Record<number, string> = {
 };
 
 const SCORE_SELECT_OPTIONS = [
-  { value: 1, label: "1 – Маш сайн" },
-  { value: 2, label: "2 – Сайн" },
-  { value: 3, label: "3 – Дунд" },
-  { value: 4, label: "4 – Хангалтгүй" },
-  { value: 5, label: "5 – Муу" },
-  { value: 0, label: "Ү – Үнэлэхгүй" },
+  { value: 1, label: "1" },
+  { value: 2, label: "2" },
+  { value: 3, label: "3" },
+  { value: 4, label: "4" },
+  { value: 5, label: "5" },
+  { value: 0, label: "Ү" },
 ];
 
 function NumericRulesSection({
@@ -712,7 +713,10 @@ export default function RiskIndicatorsPage() {
       isJudgement && !form.subid.trim() ? `j-${Date.now()}` : form.subid;
     const autoName = isJudgement && !form.name.trim() ? "Judgement" : form.name;
     setSaving(true);
-    const payload = { ...form, subid: autoSubid, name: autoName };
+    const scaleObj = parseScale(form.score_scale);
+    const derivedIsManual: 0 | 1 =
+      scaleObj.type === "manual" ? 1 : 0;
+    const payload = { ...form, subid: autoSubid, name: autoName, is_manual: derivedIsManual };
     try {
       if (editingId) {
         await riskIndicatorConfigApi.update(editingId, payload);
@@ -722,6 +726,7 @@ export default function RiskIndicatorsPage() {
         toast({ title: "Нэмэгдлээ" });
       }
       closeDialog();
+      invalidateIndicatorCache();
       await loadIndicators();
     } catch {
       toast({

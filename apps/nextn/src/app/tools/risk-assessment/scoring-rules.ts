@@ -64,16 +64,22 @@ export function computeScoreDynamic(
   }
 
   const raw = result == null ? "" : String(result).trim();
+  // Invisible/extra whitespace зайлуулах (Oracle text-ийн NBSP, tab гэх мэт)
+  const rawNorm = raw.replace(/[\s\u00A0\u200B]+/g, " ").trim();
   const isStringType = String(resultType ?? "").toUpperCase() === "STRING";
+
+  /** whitespace normalize — case өөрчлөхгүй */
+  const normalize = (s: string) =>
+    s.replace(/[\s\u00A0\u200B]+/g, " ").trim();
 
   const matchRule = (rule: DynamicScaleRule, s: string): boolean => {
     if (!rule.values?.length) return false;
-    const t = s.toLowerCase().trim();
+    const t = normalize(s);
     if (rule.matchType === "contains") {
-      return rule.values.some((v) => t.includes(v.toLowerCase()));
+      return rule.values.some((v) => t.includes(normalize(v)));
     }
-    // default: exact
-    return rule.values.some((v) => v.toLowerCase().trim() === t);
+    // exact — normalize хийн шууд харьцуулна (case хадгалагдана)
+    return rule.values.some((v) => normalize(v) === t);
   };
 
   const applyNumericRules = (
@@ -99,7 +105,7 @@ export function computeScoreDynamic(
     rules: DynamicScaleRule[],
   ): { score: ScoreResult; label: string | null } | null => {
     for (const r of rules) {
-      if (matchRule(r, raw)) {
+      if (matchRule(r, rawNorm)) {
         return {
           score: r.score === 0 ? "Үнэлэхгүй" : (r.score as ScoreValue),
           label: r.label,

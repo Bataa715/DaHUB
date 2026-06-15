@@ -77,7 +77,7 @@ function buildFallbackConfig(): DynamicConfig {
 function buildDynamicConfig(indicators: IndicatorConfig[]): DynamicConfig {
   const catalog: DynamicCatalogIndicator[] = indicators.map((ind) => ({
     id: ind.id,
-    subid: ind.subid,
+    subid: ind.subid.trim(),
     name: ind.name,
     group: ind.group_num as 1 | 2 | 3 | 4 | 5,
     weight: ind.weight,
@@ -105,6 +105,12 @@ function buildDynamicConfig(indicators: IndicatorConfig[]): DynamicConfig {
 // ─── Module-level cache (бүх ReportView instance хуваалцана) ─────────────────
 let _cachedConfig: DynamicConfig | null = null;
 let _loadingPromise: Promise<DynamicConfig> | null = null;
+
+/** Admin-аас indicator хадгалсны дараа cache-г цэвэрлэх */
+export function invalidateIndicatorCache() {
+  _cachedConfig = null;
+  _loadingPromise = null;
+}
 
 function fetchConfig(): Promise<DynamicConfig> {
   if (_cachedConfig) return Promise.resolve(_cachedConfig);
@@ -187,7 +193,7 @@ export function evaluateBranchDynamic(
     { score: ScoreResult; raw: string; label: string | null }
   >();
   for (const r of rows) {
-    const sid = String(r.SUBID ?? "");
+    const sid = String(r.SUBID ?? "").trim();
     if (!sid || autoBySubid.has(sid)) continue;
     // Find indicator with matching subid
     const ind = catalog.find((c) => !c.is_manual && c.subid === sid);

@@ -62,6 +62,8 @@ interface Props {
   externalJudgements?: Record<string, number>;
   /** Аудиторын үнэлэмж хадгалах callback (externalJudgements-тэй хамт ашиглана) */
   onJudgementChange?: (branchId: string, score: number) => void;
+  /** Өмнөх огноогийн judgement — авто бөглөх товчинд ашиглана */
+  previousJudgements?: Record<string, number>;
 }
 
 const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
@@ -99,6 +101,7 @@ export default function ReportView({
   saveIndicatorFn,
   externalJudgements,
   onJudgementChange,
+  previousJudgements,
   hideComparison = false,
   previousManualMap = {},
 }: Props) {
@@ -600,6 +603,7 @@ export default function ReportView({
         hideComparison={hideComparison}
         externalJudgements={externalJudgements}
         onJudgementChange={onJudgementChange}
+        previousJudgements={previousJudgements}
       />
       {/* Summary */}
       {!hideComparison && (
@@ -667,6 +671,7 @@ function ReportTable({
   hideComparison = false,
   externalJudgements,
   onJudgementChange,
+  previousJudgements,
 }: {
   title: string;
   region?: "UB" | "LOC";
@@ -685,6 +690,7 @@ function ReportTable({
   hideComparison?: boolean;
   externalJudgements?: Record<string, number>;
   onJudgementChange?: (branchId: string, score: number) => void;
+  previousJudgements?: Record<string, number>;
 }) {
   const w = region ? weights[region] : weights["UB"];
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
@@ -834,7 +840,25 @@ function ReportTable({
                       title="Гараар оруулах боломжтой"
                     />
                   )}
-                  Judgement
+                  <span className="inline-flex items-center gap-1.5">
+                    Judgement
+                    {!readOnly && onJudgementChange && (
+                      <button
+                        onClick={() => {
+                          for (const b of rows) {
+                            const prev = previousJudgements?.[b.branchId];
+                            if (prev && prev > 0) {
+                              onJudgementChange(b.branchId, prev);
+                            }
+                          }
+                        }}
+                        title="Бүх салбарын өмнөх үнэлэмжийг нэгэн зэрэг бөглөх"
+                        className="inline-flex items-center gap-0.5 px-1 py-0 rounded text-[9px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 transition-colors"
+                      >
+                        ← бүгд
+                      </button>
+                    )}
+                  </span>
                 </div>
               </th>
               <th className="px-2 py-2 text-right font-semibold">Total</th>
@@ -925,6 +949,7 @@ function ReportTable({
                           className="w-14 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-rose-600 dark:text-rose-400 font-bold"
                         />
                       ) : (
+                        <div className="flex flex-col items-end gap-0.5">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -955,6 +980,24 @@ function ReportTable({
                             </span>
                           </span>
                         </button>
+                        {/* ← өмнөх judgment auto бөглөх */}
+                        {previousJudgements && previousJudgements[b.branchId] != null && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const prev = previousJudgements[b.branchId];
+                              if (prev > 0 && onJudgementChange) {
+                                onJudgementChange(b.branchId, prev);
+                              }
+                            }}
+                            title={`Өмнөх: ${previousJudgements[b.branchId]}`}
+                            className="mt-0.5 flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground/40 hover:text-amber-500 transition-colors"
+                          >
+                            <span>←</span>
+                            <span className="tabular-nums">{previousJudgements[b.branchId]}</span>
+                          </button>
+                        )}
+                        </div>
                       )}
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums font-bold">
