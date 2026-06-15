@@ -1,0 +1,64 @@
+/* GolomtTableui — surface/txt CSS variables are injected by ThemeStyleInjector */
+/* Non-variable styles: fonts, scrollbar, animations */
+.ab-theme {
+  font-family: "JetBrains Mono", monospace;
+  background: var(--surface);
+  color: var(--txt);
+}
+
+.ab-theme ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.ab-theme ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ab-theme ::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 99px;
+}
+.ab-theme ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-hover);
+}
+
+.ab-theme .skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-card) 25%,
+    var(--surface-hover) 50%,
+    var(--surface-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: ab-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes ab-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* native select styling */
+.ab-theme select option {
+  background: var(--surface-card);
+  color: var(--txt);
+}
+
+/* Force dark background + light text on all inputs (browser overrides default to white) */
+.ab-theme input[type="text"],
+.ab-theme input[type="search"],
+.ab-theme input[type="date"],
+.ab-theme input[type="number"],
+.ab-theme input[type="email"],
+.ab-theme input[type="password"],
+.ab-theme input {
+  background-color: var(--surface-elevated) !important;
+  color: var(--txt) !important;
+  color-scheme: light dark;
+}
+.ab-theme input::placeholder {
+  color: var(--txt-dim);
+}

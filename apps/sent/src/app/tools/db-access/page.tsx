@@ -1,0 +1,463 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import Link from "next/link";
+import {
+  Database,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+  Send,
+  Calendar,
+  Table2,
+  Check,
+} from "lucide-react";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+interface TableInfo {
+  database: string;
+  table: string;
+  full: string;
+}
+
+export default function DbAccessRequestPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const router = useRouter();
+
+  // Permission guard
+  useEffect(() => {
+    if (!user) return;
+    const allowed =
+      user.isAdmin ||
+      user.isSuperAdmin ||
+      user.allowedTools?.includes("db_access_requester");
+    if (!allowed) router.replace("/tools");
+  }, [user, router]);
+
+  // Available tables
+  const [tables, setTables] = useState<TableInfo[]>([]);
+  const [tablesLoading, setTablesLoading] = useState(true);
+
+  // Form state
+  const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const [accessTypes] = useState<string[]>(["SELECT"]);
+  const [validUntilDate, setValidUntilDate] = useState("");
+  const [validUntilTime, setValidUntilTime] = useState("18:00");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Table search filter
+  const [tableFilter, setTableFilter] = useState("");
+
+  // Set default date to tomorrow
+  useEffect(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setValidUntilDate(tomorrow.toISOString().split("T")[0]);
+  }, []);
+
+  const loadTables = useCallback(async () => {
+    try {
+      setTablesLoading(true);
+      const data = await dbAccessApi.getTables();
+      setTables(data);
+    } catch {
+      toast({
+        title: t("dbAccessValidationTitle"),
+        description: t("dbAccessLoadError"),
+        variant: "destructive",
+      });
+    } finally {
+      setTablesLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadTables();
+  }, [loadTables]);
+
+  const toggleTable = (full: string) => {
+    setSelectedTables((prev) =>
+      prev.includes(full) ? prev.filter((t) => t !== full) : [...prev, full],
+    );
+  };
+
+  /** Toggle all tables in a given database group */
+  const toggleDb = (dbTables: TableInfo[]) => {
+    const allFulls = dbTables.map((t) => t.full);
+    const allSelected = allFulls.every((f) => selectedTables.includes(f));
+    if (allSelected) {
+      setSelectedTables((prev) => prev.filter((t) => !allFulls.includes(t)));
+    } else {
+      setSelectedTables((prev) => [
+        ...prev,
+        ...allFulls.filter((f) => !prev.includes(f)),
+      ]);
+    }
+  };
+
+  /** Toggle ALL tables across all databases */
+  const toggleAll = () => {
+    const allFulls = tables.map((t) => t.full);
+    const allSelected = allFulls.every((f) => selectedTables.includes(f));
+    setSelectedTables(allSelected ? [] : allFulls);
+  };
+
+  const handleSubmit = async () => {
+    if (selectedTables.length === 0) {
+      toast({
+        title: t("dbAccessValidationTitle"),
+        description: t("dbAccessValidationNoTable"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validUntilDate) {
+      toast({
+        title: t("dbAccessValidationDate"),
+        description: t("dbAccessValidationDateRequired"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!reason.trim()) {
+      toast({
+        title: t("dbAccessValidationReason"),
+        description: t("dbAccessValidationReasonRequired"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validUntil = new Date(`${validUntilDate}T${validUntilTime}:00`);
+    if (validUntil <= new Date()) {
+      toast({
+        title: t("dbAccessValidationBadDate"),
+        description: t("dbAccessValidationFutureDate"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await dbAccessApi.createRequest({
+        tables: selectedTables,
+        accessTypes,
+        validUntil: validUntil.toISOString(),
+        reason,
+      });
+
+      toast({
+        title: t("dbAccessRequestSent"),
+        description: t("dbAccessRequestSentMsg"),
+      });
+
+      // Reset form
+      setSelectedTables([]);
+      setReason("");
+    } catch (err: unknown) {
+      toast({
+        title: t("dbAccessValidationTitle"),
+        description: getApiErrorMessage(err) || t("dbAccessRequestError"),
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Group tables by database
+  const grouped = tables
+    .filter(
+      (t) =>
+        !tableFilter ||
+        t.full.toLowerCase().includes(tableFilter.toLowerCase()),
+    )
+    .reduce<Record<string, TableInfo[]>>((acc, t) => {
+      (acc[t.database] = acc[t.database] || []).push(t);
+      return acc;
+    }, {});
+
+  return (
+    <div className="min-h-screen bg-background">
+      <ToolPageHeader
+        href="/tools"
+        icon={
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-md">
+            <Database className="w-3.5 h-3.5 text-foreground" />
+          </div>
+        }
+        title={t("dbAccessMyGrants")}
+        subtitle={t("dbAccessSelectSection")}
+        rightContent={
+          <div className="flex items-center gap-2">
+            <Link href="/tools/db-access/my-grants">
+              <Button variant="outline" size="sm">
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {t("dbAccessMyGrants")}
+              </Button>
+            </Link>
+            {(user?.isAdmin ||
+              user?.allowedTools?.includes("db_access_granter")) && (
+              <Link href="/tools/db-access/manage">
+                <Button variant="outline" size="sm">
+                  <Table2 className="h-4 w-4 mr-2" />
+                  {t("dbAccessManage")}
+                </Button>
+              </Link>
+            )}
+          </div>
+        }
+      />
+      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-8">
+        <div className="space-y-4">
+          <div className="rounded-xl border bg-card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Database className="h-4 w-4 text-cyan-400" />
+                {t("dbAccessSelectSection")}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadTables}
+                disabled={tablesLoading}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${tablesLoading ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </div>
+
+            <Input
+              placeholder={t("dbAccessTableSearch")}
+              value={tableFilter}
+              onChange={(e) => setTableFilter(e.target.value)}
+              className="bg-background"
+            />
+
+            {tablesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Global select-all row */}
+                {!tableFilter && tables.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                      tables.every((t) => selectedTables.includes(t.full))
+                        ? "border-cyan-500 bg-cyan-500/10 text-cyan-300"
+                        : "border-dashed border-border hover:border-cyan-500/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border ${
+                        tables.every((t) => selectedTables.includes(t.full))
+                          ? "bg-cyan-500 border-cyan-500"
+                          : tables.some((t) => selectedTables.includes(t.full))
+                            ? "border-cyan-500 bg-cyan-500/30"
+                            : "border-border"
+                      }`}
+                    >
+                      {tables.every((t) => selectedTables.includes(t.full)) && (
+                        <Check className="h-2.5 w-2.5 text-black" />
+                      )}
+                      {!tables.every((t) => selectedTables.includes(t.full)) &&
+                        tables.some((t) => selectedTables.includes(t.full)) && (
+                          <div className="w-2 h-0.5 bg-cyan-400 rounded" />
+                        )}
+                    </div>
+                    {t("dbAccessSelectTableHint")} ({tables.length}{" "}
+                    {t("dbAccessTableUnit")})
+                  </button>
+                )}
+
+                {/* Per-database groups */}
+                <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+                  {Object.entries(grouped).map(([db, dbTables]) => {
+                    const allDbSelected = dbTables.every((t) =>
+                      selectedTables.includes(t.full),
+                    );
+                    const someDbSelected = dbTables.some((t) =>
+                      selectedTables.includes(t.full),
+                    );
+                    return (
+                      <div key={db}>
+                        {/* DB header with select-all for this db */}
+                        <button
+                          type="button"
+                          onClick={() => toggleDb(dbTables)}
+                          className="flex items-center gap-2 mb-2 px-1 group w-full text-left"
+                        >
+                          <div
+                            className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                              allDbSelected
+                                ? "bg-cyan-500 border-cyan-500"
+                                : someDbSelected
+                                  ? "border-cyan-500 bg-cyan-500/30"
+                                  : "border-muted-foreground/40 group-hover:border-cyan-500/60"
+                            }`}
+                          >
+                            {allDbSelected && (
+                              <Check className="h-2.5 w-2.5 text-black" />
+                            )}
+                            {!allDbSelected && someDbSelected && (
+                              <div className="w-2 h-0.5 bg-cyan-400 rounded" />
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider group-hover:text-cyan-400 transition-colors">
+                            {db}
+                          </p>
+                          <span className="text-xs text-muted-foreground/60">
+                            ({dbTables.length})
+                          </span>
+                        </button>
+
+                        {/* Individual table checkboxes */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pl-1">
+                          {dbTables.map((t) => {
+                            const selected = selectedTables.includes(t.full);
+                            return (
+                              <button
+                                key={t.full}
+                                type="button"
+                                onClick={() => toggleTable(t.full)}
+                                className={`flex items-center gap-2 text-left px-3 py-2 rounded-lg border text-sm transition-all ${
+                                  selected
+                                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-300"
+                                    : "border-border hover:border-cyan-500/50 hover:bg-cyan-500/5"
+                                }`}
+                              >
+                                <div
+                                  className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                                    selected
+                                      ? "bg-cyan-500 border-cyan-500"
+                                      : "border-muted-foreground/40"
+                                  }`}
+                                >
+                                  {selected && (
+                                    <Check className="h-2.5 w-2.5 text-black" />
+                                  )}
+                                </div>
+                                <span className="font-mono truncate text-xs">
+                                  {t.table}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {Object.keys(grouped).length === 0 && (
+                    <p className="text-center text-muted-foreground py-4 text-sm">
+                      {t("dbAccessSelectTableHint")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {selectedTables.length > 0 && (
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground mb-2">
+                  {t("dbAccessExpirySection")} ({selectedTables.length}):
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedTables.map((t) => (
+                    <Badge
+                      key={t}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-destructive/20 hover:text-destructive"
+                      onClick={() => toggleTable(t)}
+                    >
+                      {t} ✕
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Date/time + reason */}
+          <div className="rounded-xl border bg-card p-5 space-y-4">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-cyan-400" />
+              {t("dbAccessExpirySection")}
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("dbAccessExpiryDate")}</Label>
+                <Input
+                  type="date"
+                  value={validUntilDate}
+                  min={(() => {
+                    const t = new Date();
+                    t.setDate(t.getDate() + 1);
+                    return t.toISOString().split("T")[0];
+                  })()}
+                  onChange={(e) => setValidUntilDate(e.target.value)}
+                  className="bg-background"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("dbAccessExpiryTime")}</Label>
+                <Input
+                  type="time"
+                  value={validUntilTime}
+                  onChange={(e) => setValidUntilTime(e.target.value)}
+                  className="bg-background"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                {t("dbAccessReason")} ({t("dbAccessValidationReason")})
+              </Label>
+              <Textarea
+                placeholder={t("dbAccessReasonPlaceholder")}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                className="bg-background resize-none"
+              />
+            </div>
+
+            <Button
+              className="w-full bg-cyan-600 hover:bg-cyan-500"
+              onClick={handleSubmit}
+              disabled={
+                submitting || selectedTables.length === 0 || !reason.trim()
+              }
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              {t("dbAccessSubmitBtn")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
