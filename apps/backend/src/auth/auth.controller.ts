@@ -11,7 +11,11 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
-import { Request as ExpressRequest, Response } from "express";
+import {
+  Request as ExpressRequest,
+  Response,
+  CookieOptions,
+} from "express";
 import { AuthService } from "./auth.service";
 import {
   LoginDto,
@@ -36,36 +40,57 @@ export class AuthController {
     refreshToken: string,
     isAdmin = false,
   ): void {
-    const isProd = process.env.NODE_ENV === "production";
+    /**
+     * HTTP deploy үед COOKIE_SECURE=false байх ёстой.
+     * HTTPS deploy хийсэн үед COOKIE_SECURE=true болгоно.
+     */
+    const cookieSecure = process.env.COOKIE_SECURE === "true";
+
     const tokenName = isAdmin ? "adminToken" : "token";
     const refreshName = isAdmin ? "adminRefreshToken" : "refreshToken";
+
+    const cookieOptions: CookieOptions = {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSecure ? "none" : "lax",
+      path: "/",
+    };
+
     res.cookie(tokenName, accessToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: "strict",
+      ...cookieOptions,
       maxAge: 15 * 60 * 1000, // 15 minutes
-      path: "/",
     });
+
     res.cookie(refreshName, refreshToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: "strict",
+      ...cookieOptions,
       maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
-      path: "/",
     });
   }
 
   // [N-2] Clear both token cookies on logout / session expiry
   private clearAuthCookies(res: Response, isAdmin = false): void {
-    const isProd = process.env.NODE_ENV === "production";
-    const opts = {
+    const cookieSecure = process.env.COOKIE_SECURE === "true";
+
+    const opts: CookieOptions = {
       httpOnly: true,
-      secure: isProd,
-      sameSite: "strict" as const,
+      secure: cookieSecure,
+      sameSite: cookieSecure ? "none" : "lax",
       path: "/",
     };
+
     res.clearCookie(isAdmin ? "adminToken" : "token", opts);
     res.clearCookie(isAdmin ? "adminRefreshToken" : "refreshToken", opts);
+  }
+
+  // [H-4] Extract caller IP for brute-force lockout key.
+  // Honours X-Forwarded-For when behind a trusted reverse proxy.
+  private clientIp(req: ExpressRequest): string {
+    const xff = (req.headers?.["x-forwarded-for"] || "")
+      .toString()
+      .split(",")[0]
+      .trim();
+
+    return xff || req.ip || req.socket?.remoteAddress || "unknown";
   }
 
   // Check if user exists
@@ -75,7 +100,7 @@ export class AuthController {
     return this.authService.checkUser(checkUserDto);
   }
 
-  // Register new user — public self-registration (employee registers, then sets own password)
+  // Register new user — public self-registration
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 3600000 } })
   @Post("register")
@@ -83,7 +108,7 @@ export class AuthController {
     return this.authService.registerUser(registerUserDto);
   }
 
-  // Set password for first-time user (throttled)
+  // Set password for first-time user
   @UseGuards(ThrottlerGuard)
   @Post("set-password")
   async setPassword(
@@ -91,8 +116,13 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.setPassword(setPasswordDto);
+
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
-    return { user: result.user, success: true };
+
+    return {
+      user: result.user,
+      success: true,
+    };
   }
 
   @UseGuards(ThrottlerGuard)
@@ -103,8 +133,13 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.login(loginDto, this.clientIp(req));
+
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
-    return { user: result.user, success: true };
+
+    return {
+      user: result.user,
+      success: true,
+    };
   }
 
   @UseGuards(ThrottlerGuard)
@@ -118,8 +153,13 @@ export class AuthController {
       loginByIdDto,
       this.clientIp(req),
     );
+
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
-    return { user: result.user, success: true };
+
+    return {
+      user: result.user,
+      success: true,
+    };
   }
 
   @UseGuards(ThrottlerGuard)
@@ -133,18 +173,13 @@ export class AuthController {
       adminLoginDto,
       this.clientIp(req),
     );
-    this.setAuthCookies(res, result.accessToken, result.refreshToken, true);
-    return { user: result.user, success: true };
-  }
 
-  // [H-4] Extract caller IP for brute-force lockout key. Honours X-Forwarded-For
-  // when behind a trusted reverse proxy (set TRUST_PROXY=1 + app.set('trust proxy')).
-  private clientIp(req: ExpressRequest): string {
-    const xff = (req.headers?.["x-forwarded-for"] || "")
-      .toString()
-      .split(",")[0]
-      .trim();
-    return xff || req.ip || req.socket?.remoteAddress || "unknown";
+    this.setAuthCookies(res, result.accessToken, result.refreshToken, true);
+
+    return {
+      user: result.user,
+      success: true,
+    };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -175,8 +210,7 @@ export class AuthController {
     return req.user;
   }
 
-  @UseGuards(ThrottlerGuard)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(ThrottlerGuard, JwtAuthGuard)
   @Post("change-password")
   async changePassword(
     @Request() req: ExpressRequest & { user: Record<string, unknown> },
@@ -196,18 +230,28 @@ export class AuthController {
     @Request() req: ExpressRequest & { cookies: Record<string, string> },
     @Res({ passthrough: true }) res: Response,
   ) {
-    // [N-2] Cookie takes priority; fall back to body (Swagger / API tools)
+    // Cookie takes priority; fall back to body for API tools
     const token =
       req.cookies?.refreshToken ||
       req.cookies?.adminRefreshToken ||
       refreshTokenDto.refreshToken;
-    if (!token) throw new UnauthorizedException("Refresh token not found");
+
+    if (!token) {
+      throw new UnauthorizedException("Refresh token not found");
+    }
+
     const result = await this.authService.refreshAccessToken({
       refreshToken: token,
     });
+
     const isAdmin = !!result.user?.isAdmin;
+
     this.setAuthCookies(res, result.accessToken, result.refreshToken, isAdmin);
-    return { user: result.user, success: true };
+
+    return {
+      user: result.user,
+      success: true,
+    };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -217,9 +261,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const isAdmin = !!req.user?.isAdmin;
+
     this.clearAuthCookies(res, isAdmin);
     // Also clear the other side in case both were set
     this.clearAuthCookies(res, !isAdmin);
+
     return this.authService.revokeRefreshTokens(req.user.id as string);
   }
 }

@@ -11,8 +11,8 @@ import {
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
-import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { UsersService } from "./users.service";
+import { SkipThrottle } from "@nestjs/throttler";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
@@ -136,10 +136,9 @@ export class UsersController {
     return result;
   }
 
-  /** SuperAdmin only: reset a user's password */
-  // [H-6] Throttle administrative password resets to prevent brute-force/abuse.
-  @UseGuards(JwtAuthGuard, SuperAdminGuard, ThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 3600000 } })
+  /** Admin: reset a user's password */
+  @SkipThrottle()
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(":id/reset-password")
   resetPassword(
     @Param("id") id: string,

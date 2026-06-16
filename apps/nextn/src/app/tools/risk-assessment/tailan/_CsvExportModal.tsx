@@ -232,17 +232,36 @@ export default function CsvExportModal({
 
   const catalogCasted = catalog as unknown as CatalogEntry[];
 
+  // manualMap-с judgement утгуудыг гаргах (key = "j-001")
+  const primaryJudgeMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const [branchId, indMap] of Object.entries(primaryManualMap)) {
+      const v = (indMap as Record<string, number>)["j-001"];
+      if (v && v > 0) m[branchId] = v;
+    }
+    return m;
+  }, [primaryManualMap]);
+
+  const prevJudgeMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const [branchId, indMap] of Object.entries(prevManualMap)) {
+      const v = (indMap as Record<string, number>)["j-001"];
+      if (v && v > 0) m[branchId] = v;
+    }
+    return m;
+  }, [prevManualMap]);
+
   const primaryAgg = useMemo(
-    () => aggregateBranch(primaryRows.filter(r => r.rowType === "oracle"), {}, {}, catalogCasted),
-    [primaryRows, catalogCasted],
+    () => aggregateBranch(primaryRows.filter(r => r.rowType === "oracle"), {}, primaryJudgeMap, catalogCasted),
+    [primaryRows, primaryJudgeMap, catalogCasted],
   );
 
   const prevAgg = useMemo(
     () =>
       hasComparison && includeComparison
-        ? aggregateBranch(prevRows.filter(r => r.rowType === "oracle"), {}, {}, catalogCasted)
+        ? aggregateBranch(prevRows.filter(r => r.rowType === "oracle"), {}, prevJudgeMap, catalogCasted)
         : null,
-    [prevRows, hasComparison, includeComparison, catalogCasted],
+    [prevRows, hasComparison, includeComparison, prevJudgeMap, catalogCasted],
   );
 
   const doDownload = () => {

@@ -352,7 +352,7 @@ export default function UsersPage() {
 
                 {/* Actions */}
                 <div className="flex gap-1 pt-1 border-t border-border">
-                  {user?.isSuperAdmin && (
+                  {user?.isAdmin && (
                     <button
                       onClick={() => {
                         setResetPasswordUser(userData);

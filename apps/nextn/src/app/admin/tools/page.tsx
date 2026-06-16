@@ -141,7 +141,7 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "risk_assessment",
-    name: "Эрсдэлийн үнэлгээ",
+    name: "Салбарын эрсдэлийн үнэлгээ",
     description:
       "Сар бүрийн эрсдэлийн үнэлгээ — салбаруудын оноо, гар засвар, аудит лог",
     icon: ShieldAlert,

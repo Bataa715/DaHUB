@@ -127,7 +127,7 @@ export const translations = {
     toolAlertBoxTitle: "Alert Box",
     toolAlertBoxDesc:
       "Банкны эрсдэлийн шинжилгээ, CIF хайлт, Red Flag мэдэгдэл",
-    toolRiskAssessmentTitle: "Эрсдэлийн үнэлгээ",
+    toolRiskAssessmentTitle: "Салбарын эрсдэлийн үнэлгээ",
     toolRiskAssessmentDesc: "Сар бүрийн эрсдэлийн үнэлгээ",
     toolWeeklyReportTitle: "Долоо хоногийн тайлан",
     toolWeeklyReportDesc: "Хэлтсүүдийн долоо хоногийн ажлын тайлан",
