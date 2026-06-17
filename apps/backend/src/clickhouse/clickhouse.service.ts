@@ -260,9 +260,33 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
-      // Create news table
+      // Migration: rename legacy news_* tables to medleg_* (one-time).
+      // Хуучин өгөгдлийг хадгалж шинэ нэр рүү шилжүүлнэ. Зөвхөн хуучин нэр
+      // байгаа бөгөөд шинэ нэр байхгүй үед л RENAME хийнэ.
+      const tableExists = async (name: string): Promise<boolean> => {
+        const rows = await this.query<{ c: string }>(
+          `SELECT count() AS c FROM system.tables
+           WHERE database = currentDatabase() AND name = {name:String}`,
+          { name },
+        );
+        return Number(rows?.[0]?.c ?? 0) > 0;
+      };
+      const medlegRenames: [string, string][] = [
+        ["news", "medleg"],
+        ["news_reactions", "medleg_reactions"],
+        ["news_comments", "medleg_comments"],
+        ["news_views", "medleg_views"],
+      ];
+      for (const [oldName, newName] of medlegRenames) {
+        if ((await tableExists(oldName)) && !(await tableExists(newName))) {
+          await this.exec(`RENAME TABLE ${oldName} TO ${newName}`);
+          this.logger.log(`Migrated table ${oldName} → ${newName}`);
+        }
+      }
+
+      // Create medleg table
       await this.exec(`
-        CREATE TABLE IF NOT EXISTS news (
+        CREATE TABLE IF NOT EXISTS medleg (
           id String,
           title String,
           content String,
@@ -278,9 +302,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY createdAt
       `);
 
-      // Create news_reactions table
+      // Create medleg_reactions table
       await this.exec(`
-        CREATE TABLE IF NOT EXISTS news_reactions (
+        CREATE TABLE IF NOT EXISTS medleg_reactions (
           newsId String,
           userId String,
           emoji String,
@@ -289,9 +313,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY (newsId, userId)
       `);
 
-      // Create news_comments table
+      // Create medleg_comments table
       await this.exec(`
-        CREATE TABLE IF NOT EXISTS news_comments (
+        CREATE TABLE IF NOT EXISTS medleg_comments (
           id String,
           newsId String,
           authorId String,
@@ -428,6 +452,27 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY (departmentId, year, quarter)
       `);
 
+      // Migration: add `code` column to departments (хэрэглэгчийн ID-н prefix).
+      // ALTER ... ADD COLUMN IF NOT EXISTS нь хуучин table-д шинэ багана нэмнэ.
+      await this.exec(
+        `ALTER TABLE departments ADD COLUMN IF NOT EXISTS code String DEFAULT ''`,
+      );
+
+      // Хуучин мэдэгдэж буй хэлтсүүдийн кодыг нэг удаа seed хийнэ (code хоосон бол).
+      const DEFAULT_DEPT_CODES: Record<string, string> = {
+        Удирдлага: "DAG",
+        "Дата анализын алба": "DAA",
+        "Ерөнхий аудитын хэлтэс": "EAH",
+        "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ZACHBH",
+        "Мэдээллийн технологийн аудитын хэлтэс": "MTAH",
+      };
+      for (const [deptName, deptCode] of Object.entries(DEFAULT_DEPT_CODES)) {
+        await this.exec(
+          `ALTER TABLE departments UPDATE code = {code:String} WHERE name = {name:String} AND code = ''`,
+          { code: deptCode, name: deptName },
+        );
+      }
+
       try {
         await this.provisionServiceUsers();
       } catch (provisionErr: any) {
@@ -447,7 +492,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.logger.log(
-        "Schema tables initialized (departments, users, news, news_reactions, news_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts)",
+        "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);

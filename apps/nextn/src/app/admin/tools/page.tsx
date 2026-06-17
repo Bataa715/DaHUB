@@ -30,7 +30,6 @@ import {
   Search,
   UserMinus,
   ShieldAlert,
-  CalendarRange,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -138,6 +137,8 @@ const AVAILABLE_TOOLS: Tool[] = [
     color: "from-red-500 to-rose-500",
     gradient: "bg-gradient-to-br from-red-500/20 to-rose-500/20",
     category: "work",
+    adminPath: "/admin/alert-box",
+    adminLabel: "Тохиргоо →",
   },
   {
     id: "risk_assessment",
@@ -150,34 +151,6 @@ const AVAILABLE_TOOLS: Tool[] = [
     category: "work",
     adminPath: "/admin/risk-indicators",
     adminLabel: "Тохиргоо →",
-  },
-  {
-    id: "weekly_report_audit",
-    name: "7 хоногийн тайлан (аудит хэлтэс)",
-    description: "ЕАХ / МТАХ / ЗАЧБХ-н долоо хоногийн тайлан бичих эрх",
-    icon: CalendarRange,
-    color: "from-indigo-500 to-purple-500",
-    gradient: "bg-gradient-to-br from-indigo-500/20 to-purple-500/20",
-    category: "work",
-  },
-  {
-    id: "weekly_report_daa",
-    name: "7 хоногийн тайлан (ДАА)",
-    description: "Дата анализийн алба — долоо хоногийн тайлан бичих эрх",
-    icon: CalendarRange,
-    color: "from-sky-500 to-indigo-500",
-    gradient: "bg-gradient-to-br from-sky-500/20 to-indigo-500/20",
-    category: "work",
-  },
-  {
-    id: "weekly_report_director",
-    name: "7 хоногийн тайлан (захирал)",
-    description:
-      "Газрын захирал — бүх хэлтсийн нэгдсэн тайлан харах, засах эрх",
-    icon: CalendarRange,
-    color: "from-violet-500 to-purple-500",
-    gradient: "bg-gradient-to-br from-violet-500/20 to-purple-500/20",
-    category: "work",
   },
 ];
 
@@ -531,33 +504,23 @@ export default function AdminToolsPage() {
 
         {/* Tool Cards */}
         <div>
-          {/* ── Ажлын хэрэгслүүд ── */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest">
-                Ажлын
-              </span>
-              <div className="flex-1 h-px bg-muted" />
-            </div>
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-              {visibleTools.map((tool) => {
-                const usersWithAccess = getUsersWithAccess(tool.id);
-                const pct =
-                  users.length > 0
-                    ? Math.round((usersWithAccess.length / users.length) * 100)
-                    : 0;
-                return (
-                  <button
-                    key={tool.id}
-                    onClick={() => handleToolSelect(tool)}
-                    className="group text-left bg-background border border-border hover:border-border/80 rounded-xl p-4 shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 ring-hairline transition-all duration-300"
-                  >
-                    <p className="text-sm font-medium text-foreground mb-1 leading-snug">
-                      {tool.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground/60 line-clamp-2 mb-3">
-                      {tool.description}
-                    </p>
+          <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {visibleTools.map((tool) => {
+              const usersWithAccess = getUsersWithAccess(tool.id);
+              const pct =
+                users.length > 0
+                  ? Math.round((usersWithAccess.length / users.length) * 100)
+                  : 0;
+              return (
+                <button
+                  key={tool.id}
+                  onClick={() => handleToolSelect(tool)}
+                  className="group text-left bg-background border-2 border-border hover:border-border rounded-xl p-3 flex flex-col gap-3 hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  <p className="text-sm font-medium text-foreground leading-snug whitespace-normal break-words">
+                    {tool.name}
+                  </p>
+                  <div className="mt-auto">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs text-muted-foreground/60">
                         {usersWithAccess.length} хэрэглэгч
@@ -582,10 +545,10 @@ export default function AdminToolsPage() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

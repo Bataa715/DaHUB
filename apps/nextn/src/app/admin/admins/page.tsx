@@ -237,7 +237,7 @@ export default function AdminsPage() {
       );
       setEditTarget(null);
     } catch {
-      setError("Хэрэгслүүд шинэчлэхэд алдаа гарлаа.");
+      setError("Хэрэгсэл шинэчлэхэд алдаа гарлаа.");
     } finally {
       setEditLoading(false);
     }
@@ -265,7 +265,7 @@ export default function AdminsPage() {
         }
       />
 
-      <div className="max-w-[900px] mx-auto px-4 py-6 space-y-2">
+      <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-2">
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 flex items-center gap-2 text-sm mb-4">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />

@@ -148,68 +148,6 @@ const deepSpaceTheme: ThemeDef = {
 };
 
 /**
- * Tokyo Night — dark blue with electric cyan
- * Inspired by: tokyo-night VS Code theme, Catppuccin Mocha
- */
-const tokyoNightTheme: ThemeDef = {
-  name: "tokyo-night",
-  label: "Tokyo Night",
-  labelMn: "Night",
-  isDark: true,
-  tokens: {
-    background: "222 47% 11%", // #1a1b2e
-    foreground: "214 33% 91%", // #c9d1d9
-    card: "222 47% 14%",
-    cardForeground: "214 33% 91%",
-    popover: "222 47% 13%",
-    popoverForeground: "214 33% 91%",
-
-    primary: "195 100% 75%", // sky #7dcfff
-    primaryForeground: "222 47% 5%",
-
-    secondary: "222 47% 20%",
-    secondaryForeground: "214 33% 91%",
-    muted: "222 47% 20%",
-    mutedForeground: "220 15% 58%",
-
-    accent: "265 89% 78%", // purple #bb9af7
-    accentForeground: "222 47% 5%",
-
-    destructive: "354 70% 54%", // #f7768e
-    destructiveForeground: "214 33% 91%",
-
-    border: "222 47% 24%",
-    input: "222 47% 24%",
-    ring: "195 100% 75%",
-    radius: "0.8rem",
-
-    chart1: "195 100% 75%", // sky
-    chart2: "142 76% 68%", // green #9ece6a
-    chart3: "265 89% 78%", // purple
-    chart4: "38 92% 72%", // gold #e0af68
-    chart5: "354 70% 72%", // rose
-
-    sidebarBackground: "222 47% 8%",
-    sidebarForeground: "214 33% 91%",
-    sidebarPrimary: "195 100% 75%",
-    sidebarPrimaryForeground: "222 47% 5%",
-    sidebarAccent: "222 47% 18%",
-    sidebarAccentForeground: "214 33% 91%",
-    sidebarBorder: "222 47% 22%",
-    sidebarRing: "195 100% 75%",
-
-    surface: "#1a1b2e",
-    surfaceCard: "#16213e",
-    surfaceElevated: "#1e2640",
-    surfaceBorder: "#2d3561",
-    surfaceHover: "#232a50",
-    txt: "#cdd6f4",
-    txtMuted: "#7f849c",
-    txtDim: "#585b70",
-  },
-};
-
-/**
  * Clean Light — soft off-white background with white cards (Linear/Vercel style)
  * Easier on the eyes than pure white — reduces glare while maintaining clarity.
  * Text contrast ratios meet WCAG AA (foreground on background ≥ 4.5:1)
@@ -277,8 +215,7 @@ const cleanLightTheme: ThemeDef = {
 
 export const themes: ThemeDef[] = [
   deepSpaceTheme,
-  tokyoNightTheme,
   cleanLightTheme,
 ];
 
-export const defaultThemeName = "tokyo-night";
+export const defaultThemeName = "default";

@@ -219,7 +219,7 @@ export default function LoginPage() {
       const secure =
         typeof window !== "undefined" && window.location.protocol === "https:";
       Cookies.set("user", JSON.stringify(data.user), {
-        expires: 3,
+        expires: 3 / 24,
         sameSite: "strict",
         secure,
         path: "/",
@@ -293,13 +293,18 @@ export default function LoginPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.message || "Нэвтрэхэд алдаа гарлаа");
+      if (!response.ok) {
+        const msg =
+          response.status === 401
+            ? "Нууц үг буруу байна"
+            : data.message || "Нэвтрэх үед алдаа гарлаа";
+        throw new Error(msg);
+      }
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
       const secure =
         typeof window !== "undefined" && window.location.protocol === "https:";
       Cookies.set("user", JSON.stringify(data.user), {
-        expires: 3,
+        expires: 3 / 24,
         sameSite: "strict",
         secure,
         path: "/",
@@ -311,7 +316,7 @@ export default function LoginPage() {
       window.location.replace("/");
     } catch (error: unknown) {
       toast({
-        title: "Алдаа",
+        title: "Нэвтрэх амжилтгүй",
         description: (error as Error).message,
         variant: "destructive",
       });

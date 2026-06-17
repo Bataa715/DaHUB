@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, Building2, Users, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Building2, Users, Pencil, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 
@@ -34,6 +34,7 @@ interface DepartmentData {
   id: string;
   name: string;
   description?: string;
+  code?: string;
   employeeCount?: number;
   users?: DepartmentUser[];
   createdAt?: string;
@@ -50,8 +51,11 @@ export default function AdminDepartmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ name: "" });
+  const [formData, setFormData] = useState({ name: "", code: "" });
+  const [createName, setCreateName] = useState("");
+  const [createCode, setCreateCode] = useState("");
 
   useEffect(() => {
     loadDepartments();
@@ -81,9 +85,33 @@ export default function AdminDepartmentsPage() {
     setIsViewOpen(true);
   };
 
+  const handleCreateDepartment = async () => {
+    const name = createName.trim();
+    if (!name) return;
+    setIsSaving(true);
+    try {
+      await departmentsApi.create({
+        name,
+        code: createCode.trim().toUpperCase() || undefined,
+      });
+      toast({ title: "Амжилттай", description: "Шинэ хэлтэс нэмэгдлээ." });
+      setIsCreateOpen(false);
+      setCreateName("");
+      setCreateCode("");
+      loadDepartments();
+    } catch (error) {
+      let message = "Хэлтэс нэмэхэд алдаа гарлаа.";
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
+      toast({ title: "Алдаа", description: message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleEditDepartment = (dept: DepartmentData) => {
     setSelectedDepartment(dept);
-    setFormData({ name: dept.name || "" });
+    setFormData({ name: dept.name || "", code: dept.code || "" });
     setIsEditOpen(true);
   };
 
@@ -92,7 +120,8 @@ export default function AdminDepartmentsPage() {
     setIsSaving(true);
     try {
       await departmentsApi.update(selectedDepartment.id, {
-        ...formData,
+        name: formData.name,
+        code: formData.code.trim().toUpperCase(),
         description: selectedDepartment.description,
       });
       toast({
@@ -146,9 +175,21 @@ export default function AdminDepartmentsPage() {
       <AdminPageHeader
         title="Хэлтсүүд"
         rightContent={
-          <span className="text-muted-foreground/60 text-xs">
-            {departments.length} хэлтэс
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-muted-foreground/60 text-xs">
+              {departments.length} хэлтэс
+            </span>
+            <Button
+              size="sm"
+              onClick={() => {
+                setCreateName("");
+                setIsCreateOpen(true);
+              }}
+              className="h-8 gap-1.5 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Хэлтэс нэмэх
+            </Button>
+          </div>
         }
       />
 
@@ -199,9 +240,16 @@ export default function AdminDepartmentsPage() {
                     <p className="text-sm font-medium text-foreground leading-snug">
                       {dept.name}
                     </p>
-                    <p className="text-xs text-muted-foreground/50 mt-1">
-                      {userCount} ажилтан
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {dept.code && (
+                        <span className="inline-flex items-center rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-foreground/80 tracking-wide">
+                          {dept.code}
+                        </span>
+                      )}
+                      <p className="text-xs text-muted-foreground/50">
+                        {userCount} ажилтан
+                      </p>
+                    </div>
                   </div>
                 </div>
               );
@@ -307,9 +355,31 @@ export default function AdminDepartmentsPage() {
             </Label>
             <Input
               value={formData.name}
-              onChange={(e) => setFormData({ name: e.target.value })}
+              onChange={(e) =>
+                setFormData((f) => ({ ...f, name: e.target.value }))
+              }
               className="bg-muted border-border text-foreground focus-visible:ring-ring"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-muted-foreground text-xs">
+              Код (ID prefix)
+            </Label>
+            <Input
+              value={formData.code}
+              onChange={(e) =>
+                setFormData((f) => ({
+                  ...f,
+                  code: e.target.value.toUpperCase(),
+                }))
+              }
+              placeholder="Жишээ: EAH"
+              maxLength={12}
+              className="bg-muted border-border text-foreground focus-visible:ring-ring uppercase"
+            />
+            <p className="text-muted-foreground/60 text-[11px]">
+              Хэрэглэгчийн ID-н эхний prefix код. Зөвхөн том үсэг/тоо.
+            </p>
           </div>
           <DialogFooter className="gap-2 mt-2">
             <Button
@@ -324,6 +394,71 @@ export default function AdminDepartmentsPage() {
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               )}
               Хадгалах
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="bg-background border-border text-foreground max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-foreground text-base">
+              Шинэ хэлтэс нэмэх
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground/60 text-xs">
+              Хэлтсийн нэрийг оруулна уу
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label className="text-muted-foreground text-xs">
+              Хэлтсийн нэр
+            </Label>
+            <Input
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreateDepartment();
+              }}
+              placeholder="Жишээ: Ерөнхий аудитын хэлтэс"
+              autoFocus
+              className="bg-muted border-border text-foreground focus-visible:ring-ring"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-muted-foreground text-xs">
+              Код (ID prefix)
+            </Label>
+            <Input
+              value={createCode}
+              onChange={(e) => setCreateCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreateDepartment();
+              }}
+              placeholder="Жишээ: EAH"
+              maxLength={12}
+              className="bg-muted border-border text-foreground focus-visible:ring-ring uppercase"
+            />
+            <p className="text-muted-foreground/60 text-[11px]">
+              Хоосон орхивол автоматаар оноохгүй. Зөвхөн том үсэг/тоо.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setIsCreateOpen(false)}
+              className="border border-border text-foreground/80 hover:bg-muted"
+            >
+              Цуцлах
+            </Button>
+            <Button
+              onClick={handleCreateDepartment}
+              disabled={isSaving || !createName.trim()}
+            >
+              {isSaving && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              )}
+              Нэмэх
             </Button>
           </DialogFooter>
         </DialogContent>

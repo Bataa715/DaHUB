@@ -19,7 +19,6 @@ import {
   BookOpen,
   Hash,
   Sparkles,
-  Search,
   PenLine,
   Layers,
   ShieldCheck,
@@ -30,7 +29,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Image from "next/image";
-import api, { newsReactionsApi, newsCommentsApi } from "@/lib/api";
+import api, { medlegReactionsApi, medlegCommentsApi } from "@/lib/api";
 
 interface TopPublisher {
   rank: number;
@@ -250,12 +249,14 @@ function PostCard({
       >
         {/* Image banner */}
         {getImageUrl(item.imageUrl) && (
-          <div className="relative w-full h-44 overflow-hidden">
+          <div className="relative w-full h-44 overflow-hidden bg-muted">
             <Image
               src={getImageUrl(item.imageUrl)!}
               alt={item.title}
               fill
               unoptimized
+              loading={index < 4 ? "eager" : "lazy"}
+              priority={index < 4}
               className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
               sizes="640px"
             />
@@ -338,30 +339,18 @@ function LeftSidebar({
 }) {
   return (
     <div className="flex flex-col gap-2 py-6 px-3">
-      {/* Brand */}
-      <div className="flex items-center gap-2 px-2 mb-4">
-        <div>
-          <p className="text-foreground text-sm font-black leading-tight">
-            Мэдлэг
-          </p>
-          <p className="text-muted-foreground text-[10px] leading-tight">
-            Мэдлэг хуваалцах
-          </p>
-        </div>
-      </div>
-
       {/* Create button */}
       <button
         onClick={onCreateClick}
         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-violet-600 dark:bg-violet-500/20 text-white dark:text-violet-300 dark:border dark:border-violet-400/30 hover:bg-violet-700 dark:hover:bg-violet-500/35 transition-colors text-sm font-semibold shadow-sm mb-2"
       >
         <PenLine className="w-4 h-4" />
-        Нийтлэл бичих
+        Мэдлэг хуваалцах
       </button>
 
       {/* Category filters */}
       <div className="space-y-0.5">
-        <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider px-2 py-1.5">
+        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1.5">
           Ангилал
         </p>
         {CATEGORIES.map((c) => {
@@ -375,7 +364,7 @@ function LeftSidebar({
             <button
               key={c.key}
               onClick={() => onCategory(c.key)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold transition-all ${
                 isActive
                   ? "bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -384,7 +373,7 @@ function LeftSidebar({
               <Icon
                 className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-violet-600 dark:text-violet-400" : c.color}`}
               />
-              <span className="flex-1 text-left">{c.label}</span>
+              <span className="flex-1 text-left font-bold">{c.label}</span>
               {count > 0 && (
                 <span
                   className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
@@ -480,7 +469,6 @@ export default function ShineMedlegPage() {
   const [mounted, setMounted] = useState(false);
 
   const [activeCategory, setActiveCategory] = useState("Бүгд");
-  const [searchQuery, setSearchQuery] = useState("");
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -516,7 +504,7 @@ export default function ShineMedlegPage() {
   const fetchNews = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get("/news?published=true");
+      const res = await api.get("/medleg?published=true");
       setNews(res.data);
     } catch {
       // silent
@@ -528,7 +516,7 @@ export default function ShineMedlegPage() {
   const fetchStats = async () => {
     setStatsLoading(true);
     try {
-      const res = await api.get("/news/stats/top-publishers");
+      const res = await api.get("/medleg/stats/top-publishers");
       setTopPublishers(res.data);
     } catch {
       setTopPublishers([]);
@@ -539,17 +527,7 @@ export default function ShineMedlegPage() {
 
   // Filtered news
   const filteredNews = news.filter((item) => {
-    const matchCat =
-      activeCategory === "Бүгд" || item.category === activeCategory;
-    const q = searchQuery.trim().toLowerCase();
-    const matchSearch =
-      !q ||
-      item.title.toLowerCase().includes(q) ||
-      item.content
-        .replace(/<[^>]*>/g, "")
-        .toLowerCase()
-        .includes(q);
-    return matchCat && matchSearch;
+    return activeCategory === "Бүгд" || item.category === activeCategory;
   });
 
   // Count by category
@@ -579,7 +557,7 @@ export default function ShineMedlegPage() {
     if (!createForm.title.trim() || !createForm.content.trim()) return;
     setCreateLoading(true);
     try {
-      await api.post("/news", createForm);
+      await api.post("/medleg", createForm);
       setShowCreate(false);
       setCreateForm({
         title: "",
@@ -599,7 +577,7 @@ export default function ShineMedlegPage() {
   const handleDelete = async (id: string) => {
     if (!confirm(t("newsDeleteConfirm"))) return;
     try {
-      await api.delete(`/news/${id}`);
+      await api.delete(`/medleg/${id}`);
       if (selectedNews?.id === id) closeDetail();
       fetchNews();
     } catch {
@@ -613,9 +591,9 @@ export default function ShineMedlegPage() {
     document.body.style.overflow = "hidden";
     try {
       const [newsRes, reactRes, commentsRes] = await Promise.all([
-        api.get(`/news/${item.id}`),
-        newsReactionsApi.get(item.id),
-        newsCommentsApi.get(item.id),
+        api.get(`/medleg/${item.id}`),
+        medlegReactionsApi.get(item.id),
+        medlegCommentsApi.get(item.id),
       ]);
       setSelectedNews(newsRes.data);
       setReactions(reactRes);
@@ -640,7 +618,7 @@ export default function ShineMedlegPage() {
     if (!selectedNews) return;
     try {
       if (reactions?.myReaction === emoji) {
-        await newsReactionsApi.remove(selectedNews.id);
+        await medlegReactionsApi.remove(selectedNews.id);
         setReactions((r) =>
           r
             ? {
@@ -655,7 +633,7 @@ export default function ShineMedlegPage() {
         );
       } else {
         const oldEmoji = reactions?.myReaction;
-        await newsReactionsApi.react(selectedNews.id, emoji);
+        await medlegReactionsApi.react(selectedNews.id, emoji);
         setReactions((r) => {
           if (!r) return r;
           const c = { ...r.counts };
@@ -673,9 +651,9 @@ export default function ShineMedlegPage() {
     if (!selectedNews || !commentText.trim() || commentPosting) return;
     setCommentPosting(true);
     try {
-      await newsCommentsApi.add(selectedNews.id, commentText);
+      await medlegCommentsApi.add(selectedNews.id, commentText);
       setCommentText("");
-      const updated = await newsCommentsApi.get(selectedNews.id);
+      const updated = await medlegCommentsApi.get(selectedNews.id);
       setComments(updated);
     } catch {
       alert(t("newsCommentError"));
@@ -687,7 +665,7 @@ export default function ShineMedlegPage() {
   const handleDeleteComment = async (commentId: string) => {
     if (!selectedNews) return;
     try {
-      await newsCommentsApi.delete(selectedNews.id, commentId);
+      await medlegCommentsApi.delete(selectedNews.id, commentId);
       setComments((c) => c.filter((x) => x.id !== commentId));
     } catch {
       /* silent */
@@ -759,17 +737,6 @@ export default function ShineMedlegPage() {
           </button>
         </div>
 
-        {/* Search bar */}
-        <div className="relative mb-5">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Нийтлэл хайх..."
-            className="w-full max-w-xl pl-9 pr-4 py-2.5 rounded-xl bg-muted border border-input text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all"
-          />
-        </div>
-
         {/* Mobile category pills */}
         <div className="flex gap-2 overflow-x-auto pb-3 mb-4 lg:hidden scrollbar-none">
           {CATEGORIES.map((c) => {
@@ -802,7 +769,7 @@ export default function ShineMedlegPage() {
             </div>
             <p className="font-semibold text-sm">{t("noNews")}</p>
             <p className="text-xs mt-1 opacity-60">
-              Эхний нийтлэлийг та бичиж болно
+              Эхний мэдлэгийг та бичиж болно
             </p>
           </div>
         ) : (
@@ -866,7 +833,7 @@ export default function ShineMedlegPage() {
                       setCreateForm((f) => ({ ...f, title: e.target.value }))
                     }
                     className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                    placeholder="Нийтлэлийн гарчиг..."
+                    placeholder="Мэдлэгийн гарчиг..."
                   />
                 </div>
                 <div>
@@ -936,7 +903,7 @@ export default function ShineMedlegPage() {
                     }
                     rows={6}
                     className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                    placeholder="Нийтлэлийн агуулга..."
+                    placeholder="Мэдлэгийн агуулга..."
                   />
                 </div>
               </div>

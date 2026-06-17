@@ -45,14 +45,14 @@ export default function Hero() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-120px)] flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground/60 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-120px)] flex flex-col justify-center overflow-hidden select-none">
+    <div className="relative flex-1 flex flex-col justify-center overflow-hidden select-none">
 
       {/* ── Зөөлөн арын градиент + сүлжээ ── */}
       <div
@@ -136,7 +136,7 @@ export default function Hero() {
               onClick={() => router.push("/tools")}
               className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-foreground text-background text-sm font-bold tracking-wide shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 transition-all duration-300"
             >
-              Хэрэгслүүд
+              Хэрэгсэл
               <ChevronRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
             </button>
           </motion.div>
@@ -200,11 +200,6 @@ export default function Hero() {
                 </span>
               </div>
             )}
-          </div>
-          {/* Active badge */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Идэвхтэй
           </div>
         </motion.div>
       </div>

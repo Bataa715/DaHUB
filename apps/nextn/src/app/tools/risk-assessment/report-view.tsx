@@ -10,7 +10,7 @@ import {
 } from "react";
 import { ChevronDown, Download, Loader2 } from "lucide-react";
 import Cookies from "js-cookie";
-import { riskApi } from "@/lib/api";
+import { riskApi, HOLD_GLOBAL_PERIOD } from "@/lib/api";
 import {
   aggregateBranch,
   riskLevelClass,
@@ -123,19 +123,15 @@ export default function ReportView({
   const lastAppliedKey = useRef<string>("__unset__");
 
   // ── Indicator hold state ──────────────────────────────────────────────────
-  const holdPeriod = pDate ? pDate.slice(0, 7) : "";
+  // Hold нь огноо/улирлаас үл хамаарч БҮХ тооцоонд нэгэн зэрэг үйлчилнэ (global).
   const [heldIds, setHeldIds] = useState<Set<string>>(new Set());
   // holds fetch дууссан эсэх — дуусаагүй үед scoring хийхгүй
-  const [holdsLoaded, setHoldsLoaded] = useState<boolean>(!pDate);
+  const [holdsLoaded, setHoldsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!holdPeriod) {
-      setHoldsLoaded(true);
-      return;
-    }
     setHoldsLoaded(false);
     riskApi
-      .listHolds(holdPeriod)
+      .listHolds(HOLD_GLOBAL_PERIOD)
       .then((data) => {
         setHeldIds(new Set(data.map((d) => d.indicatorId)));
         setHoldsLoaded(true);
@@ -143,7 +139,7 @@ export default function ReportView({
       .catch(() => {
         setHoldsLoaded(true); // алдаа гарвал holds хоосон гэж үзэж үргэлжлэнэ
       });
-  }, [holdPeriod]);
+  }, []);
 
   // Hold хийгдсэн indicator-уудыг catalog-аас хасна —
   // score тооцоо болон дэлгэрэнгүй харагдахгүй болно
@@ -252,7 +248,7 @@ export default function ReportView({
         delete pendingSavePayloads.current[key];
         riskApi
           .upsertManualIndicator({ branchId, indicatorId, value })
-          .catch(() => {});
+          .catch((e) => console.error("upsertManualIndicator хадгалахад алдаа:", e));
       }, 600);
     },
     [readOnly, saveIndicatorFn],
@@ -842,22 +838,6 @@ function ReportTable({
                   )}
                   <span className="inline-flex items-center gap-1.5">
                     Judgement
-                    {!readOnly && onJudgementChange && (
-                      <button
-                        onClick={() => {
-                          for (const b of rows) {
-                            const prev = previousJudgements?.[b.branchId];
-                            if (prev && prev > 0) {
-                              onJudgementChange(b.branchId, prev);
-                            }
-                          }
-                        }}
-                        title="Бүх салбарын өмнөх үнэлэмжийг нэгэн зэрэг бөглөх"
-                        className="inline-flex items-center gap-0.5 px-1 py-0 rounded text-[9px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 transition-colors"
-                      >
-                        ← бүгд
-                      </button>
-                    )}
                   </span>
                 </div>
               </th>
@@ -980,23 +960,6 @@ function ReportTable({
                             </span>
                           </span>
                         </button>
-                        {/* ← өмнөх judgment auto бөглөх */}
-                        {previousJudgements && previousJudgements[b.branchId] != null && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const prev = previousJudgements[b.branchId];
-                              if (prev > 0 && onJudgementChange) {
-                                onJudgementChange(b.branchId, prev);
-                              }
-                            }}
-                            title={`Өмнөх: ${previousJudgements[b.branchId]}`}
-                            className="mt-0.5 flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground/40 hover:text-amber-500 transition-colors"
-                          >
-                            <span>←</span>
-                            <span className="tabular-nums">{previousJudgements[b.branchId]}</span>
-                          </button>
-                        )}
                         </div>
                       )}
                     </td>
@@ -1236,9 +1199,13 @@ function IndicatorDetailRow({
       if (!g[grp]) g[grp] = [];
       g[grp].push({ ind, ev });
     }
-    // subid-аар эрэмбэлэх (тоон дараалал: 1, 2, 3…)
+    // subid-аар эрэмбэлэх боловч "Үнэлэхгүй" (score байхгүй/0) зүйлсийг
+    // subid-аас үл хамааран хамгийн доор нь байрлуулна.
     for (const grp of Object.keys(g)) {
       g[Number(grp)].sort((a, b) => {
+        const aNo = a.ev.score == null || a.ev.score <= 0;
+        const bNo = b.ev.score == null || b.ev.score <= 0;
+        if (aNo !== bNo) return aNo ? 1 : -1; // Үнэлэхгүй → доош
         const na = parseFloat(a.ind.subid ?? "") || 0;
         const nb = parseFloat(b.ind.subid ?? "") || 0;
         if (na !== nb) return na - nb;
@@ -1256,16 +1223,26 @@ function IndicatorDetailRow({
             <div className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
               {branchName} — үзүүлэлтийн дэлгэрэнгүй
             </div>
-            {currentAgg?.level && (
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(currentAgg.level)}`}
-              >
+            <div className="flex items-center gap-2">
+              {currentAgg?.total != null && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border bg-muted/40 text-[10px] font-bold tabular-nums text-foreground/80">
+                  Эцсийн дүн: {currentAgg.total.toFixed(2)} / 5
+                  <span className="text-sky-600 dark:text-sky-400">
+                    ({Math.round((currentAgg.total / 5) * 100)}%)
+                  </span>
+                </span>
+              )}
+              {currentAgg?.level && (
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${currentAgg.level === "Өндөр" ? "bg-red-500" : currentAgg.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
-                />
-                {currentAgg.level}
-              </span>
-            )}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(currentAgg.level)}`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${currentAgg.level === "Өндөр" ? "bg-red-500" : currentAgg.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
+                  />
+                  {currentAgg.level}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* ── Харьцуулалтын score карт ── */}

@@ -251,10 +251,9 @@ const Header = () => {
                             )}
                           >
                             <div
-                              className="w-4 h-4 rounded-full ring-2 ring-white/20 shadow-lg"
+                              className="w-4 h-4 rounded-full ring-1 ring-border shadow-sm"
                               style={{
-                                backgroundColor: `hsl(${themeOption.tokens.primary})`,
-                                boxShadow: `0 0 12px hsl(${themeOption.tokens.primary} / 0.5)`,
+                                backgroundColor: `hsl(${themeOption.tokens.background})`,
                               }}
                             />
                             <span className="flex-1 font-medium">
@@ -275,10 +274,10 @@ const Header = () => {
                   </DropdownMenuItem>
                   {!isAdminPage && (
                     <DropdownMenuItem
-                      onClick={() => router.push("/departments")}
+                      onClick={() => router.push("/ajiltnuud")}
                     >
-                      <Building2 className="mr-2 h-4 w-4" />
-                      <span>{t("navDepartments")}</span>
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>{t("navEmployees")}</span>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />

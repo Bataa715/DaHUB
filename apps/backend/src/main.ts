@@ -46,7 +46,15 @@ function validateProductionEnv() {
 
 async function bootstrap() {
   validateProductionEnv();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // "verbose"-ийг бүх орчинд хасна — хэвийн silent-refresh 401 логууд
+    // (JwtAuthGuard / AllExceptionsFilter) verbose-д бичигддэг тул харагдахгүй.
+    // Production дээр debug-ийг бас хасаж зөвхөн log/warn/error үлдээнэ.
+    logger:
+      process.env.NODE_ENV === "production"
+        ? ["error", "warn", "log"]
+        : ["error", "warn", "log", "debug"],
+  });
   const logger = new Logger("Bootstrap");
 
   // [H-4] Always trust the first reverse-proxy hop so req.ip / X-Forwarded-For
@@ -83,8 +91,8 @@ async function bootstrap() {
   app.use("/users", express.urlencoded({ limit: "6mb", extended: true }));
   app.use("/tailan", express.json({ limit: "10mb" }));
   app.use("/tailan", express.urlencoded({ limit: "10mb", extended: true }));
-  app.use("/news", express.json({ limit: "6mb" }));
-  app.use("/news", express.urlencoded({ limit: "6mb", extended: true }));
+  app.use("/medleg", express.json({ limit: "6mb" }));
+  app.use("/medleg", express.urlencoded({ limit: "6mb", extended: true }));
   // Tight default limit for all other endpoints
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));

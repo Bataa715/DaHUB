@@ -40,7 +40,6 @@ function buildSummaryCsv(
   const baseHeaders = [
     "Салбарын нэр",
     "SOLID",
-    "Бүс",
     "Score 1",
     "Score 2",
     "Score 3",
@@ -67,7 +66,6 @@ function buildSummaryCsv(
       const base = [
         a.branchName,
         a.solid,
-        a.region,
         fmt(a.s1),
         fmt(a.s2),
         fmt(a.s3),

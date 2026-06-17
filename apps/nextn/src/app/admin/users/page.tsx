@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Check, X, Pencil } from "lucide-react";
+import { Loader2, Check, X, Pencil, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,38 @@ interface UserData {
   isActive?: boolean;
   lastLoginAt?: string;
   createdAt: string;
+}
+
+// Нууц үгийн шаардлага — backend-тэй ижил (8+ тэмдэгт, том/жижиг үсэг, тоо, тусгай тэмдэгт)
+function checkPasswordRules(pw: string) {
+  return {
+    length: pw.length >= 8,
+    lower: /[a-z]/.test(pw),
+    upper: /[A-Z]/.test(pw),
+    digit: /\d/.test(pw),
+    special: /[@$!%*?&#^()\-_=+[\]{}|;:',.<>/~`]/.test(pw),
+  };
+}
+function isPasswordValid(pw: string) {
+  const r = checkPasswordRules(pw);
+  return r.length && r.lower && r.upper && r.digit && r.special;
+}
+// Шаардлага хангасан санамсаргүй нууц үг үүсгэх
+function generatePassword(): string {
+  const lower = "abcdefghijkmnpqrstuvwxyz";
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const special = "@$!%*?&#";
+  const all = lower + upper + digits + special;
+  const pick = (set: string) =>
+    set[Math.floor(Math.random() * set.length)];
+  let pw = pick(lower) + pick(upper) + pick(digits) + pick(special);
+  for (let i = 0; i < 8; i++) pw += pick(all);
+  // Тэмдэгтүүдийг холих
+  return pw
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
 }
 
 export default function UsersPage() {
@@ -174,7 +206,7 @@ export default function UsersPage() {
   };
 
   const handleResetPassword = async () => {
-    if (!resetPasswordUser || !newPassword || newPassword.length < 6) return;
+    if (!resetPasswordUser || !isPasswordValid(newPassword)) return;
     setIsResetting(true);
     try {
       await usersApi.resetPassword(resetPasswordUser.id, newPassword);
@@ -400,19 +432,54 @@ export default function UsersPage() {
             <Label className="text-muted-foreground text-xs mb-1.5 block">
               Шинэ нууц үг
             </Label>
-            <Input
-              type="text"
-              placeholder="Хамгийн багадаа 6 тэмдэгт"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50"
-              autoComplete="off"
-            />
-            {newPassword.length > 0 && newPassword.length < 6 && (
-              <p className="text-red-400 text-xs mt-1">
-                Хамгийн багадаа 6 тэмдэгт байх ёстой
-              </p>
-            )}
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Том/жижиг үсэг, тоо, тэмдэгт — 8+"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 pr-10"
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => setNewPassword(generatePassword())}
+                title="Санамсаргүй нууц үг үүсгэх"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {newPassword.length > 0 &&
+              (() => {
+                const r = checkPasswordRules(newPassword);
+                const items: { ok: boolean; label: string }[] = [
+                  { ok: r.length, label: "8+ тэмдэгт" },
+                  { ok: r.upper, label: "Том үсэг (A-Z)" },
+                  { ok: r.lower, label: "Жижиг үсэг (a-z)" },
+                  { ok: r.digit, label: "Тоо (0-9)" },
+                  { ok: r.special, label: "Тусгай тэмдэгт" },
+                ];
+                return (
+                  <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+                    {items.map((it) => (
+                      <li
+                        key={it.label}
+                        className={`flex items-center gap-1.5 text-[11px] font-medium ${
+                          it.ok ? "text-emerald-500" : "text-muted-foreground/60"
+                        }`}
+                      >
+                        {it.ok ? (
+                          <Check className="w-3 h-3 shrink-0" />
+                        ) : (
+                          <X className="w-3 h-3 shrink-0" />
+                        )}
+                        {it.label}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
           </div>
           <DialogFooter className="gap-2">
             <button
@@ -427,7 +494,7 @@ export default function UsersPage() {
             </button>
             <button
               onClick={handleResetPassword}
-              disabled={isResetting || newPassword.length < 6}
+              disabled={isResetting || !isPasswordValid(newPassword)}
               className="flex-1 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:bg-secondary disabled:text-muted-foreground/60 text-black rounded-xl flex items-center justify-center gap-2"
             >
               {isResetting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

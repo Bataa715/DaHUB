@@ -163,13 +163,14 @@ export class UsersService {
       // Auto-generate userId only when not explicitly provided
       if (updateUserDto.userId === undefined) {
         const depts = await this.clickhouse.query<any>(
-          "SELECT name FROM departments WHERE id = {deptId:String} LIMIT 1",
+          "SELECT name, code FROM departments WHERE id = {deptId:String} LIMIT 1",
           { deptId: updateUserDto.departmentId },
         );
         if (depts.length > 0) {
           const newDeptName = depts[0].name as string;
+          const newDeptCode = (depts[0].code as string) || "";
           const userName = (updateUserDto.name ?? users[0].name) as string;
-          const newUserId = buildUserId(newDeptName, userName);
+          const newUserId = buildUserId(newDeptName, userName, newDeptCode);
           fields.push("userId = {userId:String}");
           params.userId = newUserId;
         }

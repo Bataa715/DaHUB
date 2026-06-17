@@ -170,7 +170,7 @@ export default function RiskReportsPage() {
         setComparisonRows(res.rows || []);
         setComparisonManualMap(res.manualMap || {});
       })
-      .catch(() => {})
+      .catch((e) => console.error("getHistory амжилтгүй:", e))
       .finally(() => {
         if (!cancelled) setLoadingComparison(false);
       });

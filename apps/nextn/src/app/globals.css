@@ -148,12 +148,22 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
     font-family:
       -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
       Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
       "Segoe UI Symbol", "Noto Color Emoji";
+  }
+
+  /* Хөдөлгөөн багасгах тохиргоотой хэрэглэгчдэд animation-г унтраах */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   .font-emoji {
@@ -217,7 +227,65 @@ html.light .text-muted-foreground\/40 { color: hsl(215 12% 55%) !important; }
 html.light .text-muted-foreground\/30 { color: hsl(215 10% 62%) !important; }
 html.light .text-muted-foreground\/20 { color: hsl(215 8% 70%) !important; }
 
-/* ── Light mode: foreground-based backgrounds (inputs, cards) ──────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Admin хэсэг — текстийг илүү тод, bold болгож уншихад хялбар болгох.
+   Dark theme дээр цагаан, Light theme дээр хар өнгөтэй, дунд зэрэг тод жинтэй.
+   `.admin-shell` нь зөвхөн /admin доорх хуудаснуудад хэрэгжинэ.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Үндсэн текстийн жинг дунд зэрэг тод болгох */
+.admin-shell {
+  font-weight: 550;
+}
+
+/* Бүдэг (muted) болон хагас тунгалаг foreground текстийг тод + bold болгох */
+.admin-shell :is(p, span, label, a, td, th, li, dt, dd, button, div) {
+  font-weight: 600;
+}
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3,
+.admin-shell h4 {
+  font-weight: 800;
+}
+
+/* Картын гарчиг, badge, statистик тоонуудыг илүү тод болгох */
+.admin-shell :is([class*="rounded-xl"], [class*="rounded-lg"], [class*="rounded-2xl"]) :is(p, span, h1, h2, h3, h4, dt, dd) {
+  font-weight: 650;
+}
+.admin-shell :is(.font-medium, .font-semibold) {
+  font-weight: 700 !important;
+}
+.admin-shell .font-bold {
+  font-weight: 800 !important;
+}
+
+/* Бүх muted-foreground хувилбарыг (opacity-тэй ч гэсэн) тод болгох */
+.admin-shell [class*="text-muted-foreground"] {
+  color: hsl(var(--foreground) / 0.92) !important;
+}
+/* Бага тунгалаг foreground текстийг floor-той болгох */
+.admin-shell .text-foreground\/30,
+.admin-shell .text-foreground\/40,
+.admin-shell .text-foreground\/50,
+.admin-shell .text-foreground\/60,
+.admin-shell .text-foreground\/70,
+.admin-shell .text-foreground\/80 {
+  color: hsl(var(--foreground) / 0.95) !important;
+}
+
+/* Light theme: илүү гүн хар өнгөөр дарж тодруулах */
+html.light .admin-shell [class*="text-muted-foreground"],
+html.light .admin-shell .text-foreground\/30,
+html.light .admin-shell .text-foreground\/40,
+html.light .admin-shell .text-foreground\/50,
+html.light .admin-shell .text-foreground\/60,
+html.light .admin-shell .text-foreground\/70,
+html.light .admin-shell .text-foreground\/80 {
+  color: hsl(222 47% 11%) !important;
+}
+
+/* Light mode: foreground-based backgrounds (inputs, cards) ──────────── */
 /* bg-foreground/* classes create near-invisible backgrounds on white in
    light mode (foreground is dark navy, 5% of that on white ≈ white). */
 html.light .bg-foreground\/5    { background-color: hsl(210 20% 95%) !important; }

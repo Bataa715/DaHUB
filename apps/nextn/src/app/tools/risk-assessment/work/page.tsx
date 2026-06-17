@@ -89,7 +89,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
   // Manual indicators map (гар оруулга)
   useEffect(() => {
-    riskApi.listManualIndicators().then((data) => setManualMap(data || {})).catch(() => {});
+    riskApi.listManualIndicators().then((data) => setManualMap(data || {})).catch((e) => console.error("listManualIndicators амжилтгүй:", e));
   }, []);
 
   const handleManualSave = useCallback(
@@ -106,7 +106,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       const key = `${branchId}::${indicatorId}`;
       clearTimeout(manualTimers.current[key]);
       manualTimers.current[key] = setTimeout(() => {
-        riskApi.upsertManualIndicator({ branchId, indicatorId, value }).catch(() => {});
+        riskApi.upsertManualIndicator({ branchId, indicatorId, value }).catch((e) => console.error("upsertManualIndicator хадгалахад алдаа:", e));
       }, 600);
     },
     [],
@@ -250,7 +250,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       judgementTimers.current[branchId] = setTimeout(() => {
         riskApi
           .upsertJudgement({ branchId, branchName, fetchedDate, score })
-          .catch(() => {});
+          .catch((e) => console.error("upsertJudgement хадгалахад алдаа:", e));
       }, 600);
     },
     [fetchedDate],

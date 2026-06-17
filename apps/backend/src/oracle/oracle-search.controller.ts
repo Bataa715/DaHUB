@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Body,
   Param,
   Query,
   UseGuards,
@@ -38,6 +40,65 @@ export class OracleSearchController {
   @Post("retry-connect")
   async retryConnect() {
     return this.oracle.retryConnect();
+  }
+
+  // ─── Admin config (dashboards + event chains) ───────────────────────────────
+
+  /** GET /oracle/search/admin/dashboards — бүх dashboard-ийн бүрэн тохиргоо (admin) */
+  @UseGuards(AdminGuard)
+  @Get("admin/dashboards")
+  adminGetDashboards() {
+    return this.config.loadDashboards();
+  }
+
+  /** PATCH /oracle/search/admin/dashboards/:id — dashboard идэвхтэй эсэхийг өөрчлөх (admin) */
+  @UseGuards(AdminGuard)
+  @Patch("admin/dashboards/:id")
+  adminUpdateDashboard(
+    @Param("id") id: string,
+    @Body() body: { enabled: boolean },
+  ) {
+    if (typeof body?.enabled !== "boolean") {
+      throw new HttpException(
+        "enabled (boolean) шаардлагатай",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    try {
+      return this.config.setDashboardEnabled(Number(id), body.enabled);
+    } catch (err) {
+      throw new HttpException(
+        (err as Error).message,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  /** GET /oracle/search/admin/chains — бүх event chain-ийн бүрэн тохиргоо (admin) */
+  @UseGuards(AdminGuard)
+  @Get("admin/chains")
+  adminGetChains() {
+    return this.config.loadChains();
+  }
+
+  /** PATCH /oracle/search/admin/chains/:id — event chain идэвхтэй эсэхийг өөрчлөх (admin) */
+  @UseGuards(AdminGuard)
+  @Patch("admin/chains/:id")
+  adminUpdateChain(
+    @Param("id") id: string,
+    @Body() body: { enabled: boolean },
+  ) {
+    if (typeof body?.enabled !== "boolean") {
+      throw new HttpException(
+        "enabled (boolean) шаардлагатай",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    try {
+      return this.config.setChainEnabled(Number(id), body.enabled);
+    } catch (err) {
+      throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
+    }
   }
 
   /** GET /oracle/search/dashboards — all dashboard configs (id, name, table, enabled) */

@@ -4,23 +4,43 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
-import { CreateNewsDto } from "./dto/news.dto";
+import { CreateMedlegDto } from "./dto/medleg.dto";
 import { randomUUID } from "crypto";
+import sanitizeHtml from "sanitize-html";
+
+// Server-side defence-in-depth: strip scripts/handlers even if a client
+// bypasses the frontend DOMPurify and calls the API directly.
+function cleanMedlegContent(html: string): string {
+  return sanitizeHtml(html ?? "", {
+    allowedTags: [
+      "p", "br", "b", "strong", "i", "em", "u", "s", "blockquote",
+      "ul", "ol", "li", "h1", "h2", "h3", "h4", "a", "code", "pre",
+      "span", "img",
+    ],
+    allowedAttributes: {
+      a: ["href", "target", "rel"],
+      img: ["src", "alt"],
+      span: ["style"],
+    },
+    allowedSchemes: ["http", "https", "mailto", "data"],
+    allowProtocolRelative: false,
+  });
+}
 
 @Injectable()
-export class NewsService {
+export class MedlegService {
   constructor(private clickhouse: ClickHouseService) {}
 
-  async create(createNewsDto: CreateNewsDto, authorId: string) {
+  async create(createMedlegDto: CreateMedlegDto, authorId: string) {
     const id = randomUUID();
     const now = nowCH();
 
     let imageData = "";
     let imageMime = "";
-    if (createNewsDto.imageUrl?.startsWith("data:")) {
+    if (createMedlegDto.imageUrl?.startsWith("data:")) {
       // [M-6] Server-side MIME whitelist — reject SVG (XSS via embedded <script>)
       // and any non-raster format.
-      const matches = createNewsDto.imageUrl.match(
+      const matches = createMedlegDto.imageUrl.match(
         /^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/,
       );
       if (!matches) {
@@ -38,12 +58,12 @@ export class NewsService {
       }
     }
 
-    await this.clickhouse.insert("news", [
+    await this.clickhouse.insert("medleg", [
       {
         id,
-        title: createNewsDto.title,
-        content: createNewsDto.content,
-        category: createNewsDto.category || "Аудит",
+        title: createMedlegDto.title,
+        content: cleanMedlegContent(createMedlegDto.content),
+        category: createMedlegDto.category || "Аудит",
         imageUrl: imageData,
         imageMime,
         authorId,
@@ -54,17 +74,17 @@ export class NewsService {
       },
     ]);
 
-    return { id, message: "Мэдээ амжилттай үүслээ" };
+    return { id, message: "Мэдлэг амжилттай үүслээ" };
   }
 
   async findAll(published = true, limit = 100, offset = 0) {
     const filter = published ? "WHERE isPublished = 1" : "";
-    const news = await this.clickhouse.query<any>(
+    const items = await this.clickhouse.query<any>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
               u.name as authorName
-       FROM news AS n
+       FROM medleg AS n
        LEFT JOIN users u ON n.authorId = u.id
        ${filter}
        ORDER BY n.views DESC, n.createdAt DESC
@@ -72,34 +92,34 @@ export class NewsService {
       { limit, offset },
     );
 
-    return news.map((n) => ({
+    return items.map((n) => ({
       ...n,
-      imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "",
+      imageUrl: Number(n.hasImage) ? `/medleg/${n.id}/image` : "",
     }));
   }
 
   async findOne(id: string, userId?: string) {
-    const news = await this.clickhouse.query<any>(
+    const items = await this.clickhouse.query<any>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
               u.name as authorName
-       FROM news AS n
+       FROM medleg AS n
        LEFT JOIN users u ON n.authorId = u.id
        WHERE n.id = {id:String} AND n.isPublished = 1
        LIMIT 1`,
       { id },
     );
 
-    if (!news || news.length === 0) {
-      throw new NotFoundException("Мэдээ олдсонгүй");
+    if (!items || items.length === 0) {
+      throw new NotFoundException("Мэдлэг олдсонгүй");
     }
 
     // Only increment view count once per user per article
     if (userId) {
       const alreadyViewed = await this.clickhouse
         .query<{ cnt: string }>(
-          `SELECT count() as cnt FROM news_views
+          `SELECT count() as cnt FROM medleg_views
            WHERE newsId = {newsId:String} AND userId = {userId:String}`,
           { newsId: id, userId },
         )
@@ -107,85 +127,48 @@ export class NewsService {
 
       if (Number(alreadyViewed?.[0]?.cnt ?? 0) === 0) {
         this.clickhouse
-          .insert("news_views", [{ newsId: id, userId, viewedAt: nowCH() }])
+          .insert("medleg_views", [{ newsId: id, userId, viewedAt: nowCH() }])
           .catch(() => {});
         this.clickhouse
           .exec(
-            "ALTER TABLE news UPDATE views = views + 1 WHERE id = {id:String}",
+            "ALTER TABLE medleg UPDATE views = views + 1 WHERE id = {id:String}",
             { id },
           )
           .catch(() => {});
       }
     }
 
-    const n = news[0];
-    return { ...n, imageUrl: Number(n.hasImage) ? `/news/${n.id}/image` : "" };
-  }
-
-  async remove(id: string) {
-    const existing = await this.clickhouse.query<any>(
-      `SELECT id FROM news WHERE id = {id:String} LIMIT 1`,
-      { id },
-    );
-
-    if (!existing || existing.length === 0) {
-      throw new NotFoundException("Мэдээ олдсонгүй");
-    }
-
-    await this.clickhouse.exec(
-      "ALTER TABLE news DELETE WHERE id = {id:String}",
-      { id },
-    );
-
-    return { message: "Мэдээ амжилттай устгагдлаа" };
+    const n = items[0];
+    return { ...n, imageUrl: Number(n.hasImage) ? `/medleg/${n.id}/image` : "" };
   }
 
   async removeByOwner(id: string, userId: string) {
     const existing = await this.clickhouse.query<any>(
-      `SELECT id, authorId FROM news WHERE id = {id:String} LIMIT 1`,
+      `SELECT id, authorId FROM medleg WHERE id = {id:String} LIMIT 1`,
       { id },
     );
 
     if (!existing || existing.length === 0) {
-      throw new NotFoundException("Мэдээ олдсонгүй");
+      throw new NotFoundException("Мэдлэг олдсонгүй");
     }
 
     if (existing[0].authorId !== userId) {
-      throw new BadRequestException("Зөвхөн өөрийн мэдээг устгах боломжтой");
+      throw new BadRequestException("Зөвхөн өөрийн мэдлэгийг устгах боломжтой");
     }
 
     await this.clickhouse.exec(
-      "ALTER TABLE news DELETE WHERE id = {id:String}",
+      "ALTER TABLE medleg DELETE WHERE id = {id:String}",
       { id },
     );
 
-    return { message: "Мэдээ амжилттай устгагдлаа" };
+    return { message: "Мэдлэг амжилттай устгагдлаа" };
   }
 
-  async togglePublish(id: string) {
-    const news = await this.clickhouse.query<any>(
-      `SELECT isPublished FROM news WHERE id = {id:String} LIMIT 1`,
-      { id },
-    );
-
-    if (!news || news.length === 0) {
-      throw new NotFoundException("Мэдээ олдсонгүй");
-    }
-
-    const newStatus = news[0].isPublished ? 0 : 1;
-    await this.clickhouse.exec(
-      "ALTER TABLE news UPDATE isPublished = {isPublished:UInt8} WHERE id = {id:String}",
-      { id, isPublished: newStatus },
-    );
-
-    return { message: newStatus ? "Мэдээ нийтлэгдлээ" : "Мэдээ нуугдлаа" };
-  }
-
-  async getNewsImage(
+  async getMedlegImage(
     id: string,
   ): Promise<{ buffer: Buffer; mimeType: string } | null> {
     const rows = await this.clickhouse.query<any>(
-      `SELECT imageUrl, imageMime FROM news WHERE id = {id:String} LIMIT 1`,
+      `SELECT imageUrl, imageMime FROM medleg WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     if (!rows || rows.length === 0 || !rows[0].imageUrl) return null;
@@ -209,9 +192,9 @@ export class NewsService {
     const rows = await this.clickhouse.query<any>(
       `SELECT n.authorId,
               u.name AS authorName,
-              count() AS newsCount,
+              count() AS medlegCount,
               sum(n.views) AS totalViews
-       FROM news AS n
+       FROM medleg AS n
        LEFT JOIN users u ON n.authorId = u.id
        WHERE n.isPublished = 1
        GROUP BY n.authorId, u.name
@@ -223,20 +206,20 @@ export class NewsService {
       rank: i + 1,
       authorId: r.authorId,
       authorName: r.authorName || "Unknown",
-      newsCount: Number(r.newsCount),
+      medlegCount: Number(r.medlegCount),
       totalViews: Number(r.totalViews),
     }));
   }
 
   async getReactions(newsId: string, userId: string) {
     const rows = await this.clickhouse.query<any>(
-      `SELECT emoji, count() as cnt FROM news_reactions
+      `SELECT emoji, count() as cnt FROM medleg_reactions
        WHERE newsId = {newsId:String}
        GROUP BY emoji`,
       { newsId },
     );
     const myRow = await this.clickhouse.query<any>(
-      `SELECT emoji FROM news_reactions
+      `SELECT emoji FROM medleg_reactions
        WHERE newsId = {newsId:String} AND userId = {userId:String}
        LIMIT 1`,
       { newsId, userId },
@@ -250,7 +233,7 @@ export class NewsService {
     const ALLOWED = ["👍", "❤️", "😮", "💡", "🔥"];
     if (!ALLOWED.includes(emoji))
       throw new BadRequestException("Invalid emoji");
-    await this.clickhouse.insert("news_reactions", [
+    await this.clickhouse.insert("medleg_reactions", [
       { newsId, userId, emoji, createdAt: nowCH() },
     ]);
     return { ok: true };
@@ -258,7 +241,7 @@ export class NewsService {
 
   async removeReaction(newsId: string, userId: string) {
     await this.clickhouse.exec(
-      `ALTER TABLE news_reactions DELETE WHERE newsId = {newsId:String} AND userId = {userId:String}`,
+      `ALTER TABLE medleg_reactions DELETE WHERE newsId = {newsId:String} AND userId = {userId:String}`,
       { newsId, userId },
     );
     return { ok: true };
@@ -267,7 +250,7 @@ export class NewsService {
   async getComments(newsId: string) {
     return this.clickhouse.query<any>(
       `SELECT id, newsId, authorId, authorName, content, createdAt
-       FROM news_comments
+       FROM medleg_comments
        WHERE newsId = {newsId:String}
        ORDER BY createdAt ASC`,
       { newsId },
@@ -285,7 +268,7 @@ export class NewsService {
     if (content.length > 1000)
       throw new BadRequestException("Comment too long");
     const id = randomUUID();
-    await this.clickhouse.insert("news_comments", [
+    await this.clickhouse.insert("medleg_comments", [
       {
         id,
         newsId,
@@ -300,7 +283,7 @@ export class NewsService {
 
   async deleteComment(commentId: string, userId: string) {
     const rows = await this.clickhouse.query<any>(
-      `SELECT id, authorId FROM news_comments WHERE id = {id:String} LIMIT 1`,
+      `SELECT id, authorId FROM medleg_comments WHERE id = {id:String} LIMIT 1`,
       { id: commentId },
     );
     if (!rows || rows.length === 0)
@@ -308,7 +291,7 @@ export class NewsService {
     if (rows[0].authorId !== userId)
       throw new BadRequestException("Not your comment");
     await this.clickhouse.exec(
-      `ALTER TABLE news_comments DELETE WHERE id = {id:String}`,
+      `ALTER TABLE medleg_comments DELETE WHERE id = {id:String}`,
       { id: commentId },
     );
     return { ok: true };

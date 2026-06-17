@@ -150,7 +150,7 @@ export class AuthService {
   private async generateRefreshToken(userId: string): Promise<string> {
     const refreshToken = randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 3); // 3 days — matches frontend REFRESH_TOKEN_EXPIRY_DAYS
+    expiresAt.setHours(expiresAt.getHours() + 3); // 3 hours — matches frontend REFRESH_TOKEN_EXPIRY_HOURS
 
     const now = nowCH();
     const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace("T", " ");
@@ -306,8 +306,8 @@ export class AuthService {
 
   // ─── Generate User ID ───────────────────────────────────────────────────────
 
-  private generateUserId(department: string, name: string): string {
-    return buildUserId(department, name);
+  private generateUserId(department: string, name: string, code?: string): string {
+    return buildUserId(department, name, code);
   }
 
   // ─── Public Methods ─────────────────────────────────────────────────────────
@@ -592,7 +592,14 @@ export class AuthService {
   async registerUser(registerUserDto: RegisterUserDto) {
     const { department, position, name } = registerUserDto;
 
-    const userId = this.generateUserId(department, name);
+    // Хэлтсийн динамик prefix кодыг DB-аас уншина (employeeCount-г өсгөхгүйгээр)
+    const deptRows = await this.clickhouse.query<any>(
+      "SELECT code FROM departments WHERE name = {name:String} LIMIT 1",
+      { name: department },
+    );
+    const deptCode = deptRows[0]?.code || "";
+
+    const userId = this.generateUserId(department, name, deptCode);
 
     const existing = await this.clickhouse.query<any>(
       "SELECT id FROM users WHERE userId = {userId:String} LIMIT 1",

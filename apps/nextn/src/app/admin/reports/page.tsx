@@ -613,7 +613,7 @@ export default function AdminReportsPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Header ── */}
       <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center gap-3">
           <Link
             href="/admin"
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
@@ -664,7 +664,7 @@ export default function AdminReportsPage() {
         </div>
 
         {/* Page tabs */}
-        <div className="max-w-5xl mx-auto px-4 flex gap-1 pb-0">
+        <div className="max-w-[1400px] mx-auto px-4 flex gap-1 pb-0">
           {[
             {
               id: "templates" as const,
@@ -689,7 +689,7 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 py-6">
         {/* ═══════════ TEMPLATES TAB ═══════════ */}
         {pageTab === "templates" && (
           <>

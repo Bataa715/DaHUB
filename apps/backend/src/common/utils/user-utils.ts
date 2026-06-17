@@ -3,9 +3,17 @@ import { DEPARTMENT_CODES } from "../constants/departments";
 /**
  * Generates a deterministic user ID from department and name.
  * Single source of truth — replaces duplicated logic in auth.service and users.service.
+ *
+ * `code` — хэлтсийн динамик prefix код (DB-аас). Хоосон бол хуучин
+ * DEPARTMENT_CODES map руу fallback хийнэ.
  */
-export function buildUserId(department: string, name: string): string {
-  const deptCode = DEPARTMENT_CODES[department] || "USR";
+export function buildUserId(
+  department: string,
+  name: string,
+  code?: string,
+): string {
+  const deptCode =
+    (code && code.trim()) || DEPARTMENT_CODES[department] || "USR";
   const namePart = name
     .split("-")
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())

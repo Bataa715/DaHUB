@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * [N-6] Proxy for authenticated news images.
+ * [N-6] Proxy for authenticated medleg images.
  * Since <img> tags can't send HttpOnly cookies cross-origin, this server-side
  * route reads the HttpOnly token cookie (accessible on the server) and forwards
  * the request to the backend with an Authorization header.
@@ -23,9 +23,8 @@ export async function GET(
     return new NextResponse(null, { status: 500 });
   }
 
-  const upstream = await fetch(`${backendUrl}/news/${id}/image`, {
+  const upstream = await fetch(`${backendUrl}/medleg/${id}/image`, {
     headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
   });
 
   if (!upstream.ok) {
@@ -38,7 +37,8 @@ export async function GET(
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": mimeType,
-      "Cache-Control": "private, max-age=3600",
+      "Cache-Control":
+        "private, max-age=86400, stale-while-revalidate=604800, immutable",
     },
   });
 }

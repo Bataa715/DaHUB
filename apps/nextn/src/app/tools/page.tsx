@@ -153,8 +153,8 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
           className={`
             relative h-full rounded-2xl
             bg-card/60 backdrop-blur-xl
-            border border-border/50
-            hover:border-border
+            border-2 border-border
+            hover:border-foreground/30
             shadow-premium ${tool.glow}
             hover:shadow-premium-lg hover:-translate-y-0.5
             ring-hairline
@@ -265,7 +265,7 @@ export default function ToolsPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-[calc(100vh-120px)] flex items-center justify-center relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center relative overflow-hidden">
         {BG}
         <Loader2 className="relative z-10 w-8 h-8 animate-spin text-muted-foreground" />
       </div>
@@ -274,7 +274,7 @@ export default function ToolsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-[calc(100vh-120px)] flex items-center justify-center relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center relative overflow-hidden">
         {BG}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -294,7 +294,7 @@ export default function ToolsPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-120px)] relative overflow-hidden">
+    <div className="flex-1 relative overflow-hidden">
       {BG}
 
       <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 py-8">

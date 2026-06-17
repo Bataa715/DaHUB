@@ -14,8 +14,8 @@ import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-/** Token expiry constants */
-const REFRESH_TOKEN_EXPIRY_DAYS = 3;
+/** Token expiry constants — 3 hours (js-cookie expires нь өдрөөр: 3/24) */
+const REFRESH_TOKEN_EXPIRY_DAYS = 3 / 24;
 
 /** Zod schema — guards against tampered/malformed cookie data */
 const UserSchema = z.object({

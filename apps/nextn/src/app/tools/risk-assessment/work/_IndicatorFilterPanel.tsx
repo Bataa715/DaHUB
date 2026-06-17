@@ -78,25 +78,27 @@ export default function IndicatorFilterPanel({
       : null;
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
+      <div className="flex items-center justify-between px-6 py-3 border-b-2 border-border shrink-0 bg-card">
         <div className="flex items-center gap-2.5">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-rose-500" />
-          <span className="text-sm font-semibold tracking-tight">
+          <div className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20">
+            <SlidersHorizontal className="w-4 h-4 text-rose-500" />
+          </div>
+          <span className="text-base font-bold tracking-tight">
             Indicator харагдац
           </span>
         </div>
         <button
           onClick={onClose}
-          className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          className="p-1.5 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Selector bar */}
-      <div className="px-4 py-3 border-b border-border flex items-center gap-3 flex-wrap">
+      <div className="px-6 py-3 border-b border-border bg-muted/20 shrink-0 flex items-center gap-3 flex-wrap">
         <select
           value={selectedIndId}
           onChange={(e) => onSelectInd(e.target.value)}
@@ -146,7 +148,7 @@ export default function IndicatorFilterPanel({
 
       {/* Table */}
       {selectedInd ? (
-      <div className="overflow-auto max-h-[500px]">
+      <div className="flex-1 overflow-auto px-6 py-2">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-muted/30 sticky top-0 z-10">
@@ -215,7 +217,7 @@ export default function IndicatorFilterPanel({
           </table>
         </div>
       ) : (
-        <div className="px-4 py-10 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-10 text-center">
           <p className="text-sm text-muted-foreground">
             Дээрхээс indicator сонгоно уу
           </p>

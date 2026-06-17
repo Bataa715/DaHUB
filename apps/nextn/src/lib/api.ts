@@ -76,7 +76,7 @@ api.interceptors.response.use(
               typeof window !== "undefined" &&
               window.location.protocol === "https:";
             Cookies.set(userKey, JSON.stringify(freshUser), {
-              expires: 3,
+              expires: 3 / 24,
               sameSite: "strict",
               secure,
             });
@@ -165,20 +165,6 @@ export const authApi = {
     });
     return response.data;
   },
-
-  getUsersByDepartment: async (department: string) => {
-    const response = await api.get(
-      `/auth/departments/${encodeURIComponent(department)}/users`,
-    );
-    return response.data;
-  },
-
-  searchUsers: async (query: string) => {
-    const response = await api.get(
-      `/auth/search?q=${encodeURIComponent(query)}`,
-    );
-    return response.data;
-  },
 };
 
 // Users APIs
@@ -195,11 +181,6 @@ export const usersApi = {
 
   update: async (id: string, data: Record<string, unknown>) => {
     const response = await api.patch(`/users/${id}`, data);
-    return response.data;
-  },
-
-  updateStatus: async (id: string, isActive: boolean) => {
-    const response = await api.patch(`/users/${id}/status`, { isActive });
     return response.data;
   },
 
@@ -247,6 +228,7 @@ export const departmentsApi = {
     description?: string;
     manager?: string;
     employeeCount?: number;
+    code?: string;
   }) => {
     const response = await api.post("/departments", data);
     return response.data;
@@ -254,18 +236,6 @@ export const departmentsApi = {
 
   getAll: async () => {
     const response = await api.get("/departments");
-    return response.data;
-  },
-
-  getOne: async (id: string) => {
-    const response = await api.get(`/departments/${id}`);
-    return response.data;
-  },
-
-  getByName: async (name: string) => {
-    const response = await api.get(
-      `/departments/by-name/${encodeURIComponent(name)}`,
-    );
     return response.data;
   },
 
@@ -796,6 +766,12 @@ export interface RiskCurrentRow {
   PARENTBRANCH?: string;
 }
 
+/**
+ * Hold-ийн нэгдсэн period. Hold нь огноо/улирлаас үл хамаарч бүх тооцоонд
+ * нэгэн зэрэг үйлчилнэ (сар тутмын period-ийг халсан).
+ */
+export const HOLD_GLOBAL_PERIOD = "ALL";
+
 export const riskApi = {
   // ── Riskbranch (Хянах) ────────────────────────────────────────────────────
 
@@ -1056,27 +1032,82 @@ export const riskIndicatorConfigApi = {
   },
 };
 
-export const newsReactionsApi = {
-  get: async (newsId: string) => {
-    const r = await api.get(`/news/${newsId}/reactions`);
+// ── Oracle / Alert Box config (admin) ───────────────────────────────────────
+export interface OracleDashboardConfig {
+  id: number;
+  name: string;
+  tableName: string;
+  fromClause?: string;
+  cifColumn: string;
+  dateColumn: string | null;
+  amountColumn: string | null;
+  enabled: boolean;
+}
+
+export interface OracleEventChainConfig {
+  id: number;
+  name: string;
+  description: string;
+  sourceLabel: string;
+  targetLabel: string;
+  sourceIds: number[];
+  targetIds: number[];
+  enabled: boolean;
+}
+
+export const oracleConfigApi = {
+  listDashboards: async (): Promise<OracleDashboardConfig[]> => {
+    const res = await api.get("/oracle/search/admin/dashboards");
+    return res.data;
+  },
+
+  setDashboardEnabled: async (
+    id: number,
+    enabled: boolean,
+  ): Promise<OracleDashboardConfig> => {
+    const res = await api.patch(`/oracle/search/admin/dashboards/${id}`, {
+      enabled,
+    });
+    return res.data;
+  },
+
+  listChains: async (): Promise<OracleEventChainConfig[]> => {
+    const res = await api.get("/oracle/search/admin/chains");
+    return res.data;
+  },
+
+  setChainEnabled: async (
+    id: number,
+    enabled: boolean,
+  ): Promise<OracleEventChainConfig> => {
+    const res = await api.patch(`/oracle/search/admin/chains/${id}`, {
+      enabled,
+    });
+    return res.data;
+  },
+};
+
+export const medlegReactionsApi = {
+  get: async (medlegId: string) => {
+    const r = await api.get(`/medleg/${medlegId}/reactions`);
     return r.data as {
       counts: Record<string, number>;
       myReaction: string | null;
     };
   },
-  react: async (newsId: string, emoji: string) => {
-    const r = await api.post(`/news/${newsId}/react`, { emoji });
+  react: async (medlegId: string, emoji: string) => {
+    const r = await api.post(`/medleg/${medlegId}/react`, { emoji });
     return r.data;
   },
-  remove: async (newsId: string) => {
-    const r = await api.delete(`/news/${newsId}/react`);
+  remove: async (medlegId: string) => {
+    const r = await api.delete(`/medleg/${medlegId}/react`);
     return r.data;
   },
 };
 
-export const newsCommentsApi = {
-  get: async (newsId: string) => {
-    const r = await api.get(`/news/${newsId}/comments`);
+export const medlegCommentsApi = {
+  get: async (medlegId: string) => {
+    const r = await api.get(`/medleg/${medlegId}/comments`);
     return r.data as {
       id: string;
       newsId: string;
@@ -1086,12 +1117,12 @@ export const newsCommentsApi = {
       createdAt: string;
     }[];
   },
-  add: async (newsId: string, content: string) => {
-    const r = await api.post(`/news/${newsId}/comments`, { content });
+  add: async (medlegId: string, content: string) => {
+    const r = await api.post(`/medleg/${medlegId}/comments`, { content });
     return r.data;
   },
-  delete: async (newsId: string, commentId: string) => {
-    const r = await api.delete(`/news/${newsId}/comments/${commentId}`);
+  delete: async (medlegId: string, commentId: string) => {
+    const r = await api.delete(`/medleg/${medlegId}/comments/${commentId}`);
     return r.data;
   },
 };

@@ -33,11 +33,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `Unhandled error on ${request.method} ${request.url}`,
         exception instanceof Error ? exception.stack : exception,
       );
-    } else if (
-      status === HttpStatus.UNAUTHORIZED ||
-      status === HttpStatus.FORBIDDEN
-    ) {
-      // Always log security events (401/403) regardless of environment
+    } else if (status === HttpStatus.UNAUTHORIZED) {
+      // 401 нь cookie-д суурилсан silent-refresh урсгалын хэвийн хэсэг —
+      // access token хугацаа дуусахад клиент дахин refresh хийгээд амжилттай
+      // дахин оролддог. Лог дэх шуугианыг бүрэн арилгахын тулд verbose-д
+      // (default log level-ээс доош) бичнэ.
+      this.logger.verbose(
+        `${status} on ${request.method} ${request.url}: ${message}`,
+      );
+    } else if (status === HttpStatus.FORBIDDEN) {
+      // 403 нь жинхэнэ эрхийн зөрчил — аюулгүй байдлын хяналтад warn хэвээр.
       this.logger.warn(
         `${status} error on ${request.method} ${request.url}: ${message}`,
       );

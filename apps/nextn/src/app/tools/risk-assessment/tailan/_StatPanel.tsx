@@ -206,7 +206,7 @@ export default function StatPanel({
           setRtFrom(sorted.find((d) => d >= cutStr) ?? sorted[0]);
         }
       })
-      .catch(() => {});
+      .catch((e) => console.error("listRiskbranchDates амжилтгүй:", e));
   }, [open, useRealtime]);
 
   // Active realtime dates in range
@@ -255,7 +255,7 @@ export default function StatPanel({
           setRtDates(sorted);
           if (sorted.length) setRtTo(sorted[sorted.length - 1]);
         })
-        .catch(() => {});
+        .catch((e) => console.error("listRiskbranchDates амжилтгүй:", e));
     } else {
       cacheRef.current.clear();
       setLoadedMap(new Map());

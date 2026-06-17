@@ -63,8 +63,17 @@ export class AuthController {
 
     res.cookie(refreshName, refreshToken, {
       ...cookieOptions,
-      maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
+      maxAge: 3 * 60 * 60 * 1000, // 3 hours
     });
+  }
+
+  // Prevent proxies/browsers from caching token-bearing auth responses
+  private setNoStore(res: Response): void {
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+    res.set("Pragma", "no-cache");
   }
 
   // [N-2] Clear both token cookies on logout / session expiry
@@ -117,6 +126,7 @@ export class AuthController {
   ) {
     const result = await this.authService.setPassword(setPasswordDto);
 
+    this.setNoStore(res);
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
 
     return {
@@ -134,6 +144,7 @@ export class AuthController {
   ) {
     const result = await this.authService.login(loginDto, this.clientIp(req));
 
+    this.setNoStore(res);
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
 
     return {
@@ -154,6 +165,7 @@ export class AuthController {
       this.clientIp(req),
     );
 
+    this.setNoStore(res);
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
 
     return {
@@ -174,6 +186,7 @@ export class AuthController {
       this.clientIp(req),
     );
 
+    this.setNoStore(res);
     this.setAuthCookies(res, result.accessToken, result.refreshToken, true);
 
     return {
@@ -246,6 +259,7 @@ export class AuthController {
 
     const isAdmin = !!result.user?.isAdmin;
 
+    this.setNoStore(res);
     this.setAuthCookies(res, result.accessToken, result.refreshToken, isAdmin);
 
     return {

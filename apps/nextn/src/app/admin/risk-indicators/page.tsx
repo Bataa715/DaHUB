@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   riskIndicatorConfigApi,
   riskApi,
+  HOLD_GLOBAL_PERIOD,
   type IndicatorConfig,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import {
   Loader2,
   Plus,
@@ -593,11 +595,8 @@ export default function RiskIndicatorsPage() {
     }
   }, []);
 
-  // Holds
-  const [holdsPeriod, setHoldsPeriod] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  // Holds — огноо/улирлаас үл хамаарах нэгдсэн (global) hold
+  const holdsPeriod = HOLD_GLOBAL_PERIOD;
   const [heldIds, setHeldIds] = useState<Set<string>>(new Set());
   const [holdsLoading, setHoldsLoading] = useState(false);
 
@@ -792,14 +791,11 @@ export default function RiskIndicatorsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-7">
-          <h1 className="text-base font-semibold text-foreground">
-            Эрсдэлийн үзүүлэлт
-          </h1>
-          {!loading && (
-            <p className="text-xs text-muted-foreground/60 mt-0.5">
+      <AdminPageHeader
+        title="Эрсдэлийн үзүүлэлт"
+        rightContent={
+          !loading ? (
+            <span className="text-xs text-muted-foreground/60">
               {indicators.length} үзүүлэлт · нийт жин{" "}
               <span
                 className={`font-semibold ${Math.abs(totalAllWeight - 100) > 0.01 ? "text-amber-500" : "text-emerald-500"}`}
@@ -807,10 +803,11 @@ export default function RiskIndicatorsPage() {
                 {totalAllWeight}%
                 {Math.abs(totalAllWeight - 100) > 0.01 ? " ⚠" : " ✓"}
               </span>
-            </p>
-          )}
-        </div>
-
+            </span>
+          ) : undefined
+        }
+      />
+      <div className="max-w-[1400px] mx-auto px-4 py-6">
         <Tabs defaultValue="indicators">
           <TabsList className="mb-6 bg-muted/40 border border-border/40 rounded-xl h-9 p-1 gap-0.5">
             <TabsTrigger
@@ -978,19 +975,13 @@ export default function RiskIndicatorsPage() {
               <div>
                 <p className="text-sm font-medium">Hold үзүүлэлтүүд</p>
                 <p className="text-xs text-muted-foreground/60 mt-0.5">
-                  Hold хийсэн үзүүлэлт тухайн сарын тооцооноос хасагдана
+                  Hold хийсэн үзүүлэлт бүх огноо/улирлын тооцооноос хасагдана
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {holdsLoading && (
                   <Loader2 className="w-3 h-3 animate-spin text-muted-foreground/30" />
                 )}
-                <input
-                  type="month"
-                  value={holdsPeriod}
-                  onChange={(e) => setHoldsPeriod(e.target.value)}
-                  className="h-8 px-3 text-sm rounded-lg bg-foreground/[0.03] border border-border/50 text-foreground focus:outline-none tabular-nums"
-                />
               </div>
             </div>
 

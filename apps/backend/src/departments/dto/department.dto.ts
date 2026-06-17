@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min } from "class-validator";
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  Min,
+  Matches,
+  MaxLength,
+} from "class-validator";
 
 export class CreateDepartmentDto {
   @IsString()
@@ -17,6 +25,15 @@ export class CreateDepartmentDto {
   @Min(0)
   @IsOptional()
   employeeCount?: number;
+
+  // Хэрэглэгчийн ID-н prefix код (зөвхөн том үсэг/тоо, 1-12 тэмдэгт)
+  @IsString()
+  @IsOptional()
+  @MaxLength(12)
+  @Matches(/^[A-Z0-9]*$/, {
+    message: "Код нь зөвхөн том үсэг болон тооноос бүрдэнэ",
+  })
+  code?: string;
 }
 
 export class UpdateDepartmentDto {
@@ -36,4 +53,12 @@ export class UpdateDepartmentDto {
   @Min(0)
   @IsOptional()
   employeeCount?: number;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(12)
+  @Matches(/^[A-Z0-9]*$/, {
+    message: "Код нь зөвхөн том үсэг болон тооноос бүрдэнэ",
+  })
+  code?: string;
 }

@@ -41,8 +41,8 @@ export default function TailanPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
-          <span className="text-muted-foreground text-sm">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <span className="text-foreground text-sm font-semibold">
             {t("tailan_loading")}
           </span>
         </div>
@@ -83,21 +83,21 @@ export default function TailanPage() {
         <div className="text-center mb-10">
           {/* icon badge */}
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/30 to-indigo-600/30 border border-blue-500/25 shadow-[0_0_40px_rgba(59,130,246,0.18)] mb-5">
-            <ScrollText className="h-7 w-7 text-blue-300" />
+            <ScrollText className="h-7 w-7 text-blue-500" />
           </div>
 
           {/* quarter badge */}
           <div className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1 mb-4 ml-2">
-            <span className="text-blue-300 text-xs font-medium tracking-wide">
+            <span className="text-foreground text-xs font-bold tracking-wide">
               {year} ·{" "}
               {language === "en" ? `Q${quarter}` : `${qLabel}-р улирал`}
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground mb-2">
             {t("tailan_title")}
           </h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+          <p className="text-foreground text-sm font-semibold leading-relaxed">
             {t("tailan_subtitle")}
           </p>
         </div>
@@ -125,19 +125,19 @@ export default function TailanPage() {
               group-hover:from-blue-500/30 group-hover:to-indigo-600/30
               transition-all duration-200"
             >
-              <FileText className="h-5 w-5 text-blue-300" />
+              <FileText className="h-5 w-5 text-blue-500" />
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <h2 className="text-[15px] font-semibold text-foreground leading-tight">
+                <h2 className="text-[15px] font-bold text-foreground leading-tight">
                   {t("tailan_myReport")}
                 </h2>
-                <span className="text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/20 rounded-full px-2 py-0.5">
+                <span className="text-[10px] font-bold bg-blue-500/15 text-foreground border border-blue-500/20 rounded-full px-2 py-0.5">
                   {t("tailan_privateTag")}
                 </span>
               </div>
-              <p className="text-muted-foreground text-xs leading-relaxed">
+              <p className="text-foreground/80 text-xs font-semibold leading-relaxed">
                 {t("tailan_myReportDesc")}
               </p>
             </div>
@@ -166,19 +166,19 @@ export default function TailanPage() {
                 group-hover:from-emerald-500/30 group-hover:to-teal-600/30
                 transition-all duration-200"
               >
-                <Users className="h-5 w-5 text-emerald-300" />
+                <Users className="h-5 w-5 text-emerald-500" />
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <h2 className="text-[15px] font-semibold text-foreground leading-tight">
+                  <h2 className="text-[15px] font-bold text-foreground leading-tight">
                     {t("tailan_deptReport")}
                   </h2>
-                  <span className="text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] font-bold bg-emerald-500/15 text-foreground border border-emerald-500/20 rounded-full px-2 py-0.5">
                     {t("tailan_headTag")}
                   </span>
                 </div>
-                <p className="text-muted-foreground text-xs leading-relaxed">
+                <p className="text-foreground/80 text-xs font-semibold leading-relaxed">
                   {t("tailan_deptReportDesc")}
                 </p>
               </div>
@@ -208,19 +208,19 @@ export default function TailanPage() {
                 group-hover:from-violet-500/30 group-hover:to-purple-600/30
                 transition-all duration-200"
               >
-                <Eye className="h-5 w-5 text-violet-300" />
+                <Eye className="h-5 w-5 text-violet-500" />
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <h2 className="text-[15px] font-semibold text-foreground leading-tight">
+                  <h2 className="text-[15px] font-bold text-foreground leading-tight">
                     {t("tailan_membersView")}
                   </h2>
-                  <span className="text-[10px] font-medium bg-violet-500/15 text-violet-300 border border-violet-500/20 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] font-bold bg-violet-500/15 text-foreground border border-violet-500/20 rounded-full px-2 py-0.5">
                     {t("tailan_viewTag")}
                   </span>
                 </div>
-                <p className="text-muted-foreground text-xs leading-relaxed">
+                <p className="text-foreground/80 text-xs font-semibold leading-relaxed">
                   {t("tailan_membersViewDesc")}
                 </p>
               </div>
@@ -231,10 +231,10 @@ export default function TailanPage() {
         </div>
 
         {/* Footer note */}
-        <p className="text-center text-muted-foreground/50 text-xs mt-8">
+        <p className="text-center text-foreground/70 text-xs font-semibold mt-8">
           {user?.name && (
             <>
-              <span className="text-muted-foreground/70">{user.name}</span>
+              <span className="text-foreground font-bold">{user.name}</span>
               {" · "}
             </>
           )}

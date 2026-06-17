@@ -64,6 +64,40 @@ export class OracleConfigService {
     return this.loadChains().filter((c) => c.enabled);
   }
 
+  // ─── Write / update (admin) ────────────────────────────────────────────────
+
+  private saveDashboards(list: OracleDashboardConfig[]): void {
+    fs.writeFileSync(DASHBOARDS_PATH, JSON.stringify(list, null, 2), "utf-8");
+  }
+
+  private saveChains(list: EventChainConfig[]): void {
+    fs.writeFileSync(CHAINS_PATH, JSON.stringify(list, null, 2), "utf-8");
+  }
+
+  /** Тухайн dashboard-ийн `enabled` төлөвийг өөрчилнө. */
+  setDashboardEnabled(id: number, enabled: boolean): OracleDashboardConfig {
+    const list = this.loadDashboards();
+    const idx = list.findIndex((d) => d.id === id);
+    if (idx === -1) {
+      throw new Error(`Dashboard олдсонгүй: id=${id}`);
+    }
+    list[idx] = { ...list[idx], enabled };
+    this.saveDashboards(list);
+    return list[idx];
+  }
+
+  /** Тухайн event chain-ийн `enabled` төлөвийг өөрчилнө. */
+  setChainEnabled(id: number, enabled: boolean): EventChainConfig {
+    const list = this.loadChains();
+    const idx = list.findIndex((c) => c.id === id);
+    if (idx === -1) {
+      throw new Error(`Event chain олдсонгүй: id=${id}`);
+    }
+    list[idx] = { ...list[idx], enabled };
+    this.saveChains(list);
+    return list[idx];
+  }
+
   validateIdentifier(name: string, value: string) {
     if (!IDENT_RE.test(value)) {
       throw new Error(`${name} буруу формат. Зөвхөн [A-Z0-9_.] зөвшөөрнө`);
