@@ -40,26 +40,25 @@ export class AuthService {
 
   /** Throws if the key is currently locked out. */
   private async guardLogin(key: string): Promise<void> {
-    const windowStart = new Date(Date.now() - this.ATTEMPT_WINDOW_MS)
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " ");
+    // Use Unix epoch integers so comparisons are timezone-independent.
+    // ClickHouse toUnixTimestamp() returns UTC-based seconds regardless of server tz.
+    const windowStartEpoch = Math.floor((Date.now() - this.ATTEMPT_WINDOW_MS) / 1000);
 
     const rows = await this.clickhouse.query<any>(
       `SELECT
          countIf(success = 0) AS failures,
-         maxIf(attemptedAt, success = 0) AS lastFailure
+         toUnixTimestamp(maxIf(attemptedAt, success = 0)) AS lastFailureEpoch
        FROM login_attempts
-       WHERE lockKey = {key:String} AND attemptedAt >= {windowStart:String}`,
-      { key, windowStart },
+       WHERE lockKey = {key:String}
+         AND toUnixTimestamp(attemptedAt) >= {windowStartEpoch:UInt32}`,
+      { key, windowStartEpoch },
     );
 
     const failures = Number(rows[0]?.failures ?? 0);
-    const lastFailureStr: string = rows[0]?.lastFailure ?? "";
+    const lastFailureEpoch = Number(rows[0]?.lastFailureEpoch ?? 0);
 
-    if (failures >= this.MAX_ATTEMPTS && lastFailureStr) {
-      const lastFailureMs = new Date(lastFailureStr).getTime();
-      const lockedUntilMs = lastFailureMs + this.LOCKOUT_MS;
+    if (failures >= this.MAX_ATTEMPTS && lastFailureEpoch > 0) {
+      const lockedUntilMs = lastFailureEpoch * 1000 + this.LOCKOUT_MS;
       if (Date.now() < lockedUntilMs) {
         const remaining = Math.ceil((lockedUntilMs - Date.now()) / 60000);
         throw new UnauthorizedException(
@@ -149,20 +148,18 @@ export class AuthService {
   /** Generate a refresh token and store it in the database */
   private async generateRefreshToken(userId: string): Promise<string> {
     const refreshToken = randomUUID();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 3); // 3 hours — matches frontend REFRESH_TOKEN_EXPIRY_HOURS
-
-    const now = nowCH();
-    const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace("T", " ");
+    // Store expiresAt as Unix epoch integer — ClickHouse JSONEachRow treats numbers
+    // as UTC-based Unix timestamps regardless of the server's configured timezone.
+    const expiresAtEpoch = Math.floor(Date.now() / 1000) + 3 * 3600; // 3 hours from now
 
     await this.clickhouse.insert("refresh_tokens", [
       {
         id: randomUUID(),
         userId,
         token: refreshToken,
-        expiresAt: expiresAtStr,
+        expiresAt: expiresAtEpoch,
         isRevoked: 0,
-        createdAt: now,
+        createdAt: nowCH(),
       },
     ]);
 
@@ -173,14 +170,15 @@ export class AuthService {
   async refreshAccessToken(refreshTokenDto: RefreshTokenDto): Promise<any> {
     const { refreshToken } = refreshTokenDto;
 
-    // Find the refresh token
+    // Find the refresh token — compare with epoch integer to stay timezone-independent.
+    const nowEpoch = Math.floor(Date.now() / 1000);
     const tokens = (await this.clickhouse.query(
-      `SELECT * FROM refresh_tokens 
-       WHERE token = {token:String} 
-       AND isRevoked = 0 
-       AND expiresAt > now() 
+      `SELECT * FROM refresh_tokens
+       WHERE token = {token:String}
+         AND isRevoked = 0
+         AND toUnixTimestamp(expiresAt) > {nowEpoch:UInt32}
        LIMIT 1`,
-      { token: refreshToken },
+      { token: refreshToken, nowEpoch },
     )) as any[];
 
     const tokenRecord = tokens[0];
@@ -205,10 +203,11 @@ export class AuthService {
       throw new UnauthorizedException("User not found or inactive");
     }
 
-    // [H-3] Revoke the old refresh token FIRST (single-use) before issuing a new one
-    // to close the replay window if the rotation request is replayed concurrently.
+    // [H-3] Revoke the old refresh token FIRST (single-use) before issuing a new one.
+    // mutations_sync=1 makes this mutation synchronous so the row is visibly revoked
+    // before we return — prevents token replay if the client retries the request.
     await this.clickhouse.exec(
-      "ALTER TABLE refresh_tokens UPDATE isRevoked = 1 WHERE token = {token:String}",
+      "ALTER TABLE refresh_tokens UPDATE isRevoked = 1 WHERE token = {token:String} SETTINGS mutations_sync = 1",
       { token: refreshToken },
     );
 

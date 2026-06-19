@@ -360,25 +360,25 @@ export class RiskAssessmentService implements OnModuleInit {
     // (computeScoreDynamic null/Үнэлэхгүй) үнэлгээнд нөлөөлөхгүй.
     const rows = await this.clickhouse.query<any>(
       `SELECT
-         argMax(rowKey, fetchedDate)                                  AS rowKey,
-         'oracle'                                                     AS rowType,
-         toString(argMax(fetchedAt, fetchedDate))                     AS fetchedAt,
-         ''                                                          AS pDate,
-         ''                                                          AS pDateBeg,
+         argMax(rowKey, fetchedDate)              AS rowKey,
+         'oracle'                                 AS rowType,
+         toString(argMax(fetchedAt, fetchedDate)) AS fetchedAt,
+         ''                                       AS pDate,
+         ''                                       AS pDateBeg,
          SOLID,
-         argMax(BRANCHNAME, fetchedDate)                             AS BRANCHNAME,
-         argMax(STATUS, fetchedDate)                                 AS STATUS,
-         argMaxIf(RESULT, fetchedDate, trimBoth(RESULT) != '')       AS RESULT,
-         argMaxIf(RESULT_TYPE, fetchedDate, trimBoth(RESULT) != '')  AS RESULT_TYPE,
-         argMaxIf(DESCRIPTION_TEXT, fetchedDate, trimBoth(RESULT) != '') AS DESCRIPTION_TEXT,
-         argMaxIf(P_DATEBEG, fetchedDate, trimBoth(RESULT) != '')    AS P_DATEBEG,
-         argMaxIf(P_DATE, fetchedDate, trimBoth(RESULT) != '')       AS P_DATE,
-         argMax(ID, fetchedDate)                                     AS ID,
+         argMax(BRANCHNAME, fetchedDate)          AS BRANCHNAME,
+         argMax(STATUS, fetchedDate)              AS STATUS,
+         argMax(RESULT, fetchedDate)              AS RESULT,
+         argMax(RESULT_TYPE, fetchedDate)         AS RESULT_TYPE,
+         argMax(DESCRIPTION_TEXT, fetchedDate)    AS DESCRIPTION_TEXT,
+         argMax(P_DATEBEG, fetchedDate)           AS P_DATEBEG,
+         argMax(P_DATE, fetchedDate)              AS P_DATE,
+         argMax(ID, fetchedDate)                  AS ID,
          SUBID,
-         argMax(OPERATION_TYPE, fetchedDate)                         AS OPERATION_TYPE,
-         0                                                          AS isManual,
-         ''                                                         AS indicatorId,
-         NULL                                                       AS indicatorValue
+         argMax(OPERATION_TYPE, fetchedDate)      AS OPERATION_TYPE,
+         0                                        AS isManual,
+         ''                                       AS indicatorId,
+         NULL                                     AS indicatorValue
        FROM riskbranch FINAL
        WHERE fetchedDate <= {d:String}
          AND SOLID IN (
@@ -401,26 +401,26 @@ export class RiskAssessmentService implements OnModuleInit {
   }> {
     const rows = await this.clickhouse.query<any>(
       `SELECT
-         argMax(rowKey, fetchedDate)                                  AS rowKey,
-         'oracle'                                                     AS rowType,
-         toString(argMax(fetchedAt, fetchedDate))                     AS fetchedAt,
-         ''                                                          AS pDate,
-         ''                                                          AS pDateBeg,
+         argMax(rowKey, fetchedDate)              AS rowKey,
+         'oracle'                                 AS rowType,
+         toString(argMax(fetchedAt, fetchedDate)) AS fetchedAt,
+         ''                                       AS pDate,
+         ''                                       AS pDateBeg,
          SOLID,
-         argMax(BRANCHNAME, fetchedDate)                             AS BRANCHNAME,
-         argMax(STATUS, fetchedDate)                                 AS STATUS,
-         argMaxIf(RESULT, fetchedDate, trimBoth(RESULT) != '')       AS RESULT,
-         argMaxIf(RESULT_TYPE, fetchedDate, trimBoth(RESULT) != '')  AS RESULT_TYPE,
-         argMaxIf(DESCRIPTION_TEXT, fetchedDate, trimBoth(RESULT) != '') AS DESCRIPTION_TEXT,
-         argMaxIf(P_DATEBEG, fetchedDate, trimBoth(RESULT) != '')    AS P_DATEBEG,
-         argMaxIf(P_DATE, fetchedDate, trimBoth(RESULT) != '')       AS P_DATE,
-         argMax(ID, fetchedDate)                                     AS ID,
+         argMax(BRANCHNAME, fetchedDate)          AS BRANCHNAME,
+         argMax(STATUS, fetchedDate)              AS STATUS,
+         argMax(RESULT, fetchedDate)              AS RESULT,
+         argMax(RESULT_TYPE, fetchedDate)         AS RESULT_TYPE,
+         argMax(DESCRIPTION_TEXT, fetchedDate)    AS DESCRIPTION_TEXT,
+         argMax(P_DATEBEG, fetchedDate)           AS P_DATEBEG,
+         argMax(P_DATE, fetchedDate)              AS P_DATE,
+         argMax(ID, fetchedDate)                  AS ID,
          SUBID,
-         argMax(OPERATION_TYPE, fetchedDate)                         AS OPERATION_TYPE,
-         0                                                          AS isManual,
-         ''                                                         AS indicatorId,
-         NULL                                                       AS indicatorValue,
-         max(fetchedDate)                                            AS latestFetchedDate
+         argMax(OPERATION_TYPE, fetchedDate)      AS OPERATION_TYPE,
+         0                                        AS isManual,
+         ''                                       AS indicatorId,
+         NULL                                     AS indicatorValue,
+         max(fetchedDate)                         AS latestFetchedDate
        FROM riskbranch FINAL
        WHERE fetchedDate != ''
        GROUP BY SOLID, SUBID

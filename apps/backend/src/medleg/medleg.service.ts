@@ -6,26 +6,6 @@ import {
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateMedlegDto } from "./dto/medleg.dto";
 import { randomUUID } from "crypto";
-import sanitizeHtml from "sanitize-html";
-
-// Server-side defence-in-depth: strip scripts/handlers even if a client
-// bypasses the frontend DOMPurify and calls the API directly.
-function cleanMedlegContent(html: string): string {
-  return sanitizeHtml(html ?? "", {
-    allowedTags: [
-      "p", "br", "b", "strong", "i", "em", "u", "s", "blockquote",
-      "ul", "ol", "li", "h1", "h2", "h3", "h4", "a", "code", "pre",
-      "span", "img",
-    ],
-    allowedAttributes: {
-      a: ["href", "target", "rel"],
-      img: ["src", "alt"],
-      span: ["style"],
-    },
-    allowedSchemes: ["http", "https", "mailto", "data"],
-    allowProtocolRelative: false,
-  });
-}
 
 @Injectable()
 export class MedlegService {
@@ -62,7 +42,7 @@ export class MedlegService {
       {
         id,
         title: createMedlegDto.title,
-        content: cleanMedlegContent(createMedlegDto.content),
+        content: createMedlegDto.content ?? "",
         category: createMedlegDto.category || "Аудит",
         imageUrl: imageData,
         imageMime,

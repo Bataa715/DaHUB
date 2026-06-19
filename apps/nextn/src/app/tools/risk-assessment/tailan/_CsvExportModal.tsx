@@ -102,13 +102,12 @@ function buildIndicatorCsv(
   catalog: DynamicCatalogIndicator[],
   manualMap: ManualMap,
   filterIds: Set<string> | null,
+  includeRaw = false,
 ): string {
-  // Catalog-г group → id дараагаар эрэмблэх, filter хэрэглэх
   const sorted = [...catalog]
     .filter((c) => !filterIds || filterIds.has(c.id))
     .sort((a, b) => a.group - b.group || a.id.localeCompare(b.id));
 
-  // Салбар бүрийн мөрүүдийг SOLID-аар бүлэглэх
   const byBranch = new Map<string, { name: string; rows: RiskCurrentRow[] }>();
   for (const r of rows) {
     if (r.rowType !== "oracle") continue;
@@ -122,7 +121,11 @@ function buildIndicatorCsv(
   const header = [
     "Салбарын нэр",
     "SOLID",
-    ...sorted.map((c) => `[G${c.group}] ${c.name}`),
+    ...sorted.flatMap((c) =>
+      includeRaw
+        ? [`[G${c.group}] ${c.name} (Оноо)`, `[G${c.group}] ${c.name} (Утга)`]
+        : [`[G${c.group}] ${c.name}`],
+    ),
   ];
 
   const dataRows = [...byBranch.entries()].map(([solid, b]) => {
@@ -130,14 +133,16 @@ function buildIndicatorCsv(
     return [
       b.name,
       solid,
-      ...sorted.map((c) => {
+      ...sorted.flatMap((c) => {
         const val = ev[c.id];
-        return val?.score != null ? fmt(val.score, 2) : "";
+        const score = val?.score != null ? fmt(val.score, 2) : "";
+        if (!includeRaw) return [score];
+        const raw = val?.autoRaw ?? "";
+        return [score, raw];
       }),
     ];
   });
 
-  // Нэр-ээр эрэмблэх
   dataRows.sort((a, b) => String(a[0]).localeCompare(String(b[0]), "mn"));
 
   return [header, ...dataRows].map((r) => r.map(esc).join(",")).join("\n");
@@ -182,6 +187,7 @@ export default function CsvExportModal({
   const [mode, setMode] = useState<ExportMode>("summary");
   const [includeComparison, setIncludeComparison] = useState(true);
   const [selectedCompId, setSelectedCompId] = useState(currentComparisonId);
+  const [includeRaw, setIncludeRaw] = useState(false);
 
   // Indicator filter state — null = бүгд сонгогдсон
   const [selectedIndIds, setSelectedIndIds] = useState<Set<string> | null>(null);
@@ -270,8 +276,8 @@ export default function CsvExportModal({
       content = buildSummaryCsv(primaryAgg, prevAgg, primaryName, prevName);
       filename = `risk-summary-${primaryDate}.csv`;
     } else {
-      content = buildIndicatorCsv(primaryRows, catalog, primaryManualMap, selectedIndIds);
-      filename = `risk-indicators-${primaryDate}.csv`;
+      content = buildIndicatorCsv(primaryRows, catalog, primaryManualMap, selectedIndIds, includeRaw);
+      filename = `risk-indicators-${primaryDate}${includeRaw ? "-detailed" : ""}.csv`;
     }
 
     const blob = new Blob(["\uFEFF" + content], {
@@ -506,6 +512,35 @@ export default function CsvExportModal({
           </div>
         )}
 
+        {/* Raw result toggle — indicator mode only */}
+        {mode === "indicator" && (
+          <div className="mb-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+              Агуулга
+            </p>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <div
+                onClick={() => setIncludeRaw((v) => !v)}
+                className={`w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 cursor-pointer ${
+                  includeRaw ? "bg-blue-500" : "bg-muted"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    includeRaw ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </div>
+              <div>
+                <span className="text-xs text-foreground/80">Дэлгэрэнгүй — Oracle утга хамт татах</span>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Indicator тус бүрд оноо + Oracle-ийн бодит утга (RESULT) хоёр багана болно
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
         {/* Preview info */}
         <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 mb-5 space-y-0.5">
           <div className="flex items-center justify-between text-[11px]">
@@ -521,15 +556,26 @@ export default function CsvExportModal({
             </div>
           )}
           {mode === "indicator" && (
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-muted-foreground">Indicator баганын тоо</span>
-              <span className="font-semibold tabular-nums">
-                {allSelected ? catalog.length : effectiveSelected.size}
-                {!allSelected && (
-                  <span className="text-muted-foreground font-normal"> / {catalog.length}</span>
-                )}
-              </span>
-            </div>
+            <>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">Indicator тоо</span>
+                <span className="font-semibold tabular-nums">
+                  {allSelected ? catalog.length : effectiveSelected.size}
+                  {!allSelected && (
+                    <span className="text-muted-foreground font-normal"> / {catalog.length}</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">Нийт багана</span>
+                <span className="font-semibold tabular-nums">
+                  {2 + (allSelected ? catalog.length : effectiveSelected.size) * (includeRaw ? 2 : 1)}
+                  {includeRaw && (
+                    <span className="text-muted-foreground font-normal"> (оноо + утга)</span>
+                  )}
+                </span>
+              </div>
+            </>
           )}
         </div>
 
