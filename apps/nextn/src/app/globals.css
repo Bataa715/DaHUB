@@ -205,27 +205,103 @@ html.light .border-r {
   border-right-width: 1.5px;
 }
 
-/* ── Light mode: opacity-reduced text contrast fixes ───────────────────────
-   In dark mode, opacity modifiers on dark text work fine (e.g. white/40 on
-   black = mid-gray). In light mode the math reverses: dark text at /40 on
-   white = nearly invisible. Replace with solid accessible colors instead.
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL BOLD TYPOGRAPHY — бүх хуудас дээр admin-шиг bold, тод текст
+   Admin, tools, medleg, ajiltnuud — хаана ч байсан нэг дэн жинтэй
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer base {
+  body {
+    font-weight: 450;
+  }
+
+  /* Ерөнхий текст элементүүд — medium weight */
+  p, span, label, a, td, th, li, dt, dd, button, div, input, select, textarea {
+    font-weight: 500;
+  }
+
+  /* Гарчгуудыг bold */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+  }
+
+  /* font-medium → semibold, font-semibold → bold */
+  .font-medium   { font-weight: 600 !important; }
+  .font-semibold { font-weight: 700 !important; }
+  .font-bold     { font-weight: 800 !important; }
+
+  /* muted-foreground текстийг бага тунгалаг бус тод болгох */
+  .text-muted-foreground {
+    color: hsl(var(--foreground) / 0.75) !important;
+  }
+
+  /* Хагас тунгалаг foreground-г floor-той болгох */
+  .text-foreground\/80 { color: hsl(var(--foreground) / 0.88) !important; }
+  .text-foreground\/70 { color: hsl(var(--foreground) / 0.80) !important; }
+  .text-foreground\/60 { color: hsl(var(--foreground) / 0.74) !important; }
+  .text-foreground\/50 { color: hsl(var(--foreground) / 0.68) !important; }
+  .text-foreground\/40 { color: hsl(var(--foreground) / 0.62) !important; }
+  .text-foreground\/30 { color: hsl(var(--foreground) / 0.56) !important; }
+  .text-foreground\/20 { color: hsl(var(--foreground) / 0.50) !important; }
+
+  /* muted-foreground opacity variants */
+  .text-muted-foreground\/80 { color: hsl(var(--foreground) / 0.72) !important; }
+  .text-muted-foreground\/70 { color: hsl(var(--foreground) / 0.66) !important; }
+  .text-muted-foreground\/60 { color: hsl(var(--foreground) / 0.62) !important; }
+  .text-muted-foreground\/50 { color: hsl(var(--foreground) / 0.56) !important; }
+  .text-muted-foreground\/40 { color: hsl(var(--foreground) / 0.52) !important; }
+  .text-muted-foreground\/30 { color: hsl(var(--foreground) / 0.48) !important; }
+  .text-muted-foreground\/20 { color: hsl(var(--foreground) / 0.44) !important; }
+}
+
+/* ── DARK mode — саарал/бүдэг текстийг цагаанд ойртуулах ─────────────────
+   Dark theme дээр -400 grade нь бараг харагдахгүй (цагаан дэвсгэрт биш).
+   Тэдгээрийг илүү тод цагаан variant болгоно.
 ─────────────────────────────────────────────────────────────────────────── */
+html:not(.light) .text-gray-400    { color: hsl(0 0% 80%) !important; }
+html:not(.light) .text-gray-500    { color: hsl(0 0% 75%) !important; }
+html:not(.light) .text-gray-600    { color: hsl(0 0% 70%) !important; }
+html:not(.light) .text-slate-400   { color: hsl(215 15% 78%) !important; }
+html:not(.light) .text-slate-500   { color: hsl(215 15% 72%) !important; }
+html:not(.light) .text-zinc-400    { color: hsl(0 0% 78%) !important; }
+html:not(.light) .text-zinc-500    { color: hsl(0 0% 72%) !important; }
+html:not(.light) .text-neutral-400 { color: hsl(0 0% 78%) !important; }
+html:not(.light) .text-neutral-500 { color: hsl(0 0% 72%) !important; }
 
-html.light .text-foreground\/80 { color: hsl(222 40% 18%) !important; }
-html.light .text-foreground\/70 { color: hsl(222 35% 26%) !important; }
-html.light .text-foreground\/60 { color: hsl(222 30% 34%) !important; }
-html.light .text-foreground\/50 { color: hsl(222 25% 42%) !important; }
-html.light .text-foreground\/40 { color: hsl(215 20% 48%) !important; }
-html.light .text-foreground\/30 { color: hsl(215 15% 55%) !important; }
-html.light .text-foreground\/20 { color: hsl(215 10% 62%) !important; }
+/* ── LIGHT mode: opacity-reduced текстийг тод хар болгох ────────────────
+   Light mode дээр opacity modifier нь урвуу ажилладаг:
+   dark/40 on white ≈ бараг харагдахгүй цайвар саарал.
+   Solid accessible color-оор солих.
+─────────────────────────────────────────────────────────────────────────── */
+html.light .text-foreground\/80 { color: hsl(222 40% 15%) !important; }
+html.light .text-foreground\/70 { color: hsl(222 38% 20%) !important; }
+html.light .text-foreground\/60 { color: hsl(222 35% 27%) !important; }
+html.light .text-foreground\/50 { color: hsl(222 30% 34%) !important; }
+html.light .text-foreground\/40 { color: hsl(215 25% 42%) !important; }
+html.light .text-foreground\/30 { color: hsl(215 20% 48%) !important; }
+html.light .text-foreground\/20 { color: hsl(215 15% 54%) !important; }
 
-html.light .text-muted-foreground\/80 { color: hsl(215 20% 32%) !important; }
-html.light .text-muted-foreground\/70 { color: hsl(215 18% 38%) !important; }
-html.light .text-muted-foreground\/60 { color: hsl(215 16% 44%) !important; }
-html.light .text-muted-foreground\/50 { color: hsl(215 14% 50%) !important; }
-html.light .text-muted-foreground\/40 { color: hsl(215 12% 55%) !important; }
-html.light .text-muted-foreground\/30 { color: hsl(215 10% 62%) !important; }
-html.light .text-muted-foreground\/20 { color: hsl(215 8% 70%) !important; }
+html.light .text-muted-foreground,
+html.light .text-muted-foreground\/80 { color: hsl(222 35% 28%) !important; }
+html.light .text-muted-foreground\/70 { color: hsl(222 32% 33%) !important; }
+html.light .text-muted-foreground\/60 { color: hsl(215 28% 38%) !important; }
+html.light .text-muted-foreground\/50 { color: hsl(215 24% 44%) !important; }
+html.light .text-muted-foreground\/40 { color: hsl(215 20% 50%) !important; }
+html.light .text-muted-foreground\/30 { color: hsl(215 16% 56%) !important; }
+html.light .text-muted-foreground\/20 { color: hsl(215 12% 62%) !important; }
+
+/* Light mode: саарал grade-ууд — харагдахгүй байсан текстүүдийг тод хар болгох */
+html.light .text-gray-400    { color: hsl(215 16% 38%) !important; }
+html.light .text-gray-500    { color: hsl(215 18% 30%) !important; }
+html.light .text-gray-600    { color: hsl(215 20% 24%) !important; }
+html.light .text-slate-400   { color: hsl(215 20% 38%) !important; }
+html.light .text-slate-500   { color: hsl(215 22% 30%) !important; }
+html.light .text-slate-600   { color: hsl(215 24% 24%) !important; }
+html.light .text-zinc-400    { color: hsl(215 12% 38%) !important; }
+html.light .text-zinc-500    { color: hsl(215 14% 30%) !important; }
+html.light .text-zinc-600    { color: hsl(215 16% 24%) !important; }
+html.light .text-neutral-400 { color: hsl(0 0% 36%) !important; }
+html.light .text-neutral-500 { color: hsl(0 0% 28%) !important; }
+html.light .text-neutral-600 { color: hsl(0 0% 22%) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Admin хэсэг — текстийг илүү тод, bold болгож уншихад хялбар болгох.
@@ -235,12 +311,12 @@ html.light .text-muted-foreground\/20 { color: hsl(215 8% 70%) !important; }
 
 /* Үндсэн текстийн жинг дунд зэрэг тод болгох */
 .admin-shell {
-  font-weight: 550;
+  font-weight: 600;
 }
 
 /* Бүдэг (muted) болон хагас тунгалаг foreground текстийг тод + bold болгох */
 .admin-shell :is(p, span, label, a, td, th, li, dt, dd, button, div) {
-  font-weight: 600;
+  font-weight: 650;
 }
 .admin-shell h1,
 .admin-shell h2,
@@ -254,35 +330,41 @@ html.light .text-muted-foreground\/20 { color: hsl(215 8% 70%) !important; }
   font-weight: 650;
 }
 .admin-shell :is(.font-medium, .font-semibold) {
-  font-weight: 700 !important;
+  font-weight: 750 !important;
 }
 .admin-shell .font-bold {
-  font-weight: 800 !important;
+  font-weight: 900 !important;
 }
 
 /* Бүх muted-foreground хувилбарыг (opacity-тэй ч гэсэн) тод болгох */
 .admin-shell [class*="text-muted-foreground"] {
-  color: hsl(var(--foreground) / 0.92) !important;
+  color: hsl(var(--foreground) / 0.95) !important;
 }
-/* Бага тунгалаг foreground текстийг floor-той болгох */
+.admin-shell .text-foreground\/20,
 .admin-shell .text-foreground\/30,
 .admin-shell .text-foreground\/40,
 .admin-shell .text-foreground\/50,
 .admin-shell .text-foreground\/60,
 .admin-shell .text-foreground\/70,
 .admin-shell .text-foreground\/80 {
-  color: hsl(var(--foreground) / 0.95) !important;
+  color: hsl(var(--foreground) / 0.97) !important;
 }
 
-/* Light theme: илүү гүн хар өнгөөр дарж тодруулах */
+/* Light theme admin: хамгийн гүн хар */
 html.light .admin-shell [class*="text-muted-foreground"],
+html.light .admin-shell .text-foreground\/20,
 html.light .admin-shell .text-foreground\/30,
 html.light .admin-shell .text-foreground\/40,
 html.light .admin-shell .text-foreground\/50,
 html.light .admin-shell .text-foreground\/60,
 html.light .admin-shell .text-foreground\/70,
 html.light .admin-shell .text-foreground\/80 {
-  color: hsl(222 47% 11%) !important;
+  color: hsl(222 47% 10%) !important;
+}
+html.light .admin-shell [class*="text-gray-"],
+html.light .admin-shell [class*="text-slate-"],
+html.light .admin-shell [class*="text-zinc-"] {
+  color: hsl(222 47% 12%) !important;
 }
 
 /* Light mode: foreground-based backgrounds (inputs, cards) ──────────── */

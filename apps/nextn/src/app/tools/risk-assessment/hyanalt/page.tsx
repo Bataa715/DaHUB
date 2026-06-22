@@ -31,12 +31,15 @@ import {
   computeScoreDynamic,
   scoreColorClass,
   scoreDisplay,
-  aggregateBranch,
+  detectRegion,
+  computeTotal,
+  riskLevel,
   type ScoreGroup,
   type ScoreResult,
   type BranchAggregate,
 } from "../scoring-rules";
 import { CATALOG_BY_GROUP } from "../indicator-catalog";
+import { useIndicatorConfig } from "../use-indicator-config";
 
 type RiskRow = RiskCurrentRow;
 
@@ -136,38 +139,78 @@ function ScoreTable({ rows }: { rows: BranchAggregate[] }) {
   );
 }
 
-// ── Local helpers using static catalog ────────────────────────────────────────
-const ALL_CATALOG = ([] as typeof CATALOG_BY_GROUP[1]).concat(
-  CATALOG_BY_GROUP[1],
-  CATALOG_BY_GROUP[2],
-  CATALOG_BY_GROUP[3],
-  CATALOG_BY_GROUP[4],
-  CATALOG_BY_GROUP[5],
-);
 
-function computeScore(
-  subid: unknown,
-  result: unknown,
-  resultType: unknown,
-): { score: ScoreResult; label: string | null } {
-  const ind = ALL_CATALOG.find((c) => c.autoSubid === Number(subid));
-  if (!ind) return { score: null, label: null };
-  return computeScoreDynamic(
-    (ind as { score_scale?: string }).score_scale ?? "",
-    result as string | number | null,
-    resultType as string | number | null,
-  );
-}
+// ── Aggregate from pre-computed scores (no catalog re-fetch needed) ──────────
+function aggregateFromScoredRows(
+  rows: ScoredRow[],
+  judgementMap: Record<string, number> = {},
+): BranchAggregate[] {
+  const map = new Map<
+    string,
+    {
+      branchId: string;
+      branchName: string;
+      solid: string;
+      rating: string;
+      sums: Record<ScoreGroup, { sum: number; cnt: number }>;
+    }
+  >();
 
-function getGroup(subid: unknown): ScoreGroup | null {
-  const ind = ALL_CATALOG.find((c) => c.autoSubid === Number(subid));
-  if (!ind) return null;
-  const g = ind.group;
-  if (g === 1) return "Score 1";
-  if (g === 2) return "Score 2";
-  if (g === 3) return "Score 3";
-  if (g === 4) return "Score 4";
-  return null;
+  for (const r of rows) {
+    const key = String(r.SOLID || "");
+    if (!key) continue;
+    if (!map.has(key)) {
+      map.set(key, {
+        branchId: key,
+        branchName: String(r.BRANCHNAME ?? ""),
+        solid: key,
+        rating: "",
+        sums: {
+          "Score 1": { sum: 0, cnt: 0 },
+          "Score 2": { sum: 0, cnt: 0 },
+          "Score 3": { sum: 0, cnt: 0 },
+          "Score 4": { sum: 0, cnt: 0 },
+        },
+      });
+    }
+    const acc = map.get(key)!;
+    if (Number(r.SUBID) === 6 && r.RESULT != null) {
+      acc.rating = String(r.RESULT).trim();
+    }
+    const score = r.__score;
+    const grp = r.__group;
+    if (typeof score === "number" && score > 0 && grp) {
+      acc.sums[grp].sum += score;
+      acc.sums[grp].cnt += 1;
+    }
+  }
+
+  const list: BranchAggregate[] = [];
+  for (const acc of map.values()) {
+    const s1 = acc.sums["Score 1"].cnt ? acc.sums["Score 1"].sum / acc.sums["Score 1"].cnt : null;
+    const s2 = acc.sums["Score 2"].cnt ? acc.sums["Score 2"].sum / acc.sums["Score 2"].cnt : null;
+    const s3 = acc.sums["Score 3"].cnt ? acc.sums["Score 3"].sum / acc.sums["Score 3"].cnt : null;
+    const s4 = acc.sums["Score 4"].cnt ? acc.sums["Score 4"].sum / acc.sums["Score 4"].cnt : null;
+    const region = detectRegion(acc.rating);
+    const j = acc.branchId in judgementMap ? judgementMap[acc.branchId] : null;
+    const total = computeTotal(region, s1, s2, s3, s4, j);
+    list.push({
+      branchId: acc.branchId,
+      branchName: acc.branchName,
+      solid: acc.solid,
+      rating: acc.rating || "—",
+      region,
+      s1,
+      s2,
+      s3,
+      s4,
+      j,
+      total,
+      level: riskLevel(total),
+    });
+  }
+  list.sort((a, b) => a.branchName.localeCompare(b.branchName, "mn"));
+  return list;
 }
 
 // ── Main monitoring page ───────────────────────────────────────────────────────
@@ -207,6 +250,9 @@ export default function RiskAssessmentDetailPage() {
   const [groupFilter, setGroupFilter] = useState<FilterKey>("all");
   const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Score тооцоолоход DB-с score_scale авна (work-тай адил dynamic catalog)
+  const { catalog } = useIndicatorConfig();
 
   // latest-all горим: хуудас нээгдэхэд бүх indicator-ын сүүлийн утга татна
   const loadLatestAll = useCallback(async () => {
@@ -354,23 +400,38 @@ export default function RiskAssessmentDetailPage() {
 
   const activeRows = viewHistoryId ? viewHistoryRows : rows;
 
-  const scoredRows: ScoredRow[] = useMemo(
-    () =>
-      activeRows.map((r) => {
-        const sr = computeScore(r.SUBID, r.RESULT, r.RESULT_TYPE);
-        return {
-          ...r,
-          __score: sr.score,
-          __scoreLabel: sr.label,
-          __group: getGroup(r.SUBID),
-        };
-      }),
-    [activeRows],
-  );
+  const scoredRows: ScoredRow[] = useMemo(() => {
+    if (catalog.length === 0) return [];
+    return activeRows.map((r) => {
+      const subidStr = String(r.SUBID ?? "").trim();
+      const ind = catalog.find(
+        (c) => !c.is_manual && c.subid === subidStr,
+      );
+      const { score, label } = ind
+        ? computeScoreDynamic(
+            ind.score_scale ?? "",
+            r.RESULT as string | number | null,
+            r.RESULT_TYPE as string | number | null,
+          )
+        : { score: null as ScoreResult, label: null };
+      const g = ind?.group;
+      const grp: ScoreGroup | null =
+        g === 1
+          ? "Score 1"
+          : g === 2
+            ? "Score 2"
+            : g === 3
+              ? "Score 3"
+              : g === 4
+                ? "Score 4"
+                : null;
+      return { ...r, __score: score, __scoreLabel: label, __group: grp };
+    });
+  }, [activeRows, catalog]);
 
   const aggregates: BranchAggregate[] = useMemo(() => {
-    // History харахад pre-computed байхгүй — browser дотор тооцно
-    if (viewHistoryId) return aggregateBranch(scoredRows);
+    // History харахад pre-computed байхгүй — pre-scored rows-с тооцно
+    if (viewHistoryId) return aggregateFromScoredRows(scoredRows);
     // Realtime: ETL-аас ирсэн оноо байвал тэрийг ашигла
     if (branchScores.length > 0) {
       return branchScores.map((s) => ({
@@ -388,7 +449,8 @@ export default function RiskAssessmentDetailPage() {
         level: s.level as BranchAggregate["level"],
       }));
     }
-    return aggregateBranch(scoredRows);
+    // Realtime: pre-computed __score-с aggregate — catalog re-fetch хэрэггүй
+    return aggregateFromScoredRows(scoredRows);
   }, [viewHistoryId, branchScores, scoredRows]);
 
   const filteredRows = useMemo(() => {

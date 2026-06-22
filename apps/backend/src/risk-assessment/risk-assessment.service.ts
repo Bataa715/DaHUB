@@ -322,16 +322,16 @@ export class RiskAssessmentService implements OnModuleInit {
 
   // ── Realtime (Airflow-с Oracle → riskbranch) ──────────────────────────
 
-  /** riskbranch дахь өвөрмөц fetchedDate жагсаалт буцаана */
+  /** riskbranch дахь өвөрмөц fetchedDate жагсаалт буцаана (YYYY-MM-DD форматаар) */
   async listRiskbranchDates(): Promise<string[]> {
     const rows = await this.clickhouse.query<any>(
-      `SELECT DISTINCT fetchedDate
+      `SELECT DISTINCT LEFT(fetchedDate, 10) AS d
        FROM riskbranch FINAL
        WHERE fetchedDate != ''
-       ORDER BY fetchedDate DESC
+       ORDER BY d DESC
        LIMIT 90`,
     );
-    return rows.map((r: any) => String(r.fetchedDate));
+    return rows.map((r: any) => String(r.d));
   }
 
   /** riskbranch-ийн хамгийн сүүлийн fetchedDate-ийн өгөгдөл */
@@ -346,18 +346,35 @@ export class RiskAssessmentService implements OnModuleInit {
     return this.getRiskbranchByDate(latestDate);
   }
 
-  /** riskbranch-ийн тодорхой fetchedDate-ийн өгөгдөл */
+  /** riskbranch-ийн тодорхой fetchedDate-ийн өгөгдөл.
+   *
+   * Fill-forward логик:
+   *   Хэрэглэгч "2026-11-30" сонговол тухайн өдрийн data байхгүй байж болно.
+   *   Тэр тохиолдолд <= тухайн өдрийн хамгийн ойр (сүүлийн) бодит fetchedDate-ийн
+   *   data-г ачаална. Ингэснээр баталгаажсан data байхгүй огноо сонгогдсон ч
+   *   хоосон үр дүн гарахгүй, харин хамгийн ойрын өгөгдлийг харуулна.
+   */
   async getRiskbranchByDate(fetchedDate: string): Promise<{
     fetchedDate: string;
     rows: RiskCurrentRow[];
     manualMap: Record<string, Record<string, number>>;
   }> {
-    // Тухайн огнооны exact мөрүүдийн зэрэгцээ өмнөх огноонуудаас
-    // fill-forward: тухайн огноогийн SOLID-уудад зориулж (SOLID, SUBID) бүрт
-    // RESULT хоосон БУС хамгийн сүүлийн (fetchedDate <= d) утгыг авна.
-    // Ингэснээр тухайн огноонд өгөгдөлгүй indicator өмнөх бодит утгаараа дүүрнэ.
-    // Хэрэв тухайн indicator ямар ч огноонд өгөгдөлгүй бол хоосон үлдэж
-    // (computeScoreDynamic null/Үнэлэхгүй) үнэлгээнд нөлөөлөхгүй.
+    // Огноог YYYY-MM-DD форматад normalize хийнэ
+    const d = String(fetchedDate).slice(0, 10);
+
+    // 1. Сонгосон огноогоос <= хамгийн ойр бодит fetchedDate олно (fill-forward anchor)
+    const anchorRows = await this.clickhouse.query<any>(
+      `SELECT MAX(LEFT(fetchedDate, 10)) AS maxDate
+       FROM riskbranch FINAL
+       WHERE LEFT(fetchedDate, 10) <= {d:String}
+         AND fetchedDate != ''`,
+      { d },
+    );
+    const anchor: string = anchorRows[0]?.maxDate ?? '';
+    if (!anchor) return { fetchedDate: d, rows: [], manualMap: {} };
+
+    // 2. Anchor өдрийн SOLID-уудад зориулж (SOLID, SUBID) бүрт
+    //    anchor <= fetchedDate-ийн хамгийн сүүлийн RESULT авна
     const rows = await this.clickhouse.query<any>(
       `SELECT
          argMax(rowKey, fetchedDate)              AS rowKey,
@@ -380,15 +397,17 @@ export class RiskAssessmentService implements OnModuleInit {
          ''                                       AS indicatorId,
          NULL                                     AS indicatorValue
        FROM riskbranch FINAL
-       WHERE fetchedDate <= {d:String}
+       WHERE LEFT(fetchedDate, 10) <= {anchor:String}
          AND SOLID IN (
-           SELECT SOLID FROM riskbranch FINAL WHERE fetchedDate = {d:String}
+           SELECT SOLID FROM riskbranch FINAL
+           WHERE LEFT(fetchedDate, 10) = {anchor:String}
          )
        GROUP BY SOLID, SUBID
        ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
-      { d: fetchedDate },
+      { anchor },
     );
-    return { fetchedDate, rows, manualMap: {} };
+    // fetchedDate-г бодит anchor-оор буцаана (UI-д харуулах зорилгоор)
+    return { fetchedDate: anchor, rows, manualMap: {} };
   }
 
   /**
@@ -433,23 +452,25 @@ export class RiskAssessmentService implements OnModuleInit {
 
   /** Тухайн огноог lock хийх */
   async lockDate(fetchedDate: string, userId: string): Promise<void> {
+    const d = String(fetchedDate).slice(0, 10);
     await this.clickhouse.insert("riskbranch_locks", [
       {
-        fetchedDate,
+        fetchedDate: d,
         lockedBy: userId,
         lockedAt: nowCH(),
       },
     ]);
-    this.logger.log(`lockDate: "${fetchedDate}" by ${userId}`);
+    this.logger.log(`lockDate: "${d}" by ${userId}`);
   }
 
   /** Тухайн огноог unlock хийх */
   async unlockDate(fetchedDate: string): Promise<void> {
+    const d = String(fetchedDate).slice(0, 10);
     await this.clickhouse.exec(
-      `ALTER TABLE riskbranch_locks DELETE WHERE fetchedDate = {d:String}`,
-      { d: fetchedDate },
+      `ALTER TABLE riskbranch_locks DELETE WHERE LEFT(fetchedDate, 10) = {d:String}`,
+      { d },
     );
-    this.logger.log(`unlockDate: "${fetchedDate}"`);
+    this.logger.log(`unlockDate: "${d}"`);
   }
 
   /** Одоо lock хийгдсэн огноог авах (байхгүй бол null) */
@@ -473,11 +494,12 @@ export class RiskAssessmentService implements OnModuleInit {
       score: number;
     }[]
   > {
+    const d = fetchedDate ? String(fetchedDate).slice(0, 10) : undefined;
     const rows = await this.clickhouse.query<any>(
-      fetchedDate
-        ? `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE fetchedDate = {d:String} AND score > 0 ORDER BY branchId`
+      d
+        ? `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE LEFT(fetchedDate, 10) = {d:String} AND score > 0 ORDER BY branchId`
         : `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE score > 0 ORDER BY fetchedDate DESC, branchId`,
-      fetchedDate ? { d: fetchedDate } : {},
+      d ? { d } : {},
     );
     return rows.map((r: any) => ({
       branchId: String(r.branchId),
@@ -502,7 +524,7 @@ export class RiskAssessmentService implements OnModuleInit {
       {
         branchId: args.branchId,
         branchName: args.branchName,
-        fetchedDate: args.fetchedDate,
+        fetchedDate: String(args.fetchedDate).slice(0, 10),
         score: args.score <= 0 ? 0 : Math.min(5, Math.max(0, args.score)),
         updatedBy: args.userId,
         updatedAt: nowCH(),

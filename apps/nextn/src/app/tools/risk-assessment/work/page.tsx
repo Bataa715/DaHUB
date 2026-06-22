@@ -138,19 +138,21 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
         if (targetDate) {
           setSelectedDate(targetDate);
-          const [res, judgeList] = await Promise.all([
-            riskApi.getRiskbranch(targetDate),
-            riskApi.listJudgements(targetDate),
+          // Backend fill-forward: res.fetchedDate нь бодит anchor (хамгийн ойрын data)
+          const res = await riskApi.getRiskbranch(targetDate);
+          if (cancelled) return;
+          const actualDate = res.fetchedDate || targetDate;
+          const [judgeList, allJudge] = await Promise.all([
+            riskApi.listJudgements(actualDate),
+            riskApi.listJudgements(),
           ]);
           if (cancelled) return;
           setRows(res.rows ?? []);
-          setFetchedDate(targetDate);
+          setFetchedDate(actualDate);
           const jmap: Record<string, number> = {};
           for (const j of judgeList) jmap[j.branchId] = j.score;
           setJudgements(jmap);
-          // Хамгийн ойрын өмнөх fetchedDate-ийн бүх judgement-г авах
-          const allJudge = await riskApi.listJudgements();
-          const closestPrevDate = allJudge.find(j => j.fetchedDate < targetDate)?.fetchedDate;
+          const closestPrevDate = allJudge.find(j => j.fetchedDate < actualDate)?.fetchedDate;
           const prevMap: Record<string, number> = {};
           if (closestPrevDate) {
             for (const j of allJudge) {
@@ -185,18 +187,21 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
     setLoadingDate(true);
     setErrorMsg(null);
     try {
-      const [res, judgeList] = await Promise.all([
-        riskApi.getRiskbranch(date),
-        riskApi.listJudgements(date),
+      // Backend fill-forward: res.fetchedDate нь бодит anchor (хамгийн ойрын data)
+      const res = await riskApi.getRiskbranch(date);
+      if (abort.signal.aborted) return;
+      const actualDate = res.fetchedDate || date;
+      setFetchedDate(actualDate);
+      const [judgeList, allJudge] = await Promise.all([
+        riskApi.listJudgements(actualDate),
+        riskApi.listJudgements(),
       ]);
       if (abort.signal.aborted) return;
       setRows(res.rows ?? []);
       const jmap: Record<string, number> = {};
       for (const j of judgeList) jmap[j.branchId] = j.score;
       setJudgements(jmap);
-      // Хамгийн ойрын өмнөх fetchedDate-ийн бүх judgement-г авах
-      const allJudge = await riskApi.listJudgements();
-      const closestPrevDate = allJudge.find(j => j.fetchedDate < date)?.fetchedDate;
+      const closestPrevDate = allJudge.find(j => j.fetchedDate < actualDate)?.fetchedDate;
       const prevMap: Record<string, number> = {};
       if (closestPrevDate) {
         for (const j of allJudge) {
