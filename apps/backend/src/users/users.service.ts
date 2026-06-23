@@ -18,10 +18,14 @@ export class UsersService {
 
   constructor(private clickhouse: ClickHouseService) {}
 
-  async findAll(limit = 1000, offset = 0) {
+  async findAll(limit = 1000, offset = 0, excludeAdmins = false) {
+    const adminFilter = excludeAdmins
+      ? "WHERE u.isAdmin = 0 AND u.isSuperAdmin = 0"
+      : "";
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
+       ${adminFilter}
        ORDER BY u.createdAt DESC
        LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
       { limit, offset },

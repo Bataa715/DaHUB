@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
+import { isRegularAppUser } from "@/lib/utils";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { DEPARTMENTS } from "@/lib/constants";
@@ -162,6 +163,7 @@ interface User {
   position: string;
   isActive: boolean;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
   allowedTools: string[];
 }
 
@@ -206,8 +208,8 @@ export default function AdminToolsPage() {
   const loadUsers = async () => {
     try {
       setIsLoading(true);
-      const data = await usersApi.getAll();
-      setUsers(data.filter((u: User) => !u.isAdmin));
+      const data = await usersApi.getAll({ excludeAdmins: true });
+      setUsers(data.filter((u: User) => isRegularAppUser(u)));
     } catch (error) {
       if (process.env.NODE_ENV !== "production") console.error("Error loading users:", error);
       toast({

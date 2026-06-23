@@ -20,6 +20,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, Building2, Users, Pencil, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
+import { isRegularAppUser } from "@/lib/utils";
 
 interface DepartmentUser {
   id: string;
@@ -27,6 +28,7 @@ interface DepartmentUser {
   name: string;
   position?: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
   isActive?: boolean;
 }
 
@@ -66,7 +68,7 @@ export default function AdminDepartmentsPage() {
       const data = await departmentsApi.getAll();
       const filtered = data.map((dept: DepartmentData) => ({
         ...dept,
-        users: dept.users?.filter((u) => !u.isAdmin) || [],
+        users: dept.users?.filter((u) => isRegularAppUser(u)) || [],
       }));
       setDepartments(filtered);
     } catch {

@@ -30,10 +30,18 @@ export class UsersController {
   /** Admin: full user list with details */
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Get()
-  findAll(@Query("page") page = 1, @Query("limit") limit = 100) {
+  findAll(
+    @Query("page") page = 1,
+    @Query("limit") limit = 100,
+    @Query("excludeAdmins") excludeAdmins?: string,
+  ) {
     const take = Math.min(Number(limit), 200);
     const skip = (Number(page) - 1) * take;
-    return this.usersService.findAll(take, skip);
+    const exclude =
+      excludeAdmins === "1" ||
+      excludeAdmins === "true" ||
+      excludeAdmins === "yes";
+    return this.usersService.findAll(take, skip, exclude);
   }
 
   /** Admin: list of all admins */

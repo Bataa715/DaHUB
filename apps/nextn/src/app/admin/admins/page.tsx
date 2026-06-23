@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usersApi } from "@/lib/api";
+import { isRegularAppUser } from "@/lib/utils";
 
 const ALL_TOOLS = [
   { id: "todo", name: "Todo" },
@@ -53,6 +54,7 @@ interface AllUser {
   name: string;
   userId: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
 function ToolCheckList({
@@ -152,8 +154,8 @@ export default function AdminsPage() {
 
   const fetchAllUsers = useCallback(async () => {
     try {
-      const data = await usersApi.getAll();
-      setAllUsers(data.filter((u: AllUser) => !u.isAdmin));
+      const data = await usersApi.getAll({ excludeAdmins: true });
+      setAllUsers(data.filter((u: AllUser) => isRegularAppUser(u)));
     } catch {}
   }, []);
 

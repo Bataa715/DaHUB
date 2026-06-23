@@ -169,8 +169,10 @@ export const authApi = {
 
 // Users APIs
 export const usersApi = {
-  getAll: async () => {
-    const response = await api.get("/users");
+  getAll: async (opts?: { excludeAdmins?: boolean }) => {
+    const response = await api.get("/users", {
+      params: opts?.excludeAdmins ? { excludeAdmins: true } : undefined,
+    });
     return response.data;
   },
 

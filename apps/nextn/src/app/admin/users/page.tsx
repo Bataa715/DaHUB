@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import axios from "axios";
+import { isRegularAppUser } from "@/lib/utils";
 
 interface UserData {
   id: string;
@@ -43,6 +44,7 @@ interface UserData {
   department?: string;
   departmentId?: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
   isActive?: boolean;
   lastLoginAt?: string;
   createdAt: string;
@@ -115,8 +117,8 @@ export default function UsersPage() {
 
   const loadUsers = async () => {
     try {
-      const data = await usersApi.getAll();
-      setUsers((data || []).filter((u: UserData) => !u.isAdmin));
+      const data = await usersApi.getAll({ excludeAdmins: true });
+      setUsers((data || []).filter((u: UserData) => isRegularAppUser(u)));
     } catch {
       toast({
         title: "Алдаа",
