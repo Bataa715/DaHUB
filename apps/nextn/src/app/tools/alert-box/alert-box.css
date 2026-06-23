@@ -61,4 +61,19 @@
 }
 .ab-theme input::placeholder {
   color: var(--txt-dim);
+  font-weight: 550;
+}
+
+/* Table data — CIF, ID, тоонууд тод харагдах */
+.ab-theme table td,
+.ab-theme table th {
+  font-weight: 550;
+}
+.ab-theme table td.font-mono,
+.ab-theme table th.font-mono {
+  font-weight: 650;
+  color: var(--txt);
+}
+.ab-theme .text-txt-dim {
+  font-weight: 550;
 }

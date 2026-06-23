@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import type ExcelJS from "exceljs";
 import { X, Download, FileSpreadsheet, LayoutList, Table2, ChevronDown, ChevronUp, Check } from "lucide-react";
 import {
   aggregateBranch,
@@ -17,6 +18,21 @@ import type { RiskHistoryEntry } from "@/lib/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function solidSortKey(solid: string): number {
+  const digits = String(solid ?? "").replace(/\D/g, "");
+  if (!digits) return Number.MAX_SAFE_INTEGER;
+  const n = parseInt(digits, 10);
+  return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+}
+
+/** SOLID-аар тоон эрэмбэ: 110 → 112 → 120 */
+function compareSolid(a: string, b: string): number {
+  const na = solidSortKey(a);
+  const nb = solidSortKey(b);
+  if (na !== nb) return na - nb;
+  return String(a).localeCompare(String(b), "mn", { numeric: true });
+}
+
 function esc(v: unknown): string {
   const s = String(v ?? "");
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -27,10 +43,16 @@ function fmt(n: number | null | undefined, d = 2): string {
   return n.toFixed(d);
 }
 
+function parseSolidCell(solid: string): string | number {
+  const s = String(solid ?? "").trim();
+  return /^\d+$/.test(s) ? parseInt(s, 10) : s;
+}
+
 function buildSummaryCsv(
   agg: BranchAggregate[],
   prevAgg: BranchAggregate[] | null,
   primaryName: string,
+  primaryDate: string,
   prevName: string | null,
 ): string {
   const prevMap = prevAgg
@@ -61,8 +83,12 @@ function buildSummaryCsv(
     : [];
 
   const rows: string[][] = [
+    [`Эрсдэлийн үнэлгээ — ${primaryName} (${primaryDate})`],
+    [],
     [...baseHeaders, ...prevHeaders],
-    ...agg.map((a) => {
+    ...[...agg]
+      .sort((a, b) => compareSolid(a.solid, b.solid))
+      .map((a) => {
       const base = [
         a.branchName,
         a.solid,
@@ -102,6 +128,7 @@ function buildIndicatorCsv(
   catalog: DynamicCatalogIndicator[],
   manualMap: ManualMap,
   filterIds: Set<string> | null,
+  primaryDate: string,
   includeRaw = false,
 ): string {
   const sorted = [...catalog]
@@ -143,9 +170,278 @@ function buildIndicatorCsv(
     ];
   });
 
-  dataRows.sort((a, b) => String(a[0]).localeCompare(String(b[0]), "mn"));
+  dataRows.sort((a, b) => compareSolid(String(a[1]), String(b[1])));
 
-  return [header, ...dataRows].map((r) => r.map(esc).join(",")).join("\n");
+  return [
+    [`Эрсдэлийн үнэлгээ — indicator (${primaryDate})`],
+    [],
+    header,
+    ...dataRows,
+  ].map((r) => r.map(esc).join(",")).join("\n");
+}
+
+type FileFormat = "xlsx" | "csv";
+
+async function downloadSummaryXlsx(
+  agg: BranchAggregate[],
+  prevAgg: BranchAggregate[] | null,
+  primaryName: string,
+  primaryDate: string,
+  prevName: string | null,
+) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "DaHUB Risk Assessment";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("Нийлмэл", {
+    views: [{ state: "frozen", ySplit: 3 }],
+  });
+
+  const HDR_FILL = {
+    type: "pattern" as const,
+    pattern: "solid" as const,
+    fgColor: { argb: "FF047857" },
+  };
+  const ROW_ODD = {
+    type: "pattern" as const,
+    pattern: "solid" as const,
+    fgColor: { argb: "FFECFDF5" },
+  };
+  const ROW_EVN = {
+    type: "pattern" as const,
+    pattern: "solid" as const,
+    fgColor: { argb: "FFFFFFFF" },
+  };
+  const BORDER = {
+    top: { style: "thin" as const, color: { argb: "FFD1D5DB" } },
+    left: { style: "thin" as const, color: { argb: "FFD1D5DB" } },
+    bottom: { style: "thin" as const, color: { argb: "FFD1D5DB" } },
+    right: { style: "thin" as const, color: { argb: "FFD1D5DB" } },
+  };
+
+  const prevMap = prevAgg
+    ? new Map(prevAgg.map((a) => [a.branchId, a]))
+    : null;
+
+  const baseHeaders = [
+    "Салбарын нэр",
+    "SOLID",
+    "Score 1",
+    "Score 2",
+    "Score 3",
+    "Score 4",
+    "J",
+    "Нийт",
+    "Түвшин",
+  ];
+  const prevHeaders = prevMap
+    ? [
+        `S1 (${prevName})`,
+        `S2 (${prevName})`,
+        `S3 (${prevName})`,
+        `S4 (${prevName})`,
+        `J (${prevName})`,
+        `Нийт (${prevName})`,
+        "Нийт өөрчлөлт",
+      ]
+    : [];
+  const headers = [...baseHeaders, ...prevHeaders];
+  const colCount = headers.length;
+
+  ws.mergeCells(1, 1, 1, colCount);
+  const titleCell = ws.getCell(1, 1);
+  titleCell.value = `Эрсдэлийн үнэлгээ — ${primaryName} (${primaryDate})`;
+  titleCell.font = { bold: true, size: 13, color: { argb: "FF047857" } };
+  titleCell.alignment = { vertical: "middle", horizontal: "left" };
+  ws.getRow(1).height = 26;
+
+  const hdrRow = ws.getRow(3);
+  headers.forEach((h, i) => {
+    const cell = hdrRow.getCell(i + 1);
+    cell.value = h;
+    cell.fill = HDR_FILL;
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+    cell.border = BORDER;
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  });
+  hdrRow.height = 22;
+
+  const sorted = [...agg].sort((a, b) => compareSolid(a.solid, b.solid));
+  sorted.forEach((a, idx) => {
+    const row = ws.getRow(4 + idx);
+    const values: (string | number | null)[] = [
+      a.branchName,
+      parseSolidCell(a.solid),
+      a.s1,
+      a.s2,
+      a.s3,
+      a.s4,
+      a.j,
+      a.total,
+      a.level || "",
+    ];
+    if (prevMap) {
+      const p = prevMap.get(a.branchId);
+      const diff =
+        a.total != null && p?.total != null ? a.total - p.total : null;
+      values.push(p?.s1 ?? null, p?.s2 ?? null, p?.s3 ?? null, p?.s4 ?? null, p?.j ?? null, p?.total ?? null, diff);
+    }
+
+    const fill = idx % 2 === 0 ? ROW_EVN : ROW_ODD;
+    values.forEach((val, ci) => {
+      const cell = row.getCell(ci + 1);
+      cell.value = val as ExcelJS.CellValue;
+      cell.fill = fill;
+      cell.font = { size: 10 };
+      cell.border = BORDER;
+      if (ci === 0) cell.alignment = { vertical: "middle", horizontal: "left" };
+      else if (ci === 1) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        if (typeof val === "number") cell.numFmt = "0";
+      } else if (typeof val === "number") {
+        cell.numFmt = "0.00";
+        cell.alignment = { vertical: "middle", horizontal: "right" };
+      } else if (ci === 8) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      }
+    });
+    row.height = 18;
+  });
+
+  ws.columns.forEach((col, i) => {
+    let max = String(headers[i] ?? "").length;
+    sorted.forEach((a) => {
+      const sample =
+        i === 0
+          ? a.branchName
+          : i === 1
+            ? a.solid
+            : i === 8
+              ? a.level
+              : "";
+      max = Math.max(max, String(sample).length);
+    });
+    col.width = Math.min(Math.max(max + 3, i === 0 ? 22 : 10), 40);
+  });
+
+  const buf = await wb.xlsx.writeBuffer();
+  return buf;
+}
+
+async function downloadIndicatorXlsx(
+  rows: RiskCurrentRow[],
+  catalog: DynamicCatalogIndicator[],
+  manualMap: ManualMap,
+  filterIds: Set<string> | null,
+  primaryDate: string,
+  includeRaw: boolean,
+) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Indicator", {
+    views: [{ state: "frozen", ySplit: 3 }],
+  });
+
+  const sortedInd = [...catalog]
+    .filter((c) => !filterIds || filterIds.has(c.id))
+    .sort((a, b) => a.group - b.group || a.id.localeCompare(b.id));
+
+  const byBranch = new Map<string, { name: string; rows: RiskCurrentRow[] }>();
+  for (const r of rows) {
+    if (r.rowType !== "oracle") continue;
+    const id = String(r.SOLID ?? "");
+    if (!id) continue;
+    if (!byBranch.has(id))
+      byBranch.set(id, { name: String(r.BRANCHNAME ?? ""), rows: [] });
+    byBranch.get(id)!.rows.push(r);
+  }
+
+  const headers = [
+    "Салбарын нэр",
+    "SOLID",
+    ...sortedInd.flatMap((c) =>
+      includeRaw
+        ? [`[G${c.group}] ${c.name} (Оноо)`, `[G${c.group}] ${c.name} (Утга)`]
+        : [`[G${c.group}] ${c.name}`],
+    ),
+  ];
+  const colCount = headers.length;
+
+  ws.mergeCells(1, 1, 1, Math.min(colCount, 8));
+  ws.getCell(1, 1).value = `Эрсдэлийн үнэлгээ — Indicator (${primaryDate})`;
+  ws.getCell(1, 1).font = { bold: true, size: 13, color: { argb: "FF1D4ED8" } };
+  ws.getRow(1).height = 26;
+
+  const hdrRow = ws.getRow(3);
+  headers.forEach((h, i) => {
+    const cell = hdrRow.getCell(i + 1);
+    cell.value = h;
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1D4ED8" },
+    };
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFD1D5DB" } },
+      left: { style: "thin", color: { argb: "FFD1D5DB" } },
+      bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
+      right: { style: "thin", color: { argb: "FFD1D5DB" } },
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  });
+  hdrRow.height = 36;
+
+  const branchEntries = [...byBranch.entries()].sort((a, b) =>
+    compareSolid(a[0], b[0]),
+  );
+
+  branchEntries.forEach(([solid, b], idx) => {
+    const ev = evaluateBranchDynamic(catalog, b.rows, manualMap[solid]);
+    const row = ws.getRow(4 + idx);
+    const values: (string | number | null)[] = [b.name, parseSolidCell(solid)];
+    for (const c of sortedInd) {
+      const val = ev[c.id];
+      values.push(val?.score != null ? val.score : null);
+      if (includeRaw) values.push(val?.autoRaw ?? "");
+    }
+
+    const fill =
+      idx % 2 === 0
+        ? { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFFFFFFF" } }
+        : { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFEFF6FF" } };
+
+    values.forEach((val, ci) => {
+      const cell = row.getCell(ci + 1);
+      cell.value = val as ExcelJS.CellValue;
+      cell.fill = fill;
+      cell.font = { size: 9 };
+      if (ci === 0) cell.alignment = { horizontal: "left" };
+      else if (ci === 1) {
+        cell.alignment = { horizontal: "center" };
+        if (typeof val === "number") cell.numFmt = "0";
+      } else if (typeof val === "number") {
+        cell.numFmt = "0.00";
+        cell.alignment = { horizontal: "right" };
+      }
+    });
+  });
+
+  ws.columns.forEach((col, i) => {
+    col.width = i === 0 ? 24 : i === 1 ? 10 : 14;
+  });
+
+  return wb.xlsx.writeBuffer();
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -185,6 +481,7 @@ export default function CsvExportModal({
   type ExportMode = "summary" | "indicator";
 
   const [mode, setMode] = useState<ExportMode>("summary");
+  const [fileFormat, setFileFormat] = useState<FileFormat>("xlsx");
   const [includeComparison, setIncludeComparison] = useState(true);
   const [selectedCompId, setSelectedCompId] = useState(currentComparisonId);
   const [includeRaw, setIncludeRaw] = useState(false);
@@ -268,27 +565,58 @@ export default function CsvExportModal({
     [prevRows, hasComparison, includeComparison, prevJudgeMap, catalogCasted],
   );
 
-  const doDownload = () => {
-    let content = "";
-    let filename = "";
-
-    if (mode === "summary") {
-      content = buildSummaryCsv(primaryAgg, prevAgg, primaryName, prevName);
-      filename = `risk-summary-${primaryDate}.csv`;
+  const doDownload = async () => {
+    if (fileFormat === "xlsx") {
+      if (mode === "summary") {
+        const buf = await downloadSummaryXlsx(
+          primaryAgg,
+          prevAgg,
+          primaryName,
+          primaryDate,
+          prevName,
+        );
+        triggerDownload(
+          new Blob([buf], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+          `risk-summary-${primaryDate}.xlsx`,
+        );
+      } else {
+        const buf = await downloadIndicatorXlsx(
+          primaryRows,
+          catalog,
+          primaryManualMap,
+          selectedIndIds,
+          primaryDate,
+          includeRaw,
+        );
+        triggerDownload(
+          new Blob([buf], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+          `risk-indicators-${primaryDate}${includeRaw ? "-detailed" : ""}.xlsx`,
+        );
+      }
+    } else if (mode === "summary") {
+      const content = buildSummaryCsv(primaryAgg, prevAgg, primaryName, primaryDate, prevName);
+      triggerDownload(
+        new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" }),
+        `risk-summary-${primaryDate}.csv`,
+      );
     } else {
-      content = buildIndicatorCsv(primaryRows, catalog, primaryManualMap, selectedIndIds, includeRaw);
-      filename = `risk-indicators-${primaryDate}${includeRaw ? "-detailed" : ""}.csv`;
+      const content = buildIndicatorCsv(
+        primaryRows,
+        catalog,
+        primaryManualMap,
+        selectedIndIds,
+        primaryDate,
+        includeRaw,
+      );
+      triggerDownload(
+        new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" }),
+        `risk-indicators-${primaryDate}${includeRaw ? "-detailed" : ""}.csv`,
+      );
     }
-
-    const blob = new Blob(["\uFEFF" + content], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
     onClose();
   };
 
@@ -310,7 +638,7 @@ export default function CsvExportModal({
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold tracking-tight">CSV татах</h3>
+              <h3 className="text-sm font-semibold tracking-tight">Тайлан татах</h3>
               <p className="text-[11px] text-muted-foreground">{primaryName} · {primaryDate}</p>
             </div>
           </div>
@@ -320,6 +648,47 @@ export default function CsvExportModal({
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* File format */}
+        <div className="mb-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            Файлын төрөл
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setFileFormat("xlsx")}
+              className={`p-2.5 rounded-xl border text-left transition-all ${
+                fileFormat === "xlsx"
+                  ? "border-emerald-500/60 bg-emerald-500/8"
+                  : "border-border bg-background hover:bg-muted/40"
+              }`}
+            >
+              <span className={`text-xs font-semibold ${fileFormat === "xlsx" ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
+                Excel (.xlsx)
+              </span>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Формат, өнгө, SOLID эрэмбэ — зөвлөмж
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFileFormat("csv")}
+              className={`p-2.5 rounded-xl border text-left transition-all ${
+                fileFormat === "csv"
+                  ? "border-blue-500/60 bg-blue-500/8"
+                  : "border-border bg-background hover:bg-muted/40"
+              }`}
+            >
+              <span className={`text-xs font-semibold ${fileFormat === "csv" ? "text-blue-700 dark:text-blue-400" : ""}`}>
+                CSV (.csv)
+              </span>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Энгийн текст — SOLID тоогоор эрэмбэлсэн
+              </p>
+            </button>
+          </div>
         </div>
 
         {/* Mode selector */}
@@ -546,6 +915,10 @@ export default function CsvExportModal({
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-muted-foreground">Салбар</span>
             <span className="font-semibold tabular-nums">{primaryAgg.length}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Эрэмбэ</span>
+            <span className="font-semibold">SOLID ↑ (110, 112, …)</span>
           </div>
           {mode === "summary" && (
             <div className="flex items-center justify-between text-[11px]">

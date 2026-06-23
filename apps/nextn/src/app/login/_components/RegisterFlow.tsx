@@ -3,7 +3,6 @@
 import { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 import {
   Lock,
   ArrowRight,
@@ -36,6 +35,15 @@ import {
 } from "@/components/ui/select";
 import { DEPARTMENTS } from "@/lib/constants";
 import { PasswordStrengthBox } from "./PasswordStrengthBox";
+import {
+  LoginBrandHeader,
+  LoginAmbientBackground,
+  LoginCard,
+  loginInputClass,
+  loginLabelClass,
+  loginIconBoxClass,
+  loginSubmitBtnClass,
+} from "./login-ui";
 import type {
   RegisterStep,
   PasswordChecks,
@@ -92,60 +100,23 @@ export function RegisterFlow({
 }: RegisterFlowProps) {
   const showBack = registerStep !== "info";
 
-  const inputClass =
-    "h-12 rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/60";
-  const labelClass =
-    "text-sm font-medium text-foreground/80 flex items-center gap-2";
+  const inputClass = loginInputClass;
+  const labelClass = loginLabelClass;
   const eyeBtnClass =
     "absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors";
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
-      {/* Theme-aware ambient background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <motion.div
-          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/15 via-primary/[0.04] to-transparent rounded-full blur-3xl"
-          animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
-          transition={{ duration: 20, repeat: Infinity }}
-        />
-        <motion.div
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-primary/10 via-primary/[0.03] to-transparent rounded-full blur-3xl"
-          animate={{ x: [0, -80, 0], y: [0, -40, 0] }}
-          transition={{ duration: 24, repeat: Infinity }}
-        />
-      </div>
+    <div className="login-page min-h-screen flex items-center justify-center relative overflow-hidden">
+      <LoginAmbientBackground />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 w-full max-w-md px-6"
+        className="relative z-10 w-full max-w-md px-6 py-8"
       >
-        {/* Brand */}
-        <div className="flex flex-col items-center mb-6">
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3 overflow-hidden bg-white shadow-premium-lg ring-1 ring-border/70"
-          >
-            <Image
-              src="/golomt.jpg"
-              alt="Golomt Logo"
-              width={64}
-              height={64}
-              priority
-              className="object-contain"
-            />
-          </motion.div>
-          <h1 className="text-2xl font-bold">
-            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              DaHUB
-            </span>
-          </h1>
-        </div>
+        <LoginBrandHeader />
 
-        <div className="relative p-[1.5px] rounded-3xl bg-gradient-to-br from-border via-primary/30 to-border shadow-premium-xl ring-hairline">
-          <div className="bg-card/95 backdrop-blur-xl rounded-[22px] p-8">
+        <LoginCard>
             {showBack && (
               <motion.button
                 initial={{ opacity: 0, x: -20 }}
@@ -169,8 +140,8 @@ export function RegisterFlow({
                   transition={{ duration: 0.25 }}
                 >
                   <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4 shadow-premium">
-                      <UserPlus className="w-8 h-8 text-primary-foreground" />
+                    <div className={loginIconBoxClass}>
+                      <UserPlus className="w-8 h-8" />
                     </div>
                     <h2 className="text-2xl font-bold text-foreground">
                       Бүртгүүлэх
@@ -323,7 +294,7 @@ export function RegisterFlow({
                       <Button
                         type="submit"
                         disabled={isLoading || !generatedUserId}
-                        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold shadow-premium hover:shadow-premium-lg hover:bg-primary/90 transition-all duration-300 disabled:opacity-50"
+                        className={`${loginSubmitBtnClass} disabled:opacity-50`}
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -479,8 +450,7 @@ export function RegisterFlow({
                 </button>
               </div>
             )}
-          </div>
-        </div>
+        </LoginCard>
       </motion.div>
     </div>
   );

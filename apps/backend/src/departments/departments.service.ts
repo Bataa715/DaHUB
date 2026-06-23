@@ -50,10 +50,34 @@ export class DepartmentsService {
     const result = [];
     for (const dept of departments) {
       const users = await this.clickhouse.query<any>(
-        "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
+        `SELECT id, userId, name, position, isActive, profileImage
+         FROM users
+         WHERE departmentId = {deptId:String}
+           AND isAdmin = 0
+           AND isSuperAdmin = 0
+           AND lower(name) NOT LIKE '%system admin%'
+           AND lower(name) NOT LIKE '%system%admin%'`,
         { deptId: dept.id },
       );
-      result.push({ ...dept, users });
+
+      // manager талбар буруу (System Admin г.м.) байвал албан тушаалаар захирлыг олно
+      let manager = String(dept.manager ?? "").trim();
+      const managerLooksInvalid =
+        !manager ||
+        /system\s*admin/i.test(manager) ||
+        /^admin$/i.test(manager);
+      if (managerLooksInvalid) {
+        const director = users.find((u: { position?: string }) => {
+          const pos = String(u.position ?? "").toLowerCase();
+          if (String(dept.name ?? "").includes("Удирдлага")) {
+            return pos.includes("захирал");
+          }
+          return pos.includes("хэлтсийн захирал") || pos.includes("захирал");
+        });
+        if (director) manager = String(director.name ?? "");
+      }
+
+      result.push({ ...dept, manager, users });
     }
 
     return result;
@@ -71,11 +95,33 @@ export class DepartmentsService {
 
     const department = departments[0];
     const users = await this.clickhouse.query<any>(
-      "SELECT id, userId, name, position, isActive, profileImage FROM users WHERE departmentId = {id:String} AND isAdmin = 0",
+      `SELECT id, userId, name, position, isActive, profileImage
+       FROM users
+       WHERE departmentId = {id:String}
+         AND isAdmin = 0
+         AND isSuperAdmin = 0
+         AND lower(name) NOT LIKE '%system admin%'
+         AND lower(name) NOT LIKE '%system%admin%'`,
       { id },
     );
 
-    return { ...department, users };
+    let manager = String(department.manager ?? "").trim();
+    const managerLooksInvalid =
+      !manager ||
+      /system\s*admin/i.test(manager) ||
+      /^admin$/i.test(manager);
+    if (managerLooksInvalid) {
+      const director = users.find((u: { position?: string }) => {
+        const pos = String(u.position ?? "").toLowerCase();
+        if (String(department.name ?? "").includes("Удирдлага")) {
+          return pos.includes("захирал");
+        }
+        return pos.includes("хэлтсийн захирал") || pos.includes("захирал");
+      });
+      if (director) manager = String(director.name ?? "");
+    }
+
+    return { ...department, manager, users };
   }
 
   async findByName(name: string) {

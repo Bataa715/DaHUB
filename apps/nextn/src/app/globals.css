@@ -150,9 +150,13 @@
   }
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    max-width: 100%;
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    max-width: 100%;
     font-family:
       -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
       Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
@@ -302,6 +306,119 @@ html.light .text-zinc-600    { color: hsl(215 16% 24%) !important; }
 html.light .text-neutral-400 { color: hsl(0 0% 36%) !important; }
 html.light .text-neutral-500 { color: hsl(0 0% 28%) !important; }
 html.light .text-neutral-600 { color: hsl(0 0% 22%) !important; }
+
+/* Dark mode: base muted-foreground илүү тод */
+html:not(.light) .text-muted-foreground {
+  color: hsl(var(--foreground) / 0.85) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Alert Box (.ab-theme) — bold typography + CIF/ID текст тод харагдах
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ab-theme {
+  font-weight: 500;
+}
+.ab-theme :is(p, span, label, a, td, th, li, dt, dd, button, div) {
+  font-weight: 550;
+}
+.ab-theme h1,
+.ab-theme h2,
+.ab-theme h3,
+.ab-theme h4 {
+  font-weight: 700;
+}
+.ab-theme .font-medium    { font-weight: 600 !important; }
+.ab-theme .font-semibold  { font-weight: 700 !important; }
+.ab-theme .font-bold,
+.ab-theme .font-extrabold { font-weight: 800 !important; }
+
+/* CIF / ID — font-mono тоонууд table-д */
+.ab-theme .font-mono,
+.ab-theme td.font-mono,
+.ab-theme span.font-mono,
+.ab-theme p.font-mono {
+  font-weight: 650;
+}
+
+/* Dark: txt-dim/muted → цагаан ойролцоо */
+html:not(.light) .ab-theme .text-txt-dim,
+html:not(.light) .text-txt-dim {
+  color: #c8c8dc !important;
+}
+html:not(.light) .ab-theme .text-txt-muted,
+html:not(.light) .text-txt-muted {
+  color: #dedeee !important;
+}
+html:not(.light) .ab-theme .text-txt,
+html:not(.light) .text-txt {
+  color: #f5f5fa !important;
+}
+html:not(.light) .text-txt-dim.opacity-50 {
+  opacity: 1 !important;
+  color: #b0b0c8 !important;
+}
+
+/* Light: txt-dim/muted → тод хар */
+html.light .ab-theme .text-txt-dim,
+html.light .text-txt-dim {
+  color: #374151 !important;
+}
+html.light .ab-theme .text-txt-muted,
+html.light .text-txt-muted {
+  color: #1f2937 !important;
+}
+html.light .ab-theme .text-txt,
+html.light .text-txt {
+  color: #0f172a !important;
+}
+
+/* Alert Box placeholder */
+html.light .ab-theme input::placeholder {
+  color: #4b5563 !important;
+}
+html:not(.light) .ab-theme input::placeholder {
+  color: #b0b0c4 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Бүх tool — font-mono ID/CIF тоонууд, hardcoded саарал accent текст
+   ═══════════════════════════════════════════════════════════════════════════ */
+html:not(.light) td.font-mono,
+html:not(.light) th.font-mono,
+html:not(.light) span.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]),
+html:not(.light) p.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]) {
+  color: hsl(0 0% 90%) !important;
+}
+html.light td.font-mono,
+html.light th.font-mono,
+html.light span.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]),
+html.light p.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]) {
+  color: hsl(222 47% 11%) !important;
+}
+
+/* Dark: dashboard table-д ашиглагддаг бүдэг accent текст */
+html:not(.light) .text-violet-400  { color: #c4b5fd !important; }
+html:not(.light) .text-amber-400   { color: #fcd34d !important; }
+html:not(.light) .text-emerald-400 { color: #6ee7b7 !important; }
+html:not(.light) .text-cyan-300,
+html:not(.light) .text-cyan-400    { color: #67e8f9 !important; }
+html:not(.light) .text-red-300     { color: #fca5a5 !important; }
+
+/* Light: accent текстүүдийг илүү гүн болгох (dashboards, badges) */
+html.light .text-violet-400  { color: #5b21b6 !important; }
+html.light .text-amber-400   { color: #b45309 !important; }
+html.light .text-emerald-400 { color: #047857 !important; }
+html.light .text-cyan-300,
+html.light .text-cyan-400    { color: #0e7490 !important; }
+html.light .text-red-300     { color: #b91c1c !important; }
+
+/* tabular-nums тоонууд */
+html:not(.light) .tabular-nums:not([class*="text-"]) {
+  color: hsl(var(--foreground) / 0.92);
+}
+html.light .tabular-nums:not([class*="text-"]) {
+  color: hsl(222 47% 11%);
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Admin хэсэг — текстийг илүү тод, bold болгож уншихад хялбар болгох.
@@ -688,16 +805,19 @@ html.light .bg-emerald-500\/8 { background-color: rgb(209, 250, 229) !important;
 
 /* Rotating border animation for layout */
 .animated-border-wrapper {
-  @apply relative overflow-hidden rounded-2xl p-[2px];
+  @apply relative overflow-hidden rounded-2xl p-[2px] isolate;
 }
 
 .animated-border-wrapper::before {
   content: "";
   position: absolute;
-  inset: -200%;
-  width: 500%;
-  height: 500%;
+  top: 50%;
+  left: 50%;
+  width: 200vmax;
+  height: 200vmax;
+  transform: translate(-50%, -50%);
   z-index: 0;
+  pointer-events: none;
   background: conic-gradient(
     from 90deg at 50% 50%,
     hsl(var(--primary) / 0.8),
@@ -962,4 +1082,151 @@ html.light .animated-border-wrapper::before {
       transparent
     );
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Login / Register — brand gradient + card (light/dark хоёуланд тод)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.login-page {
+  background: linear-gradient(
+    165deg,
+    hsl(var(--background)) 0%,
+    hsl(221 83% 97%) 45%,
+    hsl(var(--background)) 100%
+  );
+}
+html:not(.light) .login-page {
+  background: linear-gradient(
+    165deg,
+    hsl(240 10% 4%) 0%,
+    hsl(240 12% 7%) 50%,
+    hsl(240 10% 3.9%) 100%
+  );
+}
+
+.login-brand-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  background-image: linear-gradient(
+    115deg,
+    #1e40af 0%,
+    #2563eb 35%,
+    #4338ca 65%,
+    #0e7490 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+html:not(.light) .login-brand-title {
+  background-image: linear-gradient(
+    115deg,
+    #e0e7ff 0%,
+    #a5b4fc 30%,
+    #67e8f9 60%,
+    #c4b5fd 100%
+  );
+}
+
+.login-brand-subtitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(215 20% 38%);
+}
+html:not(.light) .login-brand-subtitle {
+  color: hsl(240 8% 72%);
+}
+
+.login-logo-wrap {
+  background: #ffffff;
+  box-shadow:
+    0 4px 14px hsl(221 83% 53% / 0.12),
+    0 0 0 1px hsl(214 28% 88%);
+}
+html:not(.light) .login-logo-wrap {
+  box-shadow:
+    0 4px 20px hsl(0 0% 0% / 0.45),
+    0 0 0 1px hsl(240 4% 22%);
+}
+
+.login-card-border {
+  background: linear-gradient(
+    145deg,
+    hsl(214 28% 82%),
+    hsl(221 83% 53% / 0.45),
+    hsl(262 83% 58% / 0.35),
+    hsl(214 28% 82%)
+  );
+}
+html:not(.light) .login-card-border {
+  background: linear-gradient(
+    145deg,
+    hsl(240 4% 20%),
+    hsl(251 78% 79% / 0.35),
+    hsl(182 100% 74% / 0.25),
+    hsl(240 4% 20%)
+  );
+}
+
+.login-card-inner {
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.85);
+}
+html:not(.light) .login-card-inner {
+  background: hsl(var(--card) / 0.92) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+
+.login-icon-box {
+  background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
+  color: #ffffff;
+}
+html:not(.light) .login-icon-box {
+  background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
+}
+
+.login-ambient-a {
+  background: radial-gradient(
+    circle at center,
+    hsl(221 83% 53% / 0.14) 0%,
+    transparent 68%
+  );
+}
+.login-ambient-b {
+  background: radial-gradient(
+    circle at center,
+    hsl(262 83% 58% / 0.1) 0%,
+    transparent 68%
+  );
+}
+html:not(.light) .login-ambient-a {
+  background: radial-gradient(
+    circle at center,
+    hsl(251 78% 79% / 0.12) 0%,
+    transparent 68%
+  );
+}
+html:not(.light) .login-ambient-b {
+  background: radial-gradient(
+    circle at center,
+    hsl(182 100% 74% / 0.08) 0%,
+    transparent 68%
+  );
+}
+
+.login-ambient-grid {
+  background-image:
+    linear-gradient(hsl(221 83% 53% / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(221 83% 53% / 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black, transparent);
+}
+html:not(.light) .login-ambient-grid {
+  background-image:
+    linear-gradient(hsl(0 0% 100% / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(0 0% 100% / 0.03) 1px, transparent 1px);
 }

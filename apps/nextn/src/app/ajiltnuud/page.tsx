@@ -69,6 +69,35 @@ function isLeadership(name: string) {
   return name.trim().toLowerCase().includes("удирдлага");
 }
 
+function isSystemAccount(member: DepartmentUser) {
+  const name = member.name.trim().toLowerCase();
+  const userId = String(member.userId ?? "").trim().toLowerCase();
+  return (
+    name.includes("system admin") ||
+    name.includes("systemadmin") ||
+    /^admin$/i.test(name) ||
+    userId === "admin" ||
+    userId.startsWith("admin.")
+  );
+}
+
+function isDeptManager(member: DepartmentUser, dept: DepartmentData) {
+  const pos = String(member.position ?? "").trim().toLowerCase();
+  if (isLeadership(dept.name)) {
+    return pos.includes("захирал");
+  }
+  if (pos.includes("хэлтсийн захирал")) return true;
+  const mgr = String(dept.manager ?? "").trim();
+  if (!mgr || /system\s*admin/i.test(mgr) || /^admin$/i.test(mgr)) {
+    return false;
+  }
+  return member.name === mgr;
+}
+
+function visibleMembers(dept: DepartmentData): DepartmentUser[] {
+  return (dept.users ?? []).filter((m) => !isSystemAccount(m));
+}
+
 // ── EmployeeCard ─────────────────────────────────────────────────────────────
 function EmployeeCard({
   member,
@@ -137,7 +166,7 @@ function DepartmentRow({
   currentUserId: string;
 }) {
   const color = getColor(dept.name);
-  const members = dept.users ?? [];
+  const members = visibleMembers(dept);
 
   return (
     <section>
@@ -161,13 +190,13 @@ function DepartmentRow({
 
       {/* Employees on one horizontal line */}
       {members.length > 0 ? (
-        <div className="flex gap-4 overflow-x-auto pb-3 -mx-1 px-1">
+        <div className="flex gap-4 overflow-x-auto pb-3 -mx-1 px-1 min-w-0 max-w-full">
           {members.map((m) => (
             <EmployeeCard
               key={m.id}
               member={m}
               isSelf={m.id === currentUserId}
-              isManager={!!dept.manager && m.name === dept.manager}
+              isManager={isDeptManager(m, dept)}
             />
           ))}
         </div>

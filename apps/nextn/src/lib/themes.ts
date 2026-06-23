@@ -108,7 +108,7 @@ const deepSpaceTheme: ThemeDef = {
     secondary: "240 4% 16%",
     secondaryForeground: "0 0% 98%",
     muted: "240 4% 16%",
-    mutedForeground: "240 5% 65%",
+    mutedForeground: "240 8% 82%",
 
     accent: "182 100% 74%", // cyan #67e8f9
     accentForeground: "182 100% 18%",
@@ -141,9 +141,9 @@ const deepSpaceTheme: ThemeDef = {
     surfaceElevated: "#1e1e28",
     surfaceBorder: "#2a2a3a",
     surfaceHover: "#222230",
-    txt: "#e4e4ec",
-    txtMuted: "#7c7c96",
-    txtDim: "#55556b",
+    txt: "#f2f2f8",
+    txtMuted: "#c8c8d8",
+    txtDim: "#a8a8be",
   },
 };
 
@@ -172,7 +172,7 @@ const cleanLightTheme: ThemeDef = {
     secondaryForeground: "222 39% 14%",
 
     muted: "210 16% 91%", // slightly lighter than before to match new bg
-    mutedForeground: "215 20% 40%", // solid medium-dark gray — readable
+    mutedForeground: "222 35% 22%", // solid dark gray — readable on light bg
 
     accent: "213 93% 97%", // #eff6ff pale blue
     accentForeground: "221 83% 38%", // deep blue
@@ -205,9 +205,9 @@ const cleanLightTheme: ThemeDef = {
     surfaceElevated: "#f1f5f9", // slate-100
     surfaceBorder: "#dde1ea", // slightly warmer border
     surfaceHover: "#eff6ff", // blue-50
-    txt: "#111827", // gray-900 — slightly softer than near-black
-    txtMuted: "#6b7280", // gray-500
-    txtDim: "#9ca3af", // gray-400
+    txt: "#0f172a",
+    txtMuted: "#1f2937",
+    txtDim: "#374151",
   },
 };
 
