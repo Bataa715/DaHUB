@@ -431,6 +431,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               riskFilter={riskFilter}
               setRiskFilter={setRiskFilter}
               pDate={fetchedDate}
+              dataReferenceDate={selectedDate}
               externalJudgements={judgements}
               onJudgementChange={onJudgementSave}
               previousJudgements={prevJudgements}

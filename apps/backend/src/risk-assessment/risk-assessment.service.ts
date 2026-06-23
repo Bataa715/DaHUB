@@ -27,6 +27,8 @@ export interface RiskCurrentRow {
   isManual: number;
   indicatorId: string;
   indicatorValue: number | null;
+  /** Тухайн RESULT-ийн бодит fetchedDate (fill-forward шалгалтад) */
+  sourceFetchedDate?: string;
 }
 
 export interface RiskHistoryEntry {
@@ -395,7 +397,8 @@ export class RiskAssessmentService implements OnModuleInit {
          argMax(OPERATION_TYPE, fetchedDate)      AS OPERATION_TYPE,
          0                                        AS isManual,
          ''                                       AS indicatorId,
-         NULL                                     AS indicatorValue
+         NULL                                     AS indicatorValue,
+         LEFT(max(fetchedDate), 10)               AS sourceFetchedDate
        FROM riskbranch FINAL
        WHERE LEFT(fetchedDate, 10) <= {anchor:String}
          AND SOLID IN (

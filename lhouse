@@ -1,0 +1,108 @@
+78
+Best Practices
+Trust and Safety
+Does not use HTTPS 34 insecure requests found
+All sites should be protected with HTTPS, even ones that don't handle sensitive data. This includes avoiding mixed content, where some resources are loaded over HTTP despite the initial request being served over HTTPS. HTTPS prevents intruders from tampering with or passively listening in on the communications between your app and your users, and is a prerequisite for HTTP/2 and many new web platform APIs. Learn more about HTTPS.
+Insecure URL
+Request Resolution
+192.168.10.22 1st party
+/tools/risk-assessment(192.168.10.22)
+Allowed
+…css/3253f54ef2fc2aeb.css(192.168.10.22)
+Allowed
+…chunks/webpack-3e8f2aea5c4c0972.js(192.168.10.22)
+Allowed
+…chunks/87c73c54-09e1ba5c70e60a51.js(192.168.10.22)
+Allowed
+…chunks/18-e570b1ffde93b742.js(192.168.10.22)
+Allowed
+…chunks/main-app-5121283d51936c72.js(192.168.10.22)
+Allowed
+…chunks/9664-dcc323304d96ebba.js(192.168.10.22)
+Allowed
+…chunks/4203-3a55633b4d7ff2ed.js(192.168.10.22)
+Allowed
+…chunks/3916-c20ab3fd381a2a65.js(192.168.10.22)
+Allowed
+…chunks/147-b162def04a0518b6.js(192.168.10.22)
+Allowed
+…chunks/174-c8850be42a552dd5.js(192.168.10.22)
+Allowed
+…chunks/584-a22bd325883cacd0.js(192.168.10.22)
+Allowed
+…chunks/7363-b1fc78c3061e2fec.js(192.168.10.22)
+Allowed
+…chunks/6763-44a09a6123d896ea.js(192.168.10.22)
+Allowed
+…chunks/2536-a470a6f362d00dff.js(192.168.10.22)
+Allowed
+…chunks/7166-0a79cf9b0bcee1e2.js(192.168.10.22)
+Allowed
+…chunks/4140-2ed2490571da569d.js(192.168.10.22)
+Allowed
+…chunks/9706-354…a69d.js(192.168.10.22)
+Allowed
+…chunks/2982-cacbddc8f608c102.js(192.168.10.22)
+Allowed
+…chunks/5588-5f378bfc10f25045.js(192.168.10.22)
+Allowed
+…app/layout-8f27948f9b1a5c71.js(192.168.10.22)
+Allowed
+…app/not-found-d55dbb0fcf2a37e2.js(192.168.10.22)
+Allowed
+…risk-assessment/page-733…c23156a.js(192.168.10.22)
+Allowed
+/_next/image?url=%2Fgolomt.jpg&w=64&q=75(192.168.10.22)
+Allowed
+/_next/image?url=%2Fgolomt.jpg&w=48&q=75(192.168.10.22)
+Allowed
+/golomt.jpg(192.168.10.22)
+Allowed
+/auth/refresh(192.168.10.22)
+Allowed
+/?_rsc=4gr62(192.168.10.22)
+Allowed
+/medleg?_rsc=4gr62(192.168.10.22)
+Allowed
+/tools?_rsc=4gr62(192.168.10.22)
+Allowed
+…app/page-1f8e3778696c79ba.js(192.168.10.22)
+Allowed
+…chunks/600-8d1dc71509b00142.js(192.168.10.22)
+Allowed
+…medleg/page-8d0da1d5ddadd5a2.js(192.168.10.22)
+Allowed
+…tools/page-14ecb79577b003ca.js(192.168.10.22)
+Allowed
+Does not redirect HTTP traffic to HTTPS
+Ensure CSP is effective against XSS attacks
+Use a strong HSTS policy
+Ensure proper origin isolation with COOP
+Mitigate DOM-based XSS with Trusted Types
+Browser Compatibility
+Baseline Features
+Passed audits (12)
+Show
+Not applicable (2)
+Show
+63
+SEO
+These checks ensure that your page is following basic search engine optimization advice. There are many additional factors Lighthouse does not score here that may affect your search ranking, including performance on Core Web Vitals. Learn more about Google Search Essentials.
+Crawling and Indexing
+Page is blocked from indexing
+Search engines are unable to include your pages in search results if they don't have permission to crawl them. Learn more about crawler directives.
+Blocking Directive Source
+meta
+To appear in search results, crawlers need access to your app.
+Additional items to manually check (1)
+Show
+Run these additional validators on your site to check additional SEO best practices.
+Passed audits (7)
+Hide
+Document has a <title> element
+Document has a meta description
+Page has successful HTTP status code
+Links have descriptive text
+Links are crawlable
+Image elements have [alt] attributes
+Document has a valid hreflang

@@ -760,6 +760,8 @@ export interface RiskCurrentRow {
   isManual: number;
   indicatorId: string;
   indicatorValue: number | null;
+  /** Тухайн RESULT-ийн бодит fetchedDate (fill-forward шалгалтад) */
+  sourceFetchedDate?: string;
   /** @deprecated DB-ээс хасагдсан — SOLID ашиглана уу */
   BRANCHID?: string;
   /** @deprecated DB-ээс хасагдсан */

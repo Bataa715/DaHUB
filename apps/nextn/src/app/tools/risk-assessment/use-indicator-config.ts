@@ -176,6 +176,7 @@ export function evaluateBranchDynamic(
     SUBID?: OracleValue;
     RESULT?: OracleValue;
     RESULT_TYPE?: OracleValue;
+    sourceFetchedDate?: string;
   }[],
   manual: Record<string, number> | undefined,
 ): Record<
@@ -185,12 +186,18 @@ export function evaluateBranchDynamic(
     source: "auto" | "manual" | "none";
     autoRaw?: string;
     autoLabel?: string | null;
+    sourceFetchedDate?: string;
   }
 > {
   // Index Oracle rows by SUBID
   const autoBySubid = new Map<
     string,
-    { score: ScoreResult; raw: string; label: string | null }
+    {
+      score: ScoreResult;
+      raw: string;
+      label: string | null;
+      sourceFetchedDate?: string;
+    }
   >();
   for (const r of rows) {
     const sid = String(r.SUBID ?? "").trim();
@@ -207,6 +214,9 @@ export function evaluateBranchDynamic(
       score,
       raw: r.RESULT == null ? "" : String(r.RESULT),
       label,
+      sourceFetchedDate: r.sourceFetchedDate
+        ? String(r.sourceFetchedDate).slice(0, 10)
+        : undefined,
     });
   }
 
@@ -217,6 +227,7 @@ export function evaluateBranchDynamic(
       source: "auto" | "manual" | "none";
       autoRaw?: string;
       autoLabel?: string | null;
+      sourceFetchedDate?: string;
     }
   > = {};
   for (const ind of catalog) {
@@ -224,6 +235,7 @@ export function evaluateBranchDynamic(
     let source: "auto" | "manual" | "none" = "none";
     let autoRaw: string | undefined;
     let autoLabel: string | null | undefined;
+    let sourceFetchedDate: string | undefined;
 
     const manualVal = manual?.[ind.id];
     if (typeof manualVal === "number" && manualVal > 0) {
@@ -234,6 +246,7 @@ export function evaluateBranchDynamic(
       if (a) {
         autoRaw = a.raw;
         autoLabel = a.label;
+        sourceFetchedDate = a.sourceFetchedDate;
         if (typeof a.score === "number" && a.score > 0) {
           score = a.score;
           source = "auto";
@@ -257,7 +270,7 @@ export function evaluateBranchDynamic(
       }
     }
 
-    result[ind.id] = { score, source, autoRaw, autoLabel };
+    result[ind.id] = { score, source, autoRaw, autoLabel, sourceFetchedDate };
   }
   return result;
 }

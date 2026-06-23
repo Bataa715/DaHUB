@@ -37,6 +37,7 @@ type AnyRow = {
   SUBID?: OracleValue;
   RESULT?: OracleValue;
   RESULT_TYPE?: OracleValue;
+  sourceFetchedDate?: string;
 };
 
 interface Props {
@@ -64,6 +65,8 @@ interface Props {
   onJudgementChange?: (branchId: string, score: number) => void;
   /** Өмнөх огноогийн judgement — авто бөглөх товчинд ашиглана */
   previousJudgements?: Record<string, number>;
+  /** Сонгосон огноо — fill-forward хуучин өгөгдөл тэмдэглэхэд */
+  dataReferenceDate?: string;
 }
 
 const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
@@ -104,6 +107,7 @@ export default function ReportView({
   previousJudgements,
   hideComparison = false,
   previousManualMap = {},
+  dataReferenceDate,
 }: Props) {
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
@@ -600,6 +604,7 @@ export default function ReportView({
         externalJudgements={externalJudgements}
         onJudgementChange={onJudgementChange}
         previousJudgements={previousJudgements}
+        dataReferenceDate={dataReferenceDate}
       />
       {/* Summary */}
       {!hideComparison && (
@@ -668,6 +673,7 @@ function ReportTable({
   externalJudgements,
   onJudgementChange,
   previousJudgements,
+  dataReferenceDate,
 }: {
   title: string;
   region?: "UB" | "LOC";
@@ -687,6 +693,7 @@ function ReportTable({
   externalJudgements?: Record<string, number>;
   onJudgementChange?: (branchId: string, score: number) => void;
   previousJudgements?: Record<string, number>;
+  dataReferenceDate?: string;
 }) {
   const w = region ? weights[region] : weights["UB"];
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
@@ -1069,6 +1076,7 @@ function ReportTable({
                       currentAgg={b}
                       previousAgg={prev}
                       hideComparison={hideComparison}
+                      dataReferenceDate={dataReferenceDate}
                     />
                   )}
                 </Fragment>
@@ -1153,6 +1161,20 @@ const SCORE_COMPARISON_COLS = [
   },
 ] as const;
 
+function normDate(d: string | undefined): string {
+  return d ? String(d).slice(0, 10) : "";
+}
+
+function isStaleIndicatorData(
+  sourceDate: string | undefined,
+  referenceDate: string | undefined,
+): boolean {
+  const ref = normDate(referenceDate);
+  const src = normDate(sourceDate);
+  if (!ref || !src) return false;
+  return src !== ref;
+}
+
 function IndicatorDetailRow({
   branchId,
   branchName,
@@ -1163,6 +1185,7 @@ function IndicatorDetailRow({
   currentAgg,
   previousAgg,
   hideComparison = false,
+  dataReferenceDate,
 }: {
   branchId: string;
   branchName: string;
@@ -1173,6 +1196,7 @@ function IndicatorDetailRow({
   currentAgg?: BranchAggregate;
   previousAgg?: BranchAggregate;
   hideComparison?: boolean;
+  dataReferenceDate?: string;
 }) {
   const evals = useMemo(
     () => evaluateBranchDynamic(catalog, rawRows, manualValues),
@@ -1189,6 +1213,7 @@ function IndicatorDetailRow({
           source: string;
           autoRaw?: string;
           autoLabel?: string | null;
+          sourceFetchedDate?: string;
         };
       }[]
     > = {};
@@ -1353,7 +1378,18 @@ function IndicatorDetailRow({
                         </td>
                         <td className="py-1 pr-3 tabular-nums font-semibold text-right text-foreground">
                           {ev.autoRaw !== undefined ? (
-                            ev.autoRaw || "—"
+                            <span className="inline-flex items-center justify-end gap-1.5 w-full">
+                              <span>{ev.autoRaw || "—"}</span>
+                              {isStaleIndicatorData(
+                                ev.sourceFetchedDate,
+                                dataReferenceDate,
+                              ) && (
+                                <span
+                                  className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"
+                                  title={`Хуучин өгөгдөл (${normDate(ev.sourceFetchedDate)})`}
+                                />
+                              )}
+                            </span>
                           ) : ind.is_manual ? (
                             <span className="text-muted-foreground/40 italic">
                               гараар
