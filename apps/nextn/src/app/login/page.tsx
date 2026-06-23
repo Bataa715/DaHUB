@@ -130,7 +130,7 @@ export default function LoginPage() {
 
   const searchUsers = useCallback(async (query: string) => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    if (!query || query.length < 2) {
+    if (!query || query.length < 3) {
       setUserSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -141,6 +141,11 @@ export default function LoginPage() {
         const response = await fetch(
           `/api/auth/search?q=${encodeURIComponent(query)}`,
         );
+        if (response.status === 429) {
+          setUserSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
         const data = await response.json();
         if (data.users && data.users.length > 0) {
           setUserSuggestions(data.users);
@@ -155,13 +160,29 @@ export default function LoginPage() {
       } finally {
         setIsSearching(false);
       }
-    }, 400);
+    }, 600);
   }, []);
 
   const handleSelectSuggestion = (userId: string) => {
     loginForm.setValue("userId", userId);
     setShowSuggestions(false);
     setUserSuggestions([]);
+  };
+
+  const authFetchError = async (response: Response, fallback: string) => {
+    if (response.status === 429) {
+      throw new Error(
+        "Хэт олон хүсэлт илгээгдлээ. Хэдэн секунд хүлээгээд дахин оролдоно уу.",
+      );
+    }
+    let message = fallback;
+    try {
+      const data = await response.json();
+      if (typeof data?.message === "string") message = data.message;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
   };
 
   const handleRegisterInfo = async (
@@ -174,9 +195,10 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
+      if (!response.ok) {
+        await authFetchError(response, "Бүртгэл үүсгэхэд алдаа гарлаа");
+      }
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.message || "Бүртгэл үүсгэхэд алдаа гарлаа");
       setRegisteredUser({
         userId: data.userId,
         name: data.name,
@@ -202,7 +224,7 @@ export default function LoginPage() {
     values: z.infer<typeof passwordFormSchema>,
   ) => {
     const userId = registeredUser?.userId || checkedUser?.userId;
-    const claimToken = registeredUser?.claimToken;
+    const claimToken = registeredUser?.claimToken || checkedUser?.claimToken;
     if (!userId || !claimToken) return;
     setIsLoading(true);
     try {
@@ -212,9 +234,10 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, password: values.password, claimToken }),
       });
+      if (!response.ok) {
+        await authFetchError(response, "Нууц үг тохируулахад алдаа гарлаа");
+      }
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.message || "Нууц үг тохируулахад алдаа гарлаа");
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
       const secure =
         typeof window !== "undefined" && window.location.protocol === "https:";
@@ -248,6 +271,9 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
+      if (!response.ok) {
+        await authFetchError(response, "Хэрэглэгч шалгахад алдаа гарлаа");
+      }
       const data: UserCheckResult = await response.json();
       if (!data.exists) {
         toast({
@@ -257,7 +283,7 @@ export default function LoginPage() {
         });
         return;
       }
-      if (data.isActive === false) {
+      if (data.isActive === false && data.hasPassword) {
         toast({
           title: "Эрх хаагдсан",
           description: "Таны эрх идэвхгүй байна. Админд хандана уу.",
@@ -292,14 +318,13 @@ export default function LoginPage() {
           password: values.password,
         }),
       });
-      const data = await response.json();
       if (!response.ok) {
-        const msg =
-          response.status === 401
-            ? "Нууц үг буруу байна"
-            : data.message || "Нэвтрэх үед алдаа гарлаа";
-        throw new Error(msg);
+        if (response.status === 401) {
+          throw new Error("Нууц үг буруу байна");
+        }
+        await authFetchError(response, "Нэвтрэх үед алдаа гарлаа");
       }
+      const data = await response.json();
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
       const secure =
         typeof window !== "undefined" && window.location.protocol === "https:";

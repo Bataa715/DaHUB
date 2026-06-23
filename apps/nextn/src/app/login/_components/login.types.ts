@@ -44,6 +44,7 @@ export interface UserCheckResult {
   hasPassword: boolean;
   userId: string | null;
   isActive?: boolean;
+  claimToken?: string;
 }
 
 export interface PasswordChecks {

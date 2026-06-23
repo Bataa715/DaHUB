@@ -10,7 +10,7 @@ import {
   Res,
   UnauthorizedException,
 } from "@nestjs/common";
-import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
+import { ThrottlerGuard, Throttle, SkipThrottle } from "@nestjs/throttler";
 import {
   Request as ExpressRequest,
   Response,
@@ -209,7 +209,7 @@ export class AuthController {
     );
   }
 
-  @UseGuards(ThrottlerGuard)
+  @SkipThrottle()
   @Get("search")
   async searchUsers(@Query("q") query: string) {
     return this.authService.searchUsersByUserId(query, false);

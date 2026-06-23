@@ -473,6 +473,16 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         );
       }
 
+      // Нууц үг тохируулсан боловч isActive=0 хэвээр үлдсэн хуучин бүртгэлүүдийг идэвхжүүлнэ.
+      await this.exec(
+        `ALTER TABLE users UPDATE isActive = 1
+         WHERE isActive = 0
+           AND isAdmin = 0
+           AND isSuperAdmin = 0
+           AND password != ''
+           AND password NOT LIKE 'PENDING:%'`,
+      );
+
       try {
         await this.provisionServiceUsers();
       } catch (provisionErr: any) {

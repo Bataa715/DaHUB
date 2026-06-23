@@ -552,7 +552,9 @@ export class AuthService {
     const users = await this.clickhouse.query<any>(
       `SELECT u.id, u.name, u.userId, u.position, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
-       WHERE u.isActive = 1 ${adminFilter} AND (u.userId LIKE {pattern:String} OR u.name LIKE {pattern:String})
+       WHERE (u.isActive = 1 OR u.password LIKE 'PENDING:%')
+         ${adminFilter}
+         AND (u.userId LIKE {pattern:String} OR u.name LIKE {pattern:String})
        LIMIT 10`,
       { pattern },
     );
@@ -576,15 +578,32 @@ export class AuthService {
     const user = users[0];
     if (!user) return { exists: false, hasPassword: false };
 
+    const isPending = String(user.password ?? "").startsWith("PENDING:");
     const hasPassword =
       user.password &&
       user.password.length > 0 &&
-      !user.password.startsWith("PENDING:");
+      !isPending;
+
+    let claimToken: string | undefined;
+    if (!hasPassword && isPending) {
+      claimToken = randomUUID();
+      await this.clickhouse.exec(
+        `ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String}
+         WHERE userId = {userId:String} SETTINGS mutations_sync = 1`,
+        {
+          password: "PENDING:" + claimToken,
+          userId,
+          updatedAt: nowCH(),
+        },
+      );
+    }
+
     return {
       exists: true,
       hasPassword,
       userId: user.userId,
       isActive: !!user.isActive,
+      ...(claimToken ? { claimToken } : {}),
     };
   }
 
@@ -601,10 +620,16 @@ export class AuthService {
     const userId = this.generateUserId(department, name, deptCode);
 
     const existing = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE userId = {userId:String} LIMIT 1",
+      "SELECT id, password FROM users WHERE userId = {userId:String} LIMIT 1",
       { userId },
     );
     if (existing.length > 0) {
+      const pending = String(existing[0].password ?? "").startsWith("PENDING:");
+      if (pending) {
+        throw new ConflictException(
+          "Энэ ID-тай бүртгэл аль хэдийн эхэлсэн байна. Нэвтрэх хэсгээс ID-гаа оруулж нууц үгээ үүсгэнэ үү.",
+        );
+      }
       throw new ConflictException(
         `Энэ хэрэглэгчийн ID (${userId}) аль хэдийн бүртгэлтэй байна`,
       );
@@ -625,8 +650,7 @@ export class AuthService {
         position,
         departmentId: dept.id,
         isAdmin: 0,
-        // [N-1] New registrations require admin activation before they can log in
-        isActive: 0,
+        isActive: 1,
         allowedTools: JSON.stringify([]),
         profileImage: "",
         lastLoginAt: null,
@@ -643,7 +667,7 @@ export class AuthService {
       position,
       claimToken,
       message:
-        "Бүртгэл амжилттай. Нууц үгээ үүсгэснийхээ дараа админаас эрхээ нээлгэнэ үү.",
+        "Бүртгэл амжилттай. Нууц үгээ үүсгээд нэвтэрнэ үү. Хэрэгслийн эрхийг админаас авах боломжтой.",
     };
   }
 
@@ -695,20 +719,24 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 13);
+    const updatedAt = nowCH();
     await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE password = {password:String} WHERE id = {id:String}",
+      `ALTER TABLE users UPDATE password = {password:String}, isActive = 1, updatedAt = {updatedAt:String}
+       WHERE id = {id:String} SETTINGS mutations_sync = 1`,
       {
         password: hashedPassword,
         id: user.id,
+        updatedAt,
       },
     );
 
     await this.clearFailedLogins("setpw:" + userId);
-    const accessToken = this.generateTokenForUser(user);
+    const activeUser = { ...user, password: hashedPassword, isActive: 1 };
+    const accessToken = this.generateTokenForUser(activeUser);
     const refreshToken = await this.generateRefreshToken(user.id);
     return {
       success: true,
-      user: this.formatUserResponse(user),
+      user: this.formatUserResponse(activeUser),
       accessToken,
       refreshToken,
     };
