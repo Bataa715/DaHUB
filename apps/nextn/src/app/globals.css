@@ -151,11 +151,13 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    width: 100%;
     max-width: 100%;
   }
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    width: 100%;
     max-width: 100%;
     font-family:
       -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
@@ -803,54 +805,18 @@ html.light .bg-emerald-500\/8 { background-color: rgb(209, 250, 229) !important;
   pointer-events: none;
 }
 
-/* Rotating border animation for layout */
+/* Layout frame — энгийн статик хүрээ (эргэлдэх animation байхгүй) */
 .animated-border-wrapper {
-  @apply relative overflow-hidden rounded-2xl p-[2px] isolate;
+  @apply relative rounded-2xl border border-border isolate;
+  contain: layout paint;
 }
 
-.animated-border-wrapper::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 200vmax;
-  height: 200vmax;
-  transform: translate(-50%, -50%);
-  z-index: 0;
-  pointer-events: none;
-  background: conic-gradient(
-    from 90deg at 50% 50%,
-    hsl(var(--primary) / 0.8),
-    45deg,
-    transparent,
-    90deg,
-    hsl(var(--primary) / 0.6),
-    135deg,
-    transparent,
-    180deg,
-    hsl(var(--primary) / 0.8)
-  );
-  animation: rotate-glow-circle-cw 8s linear infinite;
-}
-
-html.light .animated-border-wrapper::before {
-  background: conic-gradient(
-    from 90deg at 50% 50%,
-    hsl(220 16% 15% / 0.9),
-    45deg,
-    hsl(220 16% 40% / 0.4),
-    90deg,
-    hsl(220 16% 15% / 0.7),
-    135deg,
-    hsl(220 16% 40% / 0.3),
-    180deg,
-    hsl(220 16% 15% / 0.9)
-  );
+html.light .animated-border-wrapper {
+  border-width: 1.5px;
 }
 
 .animated-border-wrapper > * {
-  position: relative;
-  z-index: 1;
+  @apply rounded-[calc(1rem-1px)];
 }
 
 @keyframes gradient {

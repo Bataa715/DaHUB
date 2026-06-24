@@ -32,7 +32,7 @@ export default function MainLayout({
 
   if (isSelfLayoutTool) {
     return (
-      <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background">
+      <div className="min-h-screen w-full overflow-x-hidden bg-background">
         <main className="relative min-w-0">{children}</main>
       </div>
     );
@@ -41,15 +41,15 @@ export default function MainLayout({
   return (
     <div
       className={cn(
-        "bg-background w-full max-w-[100vw] overflow-x-hidden",
+        "bg-background w-full overflow-x-hidden",
         !isPublicPath
           ? "h-dvh flex flex-col p-1.5 md:p-2 lg:p-2.5 min-w-0"
           : "min-h-screen",
       )}
     >
       {!isPublicPath ? (
-        <div className="animated-border-wrapper flex flex-1 min-h-0 min-w-0 w-full max-w-full">
-          <div className="flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-hidden bg-background rounded-2xl">
+        <div className="animated-border-wrapper flex flex-1 min-h-0 min-w-0 w-full max-w-full overflow-hidden">
+          <div className="flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-hidden bg-background">
             <Header />
             <main
               id="main-content"
@@ -61,7 +61,7 @@ export default function MainLayout({
           </div>
         </div>
       ) : (
-        <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background">
+        <div className="relative min-h-screen w-full overflow-x-hidden bg-background">
           <main className="relative min-w-0">{children}</main>
         </div>
       )}
