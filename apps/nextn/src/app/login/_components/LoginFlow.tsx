@@ -9,12 +9,9 @@ import {
   Loader2,
   User,
   ChevronLeft,
-  KeyRound,
   Eye,
   EyeOff,
-  ShieldCheck,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Form,
@@ -39,10 +36,10 @@ import {
   LoginBrandHeader,
   LoginAmbientBackground,
   LoginCard,
+  LoginStepLogo,
+  LoginSubmitButton,
   loginInputClass,
   loginLabelClass,
-  loginIconBoxClass,
-  loginSubmitBtnClass,
 } from "./login-ui";
 import type {
   LoginStep,
@@ -120,8 +117,6 @@ export function LoginFlow({
   const labelClass = loginLabelClass;
   const eyeBtnClass =
     "absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors";
-  const iconBoxClass = loginIconBoxClass;
-  const submitBtnClass = loginSubmitBtnClass;
 
   return (
     <div className="login-page min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -158,15 +153,10 @@ export function LoginFlow({
                   transition={{ duration: 0.25 }}
                 >
                   <div className="text-center mb-8">
-                    <div className={iconBoxClass}>
-                      <KeyRound className="w-8 h-8" />
-                    </div>
+                    <LoginStepLogo />
                     <h2 className="text-2xl font-bold text-foreground">
                       Нэвтрэх
                     </h2>
-                    <p className="text-muted-foreground mt-2">
-                      ID-ээ оруулна уу
-                    </p>
                   </div>
 
                   <Form {...loginForm}>
@@ -257,20 +247,16 @@ export function LoginFlow({
                         )}
                       />
 
-                      <Button
-                        type="submit"
-                        disabled={isLoading}
-                        className={submitBtnClass}
-                      >
+                      <LoginSubmitButton disabled={isLoading}>
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <span className="flex items-center gap-2">
+                          <>
                             Шалгах
                             <ArrowRight className="w-4 h-4" />
-                          </span>
+                          </>
                         )}
-                      </Button>
+                      </LoginSubmitButton>
                     </form>
                   </Form>
                 </motion.div>
@@ -286,9 +272,7 @@ export function LoginFlow({
                   transition={{ duration: 0.25 }}
                 >
                   <div className="text-center mb-8">
-                    <div className={iconBoxClass}>
-                      <Lock className="w-8 h-8" />
-                    </div>
+                    <LoginStepLogo />
                     <h2 className="text-2xl font-bold text-foreground">
                       Нууц үг оруулах
                     </h2>
@@ -348,20 +332,16 @@ export function LoginFlow({
                         </button>
                       </div>
 
-                      <Button
-                        type="submit"
-                        disabled={isLoading}
-                        className={submitBtnClass}
-                      >
+                      <LoginSubmitButton disabled={isLoading}>
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <span className="flex items-center gap-2">
+                          <>
                             Нэвтрэх
                             <ArrowRight className="w-4 h-4" />
-                          </span>
+                          </>
                         )}
-                      </Button>
+                      </LoginSubmitButton>
                     </form>
                   </Form>
                 </motion.div>
@@ -377,9 +357,7 @@ export function LoginFlow({
                   transition={{ duration: 0.25 }}
                 >
                   <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mx-auto mb-4 shadow-premium">
-                      <ShieldCheck className="w-8 h-8 text-white" />
-                    </div>
+                    <LoginStepLogo />
                     <h2 className="text-2xl font-bold text-foreground">
                       Нууц үг үүсгэх
                     </h2>
@@ -472,20 +450,18 @@ export function LoginFlow({
                         )}
                       />
 
-                      <Button
-                        type="submit"
+                      <LoginSubmitButton
                         disabled={isLoading || !allChecksPass}
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-premium hover:shadow-premium-lg transition-all duration-300 disabled:opacity-50"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <span className="flex items-center gap-2">
+                          <>
                             Нууц үг үүсгэж нэвтрэх
                             <ArrowRight className="w-4 h-4" />
-                          </span>
+                          </>
                         )}
-                      </Button>
+                      </LoginSubmitButton>
                     </form>
                   </Form>
                 </motion.div>

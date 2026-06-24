@@ -28,13 +28,17 @@ export class UpdateUserDto {
   departmentId?: string;
 
   // [H-5] Reject SVG and arbitrary content; accept only safe raster image data URIs.
+  // Хоосон string = профайл зураг устгах
   @IsString()
   @IsOptional()
   @MaxLength(7_000_000) // ~5MB after base64 overhead
-  @Matches(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/, {
-    message:
-      "profileImage нь зөвхөн jpeg|png|webp|gif форматын data URI байх ёстой",
-  })
+  @Matches(
+    /^(|data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+)$/,
+    {
+      message:
+        "profileImage нь зөвхөн jpeg|png|webp|gif форматын data URI эсвэл хоосон байх ёстой",
+    },
+  )
   profileImage?: string;
 
   @IsArray()

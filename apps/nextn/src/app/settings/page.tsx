@@ -5,10 +5,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2, Check } from "lucide-react";
-import { usersApi } from "@/lib/api";
+import { usersApi, getApiErrorMessage } from "@/lib/api";
 import api from "@/lib/api";
 import axios from "axios";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resizeProfileImageToDataUrl } from "@/lib/profile-image";
 
 type Tab = "profile" | "password";
 
@@ -55,25 +56,7 @@ export default function SettingsPage() {
     reader.onloadend = () => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const max = 300;
-        let w = img.width,
-          h = img.height;
-        if (w > h) {
-          if (w > max) {
-            h = (h * max) / w;
-            w = max;
-          }
-        } else {
-          if (h > max) {
-            w = (w * max) / h;
-            h = max;
-          }
-        }
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
-        setImagePreview(canvas.toDataURL("image/jpeg", 0.6));
+        setImagePreview(resizeProfileImageToDataUrl(img));
       };
       img.src = reader.result as string;
     };
@@ -103,13 +86,14 @@ export default function SettingsPage() {
     if (!user) return;
     setIsUploadingImage(true);
     try {
-      await usersApi.update(user.id, { profileImage: "" });
+      await usersApi.removeProfileImage(user.id);
+      setImagePreview(null);
       toast({ title: t("success"), description: t("imageRemoved") });
       await refreshUser();
-    } catch {
+    } catch (e: unknown) {
       toast({
         title: t("error"),
-        description: t("imageError"),
+        description: getApiErrorMessage(e) || t("imageError"),
         variant: "destructive",
       });
     } finally {

@@ -212,6 +212,8 @@ export type BranchAggregate = {
   branchName: string;
   solid: string;
   rating: string;
+  /** riskbranch STATUS — УБ-Салбар / ОН-Салбар */
+  status: string;
   region: Region;
   s1: number | null;
   s2: number | null;
@@ -221,6 +223,19 @@ export type BranchAggregate = {
   total: number | null;
   level: RiskLevel | "";
 };
+
+/** Тайлангийн хүснэгтийг STATUS-аар UB / ON бүлэгт хуваах */
+export function classifyBranchTableGroup(
+  status: string,
+  rating: string,
+): "UB" | "ON" {
+  const s = (status || "").trim().toUpperCase();
+  if (s.includes("ОН") && s.includes("САЛБАР")) return "ON";
+  if (s.includes("УБ") && s.includes("САЛБАР")) return "UB";
+  if (s.startsWith("ОН")) return "ON";
+  if (s.startsWith("УБ")) return "UB";
+  return detectRegion(rating) === "LOC" ? "ON" : "UB";
+}
 
 /** Жинлэсэн дундаж — байгаа компонентуудаар (хоосон бол жингээс хасах). */
 export function computeTotal(
@@ -261,6 +276,7 @@ type AggInputRow = {
   SOLID?: OracleValue;
   BRANCHID?: OracleValue;
   BRANCHNAME?: OracleValue;
+  STATUS?: OracleValue;
   SUBID?: OracleValue;
   RESULT?: OracleValue;
   RESULT_TYPE?: OracleValue;
@@ -292,6 +308,7 @@ export function aggregateBranch(
     branchName: string;
     solid: string;
     rating: string;
+    status: string;
     sums: Record<ScoreGroup, { sum: number; cnt: number }>;
   };
   const map = new Map<string, Acc>();
@@ -306,6 +323,7 @@ export function aggregateBranch(
         branchName: String(r.BRANCHNAME ?? ""),
         solid: String(r.SOLID ?? ""),
         rating: "",
+        status: "",
         sums: {
           "Score 1": { sum: 0, cnt: 0 },
           "Score 2": { sum: 0, cnt: 0 },
@@ -318,6 +336,11 @@ export function aggregateBranch(
 
     if (Number(r.SUBID) === 6 && r.RESULT != null) {
       acc.rating = String(r.RESULT).trim();
+    }
+
+    const statusVal = String(r.STATUS ?? "").trim();
+    if (statusVal && !acc.status) {
+      acc.status = statusVal;
     }
 
     const subidStr = String(r.SUBID ?? "");
@@ -357,6 +380,7 @@ export function aggregateBranch(
       branchName: acc.branchName,
       solid: acc.solid,
       rating: acc.rating || "—",
+      status: acc.status,
       region,
       s1,
       s2,

@@ -91,6 +91,7 @@ export function aggregateFromScoredRows(rows: ScoredRow[]): BranchAggregate[] {
       branchName: string;
       solid: string;
       rating: string;
+      status: string;
       sums: Record<ScoreGroup, { sum: number; cnt: number }>;
     }
   >();
@@ -104,6 +105,7 @@ export function aggregateFromScoredRows(rows: ScoredRow[]): BranchAggregate[] {
         branchName: String(r.BRANCHNAME ?? ""),
         solid: key,
         rating: "",
+        status: "",
         sums: {
           "Score 1": { sum: 0, cnt: 0 },
           "Score 2": { sum: 0, cnt: 0 },
@@ -115,6 +117,10 @@ export function aggregateFromScoredRows(rows: ScoredRow[]): BranchAggregate[] {
     const acc = map.get(key)!;
     if (Number(r.SUBID) === 6 && r.RESULT != null) {
       acc.rating = String(r.RESULT).trim();
+    }
+    const statusVal = String(r.STATUS ?? "").trim();
+    if (statusVal && !acc.status) {
+      acc.status = statusVal;
     }
     const score = r.__score;
     const grp = r.__group;
@@ -145,6 +151,7 @@ export function aggregateFromScoredRows(rows: ScoredRow[]): BranchAggregate[] {
       branchName: acc.branchName,
       solid: acc.solid,
       rating: acc.rating || "—",
+      status: acc.status,
       region,
       s1,
       s2,

@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
-import { isRegularAppUser } from "@/lib/utils";
+import { isWebVisibleUser } from "@/lib/utils";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { DEPARTMENTS } from "@/lib/constants";
@@ -182,7 +182,7 @@ export default function AdminToolsPage() {
       : AVAILABLE_TOOLS;
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [, setIsLoading] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("current");
@@ -207,9 +207,13 @@ export default function AdminToolsPage() {
 
   const loadUsers = async () => {
     try {
-      setIsLoading(true);
-      const data = await usersApi.getAll({ excludeAdmins: true });
-      setUsers(data.filter((u: User) => isRegularAppUser(u)));
+      setIsLoadingUsers(true);
+      const data = await usersApi.getAll({ excludeAdmins: true, limit: 1000 });
+      setUsers(
+        (data as User[]).filter(
+          (u) => isWebVisibleUser(u) && u.isActive !== false,
+        ),
+      );
     } catch (error) {
       if (process.env.NODE_ENV !== "production") console.error("Error loading users:", error);
       toast({
@@ -218,7 +222,7 @@ export default function AdminToolsPage() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingUsers(false);
     }
   };
 
@@ -673,7 +677,11 @@ export default function AdminToolsPage() {
 
                   {/* User list */}
                   <ScrollArea className="flex-1">
-                    {getUsersWithAccess(selectedTool.id).length === 0 ? (
+                    {isLoadingUsers ? (
+                      <div className="flex items-center justify-center py-16">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+                      </div>
+                    ) : getUsersWithAccess(selectedTool.id).length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
@@ -695,12 +703,9 @@ export default function AdminToolsPage() {
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-800/60">
-                        {getFilteredUsersWithAccess().map((user, index) => (
-                          <motion.div
+                        {getFilteredUsersWithAccess().map((user) => (
+                          <div
                             key={user.id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: index * 0.02 }}
                             className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
                               revokeSelectedUsers.has(user.id)
                                 ? "bg-muted"
@@ -728,7 +733,7 @@ export default function AdminToolsPage() {
                                 {user.department}
                               </p>
                             </div>
-                          </motion.div>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -826,7 +831,11 @@ export default function AdminToolsPage() {
 
                   {/* User list */}
                   <ScrollArea className="flex-1">
-                    {getUsersWithoutAccess(selectedTool.id).length === 0 ? (
+                    {isLoadingUsers ? (
+                      <div className="flex items-center justify-center py-16">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+                      </div>
+                    ) : getUsersWithoutAccess(selectedTool.id).length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Check className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">Бүх хэрэглэгчид эрхтэй байна</p>
@@ -840,12 +849,9 @@ export default function AdminToolsPage() {
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-800/60">
-                        {getFilteredUsersWithoutAccess().map((user, index) => (
-                          <motion.div
+                        {getFilteredUsersWithoutAccess().map((user) => (
+                          <div
                             key={user.id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: index * 0.02 }}
                             className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
                               selectedUsers.has(user.id)
                                 ? "bg-muted"
@@ -871,7 +877,7 @@ export default function AdminToolsPage() {
                                 {user.department}
                               </p>
                             </div>
-                          </motion.div>
+                          </div>
                         ))}
                       </div>
                     )}

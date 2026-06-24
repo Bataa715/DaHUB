@@ -8,7 +8,7 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
 import { VALID_TOOLS_SET } from "../common/constants/tools";
-import { buildUserId, safeParseTools } from "../common/utils/user-utils";
+import { buildUserId, safeParseTools, webVisibleUserSql, isPrivilegedUser } from "../common/utils/user-utils";
 
 // [LOW-1] buildUserId and safeParseTools moved to src/common/utils/user-utils.ts
 
@@ -20,7 +20,7 @@ export class UsersService {
 
   async findAll(limit = 1000, offset = 0, excludeAdmins = false) {
     const adminFilter = excludeAdmins
-      ? "WHERE u.isAdmin = 0 AND u.isSuperAdmin = 0"
+      ? `WHERE ${webVisibleUserSql("u")}`
       : "";
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
@@ -116,14 +116,18 @@ export class UsersService {
     );
     const toolsJson = JSON.stringify(sanitizedTools);
 
+    // Админ болгоход хэлтэсээс салгана — веб дээр (ажилтнууд г.м.) харагдахгүй
+    const deptClear = isAdmin ? ", departmentId = {departmentId:String}" : "";
+
     await this.clickhouse.exec(
-      `ALTER TABLE users UPDATE isAdmin = {isAdmin:UInt8}, isSuperAdmin = {isSuperAdmin:UInt8}, grantableTools = {grantableTools:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}`,
+      `ALTER TABLE users UPDATE isAdmin = {isAdmin:UInt8}, isSuperAdmin = {isSuperAdmin:UInt8}, grantableTools = {grantableTools:String}, updatedAt = {updatedAt:String}${deptClear} WHERE id = {id:String} SETTINGS mutations_sync = 1`,
       {
         id,
         isAdmin: isAdmin ? 1 : 0,
         isSuperAdmin: isSuperAdmin ? 1 : 0,
         grantableTools: toolsJson,
         updatedAt: nowCH(),
+        ...(isAdmin ? { departmentId: "" } : {}),
       },
     );
     return {
@@ -145,6 +149,9 @@ export class UsersService {
       throw new NotFoundException("Хэрэглэгч олдсонгүй");
     }
 
+    const existing = users[0];
+    const isPrivileged = !!existing.isAdmin || !!existing.isSuperAdmin;
+
     const fields: string[] = [];
     const params: Record<string, any> = { id };
 
@@ -161,6 +168,11 @@ export class UsersService {
       params.userId = updateUserDto.userId;
     }
     if (updateUserDto.departmentId !== undefined) {
+      if (isPrivileged) {
+        throw new BadRequestException(
+          "Админ хэрэглэгчийг хэлтэст оноох боломжгүй",
+        );
+      }
       fields.push("departmentId = {departmentId:String}");
       params.departmentId = updateUserDto.departmentId;
 
@@ -173,7 +185,7 @@ export class UsersService {
         if (depts.length > 0) {
           const newDeptName = depts[0].name as string;
           const newDeptCode = (depts[0].code as string) || "";
-          const userName = (updateUserDto.name ?? users[0].name) as string;
+          const userName = (updateUserDto.name ?? existing.name) as string;
           const newUserId = buildUserId(newDeptName, userName, newDeptCode);
           fields.push("userId = {userId:String}");
           params.userId = newUserId;
@@ -231,6 +243,10 @@ export class UsersService {
       isAdmin: !!user.isAdmin,
       allowedTools: safeParseTools(user.allowedTools),
     };
+  }
+
+  async clearProfileImage(id: string) {
+    return this.update(id, { profileImage: "" });
   }
 
   async remove(id: string) {
@@ -294,12 +310,18 @@ export class UsersService {
 
   async updateTools(id: string, allowedTools: string[]) {
     const users = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE id = {id:String} LIMIT 1",
+      "SELECT id, isAdmin, isSuperAdmin FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
 
     if (users.length === 0) {
       throw new NotFoundException("Хэрэглэгч олдсонгүй");
+    }
+
+    if (isPrivilegedUser(users[0])) {
+      throw new BadRequestException(
+        "Админ хэрэглэгчид tool эрх олгох боломжгүй",
+      );
     }
 
     await this.clickhouse.exec(

@@ -52,6 +52,16 @@
     animation: float 3s ease-in-out infinite;
   }
 
+  /* Scroll ажиллана, scrollbar харагдахгүй */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   @keyframes glow {
     0%,
     100% {
@@ -213,7 +223,7 @@ html.light .border-r {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    GLOBAL BOLD TYPOGRAPHY — бүх хуудас дээр admin-шиг bold, тод текст
-   Admin, tools, medleg, ajiltnuud — хаана ч байсан нэг дэн жинтэй
+   Admin, tools, knowledge, employee — хаана ч байсан нэг дэн жинтэй
    ═══════════════════════════════════════════════════════════════════════════ */
 @layer base {
   body {
@@ -879,35 +889,41 @@ html.light .animated-border-wrapper {
   color: hsl(var(--foreground));
 }
 
-/* ── Refined custom scrollbar — slim, classic, unobtrusive ───────────────── */
+/* ── Scrollbar — default: нуугдсан, scroll ажиллана ─────────────────────── */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-*::-webkit-scrollbar-track {
+/* Opt-in: том table preview гэх мэт — нарийн scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
 }
 
-*::-webkit-scrollbar-thumb {
+.scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: hsl(var(--muted-foreground) / 0.25);
   border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-  transition: background-color 0.2s ease;
 }
 
-*::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--muted-foreground) / 0.45);
-}
-
-*::-webkit-scrollbar-corner {
-  background: transparent;
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.4);
 }
 
 /* ── Refined focus-visible rings — accessible + elegant ──────────────────── */
@@ -1117,6 +1133,265 @@ html:not(.light) .login-logo-wrap {
   box-shadow:
     0 4px 20px hsl(0 0% 0% / 0.45),
     0 0 0 1px hsl(240 4% 22%);
+}
+
+/* Login step logo — 3D elevated badge */
+.login-step-logo-glow {
+  background: radial-gradient(
+    circle at 50% 55%,
+    hsl(262 83% 58% / 0.35) 0%,
+    hsl(221 83% 53% / 0.18) 45%,
+    transparent 72%
+  );
+}
+html:not(.light) .login-step-logo-glow {
+  background: radial-gradient(
+    circle at 50% 55%,
+    hsl(262 83% 58% / 0.42) 0%,
+    hsl(199 89% 48% / 0.2) 42%,
+    transparent 72%
+  );
+}
+
+.login-step-logo-frame {
+  background: linear-gradient(
+    145deg,
+    hsl(214 28% 92%) 0%,
+    hsl(221 83% 53% / 0.55) 38%,
+    hsl(262 83% 58% / 0.5) 62%,
+    hsl(214 28% 88%) 100%
+  );
+  box-shadow:
+    0 14px 28px hsl(221 83% 53% / 0.22),
+    0 4px 10px hsl(0 0% 0% / 0.12),
+    inset 0 1px 0 hsl(0 0% 100% / 0.65);
+  transform: translateY(-2px);
+}
+html:not(.light) .login-step-logo-frame {
+  background: linear-gradient(
+    145deg,
+    hsl(240 6% 34%) 0%,
+    hsl(221 83% 53% / 0.65) 40%,
+    hsl(262 83% 58% / 0.55) 65%,
+    hsl(240 6% 28%) 100%
+  );
+  box-shadow:
+    0 18px 36px hsl(0 0% 0% / 0.55),
+    0 6px 14px hsl(221 83% 53% / 0.25),
+    inset 0 1px 0 hsl(0 0% 100% / 0.14);
+}
+
+.login-step-logo-surface {
+  background: linear-gradient(
+    165deg,
+    hsl(0 0% 100%) 0%,
+    hsl(214 32% 97%) 48%,
+    hsl(214 24% 92%) 100%
+  );
+  box-shadow:
+    inset 0 2px 4px hsl(0 0% 100% / 0.9),
+    inset 0 -8px 16px hsl(221 83% 53% / 0.08),
+    inset 0 -1px 0 hsl(214 20% 82%);
+}
+html:not(.light) .login-step-logo-surface {
+  background: linear-gradient(
+    165deg,
+    hsl(240 6% 22%) 0%,
+    hsl(240 5% 16%) 52%,
+    hsl(240 6% 12%) 100%
+  );
+  box-shadow:
+    inset 0 2px 3px hsl(0 0% 100% / 0.08),
+    inset 0 -10px 18px hsl(0 0% 0% / 0.45),
+    inset 0 -1px 0 hsl(240 4% 8%);
+}
+
+.login-step-logo-shadow {
+  background: radial-gradient(
+    ellipse at center,
+    hsl(221 83% 53% / 0.28) 0%,
+    transparent 72%
+  );
+}
+html:not(.light) .login-step-logo-shadow {
+  background: radial-gradient(
+    ellipse at center,
+    hsl(0 0% 0% / 0.55) 0%,
+    transparent 72%
+  );
+}
+
+/* Login submit — logo-той ижил 3D */
+.login-submit-btn-glow {
+  background: radial-gradient(
+    circle at 50% 55%,
+    hsl(262 83% 58% / 0.32) 0%,
+    hsl(221 83% 53% / 0.16) 45%,
+    transparent 72%
+  );
+}
+html:not(.light) .login-submit-btn-glow {
+  background: radial-gradient(
+    circle at 50% 55%,
+    hsl(262 83% 58% / 0.38) 0%,
+    hsl(199 89% 48% / 0.18) 42%,
+    transparent 72%
+  );
+}
+
+.login-submit-btn-frame {
+  background: linear-gradient(
+    145deg,
+    hsl(214 28% 92%) 0%,
+    hsl(221 83% 53% / 0.55) 38%,
+    hsl(262 83% 58% / 0.5) 62%,
+    hsl(214 28% 88%) 100%
+  );
+  box-shadow:
+    0 12px 24px hsl(221 83% 53% / 0.2),
+    0 4px 10px hsl(0 0% 0% / 0.1),
+    inset 0 1px 0 hsl(0 0% 100% / 0.65);
+}
+html:not(.light) .login-submit-btn-frame {
+  background: linear-gradient(
+    145deg,
+    hsl(240 6% 34%) 0%,
+    hsl(221 83% 53% / 0.65) 40%,
+    hsl(262 83% 58% / 0.55) 65%,
+    hsl(240 6% 28%) 100%
+  );
+  box-shadow:
+    0 14px 28px hsl(0 0% 0% / 0.5),
+    0 5px 12px hsl(221 83% 53% / 0.22),
+    inset 0 1px 0 hsl(0 0% 100% / 0.14);
+}
+
+.login-submit-btn-surface {
+  color: hsl(0 0% 9%);
+  background: linear-gradient(
+    165deg,
+    hsl(0 0% 100%) 0%,
+    hsl(214 32% 97%) 48%,
+    hsl(214 24% 92%) 100%
+  );
+  box-shadow:
+    inset 0 2px 4px hsl(0 0% 100% / 0.9),
+    inset 0 -8px 16px hsl(221 83% 53% / 0.08),
+    inset 0 -1px 0 hsl(214 20% 82%);
+}
+html:not(.light) .login-submit-btn-surface {
+  color: hsl(0 0% 100%);
+  background: linear-gradient(
+    165deg,
+    hsl(240 6% 22%) 0%,
+    hsl(240 5% 16%) 52%,
+    hsl(240 6% 12%) 100%
+  );
+  box-shadow:
+    inset 0 2px 3px hsl(0 0% 100% / 0.08),
+    inset 0 -10px 18px hsl(0 0% 0% / 0.45),
+    inset 0 -1px 0 hsl(240 4% 8%);
+}
+
+.login-submit-btn-shadow {
+  background: radial-gradient(
+    ellipse at center,
+    hsl(221 83% 53% / 0.26) 0%,
+    transparent 72%
+  );
+}
+html:not(.light) .login-submit-btn-shadow {
+  background: radial-gradient(
+    ellipse at center,
+    hsl(0 0% 0% / 0.5) 0%,
+    transparent 72%
+  );
+}
+
+/* Hero profile portrait — login logo-той ижил 3D */
+.hero-profile-glow {
+  background: radial-gradient(
+    circle at 50% 55%,
+    hsl(262 83% 58% / 0.28) 0%,
+    hsl(221 83% 53% / 0.14) 45%,
+    transparent 72%
+  );
+}
+html:not(.light) .hero-profile-glow {
+  background: radial-gradient(
+    circle at 50% 55%,
+    hsl(262 83% 58% / 0.36) 0%,
+    hsl(199 89% 48% / 0.16) 42%,
+    transparent 72%
+  );
+}
+
+.hero-profile-frame {
+  background: linear-gradient(
+    145deg,
+    hsl(214 28% 92%) 0%,
+    hsl(221 83% 53% / 0.55) 38%,
+    hsl(262 83% 58% / 0.5) 62%,
+    hsl(214 28% 88%) 100%
+  );
+  box-shadow:
+    0 18px 36px hsl(221 83% 53% / 0.22),
+    0 6px 14px hsl(0 0% 0% / 0.12),
+    inset 0 1px 0 hsl(0 0% 100% / 0.65);
+  transform: translateY(-3px);
+}
+html:not(.light) .hero-profile-frame {
+  background: linear-gradient(
+    145deg,
+    hsl(240 6% 34%) 0%,
+    hsl(221 83% 53% / 0.65) 40%,
+    hsl(262 83% 58% / 0.55) 65%,
+    hsl(240 6% 28%) 100%
+  );
+  box-shadow:
+    0 22px 44px hsl(0 0% 0% / 0.55),
+    0 8px 18px hsl(221 83% 53% / 0.24),
+    inset 0 1px 0 hsl(0 0% 100% / 0.14);
+}
+
+.hero-profile-surface {
+  background: linear-gradient(
+    165deg,
+    hsl(0 0% 100%) 0%,
+    hsl(214 32% 97%) 48%,
+    hsl(214 24% 92%) 100%
+  );
+  box-shadow:
+    inset 0 2px 4px hsl(0 0% 100% / 0.9),
+    inset 0 -10px 20px hsl(221 83% 53% / 0.08),
+    inset 0 -1px 0 hsl(214 20% 82%);
+}
+html:not(.light) .hero-profile-surface {
+  background: linear-gradient(
+    165deg,
+    hsl(240 6% 22%) 0%,
+    hsl(240 5% 16%) 52%,
+    hsl(240 6% 12%) 100%
+  );
+  box-shadow:
+    inset 0 2px 3px hsl(0 0% 100% / 0.08),
+    inset 0 -12px 22px hsl(0 0% 0% / 0.45),
+    inset 0 -1px 0 hsl(240 4% 8%);
+}
+
+.hero-profile-shadow {
+  background: radial-gradient(
+    ellipse at center,
+    hsl(221 83% 53% / 0.28) 0%,
+    transparent 72%
+  );
+}
+html:not(.light) .hero-profile-shadow {
+  background: radial-gradient(
+    ellipse at center,
+    hsl(0 0% 0% / 0.55) 0%,
+    transparent 72%
+  );
 }
 
 .login-card-border {

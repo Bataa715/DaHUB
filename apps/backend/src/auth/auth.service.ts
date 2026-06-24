@@ -12,7 +12,7 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
-import { buildUserId, safeParseTools } from "../common/utils/user-utils";
+import { buildUserId, safeParseTools, webVisibleUserSql, isPrivilegedUser } from "../common/utils/user-utils";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import {
   LoginDto,
@@ -352,7 +352,7 @@ export class AuthService {
 
       await this.validateCredentials(user, password, `dept-login:${username}`);
 
-      if (user.isAdmin) {
+      if (isPrivilegedUser(user)) {
         // ForbiddenException (NOT UnauthorizedException) — correct credentials but
         // wrong endpoint. This ensures the catch block does NOT count it as a failed
         // login, preventing DoS-lockout of admin accounts via their own correct password.
@@ -410,7 +410,7 @@ export class AuthService {
 
       await this.validateCredentials(user, password, `id-login:${userId}`);
 
-      if (user.isAdmin) {
+      if (isPrivilegedUser(user)) {
         throw new ForbiddenException(
           "Админ хэрэглэгч энд нэвтрэх боломжгүй. Админ хуудсаар нэвтэрнэ үү.",
         );
@@ -537,7 +537,9 @@ export class AuthService {
     const users = await this.clickhouse.query<any>(
       `SELECT u.id, u.name, u.position
        FROM users u JOIN departments d ON u.departmentId = d.id
-       WHERE d.name = {departmentName:String} AND u.isActive = 1
+       WHERE d.name = {departmentName:String}
+         AND u.isActive = 1
+         AND ${webVisibleUserSql("u")}
        LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
       { departmentName, limit, offset },
     );
@@ -548,7 +550,9 @@ export class AuthService {
     if (!query || query.length < 2) return { users: [] };
     const pattern = `%${query}%`;
     // If adminOnly is true, show only admins. Otherwise, hide admins from search.
-    const adminFilter = adminOnly ? "AND u.isAdmin = 1" : "AND u.isAdmin = 0";
+    const adminFilter = adminOnly
+      ? "AND u.isAdmin = 1"
+      : `AND ${webVisibleUserSql("u")}`;
     const users = await this.clickhouse.query<any>(
       `SELECT u.id, u.name, u.userId, u.position, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
@@ -572,11 +576,17 @@ export class AuthService {
   async checkUser(checkUserDto: CheckUserDto) {
     const { userId } = checkUserDto;
     const users = await this.clickhouse.query<any>(
-      `SELECT userId, password, isActive FROM users WHERE userId = {userId:String} LIMIT 1`,
+      `SELECT userId, password, isActive, isAdmin, isSuperAdmin FROM users WHERE userId = {userId:String} LIMIT 1`,
       { userId },
     );
     const user = users[0];
     if (!user) return { exists: false, hasPassword: false };
+
+    if (isPrivilegedUser(user)) {
+      throw new ForbiddenException(
+        "Админ хэрэглэгч энд нэвтрэх боломжгүй. Админ хуудсаар нэвтэрнэ үү.",
+      );
+    }
 
     const isPending = String(user.password ?? "").startsWith("PENDING:");
     const hasPassword =
@@ -707,6 +717,11 @@ export class AuthService {
     if (!user) {
       await this.recordFailedLogin("setpw:" + userId);
       throw new NotFoundException("Хэрэглэгч олдсонгүй");
+    }
+    if (isPrivilegedUser(user)) {
+      throw new ForbiddenException(
+        "Админ хэрэглэгч энд нэвтрэх боломжгүй. Админ хуудсаар нэвтэрнэ үү.",
+      );
     }
     if (user.password && !user.password.startsWith("PENDING:")) {
       await this.recordFailedLogin("setpw:" + userId);

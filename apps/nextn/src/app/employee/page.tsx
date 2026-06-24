@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { departmentsApi } from "@/lib/api";
+import { isWebVisibleUser } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Loader2, Users, Lock } from "lucide-react";
@@ -70,15 +71,7 @@ function isLeadership(name: string) {
 }
 
 function isSystemAccount(member: DepartmentUser) {
-  const name = member.name.trim().toLowerCase();
-  const userId = String(member.userId ?? "").trim().toLowerCase();
-  return (
-    name.includes("system admin") ||
-    name.includes("systemadmin") ||
-    /^admin$/i.test(name) ||
-    userId === "admin" ||
-    userId.startsWith("admin.")
-  );
+  return !isWebVisibleUser(member);
 }
 
 function isDeptManager(member: DepartmentUser, dept: DepartmentData) {

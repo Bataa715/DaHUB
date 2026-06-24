@@ -6,6 +6,7 @@ import {
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
 import { randomUUID } from "crypto";
+import { WEB_VISIBLE_USER_SQL } from "../common/utils/user-utils";
 
 @Injectable()
 export class DepartmentsService {
@@ -53,10 +54,7 @@ export class DepartmentsService {
         `SELECT id, userId, name, position, isActive, profileImage
          FROM users
          WHERE departmentId = {deptId:String}
-           AND isAdmin = 0
-           AND isSuperAdmin = 0
-           AND lower(name) NOT LIKE '%system admin%'
-           AND lower(name) NOT LIKE '%system%admin%'`,
+           AND ${WEB_VISIBLE_USER_SQL}`,
         { deptId: dept.id },
       );
 
@@ -98,10 +96,7 @@ export class DepartmentsService {
       `SELECT id, userId, name, position, isActive, profileImage
        FROM users
        WHERE departmentId = {id:String}
-         AND isAdmin = 0
-         AND isSuperAdmin = 0
-         AND lower(name) NOT LIKE '%system admin%'
-         AND lower(name) NOT LIKE '%system%admin%'`,
+         AND ${WEB_VISIBLE_USER_SQL}`,
       { id },
     );
 
@@ -136,7 +131,10 @@ export class DepartmentsService {
 
     const department = departments[0];
     const users = await this.clickhouse.query<any>(
-      "SELECT id, userId, name, position, profileImage FROM users WHERE departmentId = {deptId:String} AND isAdmin = 0",
+      `SELECT id, userId, name, position, profileImage
+       FROM users
+       WHERE departmentId = {deptId:String}
+         AND ${WEB_VISIBLE_USER_SQL}`,
       { deptId: department.id },
     );
 

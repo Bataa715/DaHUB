@@ -13,6 +13,7 @@ import Cookies from "js-cookie";
 import { riskApi, HOLD_GLOBAL_PERIOD } from "@/lib/api";
 import {
   aggregateBranch,
+  classifyBranchTableGroup,
   riskLevelClass,
   type BranchAggregate,
   type RiskLevel,
@@ -34,11 +35,31 @@ type AnyRow = {
   SOLID?: OracleValue;
   BRANCHID?: OracleValue;
   BRANCHNAME?: OracleValue;
+  STATUS?: OracleValue;
   SUBID?: OracleValue;
   RESULT?: OracleValue;
   RESULT_TYPE?: OracleValue;
   sourceFetchedDate?: string;
 };
+
+type TableLayout = "unified" | "split";
+
+const SPLIT_SECTIONS = [
+  {
+    group: "UB" as const,
+    title: "Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд",
+    bannerClass:
+      "bg-sky-500/15 border-sky-500/30 text-sky-900 dark:text-sky-100",
+    region: "UB" as const,
+  },
+  {
+    group: "ON" as const,
+    title: "Орон нутгийн Бизнес төв, салбар, тооцооны төвүүд",
+    bannerClass:
+      "bg-violet-500/12 border-violet-500/30 text-violet-900 dark:text-violet-100",
+    region: "LOC" as const,
+  },
+] as const;
 
 interface Props {
   scoredRows: AnyRow[];
@@ -379,6 +400,7 @@ export default function ReportView({
   // Гараар Sort дарахад л эрэмбэлнэ — judgement оруулах үед автоматаар sort хийхгүй
   // Анхны байдал (sortKey=0): SOLID-аар тоон дарааллаар эрэмбэлнэ
   const [sortKey, setSortKey] = useState<number>(0);
+  const [tableLayout, setTableLayout] = useState<TableLayout>("unified");
   const sortedFiltered = useMemo(() => {
     const bySolid = (a: BranchAggregate, b: BranchAggregate) => {
       const na = parseFloat(a.solid) || 0;
@@ -403,6 +425,36 @@ export default function ReportView({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, readOnly, sortKey]);
+
+  const ubRows = useMemo(
+    () =>
+      sortedFiltered.filter(
+        (b) => classifyBranchTableGroup(b.status, b.rating) === "UB",
+      ),
+    [sortedFiltered],
+  );
+  const onRows = useMemo(
+    () =>
+      sortedFiltered.filter(
+        (b) => classifyBranchTableGroup(b.status, b.rating) === "ON",
+      ),
+    [sortedFiltered],
+  );
+
+  const reportTableProps = {
+    previousAggMap,
+    manualMap,
+    weights: dynamicConfig.weights,
+    setManualValue,
+    catalog: activeCatalog,
+    readOnly,
+    rawRowsByBranch: rowsByBranch,
+    hideComparison,
+    externalJudgements,
+    onJudgementChange,
+    previousJudgements,
+    dataReferenceDate,
+  } as const;
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
@@ -558,6 +610,24 @@ export default function ReportView({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setTableLayout((m) => (m === "unified" ? "split" : "unified"))
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                tableLayout === "split"
+                  ? "border-indigo-500/50 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
+                  : "border-border bg-background/60 hover:bg-muted/40 text-foreground/80"
+              }`}
+              title={
+                tableLayout === "unified"
+                  ? "УБ / ОН салбарыг тусад нь харах"
+                  : "Бүх салбарыг нэг хүснэгтээр харах"
+              }
+            >
+              {tableLayout === "unified" ? "Салгаж харах" : "Нэгдсэнээр харах"}
+            </button>
             {!readOnly && manualLoading && (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
             )}
@@ -590,22 +660,30 @@ export default function ReportView({
         </div>
       </div>
 
-      <ReportTable
-        title="Бүх салбар, тооцооны төвүүд"
-        rows={sortedFiltered}
-        previousAggMap={previousAggMap}
-        manualMap={manualMap}
-        weights={dynamicConfig.weights}
-        setManualValue={setManualValue}
-        catalog={activeCatalog}
-        readOnly={readOnly}
-        rawRowsByBranch={rowsByBranch}
-        hideComparison={hideComparison}
-        externalJudgements={externalJudgements}
-        onJudgementChange={onJudgementChange}
-        previousJudgements={previousJudgements}
-        dataReferenceDate={dataReferenceDate}
-      />
+      {tableLayout === "unified" ? (
+        <ReportTable
+          title="Бүх салбар, тооцооны төвүүд"
+          rows={sortedFiltered}
+          {...reportTableProps}
+        />
+      ) : (
+        <div className="space-y-6">
+          {SPLIT_SECTIONS.map((section) => {
+            const sectionRows =
+              section.group === "UB" ? ubRows : onRows;
+            return (
+              <ReportTable
+                key={section.group}
+                title={section.title}
+                bannerClass={section.bannerClass}
+                region={section.region}
+                rows={sectionRows}
+                {...reportTableProps}
+              />
+            );
+          })}
+        </div>
+      )}
       {/* Summary */}
       {!hideComparison && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -660,6 +738,7 @@ export default function ReportView({
 // ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
 function ReportTable({
   title,
+  bannerClass,
   region,
   rows,
   previousAggMap,
@@ -676,6 +755,7 @@ function ReportTable({
   dataReferenceDate,
 }: {
   title: string;
+  bannerClass?: string;
   region?: "UB" | "LOC";
   rows: BranchAggregate[];
   previousAggMap: Map<string, BranchAggregate>;
@@ -746,7 +826,12 @@ function ReportTable({
       ).length;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline">
-      <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
+      <div
+        className={`px-4 py-3 border-b ${
+          bannerClass ??
+          "border-border bg-gradient-to-r from-muted/40 to-muted/20"
+        }`}
+      >
         <div className="flex items-center gap-2 mb-1.5">
           {region && (
             <span
@@ -756,10 +841,12 @@ function ReportTable({
                   : "bg-violet-500/15 text-violet-600 border border-violet-500/25"
               }`}
             >
-              {region === "UB" ? "УБ" : "Хөдөө"}
+              {region === "UB" ? "УБ" : "ОН"}
             </span>
           )}
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <h3 className={`text-sm font-semibold ${bannerClass ? "flex-1 text-center" : ""}`}>
+            {title}
+          </h3>
           <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
             {rows.length} салбар
           </span>

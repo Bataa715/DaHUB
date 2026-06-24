@@ -79,7 +79,7 @@ const Header = () => {
   // Үндсэн menu
   const regularLinks = [
     { href: "/", label: t("navHome"), icon: Home, public: true },
-    { href: "/medleg", label: t("navNews"), icon: Newspaper, public: true },
+    { href: "/knowledge", label: t("navNews"), icon: Newspaper, public: true },
     { href: "/tools", label: t("navTools"), icon: Wrench, public: true },
   ];
 
@@ -274,7 +274,7 @@ const Header = () => {
                   </DropdownMenuItem>
                   {!isAdminPage && (
                     <DropdownMenuItem
-                      onClick={() => router.push("/ajiltnuud")}
+                      onClick={() => router.push("/employee")}
                     >
                       <Users className="mr-2 h-4 w-4" />
                       <span>{t("navEmployees")}</span>

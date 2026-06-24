@@ -169,9 +169,12 @@ export const authApi = {
 
 // Users APIs
 export const usersApi = {
-  getAll: async (opts?: { excludeAdmins?: boolean }) => {
+  getAll: async (opts?: { excludeAdmins?: boolean; limit?: number }) => {
     const response = await api.get("/users", {
-      params: opts?.excludeAdmins ? { excludeAdmins: true } : undefined,
+      params: {
+        ...(opts?.excludeAdmins ? { excludeAdmins: true } : {}),
+        ...(opts?.limit ? { limit: opts.limit } : {}),
+      },
     });
     return response.data;
   },
@@ -183,6 +186,11 @@ export const usersApi = {
 
   update: async (id: string, data: Record<string, unknown>) => {
     const response = await api.patch(`/users/${id}`, data);
+    return response.data;
+  },
+
+  removeProfileImage: async (id: string) => {
+    const response = await api.delete(`/users/${id}/profile-image`);
     return response.data;
   },
 

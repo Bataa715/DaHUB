@@ -53,7 +53,7 @@ export default function MainLayout({
             <Header />
             <main
               id="main-content"
-              className="relative flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden scroll-smooth"
+              className="relative flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-none"
             >
               <PageTransition>{children}</PageTransition>
             </main>

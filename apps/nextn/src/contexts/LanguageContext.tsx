@@ -13,7 +13,6 @@ export type Language = "mn" | "en";
 export const translations = {
   mn: {
     // Navigation & common
-    settings: "Тохиргоо",
     logout: "Гарах",
     back: "Буцах",
     save: "Хадгалах",
@@ -29,8 +28,7 @@ export const translations = {
     imageRemoved: "Профайл зураг устгагдлаа",
     imageError: "Зураг хадгалахад алдаа гарлаа",
     imageTooBig: "Зураг хэт том байна. Жижиг зураг сонгоно уу.",
-    imageHint1: "Хамгийн ихдээ 5MB хэмжээтэй зураг",
-    imageHint3: "JPG, PNG, GIF форматтай байх",
+  
 
     currentPassword: "Одоогийн нууц үг",
     newPassword: "Шинэ нууц үг",
@@ -49,10 +47,6 @@ export const translations = {
     passwordFillAll: "Бүх талбарыг бөглөнө үү",
     passwordChangeBtn: "Нууц үг солих",
 
-    language: "Хэл",
-    english: "English",
-
-    // Navigation
     navHome: "Нүүр",
     navDepartments: "Хэлтэс",
     navEmployees: "Ажилтнууд",
@@ -65,12 +59,6 @@ export const translations = {
     navProfileSettings: "Профайл тохиргоо",
 
     // Common UI
-    dashboard: "Хяналтын самбар",
-    profile: "Профайл",
-    department: "Хэлтэс",
-
-    // Hero greetings
-    // Auth
     needLogin: "Нэвтрэх шаардлагатай",
     needLoginToolsDesc: "Хэрэгслийг ашиглахын тулд нэвтэрнэ үү.",
     needLoginDeptDesc: "Энэ хуудсыг үзэхийн тулд нэвтэрнэ үү.",
@@ -105,21 +93,8 @@ export const translations = {
     // Departments page
     managerBadge: "Дарга",
     youBadge: "Та",
-    myDept: "Миний хэлтэс",
-    missionTitle: "Чиг үүрэг",
-    teamTitle: "Хамт олон",
     noEmployees: "Ажилтан бүртгэгдээгүй байна",
-    otherDeptsTitle: "Бусад хэлтсүүд",
-    noOtherDepts: "Бусад хэлтэс олдсонгүй.",
-    deptUnknownTitle: "Хэлтэс тодорхойгүй",
-    deptUnknownDesc:
-      "Таны хэлтэс тодорхойлогдоогүй байна. Админтай холбогдоно уу.",
     deptsLoadError: "Хэлтсүүдийн жагсаалт ачаалахад алдаа гарлаа.",
-    deptDetailLoadError:
-      "Хэлтсийн дэлгэрэнгүй мэдээлэл ачаалахад алдаа гарлаа.",
-    deptLoadError: "Хэлтсийн мэдээлэл ачаалахад алдаа гарлаа.",
-
-    // News page
     noNews: "Нийтлэл байхгүй байна",
     minRead: "мин",
     newsDefaultAuthor: "Дотоод аудитын алба",
@@ -131,17 +106,10 @@ export const translations = {
     newsCommentEmpty: "Сэтгэгдэл байхгүй байна",
     newsCommentError: "Сэтгэгдэл нэмэхэд алдаа гарлаа",
     // Tailan (Quarterly Report) tool
-    tailan_loading: "Уншиж байна…",
     tailan_title: "Улирлын тайлан",
-    tailan_subtitle: "Улирлын ажлын тайлан бэлтгэх, нэгтгэх систем",
     tailan_myReport: "Өөрийн тайлан",
-    tailan_privateTag: "Хувийн",
-    tailan_myReportDesc: "Тайлангаа бэлтгэж хэлтсийн ахлагч руу илгээх",
     tailan_deptReport: "Хэлтсийн тайлан",
-    tailan_headTag: "Ахлагч",
-    tailan_deptReportDesc: "Гишүүдийн тайлануудыг нэгтгэж нэг баримт болгох",
     tailan_membersView: "Гишүүдийн тайлан харах",
-    tailan_viewTag: "Харах",
     tailan_membersViewDesc: "Хэлтсийн гишүүдийн илгээсэн тайлануудыг харах",
     tailan_myReportTitle: "Миний тайлан",
     tailan_downloadWord: "Word татах",
@@ -346,7 +314,6 @@ export const translations = {
     tailan_s4ContentPlaceholder: "Сургалт, хөгжлийн агуулгыг бичнэ үү...",
 
     // Common / shared UI
-    all: "Бүгд",
     accessDenied: "Эрх хязгаарлагдсан",
     accessDeniedMsg:
       "Та энэ хэрэгслийг ашиглах эрхгүй байна. Админтай холбогдоно уу.",
@@ -437,10 +404,8 @@ export const translations = {
     sampleGroupN: "Бүлгийн тоо (≥2)",
 
     // Reports tool
-    reportsSearchPlaceholder: "Хайх...",
     reportsLoadError: "Тайлан ачаалахад алдаа гарлаа",
     reportsNoAccess: "Эрхтэй тайлан байхгүй байна",
-    reportsContactAdmin: "Администратортай холбогдоно уу",
     reportsDateInstant: "Шууд татах",
     reportsDateSingle: "Нэг огноо",
     reportsDateRange: "Хугацааны интервал",
@@ -474,9 +439,6 @@ export const translations = {
     reportsPreviewFirst: "эхний",
     reportsPreviewColumns: "багана",
     reportsPreviewTotal: "нийт",
-    reportsSearchNotFound: "олдсонгүй",
-
-    // DB Access (requester)
     dbAccessMyGrants: "Идэвхтэй эрхүүд",
     dbAccessManage: "Хүсэлт шийдвэрлэх",
     dbAccessLoadError: "Хүснэгтүүд ачаалахад алдаа гарлаа",
@@ -569,7 +531,6 @@ export const translations = {
   },
   en: {
     // Navigation & common
-    settings: "Settings",
     logout: "Sign out",
     back: "Back",
     save: "Save",
@@ -605,10 +566,6 @@ export const translations = {
     passwordFillAll: "Please fill in all fields",
     passwordChangeBtn: "Change password",
 
-    language: "Language",
-    english: "English",
-
-    // Navigation
     navHome: "Home",
     navDepartments: "Departments",
     navEmployees: "Employees",
@@ -621,12 +578,6 @@ export const translations = {
     navProfileSettings: "Profile settings",
 
     // Common UI
-    dashboard: "Dashboard",
-    profile: "Profile",
-    department: "Department",
-
-    // Hero greetings
-    // Auth
     needLogin: "Login required",
     needLoginToolsDesc: "Please sign in to use tools.",
     needLoginDeptDesc: "Please sign in to view this page.",
@@ -668,20 +619,8 @@ export const translations = {
     // Departments page
     managerBadge: "Manager",
     youBadge: "You",
-    myDept: "My department",
-    missionTitle: "Mission",
-    teamTitle: "Team",
     noEmployees: "No employees registered",
-    otherDeptsTitle: "Other departments",
-    noOtherDepts: "No other departments found.",
-    deptUnknownTitle: "Department not specified",
-    deptUnknownDesc:
-      "Your department has not been defined. Please contact your admin.",
     deptsLoadError: "Failed to load departments.",
-    deptDetailLoadError: "Failed to load department details.",
-    deptLoadError: "Failed to load department information.",
-
-    // News page
     noNews: "No articles available",
     minRead: "min",
     newsDefaultAuthor: "Internal Audit",
@@ -693,19 +632,10 @@ export const translations = {
     newsCommentEmpty: "No comments yet",
     newsCommentError: "Failed to add comment",
     // Tailan (Quarterly Report) tool
-    tailan_loading: "Loading...",
     tailan_title: "Quarterly Report",
-    tailan_subtitle:
-      "Quarterly work report preparation and consolidation system",
     tailan_myReport: "My Report",
-    tailan_privateTag: "Personal",
-    tailan_myReportDesc:
-      "Prepare and submit your report to the department head",
     tailan_deptReport: "Department Report",
-    tailan_headTag: "Head",
-    tailan_deptReportDesc: "Consolidate members' reports into one document",
     tailan_membersView: "View Members' Reports",
-    tailan_viewTag: "View",
     tailan_membersViewDesc: "View submitted reports from department members",
     tailan_myReportTitle: "My Report",
     tailan_downloadWord: "Download Word",
@@ -906,7 +836,6 @@ export const translations = {
     tailan_s4ContentPlaceholder: "Write training and development content...",
 
     // Common / shared UI
-    all: "All",
     accessDenied: "Access restricted",
     accessDeniedMsg:
       "You don't have permission to use this tool. Contact your admin.",
@@ -997,10 +926,8 @@ export const translations = {
     sampleGroupN: "Number of groups (≥2)",
 
     // Reports tool
-    reportsSearchPlaceholder: "Search...",
     reportsLoadError: "Failed to load reports",
     reportsNoAccess: "No accessible reports",
-    reportsContactAdmin: "Contact your administrator",
     reportsDateInstant: "Instant download",
     reportsDateSingle: "Single date",
     reportsDateRange: "Date range",
@@ -1034,9 +961,6 @@ export const translations = {
     reportsPreviewFirst: "first",
     reportsPreviewColumns: "columns",
     reportsPreviewTotal: "total",
-    reportsSearchNotFound: "not found",
-
-    // DB Access (requester)
     dbAccessMyGrants: "Active grants",
     dbAccessManage: "Manage requests",
     dbAccessLoadError: "Failed to load tables",

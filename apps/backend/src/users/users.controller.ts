@@ -35,12 +35,13 @@ export class UsersController {
     @Query("limit") limit = 100,
     @Query("excludeAdmins") excludeAdmins?: string,
   ) {
-    const take = Math.min(Number(limit), 200);
-    const skip = (Number(page) - 1) * take;
     const exclude =
       excludeAdmins === "1" ||
       excludeAdmins === "true" ||
       excludeAdmins === "yes";
+    const maxLimit = exclude ? 1000 : 200;
+    const take = Math.min(Number(limit) || (exclude ? 1000 : 100), maxLimit);
+    const skip = (Number(page) - 1) * take;
     return this.usersService.findAll(take, skip, exclude);
   }
 
@@ -153,6 +154,22 @@ export class UsersController {
     @Body() body: { newPassword: string },
   ) {
     return this.usersService.resetPassword(id, body.newPassword);
+  }
+
+  /** Authenticated: user can remove own profile image; admin can remove any user's */
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/profile-image")
+  removeProfileImage(@Param("id") id: string, @Request() req: any) {
+    const isSelf = id === req.user.id;
+    const isAdmin = req.user.isAdmin;
+
+    if (!isSelf && !isAdmin) {
+      throw new ForbiddenException(
+        "Зөвхөн өөрийн профайл зураг устгах боломжтой",
+      );
+    }
+
+    return this.usersService.clearProfileImage(id);
   }
 
   /** Admin: delete a user */

@@ -28,6 +28,26 @@ export function buildUserId(
  * Safe JSON.parse for allowedTools / grantableTools — ClickHouse returns a String column.
  * Returns [] if the value is missing, already an array, or contains corrupt JSON.
  */
+/** Админ / супер админ эсэх (ClickHouse UInt8 → number | string) */
+export function isPrivilegedUser(u: {
+  isAdmin?: unknown;
+  isSuperAdmin?: unknown;
+}): boolean {
+  return Number(u.isAdmin) === 1 || Number(u.isSuperAdmin) === 1;
+}
+
+/** SQL fragment — веб (ажилтнууд, нэвтрэх хайлт) дээр харагдах хэрэглэгчид */
+export function webVisibleUserSql(alias = ""): string {
+  const p = alias ? `${alias}.` : "";
+  return `${p}isAdmin = 0
+  AND ${p}isSuperAdmin = 0
+  AND lower(${p}name) NOT LIKE '%system admin%'
+  AND lower(${p}name) NOT LIKE '%system%admin%'`;
+}
+
+/** Alias-гүй хувилбар (departments.service) */
+export const WEB_VISIBLE_USER_SQL = webVisibleUserSql();
+
 export function safeParseTools(raw: unknown): string[] {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw as string[];

@@ -473,6 +473,12 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         );
       }
 
+      // Админ хэрэглэгчийг хэлтэсээс салгана — веб дээр (ажилтнууд г.м.) харагдахгүй
+      await this.exec(
+        `ALTER TABLE users UPDATE departmentId = ''
+         WHERE (isAdmin = 1 OR isSuperAdmin = 1) AND departmentId != ''`,
+      );
+
       // Нууц үг тохируулсан боловч isActive=0 хэвээр үлдсэн хуучин бүртгэлүүдийг идэвхжүүлнэ.
       await this.exec(
         `ALTER TABLE users UPDATE isActive = 1

@@ -11,12 +11,9 @@ import {
   User,
   ChevronLeft,
   Briefcase,
-  UserPlus,
   Eye,
   EyeOff,
-  ShieldCheck,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Form,
@@ -39,10 +36,10 @@ import {
   LoginBrandHeader,
   LoginAmbientBackground,
   LoginCard,
+  LoginStepLogo,
+  LoginSubmitButton,
   loginInputClass,
   loginLabelClass,
-  loginIconBoxClass,
-  loginSubmitBtnClass,
 } from "./login-ui";
 import type {
   RegisterStep,
@@ -140,9 +137,7 @@ export function RegisterFlow({
                   transition={{ duration: 0.25 }}
                 >
                   <div className="text-center mb-8">
-                    <div className={loginIconBoxClass}>
-                      <UserPlus className="w-8 h-8" />
-                    </div>
+                    <LoginStepLogo />
                     <h2 className="text-2xl font-bold text-foreground">
                       Бүртгүүлэх
                     </h2>
@@ -291,20 +286,18 @@ export function RegisterFlow({
                         )}
                       </AnimatePresence>
 
-                      <Button
-                        type="submit"
+                      <LoginSubmitButton
                         disabled={isLoading || !generatedUserId}
-                        className={`${loginSubmitBtnClass} disabled:opacity-50`}
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <span className="flex items-center gap-2">
+                          <>
                             Үргэлжлүүлэх
                             <ArrowRight className="w-4 h-4" />
-                          </span>
+                          </>
                         )}
-                      </Button>
+                      </LoginSubmitButton>
                     </form>
                   </Form>
                 </motion.div>
@@ -320,9 +313,7 @@ export function RegisterFlow({
                   transition={{ duration: 0.25 }}
                 >
                   <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mx-auto mb-4 shadow-premium">
-                      <ShieldCheck className="w-8 h-8 text-white" />
-                    </div>
+                    <LoginStepLogo />
                     <h2 className="text-2xl font-bold text-foreground">
                       Нууц үг үүсгэх
                     </h2>
@@ -415,20 +406,18 @@ export function RegisterFlow({
                         )}
                       />
 
-                      <Button
-                        type="submit"
+                      <LoginSubmitButton
                         disabled={isLoading || !allChecksPass}
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-premium hover:shadow-premium-lg transition-all duration-300 disabled:opacity-50"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <span className="flex items-center gap-2">
+                          <>
                             Бүртгэл дуусгах
                             <ArrowRight className="w-4 h-4" />
-                          </span>
+                          </>
                         )}
-                      </Button>
+                      </LoginSubmitButton>
                     </form>
                   </Form>
                 </motion.div>

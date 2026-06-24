@@ -6,7 +6,53 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
-import Image from "next/image";
+
+function HeroProfilePortrait({
+  name,
+  profileImage,
+}: {
+  name?: string;
+  profileImage?: string;
+}) {
+  const initial = (name || "?")[0]?.toUpperCase() ?? "?";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16, rotateX: 10 }}
+      animate={{ opacity: 1, y: 0, rotateX: 0 }}
+      transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.15 }}
+      className="relative w-[15rem] h-[20rem] sm:w-[16.5rem] sm:h-[22rem] [perspective:900px]"
+    >
+      <div className="hero-profile-glow absolute -inset-3 rounded-[1.4rem] blur-lg opacity-80" />
+
+      <div className="hero-profile-frame relative h-full w-full rounded-[1.2rem] p-[2px]">
+        <div className="hero-profile-surface relative h-full w-full overflow-hidden rounded-[1.05rem]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1/4 bg-gradient-to-b from-white/15 to-transparent dark:from-white/5" />
+          <div className="pointer-events-none absolute inset-x-4 bottom-2 z-10 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/15" />
+
+          {profileImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profileImage}
+              alt={name || "Profile"}
+              className="h-full w-full object-cover object-center [image-rendering:auto]"
+              decoding="async"
+              draggable={false}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-muted">
+              <span className="text-6xl font-black text-muted-foreground/30 select-none">
+                {initial}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="hero-profile-shadow absolute -bottom-3 left-1/2 h-4 w-[78%] -translate-x-1/2 rounded-full blur-lg" />
+    </motion.div>
+  );
+}
 
 // ── Арын цэгүүд — монохром, боловсронгуй ───────────────────────────────
 const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
@@ -176,32 +222,13 @@ export default function Hero() {
           </motion.div>
         </div>
 
-        {/* Баруун: профайл зураг */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
-          className="hidden lg:flex flex-col items-center gap-4"
-        >
-          <div className="relative w-52 h-52 rounded-2xl overflow-hidden border border-border shadow-premium-lg ring-hairline">
-            {user?.profileImage ? (
-              <Image
-                src={user.profileImage}
-                alt={user.name || "Profile"}
-                fill
-                className="object-cover"
-                sizes="208px"
-                priority
-              />
-            ) : (
-              <div className="absolute inset-0 bg-muted flex items-center justify-center">
-                <span className="text-5xl font-black text-muted-foreground/30 select-none">
-                  {(user?.name || "?")[0]}
-                </span>
-              </div>
-            )}
-          </div>
-        </motion.div>
+        {/* Баруун: профайл зураг — босоо 3:4, 3D frame */}
+        <div className="hidden lg:flex flex-col items-center gap-4">
+          <HeroProfilePortrait
+            name={user?.name}
+            profileImage={user?.profileImage}
+          />
+        </div>
       </div>
     </div>
   );

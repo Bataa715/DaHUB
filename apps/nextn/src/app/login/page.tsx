@@ -322,6 +322,12 @@ export default function LoginPage() {
         if (response.status === 401) {
           throw new Error("Нууц үг буруу байна");
         }
+        if (response.status === 403) {
+          await authFetchError(
+            response,
+            "Админ хэрэглэгч энд нэвтрэх боломжгүй. Админ хуудсаар нэвтэрнэ үү.",
+          );
+        }
         await authFetchError(response, "Нэвтрэх үед алдаа гарлаа");
       }
       const data = await response.json();
