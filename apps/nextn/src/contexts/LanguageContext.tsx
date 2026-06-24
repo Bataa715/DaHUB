@@ -28,9 +28,8 @@ export const translations = {
     imageRemoved: "Профайл зураг устгагдлаа",
     imageError: "Зураг хадгалахад алдаа гарлаа",
     imageTooBig: "Зураг хэт том байна. Жижиг зураг сонгоно уу.",
-  
-
-    currentPassword: "Одоогийн нууц үг",
+    imageHint1: "Хамгийн их хэмжээ 5MB",
+    imageHint3: "JPG, PNG, GIF формат дэмжигдэнэ",
     newPassword: "Шинэ нууц үг",
     confirmPassword: "Нууц үг баталгаажуулах",
     currentPasswordPlaceholder: "Одоогийн нууц үгээ оруулна уу",

@@ -1099,27 +1099,64 @@ export const oracleConfigApi = {
   },
 };
 
-export const medlegReactionsApi = {
-  get: async (medlegId: string) => {
-    const r = await api.get(`/medleg/${medlegId}/reactions`);
+/** Backend NestJS route (DB: medleg) — frontend-д knowledge гэж нэрлэнэ */
+const KNOWLEDGE_BACKEND = "/medleg";
+
+export const knowledgeApi = {
+  listPublished: async () => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}?published=true`);
+    return r.data;
+  },
+
+  getTopPublishers: async () => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/stats/top-publishers`);
+    return r.data;
+  },
+
+  create: async (data: Record<string, unknown>) => {
+    const r = await api.post(KNOWLEDGE_BACKEND, data);
+    return r.data;
+  },
+
+  delete: async (id: string) => {
+    const r = await api.delete(`${KNOWLEDGE_BACKEND}/${id}`);
+    return r.data;
+  },
+
+  getOne: async (id: string) => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/${id}`);
+    return r.data;
+  },
+
+  /** Backend `/medleg/:id/image` → Next proxy `/api/knowledge/:id/image` */
+  resolveImageUrl: (path?: string): string | null => {
+    if (!path) return null;
+    const normalized = path.replace(/^\/medleg\//, "/knowledge/");
+    return `/api${normalized}`;
+  },
+};
+
+export const knowledgeReactionsApi = {
+  get: async (itemId: string) => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/${itemId}/reactions`);
     return r.data as {
       counts: Record<string, number>;
       myReaction: string | null;
     };
   },
-  react: async (medlegId: string, emoji: string) => {
-    const r = await api.post(`/medleg/${medlegId}/react`, { emoji });
+  react: async (itemId: string, emoji: string) => {
+    const r = await api.post(`${KNOWLEDGE_BACKEND}/${itemId}/react`, { emoji });
     return r.data;
   },
-  remove: async (medlegId: string) => {
-    const r = await api.delete(`/medleg/${medlegId}/react`);
+  remove: async (itemId: string) => {
+    const r = await api.delete(`${KNOWLEDGE_BACKEND}/${itemId}/react`);
     return r.data;
   },
 };
 
-export const medlegCommentsApi = {
-  get: async (medlegId: string) => {
-    const r = await api.get(`/medleg/${medlegId}/comments`);
+export const knowledgeCommentsApi = {
+  get: async (itemId: string) => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/${itemId}/comments`);
     return r.data as {
       id: string;
       newsId: string;
@@ -1129,12 +1166,16 @@ export const medlegCommentsApi = {
       createdAt: string;
     }[];
   },
-  add: async (medlegId: string, content: string) => {
-    const r = await api.post(`/medleg/${medlegId}/comments`, { content });
+  add: async (itemId: string, content: string) => {
+    const r = await api.post(`${KNOWLEDGE_BACKEND}/${itemId}/comments`, {
+      content,
+    });
     return r.data;
   },
-  delete: async (medlegId: string, commentId: string) => {
-    const r = await api.delete(`/medleg/${medlegId}/comments/${commentId}`);
+  delete: async (itemId: string, commentId: string) => {
+    const r = await api.delete(
+      `${KNOWLEDGE_BACKEND}/${itemId}/comments/${commentId}`,
+    );
     return r.data;
   },
 };

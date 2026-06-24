@@ -441,6 +441,12 @@ export default function ReportView({
     [sortedFiltered],
   );
 
+  // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
+  const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
+    const prevAggs = getAggregates(previousScoredRows, previousManualMap);
+    return new Map(prevAggs.map((b) => [b.branchId, b]));
+  }, [previousScoredRows, previousManualMap, getAggregates]);
+
   const reportTableProps = {
     previousAggMap,
     manualMap,
@@ -455,12 +461,6 @@ export default function ReportView({
     previousJudgements,
     dataReferenceDate,
   } as const;
-
-  // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
-  const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
-    const prevAggs = getAggregates(previousScoredRows, previousManualMap);
-    return new Map(prevAggs.map((b) => [b.branchId, b]));
-  }, [previousScoredRows, previousManualMap, getAggregates]);
 
   // Summary
   const summary = useMemo(() => {

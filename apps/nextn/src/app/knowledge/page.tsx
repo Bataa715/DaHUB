@@ -29,7 +29,11 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Image from "next/image";
-import api, { medlegReactionsApi, medlegCommentsApi } from "@/lib/api";
+import {
+  knowledgeApi,
+  knowledgeReactionsApi,
+  knowledgeCommentsApi,
+} from "@/lib/api";
 
 interface TopPublisher {
   rank: number;
@@ -40,8 +44,7 @@ interface TopPublisher {
 }
 
 function getImageUrl(path?: string): string | null {
-  if (!path) return null;
-  return `/api${path}`;
+  return knowledgeApi.resolveImageUrl(path);
 }
 
 function sanitizeHtml(html: string): string {
@@ -504,8 +507,8 @@ export default function ShineMedlegPage() {
   const fetchNews = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get("/medleg?published=true");
-      setNews(res.data);
+      const data = await knowledgeApi.listPublished();
+      setNews(data);
     } catch {
       // silent
     } finally {
@@ -516,8 +519,8 @@ export default function ShineMedlegPage() {
   const fetchStats = async () => {
     setStatsLoading(true);
     try {
-      const res = await api.get("/medleg/stats/top-publishers");
-      setTopPublishers(res.data);
+      const data = await knowledgeApi.getTopPublishers();
+      setTopPublishers(data);
     } catch {
       setTopPublishers([]);
     } finally {
@@ -557,7 +560,7 @@ export default function ShineMedlegPage() {
     if (!createForm.title.trim() || !createForm.content.trim()) return;
     setCreateLoading(true);
     try {
-      await api.post("/medleg", createForm);
+      await knowledgeApi.create(createForm);
       setShowCreate(false);
       setCreateForm({
         title: "",
@@ -577,7 +580,7 @@ export default function ShineMedlegPage() {
   const handleDelete = async (id: string) => {
     if (!confirm(t("newsDeleteConfirm"))) return;
     try {
-      await api.delete(`/medleg/${id}`);
+      await knowledgeApi.delete(id);
       if (selectedNews?.id === id) closeDetail();
       fetchNews();
     } catch {
@@ -591,11 +594,11 @@ export default function ShineMedlegPage() {
     document.body.style.overflow = "hidden";
     try {
       const [newsRes, reactRes, commentsRes] = await Promise.all([
-        api.get(`/medleg/${item.id}`),
-        medlegReactionsApi.get(item.id),
-        medlegCommentsApi.get(item.id),
+        knowledgeApi.getOne(item.id),
+        knowledgeReactionsApi.get(item.id),
+        knowledgeCommentsApi.get(item.id),
       ]);
-      setSelectedNews(newsRes.data);
+      setSelectedNews(newsRes);
       setReactions(reactRes);
       setComments(commentsRes);
     } catch {
@@ -618,7 +621,7 @@ export default function ShineMedlegPage() {
     if (!selectedNews) return;
     try {
       if (reactions?.myReaction === emoji) {
-        await medlegReactionsApi.remove(selectedNews.id);
+        await knowledgeReactionsApi.remove(selectedNews.id);
         setReactions((r) =>
           r
             ? {
@@ -633,7 +636,7 @@ export default function ShineMedlegPage() {
         );
       } else {
         const oldEmoji = reactions?.myReaction;
-        await medlegReactionsApi.react(selectedNews.id, emoji);
+        await knowledgeReactionsApi.react(selectedNews.id, emoji);
         setReactions((r) => {
           if (!r) return r;
           const c = { ...r.counts };
@@ -651,9 +654,9 @@ export default function ShineMedlegPage() {
     if (!selectedNews || !commentText.trim() || commentPosting) return;
     setCommentPosting(true);
     try {
-      await medlegCommentsApi.add(selectedNews.id, commentText);
+      await knowledgeCommentsApi.add(selectedNews.id, commentText);
       setCommentText("");
-      const updated = await medlegCommentsApi.get(selectedNews.id);
+      const updated = await knowledgeCommentsApi.get(selectedNews.id);
       setComments(updated);
     } catch {
       alert(t("newsCommentError"));
@@ -665,7 +668,7 @@ export default function ShineMedlegPage() {
   const handleDeleteComment = async (commentId: string) => {
     if (!selectedNews) return;
     try {
-      await medlegCommentsApi.delete(selectedNews.id, commentId);
+      await knowledgeCommentsApi.delete(selectedNews.id, commentId);
       setComments((c) => c.filter((x) => x.id !== commentId));
     } catch {
       /* silent */
