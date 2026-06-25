@@ -301,7 +301,7 @@ export default function ReportDetailPage() {
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         disabled={downloading}
-                        className="w-full bg-muted/40 border border-border rounded-lg px-2 py-1.5 text-foreground/90 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                        className="w-full bg-muted/40 border border-border rounded-lg px-2 py-1.5 text-foreground text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
                       />
                     </div>
                     <div className="space-y-1">
@@ -314,7 +314,7 @@ export default function ReportDetailPage() {
                         min={startDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         disabled={downloading}
-                        className="w-full bg-muted/40 border border-border rounded-lg px-2 py-1.5 text-foreground/90 text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                        className="w-full bg-muted/40 border border-border rounded-lg px-2 py-1.5 text-foreground text-xs focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
                       />
                     </div>
                   </div>
@@ -331,7 +331,7 @@ export default function ReportDetailPage() {
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     disabled={downloading}
-                    className="w-full bg-muted/40 border border-border rounded-lg px-2 py-2 text-foreground/90 text-sm focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
+                    className="w-full bg-muted/40 border border-border rounded-lg px-2 py-2 text-foreground text-sm focus:outline-none focus:border-violet-500/60 disabled:opacity-40 transition"
                   />
                 </div>
               )}
@@ -371,7 +371,13 @@ export default function ReportDetailPage() {
                             }
                             disabled={downloading}
                             placeholder={f.placeholder ?? ""}
-                            className={`w-full rounded-xl px-3 py-2 text-foreground/90 text-xs focus:outline-none disabled:opacity-40 placeholder:text-muted-foreground/50 transition ${missing ? "bg-rose-100 dark:bg-rose-950/60 border border-rose-500/40" : filled ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30" : "bg-card border border-border focus:border-border/60"}`}
+                            className={`w-full rounded-xl px-3 py-2 text-foreground bg-muted/40 border text-xs focus:outline-none disabled:opacity-40 placeholder:text-muted-foreground transition ${
+                              missing
+                                ? "border-destructive/50 ring-1 ring-destructive/20 focus:border-destructive/60"
+                                : filled
+                                  ? "border-emerald-500/40 ring-1 ring-emerald-500/15 focus:border-emerald-500/60"
+                                  : "border-border focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20"
+                            }`}
                           />
                           {missing && (
                             <p className="text-[10px] text-rose-400">

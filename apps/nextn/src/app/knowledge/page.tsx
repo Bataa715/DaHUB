@@ -286,9 +286,6 @@ function PostCard({
               <span className="text-foreground text-sm font-semibold leading-none block truncate">
                 {authorName}
               </span>
-              <span className="text-muted-foreground text-[10px]">
-                {formatRelative(item.createdAt)}
-              </span>
             </div>
             {!getImageUrl(item.imageUrl) && (
               <span
