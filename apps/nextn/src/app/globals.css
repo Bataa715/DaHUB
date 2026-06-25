@@ -231,19 +231,43 @@ html.light .border-r {
   }
 
   /* Ерөнхий текст элементүүд — medium weight */
-  p, span, label, a, td, th, li, dt, dd, button, div, input, select, textarea {
+  p,
+  span,
+  label,
+  a,
+  td,
+  th,
+  li,
+  dt,
+  dd,
+  button,
+  div,
+  input,
+  select,
+  textarea {
     font-weight: 500;
   }
 
   /* Гарчгуудыг bold */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 700;
   }
 
   /* font-medium → semibold, font-semibold → bold */
-  .font-medium   { font-weight: 600 !important; }
-  .font-semibold { font-weight: 700 !important; }
-  .font-bold     { font-weight: 800 !important; }
+  .font-medium {
+    font-weight: 600 !important;
+  }
+  .font-semibold {
+    font-weight: 700 !important;
+  }
+  .font-bold {
+    font-weight: 800 !important;
+  }
 
   /* muted-foreground текстийг бага тунгалаг бус тод болгох */
   .text-muted-foreground {
@@ -251,73 +275,171 @@ html.light .border-r {
   }
 
   /* Хагас тунгалаг foreground-г floor-той болгох */
-  .text-foreground\/80 { color: hsl(var(--foreground) / 0.88) !important; }
-  .text-foreground\/70 { color: hsl(var(--foreground) / 0.80) !important; }
-  .text-foreground\/60 { color: hsl(var(--foreground) / 0.74) !important; }
-  .text-foreground\/50 { color: hsl(var(--foreground) / 0.68) !important; }
-  .text-foreground\/40 { color: hsl(var(--foreground) / 0.62) !important; }
-  .text-foreground\/30 { color: hsl(var(--foreground) / 0.56) !important; }
-  .text-foreground\/20 { color: hsl(var(--foreground) / 0.50) !important; }
+  .text-foreground\/80 {
+    color: hsl(var(--foreground) / 0.88) !important;
+  }
+  .text-foreground\/70 {
+    color: hsl(var(--foreground) / 0.8) !important;
+  }
+  .text-foreground\/60 {
+    color: hsl(var(--foreground) / 0.74) !important;
+  }
+  .text-foreground\/50 {
+    color: hsl(var(--foreground) / 0.68) !important;
+  }
+  .text-foreground\/40 {
+    color: hsl(var(--foreground) / 0.62) !important;
+  }
+  .text-foreground\/30 {
+    color: hsl(var(--foreground) / 0.56) !important;
+  }
+  .text-foreground\/20 {
+    color: hsl(var(--foreground) / 0.5) !important;
+  }
 
   /* muted-foreground opacity variants */
-  .text-muted-foreground\/80 { color: hsl(var(--foreground) / 0.72) !important; }
-  .text-muted-foreground\/70 { color: hsl(var(--foreground) / 0.66) !important; }
-  .text-muted-foreground\/60 { color: hsl(var(--foreground) / 0.62) !important; }
-  .text-muted-foreground\/50 { color: hsl(var(--foreground) / 0.56) !important; }
-  .text-muted-foreground\/40 { color: hsl(var(--foreground) / 0.52) !important; }
-  .text-muted-foreground\/30 { color: hsl(var(--foreground) / 0.48) !important; }
-  .text-muted-foreground\/20 { color: hsl(var(--foreground) / 0.44) !important; }
+  .text-muted-foreground\/80 {
+    color: hsl(var(--foreground) / 0.72) !important;
+  }
+  .text-muted-foreground\/70 {
+    color: hsl(var(--foreground) / 0.66) !important;
+  }
+  .text-muted-foreground\/60 {
+    color: hsl(var(--foreground) / 0.62) !important;
+  }
+  .text-muted-foreground\/50 {
+    color: hsl(var(--foreground) / 0.56) !important;
+  }
+  .text-muted-foreground\/40 {
+    color: hsl(var(--foreground) / 0.52) !important;
+  }
+  .text-muted-foreground\/30 {
+    color: hsl(var(--foreground) / 0.48) !important;
+  }
+  .text-muted-foreground\/20 {
+    color: hsl(var(--foreground) / 0.44) !important;
+  }
 }
 
 /* ── DARK mode — саарал/бүдэг текстийг цагаанд ойртуулах ─────────────────
    Dark theme дээр -400 grade нь бараг харагдахгүй (цагаан дэвсгэрт биш).
    Тэдгээрийг илүү тод цагаан variant болгоно.
 ─────────────────────────────────────────────────────────────────────────── */
-html:not(.light) .text-gray-400    { color: hsl(0 0% 80%) !important; }
-html:not(.light) .text-gray-500    { color: hsl(0 0% 75%) !important; }
-html:not(.light) .text-gray-600    { color: hsl(0 0% 70%) !important; }
-html:not(.light) .text-slate-400   { color: hsl(215 15% 78%) !important; }
-html:not(.light) .text-slate-500   { color: hsl(215 15% 72%) !important; }
-html:not(.light) .text-zinc-400    { color: hsl(0 0% 78%) !important; }
-html:not(.light) .text-zinc-500    { color: hsl(0 0% 72%) !important; }
-html:not(.light) .text-neutral-400 { color: hsl(0 0% 78%) !important; }
-html:not(.light) .text-neutral-500 { color: hsl(0 0% 72%) !important; }
+html:not(.light) .text-gray-400 {
+  color: hsl(0 0% 80%) !important;
+}
+html:not(.light) .text-gray-500 {
+  color: hsl(0 0% 75%) !important;
+}
+html:not(.light) .text-gray-600 {
+  color: hsl(0 0% 70%) !important;
+}
+html:not(.light) .text-slate-400 {
+  color: hsl(215 15% 78%) !important;
+}
+html:not(.light) .text-slate-500 {
+  color: hsl(215 15% 72%) !important;
+}
+html:not(.light) .text-zinc-400 {
+  color: hsl(0 0% 78%) !important;
+}
+html:not(.light) .text-zinc-500 {
+  color: hsl(0 0% 72%) !important;
+}
+html:not(.light) .text-neutral-400 {
+  color: hsl(0 0% 78%) !important;
+}
+html:not(.light) .text-neutral-500 {
+  color: hsl(0 0% 72%) !important;
+}
 
 /* ── LIGHT mode: opacity-reduced текстийг тод хар болгох ────────────────
    Light mode дээр opacity modifier нь урвуу ажилладаг:
    dark/40 on white ≈ бараг харагдахгүй цайвар саарал.
    Solid accessible color-оор солих.
 ─────────────────────────────────────────────────────────────────────────── */
-html.light .text-foreground\/80 { color: hsl(222 40% 15%) !important; }
-html.light .text-foreground\/70 { color: hsl(222 38% 20%) !important; }
-html.light .text-foreground\/60 { color: hsl(222 35% 27%) !important; }
-html.light .text-foreground\/50 { color: hsl(222 30% 34%) !important; }
-html.light .text-foreground\/40 { color: hsl(215 25% 42%) !important; }
-html.light .text-foreground\/30 { color: hsl(215 20% 48%) !important; }
-html.light .text-foreground\/20 { color: hsl(215 15% 54%) !important; }
+html.light .text-foreground\/80 {
+  color: hsl(222 40% 15%) !important;
+}
+html.light .text-foreground\/70 {
+  color: hsl(222 38% 20%) !important;
+}
+html.light .text-foreground\/60 {
+  color: hsl(222 35% 27%) !important;
+}
+html.light .text-foreground\/50 {
+  color: hsl(222 30% 34%) !important;
+}
+html.light .text-foreground\/40 {
+  color: hsl(215 25% 42%) !important;
+}
+html.light .text-foreground\/30 {
+  color: hsl(215 20% 48%) !important;
+}
+html.light .text-foreground\/20 {
+  color: hsl(215 15% 54%) !important;
+}
 
 html.light .text-muted-foreground,
-html.light .text-muted-foreground\/80 { color: hsl(222 35% 28%) !important; }
-html.light .text-muted-foreground\/70 { color: hsl(222 32% 33%) !important; }
-html.light .text-muted-foreground\/60 { color: hsl(215 28% 38%) !important; }
-html.light .text-muted-foreground\/50 { color: hsl(215 24% 44%) !important; }
-html.light .text-muted-foreground\/40 { color: hsl(215 20% 50%) !important; }
-html.light .text-muted-foreground\/30 { color: hsl(215 16% 56%) !important; }
-html.light .text-muted-foreground\/20 { color: hsl(215 12% 62%) !important; }
+html.light .text-muted-foreground\/80 {
+  color: hsl(222 35% 28%) !important;
+}
+html.light .text-muted-foreground\/70 {
+  color: hsl(222 32% 33%) !important;
+}
+html.light .text-muted-foreground\/60 {
+  color: hsl(215 28% 38%) !important;
+}
+html.light .text-muted-foreground\/50 {
+  color: hsl(215 24% 44%) !important;
+}
+html.light .text-muted-foreground\/40 {
+  color: hsl(215 20% 50%) !important;
+}
+html.light .text-muted-foreground\/30 {
+  color: hsl(215 16% 56%) !important;
+}
+html.light .text-muted-foreground\/20 {
+  color: hsl(215 12% 62%) !important;
+}
 
 /* Light mode: саарал grade-ууд — харагдахгүй байсан текстүүдийг тод хар болгох */
-html.light .text-gray-400    { color: hsl(215 16% 38%) !important; }
-html.light .text-gray-500    { color: hsl(215 18% 30%) !important; }
-html.light .text-gray-600    { color: hsl(215 20% 24%) !important; }
-html.light .text-slate-400   { color: hsl(215 20% 38%) !important; }
-html.light .text-slate-500   { color: hsl(215 22% 30%) !important; }
-html.light .text-slate-600   { color: hsl(215 24% 24%) !important; }
-html.light .text-zinc-400    { color: hsl(215 12% 38%) !important; }
-html.light .text-zinc-500    { color: hsl(215 14% 30%) !important; }
-html.light .text-zinc-600    { color: hsl(215 16% 24%) !important; }
-html.light .text-neutral-400 { color: hsl(0 0% 36%) !important; }
-html.light .text-neutral-500 { color: hsl(0 0% 28%) !important; }
-html.light .text-neutral-600 { color: hsl(0 0% 22%) !important; }
+html.light .text-gray-400 {
+  color: hsl(215 16% 38%) !important;
+}
+html.light .text-gray-500 {
+  color: hsl(215 18% 30%) !important;
+}
+html.light .text-gray-600 {
+  color: hsl(215 20% 24%) !important;
+}
+html.light .text-slate-400 {
+  color: hsl(215 20% 38%) !important;
+}
+html.light .text-slate-500 {
+  color: hsl(215 22% 30%) !important;
+}
+html.light .text-slate-600 {
+  color: hsl(215 24% 24%) !important;
+}
+html.light .text-zinc-400 {
+  color: hsl(215 12% 38%) !important;
+}
+html.light .text-zinc-500 {
+  color: hsl(215 14% 30%) !important;
+}
+html.light .text-zinc-600 {
+  color: hsl(215 16% 24%) !important;
+}
+html.light .text-neutral-400 {
+  color: hsl(0 0% 36%) !important;
+}
+html.light .text-neutral-500 {
+  color: hsl(0 0% 28%) !important;
+}
+html.light .text-neutral-600 {
+  color: hsl(0 0% 22%) !important;
+}
 
 /* Dark mode: base muted-foreground илүү тод */
 html:not(.light) .text-muted-foreground {
@@ -339,10 +461,16 @@ html:not(.light) .text-muted-foreground {
 .ab-theme h4 {
   font-weight: 700;
 }
-.ab-theme .font-medium    { font-weight: 600 !important; }
-.ab-theme .font-semibold  { font-weight: 700 !important; }
+.ab-theme .font-medium {
+  font-weight: 600 !important;
+}
+.ab-theme .font-semibold {
+  font-weight: 700 !important;
+}
 .ab-theme .font-bold,
-.ab-theme .font-extrabold { font-weight: 800 !important; }
+.ab-theme .font-extrabold {
+  font-weight: 800 !important;
+}
 
 /* CIF / ID — font-mono тоонууд table-д */
 .ab-theme .font-mono,
@@ -397,32 +525,72 @@ html:not(.light) .ab-theme input::placeholder {
    ═══════════════════════════════════════════════════════════════════════════ */
 html:not(.light) td.font-mono,
 html:not(.light) th.font-mono,
-html:not(.light) span.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]),
-html:not(.light) p.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]) {
+html:not(.light)
+  span.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not(
+    [class*="text-emerald"]
+  ):not([class*="text-rose"]):not([class*="text-blue"]):not(
+    [class*="text-cyan"]
+  ):not([class*="text-red"]):not([class*="text-green"]),
+html:not(.light)
+  p.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not(
+    [class*="text-emerald"]
+  ):not([class*="text-rose"]):not([class*="text-blue"]):not(
+    [class*="text-cyan"]
+  ):not([class*="text-red"]):not([class*="text-green"]) {
   color: hsl(0 0% 90%) !important;
 }
 html.light td.font-mono,
 html.light th.font-mono,
-html.light span.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]),
-html.light p.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-cyan"]):not([class*="text-red"]):not([class*="text-green"]) {
+html.light
+  span.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not(
+    [class*="text-emerald"]
+  ):not([class*="text-rose"]):not([class*="text-blue"]):not(
+    [class*="text-cyan"]
+  ):not([class*="text-red"]):not([class*="text-green"]),
+html.light
+  p.font-mono:not([class*="text-violet"]):not([class*="text-amber"]):not(
+    [class*="text-emerald"]
+  ):not([class*="text-rose"]):not([class*="text-blue"]):not(
+    [class*="text-cyan"]
+  ):not([class*="text-red"]):not([class*="text-green"]) {
   color: hsl(222 47% 11%) !important;
 }
 
 /* Dark: dashboard table-д ашиглагддаг бүдэг accent текст */
-html:not(.light) .text-violet-400  { color: #c4b5fd !important; }
-html:not(.light) .text-amber-400   { color: #fcd34d !important; }
-html:not(.light) .text-emerald-400 { color: #6ee7b7 !important; }
+html:not(.light) .text-violet-400 {
+  color: #c4b5fd !important;
+}
+html:not(.light) .text-amber-400 {
+  color: #fcd34d !important;
+}
+html:not(.light) .text-emerald-400 {
+  color: #6ee7b7 !important;
+}
 html:not(.light) .text-cyan-300,
-html:not(.light) .text-cyan-400    { color: #67e8f9 !important; }
-html:not(.light) .text-red-300     { color: #fca5a5 !important; }
+html:not(.light) .text-cyan-400 {
+  color: #67e8f9 !important;
+}
+html:not(.light) .text-red-300 {
+  color: #fca5a5 !important;
+}
 
 /* Light: accent текстүүдийг илүү гүн болгох (dashboards, badges) */
-html.light .text-violet-400  { color: #5b21b6 !important; }
-html.light .text-amber-400   { color: #b45309 !important; }
-html.light .text-emerald-400 { color: #047857 !important; }
+html.light .text-violet-400 {
+  color: #5b21b6 !important;
+}
+html.light .text-amber-400 {
+  color: #b45309 !important;
+}
+html.light .text-emerald-400 {
+  color: #047857 !important;
+}
 html.light .text-cyan-300,
-html.light .text-cyan-400    { color: #0e7490 !important; }
-html.light .text-red-300     { color: #b91c1c !important; }
+html.light .text-cyan-400 {
+  color: #0e7490 !important;
+}
+html.light .text-red-300 {
+  color: #b91c1c !important;
+}
 
 /* tabular-nums тоонууд */
 html:not(.light) .tabular-nums:not([class*="text-"]) {
@@ -455,7 +623,9 @@ html.light .tabular-nums:not([class*="text-"]) {
 }
 
 /* Картын гарчиг, badge, statистик тоонуудыг илүү тод болгох */
-.admin-shell :is([class*="rounded-xl"], [class*="rounded-lg"], [class*="rounded-2xl"]) :is(p, span, h1, h2, h3, h4, dt, dd) {
+.admin-shell
+  :is([class*="rounded-xl"], [class*="rounded-lg"], [class*="rounded-2xl"])
+  :is(p, span, h1, h2, h3, h4, dt, dd) {
   font-weight: 650;
 }
 .admin-shell :is(.font-medium, .font-semibold) {
@@ -499,39 +669,89 @@ html.light .admin-shell [class*="text-zinc-"] {
 /* Light mode: foreground-based backgrounds (inputs, cards) ──────────── */
 /* bg-foreground/* classes create near-invisible backgrounds on white in
    light mode (foreground is dark navy, 5% of that on white ≈ white). */
-html.light .bg-foreground\/5    { background-color: hsl(210 20% 95%) !important; }
-html.light .bg-foreground\/8    { background-color: hsl(210 20% 92%) !important; }
-html.light .bg-foreground\/10   { background-color: hsl(210 20% 90%) !important; }
-html.light .bg-foreground\/\[0\.03\] { background-color: hsl(210 20% 97%) !important; }
-html.light .bg-foreground\/\[0\.02\] { background-color: hsl(210 20% 98%) !important; }
-html.light .bg-foreground\/\[0\.015\] { background-color: hsl(210 20% 98.5%) !important; }
+html.light .bg-foreground\/5 {
+  background-color: hsl(210 20% 95%) !important;
+}
+html.light .bg-foreground\/8 {
+  background-color: hsl(210 20% 92%) !important;
+}
+html.light .bg-foreground\/10 {
+  background-color: hsl(210 20% 90%) !important;
+}
+html.light .bg-foreground\/\[0\.03\] {
+  background-color: hsl(210 20% 97%) !important;
+}
+html.light .bg-foreground\/\[0\.02\] {
+  background-color: hsl(210 20% 98%) !important;
+}
+html.light .bg-foreground\/\[0\.015\] {
+  background-color: hsl(210 20% 98.5%) !important;
+}
 
 /* ── Light mode: colored badge/accent text (400 variants are too light) ── */
 /* text-*-400 has insufficient contrast on white (#fff). Map to 700/800. */
-html.light .text-blue-400    { color: #1d4ed8 !important; } /* blue-700    4.9:1 */
-html.light .text-sky-400     { color: #0369a1 !important; } /* sky-700     5.3:1 */
-html.light .text-teal-400    { color: #0f766e !important; } /* teal-700    5.5:1 */
-html.light .text-cyan-400    { color: #0e7490 !important; } /* cyan-700    5.4:1 */
-html.light .text-violet-400  { color: #6d28d9 !important; } /* violet-700  6.2:1 */
-html.light .text-purple-400  { color: #7e22ce !important; } /* purple-800  7.0:1 */
-html.light .text-indigo-400  { color: #4338ca !important; } /* indigo-700  5.8:1 */
-html.light .text-emerald-400 { color: #15803d !important; } /* green-700   5.7:1 */
-html.light .text-green-400   { color: #166534 !important; } /* green-800   6.5:1 */
-html.light .text-amber-400   { color: #92400e !important; } /* amber-800   5.3:1 */
-html.light .text-orange-400  { color: #9a3412 !important; } /* orange-800  5.8:1 */
-html.light .text-rose-400    { color: #9f1239 !important; } /* rose-800    6.1:1 */
-html.light .text-red-400     { color: #991b1b !important; } /* red-800     6.8:1 */
-html.light .text-pink-400    { color: #9d174d !important; } /* pink-800    6.3:1 */
+html.light .text-blue-400 {
+  color: #1d4ed8 !important;
+} /* blue-700    4.9:1 */
+html.light .text-sky-400 {
+  color: #0369a1 !important;
+} /* sky-700     5.3:1 */
+html.light .text-teal-400 {
+  color: #0f766e !important;
+} /* teal-700    5.5:1 */
+html.light .text-cyan-400 {
+  color: #0e7490 !important;
+} /* cyan-700    5.4:1 */
+html.light .text-violet-400 {
+  color: #6d28d9 !important;
+} /* violet-700  6.2:1 */
+html.light .text-purple-400 {
+  color: #7e22ce !important;
+} /* purple-800  7.0:1 */
+html.light .text-indigo-400 {
+  color: #4338ca !important;
+} /* indigo-700  5.8:1 */
+html.light .text-emerald-400 {
+  color: #15803d !important;
+} /* green-700   5.7:1 */
+html.light .text-green-400 {
+  color: #166534 !important;
+} /* green-800   6.5:1 */
+html.light .text-amber-400 {
+  color: #92400e !important;
+} /* amber-800   5.3:1 */
+html.light .text-orange-400 {
+  color: #9a3412 !important;
+} /* orange-800  5.8:1 */
+html.light .text-rose-400 {
+  color: #9f1239 !important;
+} /* rose-800    6.1:1 */
+html.light .text-red-400 {
+  color: #991b1b !important;
+} /* red-800     6.8:1 */
+html.light .text-pink-400 {
+  color: #9d174d !important;
+} /* pink-800    6.3:1 */
 
 /* ── Light mode: muted section backgrounds ─────────────────────────────── */
 /* bg-muted/20 on white is barely visible; boost to actual slate-50/100 */
-html.light .bg-muted\/20 { background-color: hsl(210 16% 95%) !important; }
-html.light .bg-muted\/30 { background-color: hsl(210 16% 93%) !important; }
-html.light .bg-muted\/40 { background-color: hsl(210 16% 91%) !important; }
+html.light .bg-muted\/20 {
+  background-color: hsl(210 16% 95%) !important;
+}
+html.light .bg-muted\/30 {
+  background-color: hsl(210 16% 93%) !important;
+}
+html.light .bg-muted\/40 {
+  background-color: hsl(210 16% 91%) !important;
+}
 
 /* ── Light mode: amber/warning highlight backgrounds ───────────────────── */
-html.light .bg-amber-500\/8  { background-color: rgb(254, 243, 199) !important; } /* amber-100 */
-html.light .bg-emerald-500\/8 { background-color: rgb(209, 250, 229) !important; } /* emerald-100 */
+html.light .bg-amber-500\/8 {
+  background-color: rgb(254, 243, 199) !important;
+} /* amber-100 */
+html.light .bg-emerald-500\/8 {
+  background-color: rgb(209, 250, 229) !important;
+} /* emerald-100 */
 
 .card-glow::before {
   content: "";
@@ -857,7 +1077,10 @@ html.light .animated-border-wrapper {
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
     /* Classic font feature settings: contextual ligatures + kerning */
-    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1,
+      "calt" 1;
     -webkit-text-size-adjust: 100%;
   }
 
@@ -866,7 +1089,12 @@ html.light .animated-border-wrapper {
   }
 
   /* Headings — refined tracking for an authoritative, classic feel */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
@@ -928,13 +1156,23 @@ html.light .animated-border-wrapper {
 
 /* ── Refined focus-visible rings — accessible + elegant ──────────────────── */
 @layer base {
-  :where(a, button, input, textarea, select, [tabindex], [role="button"]):focus-visible {
+  :where(
+    a,
+    button,
+    input,
+    textarea,
+    select,
+    [tabindex],
+    [role="button"]
+  ):focus-visible {
     outline: 2px solid hsl(var(--ring) / 0.6);
     outline-offset: 2px;
     border-radius: var(--radius);
   }
   /* Remove the default outline only when focus-visible is supported */
-  :where(a, button, input, textarea, select, [tabindex]):focus:not(:focus-visible) {
+  :where(a, button, input, textarea, select, [tabindex]):focus:not(
+      :focus-visible
+    ) {
     outline: none;
   }
 }
@@ -945,11 +1183,11 @@ html.light .animated-border-wrapper {
     box-shadow:
       0 1px 2px -1px hsl(220 40% 10% / 0.08),
       0 2px 6px -2px hsl(220 40% 10% / 0.08),
-      0 8px 20px -6px hsl(220 40% 10% / 0.10);
+      0 8px 20px -6px hsl(220 40% 10% / 0.1);
   }
   .shadow-premium-lg {
     box-shadow:
-      0 1px 2px -1px hsl(220 40% 10% / 0.10),
+      0 1px 2px -1px hsl(220 40% 10% / 0.1),
       0 4px 12px -3px hsl(220 40% 10% / 0.12),
       0 16px 40px -10px hsl(220 40% 10% / 0.16);
   }
@@ -997,7 +1235,7 @@ html.light .animated-border-wrapper {
   }
   .card-premium.is-interactive:hover {
     box-shadow:
-      0 2px 6px -2px hsl(220 40% 10% / 0.10),
+      0 2px 6px -2px hsl(220 40% 10% / 0.1),
       0 14px 36px -10px hsl(220 40% 10% / 0.16);
   }
   html:not(.light) .card-premium.is-interactive:hover {
@@ -1012,8 +1250,8 @@ html.light .animated-border-wrapper {
   button,
   [role="button"],
   a {
-    transition-property: color, background-color, border-color, box-shadow,
-      transform, opacity;
+    transition-property:
+      color, background-color, border-color, box-shadow, transform, opacity;
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     transition-duration: 200ms;
   }
@@ -1047,8 +1285,12 @@ html.light .animated-border-wrapper {
   }
 
   @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
   .animate-fade-in {
     animation: fade-in 0.4s ease both;

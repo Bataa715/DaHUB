@@ -21,8 +21,12 @@ export function isWebVisibleUser(u: {
   isSuperAdmin?: boolean;
 }): boolean {
   if (!isRegularAppUser(u)) return false;
-  const name = String(u.name ?? "").trim().toLowerCase();
-  const userId = String(u.userId ?? "").trim().toLowerCase();
+  const name = String(u.name ?? "")
+    .trim()
+    .toLowerCase();
+  const userId = String(u.userId ?? "")
+    .trim()
+    .toLowerCase();
   if (
     name.includes("system admin") ||
     name.includes("systemadmin") ||

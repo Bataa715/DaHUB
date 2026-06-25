@@ -159,8 +159,7 @@ export default function ComparePanel({
       } else {
         for (const r of rows) {
           const bid = r.SOLID;
-          if (bid && !m.has(bid))
-            m.set(bid, String(r.BRANCHNAME ?? bid));
+          if (bid && !m.has(bid)) m.set(bid, String(r.BRANCHNAME ?? bid));
         }
       }
     }
@@ -220,8 +219,7 @@ export default function ComparePanel({
             ind && !ind.is_manual
               ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
               : { score: null };
-          if (typeof score === "number" && score > 0)
-            bmap.set(r.SOLID, score);
+          if (typeof score === "number" && score > 0) bmap.set(r.SOLID, score);
         } else {
           const raw = parseFloat(String(r.RESULT));
           if (!isNaN(raw)) bmap.set(r.SOLID, raw);
@@ -283,7 +281,8 @@ export default function ComparePanel({
   ]);
 
   const activeBranchIds = useMemo(
-    () => allBranches.filter((b) => selectedBranches.has(b.id)).map((b) => b.id),
+    () =>
+      allBranches.filter((b) => selectedBranches.has(b.id)).map((b) => b.id),
     [selectedBranches, allBranches],
   );
 
@@ -534,7 +533,19 @@ export default function ComparePanel({
                       ? "Салбар сонгоно уу…"
                       : `${selectedBranches.size} салбар сонгогдсон`}
                   </span>
-                  <svg className="w-3 h-3 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  <svg
+                    className="w-3 h-3 text-muted-foreground shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
                 </button>
                 <div className="absolute z-50 top-full left-0 mt-1 w-64 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-premium-lg ring-hairline hidden group-focus-within:block">
                   {allBranches.map((b, i) => {
@@ -553,9 +564,15 @@ export default function ComparePanel({
                       >
                         <span
                           className="w-3.5 h-3.5 rounded border-2 flex-shrink-0 flex items-center justify-center"
-                          style={checked ? { background: color, borderColor: color } : {}}
+                          style={
+                            checked
+                              ? { background: color, borderColor: color }
+                              : {}
+                          }
                         >
-                          {checked && <span className="w-1.5 h-1.5 bg-white rounded-sm block" />}
+                          {checked && (
+                            <span className="w-1.5 h-1.5 bg-white rounded-sm block" />
+                          )}
                         </span>
                         <span className="truncate font-medium">{b.name}</span>
                       </button>
@@ -575,7 +592,12 @@ export default function ComparePanel({
                   style={{ background: color }}
                 >
                   {b?.name ?? id}
-                  <button onClick={() => toggleBranch(id)} className="ml-0.5 hover:opacity-70">×</button>
+                  <button
+                    onClick={() => toggleBranch(id)}
+                    className="ml-0.5 hover:opacity-70"
+                  >
+                    ×
+                  </button>
                 </span>
               );
             })}

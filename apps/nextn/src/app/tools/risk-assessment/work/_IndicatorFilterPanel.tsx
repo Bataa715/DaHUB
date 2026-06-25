@@ -46,7 +46,8 @@ export default function IndicatorFilterPanel({
       if (r.rowType !== "oracle") continue;
       const id = String(r.SOLID ?? "");
       if (!id) continue;
-      if (!m.has(id)) m.set(id, { name: String(r.BRANCHNAME ?? ""), oracleRows: [] });
+      if (!m.has(id))
+        m.set(id, { name: String(r.BRANCHNAME ?? ""), oracleRows: [] });
       m.get(id)!.oracleRows.push(r);
     }
     return m;
@@ -67,14 +68,19 @@ export default function IndicatorFilterPanel({
           autoRaw: val?.autoRaw ?? "",
         };
       })
-      .sort((a, b) => Number(a.solid) - Number(b.solid) || a.solid.localeCompare(b.solid));
+      .sort(
+        (a, b) =>
+          Number(a.solid) - Number(b.solid) || a.solid.localeCompare(b.solid),
+      );
   }, [selectedInd, byBranch, catalog]);
 
   const filledCount = branchScores.filter((b) => b.score != null).length;
   const avgScore =
     filledCount > 0
-      ? branchScores.reduce((s, b) => s + (typeof b.score === "number" ? b.score : 0), 0) /
-        filledCount
+      ? branchScores.reduce(
+          (s, b) => s + (typeof b.score === "number" ? b.score : 0),
+          0,
+        ) / filledCount
       : null;
 
   return (
@@ -148,7 +154,7 @@ export default function IndicatorFilterPanel({
 
       {/* Table */}
       {selectedInd ? (
-      <div className="flex-1 overflow-auto px-6 py-2">
+        <div className="flex-1 overflow-auto px-6 py-2">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-muted/30 sticky top-0 z-10">
@@ -171,11 +177,16 @@ export default function IndicatorFilterPanel({
             </thead>
             <tbody className="divide-y divide-border/40">
               {branchScores.map((b, i) => (
-                <tr key={b.solid} className="hover:bg-muted/20 transition-colors">
+                <tr
+                  key={b.solid}
+                  className="hover:bg-muted/20 transition-colors"
+                >
                   <td className="px-4 py-2.5 text-muted-foreground/40 tabular-nums text-[11px]">
                     {i + 1}
                   </td>
-                  <td className="px-4 py-2.5 font-medium text-[12px]">{b.name}</td>
+                  <td className="px-4 py-2.5 font-medium text-[12px]">
+                    {b.name}
+                  </td>
                   <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">
                     {b.solid}
                   </td>
@@ -186,7 +197,9 @@ export default function IndicatorFilterPanel({
                         {b.autoRaw}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground/30 text-[11px]">—</span>
+                      <span className="text-muted-foreground/30 text-[11px]">
+                        —
+                      </span>
                     )}
                   </td>
                   {/* Score — big bold number */}
@@ -208,7 +221,9 @@ export default function IndicatorFilterPanel({
                         {b.score}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground/30 text-xl font-bold">—</span>
+                      <span className="text-muted-foreground/30 text-xl font-bold">
+                        —
+                      </span>
                     )}
                   </td>
                 </tr>

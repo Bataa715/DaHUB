@@ -75,7 +75,9 @@ function isSystemAccount(member: DepartmentUser) {
 }
 
 function isDeptManager(member: DepartmentUser, dept: DepartmentData) {
-  const pos = String(member.position ?? "").trim().toLowerCase();
+  const pos = String(member.position ?? "")
+    .trim()
+    .toLowerCase();
   if (isLeadership(dept.name)) {
     return pos.includes("захирал");
   }

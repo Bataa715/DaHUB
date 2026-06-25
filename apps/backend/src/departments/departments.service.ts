@@ -61,9 +61,7 @@ export class DepartmentsService {
       // manager талбар буруу (System Admin г.м.) байвал албан тушаалаар захирлыг олно
       let manager = String(dept.manager ?? "").trim();
       const managerLooksInvalid =
-        !manager ||
-        /system\s*admin/i.test(manager) ||
-        /^admin$/i.test(manager);
+        !manager || /system\s*admin/i.test(manager) || /^admin$/i.test(manager);
       if (managerLooksInvalid) {
         const director = users.find((u: { position?: string }) => {
           const pos = String(u.position ?? "").toLowerCase();
@@ -102,9 +100,7 @@ export class DepartmentsService {
 
     let manager = String(department.manager ?? "").trim();
     const managerLooksInvalid =
-      !manager ||
-      /system\s*admin/i.test(manager) ||
-      /^admin$/i.test(manager);
+      !manager || /system\s*admin/i.test(manager) || /^admin$/i.test(manager);
     if (managerLooksInvalid) {
       const director = users.find((u: { position?: string }) => {
         const pos = String(u.position ?? "").toLowerCase();

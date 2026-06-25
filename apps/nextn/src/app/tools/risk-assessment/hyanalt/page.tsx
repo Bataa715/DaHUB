@@ -2,11 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import {
-  riskApi,
-  getApiErrorMessage,
-  type RiskHistoryEntry,
-} from "@/lib/api";
+import { riskApi, getApiErrorMessage, type RiskHistoryEntry } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
@@ -162,7 +158,9 @@ export default function RiskAssessmentDetailPage() {
         ]);
         if (cancelled) return;
         setHistoryList(hist);
-        setRows(latestRes.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
+        setRows(
+          latestRes.rows.filter((r) => r.rowType === "oracle") as RiskRow[],
+        );
       } catch {
         /* silent */
       } finally {
@@ -306,7 +304,8 @@ export default function RiskAssessmentDetailPage() {
               Өгөгдөл байхгүй байна
             </div>
             <div className="text-xs text-muted-foreground/60 mt-1">
-              Airflow-с өгөгдөл ирсний дараа хамгийн сүүлийн утга автоматаар харагдана
+              Airflow-с өгөгдөл ирсний дараа хамгийн сүүлийн утга автоматаар
+              харагдана
             </div>
           </div>
         )}

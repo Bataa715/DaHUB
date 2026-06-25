@@ -63,7 +63,9 @@ export default function AdminAlertBoxPage() {
         !d.enabled,
       );
       setDashboards((prev) =>
-        prev.map((x) => (x.id === d.id ? { ...x, enabled: updated.enabled } : x)),
+        prev.map((x) =>
+          x.id === d.id ? { ...x, enabled: updated.enabled } : x,
+        ),
       );
     } catch {
       toast({
@@ -82,7 +84,9 @@ export default function AdminAlertBoxPage() {
     try {
       const updated = await oracleConfigApi.setChainEnabled(c.id, !c.enabled);
       setChains((prev) =>
-        prev.map((x) => (x.id === c.id ? { ...x, enabled: updated.enabled } : x)),
+        prev.map((x) =>
+          x.id === c.id ? { ...x, enabled: updated.enabled } : x,
+        ),
       );
     } catch {
       toast({

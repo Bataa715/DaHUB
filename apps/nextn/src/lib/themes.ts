@@ -213,9 +213,6 @@ const cleanLightTheme: ThemeDef = {
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 
-export const themes: ThemeDef[] = [
-  deepSpaceTheme,
-  cleanLightTheme,
-];
+export const themes: ThemeDef[] = [deepSpaceTheme, cleanLightTheme];
 
 export const defaultThemeName = "default";

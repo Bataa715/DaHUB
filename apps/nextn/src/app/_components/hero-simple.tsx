@@ -99,7 +99,6 @@ export default function Hero() {
 
   return (
     <div className="relative flex-1 flex flex-col justify-center overflow-hidden select-none">
-
       {/* ── Зөөлөн арын градиент + сүлжээ ── */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -124,7 +123,10 @@ export default function Hero() {
       />
 
       {/* ── Арын цэгүүдийн animation (монохром) ── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden"
+        aria-hidden
+      >
         {PARTICLES.map((p) => (
           <motion.div
             key={p.id}
@@ -148,10 +150,8 @@ export default function Hero() {
 
       {/* ── Гол агуулга ── */}
       <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-8 py-12 grid lg:grid-cols-[1fr_auto] gap-12 items-center">
-
         {/* Зүүн: мэндчилгээ + нэр + motto */}
         <div className="space-y-8">
-
           {/* Мэндчилгээ */}
           <motion.div
             initial={{ opacity: 0, y: -12 }}
@@ -211,7 +211,15 @@ export default function Hero() {
                   <p className="text-sm text-foreground/85 leading-relaxed font-medium">
                     {(() => {
                       const [title, ...rest] = RULES[carouselIdx].split(" – ");
-                      return (<><span className="font-black text-foreground">{title}</span>{" – "}{rest.join(" – ")}</>);
+                      return (
+                        <>
+                          <span className="font-black text-foreground">
+                            {title}
+                          </span>
+                          {" – "}
+                          {rest.join(" – ")}
+                        </>
+                      );
                     })()}
                   </p>
                 </motion.div>
@@ -233,4 +241,3 @@ export default function Hero() {
     </div>
   );
 }
-

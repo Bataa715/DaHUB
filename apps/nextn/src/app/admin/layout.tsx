@@ -58,7 +58,9 @@ function AdminSidebar() {
             className="rounded object-contain"
           />
         </div>
-        <span className="text-sm font-semibold text-foreground tracking-tight">Admin</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight">
+          Admin
+        </span>
       </div>
 
       {/* Nav */}

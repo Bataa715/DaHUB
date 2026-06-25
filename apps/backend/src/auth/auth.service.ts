@@ -12,7 +12,12 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
-import { buildUserId, safeParseTools, webVisibleUserSql, isPrivilegedUser } from "../common/utils/user-utils";
+import {
+  buildUserId,
+  safeParseTools,
+  webVisibleUserSql,
+  isPrivilegedUser,
+} from "../common/utils/user-utils";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import {
   LoginDto,
@@ -42,7 +47,9 @@ export class AuthService {
   private async guardLogin(key: string): Promise<void> {
     // Use Unix epoch integers so comparisons are timezone-independent.
     // ClickHouse toUnixTimestamp() returns UTC-based seconds regardless of server tz.
-    const windowStartEpoch = Math.floor((Date.now() - this.ATTEMPT_WINDOW_MS) / 1000);
+    const windowStartEpoch = Math.floor(
+      (Date.now() - this.ATTEMPT_WINDOW_MS) / 1000,
+    );
 
     const rows = await this.clickhouse.query<any>(
       `SELECT
@@ -305,7 +312,11 @@ export class AuthService {
 
   // ─── Generate User ID ───────────────────────────────────────────────────────
 
-  private generateUserId(department: string, name: string, code?: string): string {
+  private generateUserId(
+    department: string,
+    name: string,
+    code?: string,
+  ): string {
     return buildUserId(department, name, code);
   }
 
@@ -589,10 +600,7 @@ export class AuthService {
     }
 
     const isPending = String(user.password ?? "").startsWith("PENDING:");
-    const hasPassword =
-      user.password &&
-      user.password.length > 0 &&
-      !isPending;
+    const hasPassword = user.password && user.password.length > 0 && !isPending;
 
     let claimToken: string | undefined;
     if (!hasPassword && isPending) {

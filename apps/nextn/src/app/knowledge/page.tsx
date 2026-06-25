@@ -443,9 +443,6 @@ function RightSidebar({
                   <p className="text-foreground text-xs font-semibold truncate">
                     {p.authorName}
                   </p>
-                  <p className="text-muted-foreground text-[10px]">
-                    {p.newsCount} мэдлэг
-                  </p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-foreground text-xs font-bold">
@@ -802,7 +799,7 @@ export default function ShineMedlegPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 landscape:p-2 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowCreate(false);
             }}
@@ -810,9 +807,9 @@ export default function ShineMedlegPage() {
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="w-full max-w-lg rounded-2xl overflow-hidden bg-card border border-border shadow-premium-xl ring-hairline"
+              className="w-full max-w-2xl sm:max-w-3xl md:w-[92vw] md:max-w-6xl md:h-[88vh] landscape:max-w-[94vw] landscape:h-[92vh] landscape:max-h-[92vh] max-h-[95vh] rounded-2xl overflow-hidden bg-card border border-border shadow-premium-xl ring-hairline flex flex-col"
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-border flex-shrink-0">
                 <h2 className="text-foreground font-bold text-base flex items-center gap-2">
                   <PenLine className="w-4 h-4 text-violet-500" />
                   Мэдлэг хуваалцах
@@ -824,93 +821,105 @@ export default function ShineMedlegPage() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-                <div>
-                  <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                    Гарчиг
-                  </label>
-                  <input
-                    type="text"
-                    value={createForm.title}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({ ...f, title: e.target.value }))
-                    }
-                    className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                    placeholder="Мэдлэгийн гарчиг..."
-                  />
-                </div>
-                <div>
-                  <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                    Ангилал
-                  </label>
-                  <select
-                    value={createForm.category}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({ ...f, category: e.target.value }))
-                    }
-                    className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-                  >
-                    <option value="Аудит">Аудит</option>
-                    <option value="Технологи">Технологи</option>
-                    <option value="Сонин хачин">Сонин хачин</option>
-                    <option value="Банк санхүү">Банк санхүү</option>
-                    <option value="Risk">Risk</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                    Зураг
-                  </label>
-                  {imagePreview ? (
-                    <div className="relative w-full h-40 rounded-xl overflow-hidden mb-2">
-                      <Image
-                        src={imagePreview}
-                        alt="preview"
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      <button
-                        onClick={() => {
-                          setImagePreview(null);
-                          setCreateForm((f) => ({ ...f, imageUrl: "" }));
-                        }}
-                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/80 text-foreground flex items-center justify-center hover:bg-background transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-xl cursor-pointer border-2 border-dashed border-border hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/5 transition-all">
-                      <Upload className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-muted-foreground text-xs">
-                        Зураг оруулах (2MB хүртэл)
-                      </span>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="h-full px-5 sm:px-6 py-4 sm:py-5 grid grid-cols-1 md:grid-cols-[minmax(0,340px)_1fr] landscape:grid-cols-[minmax(0,320px)_1fr] gap-4 sm:gap-5 overflow-y-auto md:overflow-hidden landscape:overflow-hidden">
+                  <div className="space-y-4 md:overflow-y-auto landscape:overflow-y-auto md:pr-1">
+                    <div>
+                      <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
+                        Гарчиг
+                      </label>
                       <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/gif,image/webp"
-                        className="hidden"
-                        onChange={handleImageUpload}
+                        type="text"
+                        value={createForm.title}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            title: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
+                        placeholder="Мэдлэгийн гарчиг..."
                       />
+                    </div>
+                    <div>
+                      <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
+                        Ангилал
+                      </label>
+                      <select
+                        value={createForm.category}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            category: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                      >
+                        <option value="Аудит">Аудит</option>
+                        <option value="Технологи">Технологи</option>
+                        <option value="Сонин хачин">Сонин хачин</option>
+                        <option value="Банк санхүү">Банк санхүү</option>
+                        <option value="Risk">Risk</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
+                        Зураг
+                      </label>
+                      {imagePreview ? (
+                        <div className="relative w-full h-40 landscape:h-32 md:h-44 rounded-xl overflow-hidden">
+                          <Image
+                            src={imagePreview}
+                            alt="preview"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                          <button
+                            onClick={() => {
+                              setImagePreview(null);
+                              setCreateForm((f) => ({ ...f, imageUrl: "" }));
+                            }}
+                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/80 text-foreground flex items-center justify-center hover:bg-background transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center gap-2 w-full h-28 landscape:h-24 md:h-32 rounded-xl cursor-pointer border-2 border-dashed border-border hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/5 transition-all">
+                          <Upload className="w-5 h-5 text-muted-foreground" />
+                          <span className="text-muted-foreground text-xs">
+                            Зураг оруулах (2MB хүртэл)
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            className="hidden"
+                            onChange={handleImageUpload}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col min-h-[min(50vh,420px)] md:min-h-0 md:h-full landscape:min-h-0 landscape:h-full">
+                    <label className="text-foreground/70 text-xs font-semibold block mb-1.5 flex-shrink-0">
+                      Агуулга
                     </label>
-                  )}
-                </div>
-                <div>
-                  <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                    Агуулга
-                  </label>
-                  <textarea
-                    value={createForm.content}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({ ...f, content: e.target.value }))
-                    }
-                    rows={6}
-                    className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                    placeholder="Мэдлэгийн агуулга..."
-                  />
+                    <textarea
+                      value={createForm.content}
+                      onChange={(e) =>
+                        setCreateForm((f) => ({
+                          ...f,
+                          content: e.target.value,
+                        }))
+                      }
+                      className="flex-1 min-h-[min(50vh,420px)] md:min-h-0 w-full rounded-xl px-3 py-3 text-sm sm:text-base leading-relaxed text-foreground bg-muted border border-input placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
+                      placeholder="Мэдлэгийн агуулга..."
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="px-6 py-4 flex justify-end gap-2 border-t border-border bg-muted/30">
+              <div className="px-5 sm:px-6 py-3.5 sm:py-4 flex justify-end gap-2 border-t border-border bg-muted/30 flex-shrink-0">
                 <button
                   onClick={() => setShowCreate(false)}
                   className="px-4 py-2 rounded-xl border border-border text-foreground text-xs font-semibold hover:bg-muted transition-colors"

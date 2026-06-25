@@ -146,7 +146,9 @@ export function LoginSubmitButton({
         <div className="login-submit-btn-surface relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[0.65rem] px-4 text-sm font-semibold">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/55 to-transparent dark:from-white/12" />
           <div className="pointer-events-none absolute inset-x-4 bottom-1 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/15" />
-          <span className="relative z-10 flex items-center gap-2">{children}</span>
+          <span className="relative z-10 flex items-center gap-2">
+            {children}
+          </span>
         </div>
       </div>
       <div className="login-submit-btn-shadow absolute -bottom-1.5 left-1/2 h-2.5 w-[88%] -translate-x-1/2 rounded-full blur-md transition-opacity group-hover:opacity-90 group-disabled:opacity-20" />

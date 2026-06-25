@@ -67,10 +67,7 @@ export class OracleSearchController {
     try {
       return this.config.setDashboardEnabled(Number(id), body.enabled);
     } catch (err) {
-      throw new HttpException(
-        (err as Error).message,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
     }
   }
 

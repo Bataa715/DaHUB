@@ -8,7 +8,12 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
 import { VALID_TOOLS_SET } from "../common/constants/tools";
-import { buildUserId, safeParseTools, webVisibleUserSql, isPrivilegedUser } from "../common/utils/user-utils";
+import {
+  buildUserId,
+  safeParseTools,
+  webVisibleUserSql,
+  isPrivilegedUser,
+} from "../common/utils/user-utils";
 
 // [LOW-1] buildUserId and safeParseTools moved to src/common/utils/user-utils.ts
 
@@ -19,9 +24,7 @@ export class UsersService {
   constructor(private clickhouse: ClickHouseService) {}
 
   async findAll(limit = 1000, offset = 0, excludeAdmins = false) {
-    const adminFilter = excludeAdmins
-      ? `WHERE ${webVisibleUserSql("u")}`
-      : "";
+    const adminFilter = excludeAdmins ? `WHERE ${webVisibleUserSql("u")}` : "";
     const users = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id

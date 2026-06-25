@@ -269,7 +269,9 @@ export default function ReportView({
         delete pendingSavePayloads.current[key];
         riskApi
           .upsertManualIndicator({ branchId, indicatorId, value })
-          .catch((e) => console.error("upsertManualIndicator хадгалахад алдаа:", e));
+          .catch((e) =>
+            console.error("upsertManualIndicator хадгалахад алдаа:", e),
+          );
       }, 600);
     },
     [readOnly, saveIndicatorFn],
@@ -601,8 +603,7 @@ export default function ReportView({
       ) : (
         <div className="space-y-6">
           {SPLIT_SECTIONS.map((section) => {
-            const sectionRows =
-              section.group === "UB" ? ubRows : onRows;
+            const sectionRows = section.group === "UB" ? ubRows : onRows;
             return (
               <ReportTable
                 key={section.group}
@@ -952,36 +953,37 @@ function ReportTable({
                         />
                       ) : (
                         <div className="flex flex-col items-end gap-0.5">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingJBranch(b.branchId);
-                            setEditJValue(
-                              externalJudgements
-                                ? String(externalJudgements[b.branchId] || "")
-                                : judgmentInd
-                                  ? String(
-                                      manualMap[b.branchId]?.[judgmentInd.id] ||
-                                        "",
-                                    )
-                                  : String(b.j || ""),
-                            );
-                          }}
-                          className="group/jbtn flex flex-col items-end w-full gap-0.5 font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
-                          title="Клик — засах"
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 group-hover/jbtn:bg-emerald-400" />
-                          <span className="inline-flex items-center gap-1">
-                            {b.j != null && b.j > 0
-                              ? b.j % 1 === 0
-                                ? b.j.toFixed(0)
-                                : b.j.toFixed(1)
-                              : "—"}
-                            <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
-                              ✎
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingJBranch(b.branchId);
+                              setEditJValue(
+                                externalJudgements
+                                  ? String(externalJudgements[b.branchId] || "")
+                                  : judgmentInd
+                                    ? String(
+                                        manualMap[b.branchId]?.[
+                                          judgmentInd.id
+                                        ] || "",
+                                      )
+                                    : String(b.j || ""),
+                              );
+                            }}
+                            className="group/jbtn flex flex-col items-end w-full gap-0.5 font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
+                            title="Клик — засах"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 group-hover/jbtn:bg-emerald-400" />
+                            <span className="inline-flex items-center gap-1">
+                              {b.j != null && b.j > 0
+                                ? b.j % 1 === 0
+                                  ? b.j.toFixed(0)
+                                  : b.j.toFixed(1)
+                                : "—"}
+                              <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
+                                ✎
+                              </span>
                             </span>
-                          </span>
-                        </button>
+                          </button>
                         </div>
                       )}
                     </td>

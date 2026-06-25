@@ -13,9 +13,7 @@ export default function HomePage() {
     <div className="relative flex flex-col flex-1">
       {/* Hero with reserved space to prevent CLS */}
       <div className="flex flex-col flex-1">
-        <Suspense
-          fallback={<div className="w-full flex-1 bg-background" />}
-        >
+        <Suspense fallback={<div className="w-full flex-1 bg-background" />}>
           <Hero />
         </Suspense>
       </div>

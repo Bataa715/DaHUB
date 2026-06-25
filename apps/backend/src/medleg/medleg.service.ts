@@ -119,7 +119,10 @@ export class MedlegService {
     }
 
     const n = items[0];
-    return { ...n, imageUrl: Number(n.hasImage) ? `/medleg/${n.id}/image` : "" };
+    return {
+      ...n,
+      imageUrl: Number(n.hasImage) ? `/medleg/${n.id}/image` : "",
+    };
   }
 
   async removeByOwner(id: string, userId: string) {

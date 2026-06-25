@@ -273,9 +273,7 @@ const Header = () => {
                     <span>{t("navProfileSettings")}</span>
                   </DropdownMenuItem>
                   {!isAdminPage && (
-                    <DropdownMenuItem
-                      onClick={() => router.push("/employee")}
-                    >
+                    <DropdownMenuItem onClick={() => router.push("/employee")}>
                       <Users className="mr-2 h-4 w-4" />
                       <span>{t("navEmployees")}</span>
                     </DropdownMenuItem>

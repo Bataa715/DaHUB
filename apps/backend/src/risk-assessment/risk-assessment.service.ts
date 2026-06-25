@@ -66,7 +66,9 @@ export class RiskAssessmentService implements OnModuleInit {
     }
 
     // risk_assessment_current нь хуучин — risk_manual_indicators болгон нэгтгэв
-    await this.clickhouse.exec(`DROP TABLE IF EXISTS risk_assessment_current`).catch(() => {});
+    await this.clickhouse
+      .exec(`DROP TABLE IF EXISTS risk_assessment_current`)
+      .catch(() => {});
 
     await this.clickhouse.exec(`
       CREATE TABLE IF NOT EXISTS risk_manual_indicators (
@@ -129,18 +131,34 @@ export class RiskAssessmentService implements OnModuleInit {
     `);
 
     // Шинэ баганууд нэмэх / хуучин баганууд хасах (migration)
-    await this.clickhouse.exec(`
+    await this.clickhouse
+      .exec(
+        `
       ALTER TABLE riskbranch ADD COLUMN IF NOT EXISTS STATUS String DEFAULT ''
-    `).catch(() => {});
-    await this.clickhouse.exec(`
+    `,
+      )
+      .catch(() => {});
+    await this.clickhouse
+      .exec(
+        `
       ALTER TABLE riskbranch DROP COLUMN IF EXISTS BRANCHID
-    `).catch(() => {});
-    await this.clickhouse.exec(`
+    `,
+      )
+      .catch(() => {});
+    await this.clickhouse
+      .exec(
+        `
       ALTER TABLE riskbranch DROP COLUMN IF EXISTS PARENTBRANCH
-    `).catch(() => {});
-    await this.clickhouse.exec(`
+    `,
+      )
+      .catch(() => {});
+    await this.clickhouse
+      .exec(
+        `
       ALTER TABLE riskbranch DROP COLUMN IF EXISTS REGION
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
     await this.clickhouse.exec(`
       CREATE TABLE IF NOT EXISTS riskbranch_locks (
@@ -184,7 +202,6 @@ export class RiskAssessmentService implements OnModuleInit {
       ) ENGINE = ReplacingMergeTree(computed_at)
         ORDER BY (fetch_date, branch_id)
     `);
-
   }
 
   async listManualIndicators(): Promise<
@@ -198,7 +215,9 @@ export class RiskAssessmentService implements OnModuleInit {
     const out: Record<string, Record<string, number>> = {};
     for (const r of rows) {
       if (!r.branchId || !r.indicatorId) continue;
-      (out[r.branchId] ?? (out[r.branchId] = {}))[r.indicatorId] = Number(r.value ?? 0);
+      (out[r.branchId] ?? (out[r.branchId] = {}))[r.indicatorId] = Number(
+        r.value ?? 0,
+      );
     }
     return out;
   }
@@ -372,7 +391,7 @@ export class RiskAssessmentService implements OnModuleInit {
          AND fetchedDate != ''`,
       { d },
     );
-    const anchor: string = anchorRows[0]?.maxDate ?? '';
+    const anchor: string = anchorRows[0]?.maxDate ?? "";
     if (!anchor) return { fetchedDate: d, rows: [], manualMap: {} };
 
     // 2. Anchor өдрийн SOLID-уудад зориулж (SOLID, SUBID) бүрт
@@ -487,9 +506,7 @@ export class RiskAssessmentService implements OnModuleInit {
   // ── Judgement ─────────────────────────────────────────────────────────────
 
   /** Тодорхой огноогийн бүх салбарын аудиторын үнэлэмжийг авах */
-  async listJudgements(
-    fetchedDate?: string,
-  ): Promise<
+  async listJudgements(fetchedDate?: string): Promise<
     {
       branchId: string;
       branchName: string;
@@ -523,7 +540,7 @@ export class RiskAssessmentService implements OnModuleInit {
     if (!args.branchId) return;
     // score=0 → үнэлэмжийг цэвэрлэх (ReplacingMergeTree-д 0 score оруулна,
     // listJudgements-ийн AND score>0 filter-ээр дараа уншихад харагдахгүй болно)
-    await this.clickhouse.insert('risk_judgement', [
+    await this.clickhouse.insert("risk_judgement", [
       {
         branchId: args.branchId,
         branchName: args.branchName,

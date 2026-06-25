@@ -25,7 +25,9 @@ export default function TailanPage() {
   const quarter = Math.ceil((now.getMonth() + 1) / 3);
   const qLabel = QUARTER_NAMES[quarter - 1];
   const quarterLabel =
-    language === "en" ? `${year} · Q${quarter}` : `${year} · ${qLabel}-р улирал`;
+    language === "en"
+      ? `${year} · Q${quarter}`
+      : `${year} · ${qLabel}-р улирал`;
 
   useEffect(() => {
     tailanApi

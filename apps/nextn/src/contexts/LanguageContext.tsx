@@ -528,6 +528,8 @@ export const translations = {
     riskDetailSubtitle: "Мөр бүрийн дэлгэрэнгүй",
     riskSavePlaceholder: "Жишээ: 2025 Q4 Улирал",
     riskSaveError: "Хадгалахад алдаа",
+    riskSaveSuccess:
+      "Тайлан амжилттай хадгалагдлаа! Тайлангууд хуудаснаас үзэх боломжтой.",
   },
   en: {
     // Navigation & common
@@ -1050,6 +1052,8 @@ export const translations = {
     riskDetailSubtitle: "Detail by row",
     riskSavePlaceholder: "Example: 2025 Q4 Quarter",
     riskSaveError: "Save error",
+    riskSaveSuccess:
+      "Report saved successfully! You can view it from the Reports page.",
   },
 } as const;
 

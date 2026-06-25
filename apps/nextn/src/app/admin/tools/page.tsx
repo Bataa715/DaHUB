@@ -215,7 +215,8 @@ export default function AdminToolsPage() {
         ),
       );
     } catch (error) {
-      if (process.env.NODE_ENV !== "production") console.error("Error loading users:", error);
+      if (process.env.NODE_ENV !== "production")
+        console.error("Error loading users:", error);
       toast({
         title: "Алдаа",
         description: "Хэрэглэгчдийг татахад алдаа гарлаа",
@@ -300,7 +301,8 @@ export default function AdminToolsPage() {
           }
           successCount++;
         } catch (err) {
-          if (process.env.NODE_ENV !== "production") console.error("Error granting access to user:", err);
+          if (process.env.NODE_ENV !== "production")
+            console.error("Error granting access to user:", err);
           errors.push(targetUser.name);
         }
       }
@@ -322,7 +324,8 @@ export default function AdminToolsPage() {
       setSelectedUsers(new Set());
       setActiveTab("current");
     } catch (error) {
-      if (process.env.NODE_ENV !== "production") console.error("Error granting access:", error);
+      if (process.env.NODE_ENV !== "production")
+        console.error("Error granting access:", error);
       toast({
         title: "Алдаа",
         description: "Эрх олгоход алдаа гарлаа",
@@ -352,7 +355,8 @@ export default function AdminToolsPage() {
           await usersApi.updateTools(userId, newTools);
           successCount++;
         } catch (err) {
-          if (process.env.NODE_ENV !== "production") console.error("Error revoking access from user:", err);
+          if (process.env.NODE_ENV !== "production")
+            console.error("Error revoking access from user:", err);
           errors.push(targetUser.name);
         }
       }
@@ -373,7 +377,8 @@ export default function AdminToolsPage() {
       await loadUsers();
       setRevokeSelectedUsers(new Set());
     } catch (error) {
-      if (process.env.NODE_ENV !== "production") console.error("Error revoking access:", error);
+      if (process.env.NODE_ENV !== "production")
+        console.error("Error revoking access:", error);
       toast({
         title: "Алдаа",
         description: "Эрх хасахад алдаа гарлаа",

@@ -240,7 +240,10 @@ export default function ToolsPage() {
 
   /*  BG  */
   const BG = (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+    <div
+      className="absolute inset-0 pointer-events-none overflow-hidden"
+      aria-hidden
+    >
       {PARTICLES.map((p) => (
         <motion.div
           key={p.id}

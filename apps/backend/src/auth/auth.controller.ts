@@ -11,11 +11,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ThrottlerGuard, Throttle, SkipThrottle } from "@nestjs/throttler";
-import {
-  Request as ExpressRequest,
-  Response,
-  CookieOptions,
-} from "express";
+import { Request as ExpressRequest, Response, CookieOptions } from "express";
 import { AuthService } from "./auth.service";
 import {
   LoginDto,

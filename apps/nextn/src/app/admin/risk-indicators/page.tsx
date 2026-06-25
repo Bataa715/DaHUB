@@ -713,9 +713,13 @@ export default function RiskIndicatorsPage() {
     const autoName = isJudgement && !form.name.trim() ? "Judgement" : form.name;
     setSaving(true);
     const scaleObj = parseScale(form.score_scale);
-    const derivedIsManual: 0 | 1 =
-      scaleObj.type === "manual" ? 1 : 0;
-    const payload = { ...form, subid: autoSubid, name: autoName, is_manual: derivedIsManual };
+    const derivedIsManual: 0 | 1 = scaleObj.type === "manual" ? 1 : 0;
+    const payload = {
+      ...form,
+      subid: autoSubid,
+      name: autoName,
+      is_manual: derivedIsManual,
+    };
     try {
       if (editingId) {
         await riskIndicatorConfigApi.update(editingId, payload);

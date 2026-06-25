@@ -71,8 +71,7 @@ function generatePassword(): string {
   const digits = "23456789";
   const special = "@$!%*?&#";
   const all = lower + upper + digits + special;
-  const pick = (set: string) =>
-    set[Math.floor(Math.random() * set.length)];
+  const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
   let pw = pick(lower) + pick(upper) + pick(digits) + pick(special);
   for (let i = 0; i < 8; i++) pw += pick(all);
   // Тэмдэгтүүдийг холих
@@ -468,7 +467,9 @@ export default function UsersPage() {
                       <li
                         key={it.label}
                         className={`flex items-center gap-1.5 text-[11px] font-medium ${
-                          it.ok ? "text-emerald-500" : "text-muted-foreground/60"
+                          it.ok
+                            ? "text-emerald-500"
+                            : "text-muted-foreground/60"
                         }`}
                       >
                         {it.ok ? (

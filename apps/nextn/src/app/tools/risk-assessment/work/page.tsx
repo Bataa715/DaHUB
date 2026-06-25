@@ -15,12 +15,16 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useToast } from "@/hooks/use-toast";
 import {
   computeScoreDynamic,
   type ScoreResult,
   type ScoreGroup,
 } from "../scoring-rules";
-import { useIndicatorConfig, type DynamicCatalogIndicator } from "../use-indicator-config";
+import {
+  useIndicatorConfig,
+  type DynamicCatalogIndicator,
+} from "../use-indicator-config";
 import ReportView from "../report-view";
 import IndicatorFilterPanel from "./_IndicatorFilterPanel";
 import type { ManualMap } from "../indicator-catalog";
@@ -31,7 +35,10 @@ type ScoredRow = RiskCurrentRow & {
   __group: ScoreGroup | null;
 };
 
-function toScored(rows: RiskCurrentRow[], catalog: DynamicCatalogIndicator[]): ScoredRow[] {
+function toScored(
+  rows: RiskCurrentRow[],
+  catalog: DynamicCatalogIndicator[],
+): ScoredRow[] {
   return rows
     .filter((r) => r.rowType === "oracle")
     .map((r) => {
@@ -42,10 +49,19 @@ function toScored(rows: RiskCurrentRow[], catalog: DynamicCatalogIndicator[]): S
           : { score: null, label: null };
       const grpNum = ind?.group;
       const __group: ScoreGroup | null =
-        grpNum === 1 ? "Score 1" :
-        grpNum === 2 ? "Score 2" :
-        grpNum === 3 ? "Score 3" : null;
-      return { ...r, __score: score as ScoreResult, __scoreLabel: label, __group };
+        grpNum === 1
+          ? "Score 1"
+          : grpNum === 2
+            ? "Score 2"
+            : grpNum === 3
+              ? "Score 3"
+              : null;
+      return {
+        ...r,
+        __score: score as ScoreResult,
+        __scoreLabel: label,
+        __group,
+      };
     });
 }
 
@@ -61,7 +77,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const [selectedDate, setSelectedDate] = useState("");
   const [lockedDate, setLockedDate] = useState<string | null>(null);
   const [judgements, setJudgements] = useState<Record<string, number>>({});
-  const [prevJudgements, setPrevJudgements] = useState<Record<string, number>>({});
+  const [prevJudgements, setPrevJudgements] = useState<Record<string, number>>(
+    {},
+  );
 
   const [loading, setLoading] = useState(true);
   const [loadingDate, setLoadingDate] = useState(false);
@@ -74,7 +92,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const judgementTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );
-  const manualTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const manualTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {},
+  );
   const loadAbortRef = useRef<AbortController | null>(null);
 
   const [manualMap, setManualMap] = useState<ManualMap>({});
@@ -89,7 +109,10 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
   // Manual indicators map (гар оруулга)
   useEffect(() => {
-    riskApi.listManualIndicators().then((data) => setManualMap(data || {})).catch((e) => console.error("listManualIndicators амжилтгүй:", e));
+    riskApi
+      .listManualIndicators()
+      .then((data) => setManualMap(data || {}))
+      .catch((e) => console.error("listManualIndicators амжилтгүй:", e));
   }, []);
 
   const handleManualSave = useCallback(
@@ -106,7 +129,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       const key = `${branchId}::${indicatorId}`;
       clearTimeout(manualTimers.current[key]);
       manualTimers.current[key] = setTimeout(() => {
-        riskApi.upsertManualIndicator({ branchId, indicatorId, value }).catch((e) => console.error("upsertManualIndicator хадгалахад алдаа:", e));
+        riskApi
+          .upsertManualIndicator({ branchId, indicatorId, value })
+          .catch((e) =>
+            console.error("upsertManualIndicator хадгалахад алдаа:", e),
+          );
       }, 600);
     },
     [],
@@ -124,17 +151,19 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         if (cancelled) return;
         setLockedDate(ld);
 
-        const targetDate = ld ?? (() => {
-          if (dates.length === 0) return null;
-          const today = new Date().toISOString().slice(0, 10);
-          if (dates.includes(today)) return today;
-          return dates.reduce((closest, d) =>
-            Math.abs(new Date(d).getTime() - Date.now()) <
-            Math.abs(new Date(closest).getTime() - Date.now())
-              ? d
-              : closest
-          );
-        })();
+        const targetDate =
+          ld ??
+          (() => {
+            if (dates.length === 0) return null;
+            const today = new Date().toISOString().slice(0, 10);
+            if (dates.includes(today)) return today;
+            return dates.reduce((closest, d) =>
+              Math.abs(new Date(d).getTime() - Date.now()) <
+              Math.abs(new Date(closest).getTime() - Date.now())
+                ? d
+                : closest,
+            );
+          })();
 
         if (targetDate) {
           setSelectedDate(targetDate);
@@ -152,7 +181,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           const jmap: Record<string, number> = {};
           for (const j of judgeList) jmap[j.branchId] = j.score;
           setJudgements(jmap);
-          const closestPrevDate = allJudge.find(j => j.fetchedDate < actualDate)?.fetchedDate;
+          const closestPrevDate = allJudge.find(
+            (j) => j.fetchedDate < actualDate,
+          )?.fetchedDate;
           const prevMap: Record<string, number> = {};
           if (closestPrevDate) {
             for (const j of allJudge) {
@@ -201,7 +232,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       const jmap: Record<string, number> = {};
       for (const j of judgeList) jmap[j.branchId] = j.score;
       setJudgements(jmap);
-      const closestPrevDate = allJudge.find(j => j.fetchedDate < actualDate)?.fetchedDate;
+      const closestPrevDate = allJudge.find(
+        (j) => j.fetchedDate < actualDate,
+      )?.fetchedDate;
       const prevMap: Record<string, number> = {};
       if (closestPrevDate) {
         for (const j of allJudge) {
@@ -267,9 +300,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const onJudgementSave = useCallback(
     (branchId: string, score: number) => {
       const branchRow = rows.find(
-        (r) =>
-          r.rowType === "oracle" &&
-          String(r.SOLID || "") === branchId,
+        (r) => r.rowType === "oracle" && String(r.SOLID || "") === branchId,
       );
       const branchName = branchRow
         ? String(branchRow.BRANCHNAME ?? branchRow.SOLID ?? branchId)
@@ -446,6 +477,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
 export default function RiskHyanaltPage() {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -464,16 +496,16 @@ export default function RiskHyanaltPage() {
       await riskApi.saveHistoryFromRiskbranch(saveModalMeta.pDate, name);
       setSaveModalOpen(false);
       setSaveName("");
-      // Success alert or router redirect if desired
-      alert(
-        "Тайлан амжилттай хадгалагдлаа! Тайлангууд хуудаснаас үзэх боломжтой.",
-      );
+      toast({
+        title: t("success"),
+        description: t("riskSaveSuccess"),
+      });
     } catch (e: unknown) {
       setErrorMsg(getApiErrorMessage(e) || t("riskSaveError"));
     } finally {
       setSaving(false);
     }
-  }, [saveName, saveModalMeta, t]);
+  }, [saveName, saveModalMeta, t, toast]);
 
   return (
     <>

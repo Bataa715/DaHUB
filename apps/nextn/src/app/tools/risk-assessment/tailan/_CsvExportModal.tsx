@@ -174,7 +174,7 @@ function writeBranchSection(
 ): number {
   const w = weights[region === "UB" ? "UB" : "LOC"];
   const hasComp = !!prevMap && !!prevName;
-  const colCount = hasComp ? 13 : 11;
+  const colCount = hasComp ? 14 : 11;
 
   ws.mergeCells(startRow, 1, startRow, colCount);
   const titleCell = ws.getCell(startRow, 1);
@@ -213,7 +213,7 @@ function writeBranchSection(
     `Judgement (${pct(w.j)})`,
     "Total",
     "Эрсдэлийн түвшин",
-    ...(hasComp ? ["Өмнөх", "Зөрүү"] : []),
+    ...(hasComp ? ["Өмнөх Total", "Өмнөх түвшин", "Зөрүү"] : []),
   ];
   headers.forEach((h, i) => styleHeaderCell(hdrRow.getCell(i + 1), h));
   hdrRow.height = 24;
@@ -242,19 +242,24 @@ function writeBranchSection(
     ];
     if (hasComp) {
       values.push(
-        prev
-          ? prev.total != null
-            ? `${prev.total.toFixed(2)}${prev.level ? `\n${prev.level}` : ""}`
-            : prev.level || ""
-          : "—",
+        prev ? (prev.total ?? null) : "—",
+        prev ? prev.level || "" : "—",
         diff != null ? diff : null,
       );
     }
 
     const zebra =
       idx % 2 === 0
-        ? { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFFFFFFF" } }
-        : { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFF9FAFB" } };
+        ? {
+            type: "pattern" as const,
+            pattern: "solid" as const,
+            fgColor: { argb: "FFFFFFFF" },
+          }
+        : {
+            type: "pattern" as const,
+            pattern: "solid" as const,
+            fgColor: { argb: "FFF9FAFB" },
+          };
 
     values.forEach((val, ci) => {
       const cell = row.getCell(ci + 1);
@@ -267,22 +272,43 @@ function writeBranchSection(
         cell.alignment = { vertical: "middle", horizontal: "center" };
         if (ci === 1 && typeof val === "number") cell.numFmt = "0";
       } else if (ci === 2) {
-        cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: "left",
+          wrapText: true,
+        };
       } else if (ci === 10 && typeof val === "string" && val) {
         const lf = levelFill(val);
         if (lf) cell.fill = lf;
         cell.font = { bold: true, size: 10 };
         cell.alignment = { vertical: "middle", horizontal: "center" };
+      } else if (hasComp && ci === 11 && typeof val === "number") {
+        cell.numFmt = "0.00";
+        cell.alignment = { vertical: "middle", horizontal: "right" };
       } else if (hasComp && ci === 11) {
-        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-        cell.numFmt = "@";
-      } else if (hasComp && ci === 12 && typeof val === "number") {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      } else if (
+        hasComp &&
+        ci === 12 &&
+        typeof val === "string" &&
+        val &&
+        val !== "—"
+      ) {
+        const lf = levelFill(val);
+        if (lf) cell.fill = lf;
+        cell.font = { bold: true, size: 10 };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      } else if (hasComp && ci === 12) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      } else if (hasComp && ci === 13 && typeof val === "number") {
         cell.numFmt = "+0.00;-0.00;0.00";
         cell.alignment = { vertical: "middle", horizontal: "right" };
         cell.font = {
           bold: true,
           size: 10,
-          color: { argb: val > 0 ? "FFDC2626" : val < 0 ? "FF059669" : "FF6B7280" },
+          color: {
+            argb: val > 0 ? "FFDC2626" : val < 0 ? "FF059669" : "FF6B7280",
+          },
         };
       } else if (typeof val === "number") {
         cell.numFmt = "0.00";
@@ -304,7 +330,7 @@ function writeBranchSection(
   }
 
   ws.columns.forEach((col, i) => {
-    const widths = [5, 8, 28, 10, 11, 11, 11, 11, 12, 9, 14, 12, 10];
+    const widths = [5, 8, 28, 10, 11, 11, 11, 11, 12, 9, 14, 10, 12, 10];
     col.width = widths[i] ?? 12;
   });
 
@@ -432,14 +458,12 @@ async function downloadSummaryXlsx(
     views: [{ state: "frozen", ySplit: 3 }],
   });
 
-  const prevMap = prevAgg
-    ? new Map(prevAgg.map((a) => [a.branchId, a]))
-    : null;
+  const prevMap = prevAgg ? new Map(prevAgg.map((a) => [a.branchId, a])) : null;
   const hasComp = !!prevMap && !!prevName;
   const { ub, on } = splitByGroup(agg);
   const summary = computeSummary(agg, prevMap);
 
-  ws.mergeCells(1, 1, 1, hasComp ? 13 : 11);
+  ws.mergeCells(1, 1, 1, hasComp ? 14 : 11);
   const docTitle = ws.getCell(1, 1);
   docTitle.value = `БИЗНЕС ТӨВ, САЛБАР, ТООЦООНЫ ТӨВҮҮДИЙН ЭРСДЭЛИЙН ҮНЭЛГЭЭ — ${primaryName} (${primaryDate})`;
   docTitle.font = { bold: true, size: 14, color: { argb: "FF111827" } };
@@ -519,7 +543,8 @@ async function downloadIndicatorXlsx(
   const colCount = headers.length;
 
   ws.mergeCells(1, 1, 1, Math.min(colCount, 10));
-  ws.getCell(1, 1).value = `Эрсдэлийн үнэлгээ — Indicator (${primaryName} · ${primaryDate})`;
+  ws.getCell(1, 1).value =
+    `Эрсдэлийн үнэлгээ — Indicator (${primaryName} · ${primaryDate})`;
   ws.getCell(1, 1).font = { bold: true, size: 13, color: { argb: "FF1E3A8A" } };
   ws.getRow(1).height = 26;
 
@@ -549,8 +574,16 @@ async function downloadIndicatorXlsx(
 
     const zebra =
       idx % 2 === 0
-        ? { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFFFFFFF" } }
-        : { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFEFF6FF" } };
+        ? {
+            type: "pattern" as const,
+            pattern: "solid" as const,
+            fgColor: { argb: "FFFFFFFF" },
+          }
+        : {
+            type: "pattern" as const,
+            pattern: "solid" as const,
+            fgColor: { argb: "FFEFF6FF" },
+          };
 
     values.forEach((val, ci) => {
       const cell = row.getCell(ci + 1);
@@ -634,7 +667,9 @@ export default function CsvExportModal({
   const [includeComparison, setIncludeComparison] = useState(true);
   const [includeRaw, setIncludeRaw] = useState(false);
 
-  const [selectedIndIds, setSelectedIndIds] = useState<Set<string> | null>(null);
+  const [selectedIndIds, setSelectedIndIds] = useState<Set<string> | null>(
+    null,
+  );
   const [indFilterOpen, setIndFilterOpen] = useState(false);
 
   const indByGroup = useMemo(() => {

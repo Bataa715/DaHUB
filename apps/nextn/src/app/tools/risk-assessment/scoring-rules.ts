@@ -69,8 +69,7 @@ export function computeScoreDynamic(
   const isStringType = String(resultType ?? "").toUpperCase() === "STRING";
 
   /** whitespace normalize — case өөрчлөхгүй */
-  const normalize = (s: string) =>
-    s.replace(/[\s\u00A0\u200B]+/g, " ").trim();
+  const normalize = (s: string) => s.replace(/[\s\u00A0\u200B]+/g, " ").trim();
 
   const matchRule = (rule: DynamicScaleRule, s: string): boolean => {
     if (!rule.values?.length) return false;
