@@ -72,7 +72,7 @@ export default function RiskReportsPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const isAdmin = user?.isAdmin === true;
-  const { catalog } = useIndicatorConfig();
+  const { catalog, weights } = useIndicatorConfig();
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -378,7 +378,7 @@ export default function RiskReportsPage() {
         prevManualMap={comparisonManualMap}
         prevName={comparisonReportInfo?.name ?? null}
         catalog={catalog}
-        historyList={historyList}
+        weights={weights}
         currentComparisonId={comparisonReportId}
       />
 

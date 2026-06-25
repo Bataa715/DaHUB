@@ -30,6 +30,7 @@ export const translations = {
     imageTooBig: "Зураг хэт том байна. Жижиг зураг сонгоно уу.",
     imageHint1: "Хамгийн их хэмжээ 5MB",
     imageHint3: "JPG, PNG, GIF формат дэмжигдэнэ",
+    currentPassword: "Одоогийн нууц үг",
     newPassword: "Шинэ нууц үг",
     confirmPassword: "Нууц үг баталгаажуулах",
     currentPasswordPlaceholder: "Одоогийн нууц үгээ оруулна уу",

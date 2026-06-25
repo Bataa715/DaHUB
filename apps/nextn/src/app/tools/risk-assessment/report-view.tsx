@@ -8,7 +8,7 @@ import {
   Fragment,
   useRef,
 } from "react";
-import { ChevronDown, Download, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import Cookies from "js-cookie";
 import { riskApi, HOLD_GLOBAL_PERIOD } from "@/lib/api";
 import {
@@ -48,15 +48,11 @@ const SPLIT_SECTIONS = [
   {
     group: "UB" as const,
     title: "Улаанбаатар хотын Бизнес төв, салбар, тооцооны төвүүд",
-    bannerClass:
-      "bg-sky-500/15 border-sky-500/30 text-sky-900 dark:text-sky-100",
     region: "UB" as const,
   },
   {
     group: "ON" as const,
     title: "Орон нутгийн Бизнес төв, салбар, тооцооны төвүүд",
-    bannerClass:
-      "bg-violet-500/12 border-violet-500/30 text-violet-900 dark:text-violet-100",
     region: "LOC" as const,
   },
 ] as const;
@@ -494,65 +490,9 @@ export default function ReportView({
     return { cur, prev, upCnt, downCnt, sameCnt, newCnt, transitions };
   }, [aggregates, previousAggMap]);
 
-  const downloadCsv = () => {
-    const cols = [
-      "№",
-      "SOL",
-      "Салбарын нэр",
-      "Зэрэглэл",
-      "Бүс",
-      "Score 1",
-      "Score 2",
-      "Score 3",
-      "Score 4",
-      "Judgement",
-      "Total",
-      "Эрсдэлийн түвшин",
-      "Өмнөх Total",
-      "Зөрүү",
-    ];
-    const fmt = (n: number | null) => (n == null ? "" : n.toFixed(2));
-    const lines = [cols.join(",")];
-    sortedFiltered.forEach((b, i) => {
-      const p = previousAggMap.get(b.branchId);
-      const diff =
-        p && b.total != null && p.total != null ? b.total - p.total : null;
-      lines.push(
-        [
-          i + 1,
-          b.solid,
-          `"${b.branchName.replace(/"/g, '""')}"`,
-          b.rating,
-          b.region,
-          fmt(b.s1),
-          fmt(b.s2),
-          fmt(b.s3),
-          fmt(b.s4 || null),
-          fmt(b.j || null),
-          fmt(b.total),
-          b.level,
-          p ? fmt(p.total) : "",
-          fmt(diff),
-        ].join(","),
-      );
-    });
-    const blob = new Blob(["\uFEFF" + lines.join("\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `branch-riskass-report.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   if (scoredRows.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <div className="inline-flex w-12 h-12 rounded-2xl bg-muted border border-border items-center justify-center mb-3">
-          <Download className="w-5 h-5 text-muted-foreground/60" />
-        </div>
         <div className="text-sm font-semibold">Тайлан гаргах өгөгдөл алга</div>
         <div className="text-xs mt-1 text-muted-foreground">
           Эхлээд Oracle-аас үнэлгээг татна уу.
@@ -648,14 +588,6 @@ export default function ReportView({
                 {sortKey > 0 ? "↕ SOLID↑" : "↕ Эрэмбэлэх"}
               </button>
             )}
-            {!hideComparison && (
-              <button
-                onClick={downloadCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-all"
-              >
-                <Download className="w-3.5 h-3.5" /> CSV
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -675,7 +607,6 @@ export default function ReportView({
               <ReportTable
                 key={section.group}
                 title={section.title}
-                bannerClass={section.bannerClass}
                 region={section.region}
                 rows={sectionRows}
                 {...reportTableProps}
@@ -738,7 +669,6 @@ export default function ReportView({
 // ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
 function ReportTable({
   title,
-  bannerClass,
   region,
   rows,
   previousAggMap,
@@ -755,7 +685,6 @@ function ReportTable({
   dataReferenceDate,
 }: {
   title: string;
-  bannerClass?: string;
   region?: "UB" | "LOC";
   rows: BranchAggregate[];
   previousAggMap: Map<string, BranchAggregate>;
@@ -827,24 +756,23 @@ function ReportTable({
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline">
       <div
-        className={`px-4 py-3 border-b ${
-          bannerClass ??
-          "border-border bg-gradient-to-r from-muted/40 to-muted/20"
+        className={`px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20 ${
+          region === "UB"
+            ? "border-l-[3px] border-l-blue-500/40"
+            : region === "LOC"
+              ? "border-l-[3px] border-l-violet-500/40"
+              : ""
         }`}
       >
         <div className="flex items-center gap-2 mb-1.5">
           {region && (
-            <span
-              className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold ${
-                region === "UB"
-                  ? "bg-blue-500/15 text-blue-600 border border-blue-500/25"
-                  : "bg-violet-500/15 text-violet-600 border border-violet-500/25"
-              }`}
-            >
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold bg-muted text-foreground border border-border">
               {region === "UB" ? "УБ" : "ОН"}
             </span>
           )}
-          <h3 className={`text-sm font-semibold ${bannerClass ? "flex-1 text-center" : ""}`}>
+          <h3
+            className={`text-sm font-semibold text-foreground ${region ? "flex-1 text-center" : ""}`}
+          >
             {title}
           </h3>
           <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
