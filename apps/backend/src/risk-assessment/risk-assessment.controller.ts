@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { RiskAssessmentService } from "./risk-assessment.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
 
 @UseGuards(JwtAuthGuard)
 @Controller("risk-assessment")
@@ -44,6 +45,7 @@ export class RiskAssessmentController {
     return this.service.getHistory(id);
   }
 
+  @UseGuards(AdminGuard)
   @Delete("history/:id")
   async deleteHistory(@Param("id") id: string) {
     await this.service.deleteHistory(id);

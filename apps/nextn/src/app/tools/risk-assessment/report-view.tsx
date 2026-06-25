@@ -573,23 +573,23 @@ export default function ReportView({
             {!readOnly && manualLoading && (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
             )}
-            {!readOnly && (
-              <button
-                onClick={() => setSortKey((k) => (k === 0 ? 1 : 0))}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
-                  sortKey > 0
-                    ? "border-indigo-500/50 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
-                    : "border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
-                }`}
-                title={
-                  sortKey > 0
-                    ? "SOLID дарааллаар буцах"
+            <button
+              onClick={() => setSortKey((k) => (k === 0 ? 1 : 0))}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                sortKey > 0
+                  ? "border-indigo-500/50 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
+                  : "border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
+              }`}
+              title={
+                sortKey > 0
+                  ? "SOLID дарааллаар буцах"
+                  : readOnly
+                    ? "Total-аар эрэмбэлэх (judgement оруулсан салбар дээр)"
                     : "Judgement оруулсан салбарыг дээрт, Total-аар эрэмбэлэх"
-                }
-              >
-                {sortKey > 0 ? "↕ SOLID↑" : "↕ Эрэмбэлэх"}
-              </button>
-            )}
+              }
+            >
+              {sortKey > 0 ? "↕ SOLID↑" : "↕ Эрэмбэлэх"}
+            </button>
           </div>
         </div>
       </div>

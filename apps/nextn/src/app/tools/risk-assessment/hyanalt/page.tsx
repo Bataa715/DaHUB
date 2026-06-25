@@ -130,8 +130,6 @@ export default function RiskAssessmentDetailPage() {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deletePasswordError, setDeletePasswordError] = useState("");
 
   const { catalog, loaded: catalogLoaded } = useIndicatorConfig();
 
@@ -173,10 +171,6 @@ export default function RiskAssessmentDetailPage() {
   }, []);
 
   const doDeleteHistory = useCallback(async () => {
-    if (deletePassword !== "OmnohDelete#24") {
-      setDeletePasswordError("Нууц үг буруу байна");
-      return;
-    }
     if (!deleteTargetId) return;
     setDeleteModalOpen(false);
     try {
@@ -190,8 +184,7 @@ export default function RiskAssessmentDetailPage() {
       setErrorMsg(getApiErrorMessage(e) || "Устгахад алдаа гарлаа");
     }
     setDeleteTargetId(null);
-    setDeletePassword("");
-  }, [deletePassword, deleteTargetId, viewHistoryId]);
+  }, [deleteTargetId, viewHistoryId]);
 
   const activeRows = viewHistoryId ? viewHistoryRows : rows;
 
@@ -331,28 +324,11 @@ export default function RiskAssessmentDetailPage() {
               <div>
                 <h3 className="text-sm font-semibold">Тайлан устгах</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Үргэлжлүүлэхийн түлд нууц үг оруулна уу
+                  Энэ үйлдлийг буцаах боломгүй.
                 </p>
               </div>
             </div>
-            <input
-              type="password"
-              value={deletePassword}
-              onChange={(e) => {
-                setDeletePassword(e.target.value);
-                setDeletePasswordError("");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && doDeleteHistory()}
-              placeholder="Нууц үг"
-              autoFocus
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
-            />
-            {deletePasswordError && (
-              <p className="text-xs text-red-500 mt-1.5">
-                {deletePasswordError}
-              </p>
-            )}
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteModalOpen(false)}
                 className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
