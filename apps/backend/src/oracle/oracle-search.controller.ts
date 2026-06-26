@@ -2,7 +2,9 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -51,10 +53,74 @@ export class OracleSearchController {
     return this.config.loadDashboards();
   }
 
+  /** POST /oracle/search/admin/dashboards — шинэ dashboard (admin) */
+  @UseGuards(AdminGuard)
+  @Post("admin/dashboards")
+  async adminCreateDashboard(
+    @Body()
+    body: {
+      name: string;
+      tableName: string;
+      fromClause?: string;
+      cifColumn: string;
+      dateColumn?: string | null;
+      amountColumn?: string | null;
+      enabled?: boolean;
+    },
+  ) {
+    try {
+      return await this.config.createDashboard(body);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        (err as Error).message,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /** PUT /oracle/search/admin/dashboards/:id — dashboard засах (admin) */
+  @UseGuards(AdminGuard)
+  @Put("admin/dashboards/:id")
+  async adminReplaceDashboard(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      name?: string;
+      tableName?: string;
+      fromClause?: string | null;
+      cifColumn?: string;
+      dateColumn?: string | null;
+      amountColumn?: string | null;
+      enabled?: boolean;
+    },
+  ) {
+    try {
+      return await this.config.updateDashboard(Number(id), body);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      throw new HttpException(message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /** DELETE /oracle/search/admin/dashboards/:id — dashboard устгах (admin) */
+  @UseGuards(AdminGuard)
+  @Delete("admin/dashboards/:id")
+  async adminDeleteDashboard(@Param("id") id: string) {
+    try {
+      await this.config.deleteDashboard(Number(id));
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
+    }
+  }
+
   /** PATCH /oracle/search/admin/dashboards/:id — dashboard идэвхтэй эсэхийг өөрчлөх (admin) */
   @UseGuards(AdminGuard)
   @Patch("admin/dashboards/:id")
-  adminUpdateDashboard(
+  async adminUpdateDashboard(
     @Param("id") id: string,
     @Body() body: { enabled: boolean },
   ) {
@@ -65,8 +131,9 @@ export class OracleSearchController {
       );
     }
     try {
-      return this.config.setDashboardEnabled(Number(id), body.enabled);
+      return await this.config.setDashboardEnabled(Number(id), body.enabled);
     } catch (err) {
+      if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
     }
   }
@@ -78,10 +145,74 @@ export class OracleSearchController {
     return this.config.loadChains();
   }
 
+  /** POST /oracle/search/admin/chains — шинэ event chain (admin) */
+  @UseGuards(AdminGuard)
+  @Post("admin/chains")
+  async adminCreateChain(
+    @Body()
+    body: {
+      name: string;
+      description?: string;
+      sourceLabel?: string;
+      targetLabel?: string;
+      sourceIds: number[];
+      targetIds: number[];
+      enabled?: boolean;
+    },
+  ) {
+    try {
+      return await this.config.createChain(body);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        (err as Error).message,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /** PUT /oracle/search/admin/chains/:id — event chain засах (admin) */
+  @UseGuards(AdminGuard)
+  @Put("admin/chains/:id")
+  async adminReplaceChain(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      sourceLabel?: string;
+      targetLabel?: string;
+      sourceIds?: number[];
+      targetIds?: number[];
+      enabled?: boolean;
+    },
+  ) {
+    try {
+      return await this.config.updateChain(Number(id), body);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      throw new HttpException(message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /** DELETE /oracle/search/admin/chains/:id — event chain устгах (admin) */
+  @UseGuards(AdminGuard)
+  @Delete("admin/chains/:id")
+  async adminDeleteChain(@Param("id") id: string) {
+    try {
+      await this.config.deleteChain(Number(id));
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
+    }
+  }
+
   /** PATCH /oracle/search/admin/chains/:id — event chain идэвхтэй эсэхийг өөрчлөх (admin) */
   @UseGuards(AdminGuard)
   @Patch("admin/chains/:id")
-  adminUpdateChain(
+  async adminUpdateChain(
     @Param("id") id: string,
     @Body() body: { enabled: boolean },
   ) {
@@ -92,8 +223,9 @@ export class OracleSearchController {
       );
     }
     try {
-      return this.config.setChainEnabled(Number(id), body.enabled);
+      return await this.config.setChainEnabled(Number(id), body.enabled);
     } catch (err) {
+      if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
     }
   }

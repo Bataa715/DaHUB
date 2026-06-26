@@ -1073,6 +1073,25 @@ export const oracleConfigApi = {
     return res.data;
   },
 
+  createDashboard: async (
+    body: Omit<OracleDashboardConfig, "id">,
+  ): Promise<OracleDashboardConfig> => {
+    const res = await api.post("/oracle/search/admin/dashboards", body);
+    return res.data;
+  },
+
+  updateDashboard: async (
+    id: number,
+    body: Partial<Omit<OracleDashboardConfig, "id">>,
+  ): Promise<OracleDashboardConfig> => {
+    const res = await api.put(`/oracle/search/admin/dashboards/${id}`, body);
+    return res.data;
+  },
+
+  deleteDashboard: async (id: number): Promise<void> => {
+    await api.delete(`/oracle/search/admin/dashboards/${id}`);
+  },
+
   setDashboardEnabled: async (
     id: number,
     enabled: boolean,
@@ -1086,6 +1105,25 @@ export const oracleConfigApi = {
   listChains: async (): Promise<OracleEventChainConfig[]> => {
     const res = await api.get("/oracle/search/admin/chains");
     return res.data;
+  },
+
+  createChain: async (
+    body: Omit<OracleEventChainConfig, "id">,
+  ): Promise<OracleEventChainConfig> => {
+    const res = await api.post("/oracle/search/admin/chains", body);
+    return res.data;
+  },
+
+  updateChain: async (
+    id: number,
+    body: Partial<Omit<OracleEventChainConfig, "id">>,
+  ): Promise<OracleEventChainConfig> => {
+    const res = await api.put(`/oracle/search/admin/chains/${id}`, body);
+    return res.data;
+  },
+
+  deleteChain: async (id: number): Promise<void> => {
+    await api.delete(`/oracle/search/admin/chains/${id}`);
   },
 
   setChainEnabled: async (
