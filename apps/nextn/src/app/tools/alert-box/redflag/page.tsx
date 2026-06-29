@@ -89,9 +89,6 @@ export default function RedFlagPage() {
     };
   };
 
-  const forwardChains = data?.chains.filter((c) => c.id <= 10) || [];
-  const reverseChains = data?.chains.filter((c) => c.id > 10) || [];
-
   const renderChain = (chain: ChainResult) => {
     const s = getSeverity(chain.matchCount);
     const isOpen = expanded[chain.id];
@@ -196,6 +193,72 @@ export default function RedFlagPage() {
     );
   };
 
+  const chainGroups = [
+    {
+      icon: Flag,
+      iconClass: "text-red-400",
+      title: "Спортбет → Бусад Dashboard",
+      range: "1–10",
+      hint: "Спортбет тавиад орлого олсон хүн мөнгө олох гэж хууль бус үйлдэл хийж эхэлсэн.",
+      filter: (c: ChainResult) => c.id >= 1 && c.id <= 10,
+    },
+    {
+      icon: AlertTriangle,
+      iconClass: "text-amber-400",
+      title: "Бусад Dashboard → Спортбет",
+      range: "11–15",
+      hint: "Хууль бусаар олсон мөнгөөрөө Спортбет тоглосон гэсэн үг.",
+      filter: (c: ChainResult) => c.id >= 11 && c.id <= 15,
+    },
+    {
+      icon: Flag,
+      iconClass: "text-purple-400",
+      title: "PRED Нийлүүлэгч↔Ажилтан",
+      range: "16–21",
+      hint: "ML загвараар нийлүүлэгч, ажилтан хоорондын сэжигтэй гүйлгээний event chain.",
+      filter: (c: ChainResult) => c.id >= 16 && c.id <= 21,
+    },
+    {
+      icon: Flag,
+      iconClass: "text-blue-400",
+      title: "PRED Зээлдэгч↔Ажилтан",
+      range: "22–27",
+      hint: "ML загвараар зээлдэгч, ажилтан хоорондын сэжигтэй гүйлгээний event chain.",
+      filter: (c: ChainResult) => c.id >= 22 && c.id <= 27,
+    },
+  ] as const;
+
+  const renderChainSection = (
+    group: (typeof chainGroups)[number],
+    chains: ChainResult[],
+  ) => {
+    if (chains.length === 0) return null;
+    const Icon = group.icon;
+    return (
+      <div key={group.range}>
+        <div className="flex items-center gap-2 mb-3">
+          <Icon size={14} className={group.iconClass} />
+          <h2 className="text-[13px] font-bold text-txt">{group.title}</h2>
+          <span className="text-[10px] text-txt-dim">
+            (Chain {group.range}, {chains.length})
+          </span>
+        </div>
+        <p className="text-[10px] text-txt-muted mb-3">{group.hint}</p>
+        <div className="space-y-2">{chains.map(renderChain)}</div>
+      </div>
+    );
+  };
+
+  const groupedChains = chainGroups.map((g) => ({
+    group: g,
+    chains: data?.chains.filter(g.filter) ?? [],
+  }));
+
+  const otherChains =
+    data?.chains.filter(
+      (c) => !chainGroups.some((g) => g.filter(c)),
+    ) ?? [];
+
   return (
     <div className="space-y-5">
       <ToolPageHeader
@@ -259,34 +322,22 @@ export default function RedFlagPage() {
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Flag size={14} className="text-red-400" />
-                <h2 className="text-[13px] font-bold text-txt">
-                  Спортбет → Бусад Dashboard
-                </h2>
-                <span className="text-[10px] text-txt-dim">(Chain 1–10)</span>
-              </div>
-              <p className="text-[10px] text-txt-muted mb-3">
-                Спортбет тавиад орлого олсон хүн мөнгө олох гэж хууль бус үйлдэл
-                хийж эхэлсэн.
-              </p>
-              <div className="space-y-2">{forwardChains.map(renderChain)}</div>
-            </div>
+            {groupedChains.map(({ group, chains }) =>
+              renderChainSection(group, chains),
+            )}
 
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={14} className="text-amber-400" />
-                <h2 className="text-[13px] font-bold text-txt">
-                  Бусад Dashboard → Спортбет
-                </h2>
-                <span className="text-[10px] text-txt-dim">(Chain 11–15)</span>
+            {otherChains.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Flag size={14} className="text-txt-dim" />
+                  <h2 className="text-[13px] font-bold text-txt">Бусад</h2>
+                  <span className="text-[10px] text-txt-dim">
+                    ({otherChains.length})
+                  </span>
+                </div>
+                <div className="space-y-2">{otherChains.map(renderChain)}</div>
               </div>
-              <p className="text-[10px] text-txt-muted mb-3">
-                Хууль бусаар олсон мөнгөөрөө Спортбет тоглосон гэсэн үг.
-              </p>
-              <div className="space-y-2">{reverseChains.map(renderChain)}</div>
-            </div>
+            )}
           </div>
         )}
       </div>

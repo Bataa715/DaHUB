@@ -89,6 +89,11 @@ export class OracleConfigService implements OnModuleInit {
     return this.chainsCache.filter((c) => c.enabled);
   }
 
+  /** ClickHouse-оос cache дахин ачаална (SQL insert хийсний дараа restart шаардлагагүй) */
+  async reloadFromClickHouse(): Promise<void> {
+    await this.refreshCache();
+  }
+
   // ─── Dashboard CRUD ──────────────────────────────────────────────────────
 
   async createDashboard(

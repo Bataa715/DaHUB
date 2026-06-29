@@ -49,7 +49,8 @@ export class OracleSearchController {
   /** GET /oracle/search/admin/dashboards — бүх dashboard-ийн бүрэн тохиргоо (admin) */
   @UseGuards(AdminGuard)
   @Get("admin/dashboards")
-  adminGetDashboards() {
+  async adminGetDashboards() {
+    await this.config.reloadFromClickHouse();
     return this.config.loadDashboards();
   }
 
@@ -141,7 +142,8 @@ export class OracleSearchController {
   /** GET /oracle/search/admin/chains — бүх event chain-ийн бүрэн тохиргоо (admin) */
   @UseGuards(AdminGuard)
   @Get("admin/chains")
-  adminGetChains() {
+  async adminGetChains() {
+    await this.config.reloadFromClickHouse();
     return this.config.loadChains();
   }
 
@@ -617,6 +619,8 @@ export class OracleSearchController {
   @Get("redflag")
   async getRedFlags() {
     this.requireOracle();
+
+    await this.config.reloadFromClickHouse();
 
     const dashboards = this.config.getEnabledDashboards();
     const cifSets: Record<number, Set<string>> = {};
