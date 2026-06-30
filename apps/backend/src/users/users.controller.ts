@@ -18,7 +18,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
-import { VALID_TOOLS, VALID_TOOLS_SET } from "../common/constants/tools";
+import { VALID_TOOLS_SET } from "../common/constants/tools";
 
 @Controller("users")
 export class UsersController {

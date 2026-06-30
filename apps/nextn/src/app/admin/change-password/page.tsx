@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import axios from "axios";
@@ -18,6 +20,8 @@ export default function AdminChangePasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { logout } = useAuth();
+  const router = useRouter();
 
   const requirements = [
     { label: "Хамгийн багадаа 8 тэмдэгт", ok: newPassword.length >= 8 },
@@ -58,10 +62,12 @@ export default function AdminChangePasswordPage() {
     setIsLoading(true);
     try {
       await api.post("/auth/change-password", { currentPassword, newPassword });
-      toast({ title: "Амжилттай", description: "Нууц үг амжилттай солигдлоо" });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      await logout();
+      toast({
+        title: "Амжилттай",
+        description: "Нууц үг солигдлоо. Дахин нэвтэрнэ үү.",
+      });
+      router.replace("/admin/login");
     } catch (error) {
       let message = "Нууц үг солихоор алдаа гарлаа";
       if (axios.isAxiosError(error))

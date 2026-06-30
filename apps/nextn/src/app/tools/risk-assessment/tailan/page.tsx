@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
   riskApi,
   getApiErrorMessage,
@@ -80,14 +80,23 @@ export default function RiskReportsPage() {
 
   // Selected Primary Report
   const [selectedReportId, setSelectedReportId] = useState<string>("");
+  const selectedReportIdRef = useRef(selectedReportId);
+  selectedReportIdRef.current = selectedReportId;
   const [reportRows, setReportRows] = useState<RiskCurrentRow[]>([]);
   const [reportManualMap, setReportManualMap] = useState<any>({});
+  const [reportJudgementComments, setReportJudgementComments] = useState<
+    Record<string, string>
+  >({});
   const [loadingReport, setLoadingReport] = useState(false);
 
   // Selected Comparison Report
   const [comparisonReportId, setComparisonReportId] = useState<string>("");
+  const comparisonReportIdRef = useRef(comparisonReportId);
+  comparisonReportIdRef.current = comparisonReportId;
   const [comparisonRows, setComparisonRows] = useState<RiskCurrentRow[]>([]);
   const [comparisonManualMap, setComparisonManualMap] = useState<any>({});
+  const [comparisonJudgementComments, setComparisonJudgementComments] =
+    useState<Record<string, string>>({});
   const [loadingComparison, setLoadingComparison] = useState(false);
 
   const [riskFilter, setRiskFilter] = useState<
@@ -130,17 +139,24 @@ export default function RiskReportsPage() {
   useEffect(() => {
     if (!selectedReportId) {
       setReportRows([]);
+      setReportManualMap({});
+      setReportJudgementComments({});
       return;
     }
+    const requestId = selectedReportId;
+    setReportRows([]);
+    setReportManualMap({});
+    setReportJudgementComments({});
     let cancelled = false;
     setLoadingReport(true);
     setErrorMsg(null);
     riskApi
-      .getHistory(selectedReportId)
+      .getHistory(requestId)
       .then((res) => {
-        if (cancelled) return;
+        if (cancelled || requestId !== selectedReportIdRef.current) return;
         setReportRows(res.rows || []);
         setReportManualMap(res.manualMap || {});
+        setReportJudgementComments(res.judgementComments || {});
       })
       .catch((e) => {
         if (cancelled) return;
@@ -159,16 +175,22 @@ export default function RiskReportsPage() {
     if (!comparisonReportId) {
       setComparisonRows([]);
       setComparisonManualMap({});
+      setComparisonJudgementComments({});
       return;
     }
+    const requestId = comparisonReportId;
+    setComparisonRows([]);
+    setComparisonManualMap({});
+    setComparisonJudgementComments({});
     let cancelled = false;
     setLoadingComparison(true);
     riskApi
-      .getHistory(comparisonReportId)
+      .getHistory(requestId)
       .then((res) => {
-        if (cancelled) return;
+        if (cancelled || requestId !== comparisonReportIdRef.current) return;
         setComparisonRows(res.rows || []);
         setComparisonManualMap(res.manualMap || {});
+        setComparisonJudgementComments(res.judgementComments || {});
       })
       .catch((e) => console.error("getHistory амжилтгүй:", e))
       .finally(() => {
@@ -226,7 +248,7 @@ export default function RiskReportsPage() {
         title="Эрсдэлийн Тайлан"
         rightContent={
           <div className="flex items-center gap-2">
-            {selectedReportId && primaryScoredRows.length > 0 && (
+            {selectedReportId && !loadingReport && primaryScoredRows.length > 0 && (
               <button
                 onClick={() => setCsvModalOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
@@ -353,6 +375,7 @@ export default function RiskReportsPage() {
             pDate={selectedReportInfo?.pDate}
             readOnly={true}
             initialManualMap={reportManualMap}
+            externalJudgementComments={reportJudgementComments}
             previousScoredRows={comparisonScoredRows}
             previousHistoryName={comparisonReportInfo?.name ?? null}
             previousManualMap={comparisonManualMap}
@@ -372,6 +395,7 @@ export default function RiskReportsPage() {
         onClose={() => setCsvModalOpen(false)}
         primaryRows={reportRows}
         primaryManualMap={reportManualMap}
+        primaryJudgementComments={reportJudgementComments}
         primaryName={selectedReportInfo?.name ?? ""}
         primaryDate={selectedReportInfo?.pDate ?? ""}
         prevRows={comparisonRows}

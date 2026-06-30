@@ -13,8 +13,11 @@ import {
 import { RiskAssessmentService } from "./risk-assessment.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
+import { ToolGuard } from "../auth/guards/tool.guard";
+import { RequireTools } from "../auth/guards/require-tools.decorator";
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ToolGuard)
+@RequireTools("risk_assessment")
 @Controller("risk-assessment")
 export class RiskAssessmentController {
   constructor(private service: RiskAssessmentService) {}
@@ -47,8 +50,8 @@ export class RiskAssessmentController {
 
   @UseGuards(AdminGuard)
   @Delete("history/:id")
-  async deleteHistory(@Param("id") id: string) {
-    await this.service.deleteHistory(id);
+  async deleteHistory(@Param("id") id: string, @Request() req) {
+    await this.service.deleteHistory(id, req.user.id);
     return { ok: true };
   }
 
@@ -96,8 +99,8 @@ export class RiskAssessmentController {
   }
 
   @Delete("riskbranch/lock/:date")
-  async unlockDate(@Param("date") date: string) {
-    await this.service.unlockDate(date);
+  async unlockDate(@Param("date") date: string, @Request() req) {
+    await this.service.unlockDate(date, req.user.id);
     return { ok: true };
   }
 
@@ -121,6 +124,7 @@ export class RiskAssessmentController {
       branchName: string;
       fetchedDate: string;
       score: number;
+      comment?: string;
     },
     @Request() req,
   ) {
@@ -130,12 +134,22 @@ export class RiskAssessmentController {
 
   @Post("history/from-riskbranch")
   async saveHistoryFromRiskbranch(
-    @Body() body: { fetchedDate: string; name: string },
+    @Body()
+    body: {
+      fetchedDate: string;
+      name: string;
+      rows?: unknown[];
+      manualMap?: Record<string, Record<string, number>>;
+      judgementComments?: Record<string, string>;
+    },
     @Request() req,
   ) {
     return this.service.saveHistoryFromRiskbranch({
       fetchedDate: body.fetchedDate,
       name: body.name,
+      rows: body.rows,
+      manualMap: body.manualMap,
+      judgementComments: body.judgementComments,
       userId: req.user.id,
       userName: req.user.name ?? req.user.username ?? "",
     });
@@ -147,6 +161,7 @@ export class RiskAssessmentController {
     return this.service.getBranchScores(date);
   }
 
+  @UseGuards(AdminGuard)
   @Post("branch-scores")
   async upsertBranchScores(
     @Body()
@@ -167,8 +182,13 @@ export class RiskAssessmentController {
         level: string;
       }[];
     },
+    @Request() req,
   ) {
-    await this.service.upsertBranchScores(body.fetchDate, body.scores);
+    await this.service.upsertBranchScores(
+      body.fetchDate,
+      body.scores,
+      req.user.id,
+    );
     return { ok: true };
   }
 }

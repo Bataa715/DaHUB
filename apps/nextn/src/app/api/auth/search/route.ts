@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q");
-  if (!q || q.length < 2) {
+  if (!q || q.length < 3) {
     return NextResponse.json({ users: [] });
   }
 

@@ -44,7 +44,10 @@ export interface UserCheckResult {
   hasPassword: boolean;
   userId: string | null;
   isActive?: boolean;
+  /** Бүртгэлийн claimToken — зөвхөн POST /auth/register хариунд */
   claimToken?: string;
+  /** PENDING бүртгэл — нууц үг тохируулаагүй (check-user-ээр token өгөхгүй) */
+  needsPasswordSetup?: boolean;
 }
 
 export interface PasswordChecks {

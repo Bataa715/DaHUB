@@ -205,7 +205,8 @@ export class AuthController {
     );
   }
 
-  @SkipThrottle()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Get("search")
   async searchUsers(@Query("q") query: string) {
     return this.authService.searchUsersByUserId(query, false);

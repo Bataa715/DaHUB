@@ -51,6 +51,8 @@ const PALETTE = [
   "#ca8a04",
 ];
 
+const MAX_COMPARE_BRANCHES = 10;
+
 type LoadedEntry = { rows: RiskCurrentRow[] };
 type Mode = "total" | "score" | "data";
 type ChartType = "line" | "bar";
@@ -375,7 +377,7 @@ export default function StatPanel({
   const showIndicatorPicker = mode === "score" || mode === "data";
 
   const yDomain = useMemo<[number, number]>(() => {
-    if (!isDataMode) return [0, 5.2];
+    if (!isDataMode) return [0, 10.2];
     const vals = chartData.flatMap((d) =>
       activeBranchIds
         .map((id) => (typeof d[id] === "number" ? (d[id] as number) : null))
@@ -603,11 +605,11 @@ export default function StatPanel({
         </div>
       </div>
 
-      {/* Branch filter — dropdown, max 5 */}
+      {/* Branch filter — dropdown */}
       {allBranches.length > 0 && !fetching && (
         <div className="px-6 py-2 border-b border-border bg-muted/10 shrink-0 flex flex-wrap gap-2 items-center">
           <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mr-1">
-            Салбар (макс 5):
+            Салбар (макс {MAX_COMPARE_BRANCHES}):
           </span>
           <div className="relative">
             <select
@@ -618,7 +620,8 @@ export default function StatPanel({
                 const opts = Array.from(e.target.selectedOptions).map(
                   (o) => o.value,
                 );
-                if (opts.length <= 5) setSelectedBranches(new Set(opts));
+                if (opts.length <= MAX_COMPARE_BRANCHES)
+                  setSelectedBranches(new Set(opts));
               }}
               className="hidden"
             />
@@ -650,7 +653,8 @@ export default function StatPanel({
                 {allBranches.map((b, i) => {
                   const checked = selectedBranches.has(b.id);
                   const color = PALETTE[i % PALETTE.length];
-                  const atMax = selectedBranches.size >= 5 && !checked;
+                  const atMax =
+                    selectedBranches.size >= MAX_COMPARE_BRANCHES && !checked;
                   return (
                     <button
                       key={b.id}
@@ -660,7 +664,7 @@ export default function StatPanel({
                         setSelectedBranches((prev) => {
                           const n = new Set(prev);
                           if (n.has(b.id)) n.delete(b.id);
-                          else if (n.size < 5) n.add(b.id);
+                          else if (n.size < MAX_COMPARE_BRANCHES) n.add(b.id);
                           return n;
                         })
                       }
@@ -782,7 +786,7 @@ export default function StatPanel({
                   />
                   <YAxis
                     domain={yDomain}
-                    ticks={isDataMode ? undefined : [0, 1, 2, 3, 4, 5]}
+                    ticks={isDataMode ? undefined : [0, 2, 4, 6, 8, 10]}
                     tickFormatter={isDataMode ? (v) => `${v}%` : undefined}
                     tick={{
                       fontSize: 11,
@@ -884,7 +888,7 @@ export default function StatPanel({
                   />
                   <YAxis
                     domain={yDomain}
-                    ticks={isDataMode ? undefined : [0, 1, 2, 3, 4, 5]}
+                    ticks={isDataMode ? undefined : [0, 2, 4, 6, 8, 10]}
                     tickFormatter={isDataMode ? (v) => `${v}%` : undefined}
                     tick={{
                       fontSize: 11,

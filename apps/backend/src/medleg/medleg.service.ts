@@ -150,8 +150,10 @@ export class MedlegService {
   async getMedlegImage(
     id: string,
   ): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    // Дотоод мэдлэг — нийтлэгдсэн нийтлэлийн зургийг бүх нэвтэрсэн ажилтан харна.
     const rows = await this.clickhouse.query<any>(
-      `SELECT imageUrl, imageMime FROM medleg WHERE id = {id:String} LIMIT 1`,
+      `SELECT imageUrl, imageMime FROM medleg
+       WHERE id = {id:String} AND isPublished = 1 LIMIT 1`,
       { id },
     );
     if (!rows || rows.length === 0 || !rows[0].imageUrl) return null;
@@ -196,13 +198,13 @@ export class MedlegService {
 
   async getReactions(newsId: string, userId: string) {
     const rows = await this.clickhouse.query<any>(
-      `SELECT emoji, count() as cnt FROM medleg_reactions
+      `SELECT emoji, count() as cnt FROM medleg_reactions FINAL
        WHERE newsId = {newsId:String}
        GROUP BY emoji`,
       { newsId },
     );
     const myRow = await this.clickhouse.query<any>(
-      `SELECT emoji FROM medleg_reactions
+      `SELECT emoji FROM medleg_reactions FINAL
        WHERE newsId = {newsId:String} AND userId = {userId:String}
        LIMIT 1`,
       { newsId, userId },

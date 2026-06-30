@@ -11,6 +11,7 @@
     "start:prod": "node dist/main",
     "db:seed": "ts-node scripts/seed-clickhouse.ts",
     "db:seed-test": "ts-node scripts/seed-test.ts",
+    "db:seed-riskbranch": "ts-node --transpile-only scripts/seed-riskbranch-test.ts",
     "db:fix-dept-ids": "ts-node scripts/fix-dept-ids.ts"
   },
   "dependencies": {

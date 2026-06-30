@@ -6,6 +6,8 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./jwt.strategy";
 import { AuditLogModule } from "../audit/audit-log.module";
+import { ToolGuard } from "./guards/tool.guard";
+import { AdminGuard } from "./guards/admin.guard";
 
 @Module({
   imports: [
@@ -21,7 +23,7 @@ import { AuditLogModule } from "../audit/audit-log.module";
     AuditLogModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, ToolGuard, AdminGuard],
+  exports: [AuthService, ToolGuard, AdminGuard],
 })
 export class AuthModule {}

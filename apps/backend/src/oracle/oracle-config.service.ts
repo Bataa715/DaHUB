@@ -54,12 +54,28 @@ type ChainRow = {
 };
 
 const IDENT_RE = /^[A-Z_][A-Z0-9_.]*$/i;
+const FROM_CLAUSE_SQL_KEYWORDS = new Set([
+  "JOIN",
+  "INNER",
+  "LEFT",
+  "RIGHT",
+  "FULL",
+  "OUTER",
+  "CROSS",
+  "ON",
+  "AND",
+  "OR",
+  "AS",
+  "WHERE",
+]);
+const CACHE_TTL_MS = 30_000;
 
 @Injectable()
 export class OracleConfigService implements OnModuleInit {
   private readonly logger = new Logger(OracleConfigService.name);
   private dashboardsCache: OracleDashboardConfig[] = [];
   private chainsCache: EventChainConfig[] = [];
+  private cacheLoadedAt = 0;
 
   constructor(private readonly clickhouse: ClickHouseService) {}
 
@@ -89,8 +105,9 @@ export class OracleConfigService implements OnModuleInit {
     return this.chainsCache.filter((c) => c.enabled);
   }
 
-  /** ClickHouse-оос cache дахин ачаална (SQL insert хийсний дараа restart шаардлагагүй) */
-  async reloadFromClickHouse(): Promise<void> {
+  /** ClickHouse-оос cache дахин ачаална. force=false бол TTL дотор дахин уншихгүй. */
+  async reloadFromClickHouse(force = false): Promise<void> {
+    if (!force && Date.now() - this.cacheLoadedAt < CACHE_TTL_MS) return;
     await this.refreshCache();
   }
 
@@ -110,6 +127,7 @@ export class OracleConfigService implements OnModuleInit {
     this.validateDashboardFields({
       name: dto.name,
       tableName: dto.tableName,
+      fromClause: dto.fromClause,
       cifColumn: dto.cifColumn,
       dateColumn: dto.dateColumn ?? null,
       amountColumn: dto.amountColumn ?? null,
@@ -251,6 +269,30 @@ export class OracleConfigService implements OnModuleInit {
     }
   }
 
+  private validateFromClause(clause: string) {
+    const trimmed = clause.trim();
+    if (!trimmed) return;
+
+    if (/['";]|--|\/\*|\*\/|@|\(|\)|,/.test(trimmed)) {
+      throw new BadRequestException(
+        "fromClause-д зөвхөн хүснэгт, JOIN, ON илэрхийлэл зөвшөөрнө",
+      );
+    }
+    if (
+      /\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|MERGE|EXEC|EXECUTE|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\b/i.test(
+        trimmed,
+      )
+    ) {
+      throw new BadRequestException("fromClause-д SQL команд зөвшөөрөхгүй");
+    }
+
+    const tokens = trimmed.match(/[A-Za-z_][A-Za-z0-9_.]*/g) ?? [];
+    for (const token of tokens) {
+      if (FROM_CLAUSE_SQL_KEYWORDS.has(token.toUpperCase())) continue;
+      this.validateIdentifier("fromClause", token);
+    }
+  }
+
   // ─── Private ───────────────────────────────────────────────────────────────
 
   private async ensureTables(): Promise<void> {
@@ -294,6 +336,7 @@ export class OracleConfigService implements OnModuleInit {
   private async refreshCache(): Promise<void> {
     this.dashboardsCache = await this.queryDashboards();
     this.chainsCache = await this.queryChains();
+    this.cacheLoadedAt = Date.now();
   }
 
   private async queryDashboards(): Promise<OracleDashboardConfig[]> {
@@ -408,7 +451,7 @@ export class OracleConfigService implements OnModuleInit {
   private validateDashboardFields(
     d: Pick<
       OracleDashboardConfig,
-      "name" | "tableName" | "cifColumn" | "dateColumn" | "amountColumn"
+      "name" | "tableName" | "fromClause" | "cifColumn" | "dateColumn" | "amountColumn"
     >,
   ) {
     if (!d.name?.trim()) {
@@ -418,6 +461,9 @@ export class OracleConfigService implements OnModuleInit {
       throw new BadRequestException("Хүснэгтийн нэр шаардлагатай");
     }
     this.validateIdentifier("tableName", d.tableName.trim());
+    if (d.fromClause?.trim()) {
+      this.validateFromClause(d.fromClause.trim());
+    }
     this.validateIdentifier("cifColumn", d.cifColumn.trim());
     if (d.dateColumn?.trim()) {
       this.validateIdentifier("dateColumn", d.dateColumn.trim());

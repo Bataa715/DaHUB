@@ -291,6 +291,15 @@ export default function LoginPage() {
         });
         return;
       }
+      if (!data.hasPassword && data.needsPasswordSetup) {
+        toast({
+          title: "Нууц үг тохируулаагүй",
+          description:
+            "Бүртгэлийн үед нууц үгээ тохируулаагүй бол админд хандана уу.",
+          variant: "destructive",
+        });
+        return;
+      }
       setCheckedUser(data);
       setLoginStep(data.hasPassword ? "password" : "createPassword");
     } catch (error: unknown) {

@@ -6,12 +6,7 @@ import { jwtVerify } from "jose";
 const PUBLIC_ROUTES = ["/login", "/admin/login"];
 
 // Admin routes that additionally require isSuperAdmin
-const SUPERADMIN_ROUTES = [
-  "/admin/admins",
-  "/admin/reports",
-  "/admin/db",
-  "/admin/system",
-];
+const SUPERADMIN_ROUTES = ["/admin/admins", "/admin/reports"];
 
 // Tool routes → required allowedTools id (any one is enough). isAdmin always passes.
 const TOOL_GUARDS: Record<string, string[]> = {
@@ -22,7 +17,7 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/tailan": ["tailan", "tailan_dept_head"],
   "/tools/sanamsargui-tuuwer": ["sanamsargui-tuuwer"],
   "/tools/pivot": ["pivot"],
-  "/tools/report": ["report"],
+  "/tools/risk-assessment": ["risk_assessment"],
   "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],
   "/tools/reports": ["reports"],

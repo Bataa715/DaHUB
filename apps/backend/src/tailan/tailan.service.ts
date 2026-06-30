@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
+import { AuditLogService } from "../audit/audit-log.service";
 import { SaveTailanDto } from "./dto/tailan.dto";
 import {
   Document,
@@ -86,7 +87,27 @@ const ROMAN_NUMS = [
 
 @Injectable()
 export class TailanService {
-  constructor(private readonly clickhouse: ClickHouseService) {}
+  constructor(
+    private readonly clickhouse: ClickHouseService,
+    private readonly auditLog: AuditLogService,
+  ) {}
+
+  private auditMutation(
+    userId: string,
+    action: string,
+    resourceId?: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    void this.auditLog.log({
+      userId,
+      action,
+      resource: "tailan",
+      resourceId: resourceId ?? "",
+      method: action,
+      status: "success",
+      metadata,
+    });
+  }
 
   isDeptHead(user: UserPayload): boolean {
     return (
@@ -99,7 +120,7 @@ export class TailanService {
   // ─── Save / upsert draft ───────────────────────────────────────────────────
   async saveDraft(user: UserPayload, dto: SaveTailanDto) {
     const existing = await this.clickhouse.query<{ id: string }>(
-      `SELECT id FROM tailan_reports
+      `SELECT id FROM tailan_reports FINAL
        WHERE userId = {userId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
        ORDER BY updatedAt DESC LIMIT 1`,
       { userId: user.id, year: dto.year, quarter: dto.quarter },
@@ -139,6 +160,13 @@ export class TailanService {
           existing.length > 0 ? (existing[0]["createdAt"] ?? now) : now,
       },
     ]);
+
+    if (dto.status === "submitted") {
+      this.auditMutation(user.id, "tailan_submit", id, {
+        year: dto.year,
+        quarter: dto.quarter,
+      });
+    }
 
     return { id, message: "Амжилттай хадгаллаа" };
   }
@@ -227,6 +255,11 @@ export class TailanService {
     await this.clickhouse.insert("tailan_reports", [
       { ...report, status: "submitted", submittedAt: now, updatedAt: now },
     ]);
+
+    this.auditMutation(userId, "tailan_submit", String(report.id), {
+      year,
+      quarter,
+    });
 
     return { message: "Тайлан илгээгдлээ" };
   }
@@ -373,6 +406,7 @@ export class TailanService {
         uploadedAt: now,
       },
     ]);
+    this.auditMutation(userId, "tailan_image_upload", id, { year, quarter });
     return { id, filename, mimeType };
   }
 
@@ -388,27 +422,46 @@ export class TailanService {
   }
 
   // ─── Get dept image list ───────────────────────────────────────────────────
-  async getDeptImages(departmentId: string, year: number, quarter: number) {
+  async getDeptImages(user: UserPayload, year: number, quarter: number) {
+    if (
+      !this.isDeptHead(user) &&
+      !user.isAdmin &&
+      !user.isSuperAdmin
+    ) {
+      throw new ForbiddenException("Эрх хүрэхгүй");
+    }
     await this.ensureImagesTable();
     return this.clickhouse.query<any>(
       `SELECT id, userId, filename, mimeType, uploadedAt FROM tailan_images
        WHERE departmentId = {departmentId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
        ORDER BY uploadedAt ASC`,
-      { departmentId, year, quarter },
+      { departmentId: user.departmentId ?? "", year, quarter },
     );
   }
 
   // ─── Get image raw data ────────────────────────────────────────────────────
-  async getImageData(id: string, _userId: string) {
+  async getImageData(id: string, user: UserPayload) {
     await this.ensureImagesTable();
     const rows = await this.clickhouse.query<any>(
-      `SELECT mimeType, imageData FROM tailan_images WHERE id = {id:String} LIMIT 1`,
+      `SELECT userId, departmentId, mimeType, imageData FROM tailan_images WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     if (!rows.length) throw new NotFoundException("Зураг олдсонгүй");
+
+    const img = rows[0];
+    const isOwner = String(img.userId) === user.id;
+    const isDeptHeadAccess =
+      this.isDeptHead(user) &&
+      String(img.departmentId ?? "") === String(user.departmentId ?? "");
+    const isAdmin = user.isAdmin || user.isSuperAdmin;
+
+    if (!isOwner && !isDeptHeadAccess && !isAdmin) {
+      throw new ForbiddenException("Эрх хүрэхгүй");
+    }
+
     return {
-      mimeType: rows[0].mimeType,
-      buffer: Buffer.from(rows[0].imageData, "hex"),
+      mimeType: img.mimeType,
+      buffer: Buffer.from(img.imageData, "hex"),
     };
   }
 
@@ -419,6 +472,7 @@ export class TailanService {
       `ALTER TABLE tailan_images DELETE WHERE id = {id:String} AND userId = {userId:String}`,
       { id, userId },
     );
+    this.auditMutation(userId, "tailan_image_delete", id);
     return { message: "Устгагдлаа" };
   }
 

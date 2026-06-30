@@ -2,10 +2,12 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  BadRequestException,
   OnModuleInit,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
+import { AuditLogService } from "../audit/audit-log.service";
 
 export interface RiskCurrentRow {
   rowKey: string;
@@ -47,29 +49,33 @@ export interface RiskHistoryEntry {
 export class RiskAssessmentService implements OnModuleInit {
   private readonly logger = new Logger(RiskAssessmentService.name);
 
-  constructor(private clickhouse: ClickHouseService) {}
+  constructor(
+    private clickhouse: ClickHouseService,
+    private readonly auditLog: AuditLogService,
+  ) {}
+
+  private auditMutation(
+    userId: string,
+    action: string,
+    resourceId?: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    void this.auditLog.log({
+      userId,
+      action,
+      resource: "risk_assessment",
+      resourceId: resourceId ?? "",
+      method: action,
+      status: "success",
+      metadata,
+    });
+  }
 
   async onModuleInit() {
     await this.ensureTables();
   }
 
   private async ensureTables() {
-    for (const t of [
-      "risk_indicators",
-      "risk_scores",
-      "risk_audit_log",
-      "risk_branch_riskass_runs",
-      "risk_branch_riskass_rows",
-      "risk_assessment_snapshots",
-    ]) {
-      await this.clickhouse.exec(`DROP TABLE IF EXISTS ${t}`).catch(() => {});
-    }
-
-    // risk_assessment_current нь хуучин — risk_manual_indicators болгон нэгтгэв
-    await this.clickhouse
-      .exec(`DROP TABLE IF EXISTS risk_assessment_current`)
-      .catch(() => {});
-
     await this.clickhouse.exec(`
       CREATE TABLE IF NOT EXISTS risk_manual_indicators (
         branchId    String,
@@ -176,11 +182,23 @@ export class RiskAssessmentService implements OnModuleInit {
         branchName String DEFAULT '',
         fetchedDate String,
         score      Float64 DEFAULT 0,
+        comment    String DEFAULT '',
         updatedBy  String DEFAULT '',
         updatedAt  DateTime DEFAULT now()
       ) ENGINE = ReplacingMergeTree(updatedAt)
         ORDER BY (fetchedDate, branchId)
     `);
+    await this.clickhouse
+      .exec(
+        `ALTER TABLE risk_judgement ADD COLUMN IF NOT EXISTS comment String DEFAULT ''`,
+      )
+      .catch(() => {});
+
+    await this.clickhouse
+      .exec(
+        `ALTER TABLE risk_assessment_history ADD COLUMN IF NOT EXISTS judgementCommentsJson String DEFAULT '{}'`,
+      )
+      .catch(() => {});
 
     // ETL-аас тооцоолсон салбарын нийт оноо
     await this.clickhouse.exec(`
@@ -230,6 +248,11 @@ export class RiskAssessmentService implements OnModuleInit {
   }): Promise<void> {
     const { branchId, indicatorId, value, userId } = args;
     if (!branchId || !indicatorId) return;
+    if (indicatorId === "j-001" || indicatorId.startsWith("j-")) {
+      throw new BadRequestException(
+        "Аудиторын үнэлэмжийг PUT /risk-assessment/judgement ашиглан хадгална",
+      );
+    }
     if (!value || value <= 0) {
       await this.clickhouse.exec(
         `ALTER TABLE risk_manual_indicators DELETE WHERE branchId = {b:String} AND indicatorId = {i:String}`,
@@ -246,6 +269,10 @@ export class RiskAssessmentService implements OnModuleInit {
         updatedAt: nowCH(),
       },
     ]);
+    this.auditMutation(userId, "risk_manual_indicator_upsert", branchId, {
+      indicatorId,
+      value,
+    });
   }
 
   async listHistory(): Promise<RiskHistoryEntry[]> {
@@ -265,10 +292,12 @@ export class RiskAssessmentService implements OnModuleInit {
     entry: RiskHistoryEntry;
     rows: any[];
     manualMap: Record<string, Record<string, number>>;
+    judgementComments: Record<string, string>;
   }> {
     const found = await this.clickhouse.query<any>(
       `SELECT id, name, pDate, pDateBeg, branchCount, oracleFetchedAt,
-              createdBy, createdByName, toString(createdAt) AS createdAt, rowsJson, manualJson
+              createdBy, createdByName, toString(createdAt) AS createdAt,
+              rowsJson, manualJson, judgementCommentsJson
        FROM risk_assessment_history FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
@@ -276,11 +305,15 @@ export class RiskAssessmentService implements OnModuleInit {
     const r = found[0];
     let rows: any[] = [];
     let manualMap: Record<string, Record<string, number>> = {};
+    let judgementComments: Record<string, string> = {};
     try {
       rows = JSON.parse(r.rowsJson || "[]");
     } catch {}
     try {
       manualMap = JSON.parse(r.manualJson || "{}");
+    } catch {}
+    try {
+      judgementComments = JSON.parse(r.judgementCommentsJson || "{}");
     } catch {}
     return {
       entry: {
@@ -296,14 +329,16 @@ export class RiskAssessmentService implements OnModuleInit {
       },
       rows,
       manualMap,
+      judgementComments,
     };
   }
 
-  async deleteHistory(id: string): Promise<void> {
+  async deleteHistory(id: string, userId: string): Promise<void> {
     await this.clickhouse.exec(
       `ALTER TABLE risk_assessment_history DELETE WHERE id = {id:String}`,
       { id },
     );
+    this.auditMutation(userId, "risk_history_delete", id);
   }
 
   // ── Indicator holds ──────────────────────────────────────────────────────
@@ -339,9 +374,11 @@ export class RiskAssessmentService implements OnModuleInit {
         updatedBy,
       },
     );
+    this.auditMutation(updatedBy, "risk_indicator_hold", indicatorId, {
+      period,
+      isHeld,
+    });
   }
-
-  // ── Realtime (Airflow-с Oracle → riskbranch) ──────────────────────────
 
   /** riskbranch дахь өвөрмөц fetchedDate жагсаалт буцаана (YYYY-MM-DD форматаар) */
   async listRiskbranchDates(): Promise<string[]> {
@@ -483,16 +520,18 @@ export class RiskAssessmentService implements OnModuleInit {
       },
     ]);
     this.logger.log(`lockDate: "${d}" by ${userId}`);
+    this.auditMutation(userId, "risk_lock_date", d);
   }
 
   /** Тухайн огноог unlock хийх */
-  async unlockDate(fetchedDate: string): Promise<void> {
+  async unlockDate(fetchedDate: string, userId: string): Promise<void> {
     const d = String(fetchedDate).slice(0, 10);
     await this.clickhouse.exec(
       `ALTER TABLE riskbranch_locks DELETE WHERE LEFT(fetchedDate, 10) = {d:String}`,
       { d },
     );
     this.logger.log(`unlockDate: "${d}"`);
+    this.auditMutation(userId, "risk_unlock_date", d);
   }
 
   /** Одоо lock хийгдсэн огноог авах (байхгүй бол null) */
@@ -512,13 +551,14 @@ export class RiskAssessmentService implements OnModuleInit {
       branchName: string;
       fetchedDate: string;
       score: number;
+      comment: string;
     }[]
   > {
     const d = fetchedDate ? String(fetchedDate).slice(0, 10) : undefined;
     const rows = await this.clickhouse.query<any>(
       d
-        ? `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE LEFT(fetchedDate, 10) = {d:String} AND score > 0 ORDER BY branchId`
-        : `SELECT branchId, branchName, fetchedDate, score FROM risk_judgement FINAL WHERE score > 0 ORDER BY fetchedDate DESC, branchId`,
+        ? `SELECT branchId, branchName, fetchedDate, score, comment FROM risk_judgement FINAL WHERE LEFT(fetchedDate, 10) = {d:String} AND score > 0 ORDER BY branchId`
+        : `SELECT branchId, branchName, fetchedDate, score, comment FROM risk_judgement FINAL WHERE score > 0 ORDER BY fetchedDate DESC, branchId`,
       d ? { d } : {},
     );
     return rows.map((r: any) => ({
@@ -526,6 +566,7 @@ export class RiskAssessmentService implements OnModuleInit {
       branchName: String(r.branchName ?? ""),
       fetchedDate: String(r.fetchedDate),
       score: Number(r.score ?? 0),
+      comment: String(r.comment ?? ""),
     }));
   }
 
@@ -535,38 +576,73 @@ export class RiskAssessmentService implements OnModuleInit {
     branchName: string;
     fetchedDate: string;
     score: number;
+    comment?: string;
     userId: string;
   }): Promise<void> {
     if (!args.branchId) return;
-    // score=0 → үнэлэмжийг цэвэрлэх (ReplacingMergeTree-д 0 score оруулна,
-    // listJudgements-ийн AND score>0 filter-ээр дараа уншихад харагдахгүй болно)
+    const score =
+      args.score <= 0 ? 0 : Math.min(5, Math.max(0, args.score));
+    const comment =
+      score <= 0 ? "" : String(args.comment ?? "").slice(0, 8000);
     await this.clickhouse.insert("risk_judgement", [
       {
         branchId: args.branchId,
         branchName: args.branchName,
         fetchedDate: String(args.fetchedDate).slice(0, 10),
-        score: args.score <= 0 ? 0 : Math.min(5, Math.max(0, args.score)),
+        score,
+        comment,
         updatedBy: args.userId,
         updatedAt: nowCH(),
       },
     ]);
+    this.auditMutation(args.userId, "risk_judgement_upsert", args.branchId, {
+      fetchedDate: args.fetchedDate,
+      score,
+      hasComment: comment.length > 0,
+    });
   }
-
-  /** riskbranch + risk_judgement дата ашиглан history-д хадгалах */
   async saveHistoryFromRiskbranch(args: {
     fetchedDate: string;
     name: string;
     userId: string;
     userName: string;
+    /** Дэлгэц дээр харагдаж буй snapshot — өгвөл дахин татахгүй */
+    rows?: any[];
+    manualMap?: Record<string, Record<string, number>>;
+    judgementComments?: Record<string, string>;
   }): Promise<RiskHistoryEntry> {
-    const source = await this.getRiskbranchByDate(args.fetchedDate);
-    const judgements = await this.listJudgements(args.fetchedDate);
-    const manualMap: Record<string, Record<string, number>> = {};
-    for (const j of judgements) {
-      if (!manualMap[j.branchId]) manualMap[j.branchId] = {};
-      manualMap[j.branchId]["j-001"] = j.score;
+    let oracleRows: any[];
+    let manualMap: Record<string, Record<string, number>>;
+    let judgementComments: Record<string, string> = {};
+
+    if (Array.isArray(args.rows) && args.rows.length > 0) {
+      oracleRows = args.rows.filter((r) => r?.rowType === "oracle");
+      manualMap = args.manualMap ?? {};
+      judgementComments = args.judgementComments ?? {};
+    } else {
+      const source = await this.getRiskbranchByDate(args.fetchedDate);
+      const judgements = await this.listJudgements(args.fetchedDate);
+      const manualIndicators = await this.listManualIndicators();
+
+      manualMap = {};
+      for (const [branchId, indMap] of Object.entries(manualIndicators)) {
+        const cleaned = { ...indMap };
+        delete cleaned["j-001"];
+        if (Object.keys(cleaned).length > 0) {
+          manualMap[branchId] = cleaned;
+        }
+      }
+      for (const j of judgements) {
+        if (!manualMap[j.branchId]) manualMap[j.branchId] = {};
+        manualMap[j.branchId]["j-001"] = j.score;
+        if (j.comment) judgementComments[j.branchId] = j.comment;
+      }
+      oracleRows = source.rows;
     }
-    const oracleRows = source.rows;
+
+    const oracleFetchedAt =
+      String(oracleRows[0]?.sourceFetchedDate ?? oracleRows[0]?.fetchedAt ?? "")
+        .slice(0, 10) || "";
     const id = randomUUID();
     const createdAt = nowCH();
     const branchCount = new Set(oracleRows.map((r: any) => r.SOLID)).size;
@@ -578,9 +654,10 @@ export class RiskAssessmentService implements OnModuleInit {
         pDate,
         pDateBeg: "",
         branchCount,
-        oracleFetchedAt: "",
+        oracleFetchedAt,
         rowsJson: JSON.stringify(oracleRows),
         manualJson: JSON.stringify(manualMap),
+        judgementCommentsJson: JSON.stringify(judgementComments),
         createdBy: args.userId,
         createdByName: args.userName,
         createdAt,
@@ -589,13 +666,18 @@ export class RiskAssessmentService implements OnModuleInit {
     this.logger.log(
       `saveHistoryFromRiskbranch: "${args.name}" date=${pDate} (${oracleRows.length} мөр) by ${args.userId}`,
     );
+    this.auditMutation(args.userId, "risk_history_save", id, {
+      name: args.name,
+      fetchedDate: pDate,
+      branchCount,
+    });
     return {
       id,
       name: args.name,
       pDate,
       pDateBeg: "",
       branchCount,
-      oracleFetchedAt: "",
+      oracleFetchedAt,
       createdBy: args.userId,
       createdByName: args.userName,
       createdAt,
@@ -621,6 +703,7 @@ export class RiskAssessmentService implements OnModuleInit {
       total: number | null;
       level: string;
     }[],
+    userId: string,
   ): Promise<void> {
     if (!fetchDate || scores.length === 0) return;
     // Тухайн огноогийн хуучин дата устгана
@@ -651,6 +734,9 @@ export class RiskAssessmentService implements OnModuleInit {
     this.logger.log(
       `upsertBranchScores: date=${fetchDate} (${scores.length} салбар)`,
     );
+    this.auditMutation(userId, "risk_branch_scores_upsert", fetchDate, {
+      branchCount: scores.length,
+    });
   }
 
   /** ClickHouse-аас тооцоолсон оноог авах */

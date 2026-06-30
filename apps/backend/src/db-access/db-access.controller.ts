@@ -12,6 +12,8 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ToolGuard } from "../auth/guards/tool.guard";
+import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { DbAccessService } from "./db-access.service";
 import {
   CreateAccessRequestDto,
@@ -20,7 +22,8 @@ import {
 } from "./dto/db-access.dto";
 
 @Controller("db-access")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ToolGuard)
+@RequireTools("db_access_requester", "db_access_granter")
 export class DbAccessController {
   constructor(private readonly dbAccessService: DbAccessService) {}
 

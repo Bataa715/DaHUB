@@ -850,6 +850,7 @@ export const riskApi = {
       branchName: string;
       fetchedDate: string;
       score: number;
+      comment: string;
     }[]
   > => {
     const res = await api.get(`/risk-assessment/judgement`, {
@@ -864,6 +865,7 @@ export const riskApi = {
     branchName: string;
     fetchedDate: string;
     score: number;
+    comment?: string;
   }): Promise<void> => {
     await api.put(`/risk-assessment/judgement`, args);
   },
@@ -872,10 +874,18 @@ export const riskApi = {
   saveHistoryFromRiskbranch: async (
     fetchedDate: string,
     name: string,
+    snapshot?: {
+      rows: RiskCurrentRow[];
+      manualMap: Record<string, Record<string, number>>;
+      judgementComments?: Record<string, string>;
+    },
   ): Promise<RiskHistoryEntry> => {
     const res = await api.post(`/risk-assessment/history/from-riskbranch`, {
       fetchedDate,
       name,
+      rows: snapshot?.rows,
+      manualMap: snapshot?.manualMap,
+      judgementComments: snapshot?.judgementComments,
     });
     return res.data;
   },
@@ -912,6 +922,7 @@ export const riskApi = {
     entry: RiskHistoryEntry;
     rows: RiskCurrentRow[];
     manualMap: Record<string, Record<string, number>>;
+    judgementComments: Record<string, string>;
   }> => {
     const res = await api.get(`/risk-assessment/history/${id}`);
     return res.data;

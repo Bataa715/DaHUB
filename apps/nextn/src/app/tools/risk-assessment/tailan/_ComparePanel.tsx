@@ -55,6 +55,8 @@ const PALETTE = [
   "#ca8a04",
 ];
 
+const MAX_COMPARE_BRANCHES = 10;
+
 function fmt(v: number | null, isRaw = false) {
   if (v == null) return "—";
   return isRaw ? `${v.toFixed(2)}` : v.toFixed(2);
@@ -288,7 +290,7 @@ export default function ComparePanel({
 
   // ── Y domain for graph ──
   const yDomain = useMemo<[number, number]>(() => {
-    if (!isRaw) return [0, 5.2];
+    if (!isRaw) return [0, 10.2];
     const vals = chartData.flatMap((d) =>
       activeBranchIds
         .map((id) => (typeof d[id] === "number" ? (d[id] as number) : null))
@@ -320,7 +322,7 @@ export default function ComparePanel({
     setSelectedBranches((prev) => {
       const n = new Set(prev);
       if (n.has(id)) n.delete(id);
-      else n.add(id);
+      else if (n.size < MAX_COMPARE_BRANCHES) n.add(id);
       return n;
     });
   };
@@ -516,11 +518,11 @@ export default function ComparePanel({
           </div>
         )}
 
-        {/* Branch filter — dropdown, max 5 */}
+        {/* Branch filter — dropdown */}
         {readyForTable && allBranches.length > 0 && (
           <div className="px-6 py-2 border-b border-border bg-muted/10 shrink-0 flex flex-wrap gap-2 items-center">
             <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mr-1">
-              Салбар (макс 5):
+              Салбар (макс {MAX_COMPARE_BRANCHES}):
             </span>
             <div className="relative">
               <div className="relative group">
@@ -551,7 +553,8 @@ export default function ComparePanel({
                   {allBranches.map((b, i) => {
                     const checked = selectedBranches.has(b.id);
                     const color = PALETTE[i % PALETTE.length];
-                    const atMax = selectedBranches.size >= 5 && !checked;
+                    const atMax =
+                      selectedBranches.size >= MAX_COMPARE_BRANCHES && !checked;
                     return (
                       <button
                         key={b.id}
@@ -889,7 +892,7 @@ function GraphView({
             />
             <YAxis
               domain={yDomain}
-              ticks={showRefLines ? [0, 1, 2, 3, 4, 5] : undefined}
+              ticks={showRefLines ? [0, 2, 4, 6, 8, 10] : undefined}
               tickFormatter={isRaw ? (v) => `${v}` : undefined}
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               width={isRaw ? 50 : 32}
@@ -978,7 +981,7 @@ function GraphView({
             />
             <YAxis
               domain={yDomain}
-              ticks={showRefLines ? [0, 1, 2, 3, 4, 5] : undefined}
+              ticks={showRefLines ? [0, 2, 4, 6, 8, 10] : undefined}
               tickFormatter={isRaw ? (v) => `${v}` : undefined}
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               width={isRaw ? 50 : 32}

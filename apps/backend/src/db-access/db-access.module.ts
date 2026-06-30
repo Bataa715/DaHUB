@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
 import { DbAccessController } from "./db-access.controller";
 import { DbAccessService } from "./db-access.service";
 import { ClickHouseAccessService } from "./clickhouse-access.service";
@@ -6,7 +7,7 @@ import { GrantExpiryService } from "./grant-expiry.service";
 import { ClickHouseModule } from "../clickhouse/clickhouse.module";
 
 @Module({
-  imports: [ClickHouseModule],
+  imports: [ClickHouseModule, AuthModule],
   controllers: [DbAccessController],
   providers: [DbAccessService, ClickHouseAccessService, GrantExpiryService],
   exports: [DbAccessService, ClickHouseAccessService],

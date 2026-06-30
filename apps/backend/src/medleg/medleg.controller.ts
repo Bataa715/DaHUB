@@ -52,7 +52,7 @@ export class MedlegController {
     return this.medlegService.create(createMedlegDto, req.user.id);
   }
 
-  // [N-6] Authenticated — image tags use same-origin /api proxy so cookie is sent
+  // Нэвтэрсэн ажилтан нийтлэгдсэн мэдлэгийн зургийг харна (дотоод хуваалцах зорилго).
   @UseGuards(JwtAuthGuard)
   @Get(":id/image")
   async getMedlegImage(@Param("id") id: string, @Res() res: Response) {

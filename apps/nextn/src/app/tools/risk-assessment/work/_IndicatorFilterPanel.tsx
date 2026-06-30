@@ -168,7 +168,7 @@ export default function IndicatorFilterPanel({
                   SOLID
                 </th>
                 <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-32">
-                  Oracle утга
+                  Утга
                 </th>
                 <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-24">
                   Оноо

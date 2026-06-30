@@ -225,6 +225,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // Create database if not exists
       await this.exec(`CREATE DATABASE IF NOT EXISTS audit_db`);
 
+      // Legacy orphan table (app кодонд ашиглагдахгүй)
+      await this.exec(`DROP TABLE IF EXISTS weekly_reports`).catch(() => {});
+
       // Create departments table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS departments (
@@ -324,6 +327,16 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           createdAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY (newsId, createdAt)
+      `);
+
+      // Create medleg_views table (per-user view dedup)
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS medleg_views (
+          newsId String,
+          userId String,
+          viewedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(viewedAt)
+        ORDER BY (newsId, userId)
       `);
 
       // Create refresh_tokens table

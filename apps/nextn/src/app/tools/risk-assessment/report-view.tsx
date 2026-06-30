@@ -8,7 +8,7 @@ import {
   Fragment,
   useRef,
 } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, MessageSquare } from "lucide-react";
 import Cookies from "js-cookie";
 import { riskApi, HOLD_GLOBAL_PERIOD } from "@/lib/api";
 import {
@@ -78,8 +78,12 @@ interface Props {
    * Indicator ID-тай холбоогүйгээр шууд branchId → score map.
    */
   externalJudgements?: Record<string, number>;
+  /** Аудиторын үнэлэмжийн тайлбар (branchId → comment) */
+  externalJudgementComments?: Record<string, string>;
   /** Аудиторын үнэлэмж хадгалах callback (externalJudgements-тэй хамт ашиглана) */
   onJudgementChange?: (branchId: string, score: number) => void;
+  /** Judgement тайлбар хадгалах */
+  onJudgementCommentSave?: (branchId: string, comment: string) => void;
   /** Өмнөх огноогийн judgement — авто бөглөх товчинд ашиглана */
   previousJudgements?: Record<string, number>;
   /** Сонгосон огноо — fill-forward хуучин өгөгдөл тэмдэглэхэд */
@@ -120,7 +124,9 @@ export default function ReportView({
   initialManualMap,
   saveIndicatorFn,
   externalJudgements,
+  externalJudgementComments,
   onJudgementChange,
+  onJudgementCommentSave,
   previousJudgements,
   hideComparison = false,
   previousManualMap = {},
@@ -455,7 +461,9 @@ export default function ReportView({
     rawRowsByBranch: rowsByBranch,
     hideComparison,
     externalJudgements,
+    externalJudgementComments,
     onJudgementChange,
+    onJudgementCommentSave,
     previousJudgements,
     dataReferenceDate,
   } as const;
@@ -681,7 +689,9 @@ function ReportTable({
   rawRowsByBranch,
   hideComparison = false,
   externalJudgements,
+  externalJudgementComments,
   onJudgementChange,
+  onJudgementCommentSave,
   previousJudgements,
   dataReferenceDate,
 }: {
@@ -701,7 +711,9 @@ function ReportTable({
   rawRowsByBranch: Map<string, AnyRow[]>;
   hideComparison?: boolean;
   externalJudgements?: Record<string, number>;
+  externalJudgementComments?: Record<string, string>;
   onJudgementChange?: (branchId: string, score: number) => void;
+  onJudgementCommentSave?: (branchId: string, comment: string) => void;
   previousJudgements?: Record<string, number>;
   dataReferenceDate?: string;
 }) {
@@ -709,6 +721,11 @@ function ReportTable({
   const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
   const [editingJBranch, setEditingJBranch] = useState<string | null>(null);
   const [editJValue, setEditJValue] = useState<string>("");
+  const [commentModal, setCommentModal] = useState<{
+    branchId: string;
+    branchName: string;
+    draft: string;
+  } | null>(null);
   const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
   const committingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -953,6 +970,48 @@ function ReportTable({
                         />
                       ) : (
                         <div className="flex flex-col items-end gap-0.5">
+                          <div className="flex items-center gap-1 h-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 shrink-0" />
+                            {(readOnly
+                              ? Boolean(externalJudgementComments?.[b.branchId])
+                              : (b.j != null && b.j > 0) ||
+                                Boolean(
+                                  externalJudgementComments?.[b.branchId],
+                                )) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCommentModal({
+                                    branchId: b.branchId,
+                                    branchName: b.branchName,
+                                    draft:
+                                      externalJudgementComments?.[
+                                        b.branchId
+                                      ] ?? "",
+                                  });
+                                }}
+                                className={`p-0 leading-none transition-colors ${
+                                  externalJudgementComments?.[b.branchId]
+                                    ? "text-rose-500 hover:text-rose-400"
+                                    : "text-muted-foreground/50 hover:text-rose-500"
+                                }`}
+                                title={
+                                  externalJudgementComments?.[b.branchId]
+                                    ? "Тайлбар харах"
+                                    : "Тайлбар нэмэх"
+                                }
+                              >
+                                <MessageSquare
+                                  className={`w-2.5 h-2.5 ${
+                                    externalJudgementComments?.[b.branchId]
+                                      ? "fill-rose-500/25"
+                                      : ""
+                                  }`}
+                                />
+                              </button>
+                            )}
+                          </div>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -969,19 +1028,16 @@ function ReportTable({
                                     : String(b.j || ""),
                               );
                             }}
-                            className="group/jbtn flex flex-col items-end w-full gap-0.5 font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
-                            title="Клик — засах"
+                            className="group/jbtn inline-flex items-center gap-1 font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
+                            title="Клик — оноо засах"
                           >
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 group-hover/jbtn:bg-emerald-400" />
-                            <span className="inline-flex items-center gap-1">
-                              {b.j != null && b.j > 0
-                                ? b.j % 1 === 0
-                                  ? b.j.toFixed(0)
-                                  : b.j.toFixed(1)
-                                : "—"}
-                              <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
-                                ✎
-                              </span>
+                            {b.j != null && b.j > 0
+                              ? b.j % 1 === 0
+                                ? b.j.toFixed(0)
+                                : b.j.toFixed(1)
+                              : "—"}
+                            <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
+                              ✎
                             </span>
                           </button>
                         </div>
@@ -1094,6 +1150,10 @@ function ReportTable({
                       previousAgg={prev}
                       hideComparison={hideComparison}
                       dataReferenceDate={dataReferenceDate}
+                      judgementScore={b.j}
+                      judgementComment={
+                        externalJudgementComments?.[b.branchId] ?? ""
+                      }
                     />
                   )}
                 </Fragment>
@@ -1114,6 +1174,63 @@ function ReportTable({
           </tbody>
         </table>
       </div>
+
+      {commentModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setCommentModal(null)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-premium-xl ring-hairline p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold">
+                Аудиторын үнэлэмжийн тайлбар
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {commentModal.branchName} · SOLID {commentModal.branchId}
+              </p>
+            </div>
+            <textarea
+              value={commentModal.draft}
+              onChange={(e) =>
+                setCommentModal((m) =>
+                  m ? { ...m, draft: e.target.value } : m,
+                )
+              }
+              readOnly={readOnly}
+              rows={12}
+              placeholder="Тайлбар бичнэ үү..."
+              className="w-full min-h-[240px] px-3 py-2.5 rounded-xl border border-border bg-background text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setCommentModal(null)}
+                className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
+              >
+                {readOnly ? "Хаах" : "Болих"}
+              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onJudgementCommentSave?.(
+                      commentModal.branchId,
+                      commentModal.draft,
+                    );
+                    setCommentModal(null);
+                  }}
+                  className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all"
+                >
+                  Хадгалах
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1203,6 +1320,8 @@ function IndicatorDetailRow({
   previousAgg,
   hideComparison = false,
   dataReferenceDate,
+  judgementScore,
+  judgementComment,
 }: {
   branchId: string;
   branchName: string;
@@ -1214,6 +1333,8 @@ function IndicatorDetailRow({
   previousAgg?: BranchAggregate;
   hideComparison?: boolean;
   dataReferenceDate?: string;
+  judgementScore?: number | null;
+  judgementComment?: string;
 }) {
   const evals = useMemo(
     () => evaluateBranchDynamic(catalog, rawRows, manualValues),
@@ -1286,6 +1407,34 @@ function IndicatorDetailRow({
               )}
             </div>
           </div>
+
+          {(judgementScore != null && judgementScore > 0) ||
+          judgementComment ? (
+            <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-3 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                Аудиторын үнэлэмж
+              </p>
+              {judgementScore != null && judgementScore > 0 && (
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Оноо: </span>
+                  <span className="font-bold tabular-nums text-rose-700 dark:text-rose-400">
+                    {judgementScore % 1 === 0
+                      ? judgementScore.toFixed(0)
+                      : judgementScore.toFixed(1)}
+                  </span>
+                </p>
+              )}
+              {judgementComment ? (
+                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">
+                  {judgementComment}
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Тайлбар байхгүй
+                </p>
+              )}
+            </div>
+          ) : null}
 
           {/* ── Харьцуулалтын score карт ── */}
           {!hideComparison && currentAgg && previousAgg && (

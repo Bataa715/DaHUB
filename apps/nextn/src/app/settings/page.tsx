@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +15,8 @@ import { resizeProfileImageToDataUrl } from "@/lib/profile-image";
 type Tab = "profile" | "password";
 
 export default function SettingsPage() {
-  const { user, loading, refreshUser } = useAuth();
+  const { user, loading, refreshUser, logout } = useAuth();
+  const router = useRouter();
   const { t } = useLanguage();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,10 +132,12 @@ export default function SettingsPage() {
     setIsChangingPassword(true);
     try {
       await api.post("/auth/change-password", { currentPassword, newPassword });
-      toast({ title: t("success"), description: t("passwordChanged") });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      await logout();
+      toast({
+        title: t("success"),
+        description: "Нууц үг солигдлоо. Дахин нэвтэрнэ үү.",
+      });
+      router.replace("/login");
     } catch (error) {
       let msg = t("passwordChangeBtn");
       if (axios.isAxiosError(error)) msg = error.response?.data?.message ?? msg;

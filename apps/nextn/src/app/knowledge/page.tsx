@@ -34,6 +34,7 @@ import {
   knowledgeReactionsApi,
   knowledgeCommentsApi,
 } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface TopPublisher {
   rank: number;
@@ -460,6 +461,7 @@ function RightSidebar({
 export default function ShineMedlegPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [news, setNews] = useState<News[]>([]);
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -538,7 +540,11 @@ export default function ShineMedlegPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert("Max 2MB");
+      toast({
+        title: t("error"),
+        description: "Зураг 2MB-аас ихгүй байх ёстой",
+        variant: "destructive",
+      });
       return;
     }
     const reader = new FileReader();
@@ -565,7 +571,11 @@ export default function ShineMedlegPage() {
       setImagePreview(null);
       fetchNews();
     } catch {
-      alert(t("newsCreateError"));
+      toast({
+        title: t("error"),
+        description: t("newsCreateError"),
+        variant: "destructive",
+      });
     } finally {
       setCreateLoading(false);
     }
@@ -578,7 +588,11 @@ export default function ShineMedlegPage() {
       if (selectedNews?.id === id) closeDetail();
       fetchNews();
     } catch {
-      alert(t("newsDeleteError"));
+      toast({
+        title: t("error"),
+        description: t("newsDeleteError"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -653,7 +667,11 @@ export default function ShineMedlegPage() {
       const updated = await knowledgeCommentsApi.get(selectedNews.id);
       setComments(updated);
     } catch {
-      alert(t("newsCommentError"));
+      toast({
+        title: t("error"),
+        description: t("newsCommentError"),
+        variant: "destructive",
+      });
     } finally {
       setCommentPosting(false);
     }

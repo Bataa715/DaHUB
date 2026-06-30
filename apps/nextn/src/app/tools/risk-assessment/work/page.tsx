@@ -65,18 +65,66 @@ function toScored(
     });
 }
 
+type SaveModalMeta = {
+  pDate: string;
+  pDateBeg: string;
+  rows: RiskCurrentRow[];
+  manualMap: Record<string, Record<string, number>>;
+  judgementComments: Record<string, string>;
+};
+
+function buildHistorySnapshot(
+  rows: RiskCurrentRow[],
+  manualMap: ManualMap,
+  judgements: Record<string, number>,
+  judgementComments: Record<string, string>,
+): Pick<SaveModalMeta, "rows" | "manualMap" | "judgementComments"> {
+  const snapshot: Record<string, Record<string, number>> = {};
+  for (const [branchId, indMap] of Object.entries(manualMap)) {
+    const cleaned = { ...indMap };
+    delete cleaned["j-001"];
+    if (Object.keys(cleaned).length > 0) {
+      snapshot[branchId] = cleaned;
+    }
+  }
+  for (const [branchId, score] of Object.entries(judgements)) {
+    if (!snapshot[branchId]) snapshot[branchId] = {};
+    snapshot[branchId]["j-001"] = score;
+  }
+  return {
+    rows: rows.filter((r) => r.rowType === "oracle"),
+    manualMap: snapshot,
+    judgementComments: { ...judgementComments },
+  };
+}
+
 interface MonitorContentProps {
-  saveModalOpenHandler: (meta: { pDate: string; pDateBeg: string }) => void;
+  saveModalOpenHandler: (meta: SaveModalMeta) => void;
 }
 
 function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const { t } = useLanguage();
+  const { toast } = useToast();
+
+  const showSaveError = useCallback(
+    (e: unknown) => {
+      toast({
+        variant: "destructive",
+        title: t("riskSaveError"),
+        description: getApiErrorMessage(e),
+      });
+    },
+    [t, toast],
+  );
 
   const [rows, setRows] = useState<RiskCurrentRow[]>([]);
   const [fetchedDate, setFetchedDate] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [lockedDate, setLockedDate] = useState<string | null>(null);
   const [judgements, setJudgements] = useState<Record<string, number>>({});
+  const [judgementComments, setJudgementComments] = useState<
+    Record<string, string>
+  >({});
   const [prevJudgements, setPrevJudgements] = useState<Record<string, number>>(
     {},
   );
@@ -92,6 +140,8 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const judgementTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );
+  const judgementCommentsRef = useRef(judgementComments);
+  judgementCommentsRef.current = judgementComments;
   const manualTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );
@@ -106,14 +156,6 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
   const hasData = rows.some((r) => r.rowType === "oracle");
   const isLocked = lockedDate !== null && lockedDate === fetchedDate;
-
-  // Manual indicators map (гар оруулга)
-  useEffect(() => {
-    riskApi
-      .listManualIndicators()
-      .then((data) => setManualMap(data || {}))
-      .catch((e) => console.error("listManualIndicators амжилтгүй:", e));
-  }, []);
 
   const handleManualSave = useCallback(
     (branchId: string, indicatorId: string, value: number) => {
@@ -131,12 +173,10 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       manualTimers.current[key] = setTimeout(() => {
         riskApi
           .upsertManualIndicator({ branchId, indicatorId, value })
-          .catch((e) =>
-            console.error("upsertManualIndicator хадгалахад алдаа:", e),
-          );
+          .catch(showSaveError);
       }, 600);
     },
-    [],
+    [showSaveError],
   );
 
   // Init: lock check + load locked date if exists, otherwise closest available
@@ -144,12 +184,14 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
     let cancelled = false;
     (async () => {
       try {
-        const [{ lockedDate: ld }, dates] = await Promise.all([
+        const [{ lockedDate: ld }, dates, manualData] = await Promise.all([
           riskApi.getRiskbranchLock(),
           riskApi.listRiskbranchDates(),
+          riskApi.listManualIndicators(),
         ]);
         if (cancelled) return;
         setLockedDate(ld);
+        setManualMap(manualData || {});
 
         const targetDate =
           ld ??
@@ -179,8 +221,13 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           setRows(res.rows ?? []);
           setFetchedDate(actualDate);
           const jmap: Record<string, number> = {};
-          for (const j of judgeList) jmap[j.branchId] = j.score;
+          const cmap: Record<string, string> = {};
+          for (const j of judgeList) {
+            jmap[j.branchId] = j.score;
+            if (j.comment) cmap[j.branchId] = j.comment;
+          }
           setJudgements(jmap);
+          setJudgementComments(cmap);
           const closestPrevDate = allJudge.find(
             (j) => j.fetchedDate < actualDate,
           )?.fetchedDate;
@@ -194,8 +241,8 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           }
           if (!cancelled) setPrevJudgements(prevMap);
         }
-      } catch {
-        // silent
+      } catch (e: unknown) {
+        if (!cancelled) setErrorMsg(getApiErrorMessage(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -215,6 +262,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
     setRows([]);
     setFetchedDate(date);
     setJudgements({});
+    setJudgementComments({});
     setLoadingDate(true);
     setErrorMsg(null);
     try {
@@ -230,8 +278,13 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       if (abort.signal.aborted) return;
       setRows(res.rows ?? []);
       const jmap: Record<string, number> = {};
-      for (const j of judgeList) jmap[j.branchId] = j.score;
+      const cmap: Record<string, string> = {};
+      for (const j of judgeList) {
+        jmap[j.branchId] = j.score;
+        if (j.comment) cmap[j.branchId] = j.comment;
+      }
       setJudgements(jmap);
+      setJudgementComments(cmap);
       const closestPrevDate = allJudge.find(
         (j) => j.fetchedDate < actualDate,
       )?.fetchedDate;
@@ -283,15 +336,53 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         }
         return { ...prev, [branchId]: score };
       });
+      if (score <= 0) {
+        setJudgementComments((prev) => {
+          const next = { ...prev };
+          delete next[branchId];
+          return next;
+        });
+      }
       if (judgementTimers.current[branchId])
         clearTimeout(judgementTimers.current[branchId]);
       judgementTimers.current[branchId] = setTimeout(() => {
         riskApi
-          .upsertJudgement({ branchId, branchName, fetchedDate, score })
-          .catch((e) => console.error("upsertJudgement хадгалахад алдаа:", e));
+          .upsertJudgement({
+            branchId,
+            branchName,
+            fetchedDate,
+            score,
+            comment:
+              score <= 0 ? "" : (judgementCommentsRef.current[branchId] ?? ""),
+          })
+          .catch(showSaveError);
       }, 600);
     },
-    [fetchedDate],
+    [fetchedDate, showSaveError],
+  );
+
+  const handleJudgementCommentSave = useCallback(
+    (branchId: string, branchName: string, comment: string) => {
+      const trimmed = comment.trim();
+      setJudgementComments((prev) => {
+        const next = { ...prev };
+        if (!trimmed) delete next[branchId];
+        else next[branchId] = trimmed;
+        return next;
+      });
+      const score = judgements[branchId] ?? 0;
+      if (score <= 0) return;
+      riskApi
+        .upsertJudgement({
+          branchId,
+          branchName,
+          fetchedDate,
+          score,
+          comment: trimmed,
+        })
+        .catch(showSaveError);
+    },
+    [fetchedDate, judgements, showSaveError],
   );
 
   // saveIndicatorFn adapter: ReportView нь (branchId, indicatorId, value) дуудна,
@@ -308,6 +399,19 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       handleJudgementChange(branchId, branchName, score);
     },
     [rows, handleJudgementChange],
+  );
+
+  const onJudgementCommentSave = useCallback(
+    (branchId: string, comment: string) => {
+      const branchRow = rows.find(
+        (r) => r.rowType === "oracle" && String(r.SOLID || "") === branchId,
+      );
+      const branchName = branchRow
+        ? String(branchRow.BRANCHNAME ?? branchRow.SOLID ?? branchId)
+        : branchId;
+      handleJudgementCommentSave(branchId, branchName, comment);
+    },
+    [rows, handleJudgementCommentSave],
   );
 
   const scoredRows = useMemo(() => toScored(rows, catalog), [rows, catalog]);
@@ -392,12 +496,19 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             {/* Prominent Save Completed Report Button */}
             {hasData && isLocked && (
               <button
-                onClick={() =>
+                onClick={() => {
+                  const snapshot = buildHistorySnapshot(
+                    rows,
+                    manualMap,
+                    judgements,
+                    judgementComments,
+                  );
                   saveModalOpenHandler({
                     pDate: fetchedDate,
                     pDateBeg: "",
-                  })
-                }
+                    ...snapshot,
+                  });
+                }}
                 className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-amber-600 hover:bg-amber-500 text-foreground text-xs font-semibold transition-all"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
@@ -463,8 +574,12 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               setRiskFilter={setRiskFilter}
               pDate={fetchedDate}
               dataReferenceDate={selectedDate}
+              initialManualMap={manualMap}
+              saveIndicatorFn={handleManualSave}
               externalJudgements={judgements}
+              externalJudgementComments={judgementComments}
               onJudgementChange={onJudgementSave}
+              onJudgementCommentSave={onJudgementCommentSave}
               previousJudgements={prevJudgements}
               hideComparison={true}
             />
@@ -475,15 +590,18 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   );
 }
 
-export default function RiskHyanaltPage() {
+export default function RiskWorkPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveModalMeta, setSaveModalMeta] = useState({
+  const [saveModalMeta, setSaveModalMeta] = useState<SaveModalMeta>({
     pDate: "",
     pDateBeg: "",
+    rows: [],
+    manualMap: {},
+    judgementComments: {},
   });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -493,7 +611,11 @@ export default function RiskHyanaltPage() {
     setSaving(true);
     setErrorMsg(null);
     try {
-      await riskApi.saveHistoryFromRiskbranch(saveModalMeta.pDate, name);
+      await riskApi.saveHistoryFromRiskbranch(saveModalMeta.pDate, name, {
+        rows: saveModalMeta.rows,
+        manualMap: saveModalMeta.manualMap,
+        judgementComments: saveModalMeta.judgementComments,
+      });
       setSaveModalOpen(false);
       setSaveName("");
       toast({

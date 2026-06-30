@@ -20,9 +20,12 @@ import { Response } from "express";
 import { TailanService } from "./tailan.service";
 import { SaveTailanDto } from "./dto/tailan.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ToolGuard } from "../auth/guards/tool.guard";
+import { RequireTools } from "../auth/guards/require-tools.decorator";
 
 @Controller("tailan")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ToolGuard)
+@RequireTools("tailan", "tailan_dept_head")
 export class TailanController {
   constructor(private readonly tailanService: TailanService) {}
 
@@ -247,11 +250,7 @@ export class TailanController {
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.getDeptImages(
-      req.user.departmentId ?? "",
-      year,
-      quarter,
-    );
+    return this.tailanService.getDeptImages(req.user, year, quarter);
   }
 
   /** GET /tailan/images/:id/data  — serve raw image */
@@ -263,7 +262,7 @@ export class TailanController {
   ) {
     const { mimeType, buffer } = await this.tailanService.getImageData(
       id,
-      req.user.id,
+      req.user,
     );
     (res as any).set({
       "Content-Type": mimeType,

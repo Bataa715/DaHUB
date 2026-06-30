@@ -351,7 +351,7 @@ export class DbAccessService {
     }
 
     const rows = await this.clickhouse.query<any>(
-      `SELECT * FROM access_requests WHERE status = 'pending' ORDER BY requestTime ASC`,
+      `SELECT * FROM access_requests FINAL WHERE status = 'pending' ORDER BY requestTime ASC`,
     );
 
     if (rows.length === 0) return { affected: 0 };
@@ -379,7 +379,7 @@ export class DbAccessService {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
     const rows = await this.clickhouse.query<any>(
-      `SELECT id, status FROM access_requests WHERE id = {id:String} LIMIT 1`,
+      `SELECT id, status FROM access_requests FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     if (rows.length === 0) throw new NotFoundException("Хүсэлт олдсонгүй");

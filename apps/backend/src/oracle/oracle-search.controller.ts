@@ -17,8 +17,11 @@ import { OracleService } from "./oracle.service";
 import { OracleConfigService } from "./oracle-config.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
+import { ToolGuard } from "../auth/guards/tool.guard";
+import { RequireTools } from "../auth/guards/require-tools.decorator";
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ToolGuard)
+@RequireTools("alert_box")
 @Controller("oracle/search")
 export class OracleSearchController {
   private readonly logger = new Logger(OracleSearchController.name);
@@ -50,7 +53,7 @@ export class OracleSearchController {
   @UseGuards(AdminGuard)
   @Get("admin/dashboards")
   async adminGetDashboards() {
-    await this.config.reloadFromClickHouse();
+    await this.config.reloadFromClickHouse(true);
     return this.config.loadDashboards();
   }
 
@@ -143,7 +146,7 @@ export class OracleSearchController {
   @UseGuards(AdminGuard)
   @Get("admin/chains")
   async adminGetChains() {
-    await this.config.reloadFromClickHouse();
+    await this.config.reloadFromClickHouse(true);
     return this.config.loadChains();
   }
 
@@ -234,7 +237,8 @@ export class OracleSearchController {
 
   /** GET /oracle/search/dashboards — all dashboard configs (id, name, table, enabled) */
   @Get("dashboards")
-  getDashboards() {
+  async getDashboards() {
+    await this.config.reloadFromClickHouse();
     return this.config.loadDashboards().map((d) => ({
       id: d.id,
       name: d.name,
@@ -256,6 +260,7 @@ export class OracleSearchController {
     @Query("to") dateTo: string,
   ) {
     this.requireOracle();
+    await this.config.reloadFromClickHouse();
 
     if (!cif || typeof cif !== "string") {
       throw new HttpException("CIF дугаар оруулна уу", HttpStatus.BAD_REQUEST);
@@ -350,6 +355,7 @@ export class OracleSearchController {
     @Query("cif") cifFilter: string,
   ) {
     this.requireOracle();
+    await this.config.reloadFromClickHouse();
 
     const minDashboards = Math.max(2, parseInt(minDash) || 2);
     const limit = Math.max(parseInt(limitStr) || 10000, 1);
@@ -472,6 +478,7 @@ export class OracleSearchController {
   @Get("dashboard-summaries")
   async getDashboardSummaries() {
     this.requireOracle();
+    await this.config.reloadFromClickHouse();
 
     const dashboards = this.config.getEnabledDashboards();
 
@@ -623,23 +630,33 @@ export class OracleSearchController {
     await this.config.reloadFromClickHouse();
 
     const dashboards = this.config.getEnabledDashboards();
-    const cifSets: Record<number, Set<string>> = {};
 
-    for (const dash of dashboards) {
-      try {
+    const settled = await Promise.allSettled(
+      dashboards.map(async (dash) => {
         const fromExpr = dash.fromClause ?? dash.tableName;
         const sql = `SELECT DISTINCT ${dash.cifColumn} AS CIF_VAL FROM ${fromExpr} WHERE ${dash.cifColumn} IS NOT NULL AND ROWNUM <= 50000`;
         const rows = await this.oracle.query<{ CIF_VAL: string }>(sql);
-        cifSets[dash.id] = new Set(
-          rows.map((r) => String(r.CIF_VAL || "").trim()).filter(Boolean),
-        );
-      } catch (err) {
-        this.logger.warn(
-          `DB${dash.id} redflag CIF query failed: ${(err as Error).message}`,
-        );
-        cifSets[dash.id] = new Set();
+        return {
+          id: dash.id,
+          cifs: new Set(
+            rows.map((r) => String(r.CIF_VAL || "").trim()).filter(Boolean),
+          ),
+        };
+      }),
+    );
+
+    const cifSets: Record<number, Set<string>> = {};
+    settled.forEach((result, i) => {
+      const dash = dashboards[i];
+      if (result.status === "fulfilled") {
+        cifSets[result.value.id] = result.value.cifs;
+        return;
       }
-    }
+      this.logger.warn(
+        `DB${dash.id} redflag CIF query failed: ${(result.reason as Error).message}`,
+      );
+      cifSets[dash.id] = new Set();
+    });
 
     const enabledChains = this.config.getEnabledChains();
     const chains = enabledChains.map((chain) => {

@@ -558,7 +558,7 @@ export class AuthService {
   }
 
   async searchUsersByUserId(query: string, adminOnly: boolean = false) {
-    if (!query || query.length < 2) return { users: [] };
+    if (!query || query.length < 3) return { users: [] };
     const pattern = `%${query}%`;
     // If adminOnly is true, show only admins. Otherwise, hide admins from search.
     const adminFilter = adminOnly
@@ -575,11 +575,11 @@ export class AuthService {
     );
     return {
       users: users.map((u) => ({
-        id: u.id,
         name: u.name,
         userId: u.userId || "",
         department: u.departmentName || "",
         position: u.position,
+        ...(adminOnly ? { id: u.id } : {}),
       })),
     };
   }
@@ -602,18 +602,14 @@ export class AuthService {
     const isPending = String(user.password ?? "").startsWith("PENDING:");
     const hasPassword = user.password && user.password.length > 0 && !isPending;
 
-    let claimToken: string | undefined;
-    if (!hasPassword && isPending) {
-      claimToken = randomUUID();
-      await this.clickhouse.exec(
-        `ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String}
-         WHERE userId = {userId:String} SETTINGS mutations_sync = 1`,
-        {
-          password: "PENDING:" + claimToken,
-          userId,
-          updatedAt: nowCH(),
-        },
-      );
+    if (isPending) {
+      return {
+        exists: true,
+        hasPassword: false,
+        userId: user.userId,
+        isActive: !!user.isActive,
+        needsPasswordSetup: true,
+      };
     }
 
     return {
@@ -621,7 +617,6 @@ export class AuthService {
       hasPassword,
       userId: user.userId,
       isActive: !!user.isActive,
-      ...(claimToken ? { claimToken } : {}),
     };
   }
 
@@ -645,7 +640,7 @@ export class AuthService {
       const pending = String(existing[0].password ?? "").startsWith("PENDING:");
       if (pending) {
         throw new ConflictException(
-          "Энэ ID-тай бүртгэл аль хэдийн эхэлсэн байна. Нэвтрэх хэсгээс ID-гаа оруулж нууц үгээ үүсгэнэ үү.",
+          "Энэ ID-тай бүртгэл аль хэдийн эхэлсэн байна. Нууц үгээ тохируулаагүй бол админд хандана уу.",
         );
       }
       throw new ConflictException(
@@ -795,7 +790,20 @@ export class AuthService {
       },
     );
 
-    return { success: true, message: "Нууц үг амжилттай солигдлоо" };
+    await this.revokeRefreshTokens(userId);
+
+    await this.auditLogService.log({
+      userId,
+      action: "password_change",
+      resource: "auth",
+      method: "changePassword",
+      status: "success",
+    });
+
+    return {
+      success: true,
+      message: "Нууц үг амжилттай солигдлоо. Дахин нэвтэрнэ үү.",
+    };
   }
 
   /**

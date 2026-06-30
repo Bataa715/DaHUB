@@ -154,7 +154,7 @@ export function useDepartmentReport() {
         })),
       );
     } catch {
-      alert("API-аас татахад алдаа гарлаа.");
+      showToast("API-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -181,7 +181,7 @@ export function useDepartmentReport() {
         })),
       );
     } catch {
-      alert("API-аас татахад алдаа гарлаа.");
+      showToast("API-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -228,7 +228,7 @@ export function useDepartmentReport() {
 
       return [...newRowsFromTasks, ...dashRows, ...usedRows];
     } catch {
-      alert("API-аас татахад алдаа гарлаа.");
+      showToast("API-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -246,7 +246,7 @@ export function useDepartmentReport() {
         })),
       );
     } catch {
-      alert("API-аас татахад алдаа гарлаа.");
+      showToast("API-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -276,7 +276,7 @@ export function useDepartmentReport() {
         })),
       );
     } catch {
-      alert("API-аас татахад алдаа гарлаа.");
+      showToast("API-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -294,7 +294,7 @@ export function useDepartmentReport() {
         })),
       );
     } catch {
-      alert("АПИ-аас татахад алдаа гарлаа.");
+      showToast("АПИ-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -312,7 +312,7 @@ export function useDepartmentReport() {
         })),
       );
     } catch {
-      alert("АПИ-аас татахад алдаа гарлаа.");
+      showToast("АПИ-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -333,7 +333,7 @@ export function useDepartmentReport() {
           contents: [],
         }));
     } catch {
-      alert("АПИ-аас татахад алдаа гарлаа.");
+      showToast("АПИ-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -355,7 +355,7 @@ export function useDepartmentReport() {
         })),
       );
     } catch {
-      alert("АПИ-аас татахад алдаа гарлаа.");
+      showToast("АПИ-аас татахад алдаа гарлаа.", "error");
       return [];
     }
   };
@@ -431,7 +431,7 @@ export function useDepartmentReport() {
       );
       showToast("Тайлан амжилттай хадгалагдлаа.");
     } catch {
-      alert("Хадгалахад алдаа гарлала.");
+      showToast("Хадгалахад алдаа гарлала.", "error");
     } finally {
       setSaving(false);
     }

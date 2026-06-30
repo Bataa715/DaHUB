@@ -506,6 +506,7 @@ async function downloadIndicatorXlsx(
   rows: RiskCurrentRow[],
   catalog: DynamicCatalogIndicator[],
   manualMap: ManualMap,
+  judgementComments: Record<string, string>,
   filterIds: Set<string> | null,
   primaryDate: string,
   primaryName: string,
@@ -534,11 +535,16 @@ async function downloadIndicatorXlsx(
   const headers = [
     "Салбарын нэр",
     "SOLID",
-    ...sortedInd.flatMap((c) =>
-      includeRaw
+    ...sortedInd.flatMap((c) => {
+      if (c.is_judgment) {
+        return includeRaw
+          ? [`[G${c.group}] ${c.name} (Оноо)`, `[G${c.group}] ${c.name} (Тайлбар)`]
+          : [`[G${c.group}] ${c.name}`];
+      }
+      return includeRaw
         ? [`[G${c.group}] ${c.name} (Оноо)`, `[G${c.group}] ${c.name} (Утга)`]
-        : [`[G${c.group}] ${c.name}`],
-    ),
+        : [`[G${c.group}] ${c.name}`];
+    }),
   ];
   const colCount = headers.length;
 
@@ -550,7 +556,7 @@ async function downloadIndicatorXlsx(
 
   ws.mergeCells(2, 1, 2, Math.min(colCount, 10));
   ws.getCell(2, 1).value = includeRaw
-    ? "Дэлгэрэнгүй — indicator бүрт оноо + Oracle утга"
+    ? "Дэлгэрэнгүй — indicator бүрт оноо + утга (judgement-д тайлбар)"
     : "Indicator тус бүрийн оноо";
   ws.getCell(2, 1).font = { size: 9, color: { argb: "FF6B7280" } };
 
@@ -567,9 +573,17 @@ async function downloadIndicatorXlsx(
     const row = ws.getRow(5 + idx);
     const values: (string | number | null)[] = [b.name, parseSolidCell(solid)];
     for (const c of sortedInd) {
-      const val = ev[c.id];
-      values.push(val?.score != null ? val.score : null);
-      if (includeRaw) values.push(val?.autoRaw ?? "");
+      if (c.is_judgment) {
+        const jScore =
+          (manualMap[solid] as Record<string, number> | undefined)?.["j-001"] ??
+          null;
+        values.push(jScore != null && jScore > 0 ? jScore : null);
+        if (includeRaw) values.push(judgementComments[solid] ?? "");
+      } else {
+        const val = ev[c.id];
+        values.push(val?.score != null ? val.score : null);
+        if (includeRaw) values.push(val?.autoRaw ?? "");
+      }
     }
 
     const zebra =
@@ -636,6 +650,7 @@ interface Props {
   onClose: () => void;
   primaryRows: RiskCurrentRow[];
   primaryManualMap: ManualMap;
+  primaryJudgementComments?: Record<string, string>;
   primaryName: string;
   primaryDate: string;
   prevRows: RiskCurrentRow[];
@@ -653,6 +668,7 @@ export default function CsvExportModal({
   onClose,
   primaryRows,
   primaryManualMap,
+  primaryJudgementComments = {},
   primaryName,
   primaryDate,
   prevRows,
@@ -782,6 +798,7 @@ export default function CsvExportModal({
         primaryRows,
         catalog,
         primaryManualMap,
+        primaryJudgementComments,
         selectedIndIds,
         primaryDate,
         primaryName,
