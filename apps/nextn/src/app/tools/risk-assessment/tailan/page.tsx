@@ -28,6 +28,11 @@ import {
   useIndicatorConfig,
   type DynamicCatalogIndicator,
 } from "../use-indicator-config";
+import {
+  judgementsFromManualSnapshot,
+  judgementsFromList,
+  judgementCommentsFromList,
+} from "../branch-resolve";
 import ReportView from "../report-view";
 import ComparePanel from "./_ComparePanel";
 import CsvExportModal from "./_CsvExportModal";
@@ -84,6 +89,9 @@ export default function RiskReportsPage() {
   selectedReportIdRef.current = selectedReportId;
   const [reportRows, setReportRows] = useState<RiskCurrentRow[]>([]);
   const [reportManualMap, setReportManualMap] = useState<any>({});
+  const [reportJudgements, setReportJudgements] = useState<
+    Record<string, number>
+  >({});
   const [reportJudgementComments, setReportJudgementComments] = useState<
     Record<string, string>
   >({});
@@ -95,6 +103,9 @@ export default function RiskReportsPage() {
   comparisonReportIdRef.current = comparisonReportId;
   const [comparisonRows, setComparisonRows] = useState<RiskCurrentRow[]>([]);
   const [comparisonManualMap, setComparisonManualMap] = useState<any>({});
+  const [comparisonJudgements, setComparisonJudgements] = useState<
+    Record<string, number>
+  >({});
   const [comparisonJudgementComments, setComparisonJudgementComments] =
     useState<Record<string, string>>({});
   const [loadingComparison, setLoadingComparison] = useState(false);
@@ -135,30 +146,42 @@ export default function RiskReportsPage() {
     };
   }, []);
 
-  // Fetch primary report details
+  // Fetch primary report details + risk_judgement (эх сурвалж)
   useEffect(() => {
     if (!selectedReportId) {
       setReportRows([]);
       setReportManualMap({});
+      setReportJudgements({});
       setReportJudgementComments({});
       return;
     }
     const requestId = selectedReportId;
+    const pDate = historyList.find((h) => h.id === requestId)?.pDate;
     setReportRows([]);
     setReportManualMap({});
+    setReportJudgements({});
     setReportJudgementComments({});
     let cancelled = false;
     setLoadingReport(true);
     setErrorMsg(null);
-    riskApi
-      .getHistory(requestId)
-      .then((res) => {
+    Promise.all([
+      riskApi.getHistory(requestId),
+      pDate ? riskApi.listJudgements(pDate) : Promise.resolve([]),
+    ])
+      .then(([res, jList]) => {
         if (cancelled || requestId !== selectedReportIdRef.current) return;
+        const manualMap = res.manualMap || {};
+        const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
+        const apiJ = judgementsFromList(jList);
         setReportRows(res.rows || []);
-        setReportManualMap(res.manualMap || {});
-        setReportJudgementComments(res.judgementComments || {});
+        setReportManualMap(manualMap);
+        setReportJudgements({ ...snapJ, ...apiJ });
+        setReportJudgementComments({
+          ...(res.judgementComments || {}),
+          ...judgementCommentsFromList(jList),
+        });
       })
-      .catch((e) => {
+      .catch(() => {
         if (cancelled) return;
         setErrorMsg("Сонгосон тайлангийн өгөгдлийг уншихад алдаа гарлаа.");
       })
@@ -168,29 +191,41 @@ export default function RiskReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedReportId]);
+  }, [selectedReportId, historyList, catalog]);
 
-  // Fetch comparison report details
+  // Fetch comparison report details + risk_judgement
   useEffect(() => {
     if (!comparisonReportId) {
       setComparisonRows([]);
       setComparisonManualMap({});
+      setComparisonJudgements({});
       setComparisonJudgementComments({});
       return;
     }
     const requestId = comparisonReportId;
+    const pDate = historyList.find((h) => h.id === requestId)?.pDate;
     setComparisonRows([]);
     setComparisonManualMap({});
+    setComparisonJudgements({});
     setComparisonJudgementComments({});
     let cancelled = false;
     setLoadingComparison(true);
-    riskApi
-      .getHistory(requestId)
-      .then((res) => {
+    Promise.all([
+      riskApi.getHistory(requestId),
+      pDate ? riskApi.listJudgements(pDate) : Promise.resolve([]),
+    ])
+      .then(([res, jList]) => {
         if (cancelled || requestId !== comparisonReportIdRef.current) return;
+        const manualMap = res.manualMap || {};
+        const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
+        const apiJ = judgementsFromList(jList);
         setComparisonRows(res.rows || []);
-        setComparisonManualMap(res.manualMap || {});
-        setComparisonJudgementComments(res.judgementComments || {});
+        setComparisonManualMap(manualMap);
+        setComparisonJudgements({ ...snapJ, ...apiJ });
+        setComparisonJudgementComments({
+          ...(res.judgementComments || {}),
+          ...judgementCommentsFromList(jList),
+        });
       })
       .catch((e) => console.error("getHistory амжилтгүй:", e))
       .finally(() => {
@@ -199,7 +234,7 @@ export default function RiskReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [comparisonReportId]);
+  }, [comparisonReportId, historyList, catalog]);
 
   // Delete handler
   const openDeleteConfirm = useCallback((id: string) => {
@@ -378,10 +413,12 @@ export default function RiskReportsPage() {
             pDate={selectedReportInfo?.pDate}
             readOnly={true}
             initialManualMap={reportManualMap}
+            externalJudgements={reportJudgements}
             externalJudgementComments={reportJudgementComments}
             previousScoredRows={comparisonScoredRows}
             previousHistoryName={comparisonReportInfo?.name ?? null}
             previousManualMap={comparisonManualMap}
+            previousJudgements={comparisonJudgements}
             hideComparison={!comparisonReportId}
           />
         )}
@@ -398,11 +435,13 @@ export default function RiskReportsPage() {
         onClose={() => setCsvModalOpen(false)}
         primaryRows={reportRows}
         primaryManualMap={reportManualMap}
+        primaryJudgements={reportJudgements}
         primaryJudgementComments={reportJudgementComments}
         primaryName={selectedReportInfo?.name ?? ""}
         primaryDate={selectedReportInfo?.pDate ?? ""}
         prevRows={comparisonRows}
         prevManualMap={comparisonManualMap}
+        prevJudgements={comparisonJudgements}
         prevName={comparisonReportInfo?.name ?? null}
         catalog={catalog}
         weights={weights}

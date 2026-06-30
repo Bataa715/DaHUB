@@ -21,6 +21,9 @@ import {
   normalizeJudgmentCatalog,
   pickJudgmentIndicator,
   readJudgmentScoreFromManual,
+  judgementsFromManualSnapshot,
+  judgementsFromList,
+  judgementCommentsFromList,
 } from "./branch-resolve";
 
 export {
@@ -31,6 +34,9 @@ export {
   nonJudgmentIndicators,
   normalizeJudgmentCatalog,
   readJudgmentScoreFromManual,
+  judgementsFromManualSnapshot,
+  judgementsFromList,
+  judgementCommentsFromList,
 } from "./branch-resolve";
 
 // ─── Dynamic catalog entry (mirrors CatalogIndicator) ────────────────────────

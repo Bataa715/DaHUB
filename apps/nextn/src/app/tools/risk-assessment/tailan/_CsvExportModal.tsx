@@ -29,6 +29,7 @@ import {
   resolveManualBranch,
   resolveJudgementComment,
   resolveJudgementScoreFromMaps,
+  mergeJudgementsIntoManualMap,
 } from "../branch-resolve";
 import { riskApi, HOLD_GLOBAL_PERIOD, type RiskCurrentRow } from "@/lib/api";
 import type { ManualMap } from "../indicator-catalog";
@@ -544,6 +545,7 @@ async function downloadIndicatorXlsx(
   catalog: DynamicCatalogIndicator[],
   scoringCatalog: DynamicCatalogIndicator[],
   manualMap: ManualMap,
+  judgements: Record<string, number>,
   judgementComments: Record<string, string>,
   primaryAgg: BranchAggregate[],
   filterIds: Set<string> | null,
@@ -631,6 +633,7 @@ async function downloadIndicatorXlsx(
           manualMap,
           judgmentIndId,
           agg?.j,
+          judgements,
         );
         values.push(jScore);
         values.push(resolveJudgementComment(solid, judgementComments));
@@ -707,11 +710,13 @@ interface Props {
   onClose: () => void;
   primaryRows: RiskCurrentRow[];
   primaryManualMap: ManualMap;
+  primaryJudgements?: Record<string, number>;
   primaryJudgementComments?: Record<string, string>;
   primaryName: string;
   primaryDate: string;
   prevRows: RiskCurrentRow[];
   prevManualMap: ManualMap;
+  prevJudgements?: Record<string, number>;
   prevName: string | null;
   catalog: DynamicCatalogIndicator[];
   weights: DynamicWeights;
@@ -725,11 +730,13 @@ export default function CsvExportModal({
   onClose,
   primaryRows,
   primaryManualMap,
+  primaryJudgements = {},
   primaryJudgementComments = {},
   primaryName,
   primaryDate,
   prevRows,
   prevManualMap,
+  prevJudgements = {},
   prevName,
   catalog,
   weights,
@@ -824,16 +831,32 @@ export default function CsvExportModal({
     [prevRows],
   );
 
+  const primaryManualForAgg = useMemo(
+    () =>
+      mergeJudgementsIntoManualMap(
+        primaryManualMap,
+        primaryJudgements,
+        catalog,
+      ),
+    [primaryManualMap, primaryJudgements, catalog],
+  );
+
+  const prevManualForAgg = useMemo(
+    () =>
+      mergeJudgementsIntoManualMap(prevManualMap, prevJudgements, catalog),
+    [prevManualMap, prevJudgements, catalog],
+  );
+
   const primaryAgg = useMemo(
     () =>
       computeBranchAggregates(
         oraclePrimary,
-        primaryManualMap,
+        primaryManualForAgg,
         catalog,
         weights,
         heldIds,
       ),
-    [oraclePrimary, primaryManualMap, catalog, weights, heldIds],
+    [oraclePrimary, primaryManualForAgg, catalog, weights, heldIds],
   );
 
   const prevAgg = useMemo(
@@ -841,7 +864,7 @@ export default function CsvExportModal({
       hasComparison && includeComparison
         ? computeBranchAggregates(
             oraclePrev,
-            prevManualMap,
+            prevManualForAgg,
             catalog,
             weights,
             heldIds,
@@ -849,7 +872,7 @@ export default function CsvExportModal({
         : null,
     [
       oraclePrev,
-      prevManualMap,
+      prevManualForAgg,
       hasComparison,
       includeComparison,
       catalog,
@@ -880,6 +903,7 @@ export default function CsvExportModal({
         catalog,
         activeCatalog,
         primaryManualMap,
+        primaryJudgements,
         primaryJudgementComments,
         primaryAgg,
         selectedIndIds,

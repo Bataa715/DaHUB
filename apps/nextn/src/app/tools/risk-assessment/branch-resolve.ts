@@ -85,6 +85,68 @@ export function resolveJudgementScoreFromMaps(
   return resolveJudgementScore(branchKey, manualMap, judgmentIndId, null);
 }
 
+export function judgementsFromManualSnapshot(
+  manualMap: ManualMap,
+  catalog: JudgmentCatalogEntry[],
+): Record<string, number> {
+  const judgmentIds = new Set<string>();
+  const j = pickJudgmentIndicator(catalog);
+  if (j) judgmentIds.add(j.id);
+  for (const c of catalog) {
+    if (c.is_judgment || (c.group === 5 && c.is_manual)) {
+      judgmentIds.add(c.id);
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const [branchId, indMap] of Object.entries(manualMap)) {
+    if (!indMap) continue;
+    for (const id of judgmentIds) {
+      const v = indMap[id];
+      if (v != null && v > 0) {
+        out[branchId] = v;
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+export function judgementCommentsFromList(
+  list: { branchId: string; comment: string }[],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const j of list) {
+    const c = String(j.comment ?? "").trim();
+    if (c) out[j.branchId] = c;
+  }
+  return out;
+}
+
+export function judgementsFromList(
+  list: { branchId: string; score: number }[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const j of list) {
+    if (j.score > 0) out[j.branchId] = j.score;
+  }
+  return out;
+}
+
+export function mergeJudgementsIntoManualMap(
+  manualMap: ManualMap,
+  judgements: Record<string, number>,
+  catalog: JudgmentCatalogEntry[],
+): ManualMap {
+  const j = pickJudgmentIndicator(catalog);
+  if (!j || Object.keys(judgements).length === 0) return manualMap;
+  const out: ManualMap = { ...manualMap };
+  for (const [branchId, score] of Object.entries(judgements)) {
+    if (score <= 0) continue;
+    out[branchId] = { ...(out[branchId] || {}), [j.id]: score };
+  }
+  return out;
+}
+
 export function resolveManualBranch(
   branchKey: string,
   manualMap: ManualMap,
