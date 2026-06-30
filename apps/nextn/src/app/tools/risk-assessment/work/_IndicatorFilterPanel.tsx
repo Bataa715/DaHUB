@@ -1,71 +1,85 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { X, SlidersHorizontal } from "lucide-react";
 import {
   evaluateBranchDynamic,
   pickJudgmentIndicator,
+  nonJudgmentIndicators,
   type DynamicCatalogIndicator,
 } from "../use-indicator-config";
-import { resolveManualBranch, readJudgmentScoreFromManual } from "../branch-resolve";
+import {
+  resolveManualBranch,
+  resolveBranchJudgementScore,
+} from "../branch-resolve";
 import type { ManualMap } from "../indicator-catalog";
 import type { RiskCurrentRow } from "@/lib/api";
 
 interface Props {
   rows: RiskCurrentRow[];
   catalog: DynamicCatalogIndicator[];
+  catalogLoaded?: boolean;
   manualMap: ManualMap;
-  judgements?: Record<string, number>;
+  /** ReportView-ийн externalJudgements-тэй ижил */
+  externalJudgements?: Record<string, number>;
   selectedIndId: string;
   onSelectInd: (id: string) => void;
   onClose: () => void;
 }
 
+function isJudgmentIndicator(
+  ind: DynamicCatalogIndicator,
+  judgmentInd: DynamicCatalogIndicator | null,
+): boolean {
+  if (ind.is_judgment || ind.group === 5) return true;
+  return judgmentInd != null && ind.id === judgmentInd.id;
+}
+
 export default function IndicatorFilterPanel({
   rows,
   catalog,
+  catalogLoaded = true,
   manualMap,
-  judgements,
+  externalJudgements,
   selectedIndId,
   onSelectInd,
   onClose,
 }: Props) {
   const judgmentInd = useMemo(() => pickJudgmentIndicator(catalog), [catalog]);
 
-  // Indicator-уудыг бүлгээр нь ангилах (judgment нэг л удаа)
+  // ReportView catalog-тай ижил — judgment нэг л удаа
   const byGroup = useMemo(() => {
     const m = new Map<number, DynamicCatalogIndicator[]>();
-    const seenJudgment = new Set<string>();
-    for (const c of [...catalog].sort(
+    for (const c of nonJudgmentIndicators(catalog).sort(
       (a, b) => a.group - b.group || Number(a.subid) - Number(b.subid),
     )) {
-      if (c.group === 5 && c.is_manual) {
-        if (!judgmentInd) continue;
-        if (c.id !== judgmentInd.id && !c.is_judgment) continue;
-        if (seenJudgment.has(judgmentInd.id)) continue;
-        seenJudgment.add(judgmentInd.id);
-        if (!m.has(5)) m.set(5, []);
-        m.get(5)!.push(judgmentInd);
-        continue;
-      }
       if (!m.has(c.group)) m.set(c.group, []);
       m.get(c.group)!.push(c);
     }
+    if (judgmentInd) {
+      if (!m.has(5)) m.set(5, []);
+      if (!m.get(5)!.some((x) => x.id === judgmentInd.id)) {
+        m.get(5)!.push(judgmentInd);
+      }
+    }
     return m;
   }, [catalog, judgmentInd]);
+
+  // Шүүлтүүр нээхэд judgment автоматаар сонгох
+  useEffect(() => {
+    if (!catalogLoaded || !judgmentInd || selectedIndId) return;
+    onSelectInd(judgmentInd.id);
+  }, [catalogLoaded, judgmentInd, selectedIndId, onSelectInd]);
 
   const selectedInd =
     catalog.find((c) => c.id === selectedIndId) ??
     (judgmentInd && selectedIndId === judgmentInd.id ? judgmentInd : null);
 
   const isJudgmentSelected =
-    selectedInd != null &&
-    judgmentInd != null &&
-    (selectedInd.is_judgment ||
-      selectedInd.id === judgmentInd.id ||
-      selectedInd.group === 5);
+    selectedInd != null && isJudgmentIndicator(selectedInd, judgmentInd);
 
-  // Oracle мөрүүдийг SOLID-аар бүлэглэх
+  const judgmentIndId = judgmentInd?.id;
+
   const byBranch = useMemo(() => {
     const m = new Map<string, { name: string; oracleRows: RiskCurrentRow[] }>();
     for (const r of rows) {
@@ -79,24 +93,17 @@ export default function IndicatorFilterPanel({
     return m;
   }, [rows]);
 
-  // Сонгосон indicator-ийн оноог салбар бүрт тооцох
   const branchScores = useMemo(() => {
     if (!selectedInd) return [];
     return [...byBranch.entries()]
       .map(([solid, b]) => {
-        if (isJudgmentSelected && judgmentInd) {
-          const ext = judgements?.[solid];
-          const branchManual = resolveManualBranch(solid, manualMap);
-          const manual = readJudgmentScoreFromManual(
-            branchManual,
-            judgmentInd.id,
+        if (isJudgmentSelected) {
+          const score = resolveBranchJudgementScore(
+            solid,
+            externalJudgements,
+            manualMap,
+            judgmentIndId,
           );
-          const score =
-            ext != null && ext > 0
-              ? ext
-              : manual != null
-                ? manual
-                : null;
           return {
             solid,
             name: b.name,
@@ -126,8 +133,8 @@ export default function IndicatorFilterPanel({
     byBranch,
     catalog,
     manualMap,
-    judgements,
-    judgmentInd?.id,
+    externalJudgements,
+    judgmentIndId,
   ]);
 
   const filledCount = branchScores.filter((b) => b.score != null).length;
@@ -141,7 +148,6 @@ export default function IndicatorFilterPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
-      {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b-2 border-border shrink-0 bg-card">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20">
@@ -159,14 +165,16 @@ export default function IndicatorFilterPanel({
         </button>
       </div>
 
-      {/* Selector bar */}
       <div className="px-6 py-3 border-b border-border bg-muted/20 shrink-0 flex items-center gap-3 flex-wrap">
         <select
           value={selectedIndId}
           onChange={(e) => onSelectInd(e.target.value)}
-          className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/30 min-w-[300px] cursor-pointer"
+          disabled={!catalogLoaded}
+          className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/30 min-w-[300px] cursor-pointer disabled:opacity-50"
         >
-          <option value="">— Indicator сонгох —</option>
+          <option value="">
+            {catalogLoaded ? "— Indicator сонгох —" : "Тохиргоо ачаалж байна…"}
+          </option>
           {[...byGroup.entries()].map(([grp, inds]) => (
             <optgroup key={grp} label={`── Score ${grp} ──`}>
               {inds.map((ind) => (
@@ -210,8 +218,11 @@ export default function IndicatorFilterPanel({
         )}
       </div>
 
-      {/* Table */}
-      {selectedInd ? (
+      {!catalogLoaded ? (
+        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+          Indicator тохиргоо ачаалж байна…
+        </div>
+      ) : selectedInd ? (
         <div className="flex-1 overflow-auto px-6 py-2">
           <table className="w-full text-xs">
             <thead>

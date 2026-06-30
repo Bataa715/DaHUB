@@ -28,6 +28,10 @@ import {
 import ReportView from "../report-view";
 import IndicatorFilterPanel from "./_IndicatorFilterPanel";
 import type { ManualMap } from "../indicator-catalog";
+import {
+  judgementsFromListForBranches,
+  oracleSolidsFromRows,
+} from "../branch-resolve";
 
 type ScoredRow = RiskCurrentRow & {
   __score: ScoreResult;
@@ -123,7 +127,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const [filterIndId, setFilterIndId] = useState("");
 
   const dynamicConfig = useIndicatorConfig();
-  const { catalog } = dynamicConfig;
+  const { catalog, loaded: catalogLoaded } = dynamicConfig;
 
   const hasData = rows.some((r) => r.rowType === "oracle");
   const isLocked = lockedDate !== null && lockedDate === fetchedDate;
@@ -191,12 +195,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           if (cancelled) return;
           setRows(res.rows ?? []);
           setFetchedDate(actualDate);
-          const jmap: Record<string, number> = {};
-          const cmap: Record<string, string> = {};
-          for (const j of judgeList) {
-            jmap[j.branchId] = j.score;
-            if (j.comment) cmap[j.branchId] = j.comment;
-          }
+          const solids = oracleSolidsFromRows(res.rows ?? []);
+          const { scores: jmap, comments: cmap } =
+            judgementsFromListForBranches(judgeList, solids);
           setJudgements(jmap);
           setJudgementComments(cmap);
           const closestPrevDate = allJudge.find(
@@ -248,12 +249,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       ]);
       if (abort.signal.aborted) return;
       setRows(res.rows ?? []);
-      const jmap: Record<string, number> = {};
-      const cmap: Record<string, string> = {};
-      for (const j of judgeList) {
-        jmap[j.branchId] = j.score;
-        if (j.comment) cmap[j.branchId] = j.comment;
-      }
+      const solids = oracleSolidsFromRows(res.rows ?? []);
+      const { scores: jmap, comments: cmap } = judgementsFromListForBranches(
+        judgeList,
+        solids,
+      );
       setJudgements(jmap);
       setJudgementComments(cmap);
       const closestPrevDate = allJudge.find(
@@ -522,8 +522,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               <IndicatorFilterPanel
                 rows={rows}
                 catalog={catalog}
+                catalogLoaded={catalogLoaded}
                 manualMap={manualMap}
-                judgements={judgements}
+                externalJudgements={judgements}
                 selectedIndId={filterIndId}
                 onSelectInd={setFilterIndId}
                 onClose={() => setFilterOpen(false)}

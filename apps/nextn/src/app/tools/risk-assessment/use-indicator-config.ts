@@ -24,6 +24,7 @@ import {
   judgementsFromManualSnapshot,
   judgementsFromList,
   judgementCommentsFromList,
+  resolveBranchJudgementScore,
 } from "./branch-resolve";
 
 export {
@@ -37,6 +38,7 @@ export {
   judgementsFromManualSnapshot,
   judgementsFromList,
   judgementCommentsFromList,
+  resolveBranchJudgementScore,
 } from "./branch-resolve";
 
 // ─── Dynamic catalog entry (mirrors CatalogIndicator) ────────────────────────

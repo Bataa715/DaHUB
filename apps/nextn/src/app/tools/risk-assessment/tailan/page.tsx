@@ -30,8 +30,9 @@ import {
 } from "../use-indicator-config";
 import {
   judgementsFromManualSnapshot,
-  judgementsFromList,
-  judgementCommentsFromList,
+  judgementsFromListForBranches,
+  normalizeBranchKeyedMap,
+  oracleSolidsFromRows,
 } from "../branch-resolve";
 import ReportView from "../report-view";
 import ComparePanel from "./_ComparePanel";
@@ -171,15 +172,19 @@ export default function RiskReportsPage() {
       .then(([res, jList]) => {
         if (cancelled || requestId !== selectedReportIdRef.current) return;
         const manualMap = res.manualMap || {};
+        const rows = res.rows || [];
+        const solids = oracleSolidsFromRows(rows);
         const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
-        const apiJ = judgementsFromList(jList);
-        setReportRows(res.rows || []);
+        const { scores: apiJ, comments: apiComments } =
+          judgementsFromListForBranches(jList, solids);
+        const snapComments = normalizeBranchKeyedMap(
+          res.judgementComments || {},
+          solids,
+        );
+        setReportRows(rows);
         setReportManualMap(manualMap);
         setReportJudgements({ ...snapJ, ...apiJ });
-        setReportJudgementComments({
-          ...(res.judgementComments || {}),
-          ...judgementCommentsFromList(jList),
-        });
+        setReportJudgementComments({ ...snapComments, ...apiComments });
       })
       .catch(() => {
         if (cancelled) return;
@@ -217,15 +222,19 @@ export default function RiskReportsPage() {
       .then(([res, jList]) => {
         if (cancelled || requestId !== comparisonReportIdRef.current) return;
         const manualMap = res.manualMap || {};
+        const rows = res.rows || [];
+        const solids = oracleSolidsFromRows(rows);
         const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
-        const apiJ = judgementsFromList(jList);
-        setComparisonRows(res.rows || []);
+        const { scores: apiJ, comments: apiComments } =
+          judgementsFromListForBranches(jList, solids);
+        const snapComments = normalizeBranchKeyedMap(
+          res.judgementComments || {},
+          solids,
+        );
+        setComparisonRows(rows);
         setComparisonManualMap(manualMap);
         setComparisonJudgements({ ...snapJ, ...apiJ });
-        setComparisonJudgementComments({
-          ...(res.judgementComments || {}),
-          ...judgementCommentsFromList(jList),
-        });
+        setComparisonJudgementComments({ ...snapComments, ...apiComments });
       })
       .catch((e) => console.error("getHistory амжилтгүй:", e))
       .finally(() => {

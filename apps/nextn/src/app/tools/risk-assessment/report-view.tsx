@@ -24,6 +24,8 @@ import {
   resolveJudgementComment,
   pickJudgmentIndicator,
   readJudgmentScoreFromManual,
+  lookupJudgementScore,
+  resolveBranchJudgementScore,
 } from "./branch-resolve";
 import {
   useIndicatorConfig,
@@ -346,18 +348,12 @@ export default function ReportView({
         const s4 = ev[4] ?? b.s4 ?? null;
         // tailan: manualJson snapshot (catalog judgment id)
         const j =
-          externalJudgements != null
-            ? (externalJudgements[b.branchId] ?? 0) > 0
-              ? externalJudgements[b.branchId]
-              : null
-            : (() => {
-                if (!judgmentIndId) return null;
-                const snapJ = readJudgmentScoreFromManual(
-                  mKeyMap[b.branchId],
-                  judgmentIndId,
-                );
-                return snapJ ?? null;
-              })();
+          resolveBranchJudgementScore(
+            b.branchId,
+            externalJudgements,
+            mKeyMap,
+            judgmentIndId,
+          );
 
         let vsum = 0,
           wsum = 0;
@@ -432,12 +428,12 @@ export default function ReportView({
     if (sortKey === 0) return [...filtered].sort(bySolid);
     return [...filtered].sort((a, b) => {
       const aHasJ = externalJudgements
-        ? (externalJudgements[a.branchId] ?? 0) > 0
+        ? (lookupJudgementScore(externalJudgements, a.branchId) ?? 0) > 0
         : judgmentIndId
           ? (manualMap[a.branchId]?.[judgmentIndId] ?? 0) > 0
           : false;
       const bHasJ = externalJudgements
-        ? (externalJudgements[b.branchId] ?? 0) > 0
+        ? (lookupJudgementScore(externalJudgements, b.branchId) ?? 0) > 0
         : judgmentIndId
           ? (manualMap[b.branchId]?.[judgmentIndId] ?? 0) > 0
           : false;
@@ -833,7 +829,9 @@ function ReportTable({
     setEditingJBranch(null);
   };
   const filledJCount = externalJudgements
-    ? rows.filter((b) => (externalJudgements[b.branchId] ?? 0) > 0).length
+    ? rows.filter(
+        (b) => (lookupJudgementScore(externalJudgements, b.branchId) ?? 0) > 0,
+      ).length
     : rows.filter(
         (b) =>
           judgmentInd != null &&
@@ -1107,7 +1105,12 @@ function ReportTable({
                               setEditingJBranch(b.branchId);
                               setEditJValue(
                                 externalJudgements
-                                  ? String(externalJudgements[b.branchId] || "")
+                                  ? String(
+                                      lookupJudgementScore(
+                                        externalJudgements,
+                                        b.branchId,
+                                      ) || "",
+                                    )
                                   : judgmentInd
                                     ? String(
                                         manualMap[b.branchId]?.[
