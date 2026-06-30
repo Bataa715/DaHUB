@@ -18,12 +18,19 @@ import {
   resolveManualBranch,
   resolveJudgementComment,
   resolveJudgementScore,
+  normalizeJudgmentCatalog,
+  pickJudgmentIndicator,
+  readJudgmentScoreFromManual,
 } from "./branch-resolve";
 
 export {
   resolveManualBranch,
   resolveJudgementComment,
   resolveJudgementScore,
+  pickJudgmentIndicator,
+  nonJudgmentIndicators,
+  normalizeJudgmentCatalog,
+  readJudgmentScoreFromManual,
 } from "./branch-resolve";
 
 // ─── Dynamic catalog entry (mirrors CatalogIndicator) ────────────────────────
@@ -64,7 +71,7 @@ function buildFallbackConfig(): DynamicConfig {
       group: c.group,
       weight: c.weight,
       is_manual: c.autoSubid == null,
-      is_judgment: c.id === "j-001",
+      is_judgment: c.group === 5,
       score_scale: JSON.stringify({ type: "manual", min: 1, max: 5, step: 1 }),
       hint: c.hint,
     }),
@@ -81,7 +88,7 @@ function buildFallbackConfig(): DynamicConfig {
     j: gsum[5] / 100,
   };
   return {
-    catalog,
+    catalog: normalizeJudgmentCatalog(catalog),
     weights: { UB: w, LOC: w },
     loaded: true,
     isFallback: true,
@@ -115,7 +122,11 @@ function buildDynamicConfig(indicators: IndicatorConfig[]): DynamicConfig {
     j: gsum[5] / 100,
   };
 
-  return { catalog, weights: { UB: w, LOC: w }, loaded: true };
+  return {
+    catalog: normalizeJudgmentCatalog(catalog),
+    weights: { UB: w, LOC: w },
+    loaded: true,
+  };
 }
 
 // ─── Module-level cache (бүх ReportView instance хуваалцана) ─────────────────
@@ -329,17 +340,6 @@ type AggRow = {
   rowType?: string;
 };
 
-export const FALLBACK_JUDGMENT_INDICATOR: DynamicCatalogIndicator = {
-  id: "j-001",
-  subid: "j-001",
-  name: "Аудиторын үнэлэмж",
-  group: 5,
-  weight: 10,
-  is_manual: true,
-  is_judgment: true,
-  score_scale: "{}",
-};
-
 /** ReportView-тай ижил aggregate тооцоо (tailan export-д ашиглана) */
 export function computeBranchAggregates(
   rows: AggRow[],
@@ -377,10 +377,10 @@ export function computeBranchAggregates(
     const s2 = ev[2] ?? b.s2;
     const s3 = ev[3] ?? b.s3;
     const s4 = ev[4] ?? b.s4 ?? null;
-    const judgmentInd = catalog.find((c) => c.is_judgment);
-    const snapJ =
-      branchManual?.["j-001"] ??
-      (judgmentInd ? branchManual?.[judgmentInd.id] : undefined);
+    const judgmentInd = pickJudgmentIndicator(catalog);
+    const snapJ = judgmentInd
+      ? readJudgmentScoreFromManual(branchManual, judgmentInd.id)
+      : undefined;
     const j = snapJ && snapJ > 0 ? snapJ : null;
 
     let vsum = 0;

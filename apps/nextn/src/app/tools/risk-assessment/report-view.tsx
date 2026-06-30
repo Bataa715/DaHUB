@@ -20,7 +20,11 @@ import {
   type OracleValue,
 } from "./scoring-rules";
 import { type ManualMap } from "./indicator-catalog";
-import { resolveJudgementComment } from "./branch-resolve";
+import {
+  resolveJudgementComment,
+  pickJudgmentIndicator,
+  readJudgmentScoreFromManual,
+} from "./branch-resolve";
 import {
   useIndicatorConfig,
   evaluateBranchDynamic,
@@ -137,9 +141,14 @@ export default function ReportView({
   const [manualMap, setManualMap] = useState<ManualMap>({});
   const [manualLoading, setManualLoading] = useState(false);
   const dynamicConfig = useIndicatorConfig();
-  // judgment indicator-ийн DB id (catalog ачааллагдсан үед өөрчлөгдөнө)
-  const judgmentIndId =
-    dynamicConfig.catalog.find((c) => c.is_judgment)?.id ?? "";
+  const judgmentInd = useMemo(
+    () =>
+      dynamicConfig.loaded
+        ? pickJudgmentIndicator(dynamicConfig.catalog)
+        : null,
+    [dynamicConfig.catalog, dynamicConfig.loaded],
+  );
+  const judgmentIndId = judgmentInd?.id ?? "";
   // debounce save тимер хадгалах
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // beforeunload flush-д зориулж pending payload-уудыг хянана
@@ -335,17 +344,19 @@ export default function ReportView({
         const s2 = ev[2] ?? b.s2;
         const s3 = ev[3] ?? b.s3;
         const s4 = ev[4] ?? b.s4 ?? null;
-        // externalJudgements байвал indicator ID тооцохгүйгээр шууд ашиглана (work горим)
-        // Эсвэл snapshot-д хадгалагдсан "j-001" canonical key-г шууд харна (tailan горим)
-        // ev[5] ашиглахгүй — catalog ID хамаарлыг арилгана
+        // tailan: manualJson snapshot (catalog judgment id)
         const j =
           externalJudgements != null
             ? (externalJudgements[b.branchId] ?? 0) > 0
               ? externalJudgements[b.branchId]
               : null
             : (() => {
-                const snapJ = mKeyMap[b.branchId]?.["j-001"];
-                return snapJ && snapJ > 0 ? snapJ : null;
+                if (!judgmentIndId) return null;
+                const snapJ = readJudgmentScoreFromManual(
+                  mKeyMap[b.branchId],
+                  judgmentIndId,
+                );
+                return snapJ ?? null;
               })();
 
         let vsum = 0,
@@ -391,7 +402,7 @@ export default function ReportView({
         } as BranchAggregate;
       });
     },
-    [dynamicConfig, activeCatalog, heldIds, holdsLoaded, externalJudgements],
+    [dynamicConfig, activeCatalog, heldIds, holdsLoaded, externalJudgements, judgmentIndId],
   );
 
   const aggregates = useMemo<BranchAggregate[]>(() => {
@@ -790,7 +801,10 @@ function ReportTable({
       inputRef.current.select();
     }
   }, [editingJBranch]);
-  const judgmentInd = catalog.find((ind) => ind.is_judgment);
+  const judgmentInd = useMemo(
+    () => pickJudgmentIndicator(catalog),
+    [catalog],
+  );
   const commitJ = (branchId: string) => {
     if (committingRef.current) return;
     committingRef.current = true;
@@ -802,9 +816,8 @@ function ReportTable({
       // Хоосн оруулбал: үнэлэмж цэвэрлэх (score=0)
       if (onJudgementChange) {
         onJudgementChange(branchId, 0);
-      } else {
-        const indId = judgmentInd?.id ?? "j-001";
-        setManualValue(branchId, indId, 0);
+      } else if (judgmentInd) {
+        setManualValue(branchId, judgmentInd.id, 0);
       }
     } else {
       const v = parseFloat(raw);
@@ -812,9 +825,8 @@ function ReportTable({
         const clamped = Math.min(5, Math.max(1, v));
         if (onJudgementChange) {
           onJudgementChange(branchId, clamped);
-        } else {
-          const indId = judgmentInd?.id ?? "j-001";
-          setManualValue(branchId, indId, clamped);
+        } else if (judgmentInd) {
+          setManualValue(branchId, judgmentInd.id, clamped);
         }
       }
     }
@@ -824,7 +836,11 @@ function ReportTable({
     ? rows.filter((b) => (externalJudgements[b.branchId] ?? 0) > 0).length
     : rows.filter(
         (b) =>
-          judgmentInd && (manualMap[b.branchId]?.[judgmentInd.id] ?? 0) > 0,
+          judgmentInd != null &&
+          (readJudgmentScoreFromManual(
+            manualMap[b.branchId],
+            judgmentInd.id,
+          ) ?? 0) > 0,
       ).length;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline">

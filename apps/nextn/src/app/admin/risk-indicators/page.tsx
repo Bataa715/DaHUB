@@ -718,7 +718,8 @@ export default function RiskIndicatorsPage() {
       ...form,
       subid: autoSubid,
       name: autoName,
-      is_manual: derivedIsManual,
+      is_manual: isJudgement ? 1 : derivedIsManual,
+      is_judgment: isJudgement ? 1 : form.is_judgment,
     };
     try {
       if (editingId) {

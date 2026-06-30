@@ -4,40 +4,66 @@ import { useMemo } from "react";
 import { X, SlidersHorizontal } from "lucide-react";
 import {
   evaluateBranchDynamic,
+  pickJudgmentIndicator,
   type DynamicCatalogIndicator,
 } from "../use-indicator-config";
+import { resolveManualBranch, readJudgmentScoreFromManual } from "../branch-resolve";
+import type { ManualMap } from "../indicator-catalog";
 import type { RiskCurrentRow } from "@/lib/api";
 
 interface Props {
   rows: RiskCurrentRow[];
   catalog: DynamicCatalogIndicator[];
+  manualMap: ManualMap;
+  judgements?: Record<string, number>;
   selectedIndId: string;
   onSelectInd: (id: string) => void;
   onClose: () => void;
 }
 
-const SCORES = [1, 2, 3, 4, 5] as const;
-
 export default function IndicatorFilterPanel({
   rows,
   catalog,
+  manualMap,
+  judgements,
   selectedIndId,
   onSelectInd,
   onClose,
 }: Props) {
-  // Indicator-уудыг бүлгээр нь ангилах
+  const judgmentInd = useMemo(() => pickJudgmentIndicator(catalog), [catalog]);
+
+  // Indicator-уудыг бүлгээр нь ангилах (judgment нэг л удаа)
   const byGroup = useMemo(() => {
     const m = new Map<number, DynamicCatalogIndicator[]>();
+    const seenJudgment = new Set<string>();
     for (const c of [...catalog].sort(
       (a, b) => a.group - b.group || Number(a.subid) - Number(b.subid),
     )) {
+      if (c.group === 5 && c.is_manual) {
+        if (!judgmentInd) continue;
+        if (c.id !== judgmentInd.id && !c.is_judgment) continue;
+        if (seenJudgment.has(judgmentInd.id)) continue;
+        seenJudgment.add(judgmentInd.id);
+        if (!m.has(5)) m.set(5, []);
+        m.get(5)!.push(judgmentInd);
+        continue;
+      }
       if (!m.has(c.group)) m.set(c.group, []);
       m.get(c.group)!.push(c);
     }
     return m;
-  }, [catalog]);
+  }, [catalog, judgmentInd]);
 
-  const selectedInd = catalog.find((c) => c.id === selectedIndId) ?? null;
+  const selectedInd =
+    catalog.find((c) => c.id === selectedIndId) ??
+    (judgmentInd && selectedIndId === judgmentInd.id ? judgmentInd : null);
+
+  const isJudgmentSelected =
+    selectedInd != null &&
+    judgmentInd != null &&
+    (selectedInd.is_judgment ||
+      selectedInd.id === judgmentInd.id ||
+      selectedInd.group === 5);
 
   // Oracle мөрүүдийг SOLID-аар бүлэглэх
   const byBranch = useMemo(() => {
@@ -58,7 +84,29 @@ export default function IndicatorFilterPanel({
     if (!selectedInd) return [];
     return [...byBranch.entries()]
       .map(([solid, b]) => {
-        const ev = evaluateBranchDynamic(catalog, b.oracleRows, undefined);
+        if (isJudgmentSelected && judgmentInd) {
+          const ext = judgements?.[solid];
+          const branchManual = resolveManualBranch(solid, manualMap);
+          const manual = readJudgmentScoreFromManual(
+            branchManual,
+            judgmentInd.id,
+          );
+          const score =
+            ext != null && ext > 0
+              ? ext
+              : manual != null
+                ? manual
+                : null;
+          return {
+            solid,
+            name: b.name,
+            score,
+            source: "manual" as const,
+            autoRaw: "",
+          };
+        }
+        const branchManual = resolveManualBranch(solid, manualMap);
+        const ev = evaluateBranchDynamic(catalog, b.oracleRows, branchManual);
         const val = ev[selectedInd.id];
         return {
           solid,
@@ -72,7 +120,15 @@ export default function IndicatorFilterPanel({
         (a, b) =>
           Number(a.solid) - Number(b.solid) || a.solid.localeCompare(b.solid),
       );
-  }, [selectedInd, byBranch, catalog]);
+  }, [
+    selectedInd,
+    isJudgmentSelected,
+    byBranch,
+    catalog,
+    manualMap,
+    judgements,
+    judgmentInd?.id,
+  ]);
 
   const filledCount = branchScores.filter((b) => b.score != null).length;
   const avgScore =
@@ -126,12 +182,14 @@ export default function IndicatorFilterPanel({
           <div className="flex items-center gap-2">
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                selectedInd.is_manual
+                selectedInd.is_manual || isJudgmentSelected
                   ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                   : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
               }`}
             >
-              {selectedInd.is_manual ? "Гар оруулга" : "Автомат"}
+              {selectedInd.is_manual || isJudgmentSelected
+                ? "Гар оруулга"
+                : "Автомат"}
             </span>
             <span className="text-[10px] text-muted-foreground">
               Score {selectedInd.group}
@@ -167,9 +225,11 @@ export default function IndicatorFilterPanel({
                 <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-24">
                   SOLID
                 </th>
-                <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-32">
-                  Утга
-                </th>
+                {!isJudgmentSelected && (
+                  <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-32">
+                    Утга
+                  </th>
+                )}
                 <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-24">
                   Оноо
                 </th>
@@ -190,19 +250,19 @@ export default function IndicatorFilterPanel({
                   <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">
                     {b.solid}
                   </td>
-                  {/* Oracle raw result */}
-                  <td className="px-4 py-2.5 text-right">
-                    {b.autoRaw ? (
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        {b.autoRaw}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/30 text-[11px]">
-                        —
-                      </span>
-                    )}
-                  </td>
-                  {/* Score — big bold number */}
+                  {!isJudgmentSelected && (
+                    <td className="px-4 py-2.5 text-right">
+                      {b.autoRaw ? (
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          {b.autoRaw}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/30 text-[11px]">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-2.5 text-right">
                     {b.score != null ? (
                       <span

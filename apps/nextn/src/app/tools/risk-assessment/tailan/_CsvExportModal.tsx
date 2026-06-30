@@ -20,14 +20,15 @@ import {
 import {
   evaluateBranchDynamic,
   computeBranchAggregates,
-  FALLBACK_JUDGMENT_INDICATOR,
+  pickJudgmentIndicator,
+  nonJudgmentIndicators,
   type DynamicCatalogIndicator,
   type DynamicWeights,
 } from "../use-indicator-config";
 import {
   resolveManualBranch,
   resolveJudgementComment,
-  resolveJudgementScore,
+  resolveJudgementScoreFromMaps,
 } from "../branch-resolve";
 import { riskApi, HOLD_GLOBAL_PERIOD, type RiskCurrentRow } from "@/lib/api";
 import type { ManualMap } from "../indicator-catalog";
@@ -556,29 +557,18 @@ async function downloadIndicatorXlsx(
     views: [{ state: "frozen", ySplit: 4 }],
   });
 
-  const selected = catalog.filter((c) => !filterIds || filterIds.has(c.id));
-  const exportInds = [
-    ...selected,
-    ...catalog.filter(
-      (c) =>
-        c.is_judgment &&
-        !selected.some((s) => s.id === c.id) &&
-        (!filterIds || filterIds.has(c.id)),
-    ),
-  ];
-  let sortedInd = [...exportInds].sort(
-    (a, b) => a.group - b.group || a.id.localeCompare(b.id),
+  const selected = nonJudgmentIndicators(catalog).filter(
+    (c) => !filterIds || filterIds.has(c.id),
   );
-  if (!sortedInd.some((c) => c.is_judgment)) {
-    sortedInd = [
-      ...sortedInd,
-      catalog.find((c) => c.is_judgment) ?? FALLBACK_JUDGMENT_INDICATOR,
-    ].sort((a, b) => a.group - b.group || a.id.localeCompare(b.id));
-  }
-
-  const judgmentInd =
-    catalog.find((c) => c.is_judgment) ?? FALLBACK_JUDGMENT_INDICATOR;
-  const judgmentIndId = judgmentInd?.id ?? "j-001";
+  const judgmentInd = pickJudgmentIndicator(catalog);
+  const judgmentIndId = judgmentInd?.id ?? "";
+  const includeJudgment =
+    judgmentInd != null &&
+    (!filterIds || filterIds.has(judgmentIndId));
+  const sortedInd = [
+    ...selected,
+    ...(includeJudgment ? [judgmentInd] : []),
+  ].sort((a, b) => a.group - b.group || a.id.localeCompare(b.id));
   const aggLookup = buildAggLookup(primaryAgg);
 
   const byBranch = new Map<string, { name: string; rows: RiskCurrentRow[] }>();
@@ -636,7 +626,7 @@ async function downloadIndicatorXlsx(
     const agg = lookupAgg(solid, aggLookup);
     for (const c of sortedInd) {
       if (c.is_judgment) {
-        const jScore = resolveJudgementScore(
+        const jScore = resolveJudgementScoreFromMaps(
           solid,
           manualMap,
           judgmentIndId,
@@ -770,16 +760,25 @@ export default function CsvExportModal({
     [catalog, heldIds],
   );
 
+  const judgmentInd = useMemo(() => pickJudgmentIndicator(catalog), [catalog]);
+
   const indByGroup = useMemo(() => {
     const m = new Map<number, DynamicCatalogIndicator[]>();
-    for (const c of [...catalog].sort(
+    for (const c of nonJudgmentIndicators(catalog).sort(
       (a, b) => a.group - b.group || a.name.localeCompare(b.name),
     )) {
       if (!m.has(c.group)) m.set(c.group, []);
       m.get(c.group)!.push(c);
     }
+    if (!m.has(5)) m.set(5, []);
+    if (
+      judgmentInd &&
+      !m.get(5)!.some((c) => c.id === judgmentInd.id)
+    ) {
+      m.get(5)!.push(judgmentInd);
+    }
     return m;
-  }, [catalog]);
+  }, [catalog, judgmentInd]);
 
   const allIds = useMemo(() => new Set(catalog.map((c) => c.id)), [catalog]);
   const effectiveSelected = selectedIndIds ?? allIds;

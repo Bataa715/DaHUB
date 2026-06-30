@@ -240,6 +240,17 @@ export class RiskAssessmentService implements OnModuleInit {
     return out;
   }
 
+  private async resolveJudgmentIndicatorId(): Promise<string | null> {
+    const rows = await this.clickhouse.query<{ id: string }>(`
+      SELECT id
+      FROM risk_indicator_config FINAL
+      WHERE is_active = 1 AND (is_judgment = 1 OR group_num = 5)
+      ORDER BY is_judgment DESC, group_num DESC, sort_order ASC, id ASC
+      LIMIT 1
+    `);
+    return rows[0]?.id ?? null;
+  }
+
   async upsertManualIndicator(args: {
     branchId: string;
     indicatorId: string;
@@ -248,7 +259,8 @@ export class RiskAssessmentService implements OnModuleInit {
   }): Promise<void> {
     const { branchId, indicatorId, value, userId } = args;
     if (!branchId || !indicatorId) return;
-    if (indicatorId === "j-001" || indicatorId.startsWith("j-")) {
+    const judgmentId = await this.resolveJudgmentIndicatorId();
+    if (judgmentId && indicatorId === judgmentId) {
       throw new BadRequestException(
         "Аудиторын үнэлэмжийг PUT /risk-assessment/judgement ашиглан хадгална",
       );
@@ -623,18 +635,19 @@ export class RiskAssessmentService implements OnModuleInit {
       const source = await this.getRiskbranchByDate(args.fetchedDate);
       const judgements = await this.listJudgements(args.fetchedDate);
       const manualIndicators = await this.listManualIndicators();
+      const judgmentId = await this.resolveJudgmentIndicatorId();
 
       manualMap = {};
       for (const [branchId, indMap] of Object.entries(manualIndicators)) {
         const cleaned = { ...indMap };
-        delete cleaned["j-001"];
+        if (judgmentId) delete cleaned[judgmentId];
         if (Object.keys(cleaned).length > 0) {
           manualMap[branchId] = cleaned;
         }
       }
       for (const j of judgements) {
         if (!manualMap[j.branchId]) manualMap[j.branchId] = {};
-        manualMap[j.branchId]["j-001"] = j.score;
+        if (judgmentId) manualMap[j.branchId][judgmentId] = j.score;
         if (j.comment) judgementComments[j.branchId] = j.comment;
       }
       oracleRows = source.rows;

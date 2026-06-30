@@ -522,6 +522,8 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               <IndicatorFilterPanel
                 rows={rows}
                 catalog={catalog}
+                manualMap={manualMap}
+                judgements={judgements}
                 selectedIndId={filterIndId}
                 onSelectInd={setFilterIndId}
                 onClose={() => setFilterOpen(false)}
