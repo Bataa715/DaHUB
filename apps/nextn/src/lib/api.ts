@@ -870,22 +870,14 @@ export const riskApi = {
     await api.put(`/risk-assessment/judgement`, args);
   },
 
-  /** Riskbranch дата + judgement ашиглан history-д хадгалах */
+  /** Riskbranch дата + judgement ашиглан history-д хадгалах (сервер дээр дахин татна) */
   saveHistoryFromRiskbranch: async (
     fetchedDate: string,
     name: string,
-    snapshot?: {
-      rows: RiskCurrentRow[];
-      manualMap: Record<string, Record<string, number>>;
-      judgementComments?: Record<string, string>;
-    },
   ): Promise<RiskHistoryEntry> => {
     const res = await api.post(`/risk-assessment/history/from-riskbranch`, {
       fetchedDate,
       name,
-      rows: snapshot?.rows,
-      manualMap: snapshot?.manualMap,
-      judgementComments: snapshot?.judgementComments,
     });
     return res.data;
   },

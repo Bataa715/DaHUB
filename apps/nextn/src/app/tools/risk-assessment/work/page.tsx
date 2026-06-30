@@ -67,36 +67,7 @@ function toScored(
 
 type SaveModalMeta = {
   pDate: string;
-  pDateBeg: string;
-  rows: RiskCurrentRow[];
-  manualMap: Record<string, Record<string, number>>;
-  judgementComments: Record<string, string>;
 };
-
-function buildHistorySnapshot(
-  rows: RiskCurrentRow[],
-  manualMap: ManualMap,
-  judgements: Record<string, number>,
-  judgementComments: Record<string, string>,
-): Pick<SaveModalMeta, "rows" | "manualMap" | "judgementComments"> {
-  const snapshot: Record<string, Record<string, number>> = {};
-  for (const [branchId, indMap] of Object.entries(manualMap)) {
-    const cleaned = { ...indMap };
-    delete cleaned["j-001"];
-    if (Object.keys(cleaned).length > 0) {
-      snapshot[branchId] = cleaned;
-    }
-  }
-  for (const [branchId, score] of Object.entries(judgements)) {
-    if (!snapshot[branchId]) snapshot[branchId] = {};
-    snapshot[branchId]["j-001"] = score;
-  }
-  return {
-    rows: rows.filter((r) => r.rowType === "oracle"),
-    manualMap: snapshot,
-    judgementComments: { ...judgementComments },
-  };
-}
 
 interface MonitorContentProps {
   saveModalOpenHandler: (meta: SaveModalMeta) => void;
@@ -496,19 +467,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             {/* Prominent Save Completed Report Button */}
             {hasData && isLocked && (
               <button
-                onClick={() => {
-                  const snapshot = buildHistorySnapshot(
-                    rows,
-                    manualMap,
-                    judgements,
-                    judgementComments,
-                  );
-                  saveModalOpenHandler({
-                    pDate: fetchedDate,
-                    pDateBeg: "",
-                    ...snapshot,
-                  });
-                }}
+                onClick={() => saveModalOpenHandler({ pDate: fetchedDate })}
                 className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-amber-600 hover:bg-amber-500 text-foreground text-xs font-semibold transition-all"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
@@ -598,10 +557,6 @@ export default function RiskWorkPage() {
   const [saving, setSaving] = useState(false);
   const [saveModalMeta, setSaveModalMeta] = useState<SaveModalMeta>({
     pDate: "",
-    pDateBeg: "",
-    rows: [],
-    manualMap: {},
-    judgementComments: {},
   });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -611,11 +566,7 @@ export default function RiskWorkPage() {
     setSaving(true);
     setErrorMsg(null);
     try {
-      await riskApi.saveHistoryFromRiskbranch(saveModalMeta.pDate, name, {
-        rows: saveModalMeta.rows,
-        manualMap: saveModalMeta.manualMap,
-        judgementComments: saveModalMeta.judgementComments,
-      });
+      await riskApi.saveHistoryFromRiskbranch(saveModalMeta.pDate, name);
       setSaveModalOpen(false);
       setSaveName("");
       toast({

@@ -248,15 +248,17 @@ export default function RiskReportsPage() {
         title="Эрсдэлийн Тайлан"
         rightContent={
           <div className="flex items-center gap-2">
-            {selectedReportId && !loadingReport && primaryScoredRows.length > 0 && (
-              <button
-                onClick={() => setCsvModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                Татах
-              </button>
-            )}
+            {selectedReportId &&
+              !loadingReport &&
+              primaryScoredRows.length > 0 && (
+                <button
+                  onClick={() => setCsvModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Татах
+                </button>
+              )}
             <button
               onClick={() => setCompareOpen(true)}
               disabled={historyList.length < 2}
@@ -369,6 +371,7 @@ export default function RiskReportsPage() {
         ) : (
           /* Report view (ReadOnly) */
           <ReportView
+            key={`${selectedReportId}:${comparisonReportId}`}
             scoredRows={primaryScoredRows}
             riskFilter={riskFilter}
             setRiskFilter={setRiskFilter}

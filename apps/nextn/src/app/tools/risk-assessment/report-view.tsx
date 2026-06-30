@@ -216,8 +216,13 @@ export default function ReportView({
   // Key = pDate + judgmentIndId: pDate өөрчлөгдвөл (шинэ огноо) эсвэл catalog
   // ачааллагдаж judgment id өөрчлөгдвөл дахин apply хийнэ.
   // (зүгээр л judgements update болж ref өөрчлөгдсөн бол skip хийнэ)
+  // readOnly tailan: initialManualMap өөрчлөгдөх бүрт синк хийнэ
   useEffect(() => {
     if (initialManualMap !== undefined) {
+      if (readOnly) {
+        setManualMap(initialManualMap);
+        return;
+      }
       const key = `${pDate ?? ""}::${judgmentIndId}`;
       if (lastAppliedKey.current === key) return;
       lastAppliedKey.current = key;
@@ -986,9 +991,8 @@ function ReportTable({
                                     branchId: b.branchId,
                                     branchName: b.branchName,
                                     draft:
-                                      externalJudgementComments?.[
-                                        b.branchId
-                                      ] ?? "",
+                                      externalJudgementComments?.[b.branchId] ??
+                                      "",
                                   });
                                 }}
                                 className={`p-0 leading-none transition-colors ${

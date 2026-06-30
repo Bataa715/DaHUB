@@ -6,9 +6,14 @@ import { INDICATOR_CATALOG, type CatalogIndicator } from "./indicator-catalog";
 import {
   WEIGHTS,
   computeScoreDynamic,
+  aggregateBranch,
   type ScoreResult,
   type OracleValue,
+  type BranchAggregate,
+  type RiskLevel,
+  type CatalogEntry,
 } from "./scoring-rules";
+import type { ManualMap } from "./indicator-catalog";
 
 // ─── Dynamic catalog entry (mirrors CatalogIndicator) ────────────────────────
 
@@ -300,4 +305,89 @@ export function computeGroupScoresDynamic(
     4: wts[4] > 0 ? sums[4] / wts[4] : null,
     5: wts[5] > 0 ? sums[5] / wts[5] : null,
   };
+}
+
+type AggRow = {
+  SOLID?: OracleValue;
+  BRANCHNAME?: OracleValue;
+  SUBID?: OracleValue;
+  RESULT?: OracleValue;
+  RESULT_TYPE?: OracleValue;
+  STATUS?: OracleValue;
+  sourceFetchedDate?: string;
+  rowType?: string;
+};
+
+/** ReportView-тай ижил aggregate тооцоо (tailan export-д ашиглана) */
+export function computeBranchAggregates(
+  rows: AggRow[],
+  manualMap: ManualMap,
+  catalog: DynamicCatalogIndicator[],
+  weights: DynamicWeights,
+  heldIds?: Set<string>,
+): BranchAggregate[] {
+  const activeCatalog =
+    heldIds && heldIds.size > 0
+      ? catalog.filter((c) => !heldIds.has(c.id))
+      : catalog;
+  const catalogCast = activeCatalog as unknown as CatalogEntry[];
+  const base = aggregateBranch(rows, {}, {}, catalogCast);
+
+  const byBranch = new Map<string, AggRow[]>();
+  for (const r of rows) {
+    const id = String(r.SOLID ?? "");
+    if (!id) continue;
+    const arr = byBranch.get(id);
+    if (arr) arr.push(r);
+    else byBranch.set(id, [r]);
+  }
+
+  return base.map((b) => {
+    const branchRows = byBranch.get(b.branchId) ?? [];
+    const ev = computeGroupScoresDynamic(
+      activeCatalog,
+      evaluateBranchDynamic(activeCatalog, branchRows, manualMap[b.branchId]),
+      heldIds,
+    );
+    const w = weights[b.region];
+    const s1 = ev[1] ?? b.s1;
+    const s2 = ev[2] ?? b.s2;
+    const s3 = ev[3] ?? b.s3;
+    const s4 = ev[4] ?? b.s4 ?? null;
+    const snapJ = manualMap[b.branchId]?.["j-001"];
+    const j = snapJ && snapJ > 0 ? snapJ : null;
+
+    let vsum = 0;
+    let wsum = 0;
+    if (s1 != null) {
+      vsum += s1 * w.s1;
+      wsum += w.s1;
+    }
+    if (s2 != null) {
+      vsum += s2 * w.s2;
+      wsum += w.s2;
+    }
+    if (s3 != null) {
+      vsum += s3 * w.s3;
+      wsum += w.s3;
+    }
+    if (s4 != null) {
+      vsum += s4 * w.s4;
+      wsum += w.s4;
+    }
+    if (j != null) {
+      vsum += j * w.j;
+      wsum += w.j;
+    }
+    const total: number | null = wsum > 0 ? vsum / wsum : null;
+    const level: RiskLevel | "" =
+      total == null
+        ? ""
+        : total >= 3.5
+          ? "Өндөр"
+          : total >= 2.5
+            ? "Дунд"
+            : "Бага";
+    return { ...b, s1, s2, s3, s4, j, total, level };
+  });
 }

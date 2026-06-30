@@ -11,6 +11,43 @@ import api from "@/lib/api";
 import axios from "axios";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 
+function PasswordInput({
+  id,
+  value,
+  show,
+  onToggle,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  show: boolean;
+  onToggle: () => void;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required
+        placeholder={placeholder}
+        className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 pr-10"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
+
 export default function AdminChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -77,41 +114,6 @@ export default function AdminChangePasswordPage() {
       setIsLoading(false);
     }
   };
-
-  const PasswordInput = ({
-    id,
-    value,
-    show,
-    onToggle,
-    onChange,
-    placeholder,
-  }: {
-    id: string;
-    value: string;
-    show: boolean;
-    onToggle: () => void;
-    onChange: (v: string) => void;
-    placeholder: string;
-  }) => (
-    <div className="relative">
-      <Input
-        id={id}
-        type={show ? "text" : "password"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required
-        placeholder={placeholder}
-        className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 pr-10"
-      />
-      <button
-        type="button"
-        onClick={onToggle}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
-      >
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-background">

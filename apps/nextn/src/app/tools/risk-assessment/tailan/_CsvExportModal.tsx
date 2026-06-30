@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type ExcelJS from "exceljs";
 import {
   X,
@@ -13,17 +13,16 @@ import {
   Check,
 } from "lucide-react";
 import {
-  aggregateBranch,
   classifyBranchTableGroup,
   type BranchAggregate,
-  type CatalogEntry,
 } from "../scoring-rules";
 import {
   evaluateBranchDynamic,
+  computeBranchAggregates,
   type DynamicCatalogIndicator,
   type DynamicWeights,
 } from "../use-indicator-config";
-import type { RiskCurrentRow } from "@/lib/api";
+import { riskApi, HOLD_GLOBAL_PERIOD, type RiskCurrentRow } from "@/lib/api";
 import type { ManualMap } from "../indicator-catalog";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -76,6 +75,21 @@ function compareSolid(a: string, b: string): number {
   const nb = solidSortKey(b);
   if (na !== nb) return na - nb;
   return String(a).localeCompare(String(b), "mn", { numeric: true });
+}
+
+function getJudgementComment(
+  branchKey: string,
+  comments: Record<string, string>,
+): string {
+  const key = String(branchKey ?? "").trim();
+  if (!key) return "";
+  if (comments[key]) return comments[key];
+  const norm = key.replace(/^0+/, "") || key;
+  for (const [k, v] of Object.entries(comments)) {
+    const kn = String(k).trim();
+    if (kn === key || (kn.replace(/^0+/, "") || kn) === norm) return v;
+  }
+  return "";
 }
 
 function parseSolidCell(solid: string): string | number {
@@ -505,6 +519,7 @@ async function downloadSummaryXlsx(
 async function downloadIndicatorXlsx(
   rows: RiskCurrentRow[],
   catalog: DynamicCatalogIndicator[],
+  scoringCatalog: DynamicCatalogIndicator[],
   manualMap: ManualMap,
   judgementComments: Record<string, string>,
   filterIds: Set<string> | null,
@@ -518,9 +533,19 @@ async function downloadIndicatorXlsx(
     views: [{ state: "frozen", ySplit: 4 }],
   });
 
-  const sortedInd = [...catalog]
-    .filter((c) => !filterIds || filterIds.has(c.id))
-    .sort((a, b) => a.group - b.group || a.id.localeCompare(b.id));
+  const selected = catalog.filter((c) => !filterIds || filterIds.has(c.id));
+  const exportInds = [
+    ...selected,
+    ...catalog.filter(
+      (c) =>
+        c.is_judgment &&
+        !selected.some((s) => s.id === c.id) &&
+        (!filterIds || filterIds.has(c.id)),
+    ),
+  ];
+  const sortedInd = [...exportInds].sort(
+    (a, b) => a.group - b.group || a.id.localeCompare(b.id),
+  );
 
   const byBranch = new Map<string, { name: string; rows: RiskCurrentRow[] }>();
   for (const r of rows) {
@@ -537,9 +562,10 @@ async function downloadIndicatorXlsx(
     "SOLID",
     ...sortedInd.flatMap((c) => {
       if (c.is_judgment) {
-        return includeRaw
-          ? [`[G${c.group}] ${c.name} (Оноо)`, `[G${c.group}] ${c.name} (Тайлбар)`]
-          : [`[G${c.group}] ${c.name}`];
+        return [
+          `[G${c.group}] ${c.name} (Оноо)`,
+          `[G${c.group}] ${c.name} (Тайлбар)`,
+        ];
       }
       return includeRaw
         ? [`[G${c.group}] ${c.name} (Оноо)`, `[G${c.group}] ${c.name} (Утга)`]
@@ -556,8 +582,8 @@ async function downloadIndicatorXlsx(
 
   ws.mergeCells(2, 1, 2, Math.min(colCount, 10));
   ws.getCell(2, 1).value = includeRaw
-    ? "Дэлгэрэнгүй — indicator бүрт оноо + утга (judgement-д тайлбар)"
-    : "Indicator тус бүрийн оноо";
+    ? "Дэлгэрэнгүй — indicator бүрт оноо + утга; judgement-д тайлбар үргэлж"
+    : "Indicator оноо + judgement тайлбар";
   ws.getCell(2, 1).font = { size: 9, color: { argb: "FF6B7280" } };
 
   const hdrRow = ws.getRow(4);
@@ -569,7 +595,7 @@ async function downloadIndicatorXlsx(
   );
 
   branchEntries.forEach(([solid, b], idx) => {
-    const ev = evaluateBranchDynamic(catalog, b.rows, manualMap[solid]);
+    const ev = evaluateBranchDynamic(scoringCatalog, b.rows, manualMap[solid]);
     const row = ws.getRow(5 + idx);
     const values: (string | number | null)[] = [b.name, parseSolidCell(solid)];
     for (const c of sortedInd) {
@@ -578,7 +604,7 @@ async function downloadIndicatorXlsx(
           (manualMap[solid] as Record<string, number> | undefined)?.["j-001"] ??
           null;
         values.push(jScore != null && jScore > 0 ? jScore : null);
-        if (includeRaw) values.push(judgementComments[solid] ?? "");
+        values.push(getJudgementComment(solid, judgementComments));
       } else {
         const val = ev[c.id];
         values.push(val?.score != null ? val.score : null);
@@ -621,7 +647,9 @@ async function downloadIndicatorXlsx(
   });
 
   ws.columns.forEach((col, i) => {
-    col.width = i === 0 ? 26 : i === 1 ? 10 : includeRaw ? 16 : 14;
+    if (i === 0) col.width = 26;
+    else if (i === 1) col.width = 10;
+    else col.width = includeRaw ? 16 : 14;
   });
 
   if (branchEntries.length > 0) {
@@ -687,6 +715,21 @@ export default function CsvExportModal({
     null,
   );
   const [indFilterOpen, setIndFilterOpen] = useState(false);
+  const [heldIds, setHeldIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!open) return;
+    riskApi
+      .listHolds(HOLD_GLOBAL_PERIOD)
+      .then((data) => setHeldIds(new Set(data.map((d) => d.indicatorId))))
+      .catch(() => setHeldIds(new Set()));
+  }, [open]);
+
+  const activeCatalog = useMemo(
+    () =>
+      heldIds.size > 0 ? catalog.filter((c) => !heldIds.has(c.id)) : catalog,
+    [catalog, heldIds],
+  );
 
   const indByGroup = useMemo(() => {
     const m = new Map<number, DynamicCatalogIndicator[]>();
@@ -733,48 +776,48 @@ export default function CsvExportModal({
   }
 
   const hasComparison = prevRows.length > 0 && prevName != null;
-  const catalogCasted = catalog as unknown as CatalogEntry[];
 
-  const primaryJudgeMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const [branchId, indMap] of Object.entries(primaryManualMap)) {
-      const v = (indMap as Record<string, number>)["j-001"];
-      if (v && v > 0) m[branchId] = v;
-    }
-    return m;
-  }, [primaryManualMap]);
-
-  const prevJudgeMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const [branchId, indMap] of Object.entries(prevManualMap)) {
-      const v = (indMap as Record<string, number>)["j-001"];
-      if (v && v > 0) m[branchId] = v;
-    }
-    return m;
-  }, [prevManualMap]);
+  const oraclePrimary = useMemo(
+    () => primaryRows.filter((r) => r.rowType === "oracle"),
+    [primaryRows],
+  );
+  const oraclePrev = useMemo(
+    () => prevRows.filter((r) => r.rowType === "oracle"),
+    [prevRows],
+  );
 
   const primaryAgg = useMemo(
     () =>
-      aggregateBranch(
-        primaryRows.filter((r) => r.rowType === "oracle"),
-        {},
-        primaryJudgeMap,
-        catalogCasted,
+      computeBranchAggregates(
+        oraclePrimary,
+        primaryManualMap,
+        catalog,
+        weights,
+        heldIds,
       ),
-    [primaryRows, primaryJudgeMap, catalogCasted],
+    [oraclePrimary, primaryManualMap, catalog, weights, heldIds],
   );
 
   const prevAgg = useMemo(
     () =>
       hasComparison && includeComparison
-        ? aggregateBranch(
-            prevRows.filter((r) => r.rowType === "oracle"),
-            {},
-            prevJudgeMap,
-            catalogCasted,
+        ? computeBranchAggregates(
+            oraclePrev,
+            prevManualMap,
+            catalog,
+            weights,
+            heldIds,
           )
         : null,
-    [prevRows, hasComparison, includeComparison, prevJudgeMap, catalogCasted],
+    [
+      oraclePrev,
+      prevManualMap,
+      hasComparison,
+      includeComparison,
+      catalog,
+      weights,
+      heldIds,
+    ],
   );
 
   const doDownload = async () => {
@@ -797,6 +840,7 @@ export default function CsvExportModal({
       const buf = await downloadIndicatorXlsx(
         primaryRows,
         catalog,
+        activeCatalog,
         primaryManualMap,
         primaryJudgementComments,
         selectedIndIds,
