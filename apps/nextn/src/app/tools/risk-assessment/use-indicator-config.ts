@@ -14,6 +14,17 @@ import {
   type CatalogEntry,
 } from "./scoring-rules";
 import type { ManualMap } from "./indicator-catalog";
+import {
+  resolveManualBranch,
+  resolveJudgementComment,
+  resolveJudgementScore,
+} from "./branch-resolve";
+
+export {
+  resolveManualBranch,
+  resolveJudgementComment,
+  resolveJudgementScore,
+} from "./branch-resolve";
 
 // ─── Dynamic catalog entry (mirrors CatalogIndicator) ────────────────────────
 
@@ -318,6 +329,17 @@ type AggRow = {
   rowType?: string;
 };
 
+export const FALLBACK_JUDGMENT_INDICATOR: DynamicCatalogIndicator = {
+  id: "j-001",
+  subid: "j-001",
+  name: "Аудиторын үнэлэмж",
+  group: 5,
+  weight: 10,
+  is_manual: true,
+  is_judgment: true,
+  score_scale: "{}",
+};
+
 /** ReportView-тай ижил aggregate тооцоо (tailan export-д ашиглана) */
 export function computeBranchAggregates(
   rows: AggRow[],
@@ -344,9 +366,10 @@ export function computeBranchAggregates(
 
   return base.map((b) => {
     const branchRows = byBranch.get(b.branchId) ?? [];
+    const branchManual = resolveManualBranch(b.branchId, manualMap);
     const ev = computeGroupScoresDynamic(
       activeCatalog,
-      evaluateBranchDynamic(activeCatalog, branchRows, manualMap[b.branchId]),
+      evaluateBranchDynamic(activeCatalog, branchRows, branchManual),
       heldIds,
     );
     const w = weights[b.region];
@@ -354,7 +377,10 @@ export function computeBranchAggregates(
     const s2 = ev[2] ?? b.s2;
     const s3 = ev[3] ?? b.s3;
     const s4 = ev[4] ?? b.s4 ?? null;
-    const snapJ = manualMap[b.branchId]?.["j-001"];
+    const judgmentInd = catalog.find((c) => c.is_judgment);
+    const snapJ =
+      branchManual?.["j-001"] ??
+      (judgmentInd ? branchManual?.[judgmentInd.id] : undefined);
     const j = snapJ && snapJ > 0 ? snapJ : null;
 
     let vsum = 0;

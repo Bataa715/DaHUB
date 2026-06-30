@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useMemo, useEffect } from "react";
 import type ExcelJS from "exceljs";
 import {
@@ -19,9 +20,15 @@ import {
 import {
   evaluateBranchDynamic,
   computeBranchAggregates,
+  FALLBACK_JUDGMENT_INDICATOR,
   type DynamicCatalogIndicator,
   type DynamicWeights,
 } from "../use-indicator-config";
+import {
+  resolveManualBranch,
+  resolveJudgementComment,
+  resolveJudgementScore,
+} from "../branch-resolve";
 import { riskApi, HOLD_GLOBAL_PERIOD, type RiskCurrentRow } from "@/lib/api";
 import type { ManualMap } from "../indicator-catalog";
 
@@ -77,19 +84,27 @@ function compareSolid(a: string, b: string): number {
   return String(a).localeCompare(String(b), "mn", { numeric: true });
 }
 
-function getJudgementComment(
-  branchKey: string,
-  comments: Record<string, string>,
-): string {
-  const key = String(branchKey ?? "").trim();
-  if (!key) return "";
-  if (comments[key]) return comments[key];
-  const norm = key.replace(/^0+/, "") || key;
-  for (const [k, v] of Object.entries(comments)) {
-    const kn = String(k).trim();
-    if (kn === key || (kn.replace(/^0+/, "") || kn) === norm) return v;
+function buildAggLookup(agg: BranchAggregate[]): Map<string, BranchAggregate> {
+  const m = new Map<string, BranchAggregate>();
+  for (const b of agg) {
+    m.set(b.branchId, b);
+    if (b.solid) {
+      m.set(String(b.solid), b);
+      const sn = String(b.solid).replace(/^0+/, "") || String(b.solid);
+      m.set(sn, b);
+    }
+    const bn = String(b.branchId).replace(/^0+/, "") || b.branchId;
+    m.set(bn, b);
   }
-  return "";
+  return m;
+}
+
+function lookupAgg(
+  solid: string,
+  map: Map<string, BranchAggregate>,
+): BranchAggregate | undefined {
+  const key = String(solid ?? "").trim();
+  return map.get(key) ?? map.get(key.replace(/^0+/, "") || key);
 }
 
 function parseSolidCell(solid: string): string | number {
@@ -188,7 +203,7 @@ function writeBranchSection(
 ): number {
   const w = weights[region === "UB" ? "UB" : "LOC"];
   const hasComp = !!prevMap && !!prevName;
-  const colCount = hasComp ? 14 : 11;
+  const colCount = hasComp ? 19 : 11;
 
   ws.mergeCells(startRow, 1, startRow, colCount);
   const titleCell = ws.getCell(startRow, 1);
@@ -227,7 +242,18 @@ function writeBranchSection(
     `Judgement (${pct(w.j)})`,
     "Total",
     "Эрсдэлийн түвшин",
-    ...(hasComp ? ["Өмнөх Total", "Өмнөх түвшин", "Зөрүү"] : []),
+    ...(hasComp
+      ? [
+          `Өмнөх S1 (${pct(w.s1)})`,
+          `Өмнөх S2 (${pct(w.s2)})`,
+          `Өмнөх S3 (${pct(w.s3)})`,
+          `Өмнөх S4 (${pct(w.s4)})`,
+          `Өмнөх J (${pct(w.j)})`,
+          "Өмнөх Total",
+          "Өмнөх түвшин",
+          "Зөрүү",
+        ]
+      : []),
   ];
   headers.forEach((h, i) => styleHeaderCell(hdrRow.getCell(i + 1), h));
   hdrRow.height = 24;
@@ -256,8 +282,13 @@ function writeBranchSection(
     ];
     if (hasComp) {
       values.push(
-        prev ? (prev.total ?? null) : "—",
-        prev ? prev.level || "" : "—",
+        prev ? (prev.s1 ?? null) : null,
+        prev ? (prev.s2 ?? null) : null,
+        prev ? (prev.s3 ?? null) : null,
+        prev ? (prev.s4 ?? null) : null,
+        prev && prev.j != null && prev.j > 0 ? prev.j : null,
+        prev ? (prev.total ?? null) : null,
+        prev ? prev.level || "" : "",
         diff != null ? diff : null,
       );
     }
@@ -296,25 +327,14 @@ function writeBranchSection(
         if (lf) cell.fill = lf;
         cell.font = { bold: true, size: 10 };
         cell.alignment = { vertical: "middle", horizontal: "center" };
-      } else if (hasComp && ci === 11 && typeof val === "number") {
-        cell.numFmt = "0.00";
-        cell.alignment = { vertical: "middle", horizontal: "right" };
-      } else if (hasComp && ci === 11) {
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-      } else if (
-        hasComp &&
-        ci === 12 &&
-        typeof val === "string" &&
-        val &&
-        val !== "—"
-      ) {
+      } else if (hasComp && ci === 17 && typeof val === "string" && val) {
         const lf = levelFill(val);
         if (lf) cell.fill = lf;
         cell.font = { bold: true, size: 10 };
         cell.alignment = { vertical: "middle", horizontal: "center" };
-      } else if (hasComp && ci === 12) {
+      } else if (hasComp && ci === 17) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
-      } else if (hasComp && ci === 13 && typeof val === "number") {
+      } else if (hasComp && ci === 18 && typeof val === "number") {
         cell.numFmt = "+0.00;-0.00;0.00";
         cell.alignment = { vertical: "middle", horizontal: "right" };
         cell.font = {
@@ -344,7 +364,9 @@ function writeBranchSection(
   }
 
   ws.columns.forEach((col, i) => {
-    const widths = [5, 8, 28, 10, 11, 11, 11, 11, 12, 9, 14, 10, 12, 10];
+    const widths = [
+      5, 8, 28, 10, 11, 11, 11, 11, 12, 9, 14, 11, 11, 11, 11, 12, 10, 12, 10,
+    ];
     col.width = widths[i] ?? 12;
   });
 
@@ -522,6 +544,7 @@ async function downloadIndicatorXlsx(
   scoringCatalog: DynamicCatalogIndicator[],
   manualMap: ManualMap,
   judgementComments: Record<string, string>,
+  primaryAgg: BranchAggregate[],
   filterIds: Set<string> | null,
   primaryDate: string,
   primaryName: string,
@@ -543,9 +566,20 @@ async function downloadIndicatorXlsx(
         (!filterIds || filterIds.has(c.id)),
     ),
   ];
-  const sortedInd = [...exportInds].sort(
+  let sortedInd = [...exportInds].sort(
     (a, b) => a.group - b.group || a.id.localeCompare(b.id),
   );
+  if (!sortedInd.some((c) => c.is_judgment)) {
+    sortedInd = [
+      ...sortedInd,
+      catalog.find((c) => c.is_judgment) ?? FALLBACK_JUDGMENT_INDICATOR,
+    ].sort((a, b) => a.group - b.group || a.id.localeCompare(b.id));
+  }
+
+  const judgmentInd =
+    catalog.find((c) => c.is_judgment) ?? FALLBACK_JUDGMENT_INDICATOR;
+  const judgmentIndId = judgmentInd?.id ?? "j-001";
+  const aggLookup = buildAggLookup(primaryAgg);
 
   const byBranch = new Map<string, { name: string; rows: RiskCurrentRow[] }>();
   for (const r of rows) {
@@ -595,16 +629,21 @@ async function downloadIndicatorXlsx(
   );
 
   branchEntries.forEach(([solid, b], idx) => {
-    const ev = evaluateBranchDynamic(scoringCatalog, b.rows, manualMap[solid]);
+    const branchManual = resolveManualBranch(solid, manualMap);
+    const ev = evaluateBranchDynamic(scoringCatalog, b.rows, branchManual);
     const row = ws.getRow(5 + idx);
     const values: (string | number | null)[] = [b.name, parseSolidCell(solid)];
+    const agg = lookupAgg(solid, aggLookup);
     for (const c of sortedInd) {
       if (c.is_judgment) {
-        const jScore =
-          (manualMap[solid] as Record<string, number> | undefined)?.["j-001"] ??
-          null;
-        values.push(jScore != null && jScore > 0 ? jScore : null);
-        values.push(getJudgementComment(solid, judgementComments));
+        const jScore = resolveJudgementScore(
+          solid,
+          manualMap,
+          judgmentIndId,
+          agg?.j,
+        );
+        values.push(jScore);
+        values.push(resolveJudgementComment(solid, judgementComments));
       } else {
         const val = ev[c.id];
         values.push(val?.score != null ? val.score : null);
@@ -843,6 +882,7 @@ export default function CsvExportModal({
         activeCatalog,
         primaryManualMap,
         primaryJudgementComments,
+        primaryAgg,
         selectedIndIds,
         primaryDate,
         primaryName,

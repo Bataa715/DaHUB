@@ -20,6 +20,7 @@ import {
   type OracleValue,
 } from "./scoring-rules";
 import { type ManualMap } from "./indicator-catalog";
+import { resolveJudgementComment } from "./branch-resolve";
 import {
   useIndicatorConfig,
   evaluateBranchDynamic,
@@ -680,6 +681,55 @@ export default function ReportView({
   );
 }
 
+function ReadOnlyJudgementCell({
+  branchId,
+  branchName,
+  score,
+  comments,
+  onOpenComment,
+}: {
+  branchId: string;
+  branchName: string;
+  score: number | null;
+  comments?: Record<string, string>;
+  onOpenComment: (payload: {
+    branchId: string;
+    branchName: string;
+    draft: string;
+  }) => void;
+}) {
+  const jComment = resolveJudgementComment(branchId, comments);
+  const hasJ = score != null && score > 0;
+  const canOpen = hasJ || Boolean(jComment);
+
+  return (
+    <button
+      type="button"
+      disabled={!canOpen}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!canOpen) return;
+        onOpenComment({ branchId, branchName, draft: jComment });
+      }}
+      className={`inline-flex items-center justify-end gap-1 font-bold text-rose-700 dark:text-rose-400 tabular-nums ${
+        canOpen ? "hover:text-rose-500 cursor-pointer" : "cursor-default"
+      }`}
+      title={
+        jComment ? "Тайлбар харах" : hasJ ? "Тайлбар байхгүй" : undefined
+      }
+    >
+      {hasJ
+        ? score! % 1 === 0
+          ? score!.toFixed(0)
+          : score!.toFixed(1)
+        : "—"}
+      {jComment ? (
+        <MessageSquare className="w-2.5 h-2.5 shrink-0 text-rose-500 fill-rose-500/20" />
+      ) : null}
+    </button>
+  );
+}
+
 // ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
 function ReportTable({
   title,
@@ -949,13 +999,13 @@ function ReportTable({
                       onClick={(e) => e.stopPropagation()}
                     >
                       {readOnly ? (
-                        <span className="font-bold text-rose-700 dark:text-rose-400">
-                          {b.j != null && b.j > 0
-                            ? b.j % 1 === 0
-                              ? b.j.toFixed(0)
-                              : b.j.toFixed(1)
-                            : "—"}
-                        </span>
+                        <ReadOnlyJudgementCell
+                          branchId={b.branchId}
+                          branchName={b.branchName}
+                          score={b.j}
+                          comments={externalJudgementComments}
+                          onOpenComment={setCommentModal}
+                        />
                       ) : editingJBranch === b.branchId ? (
                         <input
                           ref={inputRef}
@@ -978,10 +1028,18 @@ function ReportTable({
                           <div className="flex items-center gap-1 h-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 shrink-0" />
                             {(readOnly
-                              ? Boolean(externalJudgementComments?.[b.branchId])
+                              ? Boolean(
+                                  resolveJudgementComment(
+                                    b.branchId,
+                                    externalJudgementComments,
+                                  ),
+                                )
                               : (b.j != null && b.j > 0) ||
                                 Boolean(
-                                  externalJudgementComments?.[b.branchId],
+                                  resolveJudgementComment(
+                                    b.branchId,
+                                    externalJudgementComments,
+                                  ),
                                 )) && (
                               <button
                                 type="button"
@@ -991,24 +1049,35 @@ function ReportTable({
                                     branchId: b.branchId,
                                     branchName: b.branchName,
                                     draft:
-                                      externalJudgementComments?.[b.branchId] ??
-                                      "",
+                                      resolveJudgementComment(
+                                        b.branchId,
+                                        externalJudgementComments,
+                                      ) ?? "",
                                   });
                                 }}
                                 className={`p-0 leading-none transition-colors ${
-                                  externalJudgementComments?.[b.branchId]
+                                  resolveJudgementComment(
+                                    b.branchId,
+                                    externalJudgementComments,
+                                  )
                                     ? "text-rose-500 hover:text-rose-400"
                                     : "text-muted-foreground/50 hover:text-rose-500"
                                 }`}
                                 title={
-                                  externalJudgementComments?.[b.branchId]
+                                  resolveJudgementComment(
+                                    b.branchId,
+                                    externalJudgementComments,
+                                  )
                                     ? "Тайлбар харах"
                                     : "Тайлбар нэмэх"
                                 }
                               >
                                 <MessageSquare
                                   className={`w-2.5 h-2.5 ${
-                                    externalJudgementComments?.[b.branchId]
+                                    resolveJudgementComment(
+                                      b.branchId,
+                                      externalJudgementComments,
+                                    )
                                       ? "fill-rose-500/25"
                                       : ""
                                   }`}
@@ -1155,9 +1224,10 @@ function ReportTable({
                       hideComparison={hideComparison}
                       dataReferenceDate={dataReferenceDate}
                       judgementScore={b.j}
-                      judgementComment={
-                        externalJudgementComments?.[b.branchId] ?? ""
-                      }
+                      judgementComment={resolveJudgementComment(
+                        b.branchId,
+                        externalJudgementComments,
+                      )}
                     />
                   )}
                 </Fragment>
