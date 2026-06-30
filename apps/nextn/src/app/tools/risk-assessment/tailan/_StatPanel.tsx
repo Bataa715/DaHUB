@@ -569,7 +569,7 @@ export default function StatPanel({
               onChange={(e) => setSelectedSubId(Number(e.target.value))}
               className="h-8 px-2.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-emerald-500/30 min-w-[250px]"
             >
-              {([1, 2, 3] as const).map((grp) => (
+              {([1, 2, 3, 4] as const).map((grp) => (
                 <optgroup key={grp} label={`Score ${grp}`}>
                   {scoreIndicators
                     .filter((r) => r.group === grp)
