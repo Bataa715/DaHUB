@@ -79,6 +79,8 @@ interface Props {
     value: number,
   ) => void;
   hideComparison?: boolean;
+  /** Дэлгэрэнгүй мөрөнд оноогүй (үнэлэгдээгүй) indicator-уудыг харуулахгүй */
+  hideUnevaluatedInDetail?: boolean;
   previousManualMap?: import("./indicator-catalog").ManualMap;
   /**
    * Гадаас дамжуулах аудиторын үнэлэмж (work session горим).
@@ -136,6 +138,7 @@ export default function ReportView({
   onJudgementCommentSave,
   previousJudgements,
   hideComparison = false,
+  hideUnevaluatedInDetail = false,
   previousManualMap = {},
   dataReferenceDate,
 }: Props) {
@@ -473,6 +476,7 @@ export default function ReportView({
     readOnly,
     rawRowsByBranch: rowsByBranch,
     hideComparison,
+    hideUnevaluatedInDetail,
     externalJudgements,
     externalJudgementComments,
     onJudgementChange,
@@ -750,6 +754,7 @@ function ReportTable({
   readOnly = false,
   rawRowsByBranch,
   hideComparison = false,
+  hideUnevaluatedInDetail = false,
   externalJudgements,
   externalJudgementComments,
   onJudgementChange,
@@ -772,6 +777,7 @@ function ReportTable({
   readOnly?: boolean;
   rawRowsByBranch: Map<string, AnyRow[]>;
   hideComparison?: boolean;
+  hideUnevaluatedInDetail?: boolean;
   externalJudgements?: Record<string, number>;
   externalJudgementComments?: Record<string, string>;
   onJudgementChange?: (branchId: string, score: number) => void;
@@ -1241,6 +1247,7 @@ function ReportTable({
                       currentAgg={b}
                       previousAgg={prev}
                       hideComparison={hideComparison}
+                      hideUnevaluatedInDetail={hideUnevaluatedInDetail}
                       dataReferenceDate={dataReferenceDate}
                       judgementScore={b.j}
                       judgementComment={resolveJudgementComment(
@@ -1402,6 +1409,10 @@ function isStaleIndicatorData(
   return src !== ref;
 }
 
+function hasEvaluatedScore(score: number | null | undefined): boolean {
+  return score != null && score > 0;
+}
+
 function IndicatorDetailRow({
   branchId,
   branchName,
@@ -1412,6 +1423,7 @@ function IndicatorDetailRow({
   currentAgg,
   previousAgg,
   hideComparison = false,
+  hideUnevaluatedInDetail = false,
   dataReferenceDate,
   judgementScore,
   judgementComment,
@@ -1425,6 +1437,7 @@ function IndicatorDetailRow({
   currentAgg?: BranchAggregate;
   previousAgg?: BranchAggregate;
   hideComparison?: boolean;
+  hideUnevaluatedInDetail?: boolean;
   dataReferenceDate?: string;
   judgementScore?: number | null;
   judgementComment?: string;
@@ -1451,17 +1464,18 @@ function IndicatorDetailRow({
     for (const ind of catalog) {
       if (ind.is_judgment || ind.group === 5) continue; // Judgement дэлгэрэнгүйд харуулахгүй
       const ev = evals[ind.id] ?? { score: null, source: "none" };
+      if (hideUnevaluatedInDetail && !hasEvaluatedScore(ev.score)) continue;
       const grp = ind.group;
       if (!g[grp]) g[grp] = [];
       g[grp].push({ ind, ev });
     }
-    // subid-аар эрэмбэлэх боловч "Үнэлэхгүй" (score байхгүй/0) зүйлсийг
-    // subid-аас үл хамааран хамгийн доор нь байрлуулна.
     for (const grp of Object.keys(g)) {
       g[Number(grp)].sort((a, b) => {
-        const aNo = a.ev.score == null || a.ev.score <= 0;
-        const bNo = b.ev.score == null || b.ev.score <= 0;
-        if (aNo !== bNo) return aNo ? 1 : -1; // Үнэлэхгүй → доош
+        if (!hideUnevaluatedInDetail) {
+          const aNo = !hasEvaluatedScore(a.ev.score);
+          const bNo = !hasEvaluatedScore(b.ev.score);
+          if (aNo !== bNo) return aNo ? 1 : -1;
+        }
         const na = parseFloat(a.ind.subid ?? "") || 0;
         const nb = parseFloat(b.ind.subid ?? "") || 0;
         if (na !== nb) return na - nb;
@@ -1469,7 +1483,7 @@ function IndicatorDetailRow({
       });
     }
     return g;
-  }, [catalog, evals]);
+  }, [catalog, evals, hideUnevaluatedInDetail]);
 
   return (
     <tr className="border-t border-sky-500/20 bg-sky-500/3">

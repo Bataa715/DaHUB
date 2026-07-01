@@ -40,11 +40,49 @@ export interface DynamicScoreScale {
   max?: number;
   step?: number;
   /**
-   * Хэрэв true бол тухайн сард мэдээлэл байхгүй (null/хоосон) үед
-   * "Үнэлэхгүй" гэж тооцож жингийг хасдаг (weight redistributed).
-   * false/undefined бол мэдээлэл байхгүй үед хамгийн муу оноо (5) авна.
+   * Хоосон/null утгын бодлого:
+   * - unelehgui: жин хасагдана
+   * - 5: хамгийн муу оноо
+   * - 1: хоосон = 1 оноо
+   * @deprecated null_is_unelehgui — зөвхөн хуучин тохиргоо
    */
+  null_empty_score?: "unelehgui" | "1" | "5";
   null_is_unelehgui?: boolean;
+}
+
+export type NullEmptyScorePolicy = "unelehgui" | "1" | "5";
+
+type NullEmptyScaleFields = Pick<
+  DynamicScoreScale,
+  "null_empty_score" | "null_is_unelehgui"
+>;
+
+export function getNullEmptyPolicy(
+  scale: NullEmptyScaleFields,
+): NullEmptyScorePolicy {
+  const v = scale.null_empty_score;
+  if (v === "1" || v === "5" || v === "unelehgui") return v;
+  if (scale.null_is_unelehgui === false) return "5";
+  return "unelehgui";
+}
+
+export function resolveEmptyNullScore(
+  scale: NullEmptyScaleFields,
+): { score: ScoreResult; label: string | null } {
+  const policy = getNullEmptyPolicy(scale);
+  if (policy === "5") return { score: 5, label: "Мэдээлэл байхгүй" };
+  if (policy === "1") return { score: 1, label: "Мэдээлэл байхгүй" };
+  return { score: "Үнэлэхгүй", label: "Мэдээлэл байхгүй" };
+}
+
+export function resolveEmptyNullScoreFromJson(
+  scaleJson: string,
+): { score: ScoreResult; label: string | null } {
+  try {
+    return resolveEmptyNullScore(JSON.parse(scaleJson) as DynamicScoreScale);
+  } catch {
+    return resolveEmptyNullScore({});
+  }
 }
 
 export function computeScoreDynamic(
@@ -66,6 +104,9 @@ export function computeScoreDynamic(
   const raw = result == null ? "" : String(result).trim();
   // Invisible/extra whitespace зайлуулах (Oracle text-ийн NBSP, tab гэх мэт)
   const rawNorm = raw.replace(/[\s\u00A0\u200B]+/g, " ").trim();
+  if (!rawNorm) {
+    return resolveEmptyNullScore(scale);
+  }
   const isStringType = String(resultType ?? "").toUpperCase() === "STRING";
 
   /** whitespace normalize — case өөрчлөхгүй */

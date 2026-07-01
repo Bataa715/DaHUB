@@ -69,8 +69,56 @@ interface ScoreScale {
   min?: number;
   max?: number;
   step?: number;
+  null_empty_score?: "unelehgui" | "1" | "5";
   null_is_unelehgui?: boolean;
 }
+
+type NullEmptyScore = "unelehgui" | "1" | "5";
+
+function readNullEmptyPolicy(scale: ScoreScale): NullEmptyScore {
+  if (
+    scale.null_empty_score === "1" ||
+    scale.null_empty_score === "5" ||
+    scale.null_empty_score === "unelehgui"
+  ) {
+    return scale.null_empty_score;
+  }
+  if (scale.null_is_unelehgui === false) return "5";
+  return "unelehgui";
+}
+
+function applyNullEmptyPolicy(
+  scale: ScoreScale,
+  policy: NullEmptyScore,
+): ScoreScale {
+  return {
+    ...scale,
+    null_empty_score: policy,
+    null_is_unelehgui: policy === "unelehgui",
+  };
+}
+
+const NULL_EMPTY_OPTIONS: {
+  value: NullEmptyScore;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    value: "unelehgui",
+    label: "Үнэлэхгүй",
+    hint: "жин хасагдана",
+  },
+  {
+    value: "1",
+    label: "Оноо 1",
+    hint: "хоосон = сайн",
+  },
+  {
+    value: "5",
+    label: "Оноо 5",
+    hint: "хоосон = муу",
+  },
+];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -487,38 +535,40 @@ function ScaleEditor({
         </div>
       </div>
 
-      {/* ── null_is_unelehgui toggle ────────────────────────────────────── */}
-      <label className="flex items-center gap-2.5 cursor-pointer w-fit select-none">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={!!scale.null_is_unelehgui}
-          onClick={() =>
-            setScale((s) => ({
-              ...s,
-              null_is_unelehgui: !s.null_is_unelehgui,
-            }))
-          }
-          className={`relative w-9 h-5 rounded-full border transition-all shrink-0 ${
-            scale.null_is_unelehgui
-              ? "bg-sky-500/30 border-sky-500/50"
-              : "bg-foreground/5 border-border/40"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 w-4 h-4 rounded-full transition-all shadow-sm ${
-              scale.null_is_unelehgui
-                ? "left-[18px] bg-sky-400"
-                : "left-0.5 bg-foreground/30"
-            }`}
-          />
-        </button>
-        <span className="text-[11px] text-muted-foreground/60">
-          Хоосон утга →{" "}
-          <span className="text-sky-400/80 font-medium">"Үнэлэхгүй"</span>
-          <span className="text-muted-foreground/40 ml-1">(жин хасагдана)</span>
-        </span>
-      </label>
+      {/* ── Хоосон утгын бодлого ─────────────────────────────────────────── */}
+      <div className="space-y-1.5">
+        <Label className="text-muted-foreground/60 text-[11px] uppercase tracking-wider">
+          Хоосон / null утга
+        </Label>
+        <div className="flex flex-wrap gap-1.5">
+          {NULL_EMPTY_OPTIONS.map((opt) => {
+            const active = readNullEmptyPolicy(scale) === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() =>
+                  setScale((s) => applyNullEmptyPolicy(s, opt.value))
+                }
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  active
+                    ? opt.value === "unelehgui"
+                      ? "bg-sky-500/15 text-sky-400 border-sky-500/30"
+                      : opt.value === "1"
+                        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                        : "bg-red-500/15 text-red-400 border-red-500/30"
+                    : "border-border/30 text-muted-foreground/50 hover:border-border/50 hover:text-foreground/70 bg-transparent"
+                }`}
+              >
+                {opt.label}
+                <span className="text-[10px] font-normal opacity-70 ml-1">
+                  ({opt.hint})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ── Rules ──────────────────────────────────────────────────────── */}
       {scale.type === "numeric" && (

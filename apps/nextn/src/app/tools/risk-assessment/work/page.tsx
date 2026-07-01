@@ -544,6 +544,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               onJudgementCommentSave={onJudgementCommentSave}
               previousJudgements={prevJudgements}
               hideComparison={true}
+              hideUnevaluatedInDetail={true}
             />
           </>
         )}

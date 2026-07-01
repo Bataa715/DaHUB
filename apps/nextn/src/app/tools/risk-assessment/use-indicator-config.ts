@@ -7,6 +7,7 @@ import {
   WEIGHTS,
   computeScoreDynamic,
   aggregateBranch,
+  resolveEmptyNullScoreFromJson,
   type ScoreResult,
   type OracleValue,
   type BranchAggregate,
@@ -285,23 +286,20 @@ export function evaluateBranchDynamic(
         if (typeof a.score === "number" && a.score > 0) {
           score = a.score;
           source = "auto";
+        } else if (a.score === "Үнэлэхгүй") {
+          score = null;
+          source = "auto";
         }
       }
     }
-    // If still no score: only force score 5 when null_is_unelehgui is explicitly false.
-    // By default (flag absent) missing data = Үнэлэхгүй (weight redistributed).
+    // Oracle мөр байхгүй эсвэл хоосон утга — score_scale-ийн null_empty_score бодлого
     if (score === null && !ind.is_manual) {
-      let sc: { null_is_unelehgui?: boolean } = {};
-      try {
-        sc = JSON.parse(ind.score_scale);
-      } catch {
-        /* ignore */
-      }
-      if (sc.null_is_unelehgui === false) {
-        score = 5;
+      const empty = resolveEmptyNullScoreFromJson(ind.score_scale);
+      if (typeof empty.score === "number" && empty.score > 0) {
+        score = empty.score;
         source = "auto";
         autoRaw = autoRaw ?? "";
-        autoLabel = autoLabel ?? "Мэдээлэл байхгүй";
+        autoLabel = autoLabel ?? empty.label ?? "Мэдээлэл байхгүй";
       }
     }
 
