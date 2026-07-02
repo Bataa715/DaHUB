@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { riskApi, type RiskHistoryEntry, type RiskCurrentRow } from "@/lib/api";
-import { aggregateBranch, computeScoreDynamic } from "../scoring-rules";
+import { aggregateBranch, computeOracleRowScore } from "../scoring-rules";
 import { useIndicatorConfig } from "../use-indicator-config";
 import {
   LineChart,
@@ -344,20 +344,21 @@ export default function StatPanel({
         }
       } else if (mode === "score") {
         for (const r of e.rows) {
-          if (Number(r.SUBID) !== selectedSubId) continue;
+          const subid = String(r.SUBID ?? "").trim();
+          if (subid !== String(selectedSubId)) continue;
           if (!activeBranchIds.includes(r.SOLID)) continue;
-          const ind = dynamicConfig.catalog.find(
-            (c) => Number(c.subid) === selectedSubId,
+          const { score } = computeOracleRowScore(
+            dynamicConfig.catalog,
+            subid,
+            r.RESULT,
+            r.RESULT_TYPE,
           );
-          const { score } =
-            ind && !ind.is_manual
-              ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
-              : { score: null };
           if (typeof score === "number" && score > 0) point[r.SOLID] = score;
         }
       } else {
         for (const r of e.rows) {
-          if (Number(r.SUBID) !== selectedSubId) continue;
+          const subid = String(r.SUBID ?? "").trim();
+          if (subid !== String(selectedSubId)) continue;
           if (!activeBranchIds.includes(r.SOLID)) continue;
           const raw = parseFloat(String(r.RESULT));
           if (!isNaN(raw)) point[r.SOLID] = raw;

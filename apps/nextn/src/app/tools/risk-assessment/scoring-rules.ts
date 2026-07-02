@@ -31,14 +31,37 @@ export interface DynamicScaleRule {
   label: string;
 }
 
+/** Нэг indicator дотор олон SUBID-ийн өөр өөр scale (онцгой тохиолдол) */
+export interface MultiSubidSource {
+  subid: string;
+  label?: string;
+  type: "numeric" | "string" | "both";
+  numericRules?: DynamicScaleRule[];
+  stringRules?: DynamicScaleRule[];
+  null_empty_score?: "unelehgui" | "1" | "5";
+  null_is_unelehgui?: boolean;
+}
+
+export type MultiSubidCombine = "max" | "min" | "avg";
+
 export interface DynamicScoreScale {
-  type: "numeric" | "string" | "both" | "manual" | "no_score";
+  type:
+    | "numeric"
+    | "string"
+    | "both"
+    | "manual"
+    | "no_score"
+    | "multi_subid";
   rules?: DynamicScaleRule[];
   numericRules?: DynamicScaleRule[];
   stringRules?: DynamicScaleRule[];
   min?: number;
   max?: number;
   step?: number;
+  /** multi_subid: SUBID бүрт тусдаа scale */
+  sources?: MultiSubidSource[];
+  /** multi_subid: эх үүсвэрүүдийн оноог нэгтгэх арга (default: max = хамгийн муу) */
+  combine?: MultiSubidCombine;
   /**
    * Хоосон/null утгын бодлого:
    * - unelehgui: жин хасагдана
@@ -48,6 +71,101 @@ export interface DynamicScoreScale {
    */
   null_empty_score?: "unelehgui" | "1" | "5";
   null_is_unelehgui?: boolean;
+}
+
+export type OracleRowLike = {
+  SUBID?: OracleValue;
+  RESULT?: OracleValue;
+  RESULT_TYPE?: OracleValue;
+  sourceFetchedDate?: string;
+};
+
+export function parseScoreScale(scaleJson: string): DynamicScoreScale {
+  try {
+    return JSON.parse(scaleJson) as DynamicScoreScale;
+  } catch {
+    return { type: "manual" };
+  }
+}
+
+export function isMultiSubidScale(
+  scaleOrJson: DynamicScoreScale | string,
+): boolean {
+  const scale =
+    typeof scaleOrJson === "string"
+      ? parseScoreScale(scaleOrJson)
+      : scaleOrJson;
+  return scale.type === "multi_subid" && (scale.sources?.length ?? 0) > 0;
+}
+
+function sourceToScale(source: MultiSubidSource): DynamicScoreScale {
+  return {
+    type: source.type,
+    numericRules: source.numericRules,
+    stringRules: source.stringRules,
+    null_empty_score: source.null_empty_score,
+    null_is_unelehgui: source.null_is_unelehgui,
+  };
+}
+
+function combineNumericScores(
+  scores: number[],
+  combine: MultiSubidCombine,
+): number | null {
+  if (scores.length === 0) return null;
+  if (combine === "min") return Math.min(...scores);
+  if (combine === "avg")
+    return scores.reduce((a, b) => a + b, 0) / scores.length;
+  return Math.max(...scores);
+}
+
+export function collectMultiSubidSecondarySubids(
+  catalog: { subid: string; is_manual: boolean; score_scale: string }[],
+): Set<string> {
+  const out = new Set<string>();
+  for (const ind of catalog) {
+    if (ind.is_manual) continue;
+    const scale = parseScoreScale(ind.score_scale);
+    if (scale.type !== "multi_subid") continue;
+    const primary = ind.subid.trim();
+    for (const src of scale.sources ?? []) {
+      const sid = src.subid.trim();
+      if (sid && sid !== primary) out.add(sid);
+    }
+  }
+  return out;
+}
+
+export type ResolvedSubidIndicator = {
+  indicator: { subid: string; score_scale: string; group: number };
+  source?: MultiSubidSource;
+};
+
+/** Oracle мөрөөс indicator олох (гол болон нэмэлт SUBID) */
+export function resolveIndicatorForSubid<
+  T extends { subid: string; is_manual: boolean; score_scale: string; group: number },
+>(catalog: T[], subid: string): { indicator: T; source?: MultiSubidSource } | null {
+  const sid = subid.trim();
+  if (!sid) return null;
+
+  const primary = catalog.find((c) => !c.is_manual && c.subid.trim() === sid);
+  if (primary) {
+    const scale = parseScoreScale(primary.score_scale);
+    if (scale.type === "multi_subid") {
+      const source = scale.sources?.find((s) => s.subid.trim() === sid);
+      return { indicator: primary, source };
+    }
+    return { indicator: primary };
+  }
+
+  for (const ind of catalog) {
+    if (ind.is_manual) continue;
+    const scale = parseScoreScale(ind.score_scale);
+    if (scale.type !== "multi_subid") continue;
+    const source = scale.sources?.find((s) => s.subid.trim() === sid);
+    if (source) return { indicator: ind, source };
+  }
+  return null;
 }
 
 export type NullEmptyScorePolicy = "unelehgui" | "1" | "5";
@@ -85,31 +203,22 @@ export function resolveEmptyNullScoreFromJson(
   }
 }
 
-export function computeScoreDynamic(
-  scaleJson: string,
+export function computeScoreFromScale(
+  scale: DynamicScoreScale,
   result: OracleValue | undefined,
   resultType?: OracleValue,
 ): { score: ScoreResult; label: string | null } {
-  let scale: DynamicScoreScale;
-  try {
-    scale = JSON.parse(scaleJson);
-  } catch {
-    return { score: null, label: null };
-  }
-
-  if (scale.type === "no_score" || scale.type === "manual") {
+  if (scale.type === "no_score" || scale.type === "manual" || scale.type === "multi_subid") {
     return { score: null, label: null };
   }
 
   const raw = result == null ? "" : String(result).trim();
-  // Invisible/extra whitespace зайлуулах (Oracle text-ийн NBSP, tab гэх мэт)
   const rawNorm = raw.replace(/[\s\u00A0\u200B]+/g, " ").trim();
   if (!rawNorm) {
     return resolveEmptyNullScore(scale);
   }
   const isStringType = String(resultType ?? "").toUpperCase() === "STRING";
 
-  /** whitespace normalize — case өөрчлөхгүй */
   const normalize = (s: string) => s.replace(/[\s\u00A0\u200B]+/g, " ").trim();
 
   const matchRule = (rule: DynamicScaleRule, s: string): boolean => {
@@ -118,7 +227,6 @@ export function computeScoreDynamic(
     if (rule.matchType === "contains") {
       return rule.values.some((v) => t.includes(normalize(v)));
     }
-    // exact — normalize хийн шууд харьцуулна (case хадгалагдана)
     return rule.values.some((v) => normalize(v) === t);
   };
 
@@ -183,6 +291,151 @@ export function computeScoreDynamic(
   }
 
   return { score: "Үнэлэхгүй", label: "тодорхойлогдоогүй" };
+}
+
+export function computeOracleRowScore<
+  T extends { subid: string; is_manual: boolean; score_scale: string; group: number },
+>(
+  catalog: T[],
+  rowSubid: string,
+  result: OracleValue | undefined,
+  resultType?: OracleValue,
+): { score: ScoreResult; label: string | null; indicator: T | null } {
+  const hit = resolveIndicatorForSubid(catalog, rowSubid);
+  if (!hit) return { score: null, label: null, indicator: null };
+
+  if (hit.source) {
+    const { score, label } = computeScoreFromScale(
+      sourceToScale(hit.source),
+      result,
+      resultType,
+    );
+    return { score, label, indicator: hit.indicator };
+  }
+
+  const scale = parseScoreScale(hit.indicator.score_scale);
+  if (scale.type === "multi_subid") {
+    const source = scale.sources?.find((s) => s.subid.trim() === rowSubid.trim());
+    if (source) {
+      const { score, label } = computeScoreFromScale(
+        sourceToScale(source),
+        result,
+        resultType,
+      );
+      return { score, label, indicator: hit.indicator };
+    }
+    return { score: null, label: null, indicator: hit.indicator };
+  }
+
+  const { score, label } = computeScoreFromScale(scale, result, resultType);
+  return { score, label, indicator: hit.indicator };
+}
+
+export type MultiSubidEvalPart = {
+  subid: string;
+  label?: string;
+  raw: string;
+  score: ScoreResult;
+  ruleLabel: string | null;
+  sourceFetchedDate?: string;
+};
+
+export function evaluateMultiSubidScale(
+  scale: DynamicScoreScale,
+  rowsBySubid: Map<
+    string,
+    { RESULT?: OracleValue; RESULT_TYPE?: OracleValue; sourceFetchedDate?: string }
+  >,
+): {
+  score: number | "Үнэлэхгүй" | null;
+  parts: MultiSubidEvalPart[];
+  autoRaw: string;
+  autoLabel: string | null;
+  sourceFetchedDate?: string;
+} {
+  const sources = scale.sources ?? [];
+  const parts: MultiSubidEvalPart[] = [];
+
+  for (const src of sources) {
+    const sid = src.subid.trim();
+    const row = rowsBySubid.get(sid);
+    const raw = row?.RESULT == null ? "" : String(row.RESULT);
+    const { score, label } = row
+      ? computeScoreFromScale(sourceToScale(src), row.RESULT, row.RESULT_TYPE)
+      : resolveEmptyNullScore(src);
+    parts.push({
+      subid: sid,
+      label: src.label,
+      raw,
+      score,
+      ruleLabel: label,
+      sourceFetchedDate: row?.sourceFetchedDate
+        ? String(row.sourceFetchedDate).slice(0, 10)
+        : undefined,
+    });
+  }
+
+  const numericScores = parts
+    .filter((p) => typeof p.score === "number" && p.score > 0)
+    .map((p) => p.score as number);
+
+  let finalScore: number | "Үнэлэхгүй" | null = null;
+  if (numericScores.length > 0) {
+    finalScore = combineNumericScores(
+      numericScores,
+      scale.combine ?? "max",
+    );
+  } else if (parts.some((p) => p.score === "Үнэлэхгүй")) {
+    finalScore = "Үнэлэхгүй";
+  } else {
+    finalScore = resolveEmptyNullScore(scale).score;
+  }
+
+  const autoRaw = parts
+    .map((p) => {
+      const tag = p.label?.trim() || p.subid;
+      return `${tag}: ${p.raw || "—"}`;
+    })
+    .join(" · ");
+  const autoLabel =
+    parts
+      .map((p) => p.ruleLabel)
+      .filter((l): l is string => !!l)
+      .join("; ") || null;
+  const sourceFetchedDate = parts.find((p) => p.sourceFetchedDate)?.sourceFetchedDate;
+
+  return { score: finalScore, parts, autoRaw, autoLabel, sourceFetchedDate };
+}
+
+export function buildRowsBySubid(rows: OracleRowLike[]): Map<
+  string,
+  { RESULT?: OracleValue; RESULT_TYPE?: OracleValue; sourceFetchedDate?: string }
+> {
+  const map = new Map<
+    string,
+    { RESULT?: OracleValue; RESULT_TYPE?: OracleValue; sourceFetchedDate?: string }
+  >();
+  for (const r of rows) {
+    const sid = String(r.SUBID ?? "").trim();
+    if (!sid || map.has(sid)) continue;
+    map.set(sid, {
+      RESULT: r.RESULT,
+      RESULT_TYPE: r.RESULT_TYPE,
+      sourceFetchedDate: r.sourceFetchedDate
+        ? String(r.sourceFetchedDate).slice(0, 10)
+        : undefined,
+    });
+  }
+  return map;
+}
+
+export function computeScoreDynamic(
+  scaleJson: string,
+  result: OracleValue | undefined,
+  resultType?: OracleValue,
+): { score: ScoreResult; label: string | null } {
+  const scale = parseScoreScale(scaleJson);
+  return computeScoreFromScale(scale, result, resultType);
 }
 
 /** UI-д харагдах өнгө. */

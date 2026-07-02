@@ -8,6 +8,11 @@ import {
   computeScoreDynamic,
   aggregateBranch,
   resolveEmptyNullScoreFromJson,
+  parseScoreScale,
+  isMultiSubidScale,
+  buildRowsBySubid,
+  evaluateMultiSubidScale,
+  collectMultiSubidSecondarySubids,
   type ScoreResult,
   type OracleValue,
   type BranchAggregate,
@@ -225,7 +230,10 @@ export function evaluateBranchDynamic(
     sourceFetchedDate?: string;
   }
 > {
-  // Index Oracle rows by SUBID
+  const rowsBySubid = buildRowsBySubid(rows);
+  const secondarySubids = collectMultiSubidSecondarySubids(catalog);
+
+  // Index Oracle rows by SUBID (энгийн indicator-ууд)
   const autoBySubid = new Map<
     string,
     {
@@ -237,10 +245,9 @@ export function evaluateBranchDynamic(
   >();
   for (const r of rows) {
     const sid = String(r.SUBID ?? "").trim();
-    if (!sid || autoBySubid.has(sid)) continue;
-    // Find indicator with matching subid
-    const ind = catalog.find((c) => !c.is_manual && c.subid === sid);
-    if (!ind) continue;
+    if (!sid || autoBySubid.has(sid) || secondarySubids.has(sid)) continue;
+    const ind = catalog.find((c) => !c.is_manual && c.subid.trim() === sid);
+    if (!ind || isMultiSubidScale(ind.score_scale)) continue;
     const { score, label } = computeScoreDynamic(
       ind.score_scale,
       r.RESULT,
@@ -278,22 +285,37 @@ export function evaluateBranchDynamic(
       score = manualVal;
       source = "manual";
     } else if (!ind.is_manual) {
-      const a = autoBySubid.get(ind.subid);
-      if (a) {
-        autoRaw = a.raw;
-        autoLabel = a.label;
-        sourceFetchedDate = a.sourceFetchedDate;
-        if (typeof a.score === "number" && a.score > 0) {
-          score = a.score;
+      const scale = parseScoreScale(ind.score_scale);
+      if (scale.type === "multi_subid") {
+        const multi = evaluateMultiSubidScale(scale, rowsBySubid);
+        autoRaw = multi.autoRaw;
+        autoLabel = multi.autoLabel;
+        sourceFetchedDate = multi.sourceFetchedDate;
+        if (typeof multi.score === "number" && multi.score > 0) {
+          score = multi.score;
           source = "auto";
-        } else if (a.score === "Үнэлэхгүй") {
+        } else if (multi.score === "Үнэлэхгүй") {
           score = null;
           source = "auto";
+        }
+      } else {
+        const a = autoBySubid.get(ind.subid);
+        if (a) {
+          autoRaw = a.raw;
+          autoLabel = a.label;
+          sourceFetchedDate = a.sourceFetchedDate;
+          if (typeof a.score === "number" && a.score > 0) {
+            score = a.score;
+            source = "auto";
+          } else if (a.score === "Үнэлэхгүй") {
+            score = null;
+            source = "auto";
+          }
         }
       }
     }
     // Oracle мөр байхгүй эсвэл хоосон утга — score_scale-ийн null_empty_score бодлого
-    if (score === null && !ind.is_manual) {
+    if (score === null && !ind.is_manual && !isMultiSubidScale(ind.score_scale)) {
       const empty = resolveEmptyNullScoreFromJson(ind.score_scale);
       if (typeof empty.score === "number" && empty.score > 0) {
         score = empty.score;

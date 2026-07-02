@@ -1,6 +1,6 @@
 import type { RiskCurrentRow } from "@/lib/api";
 import {
-  computeScoreDynamic,
+  computeOracleRowScore,
   scoreColorClass,
   scoreDisplay,
   detectRegion,
@@ -60,14 +60,12 @@ export function buildScoredRows(
   if (catalog.length === 0) return [];
   return rows.map((r) => {
     const subidStr = String(r.SUBID ?? "").trim();
-    const ind = catalog.find((c) => !c.is_manual && c.subid === subidStr);
-    const { score, label } = ind
-      ? computeScoreDynamic(
-          ind.score_scale ?? "",
-          r.RESULT as string | number | null,
-          r.RESULT_TYPE as string | number | null,
-        )
-      : { score: null as ScoreResult, label: null };
+    const { score, label, indicator: ind } = computeOracleRowScore(
+      catalog,
+      subidStr,
+      r.RESULT as string | number | null,
+      r.RESULT_TYPE as string | number | null,
+    );
     const g = ind?.group;
     const grp: ScoreGroup | null =
       g === 1

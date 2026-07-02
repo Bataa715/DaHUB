@@ -61,11 +61,23 @@ interface ScoreScaleRule {
   label: string;
 }
 
+interface MultiSubidSource {
+  subid: string;
+  label?: string;
+  type: "numeric" | "string" | "both";
+  numericRules?: ScoreScaleRule[];
+  stringRules?: ScoreScaleRule[];
+  null_empty_score?: "unelehgui" | "1" | "5";
+  null_is_unelehgui?: boolean;
+}
+
 interface ScoreScale {
-  type: "numeric" | "string" | "both" | "manual";
+  type: "numeric" | "string" | "both" | "manual" | "multi_subid";
   rules?: ScoreScaleRule[];
   numericRules?: ScoreScaleRule[];
   stringRules?: ScoreScaleRule[];
+  sources?: MultiSubidSource[];
+  combine?: "max" | "min" | "avg";
   min?: number;
   max?: number;
   step?: number;
@@ -75,7 +87,12 @@ interface ScoreScale {
 
 type NullEmptyScore = "unelehgui" | "1" | "5";
 
-function readNullEmptyPolicy(scale: ScoreScale): NullEmptyScore {
+type NullEmptyFields = Pick<
+  ScoreScale,
+  "null_empty_score" | "null_is_unelehgui"
+>;
+
+function readNullEmptyPolicy(scale: NullEmptyFields): NullEmptyScore {
   if (
     scale.null_empty_score === "1" ||
     scale.null_empty_score === "5" ||
@@ -87,10 +104,10 @@ function readNullEmptyPolicy(scale: ScoreScale): NullEmptyScore {
   return "unelehgui";
 }
 
-function applyNullEmptyPolicy(
-  scale: ScoreScale,
+function applyNullEmptyPolicy<T extends NullEmptyFields>(
+  scale: T,
   policy: NullEmptyScore,
-): ScoreScale {
+): T {
   return {
     ...scale,
     null_empty_score: policy,
@@ -179,6 +196,7 @@ const SCALE_TYPE_LABELS: Record<string, string> = {
   both: "Хосолсон",
   manual: "Гараар",
   no_score: "Оноогүй",
+  multi_subid: "Олон SUBID",
 };
 
 const SCALE_TYPE_BADGE_CLASS: Record<string, string> = {
@@ -187,7 +205,28 @@ const SCALE_TYPE_BADGE_CLASS: Record<string, string> = {
   both: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
   manual: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   no_score: "bg-muted/30 text-muted-foreground border-border/30",
+  multi_subid: "bg-rose-500/15 text-rose-400 border-rose-500/30",
 };
+
+const DEFAULT_MULTI_SUBID_SCALE: ScoreScale = {
+  type: "multi_subid",
+  combine: "max",
+  null_empty_score: "unelehgui",
+  sources: [
+    { subid: "16", label: "DAG", type: "numeric", numericRules: [] },
+    { subid: "16.1", label: "CEC", type: "numeric", numericRules: [] },
+  ],
+};
+
+const COMBINE_OPTIONS: {
+  value: NonNullable<ScoreScale["combine"]>;
+  label: string;
+  hint: string;
+}[] = [
+  { value: "max", label: "Хамгийн муу", hint: "max" },
+  { value: "min", label: "Хамгийн сайн", hint: "min" },
+  { value: "avg", label: "Дундаж", hint: "avg" },
+];
 
 const DEFAULT_SCALE: ScoreScale = { type: "manual", min: 1, max: 5, step: 1 };
 
@@ -469,6 +508,175 @@ function StringRulesSection({
   );
 }
 
+function MultiSubidSourceEditor({
+  source,
+  index,
+  onChange,
+  onRemove,
+  canRemove,
+}: {
+  source: MultiSubidSource;
+  index: number;
+  onChange: (next: MultiSubidSource) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}) {
+  const numericRules = source.numericRules ?? [];
+
+  return (
+    <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400/90">
+          Эх үүсвэр #{index + 1}
+        </span>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="p-1 rounded-md text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Устгах"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-[10px] text-muted-foreground/50">SUBID</Label>
+          <Input
+            value={source.subid}
+            onChange={(e) => onChange({ ...source, subid: e.target.value })}
+            placeholder="16"
+            className="h-8 text-xs font-mono"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] text-muted-foreground/50">Шошго</Label>
+          <Input
+            value={source.label ?? ""}
+            onChange={(e) => onChange({ ...source, label: e.target.value })}
+            placeholder="DAG"
+            className="h-8 text-xs"
+          />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-[10px] text-muted-foreground/50">
+          Хоосон утга (энэ SUBID)
+        </Label>
+        <div className="flex flex-wrap gap-1">
+          {NULL_EMPTY_OPTIONS.map((opt) => {
+            const active = readNullEmptyPolicy(source) === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() =>
+                  onChange(applyNullEmptyPolicy(source, opt.value))
+                }
+                className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-all ${
+                  active
+                    ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                    : "border-border/30 text-muted-foreground/50"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <NumericRulesSection
+        rules={numericRules}
+        onChange={(rules) => onChange({ ...source, type: "numeric", numericRules: rules })}
+      />
+    </div>
+  );
+}
+
+function MultiSubidScaleSection({
+  scale,
+  onChange,
+}: {
+  scale: ScoreScale;
+  onChange: (next: ScoreScale) => void;
+}) {
+  const sources = scale.sources ?? [];
+  const combine = scale.combine ?? "max";
+
+  const updateSource = (i: number, next: MultiSubidSource) =>
+    onChange({
+      ...scale,
+      sources: sources.map((s, idx) => (idx === i ? next : s)),
+    });
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-[11px] text-muted-foreground/80 leading-relaxed">
+        Нэг indicator, олон SUBID. Indicator-ийн гол{" "}
+        <span className="text-rose-400 font-medium">SUBID</span> талбар нь
+        эхний эх үүсвэртэй таарах ёстой. Эцсийн оноо = сонгосон нэгтгэл
+        (ихэвчлэн хамгийн муу).
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-muted-foreground/60 text-[11px] uppercase tracking-wider">
+          Оноог нэгтгэх
+        </Label>
+        <div className="flex flex-wrap gap-1.5">
+          {COMBINE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange({ ...scale, combine: opt.value })}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                combine === opt.value
+                  ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                  : "border-border/30 text-muted-foreground/50 hover:border-border/50"
+              }`}
+            >
+              {opt.label}
+              <span className="text-[10px] opacity-60 ml-1">({opt.hint})</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        {sources.map((src, i) => (
+          <MultiSubidSourceEditor
+            key={`${src.subid}-${i}`}
+            source={src}
+            index={i}
+            onChange={(next) => updateSource(i, next)}
+            onRemove={() =>
+              onChange({
+                ...scale,
+                sources: sources.filter((_, idx) => idx !== i),
+              })
+            }
+            canRemove={sources.length > 1}
+          />
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() =>
+          onChange({
+            ...scale,
+            sources: [
+              ...sources,
+              { subid: "", label: "", type: "numeric", numericRules: [] },
+            ],
+          })
+        }
+        className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-colors"
+      >
+        <Plus className="w-3 h-3" />
+        SUBID нэмэх
+      </button>
+    </div>
+  );
+}
+
 function ScaleEditor({
   value,
   onChange,
@@ -517,11 +725,22 @@ function ScaleEditor({
           Оноо тооцоолох арга
         </Label>
         <div className="flex flex-wrap gap-1.5">
-          {(["numeric", "string", "both"] as const).map((t) => (
+          {(["numeric", "string", "both", "multi_subid"] as const).map((t) => (
             <button
               key={t}
               type="button"
-              onClick={() => setScale((s) => ({ ...s, type: t }))}
+              onClick={() => {
+                if (t === "multi_subid") {
+                  setScale({ ...DEFAULT_MULTI_SUBID_SCALE });
+                  return;
+                }
+                setScale((s) => ({
+                  ...s,
+                  type: t,
+                  sources: undefined,
+                  combine: undefined,
+                }));
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                 scale.type === t
                   ? (SCALE_TYPE_BADGE_CLASS[t] ??
@@ -586,6 +805,12 @@ function ScaleEditor({
           <div className="border-t border-border/20" />
           <StringRulesSection rules={stringRules} onChange={setStringRules} />
         </div>
+      )}
+      {scale.type === "multi_subid" && (
+        <MultiSubidScaleSection
+          scale={scale}
+          onChange={(next) => setScale(next)}
+        />
       )}
     </div>
   );

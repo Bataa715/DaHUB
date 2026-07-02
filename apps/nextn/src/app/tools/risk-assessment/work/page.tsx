@@ -17,7 +17,7 @@ import {
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useToast } from "@/hooks/use-toast";
 import {
-  computeScoreDynamic,
+  computeOracleRowScore,
   type ScoreResult,
   type ScoreGroup,
 } from "../scoring-rules";
@@ -46,11 +46,13 @@ function toScored(
   return rows
     .filter((r) => r.rowType === "oracle")
     .map((r) => {
-      const ind = catalog.find((c) => c.subid === String(r.SUBID ?? ""));
-      const { score, label } =
-        ind && !ind.is_manual
-          ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
-          : { score: null, label: null };
+      const subid = String(r.SUBID ?? "").trim();
+      const { score, label, indicator: ind } = computeOracleRowScore(
+        catalog,
+        subid,
+        r.RESULT,
+        r.RESULT_TYPE,
+      );
       const grpNum = ind?.group;
       const __group: ScoreGroup | null =
         grpNum === 1

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { riskApi, type RiskHistoryEntry, type RiskCurrentRow } from "@/lib/api";
 import {
   aggregateBranch,
-  computeScoreDynamic,
+  computeOracleRowScore,
   type BranchAggregate,
 } from "../scoring-rules";
 import { useIndicatorConfig } from "../use-indicator-config";
@@ -211,16 +211,16 @@ export default function ComparePanel({
     for (const h of selectedReports) {
       const bmap = new Map<string, number | null>();
       for (const r of loadedMap.get(h.id) ?? []) {
-        if (Number(r.SUBID) !== selectedSubId) continue;
+        const subid = String(r.SUBID ?? "").trim();
+        if (subid !== String(selectedSubId)) continue;
         if (!r.SOLID) continue;
         if (metricMode === "score") {
-          const ind = dynamicConfig.catalog.find(
-            (c) => Number(c.subid) === selectedSubId,
+          const { score } = computeOracleRowScore(
+            dynamicConfig.catalog,
+            subid,
+            r.RESULT,
+            r.RESULT_TYPE,
           );
-          const { score } =
-            ind && !ind.is_manual
-              ? computeScoreDynamic(ind.score_scale, r.RESULT, r.RESULT_TYPE)
-              : { score: null };
           if (typeof score === "number" && score > 0) bmap.set(r.SOLID, score);
         } else {
           const raw = parseFloat(String(r.RESULT));
