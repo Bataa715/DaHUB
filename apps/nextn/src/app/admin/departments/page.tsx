@@ -37,7 +37,6 @@ interface DepartmentData {
   name: string;
   description?: string;
   code?: string;
-  employeeCount?: number;
   users?: DepartmentUser[];
   createdAt?: string;
   updatedAt?: string;

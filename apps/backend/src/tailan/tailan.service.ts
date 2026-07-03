@@ -377,6 +377,12 @@ export class TailanService {
         `ALTER TABLE tailan_images ADD COLUMN IF NOT EXISTS imageData String DEFAULT ''`,
       );
     } catch {}
+    // cleanup: drop legacy dataBase64 column if it still exists
+    try {
+      await this.clickhouse.exec(
+        `ALTER TABLE tailan_images DROP COLUMN IF EXISTS dataBase64`,
+      );
+    } catch {}
   }
 
   // ─── Save image ────────────────────────────────────────────────────────────

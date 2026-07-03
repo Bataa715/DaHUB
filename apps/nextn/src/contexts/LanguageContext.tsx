@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useMemo,
   ReactNode,
 } from "react";
 
@@ -20,7 +21,6 @@ export const translations = {
     loading: "Ачааллаж байна...",
     error: "Алдаа",
     success: "Амжилттай",
-    search: "Хайх",
     // Settings page
     changeImage: "Зураг сонгох",
     removeImage: "Зураг устгах",
@@ -41,7 +41,6 @@ export const translations = {
     passwordReq3: "Жижиг үсэг агуулсан (a-z)",
     passwordReq4: "Тоо агуулсан (0-9)",
     passwordReq5: "Тусгай тэмдэгт агуулсан (@$!%*?&#)",
-    passwordChanged: "Нууц үг амжилттай солигдлоо",
     passwordMismatch: "Шинэ нууц үг таарахгүй байна",
     passwordInvalid: "Нууц үг шаардлагыг хангахгүй байна",
     passwordFillAll: "Бүх талбарыг бөглөнө үү",
@@ -222,7 +221,7 @@ export const translations = {
     tailan_lastSavedLabel: "Сүүлд:",
     tailan_generalDescLabel: "Ерөнхий тайлбар",
     tailan_generalDescPlaceholder:
-      "Энэ тэлэвийн хүрээнд хийсэн ажил, үйл ажиллагааны талаар дэлгэрэнгүй тайлбар бичнэ...",
+      "Энэ төлөвийн хүрээнд хийсэн ажил, үйл ажиллагааны талаар дэлгэрэнгүй тайлбар бичнэ...",
     tailan_achievementsLabel: "Амжилт, давуу тал",
     tailan_achievementsPlaceholder:
       "Тайлант хугацаанд гарсан амжилт, сайн үр дүн, давуу талыг тэмдэглэнэ...",
@@ -242,7 +241,7 @@ export const translations = {
     tailan_periodPlaceholder: "Хугацаа...",
     tailan_completionBriefPlaceholder: "Гүйцэтгэл /товч/...",
     tailan_bulletTextPlaceholder: "Буллет текст...",
-    tailan_employeeNamePlaceholder: "Ажилтаны нэр...",
+    tailan_employeeNamePlaceholder: "Ажилтны нэр...",
     tailan_kpiIndicatorPlaceholder: "Үзүүлэлт...",
     tailan_kpiEvaluationPlaceholder: "Тайлбар...",
     tailan_scoreExcellent: "Маш сайн",
@@ -499,7 +498,7 @@ export const translations = {
 
     // My Grants page
     dbManageTitle: "Хүсэлт шийдвэрлэх",
-    dbManageSubtitle: "Хандалтын хүсэлтүүдийг удридах",
+    dbManageSubtitle: "Хандалтын хүсэлтүүдийг удирдах",
     dbManageSummary: "Нийт",
     dbManageGrantUnit: "эрх",
     dbManageUserUnit: "хэрэглэгч",
@@ -507,7 +506,7 @@ export const translations = {
     myGrantsTitle: "Миний Идэвхтэй Эрхүүд",
     myGrantsSubtitle: "Одоогийн хандалтын зөвшөөрлүүд",
     myGrantsEmpty: "Идэвхтэй эрх байхгүй",
-    myGrantsEmptyHint: "Эрх хүсэхийн тул хүсэлт илгээнэ уу",
+    myGrantsEmptyHint: "Эрх хүсэхийн тулд хүсэлт илгээнэ үү",
     myGrantsRequestBtn: "Эрх хүсэх",
     myGrantsGrantedBy: "Олгосон:",
     myGrantsExpiresLabel: "Хаагдах:",
@@ -540,7 +539,6 @@ export const translations = {
     loading: "Loading...",
     error: "Error",
     success: "Success",
-    search: "Search",
     // Settings page
     changeImage: "Choose photo",
     removeImage: "Remove photo",
@@ -562,7 +560,6 @@ export const translations = {
     passwordReq3: "Contains lowercase letter (a-z)",
     passwordReq4: "Contains a number (0-9)",
     passwordReq5: "Contains special character (@$!%*?&#)",
-    passwordChanged: "Password changed successfully",
     passwordMismatch: "Passwords do not match",
     passwordInvalid: "Password does not meet requirements",
     passwordFillAll: "Please fill in all fields",
@@ -611,9 +608,6 @@ export const translations = {
     toolRiskAssessmentTitle: "Risk Assessment",
     toolRiskAssessmentDesc:
       "Monthly risk assessment — department scores, manual adjustments, and audit log",
-    toolPythonApiTitle: "Python API Tools",
-    toolPythonApiDesc:
-      "Pandas/Python reports powered by FastAPI — supports ClickHouse, Oracle, MSSQL",
     toolReportsTitle: "Reports",
     toolReportsDesc:
       "Download SQL and Python reports from a single unified tool",
@@ -1079,15 +1073,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (saved === "mn" || saved === "en") setLanguageState(saved);
   }, []);
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem("lang", lang);
-  };
-
-  const t = (key: TranslationKey): string => translations[language][key];
+  const value = useMemo<LanguageContextType>(
+    () => ({
+      language,
+      setLanguage: (lang: Language) => {
+        setLanguageState(lang);
+        localStorage.setItem("lang", lang);
+      },
+      t: (key: TranslationKey) => translations[language][key],
+    }),
+    [language],
+  );
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

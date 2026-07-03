@@ -29,7 +29,6 @@ export class DepartmentsService {
         name: createDepartmentDto.name,
         description: createDepartmentDto.description || "",
         manager: createDepartmentDto.manager || "",
-        employeeCount: createDepartmentDto.employeeCount || 0,
         code: (createDepartmentDto.code || "").toUpperCase(),
         createdAt: nowCH(),
         updatedAt: nowCH(),
@@ -176,10 +175,6 @@ export class DepartmentsService {
     if (updateDepartmentDto.manager !== undefined) {
       fields.push("manager = {manager:String}");
       params.manager = updateDepartmentDto.manager;
-    }
-    if (updateDepartmentDto.employeeCount !== undefined) {
-      fields.push("employeeCount = {employeeCount:UInt32}");
-      params.employeeCount = updateDepartmentDto.employeeCount;
     }
     if (updateDepartmentDto.code !== undefined) {
       fields.push("code = {code:String}");

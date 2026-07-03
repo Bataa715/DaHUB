@@ -235,7 +235,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           name String,
           description String,
           manager String,
-          employeeCount UInt32 DEFAULT 0,
+          code String DEFAULT '',
           createdAt DateTime DEFAULT now(),
           updatedAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
@@ -256,6 +256,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           isSuperAdmin UInt8 DEFAULT 0,
           isActive UInt8 DEFAULT 1,
           allowedTools String,
+          grantableTools String DEFAULT '[]',
           lastLoginAt Nullable(DateTime),
           createdAt DateTime DEFAULT now(),
           updatedAt DateTime DEFAULT now()
@@ -342,7 +343,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // Create refresh_tokens table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS refresh_tokens (
-          id String,
           userId String,
           token String,
           expiresAt DateTime,
@@ -350,6 +350,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           createdAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY (userId, createdAt)
+        TTL expiresAt + INTERVAL 1 DAY
       `);
 
       // Create audit_logs table
@@ -357,19 +358,17 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         CREATE TABLE IF NOT EXISTS audit_logs (
           id String,
           userId String,
-          userEmail String,
           action String,
           resource String,
           resourceId String,
           method String,
-          ipAddress String,
-          userAgent String,
           status String,
           errorMessage String,
           metadata String,
           createdAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY (createdAt, userId)
+        TTL createdAt + INTERVAL 2 YEAR
       `);
 
       // Create access_requests table
@@ -443,7 +442,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // Create login_attempts table for brute-force protection
       await this.exec(`
         CREATE TABLE IF NOT EXISTS login_attempts (
-          id String,
           lockKey String,
           attemptedAt DateTime DEFAULT now(),
           success UInt8 DEFAULT 0
@@ -470,6 +468,71 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       await this.exec(
         `ALTER TABLE departments ADD COLUMN IF NOT EXISTS code String DEFAULT ''`,
       );
+
+      // ── 2026-07 cleanup/optimization migrations (idempotent) ────────────────
+      // 1) users.grantableTools — кодонд ашиглагддаг ч хуучин schema-д байгаагүй
+      await this.exec(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS grantableTools String DEFAULT '[]'`,
+      ).catch(() => {});
+
+      // 2) Хэзээ ч бөглөгддөггүй / уншигддаггүй баганууд — DROP
+      const dropColumns: [string, string][] = [
+        ["audit_logs", "userEmail"],
+        ["audit_logs", "ipAddress"],
+        ["audit_logs", "userAgent"],
+        ["refresh_tokens", "id"],
+        ["login_attempts", "id"],
+        ["departments", "employeeCount"],
+        ["tailan_images", "dataBase64"], // legacy нэртэй хуучин багана
+      ];
+      for (const [table, column] of dropColumns) {
+        await this.exec(
+          `ALTER TABLE ${table} DROP COLUMN IF EXISTS ${column}`,
+          undefined,
+          1,
+          true,
+        ).catch(() => {});
+      }
+
+      // 3) TTL — лог хүснэгтүүд автоматаар цэвэрлэгдэнэ
+      await this.exec(
+        `ALTER TABLE audit_logs MODIFY TTL createdAt + INTERVAL 2 YEAR`,
+        undefined,
+        1,
+        true,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE refresh_tokens MODIFY TTL expiresAt + INTERVAL 1 DAY`,
+        undefined,
+        1,
+        true,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE python_api_run_logs MODIFY TTL ranAt + INTERVAL 2 YEAR`,
+        undefined,
+        1,
+        true,
+      ).catch(() => {});
+
+      // 4) Том blob баганууд — ZSTD codec (шинэ бичигдэх part-ууд шахагдана)
+      const codecColumns: [string, string, string][] = [
+        ["users", "profileImage", "String"],
+        ["medleg", "imageUrl", "String"],
+        ["medleg", "content", "String"],
+        ["tailan_images", "imageData", "String DEFAULT ''"],
+        ["tailan_reports", "plannedTasksJson", "String DEFAULT '[]'"],
+        ["tailan_reports", "dynamicSectionsJson", "String DEFAULT '[]'"],
+        ["tailan_reports", "extraDataJson", "String DEFAULT '{}'"],
+        ["risk_assessment_history", "rowsJson", "String DEFAULT '[]'"],
+      ];
+      for (const [table, column, type] of codecColumns) {
+        await this.exec(
+          `ALTER TABLE ${table} MODIFY COLUMN ${column} ${type} CODEC(ZSTD(3))`,
+          undefined,
+          1,
+          true,
+        ).catch(() => {});
+      }
 
       // Хуучин мэдэгдэж буй хэлтсүүдийн кодыг нэг удаа seed хийнэ (code хоосон бол).
       const DEFAULT_DEPT_CODES: Record<string, string> = {

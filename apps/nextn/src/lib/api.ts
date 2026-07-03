@@ -237,7 +237,6 @@ export const departmentsApi = {
     name: string;
     description?: string;
     manager?: string;
-    employeeCount?: number;
     code?: string;
   }) => {
     const response = await api.post("/departments", data);

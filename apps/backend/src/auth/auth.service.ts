@@ -80,7 +80,6 @@ export class AuthService {
     try {
       await this.clickhouse.insert("login_attempts", [
         {
-          id: randomUUID(),
           lockKey: key,
           attemptedAt: nowCH(),
           success: 0,
@@ -97,7 +96,6 @@ export class AuthService {
     try {
       await this.clickhouse.insert("login_attempts", [
         {
-          id: randomUUID(),
           lockKey: key,
           attemptedAt: nowCH(),
           success: 1,
@@ -161,7 +159,6 @@ export class AuthService {
 
     await this.clickhouse.insert("refresh_tokens", [
       {
-        id: randomUUID(),
         userId,
         token: refreshToken,
         expiresAt: expiresAtEpoch,
@@ -266,17 +263,11 @@ export class AuthService {
           name: department,
           description: "",
           manager: "",
-          employeeCount: 1,
           createdAt: now,
           updatedAt: now,
         },
       ]);
       dept = { id: deptId, name: department };
-    } else {
-      await this.clickhouse.exec(
-        "ALTER TABLE departments UPDATE employeeCount = employeeCount + 1 WHERE id = {id:String}",
-        { id: dept.id },
-      );
     }
     return dept;
   }

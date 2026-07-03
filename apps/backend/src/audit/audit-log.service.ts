@@ -4,13 +4,10 @@ import { randomUUID } from "crypto";
 
 export interface AuditLogEntry {
   userId: string;
-  userEmail?: string;
   action: string;
   resource: string;
   resourceId?: string;
   method: string;
-  ipAddress?: string;
-  userAgent?: string;
   status: "success" | "failure";
   errorMessage?: string;
   metadata?: Record<string, unknown>;
@@ -33,13 +30,10 @@ export class AuditLogService {
         {
           id: randomUUID(),
           userId: entry.userId,
-          userEmail: entry.userEmail || "",
           action: entry.action,
           resource: entry.resource,
           resourceId: entry.resourceId || "",
           method: entry.method,
-          ipAddress: entry.ipAddress || "",
-          userAgent: entry.userAgent || "",
           status: entry.status,
           errorMessage: entry.errorMessage || "",
           metadata: entry.metadata ? JSON.stringify(entry.metadata) : "",

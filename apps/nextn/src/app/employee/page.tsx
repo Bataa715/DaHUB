@@ -22,7 +22,6 @@ interface DepartmentData {
   name: string;
   description?: string;
   manager?: string;
-  employeeCount?: number;
   users?: DepartmentUser[];
 }
 

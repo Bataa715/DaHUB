@@ -2,8 +2,6 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
-  IsInt,
-  Min,
   Matches,
   MaxLength,
 } from "class-validator";
@@ -20,11 +18,6 @@ export class CreateDepartmentDto {
   @IsString()
   @IsOptional()
   manager?: string;
-
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  employeeCount?: number;
 
   // Хэрэглэгчийн ID-н prefix код (зөвхөн том үсэг/тоо, 1-12 тэмдэгт)
   @IsString()
@@ -48,11 +41,6 @@ export class UpdateDepartmentDto {
   @IsString()
   @IsOptional()
   manager?: string;
-
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  employeeCount?: number;
 
   @IsString()
   @IsOptional()

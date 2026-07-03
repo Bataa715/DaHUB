@@ -9,49 +9,6 @@
 }
 
 @layer utilities {
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
-
-  .animate-shimmer {
-    animation: shimmer 2s infinite;
-  }
-
-  @keyframes gradient {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-
-  .animate-gradient {
-    animation: gradient 3s ease infinite;
-  }
-
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-
   /* Scroll ажиллана, scrollbar харагдахгүй */
   .scrollbar-none {
     -ms-overflow-style: none;
@@ -60,51 +17,6 @@
 
   .scrollbar-none::-webkit-scrollbar {
     display: none;
-  }
-
-  @keyframes glow {
-    0%,
-    100% {
-      box-shadow: 0 0 20px rgba(var(--primary), 0.3);
-    }
-    50% {
-      box-shadow: 0 0 40px rgba(var(--primary), 0.6);
-    }
-  }
-
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite;
-  }
-
-  @keyframes blob {
-    0% {
-      transform: translate(0px, 0px) scale(1);
-    }
-    33% {
-      transform: translate(30px, -50px) scale(1.1);
-    }
-    66% {
-      transform: translate(-20px, 20px) scale(0.9);
-    }
-    100% {
-      transform: translate(0px, 0px) scale(1);
-    }
-  }
-
-  .animate-blob {
-    animation: blob 7s infinite;
-  }
-
-  .animation-delay-2000 {
-    animation-delay: 2s;
-  }
-
-  .animation-delay-4000 {
-    animation-delay: 4s;
-  }
-
-  .bg-gradient-radial {
-    background-image: radial-gradient(var(--tw-gradient-stops));
   }
 }
 
@@ -182,11 +94,6 @@
     }
   }
 
-  .font-emoji {
-    font-family:
-      "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
-      "Android Emoji", "EmojiSymbols", sans-serif;
-  }
 }
 
 /* ── Light mode: stronger borders ────────────────────────────────────────── */
@@ -753,288 +660,6 @@ html.light .bg-emerald-500\/8 {
   background-color: rgb(209, 250, 229) !important;
 } /* emerald-100 */
 
-.card-glow::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(
-    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    hsla(var(--primary), 0.25),
-    transparent 40%
-  );
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.card-glow:hover::before {
-  opacity: 1;
-}
-
-@keyframes rotate-glow-circle-cw {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes rotate-glow-circle-ccw {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(-360deg);
-  }
-}
-
-.avatar-glow-wrapper {
-  @apply relative overflow-hidden rounded-full p-1;
-}
-
-.avatar-glow-wrapper::before,
-.avatar-glow-wrapper::after {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  border-radius: inherit;
-}
-
-.avatar-glow-wrapper::before {
-  inset: 0;
-  background: conic-gradient(
-    from 90deg at 50% 50%,
-    hsl(var(--primary) / 0.8),
-    20deg,
-    transparent,
-    40deg,
-    hsl(var(--primary) / 0.8),
-    60deg,
-    transparent,
-    80deg,
-    hsl(var(--primary) / 0.8),
-    transparent
-  );
-  animation: rotate-glow-circle-cw 5s linear infinite;
-}
-
-.avatar-glow-wrapper::after {
-  inset: 3px;
-  background: conic-gradient(
-    from 270deg at 50% 50%,
-    hsl(var(--primary) / 0.6),
-    15deg,
-    transparent,
-    50deg,
-    hsl(var(--primary) / 0.6),
-    90deg,
-    transparent
-  );
-  animation: rotate-glow-circle-ccw 7s linear infinite;
-}
-
-.avatar-glow-wrapper > * {
-  position: relative;
-  z-index: 1;
-  @apply rounded-full;
-}
-
-@keyframes bounce {
-  0%,
-  100% {
-    transform: translateY(-25%);
-    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-  }
-  50% {
-    transform: translateY(0);
-    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-  }
-}
-
-.animate-bounce {
-  animation: bounce 1s infinite;
-}
-
-@keyframes rotate-glow {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.page-container-wrapper {
-  @apply relative p-1 overflow-hidden;
-}
-
-.page-container-wrapper::before {
-  content: "";
-  position: absolute;
-  width: 200%;
-  height: 200%;
-  top: -50%;
-  left: -50%;
-  z-index: -1;
-  background: conic-gradient(
-    transparent,
-    transparent,
-    transparent,
-    hsl(var(--primary))
-  );
-  animation: rotate-glow 4s linear infinite;
-}
-
-.page-container {
-  @apply bg-background relative z-0;
-}
-
-/* Matrix Animation */
-@keyframes rain {
-  0% {
-    background-position: 0% 0%;
-  }
-  100% {
-    background-position: 20% 100%;
-  }
-}
-
-@keyframes glitch {
-  0% {
-    clip-path: inset(45% 0 50% 0);
-  }
-  25% {
-    clip-path: inset(10% 0 85% 0);
-  }
-  50% {
-    clip-path: inset(60% 0 30% 0);
-  }
-  75% {
-    clip-path: inset(35% 0 40% 0);
-  }
-  100% {
-    clip-path: inset(80% 0 5% 0);
-  }
-}
-
-.matrix-text-container {
-  position: relative;
-}
-
-.matrix-text {
-  font-size: 2.25rem; /* text-3xl */
-  font-weight: bold;
-  font-family: monospace;
-  color: hsl(var(--primary));
-  text-shadow:
-    0 0 5px hsl(var(--primary)),
-    0 0 10px hsl(var(--primary)),
-    0 0 20px hsl(var(--primary));
-  position: relative;
-  display: inline-block;
-}
-
-.matrix-text::before {
-  content: attr(data-text);
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  color: hsl(var(--primary));
-  text-shadow: 0 0 5px hsl(var(--primary));
-  overflow: hidden;
-  animation: glitch 3s linear infinite;
-}
-
-.glassmorphism-card {
-  background: rgba(40, 42, 54, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: var(--radius);
-  border: 1px solid rgba(189, 147, 249, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-.glassmorphism-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: inset 0 0 0 1px hsla(var(--primary) / 0.3);
-}
-
-.neon-glow {
-  box-shadow:
-    0 0 5px hsla(var(--primary) / 0.5),
-    0 0 10px hsla(var(--primary) / 0.3),
-    0 0 15px hsla(var(--primary) / 0.2);
-}
-
-@keyframes pulse-slow {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 3s ease-in-out infinite;
-}
-
-/* Beam Animation */
-@keyframes beam-gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.animated-beam {
-  --beam-width: 50px;
-  background-image: conic-gradient(
-    from 180deg at 50% 50%,
-    rgba(255, 255, 255, 0) 0deg,
-    hsl(var(--primary)) 20deg,
-    hsl(var(--primary) / 0.5) 50deg,
-    hsl(var(--primary)) 90deg,
-    rgba(255, 255, 255, 0) 180deg,
-    rgba(255, 255, 255, 0) 360deg
-  );
-  background-size: 200% 200%;
-  animation: beam-gradient 8s linear infinite;
-  mask-image: radial-gradient(
-    ellipse 100% 100% at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    black var(--beam-width),
-    transparent calc(var(--beam-width) + 20px)
-  );
-  -webkit-mask-image: radial-gradient(
-    ellipse 100% 100% at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    black var(--beam-width),
-    transparent calc(var(--beam-width) + 20px)
-  );
-  pointer-events: none;
-}
-
 /* Layout frame — энгийн статик хүрээ (эргэлдэх animation байхгүй) */
 .animated-border-wrapper {
   @apply relative rounded-2xl border border-border isolate;
@@ -1047,21 +672,6 @@ html.light .animated-border-wrapper {
 
 .animated-border-wrapper > * {
   @apply rounded-[calc(1rem-1px)];
-}
-
-@keyframes gradient {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient 3s ease infinite;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1127,31 +737,6 @@ html.light .animated-border-wrapper {
   display: none;
   width: 0;
   height: 0;
-}
-
-/* Opt-in: том table preview гэх мэт — нарийн scrollbar */
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  display: block;
-  width: 6px;
-  height: 6px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--muted-foreground) / 0.25);
-  border-radius: 9999px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--muted-foreground) / 0.4);
 }
 
 /* ── Refined focus-visible rings — accessible + elegant ──────────────────── */
@@ -1224,27 +809,6 @@ html.light .animated-border-wrapper {
   }
 }
 
-/* ── Premium card — classic, restrained surface treatment ────────────────── */
-@layer components {
-  .card-premium {
-    @apply relative rounded-2xl border border-border bg-card transition-all duration-300;
-  }
-  .card-premium:hover {
-    border-color: hsl(var(--border) / 1);
-    transform: translateY(-2px);
-  }
-  .card-premium.is-interactive:hover {
-    box-shadow:
-      0 2px 6px -2px hsl(220 40% 10% / 0.1),
-      0 14px 36px -10px hsl(220 40% 10% / 0.16);
-  }
-  html:not(.light) .card-premium.is-interactive:hover {
-    box-shadow:
-      0 2px 8px -2px hsl(0 0% 0% / 0.5),
-      0 18px 44px -12px hsl(0 0% 0% / 0.6);
-  }
-}
-
 /* ── Smooth, classic micro-interactions on interactive chrome ────────────── */
 @layer base {
   button,
@@ -1270,20 +834,6 @@ html.light .animated-border-wrapper {
 
 /* ── Premium entrance animations (lightweight, classic) ──────────────────── */
 @layer utilities {
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  .animate-fade-in-up {
-    animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -1294,17 +844,6 @@ html.light .animated-border-wrapper {
   }
   .animate-fade-in {
     animation: fade-in 0.4s ease both;
-  }
-
-  /* Hairline divider gradient — classic separator */
-  .divider-fade {
-    height: 1px;
-    background: linear-gradient(
-      to right,
-      transparent,
-      hsl(var(--border)),
-      transparent
-    );
   }
 }
 
@@ -1363,18 +902,6 @@ html:not(.light) .login-brand-title {
 }
 html:not(.light) .login-brand-subtitle {
   color: hsl(240 8% 72%);
-}
-
-.login-logo-wrap {
-  background: #ffffff;
-  box-shadow:
-    0 4px 14px hsl(221 83% 53% / 0.12),
-    0 0 0 1px hsl(214 28% 88%);
-}
-html:not(.light) .login-logo-wrap {
-  box-shadow:
-    0 4px 20px hsl(0 0% 0% / 0.45),
-    0 0 0 1px hsl(240 4% 22%);
 }
 
 /* Login step logo — 3D elevated badge */
