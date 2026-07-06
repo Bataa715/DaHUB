@@ -401,6 +401,10 @@ export const translations = {
     sampleSizeLabel: "Тооцоологдсон түүврийн хэмжээ",
     samplePopN: "Эх олонлогийн тоо (N)",
     sampleGroupN: "Бүлгийн тоо (≥2)",
+    sampleSeed: "Seed (давтагдах түүвэр)",
+    sampleSeedPlaceholder: "ж: 2026-Q1-audit (заавал биш)",
+    sampleSeedHint:
+      "Seed оруулбал ижил өгөгдөл дээр яг ижил түүвэр дахин гарна — аудитын нотлох боломж.",
 
     // Reports tool
     reportsLoadError: "Тайлан ачаалахад алдаа гарлаа",
@@ -920,6 +924,10 @@ export const translations = {
     sampleSizeLabel: "Calculated sample size",
     samplePopN: "Population size (N)",
     sampleGroupN: "Number of groups (≥2)",
+    sampleSeed: "Seed (reproducible sampling)",
+    sampleSeedPlaceholder: "e.g. 2026-Q1-audit (optional)",
+    sampleSeedHint:
+      "With a seed, the exact same sample is reproduced on the same data — audit evidence.",
 
     // Reports tool
     reportsLoadError: "Failed to load reports",

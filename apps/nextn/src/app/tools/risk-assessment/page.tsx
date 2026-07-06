@@ -80,7 +80,7 @@ export default function RiskAssessmentPage() {
             </div>
             <div>
               <div className="text-base font-semibold text-foreground mb-1">
-                Эрсдэлийн тайлан
+                Тайлан
               </div>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400">

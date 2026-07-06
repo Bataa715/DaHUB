@@ -196,6 +196,18 @@ export default function SanamsarguiTuuwerPage() {
               )}
 
               <div className="space-y-1.5">
+                <Label className="text-sm">{t("sampleSeed")}</Label>
+                <Input
+                  value={s.seed}
+                  onChange={(e) => s.setSeed(e.target.value)}
+                  placeholder={t("sampleSeedPlaceholder")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("sampleSeedHint")}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label className="text-sm">{t("sampleFileName")}</Label>
                 <Input
                   value={s.exportFilename}

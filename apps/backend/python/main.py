@@ -953,6 +953,52 @@ async def download_cached(cache_key: str, format: str = "excel") -> Response:
     )
 
 
+# ── POST /validate-code ───────────────────────────────
+
+class ValidateCodeRequest(BaseModel):
+    code: str
+
+
+@app.post(
+    "/validate-code",
+    summary="Кодыг ажиллуулахгүйгээр syntax + аюулгүй байдлын шалгалт хийнэ",
+    dependencies=[Depends(_verify_api_key)],
+)
+def validate_code(req: ValidateCodeRequest) -> JSONResponse:
+    """Editor-ийн шууд feedback — syntax алдааны мөрийн дугаарыг буцаана."""
+    code = req.code or ""
+    if not code.strip():
+        return JSONResponse({"ok": False, "error": "Код хоосон байна", "line": None})
+    try:
+        tree = ast.parse(code, mode="exec")
+    except SyntaxError as exc:
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": f"Syntax алдаа: {exc.msg}",
+                "line": exc.lineno,
+                "col": exc.offset,
+            }
+        )
+    try:
+        _check_code_safety(code)
+    except HTTPException as exc:
+        return JSONResponse({"ok": False, "error": str(exc.detail), "line": None})
+    has_result = any(
+        isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "result" for t in node.targets)
+        for node in ast.walk(tree)
+    )
+    return JSONResponse(
+        {
+            "ok": True,
+            "warning": None
+            if has_result
+            else "`result = ...` оноолт олдсонгүй — код ажиллахад алдаа өгнө.",
+        }
+    )
+
+
 # ── GET /health ───────────────────────────────────────────────────────────────
 
 @app.get("/health", summary="Сервис болон ClickHouse-ийн төлөв")

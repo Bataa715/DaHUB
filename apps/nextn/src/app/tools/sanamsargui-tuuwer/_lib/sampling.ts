@@ -25,6 +25,33 @@ export interface SamplingResult {
   stdDev: number;
   groups: GroupResult[];
   headers: string[];
+  /** Ашигласан seed — дүнг дахин гаргах (reproducibility) боломж олгоно */
+  seed?: string;
+}
+
+// ── Seeded PRNG (mulberry32) — давтагдах түүвэр ──────────────────────────────
+export type Rng = () => number;
+
+export function hashSeed(seed: string): number {
+  let h = 1779033703 ^ seed.length;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return h >>> 0;
+}
+
+/** Seed өгвөл детерминистик, өгөхгүй бол Math.random */
+export function makeRng(seed?: string): Rng {
+  if (!seed || !seed.trim()) return Math.random;
+  let a = hashSeed(seed.trim());
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 // ── Z-score from confidence level ─────────────────────────────────────────────
@@ -69,15 +96,23 @@ export function normalizeFilterValue(value: unknown): string {
   return str.length ? str : "(хоосон)";
 }
 
-export function sampleWithReplacement(total: number, k: number): number[] {
-  return Array.from({ length: k }, () => Math.floor(Math.random() * total) + 1);
+export function sampleWithReplacement(
+  total: number,
+  k: number,
+  rng: Rng = Math.random,
+): number[] {
+  return Array.from({ length: k }, () => Math.floor(rng() * total) + 1);
 }
 
-export function sampleWithoutReplacement(total: number, k: number): number[] {
+export function sampleWithoutReplacement(
+  total: number,
+  k: number,
+  rng: Rng = Math.random,
+): number[] {
   k = Math.min(k, total);
   const arr = Array.from({ length: total }, (_, i) => i + 1);
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr.slice(0, k).sort((a, b) => a - b);
@@ -101,9 +136,10 @@ export function buildCsvContent(
   const lines: string[] = [];
   lines.push(`Дизайн,${toCsvCell(result.design)}`);
   lines.push(`Түүврийн хэмжээ (n),${result.n}`);
-  lines.push(`Хүн ам (N),${result.N}`);
+  lines.push(`Эх олонлог (N),${result.N}`);
   lines.push(`Итгэлийн түвшин,${(result.confidence * 100).toFixed(0)}%`);
   lines.push(`Алдааны марж,${result.margin}%`);
+  if (result.seed) lines.push(`Seed,${toCsvCell(result.seed)}`);
   lines.push("");
 
   for (const g of result.groups) {

@@ -13,7 +13,9 @@ import {
   ClipboardEdit,
   Activity,
   SlidersHorizontal,
+  BookOpen,
 } from "lucide-react";
+import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -397,6 +399,16 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         title={t("riskDoAssessCardTitle")}
         rightContent={
           <div className="flex items-center gap-2">
+            {/* Аргачлал — бүх үзүүлэлтийн үнэлгээний аргачлалыг унших */}
+            <Link
+              href="/tools/risk-assessment/argachlal"
+              title="Үзүүлэлт бүрийн үнэлгээний аргачлал"
+              className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-muted/30 text-xs font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              Аргачлал
+            </Link>
+
             {/* Date Picker + Refresh */}
             <div className="flex items-center gap-1.5">
               <input
@@ -612,7 +624,7 @@ export default function RiskWorkPage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold">
-                  Эрсдэлийн тайланг хадгалах
+                  Тайланг хадгалах
                 </h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   Сонгосон огноо: {saveModalMeta.pDate}

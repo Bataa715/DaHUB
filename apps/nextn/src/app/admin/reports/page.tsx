@@ -47,6 +47,7 @@ import {
   FilterDef,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { CodeEditor, PyCodeWorkbench } from "./_components/PyCodeWorkbench";
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 
@@ -154,67 +155,7 @@ df = conn.query_df("SELECT * FROM some_table LIMIT 100")
 result = df
 `;
 
-// ── Code editor ───────────────────────────────────────────────────────────────
-
-function CodeEditor({
-  value,
-  onChange,
-  minHeight = 300,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  minHeight?: number;
-  placeholder?: string;
-}) {
-  const taRef = useRef<HTMLTextAreaElement>(null);
-  const lnRef = useRef<HTMLDivElement>(null);
-  const lines = value ? value.split("\n") : [""];
-  const syncScroll = () => {
-    if (taRef.current && lnRef.current)
-      lnRef.current.scrollTop = taRef.current.scrollTop;
-  };
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const ta = taRef.current!;
-      const s = ta.selectionStart;
-      const next =
-        value.substring(0, s) + "    " + value.substring(ta.selectionEnd);
-      onChange(next);
-      requestAnimationFrame(() => {
-        ta.selectionStart = ta.selectionEnd = s + 4;
-      });
-    }
-  };
-  return (
-    <div className="relative flex overflow-hidden rounded-xl border border-border bg-background font-mono text-xs leading-5">
-      <div
-        ref={lnRef}
-        className="select-none overflow-hidden border-r border-border bg-[#161b22] px-3 py-3 text-right text-muted-foreground/40"
-        style={{ minWidth: "3rem" }}
-        aria-hidden
-      >
-        {lines.map((_, i) => (
-          <div key={i} className="leading-5">
-            {i + 1}
-          </div>
-        ))}
-      </div>
-      <textarea
-        ref={taRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onScroll={syncScroll}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        spellCheck={false}
-        className="flex-1 resize-none bg-transparent py-3 pl-3 pr-3 text-foreground outline-none placeholder:text-muted-foreground/30"
-        style={{ minHeight, lineHeight: "1.25rem", tabSize: 4 }}
-      />
-    </div>
-  );
-}
+// ── Code editor — _components/PyCodeWorkbench.tsx-д тусад нь байрлана ─────────
 
 // ── Filters editor ─────────────────────────────────────────────────────────────
 
@@ -1496,11 +1437,14 @@ export default function AdminReportsPage() {
                 <Label className="text-foreground/80 text-xs">
                   Python код *
                 </Label>
-                <CodeEditor
+                <PyCodeWorkbench
                   value={pyForm.pythonCode}
                   onChange={(v) => {
                     setPyForm((f) => ({ ...f, pythonCode: v }));
                   }}
+                  connectionType={pyForm.connectionType}
+                  connectionConfig={pyForm.connectionConfig}
+                  dateMode={pyForm.dateMode}
                   minHeight={320}
                 />
               </div>

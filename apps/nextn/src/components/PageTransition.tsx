@@ -2,11 +2,14 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+const WRAPPER_CLASS =
+  "flex flex-col flex-1 min-w-0 w-full max-w-full overflow-x-hidden";
 
 /**
  * PageTransition — хуудас хооронд шилжихэд зөөлөн fade + slide animation өгнө.
- * `key={pathname}` тул чиглэл солигдох бүрт дахин mount хийгдэж animation тоглоно.
- * Хөдөлгөөн багасгах (prefers-reduced-motion) тохиргоог хүндэтгэнэ.
+ * SSR/hydration-д motion initial state зөрөхгүй — эхний paint static, дараа нь animate.
  */
 export default function PageTransition({
   children,
@@ -15,6 +18,15 @@ export default function PageTransition({
 }) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className={WRAPPER_CLASS}>{children}</div>;
+  }
 
   return (
     <motion.div
@@ -22,7 +34,7 @@ export default function PageTransition({
       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col flex-1 min-w-0 w-full max-w-full overflow-x-hidden"
+      className={WRAPPER_CLASS}
     >
       {children}
     </motion.div>

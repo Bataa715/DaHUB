@@ -50,6 +50,19 @@ export class PythonApiService implements OnModuleInit {
 
   private readonly pythonApiKey = process.env.PYTHON_API_KEY ?? "";
 
+  // Keep-alive agent — холболт бүрт шинэ TCP handshake хийхгүй тул
+  // preview/run давтамжтай дуудлагад мэдэгдэхүйц хурдан.
+  private readonly httpAgent = new http.Agent({
+    keepAlive: true,
+    maxSockets: 16,
+    keepAliveMsecs: 30000,
+  });
+  private readonly httpsAgent = new (require("https") as typeof http).Agent({
+    keepAlive: true,
+    maxSockets: 16,
+    keepAliveMsecs: 30000,
+  });
+
   constructor(private clickhouse: ClickHouseService) {}
 
   async onModuleInit() {
@@ -538,6 +551,7 @@ export class PythonApiService implements OnModuleInit {
           port: Number(url.port) || (isHttps ? 443 : 8001),
           path: url.pathname,
           method: "POST",
+          agent: isHttps ? this.httpsAgent : this.httpAgent,
           headers: {
             "Content-Type": "application/json",
             "Content-Length": payload.length,
@@ -664,6 +678,51 @@ export class PythonApiService implements OnModuleInit {
       fileName: `${tool.name}_${date}.${ext}`,
       contentType: contentTypes[tool.outputFormat ?? "excel"],
     };
+  }
+
+  // ── Admin editor helpers (хадгалахгүйгээр шалгах/тест хийх) ───────────────
+
+  /** Кодыг ажиллуулахгүйгээр syntax + аюулгүй байдлын шалгалт */
+  async validateCode(code: string): Promise<{
+    ok: boolean;
+    error?: string;
+    warning?: string | null;
+    line?: number | null;
+    col?: number | null;
+  }> {
+    const buf = await this.callFastApi("/validate-code", { code });
+    return JSON.parse(buf.toString("utf-8"));
+  }
+
+  /** Админы editor-оос хадгалаагүй кодыг шууд preview хийх (kernel test-run) */
+  async previewCode(input: {
+    code: string;
+    connectionType?: string;
+    connectionConfig?: string;
+    startDate?: string;
+    endDate?: string;
+    filters?: Record<string, string>;
+  }): Promise<{ columns: string[]; rows: any[][]; totalCount: number }> {
+    let connectionConfig: object | undefined;
+    try {
+      connectionConfig =
+        input.connectionConfig && input.connectionConfig !== "{}"
+          ? (JSON.parse(input.connectionConfig) as object)
+          : undefined;
+    } catch {
+      connectionConfig = undefined;
+    }
+    const buf = await this.callFastApi("/preview-tool", {
+      code: input.code,
+      connection_type: input.connectionType ?? "clickhouse",
+      connection_config: connectionConfig,
+      start_date: input.startDate ?? null,
+      end_date: input.endDate ?? input.startDate ?? null,
+      filters: input.filters ?? {},
+      output_format: "excel",
+      preview_limit: 50,
+    });
+    return JSON.parse(buf.toString("utf-8"));
   }
 
   async previewTool(dto: RunToolDto): Promise<{

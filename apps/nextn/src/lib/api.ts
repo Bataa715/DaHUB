@@ -686,6 +686,31 @@ export const pythonToolApi = {
     await api.post("/python-api/admin/tools/reorder", { ids });
   },
 
+  /** Editor: кодыг ажиллуулахгүйгээр syntax + аюулгүй байдлын шалгалт */
+  adminValidateCode: async (
+    code: string,
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    warning?: string | null;
+    line?: number | null;
+  }> => {
+    const res = await api.post("/python-api/admin/validate-code", { code });
+    return res.data;
+  },
+
+  /** Editor: хадгалаагүй кодыг шууд тест ажиллуулах (эхний 50 мөр) */
+  adminPreviewCode: async (input: {
+    code: string;
+    connectionType?: string;
+    connectionConfig?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{ columns: string[]; rows: unknown[][]; totalCount: number }> => {
+    const res = await api.post("/python-api/admin/preview-code", input);
+    return res.data;
+  },
+
   // ── Permissions ────────────────────────────────────────────────────────────
 
   adminGetPermissions: async (): Promise<

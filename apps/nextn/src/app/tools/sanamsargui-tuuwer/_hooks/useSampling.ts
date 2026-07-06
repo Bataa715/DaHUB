@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import type { DesignType, SamplingResult, GroupResult } from "../_lib/sampling";
 import {
   getZ,
@@ -8,6 +8,7 @@ import {
   calcStratifiedSampleSize,
   normalizeFilterValue,
   sampleWithoutReplacement,
+  makeRng,
   LARGE_EXPORT_ROW_THRESHOLD,
   buildCsvContent,
   logExportFailure,
@@ -18,6 +19,8 @@ export function useSampling() {
   const [confidence, setConfidence] = useState(0.95);
   const [margin, setMargin] = useState(5.0);
   const [stdDev, setStdDev] = useState(0.5);
+  /** Хоосон биш бол давтагдах (reproducible) түүвэр гарна */
+  const [seed, setSeed] = useState("");
   const [exportFilename, setExportFilename] = useState("sample_result.xlsx");
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -45,8 +48,9 @@ export function useSampling() {
 
   const isStratified = design === "prop" || design === "nonprop";
 
-  // Compute unique values from selected filter column
-  const availableFilterValues: string[] = (() => {
+  // Compute unique values from selected filter column (том файлд render бүрт
+  // дахин тооцохгүйн тулд memo хийв)
+  const availableFilterValues: string[] = useMemo(() => {
     if (!useColumnFilter || !fileData || !filterCol) return [];
     const idx = fileHeaders.indexOf(filterCol);
     if (idx < 0) return [];
@@ -57,7 +61,7 @@ export function useSampling() {
     return Array.from(values).sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
     );
-  })();
+  }, [useColumnFilter, fileData, filterCol, fileHeaders]);
 
   // ── File handling ────────────────────────────────────────────────────────
   const processFile = useCallback((file: File) => {
@@ -119,7 +123,7 @@ export function useSampling() {
   };
 
   // ── Preview computed n ───────────────────────────────────────────────────
-  const computedN = (() => {
+  const computedN = useMemo(() => {
     const Z = getZ(confidence);
     if (isStratified) return calcStratifiedSampleSize(totalVars, Z, margin);
 
@@ -147,11 +151,27 @@ export function useSampling() {
     }
 
     return n;
-  })();
+  }, [
+    confidence,
+    isStratified,
+    totalVars,
+    margin,
+    fileData,
+    filterCol,
+    fileHeaders,
+    useColumnFilter,
+    selectedFilterValue,
+    stdDev,
+    coverAllValues,
+    availableFilterValues.length,
+  ]);
 
   // ── Calculate ────────────────────────────────────────────────────────────
   const handleCalculate = () => {
     const Z = getZ(confidence);
+    // Seed өгсөн бол бүх санамсаргүй сонголт детерминистик болно
+    const rng = makeRng(seed);
+    const usedSeed = seed.trim() || undefined;
 
     if (isStratified) {
       const N = totalVars;
@@ -164,7 +184,7 @@ export function useSampling() {
           const ni = Math.round(sampleSize * (groupSizes[i] / totalGroupSize));
           groups.push({
             label: `Бүлэг ${i + 1}`,
-            indices: sampleWithoutReplacement(N, ni),
+            indices: sampleWithoutReplacement(N, ni, rng),
             size: groupSizes[i],
             rows: [],
           });
@@ -176,7 +196,7 @@ export function useSampling() {
         for (let i = 0; i < numGroups; i++) {
           groups.push({
             label: `Бүлэг ${i + 1}`,
-            indices: sampleWithoutReplacement(N, ni),
+            indices: sampleWithoutReplacement(N, ni, rng),
             rows: [],
           });
         }
@@ -189,6 +209,7 @@ export function useSampling() {
         confidence,
         margin,
         stdDev,
+        seed: usedSeed,
         headers: [],
         groups: groups.map((g) => ({ ...g, rows: [] })),
       });
@@ -237,7 +258,7 @@ export function useSampling() {
         for (const v of allValues) {
           const arr = valueMap.get(v) ?? [];
           if (!arr.length) continue;
-          const pick = arr[Math.floor(Math.random() * arr.length)];
+          const pick = arr[Math.floor(rng() * arr.length)];
           sampledEntries.push(pick);
         }
       }
@@ -246,14 +267,17 @@ export function useSampling() {
       if (remaining > 0) {
         if (design === "srswr") {
           for (let i = 0; i < remaining; i++) {
-            const pick =
-              scopedData[Math.floor(Math.random() * scopedData.length)];
+            const pick = scopedData[Math.floor(rng() * scopedData.length)];
             sampledEntries.push(pick);
           }
         } else {
           const used = new Set(sampledEntries.map((e) => e.sourceIndex));
           const available = scopedData.filter((e) => !used.has(e.sourceIndex));
-          const picks = sampleWithoutReplacement(available.length, remaining);
+          const picks = sampleWithoutReplacement(
+            available.length,
+            remaining,
+            rng,
+          );
           for (const p of picks) {
             sampledEntries.push(available[p - 1]);
           }
@@ -282,6 +306,7 @@ export function useSampling() {
         confidence,
         margin,
         stdDev,
+        seed: usedSeed,
         headers: fileHeaders,
         groups: [
           {
@@ -491,6 +516,8 @@ export function useSampling() {
     setMargin,
     stdDev,
     setStdDev,
+    seed,
+    setSeed,
     exportFilename,
     setExportFilename,
     exporting,

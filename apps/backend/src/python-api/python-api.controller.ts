@@ -74,6 +74,35 @@ export class PythonApiController {
     await this.service.reorderTools(body.ids);
   }
 
+  /** Editor: кодыг ажиллуулахгүйгээр шалгах */
+  @Post("admin/validate-code")
+  @UseGuards(AdminGuard)
+  validateCode(@Body() body: { code: string }) {
+    if (typeof body?.code !== "string")
+      throw new BadRequestException("code шаардлагатай");
+    return this.service.validateCode(body.code);
+  }
+
+  /** Editor: хадгалаагүй кодыг шууд тест ажиллуулах (эхний 50 мөр) */
+  @Post("admin/preview-code")
+  @UseGuards(AdminGuard)
+  @SkipThrottle()
+  previewCode(
+    @Body()
+    body: {
+      code: string;
+      connectionType?: string;
+      connectionConfig?: string;
+      startDate?: string;
+      endDate?: string;
+      filters?: Record<string, string>;
+    },
+  ) {
+    if (typeof body?.code !== "string" || !body.code.trim())
+      throw new BadRequestException("code шаардлагатай");
+    return this.service.previewCode(body);
+  }
+
   @Get("admin/run-logs")
   @UseGuards(AdminGuard)
   getRunLogs(@Query("limit") limit?: string) {
@@ -165,11 +194,13 @@ export class PythonApiController {
     if (abort.signal.aborted) return;
     const encodedName = encodeURIComponent(fileName);
     const isAttachment = !contentType.startsWith("application/json");
+    // RFC 5987 charset separator built via concat so source has no adjacent quotes
+    const rfc5987 = "UTF-8" + "'" + "'" + encodedName;
     res.set({
       "Content-Type": contentType,
       ...(isAttachment
         ? {
-            "Content-Disposition": `attachment; filename="file"; filename*=UTF-8''${encodedName}`,
+            "Content-Disposition": `attachment; filename="file"; filename*=${rfc5987}`,
           }
         : {}),
       "Content-Length": String(buffer.length),

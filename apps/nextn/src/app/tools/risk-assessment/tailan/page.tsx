@@ -291,7 +291,7 @@ export default function RiskReportsPage() {
       <ToolPageHeader
         href="/tools/risk-assessment"
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
-        title="Эрсдэлийн Тайлан"
+        title="Тайлан"
         rightContent={
           <div className="flex items-center gap-2">
             {selectedReportId &&
