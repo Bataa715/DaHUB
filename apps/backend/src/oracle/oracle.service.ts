@@ -11,6 +11,8 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OracleService.name);
   private pool: oracledb.Pool | null = null;
   private authFailed = false; // credential буруу бол дахин оролдохгүй
+  private healthy = false; // дор хаяж нэг холболт амжилттай болсныг баталгаажуулна
+  private healthProbe: Promise<void> | null = null; // single-flight probe
 
   onModuleInit() {
     const user = process.env.ORACLE_USER;
@@ -31,6 +33,93 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   // ORA-28000: the account is locked
   // ORA-28001: the password has expired
   private static readonly AUTH_ERROR_CODES = [1017, 28000, 28001];
+
+  private static isAuthError(err: unknown): boolean {
+    const code = (err as { errorNum?: number })?.errorNum ?? 0;
+    return OracleService.AUTH_ERROR_CODES.includes(code);
+  }
+
+  private static readonly AUTH_FAIL_MESSAGE =
+    "Oracle нэвтрэх мэдээлэл буруу байна (нууц үг). Account lock-аас хамгаалж " +
+    "цаашид оролдохгүй. Админд хандаж .env доторх ORACLE нэвтрэлтийг шалгуулна уу.";
+
+  /** Auth алдаа гарсан үед: тугийг тавьж, pool-г хааж, Oracle-д дахин хандахгүй. */
+  private async markAuthFailed(err: unknown) {
+    this.authFailed = true;
+    this.healthy = false;
+    const code = (err as { errorNum?: number })?.errorNum ?? 0;
+    this.logger.error(
+      `Oracle auth error (ORA-${code}) — pool хааж, дахин оролдохгүй ` +
+        `(account lock-аас хамгаалж байна).`,
+    );
+    if (this.pool) {
+      try {
+        await this.pool.close(0);
+      } catch {
+        /* ignore */
+      }
+      this.pool = null;
+    }
+  }
+
+  /**
+   * Нэг л удаагийн "эрүүл мэндийн" холболт шалгана. 12 dashboard зэрэг query
+   * илгээхэд тэд бүгд ЭНЭ нэг probe-г хүлээх тул Oracle руу зөвхөн 1 удаа auth
+   * оролдоно — нууц үг буруу үед 12 удаа биш 1 удаа л fail болж account
+   * lock-д хүрэхээс сэргийлнэ. authFailed бол Oracle-д хандалгүй шууд алдаа шиднэ.
+   */
+  private async ensureHealthy(): Promise<void> {
+    if (this.authFailed) {
+      throw new Error(OracleService.AUTH_FAIL_MESSAGE);
+    }
+    if (!this.pool) {
+      throw new Error("Oracle холболт тохируулагдаагүй байна");
+    }
+    if (this.healthy) return;
+
+    if (!this.healthProbe) {
+      this.healthProbe = (async () => {
+        let conn: oracledb.Connection | null = null;
+        try {
+          conn = await this.pool!.getConnection();
+          this.healthy = true;
+        } catch (err) {
+          if (OracleService.isAuthError(err)) {
+            await this.markAuthFailed(err);
+          }
+          throw err;
+        } finally {
+          if (conn) {
+            try {
+              await conn.close();
+            } catch {
+              /* ignore */
+            }
+          }
+          this.healthProbe = null;
+        }
+      })();
+    }
+
+    await this.healthProbe;
+    if (this.authFailed) {
+      throw new Error(OracleService.AUTH_FAIL_MESSAGE);
+    }
+  }
+
+  /** Guard-тай холболт авах — auth алдааг илрүүлж, дахин оролдлогыг таслана. */
+  private async acquire(): Promise<oracledb.Connection> {
+    await this.ensureHealthy();
+    try {
+      return await this.pool!.getConnection();
+    } catch (err) {
+      if (OracleService.isAuthError(err)) {
+        await this.markAuthFailed(err);
+        throw new Error(OracleService.AUTH_FAIL_MESSAGE);
+      }
+      throw err;
+    }
+  }
 
   private async initPool(
     user: string,
@@ -55,6 +144,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
         poolTimeout: 60,
         connectTimeout: 10,
       });
+      this.healthy = false; // шинэ pool — эхний query-д дахин probe хийнэ
       this.logger.log(`Oracle pool connected → ${connectString}`);
     } catch (err: any) {
       const code = err?.errorNum || 0;
@@ -112,6 +202,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.authFailed = false;
+    this.healthy = false;
     await this.initPool(user, password, connectString);
 
     if (this.pool) {
@@ -130,10 +221,6 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     sql: string,
     params: any[] | Record<string, any> = [],
   ): Promise<T[]> {
-    if (!this.pool) {
-      throw new Error("Oracle холболт тохируулагдаагүй байна");
-    }
-
     // Эхлээд SQL comment-уудыг арилгана: -- мөрийн төгсгөл хүртэл, /* ... */ блок
     const noComments = sql
       .replace(/--[^\n]*/g, " ")
@@ -178,7 +265,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    const conn = await this.pool.getConnection();
+    const conn = await this.acquire();
     try {
       const result = await conn.execute(sql, params as any, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
@@ -203,9 +290,6 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     inParams: any[],
     allowList: readonly string[],
   ): Promise<T[]> {
-    if (!this.pool) {
-      throw new Error("Oracle холболт тохируулагдаагүй байна");
-    }
     const normalized = procName.trim().toUpperCase();
     if (!allowList.map((s) => s.toUpperCase()).includes(normalized)) {
       this.logger.error(`BLOCKED procedure call: ${procName}`);
@@ -215,7 +299,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       throw new Error("Procedure нэр буруу формат");
     }
 
-    const conn = await this.pool.getConnection();
+    const conn = await this.acquire();
     try {
       const placeholders = inParams.map((_, i) => `:p${i}`).join(", ");
       const sql = `BEGIN ${normalized}(${placeholders}${

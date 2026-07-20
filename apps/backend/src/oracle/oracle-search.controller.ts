@@ -32,6 +32,13 @@ export class OracleSearchController {
   ) {}
 
   private requireOracle() {
+    if (this.oracle.isAuthFailed()) {
+      // Нууц үг буруу/lock — дахин оролдохгүй (account lock-аас хамгаална)
+      throw new HttpException(
+        "Oracle нэвтрэх мэдээлэл буруу байна. Account lock-аас хамгаалж уншилтыг зогсоов. Админд хандана уу.",
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
     if (!this.oracle.isConnected()) {
       throw new HttpException(
         "Oracle холболт тохируулагдаагүй байна",
