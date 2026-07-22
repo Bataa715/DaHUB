@@ -22,6 +22,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { downloadRelatedPartyWorkbook } from "./export";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -119,19 +120,9 @@ export default function RelatedPartyTransactionsPage() {
     if (!result || result.transactions.length === 0) return;
     setExporting(true);
     try {
-      const blob = await monitoringApi.exportRelatedPartyTransactions({
-        customerIds: cifIds,
-        startDate,
-        endDate,
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `harilcsan-guilgee-${startDate}_${endDate}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // Already-fetched `result` is written straight to the workbook here —
+      // no second server round-trip / re-query, so the download is instant.
+      await downloadRelatedPartyWorkbook(result, startDate, endDate);
     } catch (e) {
       toast({
         title: "Татаж авахад алдаа гарлаа",
@@ -204,7 +195,7 @@ export default function RelatedPartyTransactionsPage() {
                   }
                 }}
                 onBlur={() => cifInput.trim() && addCifTokens(cifInput)}
-                placeholder="CIF эсвэл FORACID бичиж Enter дарна (эсвэл таслалаар зааглаж хэд хэдийг зэрэг оруулна)"
+                placeholder="CIF эсвэл дансны дугаар оруулна уу"
                 className="text-sm"
               />
             </div>
@@ -276,12 +267,6 @@ export default function RelatedPartyTransactionsPage() {
                     : "from-emerald-500 to-teal-500"
                 }
               />
-              <StatCard
-                icon={ListChecks}
-                label="Хосын тоо (Summary)"
-                value={result.summary.length}
-                gradient="from-violet-500 to-indigo-500"
-              />
             </div>
 
             {totalsByCurrency.length > 0 && (
@@ -326,7 +311,7 @@ export default function RelatedPartyTransactionsPage() {
 
             {/* ── Summary table ───────────────────────────────────────── */}
             {result.summary.length > 0 && (
-              <SectionCard title="Хос дансны нэгтгэл">
+              <SectionCard title="Хосолсон дансны нэгтгэл">
                 <TableScroll>
                   <table className="w-full text-sm">
                     <thead>
@@ -404,10 +389,10 @@ export default function RelatedPartyTransactionsPage() {
                         <Th>Валют</Th>
                         <Th>FROM (CIF / данс / нэр)</Th>
                         <Th>TO (CIF / данс / нэр)</Th>
-                        <Th>Төрөл</Th>
-                        <Th>SOL</Th>
-                        <Th>Ref</Th>
-                        <Th>Гүйцэтгэсэн</Th>
+                        <Th>Суваг</Th>
+                        <Th>Банк</Th>
+                        <Th>Эх SOL</Th>
+                        <Th>Гүйлгээний утга</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -437,10 +422,10 @@ export default function RelatedPartyTransactionsPage() {
                               {tx.TO_NAME}
                             </div>
                           </Td>
-                          <Td>{tx.TRAN_TYPE}</Td>
-                          <Td>{tx.SOL_ID}</Td>
-                          <Td className="font-mono">{tx.REF_NUM}</Td>
-                          <Td>{tx.ENTRY_USER_ID || tx.PSTD_USER_ID}</Td>
+                          <Td>{tx.CHANNEL_ID}</Td>
+                          <Td>{tx.BANK}</Td>
+                          <Td>{tx.DTH_INIT_SOL_ID}</Td>
+                          <Td>{tx.DEBIT_PARTICULAR}</Td>
                         </tr>
                       ))}
                     </tbody>

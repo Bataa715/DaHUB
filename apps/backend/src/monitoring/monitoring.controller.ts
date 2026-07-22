@@ -1,5 +1,4 @@
-import { Body, Controller, Post, Res, UseGuards } from "@nestjs/common";
-import { Response } from "express";
+import { Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
@@ -15,25 +14,5 @@ export class MonitoringController {
   @Post("related-party-transactions")
   findRelatedPartyTransactions(@Body() dto: RelatedPartyTransactionsDto) {
     return this.monitoring.findRelatedPartyTransactions(dto);
-  }
-
-  @Post("related-party-transactions/export")
-  async exportRelatedPartyTransactions(
-    @Body() dto: RelatedPartyTransactionsDto,
-    @Res() res: Response,
-  ) {
-    const buffer =
-      await this.monitoring.exportRelatedPartyTransactionsXlsx(dto);
-    const filename = encodeURIComponent(
-      `harilcsan-guilgee-${dto.startDate}_${dto.endDate}.xlsx`,
-    );
-    res.set({
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename*=UTF-8''${filename}`,
-      "Content-Length": buffer.length,
-      "Cache-Control": "no-store",
-    });
-    res.end(buffer);
   }
 }

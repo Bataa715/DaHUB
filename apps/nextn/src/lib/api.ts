@@ -1010,30 +1010,44 @@ export interface MatchedAccountRow {
   FORACID: string;
   ACID: string;
   ACCT_NAME: string;
+  SCHM_CODE: string;
 }
 
 export interface RelatedPartyTxRow {
   TRAN_DATE: string;
   TRAN_ID: string;
+  DTH_INIT_SOL_ID: string;
+  ENTRY_DATE: string;
+  ENTRY_USER_ID: string;
+  PSTD_DATE: string;
+  PSTD_USER_ID: string;
+  VFD_DATE: string;
+  VFD_USER_ID: string;
+  TRAN_TYPE: string;
+  TRAN_SUB_TYPE: string;
   FROM_CIF: string;
   FROM_ACCOUNT: string;
   FROM_NAME: string;
+  FROM_SCHM_CODE: string;
   TO_CIF: string;
   TO_ACCOUNT: string;
   TO_NAME: string;
+  TO_SCHM_CODE: string;
   TRAN_AMOUNT: number;
   AMOUNT_MNT: number;
   CURRENCY: string;
-  TRAN_TYPE: string;
+  CHANNEL_ID: string;
+  BANK: string;
+  BANK_TYPE: string;
+  A_TRAN_ID: string;
   SOL_ID: string;
+  GL_SUB_HEAD_CODE: string;
+  ACCT_PRTY_NUMBER: string;
   REF_NUM: string;
   DEBIT_PARTICULAR: string;
   CREDIT_PARTICULAR: string;
   DEBIT_RMKS: string;
   CREDIT_RMKS: string;
-  ENTRY_USER_ID: string;
-  PSTD_USER_ID: string;
-  PSTD_DATE: string;
 }
 
 export interface RelatedPartySummaryRow {
@@ -1062,17 +1076,6 @@ export const monitoringApi = {
   ): Promise<RelatedPartyResult> => {
     const res = await api.post("/monitoring/related-party-transactions", req);
     return res.data;
-  },
-
-  exportRelatedPartyTransactions: async (
-    req: RelatedPartyRequest,
-  ): Promise<Blob> => {
-    const res = await api.post(
-      "/monitoring/related-party-transactions/export",
-      req,
-      { responseType: "blob" },
-    );
-    return res.data as Blob;
   },
 };
 
