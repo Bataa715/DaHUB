@@ -87,15 +87,19 @@ export class AuthController {
     res.clearCookie(isAdmin ? "adminRefreshToken" : "refreshToken", opts);
   }
 
-  // [H-4] Extract caller IP for brute-force lockout key.
-  // Honours X-Forwarded-For when behind a trusted reverse proxy.
+  // [H-4/SEC-FIX] Extract caller IP for brute-force lockout key.
+  //
+  // ⚠️ Do NOT read `x-forwarded-for` directly — that header is fully
+  // attacker-controlled on any request that reaches this server directly
+  // (or through an untrusted hop), letting an attacker rotate the value on
+  // every request to reset/bypass the login lockout entirely.
+  //
+  // `req.ip` is populated by Express and correctly honours the app-level
+  // `trust proxy` setting (see main.ts) — it only trusts X-Forwarded-For
+  // when the connection actually originates from a configured trusted proxy
+  // hop, and falls back to the raw socket address otherwise.
   private clientIp(req: ExpressRequest): string {
-    const xff = (req.headers?.["x-forwarded-for"] || "")
-      .toString()
-      .split(",")[0]
-      .trim();
-
-    return xff || req.ip || req.socket?.remoteAddress || "unknown";
+    return req.ip || req.socket?.remoteAddress || "unknown";
   }
 
   // Check if user exists
@@ -191,22 +195,15 @@ export class AuthController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get("departments/:department/users")
-  async getUsersByDepartment(
-    @Param("department") department: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
-  ) {
-    return this.authService.getUsersByDepartment(
-      department,
-      Number(limit) || 100,
-      Number(offset) || 0,
-    );
-  }
-
+  // [SEC] Public (pre-auth) login-autocomplete search. Cannot require
+  // JwtAuthGuard here — the user hasn't logged in yet. This is inherently
+  // an unauthenticated employee-directory/userId-enumeration surface, so
+  // keep it as tight as the UX allows: short min-query length + small
+  // LIMIT are enforced in the service, `position` is stripped from the
+  // public response (see searchUsersByUserId), and the per-IP throttle is
+  // tighter than a typical read endpoint to slow down bulk enumeration.
   @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Get("search")
   async searchUsers(@Query("q") query: string) {
     return this.authService.searchUsersByUserId(query, false);

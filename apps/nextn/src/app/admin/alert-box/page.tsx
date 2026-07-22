@@ -93,9 +93,8 @@ export default function AdminAlertBoxPage() {
   const [dashSaving, setDashSaving] = useState(false);
 
   const [chainModalOpen, setChainModalOpen] = useState(false);
-  const [editingChain, setEditingChain] = useState<OracleEventChainConfig | null>(
-    null,
-  );
+  const [editingChain, setEditingChain] =
+    useState<OracleEventChainConfig | null>(null);
   const [chainForm, setChainForm] = useState(EMPTY_CHAIN);
   const [chainSaving, setChainSaving] = useState(false);
 
@@ -117,7 +116,8 @@ export default function AdminAlertBoxPage() {
     } catch (e: unknown) {
       toast({
         title: "Алдаа",
-        description: getApiErrorMessage(e) || "Тохиргоог ачаалахад алдаа гарлаа.",
+        description:
+          getApiErrorMessage(e) || "Тохиргоог ачаалахад алдаа гарлаа.",
         variant: "destructive",
       });
     } finally {
@@ -241,7 +241,10 @@ export default function AdminAlertBoxPage() {
       } else {
         const created = await oracleConfigApi.createChain(payload);
         setChains((prev) => [...prev, created].sort((a, b) => a.id - b.id));
-        toast({ title: "Амжилттай", description: "Шинэ event chain нэмэгдлээ." });
+        toast({
+          title: "Амжилттай",
+          description: "Шинэ event chain нэмэгдлээ.",
+        });
       }
       setChainModalOpen(false);
     } catch (e: unknown) {
@@ -294,7 +297,9 @@ export default function AdminAlertBoxPage() {
         !d.enabled,
       );
       setDashboards((prev) =>
-        prev.map((x) => (x.id === d.id ? { ...x, enabled: updated.enabled } : x)),
+        prev.map((x) =>
+          x.id === d.id ? { ...x, enabled: updated.enabled } : x,
+        ),
       );
     } catch (e: unknown) {
       toast({
@@ -313,7 +318,9 @@ export default function AdminAlertBoxPage() {
     try {
       const updated = await oracleConfigApi.setChainEnabled(c.id, !c.enabled);
       setChains((prev) =>
-        prev.map((x) => (x.id === c.id ? { ...x, enabled: updated.enabled } : x)),
+        prev.map((x) =>
+          x.id === c.id ? { ...x, enabled: updated.enabled } : x,
+        ),
       );
     } catch (e: unknown) {
       toast({
@@ -534,7 +541,9 @@ export default function AdminAlertBoxPage() {
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => setDeleteTarget({ type: "chain", item: c })}
+                      onClick={() =>
+                        setDeleteTarget({ type: "chain", item: c })
+                      }
                       title="Устгах"
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500/70 hover:bg-red-500/10 hover:text-red-500 transition-colors"
                     >
@@ -571,7 +580,9 @@ export default function AdminAlertBoxPage() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingDash ? `Дашбоард засах (DB${editingDash.id})` : "Шинэ дашбоард"}
+              {editingDash
+                ? `Дашбоард засах (DB${editingDash.id})`
+                : "Шинэ дашбоард"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -664,7 +675,9 @@ export default function AdminAlertBoxPage() {
                 !dashForm.cifColumn.trim()
               }
             >
-              {dashSaving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
+              {dashSaving && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+              )}
               Хадгалах
             </Button>
           </DialogFooter>
@@ -764,7 +777,9 @@ export default function AdminAlertBoxPage() {
               onClick={saveChain}
               disabled={chainSaving || !chainForm.name.trim()}
             >
-              {chainSaving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
+              {chainSaving && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+              )}
               Хадгалах
             </Button>
           </DialogFooter>

@@ -57,10 +57,21 @@ async function bootstrap() {
   });
   const logger = new Logger("Bootstrap");
 
-  // [H-4] Always trust the first reverse-proxy hop so req.ip / X-Forwarded-For
-  // resolves to the real client IP for brute-force lockout keys. Safe even when
-  // running directly without a proxy — falls back to socket.remoteAddress.
-  app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  // [H-4] Trust reverse-proxy X-Forwarded-For only from the configured hop(s)
+  // so req.ip resolves to the real client IP for brute-force lockout keys —
+  // this MUST match your actual deployment topology or the header becomes
+  // attacker-spoofable (see auth.controller.ts#clientIp for the consumer).
+  //   TRUST_PROXY=1        → trust exactly 1 proxy hop (default: nginx/ingress in front)
+  //   TRUST_PROXY=loopback → trust only loopback/private-network hops (Docker-internal proxy)
+  //   TRUST_PROXY=0        → no proxy in front; never trust X-Forwarded-For
+  const trustProxySetting = process.env.TRUST_PROXY ?? "1";
+  const trustProxyValue: boolean | number | string =
+    trustProxySetting === "0"
+      ? false
+      : /^\d+$/.test(trustProxySetting)
+        ? Number(trustProxySetting)
+        : trustProxySetting;
+  app.getHttpAdapter().getInstance().set("trust proxy", trustProxyValue);
 
   // Security headers
   app.use(

@@ -35,12 +35,6 @@ export class DbAccessController {
     return this.dbAccessService.getAvailableTables();
   }
 
-  /** GET /db-access/tables/:db/:table/columns - get columns for a table */
-  @Get("tables/:db/:table/columns")
-  getColumns(@Param("db") db: string, @Param("table") table: string) {
-    return this.dbAccessService.getTableColumns(`${db}.${table}`);
-  }
-
   // ─── Requests ───────────────────────────────────────────────────────────────
 
   /** POST /db-access/requests - submit a new access request */
@@ -48,12 +42,6 @@ export class DbAccessController {
   @HttpCode(HttpStatus.CREATED)
   createRequest(@Request() req: any, @Body() dto: CreateAccessRequestDto) {
     return this.dbAccessService.createRequest(req.user, dto);
-  }
-
-  /** GET /db-access/requests/my - get my own requests */
-  @Get("requests/my")
-  getMyRequests(@Request() req: any) {
-    return this.dbAccessService.getMyRequests(req.user.id);
   }
 
   /** GET /db-access/requests/pending - pending requests waiting for review */
@@ -76,21 +64,6 @@ export class DbAccessController {
     @Body() dto: ReviewRequestDto,
   ) {
     return this.dbAccessService.reviewRequest(id, req.user, dto);
-  }
-
-  /** POST /db-access/requests/bulk-review - approve or reject ALL pending */
-  @Post("requests/bulk-review")
-  bulkReview(
-    @Request() req: any,
-    @Body() body: { action: "approve" | "reject" },
-  ) {
-    return this.dbAccessService.bulkReviewPending(req.user, body.action);
-  }
-
-  /** DELETE /db-access/requests/history - clear all approved/rejected requests */
-  @Delete("requests/history")
-  deleteRequestHistory(@Request() req: any) {
-    return this.dbAccessService.deleteRequestHistory(req.user);
   }
 
   /** DELETE /db-access/requests/:id - hard-delete a single request (not approved) */
@@ -126,12 +99,6 @@ export class DbAccessController {
     return this.dbAccessService.getAllGrants(req.user);
   }
 
-  /** GET /db-access/grants/user/:userId - grants for a specific user */
-  @Get("grants/user/:userId")
-  getGrantsByUser(@Param("userId") userId: string, @Request() req: any) {
-    return this.dbAccessService.getGrantsByUser(userId, req.user);
-  }
-
   /** DELETE /db-access/grants/:id - revoke a grant (admin/granter only) */
   @Delete("grants/:id")
   revokeGrant(
@@ -146,13 +113,5 @@ export class DbAccessController {
   @Delete("grants/:id/cancel")
   selfRevokeGrant(@Param("id") id: string, @Request() req: any) {
     return this.dbAccessService.selfRevokeGrant(id, req.user);
-  }
-
-  // ─── Grantors ────────────────────────────────────────────────────────────────
-
-  /** GET /db-access/grantors - list users who can grant access */
-  @Get("grantors")
-  getGrantors() {
-    return this.dbAccessService.getGrantors();
   }
 }

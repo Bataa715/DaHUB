@@ -39,8 +39,51 @@ async function getTokenPayload(token: string | undefined) {
   }
 }
 
+// [MED-4] Per-request nonce-based CSP for script-src, replacing the previous
+// static 'unsafe-inline' (which lets ANY injected inline <script> execute,
+// defeating CSP's protection against script-injection XSS). Next.js
+// automatically applies this nonce to its own injected script tags
+// (webpack runtime / hydration payload) once it sees the nonce in the CSP
+// header, so no changes are needed in individual pages/components.
+// 'unsafe-inline' is kept as a fallback token for pre-CSP3 browsers only —
+// per the CSP spec, browsers that understand nonces ignore 'unsafe-inline'
+// when a nonce is present, so this does not weaken protection in practice.
+function buildCsp(nonce: string): string {
+  const isDev = process.env.NODE_ENV === "development";
+  return [
+    "default-src 'self'",
+    isDev
+      ? `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'`
+      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data: http://localhost:3001 https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pinimg.com https://api.dicebear.com https://cdn.simpleicons.org https://api.qrserver.com",
+    "font-src 'self' data:",
+    "connect-src 'self' " +
+      (process.env.NEXT_PUBLIC_API_URL ?? "") +
+      (isDev ? " ws://localhost:* wss://localhost:*" : "") +
+      " https://cdn.simpleicons.org",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const nonce = crypto.randomUUID().replace(/-/g, "");
+  const csp = buildCsp(nonce);
+
+  // Forward the nonce to the app (readable via `headers()` in Server
+  // Components if a page ever needs to nonce its own inline script) and
+  // apply the same CSP as a response header so the browser enforces it.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const withCsp = <T extends NextResponse>(response: T): T => {
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
+  };
 
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const isAdminRoute =
@@ -72,14 +115,14 @@ export async function middleware(request: NextRequest) {
       );
       response.cookies.delete("adminToken");
       response.cookies.delete("adminUser");
-      return response;
+      return withCsp(response);
     }
     // Certain admin sub-routes are superadmin-only
     const requiresSuperAdmin = SUPERADMIN_ROUTES.some((r) =>
       pathname.startsWith(r),
     );
     if (requiresSuperAdmin && adminPayload?.["isSuperAdmin"] !== true) {
-      return NextResponse.redirect(new URL("/admin", request.url));
+      return withCsp(NextResponse.redirect(new URL("/admin", request.url)));
     }
   }
 
@@ -93,7 +136,7 @@ export async function middleware(request: NextRequest) {
     !isAdminRoute &&
     !pathname.startsWith("/api/")
   ) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return withCsp(NextResponse.redirect(new URL("/login", request.url)));
   }
 
   //  Tool route permission check
@@ -113,7 +156,7 @@ export async function middleware(request: NextRequest) {
         const userTools = (userPayload!["allowedTools"] as string[]) ?? [];
         const hasAccess = requiredTools.some((t) => userTools.includes(t));
         if (!hasAccess) {
-          return NextResponse.redirect(new URL("/tools", request.url));
+          return withCsp(NextResponse.redirect(new URL("/tools", request.url)));
         }
       }
     }
@@ -121,13 +164,13 @@ export async function middleware(request: NextRequest) {
 
   //  Redirect already-authenticated users away from login pages
   if (pathname === "/login" && isUserAuth) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return withCsp(NextResponse.redirect(new URL("/", request.url)));
   }
   if (pathname === "/admin/login" && isAdminAuth) {
-    return NextResponse.redirect(new URL("/admin", request.url));
+    return withCsp(NextResponse.redirect(new URL("/admin", request.url)));
   }
 
-  return NextResponse.next();
+  return withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
 }
 
 export const config = {

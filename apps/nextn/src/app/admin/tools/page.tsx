@@ -30,6 +30,7 @@ import {
   Search,
   UserMinus,
   ShieldAlert,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -98,6 +99,8 @@ const AVAILABLE_TOOLS: Tool[] = [
     color: "from-blue-500 to-violet-500",
     gradient: "bg-gradient-to-br from-blue-500/20 to-violet-500/20",
     category: "work",
+    adminPath: "/admin/tailan-templates",
+    adminLabel: "Загвар →",
   },
   {
     id: "tailan_dept_head",
@@ -152,6 +155,16 @@ const AVAILABLE_TOOLS: Tool[] = [
     category: "work",
     adminPath: "/admin/risk-indicators",
     adminLabel: "Тохиргоо →",
+  },
+  {
+    id: "monitoring_box",
+    name: "Monitoring Box",
+    description:
+      "Continuous auditing — харилцсан гүйлгээ болон бусад хяналтын карт цуглуулга",
+    icon: Activity,
+    color: "from-orange-500 to-red-500",
+    gradient: "bg-gradient-to-br from-orange-500/20 to-red-500/20",
+    category: "work",
   },
 ];
 

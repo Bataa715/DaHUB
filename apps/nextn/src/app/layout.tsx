@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { ThemeStyleInjector } from "@/components/ThemeStyleInjector";
 import "./globals.css";
 import Providers from "./providers";
@@ -31,11 +32,19 @@ export const viewport = {
   maximumScale: 5,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // [FIX] middleware.ts sets a per-request CSP nonce (x-nonce) required for
+  // any inline <script>. next-themes injects a blocking inline script to set
+  // the theme class before paint (FOUC prevention) — without this nonce that
+  // script is silently blocked by CSP, so the theme class never gets applied
+  // and CSS-variable-driven text/background colors can end up mismatched
+  // (e.g. text color from one theme rendered on a background from another).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="mn" suppressHydrationWarning>
       <head>
@@ -54,7 +63,7 @@ export default function RootLayout({
         >
           Үндсэн агуулга руу үсрэх
         </a>
-        <Providers>{children}</Providers>
+        <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>
   );

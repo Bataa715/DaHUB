@@ -19,6 +19,13 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
+import {
+  CreateDashboardDto,
+  ReplaceDashboardDto,
+  SetEnabledDto,
+  CreateChainDto,
+  ReplaceChainDto,
+} from "./dto/oracle-search.dto";
 
 @UseGuards(JwtAuthGuard, ToolGuard)
 @RequireTools("alert_box")
@@ -47,13 +54,6 @@ export class OracleSearchController {
     }
   }
 
-  /** POST /oracle/search/retry-connect — зөвхөн admin: Oracle холболтыг дахин оролдох */
-  @UseGuards(AdminGuard)
-  @Post("retry-connect")
-  async retryConnect() {
-    return this.oracle.retryConnect();
-  }
-
   // ─── Admin config (dashboards + event chains) ───────────────────────────────
 
   /** GET /oracle/search/admin/dashboards — бүх dashboard-ийн бүрэн тохиргоо (admin) */
@@ -67,26 +67,12 @@ export class OracleSearchController {
   /** POST /oracle/search/admin/dashboards — шинэ dashboard (admin) */
   @UseGuards(AdminGuard)
   @Post("admin/dashboards")
-  async adminCreateDashboard(
-    @Body()
-    body: {
-      name: string;
-      tableName: string;
-      fromClause?: string;
-      cifColumn: string;
-      dateColumn?: string | null;
-      amountColumn?: string | null;
-      enabled?: boolean;
-    },
-  ) {
+  async adminCreateDashboard(@Body() body: CreateDashboardDto) {
     try {
       return await this.config.createDashboard(body);
     } catch (err) {
       if (err instanceof HttpException) throw err;
-      throw new HttpException(
-        (err as Error).message,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException((err as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -95,16 +81,7 @@ export class OracleSearchController {
   @Put("admin/dashboards/:id")
   async adminReplaceDashboard(
     @Param("id") id: string,
-    @Body()
-    body: {
-      name?: string;
-      tableName?: string;
-      fromClause?: string | null;
-      cifColumn?: string;
-      dateColumn?: string | null;
-      amountColumn?: string | null;
-      enabled?: boolean;
-    },
+    @Body() body: ReplaceDashboardDto,
   ) {
     try {
       return await this.config.updateDashboard(Number(id), body);
@@ -133,14 +110,8 @@ export class OracleSearchController {
   @Patch("admin/dashboards/:id")
   async adminUpdateDashboard(
     @Param("id") id: string,
-    @Body() body: { enabled: boolean },
+    @Body() body: SetEnabledDto,
   ) {
-    if (typeof body?.enabled !== "boolean") {
-      throw new HttpException(
-        "enabled (boolean) шаардлагатай",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
     try {
       return await this.config.setDashboardEnabled(Number(id), body.enabled);
     } catch (err) {
@@ -160,26 +131,12 @@ export class OracleSearchController {
   /** POST /oracle/search/admin/chains — шинэ event chain (admin) */
   @UseGuards(AdminGuard)
   @Post("admin/chains")
-  async adminCreateChain(
-    @Body()
-    body: {
-      name: string;
-      description?: string;
-      sourceLabel?: string;
-      targetLabel?: string;
-      sourceIds: number[];
-      targetIds: number[];
-      enabled?: boolean;
-    },
-  ) {
+  async adminCreateChain(@Body() body: CreateChainDto) {
     try {
       return await this.config.createChain(body);
     } catch (err) {
       if (err instanceof HttpException) throw err;
-      throw new HttpException(
-        (err as Error).message,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException((err as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -188,16 +145,7 @@ export class OracleSearchController {
   @Put("admin/chains/:id")
   async adminReplaceChain(
     @Param("id") id: string,
-    @Body()
-    body: {
-      name?: string;
-      description?: string;
-      sourceLabel?: string;
-      targetLabel?: string;
-      sourceIds?: number[];
-      targetIds?: number[];
-      enabled?: boolean;
-    },
+    @Body() body: ReplaceChainDto,
   ) {
     try {
       return await this.config.updateChain(Number(id), body);
@@ -224,16 +172,7 @@ export class OracleSearchController {
   /** PATCH /oracle/search/admin/chains/:id — event chain идэвхтэй эсэхийг өөрчлөх (admin) */
   @UseGuards(AdminGuard)
   @Patch("admin/chains/:id")
-  async adminUpdateChain(
-    @Param("id") id: string,
-    @Body() body: { enabled: boolean },
-  ) {
-    if (typeof body?.enabled !== "boolean") {
-      throw new HttpException(
-        "enabled (boolean) шаардлагатай",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+  async adminUpdateChain(@Param("id") id: string, @Body() body: SetEnabledDto) {
     try {
       return await this.config.setChainEnabled(Number(id), body.enabled);
     } catch (err) {
@@ -603,13 +542,15 @@ export class OracleSearchController {
         TOTAL_AMT: number;
       }>(sql, params);
     } catch (err: any) {
-      // Oracle ORA-????? мессежийг шууд frontend-д явуулна
-      const oraMsg: string =
-        err?.message || err?.errorNum
-          ? `ORA алдаа: ${err?.message || String(err)}`
-          : String(err);
+      // [SEC] AllExceptionsFilter currently masks this behind a generic
+      // 422 message, but don't rely on that alone — never construct a
+      // payload that embeds the raw SQL/table/schema internals, in case
+      // the filter is ever changed or this gets rethrown as user-facing.
+      this.logger.warn(
+        `Oracle query failed for dashboard ${dash.id} (${dash.tableName}): ${err?.message ?? err}`,
+      );
       throw new HttpException(
-        { message: oraMsg, table: dash.tableName, sql: sql.substring(0, 200) },
+        "Тайлан татахад алдаа гарлаа. Дахин оролдоно уу.",
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }

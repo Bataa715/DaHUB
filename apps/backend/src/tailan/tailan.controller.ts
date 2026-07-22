@@ -14,11 +14,17 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Response } from "express";
+import type { FileFilterCallback } from "multer";
 import { TailanService } from "./tailan.service";
-import { SaveTailanDto } from "./dto/tailan.dto";
+import {
+  SaveTailanDto,
+  PreviewTailanDto,
+  GenerateDeptWordFromDataDto,
+} from "./dto/tailan.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
@@ -66,12 +72,6 @@ export class TailanController {
     return this.tailanService.submitReport(req.user.id, year, quarter);
   }
 
-  // ─── Get my reports list ───────────────────────────────────────────────────
-  @Get("my")
-  async getMyReports(@Req() req: any) {
-    return this.tailanService.getMyReports(req.user.id);
-  }
-
   // ─── Get specific report (mine) ────────────────────────────────────────────
   @Get("my/:year/:quarter")
   async getMyReport(
@@ -111,6 +111,23 @@ export class TailanController {
     res.end(buffer);
   }
 
+  // ─── Live "real docx" preview from unsaved editor state ───────────────────
+  @Post("preview")
+  async previewWord(
+    @Req() req: any,
+    @Body() dto: PreviewTailanDto,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.tailanService.previewWord(req.user, dto);
+    res.set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "Content-Length": buffer.length,
+      "Cache-Control": "no-store",
+    });
+    res.end(buffer);
+  }
+
   // ─── Dept head: get all submitted reports for period ──────────────────────
   @Get("dept/:year/:quarter")
   async getDeptReports(
@@ -131,42 +148,24 @@ export class TailanController {
     return this.tailanService.getAllDeptReports(req.user, year, quarter);
   }
 
-  // ─── Dept head: get one member's full report ───────────────────────────────
-  @Get("dept/member/:userId/:year/:quarter")
-  async getDeptMemberReport(
+  // ─── Dept head: view one member's report as real .docx ────────────────────
+  @Get("dept/member/:userId/:year/:quarter/word")
+  async getDeptMemberWord(
     @Req() req: any,
     @Param("userId") userId: string,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
+    @Res() res: Response,
   ) {
-    return this.tailanService.getDeptMemberReport(
+    const buffer = await this.tailanService.generateMemberWord(
       req.user,
       userId,
       year,
       quarter,
     );
-  }
-
-  // ─── Dept head: download merged Word ──────────────────────────────────────
-  @Get("dept/:year/:quarter/word")
-  async downloadDeptWord(
-    @Req() req: any,
-    @Param("year", ParseIntPipe) year: number,
-    @Param("quarter", ParseIntPipe) quarter: number,
-    @Res() res: Response,
-  ) {
-    const buffer = await this.tailanService.generateDeptWord(
-      req.user,
-      year,
-      quarter,
-    );
-    const filename = encodeURIComponent(
-      `Хэлтсийн-тайлан-${year}-Q${quarter}.docx`,
-    );
     res.set({
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "Content-Disposition": `attachment; filename*=UTF-8''${filename}`,
       "Content-Length": buffer.length,
       "Cache-Control": "no-store",
     });
@@ -177,7 +176,7 @@ export class TailanController {
   @Post("dept/generate-word")
   async generateDeptWordFromData(
     @Req() req: any,
-    @Body() body: any,
+    @Body() body: GenerateDeptWordFromDataDto,
     @Res() res: Response,
   ) {
     if (!this.tailanService.isDeptHead(req.user)) {
@@ -206,10 +205,39 @@ export class TailanController {
 
   // ─── Images ───────────────────────────────────────────────────────────────
 
+  // [H-7] Only real images, capped at 8MB — prevents disk/DB exhaustion and
+  // arbitrary file-type uploads (e.g. executables, scripts) via this endpoint.
+  private static readonly ALLOWED_IMAGE_MIME = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ]);
+  private static readonly MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
   /** POST /tailan/images  — upload image as multipart/form-data */
   @Post("images")
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: TailanController.MAX_IMAGE_BYTES },
+      fileFilter: (
+        _req: unknown,
+        file: { mimetype: string },
+        cb: FileFilterCallback,
+      ) => {
+        if (!TailanController.ALLOWED_IMAGE_MIME.has(file.mimetype)) {
+          cb(
+            new BadRequestException(
+              "Зөвхөн зураг (jpg/png/webp/gif) оруулах боломжтой",
+            ),
+          );
+          return;
+        }
+        cb(null, true);
+      },
+    }),
+  )
   async saveImage(
     @Req() req: any,
     @UploadedFile()
@@ -222,6 +250,9 @@ export class TailanController {
     @Body("year") year: string,
     @Body("quarter") quarter: string,
   ) {
+    if (!file) {
+      throw new BadRequestException("Файл заавал шаардлагатай");
+    }
     return this.tailanService.saveImage(
       req.user.id,
       req.user.departmentId ?? "",
@@ -241,16 +272,6 @@ export class TailanController {
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
     return this.tailanService.getImages(req.user.id, year, quarter);
-  }
-
-  /** GET /tailan/images/dept/:year/:quarter  — dept image list */
-  @Get("images/dept/:year/:quarter")
-  async getDeptImages(
-    @Req() req: any,
-    @Param("year", ParseIntPipe) year: number,
-    @Param("quarter", ParseIntPipe) quarter: number,
-  ) {
-    return this.tailanService.getDeptImages(req.user, year, quarter);
   }
 
   /** GET /tailan/images/:id/data  — serve raw image */

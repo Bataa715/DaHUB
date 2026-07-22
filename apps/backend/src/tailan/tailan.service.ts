@@ -6,6 +6,8 @@ import {
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import { SaveTailanDto } from "./dto/tailan.dto";
+import { TailanTemplateService } from "../tailan-template/tailan-template.service";
+import { TailanTemplate } from "../tailan-template/tailan-template.types";
 import {
   Document,
   Paragraph,
@@ -90,6 +92,7 @@ export class TailanService {
   constructor(
     private readonly clickhouse: ClickHouseService,
     private readonly auditLog: AuditLogService,
+    private readonly tailanTemplates: TailanTemplateService,
   ) {}
 
   private auditMutation(
@@ -138,22 +141,16 @@ export class TailanService {
         year: dto.year,
         quarter: dto.quarter,
         status: dto.status ?? "draft",
-        plannedTasksJson: JSON.stringify(dto.plannedTasks ?? []),
+        // Legacy per-field columns are left at defaults for new saves — all
+        // section data now lives in sectionsDataJson (template-driven).
+        plannedTasksJson: "[]",
         dynamicSectionsJson: JSON.stringify(dto.dynamicSections ?? []),
-        otherWork: dto.otherWork ?? "",
-        teamActivitiesJson: JSON.stringify(dto.teamActivities ?? []),
+        otherWork: "",
+        teamActivitiesJson: "[]",
         extraDataJson: JSON.stringify({
-          section2Tasks: dto.section2Tasks ?? [],
-          section1Dashboards: dto.section1Dashboards ?? [],
-          section3AutoTasks: dto.section3AutoTasks ?? [],
-          section3Dashboards: dto.section3Dashboards ?? [],
-          section4Trainings: dto.section4Trainings ?? [],
-          section4KnowledgeText: dto.section4KnowledgeText ?? "",
-          section5Tasks: dto.section5Tasks ?? [],
-          section6Activities: dto.section6Activities ?? [],
-          section7Text: dto.section7Text ?? "",
           hiddenSections: dto.hiddenSections ?? [],
         }),
+        sectionsDataJson: JSON.stringify(dto.sections ?? {}),
         submittedAt: dto.status === "submitted" ? now : "1970-01-01 00:00:00",
         updatedAt: now,
         createdAt:
@@ -228,17 +225,6 @@ export class TailanService {
     };
   }
 
-  // ─── Get all my reports ─────────────────────────────────────────────────────
-  async getMyReports(userId: string) {
-    const rows = await this.clickhouse.query(
-      `SELECT id, year, quarter, status, updatedAt, submittedAt FROM tailan_reports FINAL
-       WHERE userId = {userId:String}
-       ORDER BY year DESC, quarter DESC`,
-      { userId },
-    );
-    return rows;
-  }
-
   // ─── Submit report ──────────────────────────────────────────────────────────
   async submitReport(userId: string, year: number, quarter: number) {
     const rows = await this.clickhouse.query(
@@ -298,16 +284,16 @@ export class TailanService {
     return rows;
   }
 
-  // ─── Dept head: get one member's full report ──────────────────────────────
-  async getDeptMemberReport(
+  // ─── Dept head: render a member's saved report as .docx ───────────────────
+  async generateMemberWord(
     user: UserPayload,
     targetUserId: string,
     year: number,
     quarter: number,
-  ) {
+  ): Promise<Buffer> {
     if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
 
-    const rows = await this.clickhouse.query(
+    const rows = await this.clickhouse.query<any>(
       `SELECT * FROM tailan_reports FINAL
        WHERE userId = {userId:String}
          AND year = {year:UInt16}
@@ -322,9 +308,37 @@ export class TailanService {
         deptId: user.departmentId ?? "",
       },
     );
+    if (rows.length === 0) throw new NotFoundException("Тайлан олдсонгүй");
+    const report = this.parseReport(rows[0]);
 
-    if (rows.length === 0) return null;
-    return this.parseReport(rows[0]);
+    let position = "";
+    let departmentName = "";
+    try {
+      const userRows = await this.clickhouse.query<any>(
+        `SELECT u.position, d.name as departmentName
+         FROM users u LEFT JOIN departments d ON u.departmentId = d.id
+         WHERE u.id = {uid:String} LIMIT 1`,
+        { uid: targetUserId },
+      );
+      if (userRows.length > 0) {
+        position = userRows[0].position ?? "";
+        departmentName = userRows[0].departmentName ?? "";
+      }
+    } catch {}
+
+    const template = await this.tailanTemplates.getActive(
+      user.departmentId,
+      "employee",
+    );
+    return this.renderDocx(template, report.sectionsData, {
+      userName: report.userName,
+      userPosition: position,
+      userDepartment: departmentName,
+      year,
+      quarter,
+      hiddenSections: report.hiddenSections,
+      dynamicSections: report.dynamicSections,
+    });
   }
 
   // ─── Parse stored report ────────────────────────────────────────────────────
@@ -332,19 +346,55 @@ export class TailanService {
     const extra = this.safeJson(row.extraDataJson, {});
     return {
       ...row,
-      plannedTasks: this.safeJson(row.plannedTasksJson, []),
       dynamicSections: this.safeJson(row.dynamicSectionsJson, []),
-      teamActivities: this.safeJson(row.teamActivitiesJson, []),
-      section2Tasks: extra.section2Tasks ?? [],
-      section1Dashboards: extra.section1Dashboards ?? [],
-      section3AutoTasks: extra.section3AutoTasks ?? [],
-      section3Dashboards: extra.section3Dashboards ?? [],
-      section4Trainings: extra.section4Trainings ?? [],
-      section4KnowledgeText: extra.section4KnowledgeText ?? "",
-      section5Tasks: extra.section5Tasks ?? [],
-      section6Activities: extra.section6Activities ?? [],
-      section7Text: extra.section7Text ?? "",
       hiddenSections: extra.hiddenSections ?? [],
+      sectionsData: this.legacyRowToSectionsData(row, extra),
+    };
+  }
+
+  /** Reads the generic sectionsData blob for a report row, falling back to
+   * reconstructing it from the pre-refactor per-field JSON columns for rows
+   * saved before the Tailan dynamic template migration (no DB backfill needed). */
+  private legacyRowToSectionsData(
+    row: any,
+    extra: Record<string, any>,
+  ): Record<string, unknown> {
+    if (row.sectionsDataJson) {
+      const parsed = this.safeJson(row.sectionsDataJson, null);
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+    const plannedTasks = this.safeJson(row.plannedTasksJson, []);
+    const toPeriod = (t: any) =>
+      t?.startDate || t?.endDate
+        ? `${t?.startDate ?? ""} – ${t?.endDate ?? ""}`
+        : "";
+    return {
+      s1: (plannedTasks ?? []).map((t: any) => ({
+        _id: t._id,
+        order: t.order,
+        title: t.title,
+        completion: t.completion,
+        period: toPeriod(t),
+        description: t.description,
+        images: t.images ?? [],
+      })),
+      s12: extra.section1Dashboards ?? [],
+      s2: (extra.section2Tasks ?? []).map((t: any) => ({
+        _id: t._id,
+        order: t.order,
+        title: t.title,
+        completion: t.result,
+        period: t.period,
+        description: t.completion,
+        images: t.images ?? [],
+      })),
+      s3: extra.section3AutoTasks ?? [],
+      s32: extra.section3Dashboards ?? [],
+      s4: extra.section4Trainings ?? [],
+      s41: extra.section4KnowledgeText ?? "",
+      s5: extra.section5Tasks ?? [],
+      s6: extra.section6Activities ?? [],
+      s7: extra.section7Text ?? "",
     };
   }
 
@@ -372,15 +422,11 @@ export class TailanService {
       ) ENGINE = MergeTree() ORDER BY (userId, year, quarter, id)
     `);
     // migrate: add imageData column if table was created with old dataBase64 schema
+    // [SAFETY] DROP COLUMN dataBase64 cleanup хассан — энэ функц image
+    // upload/унших болгонд дуудагддаг тул local/prod ижил DB-д эрсдэлтэй.
     try {
       await this.clickhouse.exec(
         `ALTER TABLE tailan_images ADD COLUMN IF NOT EXISTS imageData String DEFAULT ''`,
-      );
-    } catch {}
-    // cleanup: drop legacy dataBase64 column if it still exists
-    try {
-      await this.clickhouse.exec(
-        `ALTER TABLE tailan_images DROP COLUMN IF EXISTS dataBase64`,
       );
     } catch {}
   }
@@ -427,24 +473,6 @@ export class TailanService {
     );
   }
 
-  // ─── Get dept image list ───────────────────────────────────────────────────
-  async getDeptImages(user: UserPayload, year: number, quarter: number) {
-    if (
-      !this.isDeptHead(user) &&
-      !user.isAdmin &&
-      !user.isSuperAdmin
-    ) {
-      throw new ForbiddenException("Эрх хүрэхгүй");
-    }
-    await this.ensureImagesTable();
-    return this.clickhouse.query<any>(
-      `SELECT id, userId, filename, mimeType, uploadedAt FROM tailan_images
-       WHERE departmentId = {departmentId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
-       ORDER BY uploadedAt ASC`,
-      { departmentId: user.departmentId ?? "", year, quarter },
-    );
-  }
-
   // ─── Get image raw data ────────────────────────────────────────────────────
   async getImageData(id: string, user: UserPayload) {
     await this.ensureImagesTable();
@@ -482,14 +510,14 @@ export class TailanService {
     return { message: "Устгагдлаа" };
   }
 
-  // ─── Generate Word for personal report ─────────────────────────────────────
+  // ─── Generate .docx for personal report (template-driven) ─────────────────
   async generateWord(
     userId: string,
     year: number,
     quarter: number,
     displayName?: string,
   ): Promise<Buffer> {
-    const rows = await this.clickhouse.query(
+    const rows = await this.clickhouse.query<any>(
       `SELECT * FROM tailan_reports FINAL
        WHERE userId = {userId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
        ORDER BY updatedAt DESC LIMIT 1`,
@@ -498,126 +526,128 @@ export class TailanService {
 
     if (rows.length === 0) throw new NotFoundException("Тайлан олдсонгүй");
     const report = this.parseReport(rows[0]);
-    if (displayName) report.userName = displayName;
 
-    // Fetch user position + department name for the title
+    let position = "";
+    let departmentName = "";
+    let departmentId = "";
     try {
       const userRows = await this.clickhouse.query<any>(
-        `SELECT u.position, d.name as departmentName
+        `SELECT u.position, u.departmentId, d.name as departmentName
          FROM users u LEFT JOIN departments d ON u.departmentId = d.id
          WHERE u.id = {uid:String} LIMIT 1`,
         { uid: userId },
       );
       if (userRows.length > 0) {
-        report.position = userRows[0].position ?? "";
-        report.departmentName = userRows[0].departmentName ?? "";
+        position = userRows[0].position ?? "";
+        departmentName = userRows[0].departmentName ?? "";
+        departmentId = userRows[0].departmentId ?? "";
       }
     } catch {}
 
-    return this.buildDocx(report, year, quarter);
-  }
-
-  // ─── Generate Word for dept merged report ──────────────────────────────────
-  async generateDeptWord(
-    user: UserPayload,
-    year: number,
-    quarter: number,
-  ): Promise<Buffer> {
-    if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
-    const reports = await this.getDeptReports(user, year, quarter);
-    const data = this.reportsToMergedData(reports, year, quarter);
-    return this.buildDeptDocxFromData({
-      ...data,
-      departmentName: user.department ?? "",
+    const template = await this.tailanTemplates.getActive(
+      departmentId,
+      "employee",
+    );
+    return this.renderDocx(template, report.sectionsData, {
+      userName: displayName || report.userName,
+      userPosition: position,
+      userDepartment: departmentName,
+      year,
+      quarter,
+      hiddenSections: report.hiddenSections,
+      dynamicSections: report.dynamicSections,
     });
   }
 
-  // ─── Generate Word from editor-submitted merged data ───────────────────────
+  // ─── Live "real docx" preview from unsaved editor state ───────────────────
+  async previewWord(user: UserPayload, dto: SaveTailanDto): Promise<Buffer> {
+    let position = "";
+    let departmentName = "";
+    try {
+      const userRows = await this.clickhouse.query<any>(
+        `SELECT u.position, d.name as departmentName
+         FROM users u LEFT JOIN departments d ON u.departmentId = d.id
+         WHERE u.id = {uid:String} LIMIT 1`,
+        { uid: user.id },
+      );
+      if (userRows.length > 0) {
+        position = userRows[0].position ?? "";
+        departmentName = userRows[0].departmentName ?? "";
+      }
+    } catch {}
+
+    const template = await this.tailanTemplates.getActive(
+      user.departmentId,
+      "employee",
+    );
+    return this.renderDocx(template, dto.sections ?? {}, {
+      userName: user.name,
+      userPosition: position,
+      userDepartment: departmentName,
+      year: dto.year,
+      quarter: dto.quarter,
+      hiddenSections: dto.hiddenSections,
+      dynamicSections: dto.dynamicSections,
+    });
+  }
+
+  // ─── Generate Word from editor-submitted merged data (dept BSC) ───────────
   async generateDeptWordFromData(body: any): Promise<Buffer> {
     return this.buildDeptDocxFromData(body);
   }
 
-  /** Convert raw report array → editor-state shape */
-  private reportsToMergedData(reports: any[], year: number, quarter: number) {
-    // Tasks – flat list with memberName
-    const tasks = reports.flatMap((r) =>
-      (r.plannedTasks ?? []).map((t: any, i: number) => ({
-        memberName: r.userName,
-        order: i + 1,
-        title: t.title ?? "",
-        completion: t.completion ?? 0,
-        startDate: t.startDate ?? "",
-        endDate: t.endDate ?? "",
-        description: t.description ?? "",
-        images: t.images ?? [],
-      })),
-    );
-
-    // Sections – group by title, entries per person
-    const secMap = new Map<
-      string,
-      { title: string; entries: { memberName: string; content: string }[] }
-    >();
-    for (const r of reports) {
-      for (const sec of r.dynamicSections ?? []) {
-        if (!secMap.has(sec.title))
-          secMap.set(sec.title, { title: sec.title, entries: [] });
-        secMap
-          .get(sec.title)!
-          .entries.push({ memberName: r.userName, content: sec.content ?? "" });
-      }
-    }
-    const sections = Array.from(secMap.values());
-
-    // Other work – per person
-    const otherEntries = reports
-      .filter((r) => r.otherWork?.trim())
-      .map((r) => ({ memberName: r.userName, content: r.otherWork }));
-
-    // Activities – flat list with memberName
-    const activities = reports.flatMap((r) =>
-      (r.teamActivities ?? []).map((a: any) => ({
-        memberName: r.userName,
-        name: a.name ?? "",
-        date: a.date ?? "",
-      })),
-    );
-
-    return { year, quarter, tasks, sections, otherEntries, activities };
-  }
-
-  // ─── Build .docx buffer ─────────────────────────────────────────────────────
-  private async buildDocx(
-    report: any,
-    year: number,
-    quarter: number,
+  // ─── Generic template-driven docx renderer ─────────────────────────────────
+  // Replaces the previous ~750-line hardcoded buildDocx(): section titles,
+  // columns, orientation and numbering are all driven by the active
+  // TailanTemplate, so employee/department reports and admin-defined custom
+  // templates all flow through the same 3 renderers (richtext/taskList/table).
+  async renderDocx(
+    template: TailanTemplate,
+    sectionsData: Record<string, unknown>,
+    meta: {
+      userName: string;
+      userPosition?: string;
+      userDepartment?: string;
+      year: number;
+      quarter: number;
+      hiddenSections?: string[];
+      dynamicSections?: { order: number; title: string; content?: string }[];
+    },
   ): Promise<Buffer> {
-    const qName = ROMAN_NUMS[(quarter - 1) % 4] ?? "I";
+    const hidden = new Set<string>(meta.hiddenSections ?? []);
+    const sortedSections = [...template.sections].sort(
+      (a, b) => a.order - b.order,
+    );
+    const visibleMain = sortedSections.filter(
+      (s) => s.headingLevel === "main" && !hidden.has(s.key),
+    );
+    const romanByKey = new Map<string, string>();
+    visibleMain.forEach((s, i) =>
+      romanByKey.set(s.key, ROMAN_NUMS[i] ?? `${i + 1}`),
+    );
 
-    // ── Title construction ──────────────────────────────────────────────────
-    // Format: ДАА-НЫ ДАТА АНАЛИСТ Б.БАТМЯГМАР 2025 ОНЫ IV-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН
-    const deptCode = deptAbbrev(report.departmentName ?? "");
-    const positionUpper = (report.position ?? "").toUpperCase();
-    const nameUpper = (report.userName ?? "").toUpperCase();
-    const titleText = `${deptCode ? `${deptCode}-НЫ ` : ""}${positionUpper}${positionUpper && nameUpper ? " " : ""}${nameUpper} ${year} ОНЫ ${qName}-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН`;
+    const tblCounter = { n: 1 };
+    const imgCounter = { n: 1 };
 
-    const children: any[] = [];
+    type Chunk = { orientation: "portrait" | "landscape"; children: any[] };
+    const chunks: Chunk[] = [];
+    const pushChildren = (
+      orientation: "portrait" | "landscape",
+      nodes: any[],
+    ) => {
+      const last = chunks[chunks.length - 1];
+      if (last && last.orientation === orientation)
+        last.children.push(...nodes);
+      else chunks.push({ orientation, children: [...nodes] });
+    };
 
-    // ── Hidden sections + dynamic Roman numbering ───────────────────────────
-    const hidden = new Set<string>(report.hiddenSections ?? []);
-    const FIXED_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"] as const;
-    const secRoman: Record<string, string> = {};
-    let _romIdx = 0;
-    for (const key of FIXED_KEYS) {
-      if (!hidden.has(key)) {
-        secRoman[key] = ROMAN_NUMS[_romIdx++];
-      }
-    }
-    const dynRomStart = _romIdx;
-    let tblCounter = 1;
-
-    // ── Cover title ─────────────────────────────────────────────────────────
-    children.push(
+    // ── Cover title ────────────────────────────────────────────────────────
+    const qName = ROMAN_NUMS[(meta.quarter - 1) % 4] ?? "I";
+    const deptCode = deptAbbrev(meta.userDepartment ?? "");
+    const positionUpper = (meta.userPosition ?? "").toUpperCase();
+    const nameUpper = (meta.userName ?? "").toUpperCase();
+    const titleText = `${deptCode ? `${deptCode}-НЫ ` : ""}${positionUpper}${positionUpper && nameUpper ? " " : ""}${nameUpper} ${meta.year} ОНЫ ${qName}-Р УЛИРЛЫН АЖЛЫН ТАЙЛАН`;
+    pushChildren("portrait", [
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 0, after: 320 },
@@ -631,337 +661,253 @@ export class TailanService {
           }),
         ],
       }),
-    );
+    ]);
 
-    const imgCounter = { n: 1 };
+    // ── Sections, in template order ──────────────────────────────────────────
+    for (const sec of sortedSections) {
+      if (hidden.has(sec.key)) continue;
+      const orientation = sec.orientation ?? "portrait";
+      const heading =
+        sec.headingLevel === "main"
+          ? this.bigSectionHeading(`${romanByKey.get(sec.key)}. ${sec.titleMn}`)
+          : this.subSectionHeading(`${sec.titleMn}:`);
+      const nodes: any[] = [heading];
+      if (sec.subtitleMn) nodes.push(this.subSectionHeading(sec.subtitleMn));
 
-    const fmtPeriodDoc = (period: string): string => {
-      const [s, e] = (period ?? "").split(" \u2013 ");
-      const fmt = (d?: string) => (d ? d.replace(/-/g, ".") : "");
-      if (!s && !e) return "";
-      if (!e) return fmt(s);
-      return `${fmt(s)}-${fmt(e)}`;
-    };
-
-    // ── Fixed section I: Data analysis support ───────────────────────────────
-    if (!hidden.has("s1")) {
-      children.push(
-        this.bigSectionHeading(
-          `${secRoman.s1}. Дата анализын үр дүнгээр аудитын үйл ажиллагааг дэмжсэн байдал`,
-        ),
-      );
-
-      // I.1 – numbered planned tasks (bold title)
-      const analysisItems = (report.plannedTasks ?? []).filter((t: any) =>
-        t.title?.trim(),
-      );
-      if (analysisItems.length === 0) {
-        children.push(this.bodyPara(" "));
-      } else {
-        analysisItems.forEach((t: any, idx: number) => {
-          children.push(
-            new Paragraph({
-              alignment: AlignmentType.JUSTIFIED,
-              spacing: { before: 80, after: 60, line: 276 },
-              indent: { left: 360, hanging: 360 },
-              children: [
-                new TextRun({
-                  text: `${idx + 1}. ${t.title ?? ""}`,
-                  bold: true,
-                  size: 22,
-                  font: "Times New Roman",
-                }),
-              ],
-            }),
-          );
-          if (t.description?.trim()) {
-            children.push(this.bodyPara(t.description));
-          }
-          for (const img of t.images ?? []) {
-            children.push(
-              ...this.inlineImageParas(
-                img.dataUrl,
-                img.width ?? 80,
-                imgCounter,
-                img.height,
-              ),
-            );
-          }
-        });
+      const data = sectionsData?.[sec.key];
+      if (sec.type === "richtext") {
+        nodes.push(...this.renderRichTextSection(data as string));
+      } else if (sec.type === "taskList") {
+        nodes.push(
+          ...this.renderTaskListSection(
+            data as any[],
+            sec.taskList ?? {},
+            tblCounter,
+            imgCounter,
+          ),
+        );
+      } else if (sec.type === "table") {
+        nodes.push(
+          ...this.renderTableSection(
+            data as any[],
+            sec.table ?? { columns: [] },
+            tblCounter,
+          ),
+        );
       }
-      children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+      pushChildren(orientation, nodes);
+    }
 
-      // I.2 – Dashboard table from section1Dashboards
-      if (!hidden.has("s12")) {
-        children.push(
-          this.subSectionHeading(
-            "Шинээр хөгжүүлсэн Дашбоард хөгжүүлэлтийн чанар, үр дүн:",
-          ),
-        );
-
-        const dashColWidths = [5, 30, 15, 20, 30];
-        const dashHeaders = [
-          "№",
-          "Төлөвлөгөөт ажил",
-          "Ажлын гүйцэтгэл",
-          "Хийгдсэн хугацаа",
-          "Гүйцэтгэл /товч/",
-        ];
-        const dashHeaderRow = new TableRow({
-          tableHeader: true,
-          children: dashHeaders.map(
-            (lbl, i) =>
-              new TableCell({
-                width: { size: dashColWidths[i], type: WidthType.PERCENTAGE },
-                borders: this.border("888888"),
-                shading: { type: ShadingType.SOLID, color: "FFFFFF" },
-                margins: { top: 40, bottom: 40, left: 80, right: 80 },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [
-                      new TextRun({
-                        text: lbl,
-                        bold: true,
-                        color: "000000",
-                        size: 22,
-                        font: "Times New Roman",
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-          ),
-        });
-
-        const s1Dashboards: any[] = report.section1Dashboards ?? [];
-        const dashDataRows =
-          s1Dashboards.length > 0
-            ? s1Dashboards.map(
-                (t: any, idx: number) =>
-                  new TableRow({
-                    children: [
-                      this.tc(`${idx + 1}`, dashColWidths[0], true),
-                      this.tc(t.title ?? "", dashColWidths[1]),
-                      this.tc(
-                        t.completion !== undefined && t.completion !== ""
-                          ? `${t.completion}%`
-                          : "",
-                        dashColWidths[2],
-                        true,
-                      ),
-                      this.tc(
-                        fmtPeriodDoc(t.period ?? ""),
-                        dashColWidths[3],
-                        true,
-                      ),
-                      this.tc(t.summary ?? "", dashColWidths[4]),
-                    ],
-                  }),
-              )
-            : [
-                new TableRow({
-                  children: dashColWidths.map((w) => this.tc(" ", w, true)),
-                }),
-              ];
-
-        // Дундаж гүйцэтгэл row
-        const dashNums = s1Dashboards
-          .map((t: any) => parseFloat(t.completion))
-          .filter((n: number) => !isNaN(n));
-        const dashAvg =
-          dashNums.length > 0
-            ? Math.round(
-                dashNums.reduce((a: number, b: number) => a + b, 0) /
-                  dashNums.length,
-              )
-            : null;
-        const avgRow = new TableRow({
-          children: [
-            new TableCell({
-              columnSpan: 2,
-              width: { size: 35, type: WidthType.PERCENTAGE },
-              borders: this.border("888888"),
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new TextRun({
-                      text: "Дундаж гүйцэтгэл",
-                      bold: true,
-                      size: 22,
-                      font: "Times New Roman",
-                    }),
-                  ],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 15, type: WidthType.PERCENTAGE },
-              borders: this.border("888888"),
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new TextRun({
-                      text: dashAvg !== null ? `${dashAvg}%` : "",
-                      bold: true,
-                      size: 22,
-                      font: "Times New Roman",
-                    }),
-                  ],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              borders: this.border("888888"),
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [new Paragraph({ text: " " })],
-            }),
-            new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              borders: this.border("888888"),
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [new Paragraph({ text: " " })],
-            }),
-          ],
-        });
-
-        children.push(
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [dashHeaderRow, ...dashDataRows, avgRow],
-          }),
-        );
-        // Images from section1Dashboards rows
-        for (const t of s1Dashboards) {
-          for (const img of t.images ?? []) {
-            children.push(
-              ...this.inlineImageParas(
-                img.dataUrl,
-                img.width ?? 80,
-                imgCounter,
-                img.height,
-              ),
-            );
-          }
-        }
-        children.push(
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 40, after: 160 },
-            children: [
-              new TextRun({
-                text: `Хүснэгт ${tblCounter++}.`,
-                italics: true,
-                size: 18,
-                font: "Times New Roman",
-              }),
-            ],
-          }),
-        );
-      } // end s12
-    } // end s1
-
-    // ── Fixed Section II: Өгөгдөл боловсруулах ажил ─────────────────────────
-    if (!hidden.has("s2")) {
-      children.push(
-        this.bigSectionHeading(
-          `${secRoman.s2}. Аудитын үйл ажиллагаанд шаардлагатай өгөгдөл боловсруулалтын ажил`,
-        ),
-      );
-      const s2Tasks: any[] = report.section2Tasks ?? [];
-      const s2Headers = [
-        "№",
-        "Төлөвлөгөөт ажлууд\n(Дууссан ажлууд)",
-        "Ажлын гүйцэтгэл",
-        "Хийгдсэн хугацаа",
-        "Гүйцэтгэл /товч/",
+    // ── Dynamic (ad-hoc, user-added) sections — always appended, portrait ────
+    const dynamicSecs = meta.dynamicSections ?? [];
+    let dynIdx = visibleMain.length;
+    dynamicSecs.forEach((sec, idx) => {
+      if (hidden.has(`dyn_${idx}`)) return;
+      const romNum = ROMAN_NUMS[dynIdx] ?? `${dynIdx + 1}`;
+      dynIdx++;
+      const nodes: any[] = [
+        this.bigSectionHeading(`${romNum}. ${sec.title ?? ""}`),
       ];
-      const s2Widths = [5, 30, 20, 20, 25];
-      const s2Rows: string[][] = s2Tasks.map((t, i) => [
-        `${i + 1}`,
-        t.title ?? "",
-        t.result !== undefined && t.result !== "" ? `${t.result}%` : "",
-        fmtPeriodDoc(t.period ?? ""),
-        t.completion ?? "",
-      ]);
-      children.push(
-        this.buildDashedTable(s2Headers, s2Widths, s2Rows, [], [0, 2, 3]),
-      );
-      // Images from section2Tasks rows
-      for (const t of s2Tasks) {
-        for (const img of t.images ?? []) {
-          children.push(
+      nodes.push(...this.renderRichTextSection(sec.content ?? ""));
+      pushChildren("portrait", nodes);
+    });
+
+    const docSections = chunks.map((chunk, i) => ({
+      properties: {
+        type: i === 0 ? undefined : SectionType.NEXT_PAGE,
+        page:
+          chunk.orientation === "landscape"
+            ? {
+                size: {
+                  width: 16838,
+                  height: 11906,
+                  orientation: PageOrientation.LANDSCAPE,
+                },
+                margin: { top: 902, bottom: 902, left: 1077, right: 1077 },
+              }
+            : {
+                size: {
+                  width: 11906,
+                  height: 16838,
+                  orientation: PageOrientation.PORTRAIT,
+                },
+                margin: { top: 902, bottom: 1259, left: 1440, right: 1077 },
+              },
+      },
+      children: chunk.children,
+    }));
+
+    const doc = new Document({
+      styles: {
+        default: {
+          document: {
+            run: { font: "Times New Roman", size: 22 },
+            paragraph: { spacing: { line: 276 } },
+          },
+        },
+      },
+      sections: docSections,
+    });
+
+    return Buffer.from(await Packer.toBuffer(doc));
+  }
+
+  // ── Section-type renderers ──────────────────────────────────────────────
+
+  private renderRichTextSection(text?: string): Paragraph[] {
+    const lines = (text ?? "").split("\n");
+    const paras = lines.map((line) => this.bodyPara(line || " "));
+    paras.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+    return paras;
+  }
+
+  private formatPeriod(period?: string): string {
+    if (!period) return "";
+    const [s, e] = period.split(" \u2013 ");
+    const fmt = (d?: string) => (d ? d.replace(/-/g, ".") : "");
+    if (!s && !e) return "";
+    if (!e) return fmt(s);
+    return `${fmt(s)}-${fmt(e)}`;
+  }
+
+  private tableCaption(counter: { n: number }) {
+    return new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 40, after: 160 },
+      children: [
+        new TextRun({
+          text: `Хүснэгт ${counter.n++}.`,
+          italics: true,
+          size: 18,
+          font: "Times New Roman",
+        }),
+      ],
+    });
+  }
+
+  private renderTaskListSection(
+    rows: any[] | undefined,
+    config: {
+      showCompletion?: boolean;
+      showPeriod?: boolean;
+      showDescription?: boolean;
+      showImages?: boolean;
+      titleLabel?: string;
+      completionLabel?: string;
+      periodLabel?: string;
+      descriptionLabel?: string;
+    },
+    tblCounter: { n: number },
+    imgCounter: { n: number },
+  ): any[] {
+    const list = Array.isArray(rows) ? rows : [];
+    const headers = ["№", config.titleLabel || "Ажил"];
+    const widths = [5, 35];
+    if (config.showCompletion) {
+      headers.push(config.completionLabel || "Гүйцэтгэл");
+      widths.push(15);
+    }
+    if (config.showPeriod) {
+      headers.push(config.periodLabel || "Хугацаа");
+      widths.push(15);
+    }
+    if (config.showDescription) {
+      headers.push(config.descriptionLabel || "Тайлбар");
+      widths.push(100 - widths.reduce((a, b) => a + b, 0));
+    }
+    const dataRows: string[][] = list.map((t: any, i: number) => {
+      const row = [`${i + 1}`, t?.title ?? ""];
+      if (config.showCompletion) {
+        row.push(
+          t?.completion !== undefined && t?.completion !== ""
+            ? `${t.completion}%`
+            : "",
+        );
+      }
+      if (config.showPeriod) row.push(this.formatPeriod(t?.period));
+      if (config.showDescription) row.push(t?.description ?? "");
+      return row;
+    });
+    const nodes: any[] = [
+      this.buildDashedTable(headers, widths, dataRows, [], [0]),
+    ];
+    nodes.push(this.tableCaption(tblCounter));
+    if (config.showImages !== false) {
+      for (const t of list) {
+        for (const img of t?.images ?? []) {
+          nodes.push(
             ...this.inlineImageParas(
-              img.dataUrl,
-              img.width ?? 80,
+              img?.dataUrl,
+              img?.width ?? 60,
               imgCounter,
-              img.height,
+              img?.height,
             ),
           );
         }
       }
-      children.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 40, after: 160 },
-          children: [
-            new TextRun({
-              text: `Хүснэгт ${tblCounter++}.`,
-              italics: true,
-              size: 18,
-              font: "Times New Roman",
-            }),
-          ],
-        }),
-      );
-    } // end s2
+    }
+    nodes.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+    return nodes;
+  }
 
-    // ── Fixed Section III: Тогтмол хийгддэг ажлууд ──────────────────────────
-    if (!hidden.has("s3")) {
-      children.push(
-        this.bigSectionHeading(`${secRoman.s3}. Тогтмол хийгддэг ажлууд`),
-      );
+  private renderTableSection(
+    rows: any[] | undefined,
+    config: {
+      columns: {
+        key: string;
+        label: string;
+        width?: number;
+        numeric?: boolean;
+      }[];
+      averageColumnKey?: string;
+    },
+    tblCounter: { n: number },
+  ): any[] {
+    const list = Array.isArray(rows) ? rows : [];
+    const cols = config.columns ?? [];
+    const headers = ["№", ...cols.map((c) => c.label)];
+    const numWidth = 5;
+    const restWidth = 100 - numWidth;
+    const widths = [
+      numWidth,
+      ...cols.map(
+        (c) => c.width ?? Math.round(restWidth / Math.max(cols.length, 1)),
+      ),
+    ];
+    const centerCols = [
+      0,
+      ...cols.map((c, i) => (c.numeric ? i + 1 : -1)).filter((i) => i >= 0),
+    ];
+    const dataRows: string[][] = list.map((row: any, i: number) => [
+      `${i + 1}`,
+      ...cols.map((c) =>
+        row?.[c.key] !== undefined && row?.[c.key] !== null
+          ? String(row[c.key])
+          : "",
+      ),
+    ]);
 
-      // III.1 – Автоматжуулалт
-      children.push(
-        this.subSectionHeading(
-          "Өгөгдөл боловсруулалт автоматжуулалтыг цаг хугацаанд нь гүйцэтгэсэн байдал:",
-        ),
-      );
-      const s3AutoTasks: any[] = report.section3AutoTasks ?? [];
-      const s3aHeaders = [
-        "№",
-        "Тогтмол хийгддэг өгөгдөл боловсруулалт",
-        "Өгөгдөл боловсруулалтын ажлын ач холбогдол,хэрэглээ",
-        "Хэрэглэгчийн нэгжийн өгсөн үнэлгээ",
-      ];
-      const s3aWidths = [5, 40, 35, 20];
-      const s3aRows: string[][] = s3AutoTasks.map((t, i) => [
-        `${i + 1}`,
-        t.title ?? "",
-        t.value ?? "",
-        t.rating ?? "",
-      ]);
-      const s3aAvgNums = s3AutoTasks
-        .map((t: any) => parseFloat(t.rating))
-        .filter((n: number) => !isNaN(n));
-      const s3aAvg =
-        s3aAvgNums.length > 0
-          ? Math.round(
-              s3aAvgNums.reduce((a: number, b: number) => a + b, 0) /
-                s3aAvgNums.length,
-            )
-          : null;
-      const s3aAvgRow = new TableRow({
-        children: [
+    const extraRows: TableRow[] = [];
+    if (config.averageColumnKey) {
+      const colIdx = cols.findIndex((c) => c.key === config.averageColumnKey);
+      if (colIdx >= 0) {
+        const nums = list
+          .map((r: any) =>
+            parseFloat(String(r?.[config.averageColumnKey!] ?? "")),
+          )
+          .filter((n: number) => !isNaN(n));
+        const avgText = nums.length
+          ? `${Math.round(nums.reduce((a: number, b: number) => a + b, 0) / nums.length)}%`
+          : "";
+        const leadingSpan = colIdx + 1; // № + columns before the average column
+        const trailingSpan = cols.length - colIdx - 1;
+        const cells: TableCell[] = [
           new TableCell({
-            columnSpan: 3,
-            width: { size: 80, type: WidthType.PERCENTAGE },
+            columnSpan: leadingSpan,
+            width: {
+              size: widths.slice(0, leadingSpan).reduce((a, b) => a + b, 0),
+              type: WidthType.PERCENTAGE,
+            },
             margins: { top: 40, bottom: 40, left: 80, right: 80 },
             children: [
               new Paragraph({
@@ -977,362 +923,33 @@ export class TailanService {
               }),
             ],
           }),
-          new TableCell({
-            width: { size: 20, type: WidthType.PERCENTAGE },
-            margins: { top: 40, bottom: 40, left: 80, right: 80 },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: s3aAvg !== null ? `${s3aAvg}%` : "",
-                    bold: true,
-                    size: 22,
-                    font: "Times New Roman",
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      });
-      children.push(
-        this.buildDashedTable(
-          s3aHeaders,
-          s3aWidths,
-          s3aRows,
-          [s3aAvgRow],
-          [0, 3],
-        ),
-      );
-      children.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 40, after: 100 },
-          children: [
-            new TextRun({
-              text: `Хүснэгт ${tblCounter++}.`,
-              italics: true,
-              size: 18,
-              font: "Times New Roman",
-            }),
-          ],
-        }),
-      );
-
-      // III.2 – Dashboard
-      if (!hidden.has("s32")) {
-        children.push(
-          this.subSectionHeading(
-            "Дашбоардын хэвийн ажиллагааг хангаж ажилласан байдал:",
-          ),
-        );
-        const s3Dashboards: any[] = report.section3Dashboards ?? [];
-        const s3dHeaders = [
-          "№",
-          "Дашбоард",
-          "Дашбоардын ач холбогдол,хэрэглээ",
-          "Хэрэглэгч нэгжийн өгсөн үнэлгээ",
+          this.tcNoB(avgText, widths[colIdx + 1], true),
         ];
-        const s3dWidths = [5, 35, 40, 20];
-        const s3dRows: string[][] = s3Dashboards.map((t, i) => [
-          `${i + 1}`,
-          t.dashboard ?? "",
-          t.value ?? "",
-          t.rating ?? "",
-        ]);
-        const s3dAvgNums = s3Dashboards
-          .map((t: any) => parseFloat(t.rating))
-          .filter((n: number) => !isNaN(n));
-        const s3dAvg =
-          s3dAvgNums.length > 0
-            ? Math.round(
-                s3dAvgNums.reduce((a: number, b: number) => a + b, 0) /
-                  s3dAvgNums.length,
-              )
-            : null;
-        const s3dAvgRow = new TableRow({
-          children: [
+        if (trailingSpan > 0) {
+          cells.push(
             new TableCell({
-              columnSpan: 3,
-              width: { size: 80, type: WidthType.PERCENTAGE },
+              columnSpan: trailingSpan,
+              width: {
+                size: widths.slice(colIdx + 2).reduce((a, b) => a + b, 0),
+                type: WidthType.PERCENTAGE,
+              },
               margins: { top: 40, bottom: 40, left: 80, right: 80 },
               children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new TextRun({
-                      text: "Дундаж үнэлгээ",
-                      bold: true,
-                      size: 22,
-                      font: "Times New Roman",
-                    }),
-                  ],
-                }),
+                new Paragraph({ children: [new TextRun({ text: "" })] }),
               ],
             }),
-            new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new TextRun({
-                      text: s3dAvg !== null ? `${s3dAvg}%` : "",
-                      bold: true,
-                      size: 22,
-                      font: "Times New Roman",
-                    }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        });
-        children.push(
-          this.buildDashedTable(
-            s3dHeaders,
-            s3dWidths,
-            s3dRows,
-            [s3dAvgRow],
-            [0, 3],
-          ),
-        );
-        children.push(
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 40, after: 160 },
-            children: [
-              new TextRun({
-                text: `Хүснэгт ${tblCounter++}.`,
-                italics: true,
-                size: 18,
-                font: "Times New Roman",
-              }),
-            ],
-          }),
-        );
-      } // end s32
-    } // end s3
-
-    // ── Fixed Section IV: Хамрагдсан сургалт (landscape section) ────────────
-    const s4Children: any[] = [];
-    if (!hidden.has("s4")) {
-      s4Children.push(
-        this.bigSectionHeading(`${secRoman.s4}. Хамрагдсан сургалт`),
-      );
-      const s4Trainings: any[] = report.section4Trainings ?? [];
-      const s4Headers = [
-        "№",
-        "Хамрагдсан сургалт",
-        "Зохион байгуулагч",
-        "Сургалтын төрөл",
-        "Хэзээ",
-        "Сургалтын хэлбэр",
-        "Цаг",
-        "Аудитын зорилгод нийцсэн эсэх",
-        "Мэдлэгээ хуваалцсан эсэх",
-      ];
-      const s4Widths = [5, 22, 13, 11, 9, 9, 6, 13, 12];
-      const s4Rows: string[][] = s4Trainings.map((t, i) => [
-        `${i + 1}`,
-        t.training ?? "",
-        t.organizer ?? "",
-        t.type ?? "",
-        t.date ? t.date.replace(/-/g, ".") : "",
-        t.format ?? "",
-        t.hours ? `${t.hours} цаг` : "",
-        t.meetsAuditGoal ?? "",
-        t.sharedKnowledge ?? "",
-      ]);
-      s4Children.push(
-        this.buildDashedTable(
-          s4Headers,
-          s4Widths,
-          s4Rows,
-          [],
-          [0, 4, 5, 6, 7, 8],
-        ),
-      );
-      s4Children.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 40, after: 100 },
-          children: [
-            new TextRun({
-              text: `Хүснэгт ${tblCounter++}.`,
-              italics: true,
-              size: 18,
-              font: "Times New Roman",
-            }),
-          ],
-        }),
-      );
-
-      // IV sub-section: Мэдлэгээ ашиглаж буй байдал
-      s4Children.push(
-        this.subSectionHeading(
-          "Сургалтаас олж авсан мэдлэгээ ашиглаж буй байдал:",
-        ),
-      );
-      const knowledgeLines = (report.section4KnowledgeText ?? "").split("\n");
-      for (const line of knowledgeLines) {
-        s4Children.push(this.bodyPara(line || " "));
+          );
+        }
+        extraRows.push(new TableRow({ children: cells }));
       }
-      s4Children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
-    } // end s4
-
-    // ── Sections V onwards (portrait) ─────────────────────────────────────────
-    const postChildren: any[] = [];
-
-    // ── Fixed Section V: Үүрэг даалгаварын биелэлт ───────────────────────────
-    if (!hidden.has("s5")) {
-      postChildren.push(
-        this.bigSectionHeading(`${secRoman.s5}. Үүрэг даалгаварын биелэлт`),
-      );
-      const s5Tasks: any[] = report.section5Tasks ?? [];
-      const s5Headers = ["№", "Ажлын төрөл", "Хийгдсэн ажил"];
-      const s5Widths = [5, 35, 60];
-      const s5Rows: string[][] = s5Tasks.map((t, i) => [
-        `${i + 1}`,
-        t.taskType ?? "",
-        t.completedWork ?? "",
-      ]);
-      postChildren.push(
-        this.buildDashedTable(s5Headers, s5Widths, s5Rows, [], [0]),
-      );
-      postChildren.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 40, after: 160 },
-          children: [
-            new TextRun({
-              text: `Хүснэгт ${tblCounter++}.`,
-              italics: true,
-              size: 18,
-              font: "Times New Roman",
-            }),
-          ],
-        }),
-      );
-    } // end s5
-
-    // ── Fixed Section VI: Хамт олны ажил ──────────────────────────────────────
-    if (!hidden.has("s6")) {
-      postChildren.push(
-        this.bigSectionHeading(`${secRoman.s6}. Хамт олны ажил`),
-      );
-      const s6Activities: any[] = report.section6Activities ?? [];
-      const s6Headers = ["№", "Огноо", "Хамт олны ажил", "Санаачилга"];
-      const s6Widths = [5, 20, 50, 25];
-      const s6Rows: string[][] = s6Activities.map((t, i) => [
-        `${i + 1}`,
-        t.date ? t.date.replace(/-/g, ".") : "",
-        t.activity ?? "",
-        t.initiative ?? "",
-      ]);
-      postChildren.push(
-        this.buildDashedTable(s6Headers, s6Widths, s6Rows, [], [0, 1]),
-      );
-      postChildren.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 40, after: 160 },
-          children: [
-            new TextRun({
-              text: `Хүснэгт ${tblCounter++}.`,
-              italics: true,
-              size: 18,
-              font: "Times New Roman",
-            }),
-          ],
-        }),
-      );
     }
 
-    // ── Fixed Section VII: Шинэ санал санаачилга ──────────────────────────────
-    if (!hidden.has("s7")) {
-      postChildren.push(
-        this.bigSectionHeading(`${secRoman.s7}. Шинэ санал санаачилга`),
-      );
-      const s7Lines = (report.section7Text ?? "").split("\n");
-      for (const line of s7Lines) {
-        postChildren.push(this.bodyPara(line || " "));
-      }
-      postChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
-    }
-
-    // ── Dynamic big sections (VIII, IX, …) ───────────────────────────────────
-    const dynamicSecs: any[] = report.dynamicSections ?? [];
-    let _dynVisibleIdx = 0;
-    dynamicSecs.forEach((sec: any, idx: number) => {
-      if (hidden.has(`dyn_${idx}`)) return;
-      const romIdx = dynRomStart + _dynVisibleIdx;
-      _dynVisibleIdx++;
-      const romNum = ROMAN_NUMS[romIdx] ?? `${romIdx + 1}`;
-      const secTitle = sec.title ?? "";
-      postChildren.push(this.bigSectionHeading(`${romNum}. ${secTitle}`));
-      const lines = (sec.content ?? "").split("\n");
-      for (const line of lines) {
-        postChildren.push(this.bodyPara(line || " "));
-      }
-      postChildren.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-    });
-
-    const doc = new Document({
-      styles: {
-        default: {
-          document: {
-            run: { font: "Times New Roman", size: 22 },
-            paragraph: { spacing: { line: 276 } },
-          },
-        },
-      },
-      sections: [
-        {
-          // Portrait: sections I – III
-          properties: {
-            page: {
-              margin: { top: 902, bottom: 1259, left: 1440, right: 1077 },
-            },
-          },
-          children,
-        },
-        {
-          // Landscape: section IV (9-column training table)
-          properties: {
-            type: SectionType.NEXT_PAGE,
-            page: {
-              size: {
-                width: 16838,
-                height: 11906,
-                orientation: PageOrientation.LANDSCAPE,
-              },
-              margin: { top: 902, bottom: 902, left: 1077, right: 1077 },
-            },
-          },
-          children: s4Children,
-        },
-        {
-          // Portrait: sections V onwards
-          properties: {
-            type: SectionType.NEXT_PAGE,
-            page: {
-              size: {
-                width: 11906,
-                height: 16838,
-                orientation: PageOrientation.PORTRAIT,
-              },
-              margin: { top: 902, bottom: 1259, left: 1440, right: 1077 },
-            },
-          },
-          children: postChildren,
-        },
-      ],
-    });
-
-    return Buffer.from(await Packer.toBuffer(doc));
+    const nodes: any[] = [
+      this.buildDashedTable(headers, widths, dataRows, extraRows, centerCols),
+    ];
+    nodes.push(this.tableCaption(tblCounter));
+    nodes.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+    return nodes;
   }
 
   // ─── Build dept .docx from structured merged data ──────────────────────────

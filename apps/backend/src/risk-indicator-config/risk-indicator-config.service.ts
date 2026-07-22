@@ -21,15 +21,6 @@ export interface IndicatorConfig {
   updated_at: string;
 }
 
-export interface GroupConfig {
-  region: string;
-  group_num: number;
-  weight: number;
-  label: string;
-  seq: number;
-  updated_at: string;
-}
-
 // ─── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -187,39 +178,5 @@ export class RiskIndicatorConfigService implements OnModuleInit {
         updated_at: nowCH(),
       },
     ]);
-  }
-
-  async reorderIndicators(ids: string[], updatedBy: string): Promise<void> {
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i];
-      const existing = await this.clickhouse.query<IndicatorConfig>(
-        `
-        SELECT * FROM risk_indicator_config FINAL WHERE id = {id:String} LIMIT 1
-      `,
-        { id },
-      );
-
-      if (!existing.length) continue;
-
-      await this.clickhouse.insert("risk_indicator_config", [
-        {
-          ...existing[0],
-          sort_order: i * 10,
-          updated_by: updatedBy,
-          seq: Date.now(),
-          updated_at: nowCH(),
-        },
-      ]);
-    }
-  }
-
-  // ── Group Config ───────────────────────────────────────────────────────────
-
-  async listGroupConfig(): Promise<GroupConfig[]> {
-    return this.clickhouse.query<GroupConfig>(`
-      SELECT *
-      FROM risk_group_config FINAL
-      ORDER BY region ASC, group_num ASC
-    `);
   }
 }

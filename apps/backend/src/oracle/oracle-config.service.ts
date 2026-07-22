@@ -113,17 +113,15 @@ export class OracleConfigService implements OnModuleInit {
 
   // ─── Dashboard CRUD ──────────────────────────────────────────────────────
 
-  async createDashboard(
-    dto: {
-      name: string;
-      tableName: string;
-      fromClause?: string;
-      cifColumn: string;
-      dateColumn?: string | null;
-      amountColumn?: string | null;
-      enabled?: boolean;
-    },
-  ): Promise<OracleDashboardConfig> {
+  async createDashboard(dto: {
+    name: string;
+    tableName: string;
+    fromClause?: string;
+    cifColumn: string;
+    dateColumn?: string | null;
+    amountColumn?: string | null;
+    enabled?: boolean;
+  }): Promise<OracleDashboardConfig> {
     this.validateDashboardFields({
       name: dto.name,
       tableName: dto.tableName,
@@ -161,9 +159,10 @@ export class OracleConfigService implements OnModuleInit {
       id,
       name: (dto.name ?? existing.name).trim(),
       tableName: (dto.tableName ?? existing.tableName).trim(),
-      fromClause: dto.fromClause !== undefined
-        ? dto.fromClause?.trim() || undefined
-        : existing.fromClause,
+      fromClause:
+        dto.fromClause !== undefined
+          ? dto.fromClause?.trim() || undefined
+          : existing.fromClause,
       cifColumn: (dto.cifColumn ?? existing.cifColumn).trim(),
       dateColumn:
         dto.dateColumn !== undefined
@@ -197,17 +196,15 @@ export class OracleConfigService implements OnModuleInit {
 
   // ─── Chain CRUD ────────────────────────────────────────────────────────────
 
-  async createChain(
-    dto: {
-      name: string;
-      description?: string;
-      sourceLabel?: string;
-      targetLabel?: string;
-      sourceIds: number[];
-      targetIds: number[];
-      enabled?: boolean;
-    },
-  ): Promise<EventChainConfig> {
+  async createChain(dto: {
+    name: string;
+    description?: string;
+    sourceLabel?: string;
+    targetLabel?: string;
+    sourceIds: number[];
+    targetIds: number[];
+    enabled?: boolean;
+  }): Promise<EventChainConfig> {
     this.validateChainFields(dto);
     const nextId = await this.nextChainId();
     const record: EventChainConfig = {
@@ -230,7 +227,8 @@ export class OracleConfigService implements OnModuleInit {
     dto: Partial<Omit<EventChainConfig, "id">>,
   ): Promise<EventChainConfig> {
     const existing = this.chainsCache.find((c) => c.id === id);
-    if (!existing) throw new NotFoundException(`Event chain олдсонгүй: id=${id}`);
+    if (!existing)
+      throw new NotFoundException(`Event chain олдсонгүй: id=${id}`);
 
     const merged: EventChainConfig = {
       ...existing,
@@ -250,13 +248,17 @@ export class OracleConfigService implements OnModuleInit {
     return merged;
   }
 
-  async setChainEnabled(id: number, enabled: boolean): Promise<EventChainConfig> {
+  async setChainEnabled(
+    id: number,
+    enabled: boolean,
+  ): Promise<EventChainConfig> {
     return this.updateChain(id, { enabled });
   }
 
   async deleteChain(id: number): Promise<void> {
     const existing = this.chainsCache.find((c) => c.id === id);
-    if (!existing) throw new NotFoundException(`Event chain олдсонгүй: id=${id}`);
+    if (!existing)
+      throw new NotFoundException(`Event chain олдсонгүй: id=${id}`);
     await this.persistChain(existing, 0);
     await this.refreshCache();
   }
@@ -430,7 +432,10 @@ export class OracleConfigService implements OnModuleInit {
     ]);
   }
 
-  private async persistChain(c: EventChainConfig, isActive: number): Promise<void> {
+  private async persistChain(
+    c: EventChainConfig,
+    isActive: number,
+  ): Promise<void> {
     await this.clickhouse.insert("oracle_event_chain_config", [
       {
         id: c.id,
@@ -451,7 +456,12 @@ export class OracleConfigService implements OnModuleInit {
   private validateDashboardFields(
     d: Pick<
       OracleDashboardConfig,
-      "name" | "tableName" | "fromClause" | "cifColumn" | "dateColumn" | "amountColumn"
+      | "name"
+      | "tableName"
+      | "fromClause"
+      | "cifColumn"
+      | "dateColumn"
+      | "amountColumn"
     >,
   ) {
     if (!d.name?.trim()) {
@@ -474,10 +484,7 @@ export class OracleConfigService implements OnModuleInit {
   }
 
   private validateChainFields(
-    c: Pick<
-      EventChainConfig,
-      "name" | "sourceIds" | "targetIds"
-    >,
+    c: Pick<EventChainConfig, "name" | "sourceIds" | "targetIds">,
   ) {
     if (!c.name?.trim()) {
       throw new BadRequestException("Нэр шаардлагатай");

@@ -13,7 +13,12 @@ import {
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { SkipThrottle } from "@nestjs/throttler";
-import { UpdateUserDto } from "./dto/update-user.dto";
+import {
+  UpdateUserDto,
+  UpdateToolsDto,
+  SetAdminRoleDto,
+  ResetPasswordDto,
+} from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
@@ -87,20 +92,10 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
-  /** Admin: activate / deactivate a user account */
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @Patch(":id/status")
-  updateStatus(@Param("id") id: string, @Body() body: { isActive: boolean }) {
-    return this.usersService.updateStatus(id, body.isActive);
-  }
-
   /** Admin: update which tools a user may access */
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(":id/tools")
-  updateTools(
-    @Param("id") id: string,
-    @Body() body: { allowedTools: string[] },
-  ) {
+  updateTools(@Param("id") id: string, @Body() body: UpdateToolsDto) {
     const tools = body.allowedTools;
     if (!Array.isArray(tools)) {
       throw new BadRequestException("allowedTools тооц байна");
@@ -115,12 +110,7 @@ export class UsersController {
   @Patch(":id/admin-role")
   async setAdminRole(
     @Param("id") id: string,
-    @Body()
-    body: {
-      isAdmin: boolean;
-      isSuperAdmin: boolean;
-      grantableTools?: string[];
-    },
+    @Body() body: SetAdminRoleDto,
     @Request() req: any,
   ) {
     const result = await this.usersService.setAdminRole(
@@ -145,15 +135,42 @@ export class UsersController {
     return result;
   }
 
-  /** Admin: reset a user's password */
+  /** Admin: reset a user's password (SuperAdmin required if target is an admin) */
   @SkipThrottle()
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(":id/reset-password")
-  resetPassword(
+  async resetPassword(
     @Param("id") id: string,
-    @Body() body: { newPassword: string },
+    @Body() body: ResetPasswordDto,
+    @Request() req: any,
   ) {
-    return this.usersService.resetPassword(id, body.newPassword);
+    try {
+      const result = await this.usersService.resetPassword(
+        id,
+        body.newPassword,
+        !!req.user.isSuperAdmin,
+      );
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "password_reset_by_admin",
+        resource: "users",
+        method: "resetPassword",
+        status: "success",
+        metadata: { targetUserId: id },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "password_reset_by_admin",
+        resource: "users",
+        method: "resetPassword",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetUserId: id },
+      });
+      throw error;
+    }
   }
 
   /** Authenticated: user can remove own profile image; admin can remove any user's */
@@ -172,10 +189,35 @@ export class UsersController {
     return this.usersService.clearProfileImage(id);
   }
 
-  /** Admin: delete a user */
+  /** Admin: delete a user (SuperAdmin required if target is an admin) */
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Delete(":id")
-  remove(@Param("id") id: string) {
-    return this.usersService.remove(id);
+  async remove(@Param("id") id: string, @Request() req: any) {
+    try {
+      const result = await this.usersService.remove(
+        id,
+        !!req.user.isSuperAdmin,
+      );
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "user_delete",
+        resource: "users",
+        method: "remove",
+        status: "success",
+        metadata: { targetUserId: id },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "user_delete",
+        resource: "users",
+        method: "remove",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetUserId: id },
+      });
+      throw error;
+    }
   }
 }

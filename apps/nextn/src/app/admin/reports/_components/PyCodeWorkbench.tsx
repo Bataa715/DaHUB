@@ -17,7 +17,7 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
-import { pythonToolApi, getApiErrorMessage } from "@/lib/api";
+import { pythonToolApi, getApiErrorMessage, FilterDef } from "@/lib/api";
 
 // ── Editor ────────────────────────────────────────────────────────────────────
 
@@ -151,6 +151,7 @@ export function PyCodeWorkbench({
   connectionType,
   connectionConfig,
   dateMode,
+  filtersJson,
   minHeight = 320,
 }: {
   value: string;
@@ -158,6 +159,9 @@ export function PyCodeWorkbench({
   connectionType?: string;
   connectionConfig?: string;
   dateMode?: "none" | "single" | "range";
+  /** Tool-д тохируулсан FilterDef[]-ийн JSON string — тест ажиллуулахад
+   * жинхэнэ filter утга дамжуулах боломж олгоно (жиш: олон CIF дугаар). */
+  filtersJson?: string;
   minHeight?: number;
 }) {
   const [validation, setValidation] = useState<ValidateState>({ kind: "idle" });
@@ -165,6 +169,16 @@ export function PyCodeWorkbench({
   const today = new Date().toISOString().slice(0, 10);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
+  const [testFilters, setTestFilters] = useState<Record<string, string>>({});
+  const [showTestFilters, setShowTestFilters] = useState(false);
+
+  const parsedTestFilterDefs: FilterDef[] = (() => {
+    try {
+      return JSON.parse(filtersJson || "[]") as FilterDef[];
+    } catch {
+      return [];
+    }
+  })();
 
   const runValidate = async () => {
     setValidation({ kind: "loading" });
@@ -186,12 +200,31 @@ export function PyCodeWorkbench({
     setPreview({ kind: "loading" });
     setValidation({ kind: "idle" });
     try {
+      // "list" төрлийн filter-үүдийн raw (мөр/,-аар зааглагдсан) утгыг
+      // Python талд ирэх ",".join хэлбэрт нормалчлав.
+      const normalizedFilters: Record<string, string> = {};
+      for (const f of parsedTestFilterDefs) {
+        const raw = testFilters[f.key];
+        if (raw === undefined) continue;
+        normalizedFilters[f.key] =
+          f.type === "list"
+            ? Array.from(
+                new Set(
+                  raw
+                    .split(/[\n,]/)
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                ),
+              ).join(",")
+            : raw;
+      }
       const res = await pythonToolApi.adminPreviewCode({
         code: value,
         connectionType,
         connectionConfig,
         startDate: dateMode === "none" ? undefined : startDate,
         endDate: dateMode === "range" ? endDate : undefined,
+        filters: normalizedFilters,
       });
       setPreview({ kind: "ok", ...res });
     } catch (e) {
@@ -252,6 +285,16 @@ export function PyCodeWorkbench({
           </div>
         )}
 
+        {parsedTestFilterDefs.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowTestFilters((p) => !p)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
+          >
+            Тест утга ({parsedTestFilterDefs.length})
+          </button>
+        )}
+
         <button
           type="button"
           onClick={runPreview}
@@ -286,6 +329,43 @@ export function PyCodeWorkbench({
           </span>
         )}
       </div>
+
+      {showTestFilters && parsedTestFilterDefs.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
+          {parsedTestFilterDefs.map((f) => (
+            <div key={f.key} className="space-y-1">
+              <label className="text-[10px] text-muted-foreground/70">
+                {f.label || f.key}{" "}
+                {f.type === "list" && (
+                  <span className="text-violet-400">(олон утга)</span>
+                )}
+              </label>
+              {f.type === "list" ? (
+                <textarea
+                  value={testFilters[f.key] ?? ""}
+                  onChange={(e) =>
+                    setTestFilters((p) => ({ ...p, [f.key]: e.target.value }))
+                  }
+                  rows={2}
+                  placeholder={
+                    f.placeholder ?? "R001295678\nR000657058, R001000436"
+                  }
+                  className="w-full text-[11px] font-mono rounded-lg bg-background border border-border/40 px-2 py-1.5 text-foreground/80 resize-y"
+                />
+              ) : (
+                <input
+                  value={testFilters[f.key] ?? ""}
+                  onChange={(e) =>
+                    setTestFilters((p) => ({ ...p, [f.key]: e.target.value }))
+                  }
+                  placeholder={f.placeholder ?? ""}
+                  className="w-full h-7 text-[11px] rounded-lg bg-background border border-border/40 px-2 text-foreground/80"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Test-run үр дүн */}
       {preview.kind === "error" && (

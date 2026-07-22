@@ -61,7 +61,6 @@ import {
   SCALE_TYPE_BADGE_CLASS,
 } from "./_components/ScaleEditor";
 
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function RiskIndicatorsPage() {

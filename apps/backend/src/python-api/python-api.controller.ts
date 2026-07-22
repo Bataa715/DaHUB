@@ -16,7 +16,7 @@ import {
   ForbiddenException,
 } from "@nestjs/common";
 import { Response } from "express";
-import { SkipThrottle } from "@nestjs/throttler";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { PythonApiService } from "./python-api.service";
@@ -24,6 +24,12 @@ import {
   CreatePythonToolDto,
   UpdatePythonToolDto,
   RunToolDto,
+  ToggleToolDto,
+  ReorderToolsDto,
+  ValidateCodeDto,
+  PreviewCodeDto,
+  GrantPermissionDto,
+  RevokePermissionDto,
 } from "./dto/python-api.dto";
 
 @Controller("python-api")
@@ -54,7 +60,7 @@ export class PythonApiController {
 
   @Patch("admin/tools/:id/toggle")
   @UseGuards(AdminGuard)
-  toggleTool(@Param("id") id: string, @Body() body: { isActive: boolean }) {
+  toggleTool(@Param("id") id: string, @Body() body: ToggleToolDto) {
     return this.service.toggleActive(id, body.isActive);
   }
 
@@ -68,18 +74,14 @@ export class PythonApiController {
   @Post("admin/tools/reorder")
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async reorderTools(@Body() body: { ids: string[] }) {
-    if (!body || !Array.isArray(body.ids))
-      throw new BadRequestException("ids массив шаардлагатай");
+  async reorderTools(@Body() body: ReorderToolsDto) {
     await this.service.reorderTools(body.ids);
   }
 
   /** Editor: кодыг ажиллуулахгүйгээр шалгах */
   @Post("admin/validate-code")
   @UseGuards(AdminGuard)
-  validateCode(@Body() body: { code: string }) {
-    if (typeof body?.code !== "string")
-      throw new BadRequestException("code шаардлагатай");
+  validateCode(@Body() body: ValidateCodeDto) {
     return this.service.validateCode(body.code);
   }
 
@@ -87,19 +89,7 @@ export class PythonApiController {
   @Post("admin/preview-code")
   @UseGuards(AdminGuard)
   @SkipThrottle()
-  previewCode(
-    @Body()
-    body: {
-      code: string;
-      connectionType?: string;
-      connectionConfig?: string;
-      startDate?: string;
-      endDate?: string;
-      filters?: Record<string, string>;
-    },
-  ) {
-    if (typeof body?.code !== "string" || !body.code.trim())
-      throw new BadRequestException("code шаардлагатай");
+  previewCode(@Body() body: PreviewCodeDto) {
     return this.service.previewCode(body);
   }
 
@@ -117,12 +107,7 @@ export class PythonApiController {
 
   @Post("admin/permissions")
   @UseGuards(AdminGuard)
-  async grantPermission(
-    @Body() body: { userId: string; templateId: string },
-    @Request() req: any,
-  ) {
-    if (!body.userId || !body.templateId)
-      throw new BadRequestException("userId болон templateId шаардлагатай");
+  async grantPermission(@Body() body: GrantPermissionDto, @Request() req: any) {
     await this.service.grantPermission(
       body.userId,
       body.templateId,
@@ -133,9 +118,7 @@ export class PythonApiController {
 
   @Delete("admin/permissions")
   @UseGuards(AdminGuard)
-  async revokePermission(@Body() body: { userId: string; templateId: string }) {
-    if (!body.userId || !body.templateId)
-      throw new BadRequestException("userId болон templateId шаардлагатай");
+  async revokePermission(@Body() body: RevokePermissionDto) {
     await this.service.revokePermission(body.userId, body.templateId);
     return { ok: true };
   }
@@ -150,9 +133,13 @@ export class PythonApiController {
     );
   }
 
-  /** POST /python-api/run — файл татах (Excel / CSV) */
+  /** POST /python-api/run — файл татах (Excel / CSV)
+   * [SEC] Was fully @SkipThrottle()-ed — an authenticated user (or admin)
+   * could fire unlimited heavy pandas/ClickHouse/Oracle executions. Kept
+   * generous (long-running exports are legitimate) but finite so it can't
+   * be looped indefinitely from one account. */
   @Post("run")
-  @SkipThrottle()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   async runTool(
     @Body() dto: RunToolDto,
     @Res() res: Response,
@@ -210,7 +197,7 @@ export class PythonApiController {
 
   /** POST /python-api/preview — эхний 50 мөрийг JSON-оор буцаана */
   @Post("preview")
-  @SkipThrottle()
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   async previewTool(@Body() dto: RunToolDto, @Request() req: any) {
     if (!dto.toolId) throw new BadRequestException("toolId шаардлагатай");
     // ── Permission check ──────────────────────────────────────────────────

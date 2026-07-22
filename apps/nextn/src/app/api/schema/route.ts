@@ -1,10 +1,22 @@
 import { parseSchema, getMdPath } from "@/lib/schema-parser";
 import { NextResponse } from "next/server";
 import fs from "fs";
+import { getApiAuth, hasToolAccess } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+// ⚠️ Энэ route нь backend руу proxy хийдэггүй, локал файлаас DB схем уншиж/бичдэг
+// тул `middleware.ts`-ийн (/api/* redirect-ээс хасдаг) хамгаалалт дээр найдаж
+// болохгүй — доор нэвтрэлтийг өөрөө шалгана.
+export async function GET(req: Request) {
+  const auth = await getApiAuth(req);
+  if (!hasToolAccess(auth, ["data_doc"])) {
+    return NextResponse.json(
+      { error: "Нэвтрэх шаардлагатай" },
+      { status: 401 },
+    );
+  }
+
   try {
     const schema = parseSchema();
     return NextResponse.json(schema);
@@ -17,6 +29,14 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  const auth = await getApiAuth(req);
+  if (!hasToolAccess(auth, ["data_doc"])) {
+    return NextResponse.json(
+      { error: "Нэвтрэх шаардлагатай" },
+      { status: 401 },
+    );
+  }
+
   try {
     const body = await req.json();
     const { table, column, description } = body as {

@@ -7,6 +7,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { Request, Response } from "express";
+import { UserFacingBadRequestException } from "../exceptions/user-facing.exception";
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -69,7 +70,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       429: "Хэт олон хүсэлт. Түр хүлээнэ үү",
       500: "Серверийн алдаа гарлаа",
     };
-    const safeMessage = SAFE_MESSAGES[status] ?? "Алдаа гарлаа";
+    // Explicitly opted-in errors (curated, non-sensitive text) pass their
+    // real message through so users get actionable feedback — e.g. Python
+    // sandbox validation errors ("import зөвшөөрөгдөхгүй", syntax errors).
+    const safeMessage =
+      exception instanceof UserFacingBadRequestException
+        ? message
+        : (SAFE_MESSAGES[status] ?? "Алдаа гарлаа");
 
     response.status(status).json({
       statusCode: status,

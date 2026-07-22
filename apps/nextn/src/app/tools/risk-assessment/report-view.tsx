@@ -350,13 +350,12 @@ export default function ReportView({
         const s3 = ev[3] ?? b.s3;
         const s4 = ev[4] ?? b.s4 ?? null;
         // tailan: manualJson snapshot (catalog judgment id)
-        const j =
-          resolveBranchJudgementScore(
-            b.branchId,
-            externalJudgements,
-            mKeyMap,
-            judgmentIndId,
-          );
+        const j = resolveBranchJudgementScore(
+          b.branchId,
+          externalJudgements,
+          mKeyMap,
+          judgmentIndId,
+        );
 
         let vsum = 0,
           wsum = 0;
@@ -401,7 +400,14 @@ export default function ReportView({
         } as BranchAggregate;
       });
     },
-    [dynamicConfig, activeCatalog, heldIds, holdsLoaded, externalJudgements, judgmentIndId],
+    [
+      dynamicConfig,
+      activeCatalog,
+      heldIds,
+      holdsLoaded,
+      externalJudgements,
+      judgmentIndId,
+    ],
   );
 
   const aggregates = useMemo<BranchAggregate[]>(() => {
@@ -725,15 +731,9 @@ function ReadOnlyJudgementCell({
       className={`inline-flex items-center justify-end gap-1 font-bold text-rose-700 dark:text-rose-400 tabular-nums ${
         canOpen ? "hover:text-rose-500 cursor-pointer" : "cursor-default"
       }`}
-      title={
-        jComment ? "Тайлбар харах" : hasJ ? "Тайлбар байхгүй" : undefined
-      }
+      title={jComment ? "Тайлбар харах" : hasJ ? "Тайлбар байхгүй" : undefined}
     >
-      {hasJ
-        ? score! % 1 === 0
-          ? score!.toFixed(0)
-          : score!.toFixed(1)
-        : "—"}
+      {hasJ ? (score! % 1 === 0 ? score!.toFixed(0) : score!.toFixed(1)) : "—"}
       {jComment ? (
         <MessageSquare className="w-2.5 h-2.5 shrink-0 text-rose-500 fill-rose-500/20" />
       ) : null}
@@ -803,10 +803,7 @@ function ReportTable({
       inputRef.current.select();
     }
   }, [editingJBranch]);
-  const judgmentInd = useMemo(
-    () => pickJudgmentIndicator(catalog),
-    [catalog],
-  );
+  const judgmentInd = useMemo(() => pickJudgmentIndicator(catalog), [catalog]);
   const commitJ = (branchId: string) => {
     if (committingRef.current) return;
     committingRef.current = true;
@@ -841,10 +838,8 @@ function ReportTable({
     : rows.filter(
         (b) =>
           judgmentInd != null &&
-          (readJudgmentScoreFromManual(
-            manualMap[b.branchId],
-            judgmentInd.id,
-          ) ?? 0) > 0,
+          (readJudgmentScoreFromManual(manualMap[b.branchId], judgmentInd.id) ??
+            0) > 0,
       ).length;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline">

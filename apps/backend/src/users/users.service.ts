@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -252,15 +253,32 @@ export class UsersService {
     return this.update(id, { profileImage: "" });
   }
 
-  async remove(id: string) {
+  /**
+   * [H-6] A plain Admin (isAdmin=1, isSuperAdmin=0) must not be able to delete,
+   * deactivate, or reset the password of another admin/superadmin — only a
+   * SuperAdmin may manage privileged accounts. Regular users are unaffected.
+   */
+  private assertCanManageTarget(
+    target: { isAdmin?: unknown; isSuperAdmin?: unknown },
+    callerIsSuperAdmin: boolean,
+  ): void {
+    if (isPrivilegedUser(target) && !callerIsSuperAdmin) {
+      throw new ForbiddenException(
+        "Зөвхөн супер админ бусад админ хэрэглэгчийг удирдах боломжтой",
+      );
+    }
+  }
+
+  async remove(id: string, callerIsSuperAdmin: boolean) {
     const users = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE id = {id:String} LIMIT 1",
+      "SELECT id, isAdmin, isSuperAdmin FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
 
     if (users.length === 0) {
       throw new NotFoundException("Хэрэглэгч олдсонгүй");
     }
+    this.assertCanManageTarget(users[0], callerIsSuperAdmin);
 
     // Soft-delete first so concurrent signup checks (AND isActive = 1) immediately
     // see this user as gone, even before the async hard-delete mutation completes.
@@ -274,41 +292,6 @@ export class UsersService {
       { id },
     );
     return { message: "Хэрэглэгчийг амжилттай устгалаа" };
-  }
-
-  async updateStatus(id: string, isActive: boolean) {
-    const users = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE id = {id:String} LIMIT 1",
-      { id },
-    );
-
-    if (users.length === 0) {
-      throw new NotFoundException("Хэрэглэгч олдсонгүй");
-    }
-
-    await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE isActive = {isActive:UInt8}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
-      {
-        id,
-        isActive: isActive ? 1 : 0,
-        updatedAt: nowCH(),
-      },
-    );
-
-    const updated = await this.clickhouse.query<any>(
-      `SELECT u.*, d.name as departmentName
-       FROM users u LEFT JOIN departments d ON u.departmentId = d.id
-       WHERE u.id = {id:String} LIMIT 1`,
-      { id },
-    );
-
-    const user = updated[0];
-    return {
-      id: user.id,
-      name: user.name,
-      isActive: !!user.isActive,
-      department: user.departmentName,
-    };
   }
 
   async updateTools(id: string, allowedTools: string[]) {
@@ -351,7 +334,11 @@ export class UsersService {
     };
   }
 
-  async resetPassword(id: string, newPassword: string) {
+  async resetPassword(
+    id: string,
+    newPassword: string,
+    callerIsSuperAdmin: boolean,
+  ) {
     if (!newPassword || newPassword.length < 8) {
       throw new BadRequestException(
         "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой",
@@ -365,10 +352,11 @@ export class UsersService {
       );
     }
     const users = await this.clickhouse.query<any>(
-      "SELECT id, name, userId, isAdmin FROM users WHERE id = {id:String} LIMIT 1",
+      "SELECT id, name, userId, isAdmin, isSuperAdmin FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
+    this.assertCanManageTarget(users[0], callerIsSuperAdmin);
     const hashed = await bcrypt.hash(newPassword, 13);
     await this.clickhouse.exec(
       "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",

@@ -8,7 +8,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { themes, defaultThemeName } from "@/lib/themes";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({
+  children,
+  nonce,
+}: {
+  children: React.ReactNode;
+  nonce?: string;
+}) {
   return (
     <ThemeProvider
       attribute="class"
@@ -16,6 +22,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       themes={themes.map((t) => t.name)}
       enableSystem={false}
       disableTransitionOnChange
+      nonce={nonce}
     >
       <ErrorBoundary>
         <AuthProvider>

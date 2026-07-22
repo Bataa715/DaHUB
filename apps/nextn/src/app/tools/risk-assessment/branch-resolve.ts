@@ -45,9 +45,7 @@ export function judgementsFromListForBranches(
   list: { branchId: string; score: number; comment?: string }[],
   branchIds: string[],
 ): { scores: Record<string, number>; comments: Record<string, string> } {
-  const known = branchIds
-    .map((s) => String(s ?? "").trim())
-    .filter(Boolean);
+  const known = branchIds.map((s) => String(s ?? "").trim()).filter(Boolean);
   const scores: Record<string, number> = {};
   const comments: Record<string, string> = {};
   for (const j of list) {
@@ -73,9 +71,7 @@ export function normalizeBranchKeyedMap<T>(
   map: Record<string, T>,
   branchIds: string[],
 ): Record<string, T> {
-  const known = branchIds
-    .map((s) => String(s ?? "").trim())
-    .filter(Boolean);
+  const known = branchIds.map((s) => String(s ?? "").trim()).filter(Boolean);
   const out: Record<string, T> = {};
   for (const [k, v] of Object.entries(map)) {
     const raw = String(k).trim();
@@ -137,10 +133,7 @@ export function nonJudgmentIndicators<T extends JudgmentCatalogEntry>(
   const j = pickJudgmentIndicator(catalog);
   if (!j) return catalog.filter((c) => !c.is_judgment);
   return catalog.filter(
-    (c) =>
-      c.id !== j.id &&
-      !c.is_judgment &&
-      !(c.group === 5 && c.is_manual),
+    (c) => c.id !== j.id && !c.is_judgment && !(c.group === 5 && c.is_manual),
   );
 }
 

@@ -136,32 +136,12 @@ export class RiskAssessmentService implements OnModuleInit {
         ORDER BY (fetchedDate, rowKey)
     `);
 
-    // Шинэ баганууд нэмэх / хуучин баганууд хасах (migration)
+    // Шинэ багана нэмэх (migration) — зөвхөн ADD, DROP биш тул local/prod хооронд
+    // санамсаргүй өгөгдөл устгах эрсдэлгүй (аюулгүй, idempotent).
     await this.clickhouse
       .exec(
         `
       ALTER TABLE riskbranch ADD COLUMN IF NOT EXISTS STATUS String DEFAULT ''
-    `,
-      )
-      .catch(() => {});
-    await this.clickhouse
-      .exec(
-        `
-      ALTER TABLE riskbranch DROP COLUMN IF EXISTS BRANCHID
-    `,
-      )
-      .catch(() => {});
-    await this.clickhouse
-      .exec(
-        `
-      ALTER TABLE riskbranch DROP COLUMN IF EXISTS PARENTBRANCH
-    `,
-      )
-      .catch(() => {});
-    await this.clickhouse
-      .exec(
-        `
-      ALTER TABLE riskbranch DROP COLUMN IF EXISTS REGION
     `,
       )
       .catch(() => {});
@@ -592,10 +572,8 @@ export class RiskAssessmentService implements OnModuleInit {
     userId: string;
   }): Promise<void> {
     if (!args.branchId) return;
-    const score =
-      args.score <= 0 ? 0 : Math.min(5, Math.max(0, args.score));
-    const comment =
-      score <= 0 ? "" : String(args.comment ?? "").slice(0, 8000);
+    const score = args.score <= 0 ? 0 : Math.min(5, Math.max(0, args.score));
+    const comment = score <= 0 ? "" : String(args.comment ?? "").slice(0, 8000);
     await this.clickhouse.insert("risk_judgement", [
       {
         branchId: args.branchId,
@@ -654,8 +632,9 @@ export class RiskAssessmentService implements OnModuleInit {
     }
 
     const oracleFetchedAt =
-      String(oracleRows[0]?.sourceFetchedDate ?? oracleRows[0]?.fetchedAt ?? "")
-        .slice(0, 10) || "";
+      String(
+        oracleRows[0]?.sourceFetchedDate ?? oracleRows[0]?.fetchedAt ?? "",
+      ).slice(0, 10) || "";
     const id = randomUUID();
     const createdAt = nowCH();
     const branchCount = new Set(oracleRows.map((r: any) => r.SOLID)).size;

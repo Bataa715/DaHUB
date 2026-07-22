@@ -88,6 +88,9 @@ export const translations = {
     toolRiskAssessmentDesc: "Сар бүрийн эрсдэлийн үнэлгээ",
     toolReportsTitle: "Тайлан татах",
     toolReportsDesc: "Дотоод хэрэглээний тайлан татах хэрэгсэл",
+    toolMonitoringBoxTitle: "Monitoring Box",
+    toolMonitoringBoxDesc:
+      "Continuous auditing — эрсдэлтэй гүйлгээ, харилцсан данс зэргийг тасралтгүй хянах монитор картууд",
 
     // Departments page
     managerBadge: "Дарга",
@@ -615,6 +618,9 @@ export const translations = {
     toolReportsTitle: "Reports",
     toolReportsDesc:
       "Download SQL and Python reports from a single unified tool",
+    toolMonitoringBoxTitle: "Monitoring Box",
+    toolMonitoringBoxDesc:
+      "Continuous auditing — cards for monitoring related-party transactions, risky accounts, and more",
 
     // Departments page
     managerBadge: "Manager",

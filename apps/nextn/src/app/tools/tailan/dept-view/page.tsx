@@ -2,19 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { tailanApi } from "@/lib/api";
-import { WordPreview } from "../mine/_components/WordPreview";
-import type {
-  PlannedTask,
-  DynSection,
-  Section2Task,
-  Section3AutoTask,
-  Section3Dashboard,
-  Section1Dashboard,
-  Section4Training,
-  Section5Task,
-  Section6Activity,
-  TailanImage,
-} from "../mine/_components/tailan.types";
+import { DocxBlobViewer } from "../mine/_components/DocxBlobViewer";
 import {
   Loader2,
   User,
@@ -40,24 +28,6 @@ interface MemberOverview {
   submittedAt: string;
 }
 
-interface MemberReport {
-  userId: string;
-  userName: string;
-  year: number;
-  quarter: number;
-  plannedTasks: PlannedTask[];
-  dynamicSections: DynSection[];
-  section2Tasks: Section2Task[];
-  section1Dashboards: Section1Dashboard[];
-  section3AutoTasks: Section3AutoTask[];
-  section3Dashboards: Section3Dashboard[];
-  section4Trainings: Section4Training[];
-  section4KnowledgeText: string;
-  section5Tasks: Section5Task[];
-  section6Activities: Section6Activity[];
-  section7Text: string;
-}
-
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "–";
   const d = new Date(iso);
@@ -79,7 +49,8 @@ export default function DeptViewPage() {
   const [selectedMember, setSelectedMember] = useState<MemberOverview | null>(
     null,
   );
-  const [memberReport, setMemberReport] = useState<MemberReport | null>(null);
+  const [memberBlob, setMemberBlob] = useState<Blob | null>(null);
+  const [reportMissing, setReportMissing] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
 
   const loadMembers = useCallback(async () => {
@@ -100,18 +71,19 @@ export default function DeptViewPage() {
 
   const openMemberReport = async (member: MemberOverview) => {
     setSelectedMember(member);
-    setMemberReport(null);
+    setMemberBlob(null);
+    setReportMissing(false);
     setDrawerOpen(true);
     setReportLoading(true);
     try {
-      const data = await tailanApi.getDeptMemberReport(
+      const blob = await tailanApi.viewDeptMemberWord(
         member.userId,
         year,
         quarter,
       );
-      setMemberReport(data ?? null);
+      setMemberBlob(blob);
     } catch {
-      setMemberReport(null);
+      setReportMissing(true);
     } finally {
       setReportLoading(false);
     }
@@ -120,7 +92,8 @@ export default function DeptViewPage() {
   const closeDrawer = () => {
     setDrawerOpen(false);
     setSelectedMember(null);
-    setMemberReport(null);
+    setMemberBlob(null);
+    setReportMissing(false);
   };
 
   const submittedCount = members.filter((m) => m.status === "submitted").length;
@@ -180,24 +153,8 @@ export default function DeptViewPage() {
                 {t("tailan_reportLoading")}
               </span>
             </div>
-          ) : memberReport ? (
-            <WordPreview
-              userName={memberReport.userName}
-              year={memberReport.year}
-              quarter={memberReport.quarter}
-              plannedTasks={memberReport.plannedTasks}
-              section2Tasks={memberReport.section2Tasks}
-              section3AutoTasks={memberReport.section3AutoTasks}
-              section3Dashboards={memberReport.section3Dashboards}
-              section1Dashboards={memberReport.section1Dashboards}
-              dynamicSections={memberReport.dynamicSections}
-              section4Trainings={memberReport.section4Trainings}
-              section4KnowledgeText={memberReport.section4KnowledgeText}
-              section5Tasks={memberReport.section5Tasks}
-              section6Activities={memberReport.section6Activities}
-              section7Text={memberReport.section7Text}
-              images={[] as TailanImage[]}
-            />
+          ) : memberBlob && !reportMissing ? (
+            <DocxBlobViewer blob={memberBlob} />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <MinusCircle className="h-8 w-8 text-muted-foreground/50" />

@@ -45,13 +45,7 @@ export interface MultiSubidSource {
 export type MultiSubidCombine = "max" | "min" | "avg";
 
 export interface DynamicScoreScale {
-  type:
-    | "numeric"
-    | "string"
-    | "both"
-    | "manual"
-    | "no_score"
-    | "multi_subid";
+  type: "numeric" | "string" | "both" | "manual" | "no_score" | "multi_subid";
   rules?: DynamicScaleRule[];
   numericRules?: DynamicScaleRule[];
   stringRules?: DynamicScaleRule[];
@@ -143,8 +137,16 @@ export type ResolvedSubidIndicator = {
 
 /** Oracle мөрөөс indicator олох (гол болон нэмэлт SUBID) */
 export function resolveIndicatorForSubid<
-  T extends { subid: string; is_manual: boolean; score_scale: string; group: number },
->(catalog: T[], subid: string): { indicator: T; source?: MultiSubidSource } | null {
+  T extends {
+    subid: string;
+    is_manual: boolean;
+    score_scale: string;
+    group: number;
+  },
+>(
+  catalog: T[],
+  subid: string,
+): { indicator: T; source?: MultiSubidSource } | null {
   const sid = subid.trim();
   if (!sid) return null;
 
@@ -184,18 +186,20 @@ export function getNullEmptyPolicy(
   return "unelehgui";
 }
 
-export function resolveEmptyNullScore(
-  scale: NullEmptyScaleFields,
-): { score: ScoreResult; label: string | null } {
+export function resolveEmptyNullScore(scale: NullEmptyScaleFields): {
+  score: ScoreResult;
+  label: string | null;
+} {
   const policy = getNullEmptyPolicy(scale);
   if (policy === "5") return { score: 5, label: "Мэдээлэл байхгүй" };
   if (policy === "1") return { score: 1, label: "Мэдээлэл байхгүй" };
   return { score: "Үнэлэхгүй", label: "Мэдээлэл байхгүй" };
 }
 
-export function resolveEmptyNullScoreFromJson(
-  scaleJson: string,
-): { score: ScoreResult; label: string | null } {
+export function resolveEmptyNullScoreFromJson(scaleJson: string): {
+  score: ScoreResult;
+  label: string | null;
+} {
   try {
     return resolveEmptyNullScore(JSON.parse(scaleJson) as DynamicScoreScale);
   } catch {
@@ -208,7 +212,11 @@ export function computeScoreFromScale(
   result: OracleValue | undefined,
   resultType?: OracleValue,
 ): { score: ScoreResult; label: string | null } {
-  if (scale.type === "no_score" || scale.type === "manual" || scale.type === "multi_subid") {
+  if (
+    scale.type === "no_score" ||
+    scale.type === "manual" ||
+    scale.type === "multi_subid"
+  ) {
     return { score: null, label: null };
   }
 
@@ -294,7 +302,12 @@ export function computeScoreFromScale(
 }
 
 export function computeOracleRowScore<
-  T extends { subid: string; is_manual: boolean; score_scale: string; group: number },
+  T extends {
+    subid: string;
+    is_manual: boolean;
+    score_scale: string;
+    group: number;
+  },
 >(
   catalog: T[],
   rowSubid: string,
@@ -315,7 +328,9 @@ export function computeOracleRowScore<
 
   const scale = parseScoreScale(hit.indicator.score_scale);
   if (scale.type === "multi_subid") {
-    const source = scale.sources?.find((s) => s.subid.trim() === rowSubid.trim());
+    const source = scale.sources?.find(
+      (s) => s.subid.trim() === rowSubid.trim(),
+    );
     if (source) {
       const { score, label } = computeScoreFromScale(
         sourceToScale(source),
@@ -344,7 +359,11 @@ export function evaluateMultiSubidScale(
   scale: DynamicScoreScale,
   rowsBySubid: Map<
     string,
-    { RESULT?: OracleValue; RESULT_TYPE?: OracleValue; sourceFetchedDate?: string }
+    {
+      RESULT?: OracleValue;
+      RESULT_TYPE?: OracleValue;
+      sourceFetchedDate?: string;
+    }
   >,
 ): {
   score: number | "Үнэлэхгүй" | null;
@@ -381,10 +400,7 @@ export function evaluateMultiSubidScale(
 
   let finalScore: number | "Үнэлэхгүй" | null = null;
   if (numericScores.length > 0) {
-    finalScore = combineNumericScores(
-      numericScores,
-      scale.combine ?? "max",
-    );
+    finalScore = combineNumericScores(numericScores, scale.combine ?? "max");
   } else if (parts.some((p) => p.score === "Үнэлэхгүй")) {
     finalScore = "Үнэлэхгүй";
   } else {
@@ -402,18 +418,30 @@ export function evaluateMultiSubidScale(
       .map((p) => p.ruleLabel)
       .filter((l): l is string => !!l)
       .join("; ") || null;
-  const sourceFetchedDate = parts.find((p) => p.sourceFetchedDate)?.sourceFetchedDate;
+  const sourceFetchedDate = parts.find(
+    (p) => p.sourceFetchedDate,
+  )?.sourceFetchedDate;
 
   return { score: finalScore, parts, autoRaw, autoLabel, sourceFetchedDate };
 }
 
-export function buildRowsBySubid(rows: OracleRowLike[]): Map<
+export function buildRowsBySubid(
+  rows: OracleRowLike[],
+): Map<
   string,
-  { RESULT?: OracleValue; RESULT_TYPE?: OracleValue; sourceFetchedDate?: string }
+  {
+    RESULT?: OracleValue;
+    RESULT_TYPE?: OracleValue;
+    sourceFetchedDate?: string;
+  }
 > {
   const map = new Map<
     string,
-    { RESULT?: OracleValue; RESULT_TYPE?: OracleValue; sourceFetchedDate?: string }
+    {
+      RESULT?: OracleValue;
+      RESULT_TYPE?: OracleValue;
+      sourceFetchedDate?: string;
+    }
   >();
   for (const r of rows) {
     const sid = String(r.SUBID ?? "").trim();

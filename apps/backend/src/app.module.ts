@@ -11,10 +11,12 @@ import { MedlegModule } from "./medleg/medleg.module";
 import { AuditLogModule } from "./audit/audit-log.module";
 import { DbAccessModule } from "./db-access/db-access.module";
 import { TailanModule } from "./tailan/tailan.module";
+import { TailanTemplateModule } from "./tailan-template/tailan-template.module";
 import { OracleModule } from "./oracle/oracle.module";
 import { PythonApiModule } from "./python-api/python-api.module";
 import { RiskAssessmentModule } from "./risk-assessment/risk-assessment.module";
 import { RiskIndicatorConfigModule } from "./risk-indicator-config/risk-indicator-config.module";
+import { MonitoringModule } from "./monitoring/monitoring.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 
@@ -44,10 +46,12 @@ import configuration from "./config/configuration";
     MedlegModule,
     DbAccessModule,
     TailanModule,
+    TailanTemplateModule,
     OracleModule,
     PythonApiModule,
     RiskAssessmentModule,
     RiskIndicatorConfigModule,
+    MonitoringModule,
   ],
   controllers: [HealthController],
   providers: [

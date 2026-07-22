@@ -9,6 +9,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { ClickHouseAccessService } from "./clickhouse-access.service";
+import { AuditLogService } from "../audit/audit-log.service";
 
 @Injectable()
 export class GrantExpiryService {
@@ -17,6 +18,7 @@ export class GrantExpiryService {
   constructor(
     private readonly clickhouse: ClickHouseService,
     private readonly chAccess: ClickHouseAccessService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   /** Run every minute — expire grants whose validUntil has passed */
@@ -42,7 +44,20 @@ export class GrantExpiryService {
 
     for (const grant of expired) {
       try {
-        // 1. Mark inactive in audit trail
+        // [H-12] Revoke the LIVE ClickHouse SQL access FIRST. Only once that
+        // has actually succeeded do we mark the grant inactive in the audit
+        // trail — otherwise a revoke failure would leave the DB saying
+        // "revoked" while the user still has live access, with nothing to
+        // retry it. If revokeAccess throws, we skip the audit-trail write so
+        // this same grant is picked up and retried on the next run (a minute
+        // later) instead of silently going stale.
+        const result = await this.chAccess.revokeAccess({
+          requestId: grant.requestId,
+          requesterUserId: grant.userUserId,
+          tableName: grant.tableName,
+        });
+
+        // Mark inactive in audit trail now that access is actually revoked
         await this.clickhouse.insert("access_grants", [
           {
             ...grant,
@@ -59,21 +74,34 @@ export class GrantExpiryService {
           },
         ]);
 
-        // 2. Revoke ClickHouse SQL access (selective per table)
-        const result = await this.chAccess.revokeAccess({
-          requestId: grant.requestId,
-          requesterUserId: grant.userUserId,
-          tableName: grant.tableName,
-        });
-
         this.logger.log(
           `[expiry] ✓ grant=${grant.id} user=${grant.userUserId} ` +
             `table=${grant.tableName} userDropped=${result.userDropped}`,
         );
       } catch (err: any) {
-        this.logger.warn(
-          `[expiry] Failed to expire grant=${grant.id}: ${err?.message}`,
+        this.logger.error(
+          `[expiry] Failed to revoke expired grant=${grant.id} user=${grant.userUserId} ` +
+            `table=${grant.tableName} — will retry next run: ${err?.message}`,
         );
+        // Surface in the audit log too so a stuck revoke (repeated failures)
+        // is discoverable outside of application logs.
+        await this.auditLogService
+          .log({
+            userId: "system",
+            action: "grant_expiry_revoke_failed",
+            resource: "access_grants",
+            method: "expireGrants",
+            status: "failure",
+            errorMessage: err?.message ?? String(err),
+            metadata: {
+              grantId: grant.id,
+              userUserId: grant.userUserId,
+              tableName: grant.tableName,
+            },
+          })
+          .catch(() => {
+            // Never let audit-log failure mask the original error
+          });
       }
     }
   }

@@ -2,8 +2,10 @@ import {
   IsString,
   IsOptional,
   IsArray,
+  IsBoolean,
   Matches,
   MaxLength,
+  MinLength,
 } from "class-validator";
 
 export class UpdateUserDto {
@@ -41,4 +43,30 @@ export class UpdateUserDto {
   @IsArray()
   @IsOptional()
   allowedTools?: string[];
+}
+
+export class UpdateToolsDto {
+  @IsArray()
+  @IsString({ each: true })
+  allowedTools!: string[];
+}
+
+export class SetAdminRoleDto {
+  @IsBoolean()
+  isAdmin!: boolean;
+
+  @IsBoolean()
+  isSuperAdmin!: boolean;
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  grantableTools?: string[];
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(200)
+  newPassword!: string;
 }

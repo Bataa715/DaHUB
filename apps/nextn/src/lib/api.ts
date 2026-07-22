@@ -259,41 +259,36 @@ export const departmentsApi = {
   },
 };
 // Tailan (Quarterly Report) APIs
+export interface TailanReportPayload {
+  year: number;
+  quarter: number;
+  sections: Record<string, unknown>;
+  dynamicSections?: { order: number; title: string; content?: string }[];
+  hiddenSections?: string[];
+  status?: "draft" | "submitted";
+}
+
 export const tailanApi = {
   getRole: async () => {
     const response = await api.get("/tailan/role");
     return response.data as { isDeptHead: boolean };
   },
 
-  saveDraft: async (data: {
-    year: number;
-    quarter: number;
-    plannedTasks: unknown[];
-    dynamicSections: unknown[];
-    otherWork?: string;
-    teamActivities: unknown[];
-    section2Tasks?: unknown[];
-    section1Dashboards?: unknown[];
-    section3AutoTasks?: unknown[];
-    section3Dashboards?: unknown[];
-    section4Trainings?: unknown[];
-    section4KnowledgeText?: string;
-    section5Tasks?: unknown[];
-    section6Activities?: unknown[];
-    section7Text?: string;
-    status?: string;
-  }) => {
+  saveDraft: async (data: TailanReportPayload) => {
     const response = await api.post("/tailan/save", data);
     return response.data;
   },
 
-  submitReport: async (year: number, quarter: number) => {
-    const response = await api.post("/tailan/submit", { year, quarter });
-    return response.data;
+  // ─── Live "real docx" preview from unsaved editor state ─────────────────
+  previewWord: async (data: TailanReportPayload): Promise<Blob> => {
+    const response = await api.post("/tailan/preview", data, {
+      responseType: "blob",
+    });
+    return response.data as Blob;
   },
 
-  getMyReports: async () => {
-    const response = await api.get("/tailan/my");
+  submitReport: async (year: number, quarter: number) => {
+    const response = await api.post("/tailan/submit", { year, quarter });
     return response.data;
   },
 
@@ -325,21 +320,15 @@ export const tailanApi = {
     return response.data;
   },
 
-  getDeptMemberReport: async (
+  viewDeptMemberWord: async (
     userId: string,
     year: number,
     quarter: number,
-  ) => {
+  ): Promise<Blob> => {
     const response = await api.get(
-      `/tailan/dept/member/${encodeURIComponent(userId)}/${year}/${quarter}`,
+      `/tailan/dept/member/${encodeURIComponent(userId)}/${year}/${quarter}/word`,
+      { responseType: "blob" },
     );
-    return response.data;
-  },
-
-  downloadDeptWord: async (year: number, quarter: number): Promise<Blob> => {
-    const response = await api.get(`/tailan/dept/${year}/${quarter}/word`, {
-      responseType: "blob",
-    });
     return response.data as Blob;
   },
 
@@ -374,17 +363,6 @@ export const tailanApi = {
     const response = await api.get(`/tailan/images/my/${year}/${quarter}`);
     return response.data as {
       id: string;
-      filename: string;
-      mimeType: string;
-      uploadedAt: string;
-    }[];
-  },
-
-  getDeptImages: async (year: number, quarter: number) => {
-    const response = await api.get(`/tailan/images/dept/${year}/${quarter}`);
-    return response.data as {
-      id: string;
-      userId: string;
       filename: string;
       mimeType: string;
       uploadedAt: string;
@@ -434,11 +412,6 @@ export const dbAccessApi = {
     return response.data as { database: string; table: string; full: string }[];
   },
 
-  getColumns: async (db: string, table: string) => {
-    const response = await api.get(`/db-access/tables/${db}/${table}/columns`);
-    return response.data as { name: string; type: string }[];
-  },
-
   // Requests
   createRequest: async (data: {
     tables: string[];
@@ -448,11 +421,6 @@ export const dbAccessApi = {
     reason?: string;
   }) => {
     const response = await api.post("/db-access/requests", data);
-    return response.data;
-  },
-
-  getMyRequests: async () => {
-    const response = await api.get("/db-access/requests/my");
     return response.data;
   },
 
@@ -478,13 +446,6 @@ export const dbAccessApi = {
     return response.data;
   },
 
-  bulkReview: async (action: "approve" | "reject") => {
-    const response = await api.post("/db-access/requests/bulk-review", {
-      action,
-    });
-    return response.data;
-  },
-
   // Grants
   getMyGrants: async () => {
     const response = await api.get("/db-access/grants/my");
@@ -493,11 +454,6 @@ export const dbAccessApi = {
 
   getAllGrants: async () => {
     const response = await api.get("/db-access/grants");
-    return response.data;
-  },
-
-  getGrantsByUser: async (userId: string) => {
-    const response = await api.get(`/db-access/grants/user/${userId}`);
     return response.data;
   },
 
@@ -520,21 +476,10 @@ export const dbAccessApi = {
     return response.data;
   },
 
-  deleteRequestHistory: async () => {
-    const response = await api.delete("/db-access/requests/history");
-    return response.data;
-  },
-
   cleanupChUser: async (requesterUserId: string) => {
     const response = await api.post(
       `/db-access/grants/cleanup-ch/${encodeURIComponent(requesterUserId)}`,
     );
-    return response.data;
-  },
-
-  // Grantors
-  getGrantors: async () => {
-    const response = await api.get("/db-access/grantors");
     return response.data;
   },
 };
@@ -546,6 +491,11 @@ export interface FilterDef {
   label: string;
   placeholder?: string;
   required?: boolean;
+  /** "list" — олон утга (CIF/дугаар зэрэг) шинэ мөр эсвэл ","-аар зааглаж
+   * нэг талбарт оруулах боломжтой textarea. Дараа нь Python код талд
+   * `filters["<key>"]` нь ","-аар холбогдсон нэг string байдлаар ирнэ —
+   * `filters["<key>"].split(",")` гэж бичиж жагсаалт болгоно. */
+  type?: "text" | "list";
 }
 
 export interface PythonTool {
@@ -706,6 +656,7 @@ export const pythonToolApi = {
     connectionConfig?: string;
     startDate?: string;
     endDate?: string;
+    filters?: Record<string, string>;
   }): Promise<{ columns: string[]; rows: unknown[][]; totalCount: number }> => {
     const res = await api.post("/python-api/admin/preview-code", input);
     return res.data;
@@ -1024,15 +975,6 @@ export interface IndicatorConfig {
   updated_at: string;
 }
 
-export interface GroupConfig {
-  region: string;
-  group_num: number;
-  weight: number;
-  label: string;
-  seq: number;
-  updated_at: string;
-}
-
 export const riskIndicatorConfigApi = {
   list: async (): Promise<IndicatorConfig[]> => {
     const res = await api.get("/risk-indicator-config");
@@ -1060,14 +1002,168 @@ export const riskIndicatorConfigApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/risk-indicator-config/${id}`);
   },
+};
 
-  reorder: async (ids: string[]): Promise<void> => {
-    await api.post("/risk-indicator-config/reorder", { ids });
+// ── Monitoring Box (continuous auditing monitor cards) ──────────────────────
+export interface MatchedAccountRow {
+  CIF_ID: string;
+  FORACID: string;
+  ACID: string;
+  ACCT_NAME: string;
+}
+
+export interface RelatedPartyTxRow {
+  TRAN_DATE: string;
+  TRAN_ID: string;
+  FROM_CIF: string;
+  FROM_ACCOUNT: string;
+  FROM_NAME: string;
+  TO_CIF: string;
+  TO_ACCOUNT: string;
+  TO_NAME: string;
+  TRAN_AMOUNT: number;
+  AMOUNT_MNT: number;
+  CURRENCY: string;
+  TRAN_TYPE: string;
+  SOL_ID: string;
+  REF_NUM: string;
+  DEBIT_PARTICULAR: string;
+  CREDIT_PARTICULAR: string;
+  DEBIT_RMKS: string;
+  CREDIT_RMKS: string;
+  ENTRY_USER_ID: string;
+  PSTD_USER_ID: string;
+  PSTD_DATE: string;
+}
+
+export interface RelatedPartySummaryRow {
+  FROM_CIF: string;
+  TO_CIF: string;
+  CURRENCY: string;
+  TOTAL_AMOUNT: number;
+  TX_COUNT: number;
+}
+
+export interface RelatedPartyResult {
+  accounts: MatchedAccountRow[];
+  transactions: RelatedPartyTxRow[];
+  summary: RelatedPartySummaryRow[];
+}
+
+export interface RelatedPartyRequest {
+  customerIds: string[];
+  startDate: string;
+  endDate: string;
+}
+
+export const monitoringApi = {
+  findRelatedPartyTransactions: async (
+    req: RelatedPartyRequest,
+  ): Promise<RelatedPartyResult> => {
+    const res = await api.post("/monitoring/related-party-transactions", req);
+    return res.data;
   },
 
-  listGroupConfig: async (): Promise<GroupConfig[]> => {
-    const res = await api.get("/risk-indicator-config/group-config");
+  exportRelatedPartyTransactions: async (
+    req: RelatedPartyRequest,
+  ): Promise<Blob> => {
+    const res = await api.post(
+      "/monitoring/related-party-transactions/export",
+      req,
+      { responseType: "blob" },
+    );
+    return res.data as Blob;
+  },
+};
+
+// ── Tailan templates (admin: template builder) ──────────────────────────────
+export type TailanSectionType = "richtext" | "taskList" | "table";
+export type TailanTemplateScope = "employee" | "department";
+
+export interface TailanTableColumnDef {
+  key: string;
+  label: string;
+  width?: number;
+  align?: "left" | "center" | "right";
+  richtext?: boolean;
+  numeric?: boolean;
+}
+
+export interface TailanTaskListConfig {
+  showCompletion?: boolean;
+  showPeriod?: boolean;
+  showDescription?: boolean;
+  showImages?: boolean;
+  showAverage?: boolean;
+  titleLabel?: string;
+  completionLabel?: string;
+  periodLabel?: string;
+  descriptionLabel?: string;
+}
+
+export interface TailanTableConfig {
+  columns: TailanTableColumnDef[];
+  averageColumnKey?: string;
+  showImages?: boolean;
+}
+
+export interface TailanSectionDef {
+  key: string;
+  titleMn: string;
+  titleEn?: string;
+  subtitleMn?: string;
+  headingLevel: "main" | "sub";
+  type: TailanSectionType;
+  order: number;
+  orientation?: "portrait" | "landscape";
+  defaultHidden?: boolean;
+  taskList?: TailanTaskListConfig;
+  table?: TailanTableConfig;
+}
+
+export interface TailanTemplate {
+  id: string;
+  departmentId: string;
+  scope: TailanTemplateScope;
+  name: string;
+  sections: TailanSectionDef[];
+  isActive: 0 | 1;
+  updatedBy: string;
+  seq: number;
+  updatedAt: string;
+}
+
+export const DEFAULT_TAILAN_DEPARTMENT_ID = "default";
+
+export const tailanTemplateApi = {
+  list: async (scope?: TailanTemplateScope): Promise<TailanTemplate[]> => {
+    const res = await api.get("/tailan-templates", { params: { scope } });
     return res.data;
+  },
+
+  getActive: async (
+    departmentId: string | undefined,
+    scope: TailanTemplateScope,
+  ): Promise<TailanTemplate> => {
+    const res = await api.get("/tailan-templates/active", {
+      params: { departmentId, scope },
+    });
+    return res.data;
+  },
+
+  upsert: async (dto: {
+    id?: string;
+    departmentId: string;
+    scope: TailanTemplateScope;
+    name: string;
+    sections: TailanSectionDef[];
+  }): Promise<TailanTemplate> => {
+    const res = await api.post("/tailan-templates", dto);
+    return res.data;
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/tailan-templates/${id}`);
   },
 };
 

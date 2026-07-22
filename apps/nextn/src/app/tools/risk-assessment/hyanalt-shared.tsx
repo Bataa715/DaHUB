@@ -60,7 +60,11 @@ export function buildScoredRows(
   if (catalog.length === 0) return [];
   return rows.map((r) => {
     const subidStr = String(r.SUBID ?? "").trim();
-    const { score, label, indicator: ind } = computeOracleRowScore(
+    const {
+      score,
+      label,
+      indicator: ind,
+    } = computeOracleRowScore(
       catalog,
       subidStr,
       r.RESULT as string | number | null,

@@ -1,4 +1,11 @@
-import { IsString, IsIn, IsOptional, IsNotEmpty } from "class-validator";
+import {
+  IsString,
+  IsIn,
+  IsOptional,
+  IsNotEmpty,
+  IsBoolean,
+  IsArray,
+} from "class-validator";
 
 export class CreatePythonToolDto {
   @IsString()
@@ -102,4 +109,66 @@ export class RunToolDto {
 
   @IsOptional()
   filters?: Record<string, string>;
+}
+
+export class ToggleToolDto {
+  @IsBoolean()
+  isActive!: boolean;
+}
+
+export class ReorderToolsDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+}
+
+export class ValidateCodeDto {
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
+}
+
+export class PreviewCodeDto {
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
+
+  @IsString()
+  @IsOptional()
+  connectionType?: string;
+
+  @IsString()
+  @IsOptional()
+  connectionConfig?: string;
+
+  @IsString()
+  @IsOptional()
+  startDate?: string;
+
+  @IsString()
+  @IsOptional()
+  endDate?: string;
+
+  @IsOptional()
+  filters?: Record<string, string>;
+}
+
+export class GrantPermissionDto {
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  templateId!: string;
+}
+
+export class RevokePermissionDto {
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  templateId!: string;
 }

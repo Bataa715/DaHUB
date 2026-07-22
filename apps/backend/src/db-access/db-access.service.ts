@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { ClickHouseAccessService } from "./clickhouse-access.service";
+import { AuditLogService } from "../audit/audit-log.service";
 import {
   randomUUID,
   randomBytes,
@@ -115,6 +116,7 @@ export class DbAccessService {
   constructor(
     private clickhouse: ClickHouseService,
     private chAccess: ClickHouseAccessService,
+    private auditLogService: AuditLogService,
   ) {}
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -156,29 +158,6 @@ export class DbAccessService {
       table: r.name,
       full: `${r.database}.${r.name}`,
     }));
-  }
-
-  /** List columns for a specific database.table */
-  async getTableColumns(
-    fullTableName: string,
-  ): Promise<{ name: string; type: string }[]> {
-    const [db, table] = fullTableName.includes(".")
-      ? fullTableName.split(".")
-      : ["FINACLE", fullTableName];
-
-    if (!ALLOWED_DATABASES.includes(db)) {
-      throw new ForbiddenException("Database not allowed");
-    }
-
-    const rows = await this.clickhouse.query<any>(
-      `SELECT name, type
-       FROM system.columns
-       WHERE database = {db:String} AND table = {table:String}
-       ORDER BY position`,
-      { db, table },
-    );
-
-    return rows.map((r) => ({ name: r.name, type: r.type }));
   }
 
   // ─── Access Requests ────────────────────────────────────────────────────────
@@ -304,18 +283,6 @@ export class DbAccessService {
     return { id };
   }
 
-  /** Get requests submitted by the current user */
-  async getMyRequests(userId: string) {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT *
-       FROM access_requests FINAL
-       WHERE requesterId = {userId:String}
-       ORDER BY requestTime DESC`,
-      { userId },
-    );
-    return rows.map(this.formatRequest);
-  }
-
   /** Get all pending requests (grantors & admins only) */
   async getPendingRequests(user: any) {
     if (!this.canGrantAccess(user)) {
@@ -344,35 +311,6 @@ export class DbAccessService {
     return rows.map(this.formatRequest);
   }
 
-  /** Approve or reject ALL pending requests at once */
-  async bulkReviewPending(reviewer: any, action: "approve" | "reject") {
-    if (!this.canGrantAccess(reviewer)) {
-      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
-    }
-
-    const rows = await this.clickhouse.query<any>(
-      `SELECT * FROM access_requests FINAL WHERE status = 'pending' ORDER BY requestTime ASC`,
-    );
-
-    if (rows.length === 0) return { affected: 0 };
-
-    let affected = 0;
-    for (const req of rows) {
-      try {
-        await this.reviewRequest(req.id, reviewer, {
-          action,
-          reviewNote:
-            action === "approve" ? "Бүгдийг зөвшөөрлөө" : "Бүгдийг татгалзлаа",
-        });
-        affected++;
-      } catch {
-        // skip individual failures
-      }
-    }
-
-    return { affected };
-  }
-
   /** Hard-delete a single pending request (granter / admin only) */
   async deleteRequest(id: string, user: any) {
     if (!this.canGrantAccess(user)) {
@@ -390,35 +328,16 @@ export class DbAccessService {
     this.logger.log(
       `[DBAccess] Request ${id} (${rows[0].status}) deleted by ${user.userId}`,
     );
+    await this.auditLogService.log({
+      userId: user.id,
+      action: "db_access_request_delete",
+      resource: "access_requests",
+      resourceId: id,
+      method: "deleteRequest",
+      status: "success",
+      metadata: { priorStatus: rows[0].status },
+    });
     return { success: true };
-  }
-
-  /** Delete all approved/rejected request history (keeps pending rows) */
-  async deleteRequestHistory(user: any) {
-    if (!this.canGrantAccess(user)) {
-      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
-    }
-    await this.clickhouse.exec(
-      `ALTER TABLE access_requests DELETE WHERE status IN ('approved', 'rejected')`,
-    );
-    this.logger.log(`[DBAccess] Request history deleted by ${user.userId}`);
-    return { success: true, message: "Түүх устгагдлаа" };
-  }
-
-  /** Get grants filtered by userId */
-  async getGrantsByUser(targetUserId: string, requester: any) {
-    if (!this.canGrantAccess(requester)) {
-      throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
-    }
-    const rows = await this.clickhouse.query<any>(
-      `SELECT *
-       FROM access_grants FINAL
-       WHERE userId = {userId:String}
-         AND isActive = 1
-       ORDER BY grantedAt DESC`,
-      { userId: targetUserId },
-    );
-    return rows.map(this.formatGrant);
   }
 
   /**
@@ -435,6 +354,18 @@ export class DbAccessService {
       `[DBAccess] CH cleanup for userId=${requesterUserId} by ${admin.userId}: ` +
         `rolesDropped=${result.rolesDropped.length} userDropped=${result.userDropped}`,
     );
+    await this.auditLogService.log({
+      userId: admin.id,
+      action: "db_access_ch_cleanup",
+      resource: "access_grants",
+      method: "cleanupUserChAccess",
+      status: "success",
+      metadata: {
+        targetUserUserId: requesterUserId,
+        rolesDropped: result.rolesDropped,
+        userDropped: result.userDropped,
+      },
+    });
     return {
       success: true,
       rolesDropped: result.rolesDropped,
@@ -568,6 +499,22 @@ export class DbAccessService {
       `Request ${requestId} ${dto.action}d by ${reviewer.userId}`,
     );
 
+    await this.auditLogService.log({
+      userId: reviewer.id,
+      action:
+        dto.action === "approve" ? "db_access_approve" : "db_access_reject",
+      resource: "access_requests",
+      resourceId: requestId,
+      method: "reviewRequest",
+      status: "success",
+      metadata: {
+        requesterUserId: req.requesterUserId,
+        tables: req.tables,
+        reviewNote: dto.reviewNote,
+        chSetupFailed,
+      },
+    });
+
     return {
       success: true,
       action: dto.action,
@@ -628,6 +575,48 @@ export class DbAccessService {
     const now = this.formatDateTime(new Date());
     const grant = rows[0];
 
+    // [M-3/H-12-style fix] Revoke the LIVE ClickHouse SQL access FIRST.
+    // Only mark the grant inactive in the audit trail once that has actually
+    // happened — otherwise a CH failure would leave the DB saying "revoked"
+    // while the user still has live access, with no record that the revoke
+    // itself failed.
+    let chRevokeError: string | undefined;
+    let userDropped = false;
+    try {
+      const result = await this.chAccess.revokeAccess({
+        requestId: grant.requestId,
+        requesterUserId: grant.userUserId,
+        tableName: grant.tableName, // selective: only revoke this table's SELECT
+      });
+      userDropped = result.userDropped;
+      this.logger.log(
+        `[CH ACL] Revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
+          `table=${grant.tableName} userDropped=${result.userDropped}`,
+      );
+    } catch (err: any) {
+      chRevokeError = err?.message ?? String(err);
+      this.logger.error(
+        `[CH ACL] CH SQL revoke FAILED for grant=${grantId}: ${chRevokeError}. ` +
+          `Grant is NOT being marked inactive — retry or use the CH cleanup endpoint.`,
+      );
+    }
+
+    if (chRevokeError) {
+      await this.auditLogService.log({
+        userId: revoker.id,
+        action: "db_access_revoke",
+        resource: "access_grants",
+        resourceId: grantId,
+        method: "revokeGrant",
+        status: "failure",
+        errorMessage: chRevokeError,
+        metadata: { userUserId: grant.userUserId, tableName: grant.tableName },
+      });
+      throw new BadRequestException(
+        "ClickHouse дээрх хандалтыг цуцлахад алдаа гарлаа. Дахин оролдох эсвэл 'CH cleanup' ашиглана уу.",
+      );
+    }
+
     // Upsert via re-insert (ReplacingMergeTree deduplicates by grantedAt version)
     await this.clickhouse.insert("access_grants", [
       {
@@ -645,25 +634,21 @@ export class DbAccessService {
       },
     ]);
 
-    // ── Revoke ClickHouse SQL access control ──────────────────────────────
-    try {
-      const result = await this.chAccess.revokeAccess({
-        requestId: grant.requestId,
-        requesterUserId: grant.userUserId,
-        tableName: grant.tableName, // selective: only revoke this table's SELECT
-      });
-      this.logger.log(
-        `[CH ACL] Revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
-          `table=${grant.tableName} userDropped=${result.userDropped}`,
-      );
-    } catch (err: any) {
-      this.logger.warn(
-        `[CH ACL] Skipping CH SQL revoke for grant=${grantId}: ${err?.message}`,
-      );
-      // Non-fatal: audit trail is already written.
-    }
-
     this.logger.log(`Grant ${grantId} revoked by ${revoker.userId}`);
+    await this.auditLogService.log({
+      userId: revoker.id,
+      action: "db_access_revoke",
+      resource: "access_grants",
+      resourceId: grantId,
+      method: "revokeGrant",
+      status: "success",
+      metadata: {
+        userUserId: grant.userUserId,
+        tableName: grant.tableName,
+        reason: dto.reason,
+        userDropped,
+      },
+    });
     return { success: true };
   }
 
@@ -681,6 +666,44 @@ export class DbAccessService {
       throw new BadRequestException("Эрх аль хэдийн хаагдсан байна");
 
     const now = this.formatDateTime(new Date());
+
+    // [M-3/H-12-style fix] Same ordering fix as revokeGrant(): revoke the
+    // live CH access first, only then mark inactive in the audit trail.
+    let chRevokeError: string | undefined;
+    try {
+      const result = await this.chAccess.revokeAccess({
+        requestId: grant.requestId,
+        requesterUserId: grant.userUserId,
+        tableName: grant.tableName, // selective: only revoke this table's SELECT
+      });
+      this.logger.log(
+        `[CH ACL] Self-revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
+          `table=${grant.tableName} userDropped=${result.userDropped}`,
+      );
+    } catch (err: any) {
+      chRevokeError = err?.message ?? String(err);
+      this.logger.error(
+        `[CH ACL] CH SQL self-revoke FAILED for grant=${grantId}: ${chRevokeError}. ` +
+          `Grant is NOT being marked inactive — retry or use the CH cleanup endpoint.`,
+      );
+    }
+
+    if (chRevokeError) {
+      await this.auditLogService.log({
+        userId: requester.id,
+        action: "db_access_self_revoke",
+        resource: "access_grants",
+        resourceId: grantId,
+        method: "selfRevokeGrant",
+        status: "failure",
+        errorMessage: chRevokeError,
+        metadata: { userUserId: grant.userUserId, tableName: grant.tableName },
+      });
+      throw new BadRequestException(
+        "ClickHouse дээрх хандалтыг цуцлахад алдаа гарлаа. Дахин оролдоно уу.",
+      );
+    }
+
     await this.clickhouse.insert("access_grants", [
       {
         ...grant,
@@ -697,25 +720,18 @@ export class DbAccessService {
       },
     ]);
 
-    try {
-      const result = await this.chAccess.revokeAccess({
-        requestId: grant.requestId,
-        requesterUserId: grant.userUserId,
-        tableName: grant.tableName, // selective: only revoke this table's SELECT
-      });
-      this.logger.log(
-        `[CH ACL] Self-revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
-          `table=${grant.tableName} userDropped=${result.userDropped}`,
-      );
-    } catch (err: any) {
-      this.logger.warn(
-        `[CH ACL] CH SQL self-revoke failed for grant=${grantId}: ${err?.message}`,
-      );
-    }
-
     this.logger.log(
       `Grant ${grantId} self-cancelled by user ${requester.userId}`,
     );
+    await this.auditLogService.log({
+      userId: requester.id,
+      action: "db_access_self_revoke",
+      resource: "access_grants",
+      resourceId: grantId,
+      method: "selfRevokeGrant",
+      status: "success",
+      metadata: { userUserId: grant.userUserId, tableName: grant.tableName },
+    });
     return { success: true };
   }
 
@@ -723,24 +739,6 @@ export class DbAccessService {
    * [HIGH-4] Uses has(JSONExtractArrayRaw()) for exact element matching instead
    * of LIKE '%db_access_granter%' which could false-match partial tool names.
    */
-  async getGrantors() {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT id, userId, name, position, allowedTools
-       FROM users
-       WHERE (
-         isAdmin = 1
-         OR has(JSONExtractArrayRaw(allowedTools), '"db_access_granter"')
-       )
-       AND isActive = 1`,
-    );
-    return rows.map((u) => ({
-      id: u.id,
-      userId: u.userId,
-      name: u.name,
-      position: u.position,
-    }));
-  }
-
   // ─── Formatters ─────────────────────────────────────────────────────────────
 
   private formatRequest(r: any) {

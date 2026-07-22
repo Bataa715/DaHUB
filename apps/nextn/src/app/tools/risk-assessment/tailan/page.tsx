@@ -52,12 +52,11 @@ function toScored(
     .filter((r) => r.rowType === "oracle")
     .map((r) => {
       const subid = String(r.SUBID ?? "").trim();
-      const { score, label, indicator: ind } = computeOracleRowScore(
-        catalog,
-        subid,
-        r.RESULT,
-        r.RESULT_TYPE,
-      );
+      const {
+        score,
+        label,
+        indicator: ind,
+      } = computeOracleRowScore(catalog, subid, r.RESULT, r.RESULT_TYPE);
       const grpNum = ind?.group;
       const __group: ScoreGroup | null =
         grpNum === 1

@@ -25,6 +25,18 @@ function currentMonthStart() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
+/** "list" төрлийн шүүлтүүрт хэрэглэгч мөр бүрт эсвэл ","-аар зааглаж олон
+ * утга (жиш: CIF дугаарууд) оруулна. Хоосон мөр/зай хасаж, давхардлыг
+ * арилгаж, серверт нэг ","-аар холбогдсон string болгож дамжуулна —
+ * Python код талд `filters["key"].split(",")` гэж ашиглана. */
+function normalizeListFilterValue(raw: string): string {
+  const values = raw
+    .split(/[\n,]/)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+  return Array.from(new Set(values)).join(",");
+}
+
 const OUTPUT_META = {
   excel: {
     icon: FileSpreadsheet,
@@ -105,6 +117,18 @@ export default function ReportDetailPage() {
 
   const dateMode = item?.dateMode ?? "none";
 
+  /** Илгээхээс өмнө "list" төрлийн шүүлтүүрийн raw textarea утгыг
+   * (мөр/,-аар зааглагдсан) нэг цэвэрлэсэн ","-joined string болгоно. */
+  const buildRequestFilters = (): Record<string, string> => {
+    const out: Record<string, string> = { ...filterValues };
+    for (const f of parsedFilters) {
+      if (f.type === "list" && out[f.key] !== undefined) {
+        out[f.key] = normalizeListFilterValue(out[f.key]);
+      }
+    }
+    return out;
+  };
+
   const handleDownload = async () => {
     if (!item) return;
     if (dateMode === "range" && (!startDate || !endDate))
@@ -132,7 +156,7 @@ export default function ReportDetailPage() {
         item.id,
         dateMode !== "none" ? startDate : undefined,
         dateMode === "range" ? endDate : undefined,
-        filterValues,
+        buildRequestFilters(),
         (pct) => setDownloadProgress(pct),
         controller.signal,
       );
@@ -193,7 +217,7 @@ export default function ReportDetailPage() {
         item.id,
         dateMode !== "none" ? startDate : undefined,
         dateMode === "range" ? endDate : undefined,
-        filterValues,
+        buildRequestFilters(),
         controller.signal,
       );
       setPreview({ status: "done", ...data });
@@ -353,32 +377,66 @@ export default function ReportDetailPage() {
                       const raw = filterValues[f.key] ?? "";
                       const filled = !!raw.trim();
                       const missing = f.required && !filled;
+                      const isList = f.type === "list";
+                      const valueCount = isList
+                        ? raw
+                            .split(/[\n,]/)
+                            .map((v) => v.trim())
+                            .filter((v) => v.length > 0).length
+                        : 0;
+                      const fieldCls = `w-full rounded-xl px-3 py-2 text-foreground bg-muted/40 border text-xs focus:outline-none disabled:opacity-40 placeholder:text-muted-foreground transition ${
+                        missing
+                          ? "border-destructive/50 ring-1 ring-destructive/20 focus:border-destructive/60"
+                          : filled
+                            ? "border-emerald-500/40 ring-1 ring-emerald-500/15 focus:border-emerald-500/60"
+                            : "border-border focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20"
+                      }`;
                       return (
                         <div key={f.key} className="space-y-1.5">
-                          <label className="text-xs font-medium text-foreground/80">
-                            {f.label}
-                            {f.required && (
-                              <span className="text-rose-400 ml-0.5">*</span>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-foreground/80">
+                              {f.label}
+                              {f.required && (
+                                <span className="text-rose-400 ml-0.5">*</span>
+                              )}
+                            </label>
+                            {isList && valueCount > 0 && (
+                              <span className="text-[10px] text-violet-500 font-semibold">
+                                {valueCount} утга
+                              </span>
                             )}
-                          </label>
-                          <input
-                            value={raw}
-                            onChange={(e) =>
-                              setFilterValues((p) => ({
-                                ...p,
-                                [f.key]: e.target.value,
-                              }))
-                            }
-                            disabled={downloading}
-                            placeholder={f.placeholder ?? ""}
-                            className={`w-full rounded-xl px-3 py-2 text-foreground bg-muted/40 border text-xs focus:outline-none disabled:opacity-40 placeholder:text-muted-foreground transition ${
-                              missing
-                                ? "border-destructive/50 ring-1 ring-destructive/20 focus:border-destructive/60"
-                                : filled
-                                  ? "border-emerald-500/40 ring-1 ring-emerald-500/15 focus:border-emerald-500/60"
-                                  : "border-border focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20"
-                            }`}
-                          />
+                          </div>
+                          {isList ? (
+                            <textarea
+                              value={raw}
+                              onChange={(e) =>
+                                setFilterValues((p) => ({
+                                  ...p,
+                                  [f.key]: e.target.value,
+                                }))
+                              }
+                              disabled={downloading}
+                              placeholder={
+                                f.placeholder ??
+                                "Мөр бүрт нэг утга эсвэл ,-аар зааглана\nR001295678\nR000657058"
+                              }
+                              rows={3}
+                              className={`${fieldCls} resize-y font-mono`}
+                            />
+                          ) : (
+                            <input
+                              value={raw}
+                              onChange={(e) =>
+                                setFilterValues((p) => ({
+                                  ...p,
+                                  [f.key]: e.target.value,
+                                }))
+                              }
+                              disabled={downloading}
+                              placeholder={f.placeholder ?? ""}
+                              className={fieldCls}
+                            />
+                          )}
                           {missing && (
                             <p className="text-[10px] text-rose-400">
                               {t("reportsFilterRequiredMsg")}

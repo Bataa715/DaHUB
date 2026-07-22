@@ -137,7 +137,11 @@ const DEFAULT_PY_CODE = `# Энд Python кодоо бичнэ үү.
 #   np          - numpy
 #   start_date  - эхлэх огноо (str)
 #   end_date    - дуусах огноо (str)
-#   filters     - нэмэлт шүүлтүүрүүд (dict)
+#   filters     - нэмэлт шүүлтүүрүүд (dict, бүх утга string)
+#
+# "Олон утга" (list) төрлийн шүүлтүүр — жиш: олон CIF/дугаар нэг
+# талбарт (админ Шүүлтүүрүүд хэсэгт "Олон утга" сонгоно):
+#   customer_ids = [x for x in filters.get("customer_ids", "").split(",") if x]
 #
 # Oracle олон connection жишээ:
 #   cur1 = conn["finacle"].cursor()
@@ -181,7 +185,7 @@ function FiltersEditor({
   const add = () =>
     update([
       ...items,
-      { key: "", label: "", placeholder: "", required: false },
+      { key: "", label: "", placeholder: "", required: false, type: "text" },
     ]);
   const remove = (i: number) => update(items.filter((_, idx) => idx !== i));
   const set = (i: number, field: keyof FilterDef, val: string | boolean) =>
@@ -208,6 +212,15 @@ function FiltersEditor({
             placeholder="Hint"
             className="h-8 text-xs bg-background border-border flex-1"
           />
+          <select
+            value={f.type ?? "text"}
+            onChange={(e) => set(i, "type", e.target.value)}
+            title="Нэг талбар (text) эсвэл олон утга (list — CIF/дугаарын жагсаалт)"
+            className="h-8 text-xs bg-background border border-border rounded px-1.5 text-foreground"
+          >
+            <option value="text">Нэг утга</option>
+            <option value="list">Олон утга (жагсаалт)</option>
+          </select>
           <button
             type="button"
             onClick={() => remove(i)}
@@ -224,6 +237,15 @@ function FiltersEditor({
       >
         <Plus className="w-3.5 h-3.5" /> Шүүлтүүр нэмэх
       </button>
+      <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+        &ldquo;Олон утга&rdquo; төрлийн шүүлтүүрт хэрэглэгч дурын олон утга
+        (жиш: CIF дугаар) шинэ мөр бүрт эсвэл ,-аар зааглаж оруулж чадна. Python
+        кодод:{" "}
+        <code>
+          filters.get(&quot;key&quot;, &quot;&quot;).split(&quot;,&quot;)
+        </code>{" "}
+        гэж бичээд жагсаалт болгоно.
+      </p>
     </div>
   );
 }
@@ -1445,6 +1467,7 @@ export default function AdminReportsPage() {
                   connectionType={pyForm.connectionType}
                   connectionConfig={pyForm.connectionConfig}
                   dateMode={pyForm.dateMode}
+                  filtersJson={pyForm.filters}
                   minHeight={320}
                 />
               </div>

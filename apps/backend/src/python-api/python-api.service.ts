@@ -20,6 +20,7 @@ import {
   UpdatePythonToolDto,
   RunToolDto,
 } from "./dto/python-api.dto";
+import { UserFacingBadRequestException } from "../common/exceptions/user-facing.exception";
 
 export interface PythonApiTool {
   id: string;
@@ -573,7 +574,17 @@ export class PythonApiService implements OnModuleInit {
               } catch {
                 /* plain text */
               }
-              reject(new BadRequestException(`Python сервис алдаа: ${detail}`));
+              // [FIX] The Python sandbox returns curated, non-sensitive
+              // Mongolian error text (safety-check rejections, syntax
+              // errors, missing `result =`, etc). Use the user-facing
+              // variant so the global exception filter doesn't mask it
+              // with a generic "Хүсэлт буруу байна" — otherwise admins/
+              // users can never see *why* their code was rejected.
+              reject(
+                new UserFacingBadRequestException(
+                  `Python сервис алдаа: ${detail}`,
+                ),
+              );
             }
           });
         },

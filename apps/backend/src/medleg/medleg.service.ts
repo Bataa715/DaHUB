@@ -6,6 +6,60 @@ import {
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateMedlegDto } from "./dto/medleg.dto";
 import { randomUUID } from "crypto";
+import sanitizeHtml from "sanitize-html";
+
+// [MED-3] Client-side DOMPurify (knowledge/page.tsx) is not a security
+// boundary — anything hitting this API directly (curl, another client,
+// a future consumer) bypasses it entirely. Sanitize rich-text HTML on the
+// server too, mirroring the client's allowlist, so stored XSS isn't possible
+// via this endpoint regardless of caller.
+const RICH_TEXT_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "p",
+    "br",
+    "b",
+    "i",
+    "u",
+    "s",
+    "strong",
+    "em",
+    "span",
+    "div",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "a",
+    "img",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "hr",
+  ],
+  allowedAttributes: {
+    a: ["href", "target", "rel"],
+    img: ["src", "alt", "width", "height"],
+    "*": ["style", "class"],
+  },
+  allowedSchemes: ["http", "https", "data", "mailto"],
+  allowedSchemesByTag: { img: ["http", "https", "data"] },
+  transformTags: {
+    a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer" }),
+  },
+};
+
+function sanitizeRichText(html: string): string {
+  return sanitizeHtml(html ?? "", RICH_TEXT_SANITIZE_OPTIONS);
+}
 
 @Injectable()
 export class MedlegService {
@@ -42,7 +96,7 @@ export class MedlegService {
       {
         id,
         title: createMedlegDto.title,
-        content: createMedlegDto.content ?? "",
+        content: sanitizeRichText(createMedlegDto.content ?? ""),
         category: createMedlegDto.category || "Аудит",
         imageUrl: imageData,
         imageMime,
@@ -259,7 +313,12 @@ export class MedlegService {
         newsId,
         authorId,
         authorName,
-        content: content.trim(),
+        // Comments are rendered as plain text on the client — strip all
+        // markup here too so a stored comment can never carry live HTML.
+        content: sanitizeHtml(content.trim(), {
+          allowedTags: [],
+          allowedAttributes: {},
+        }),
         createdAt: nowCH(),
       },
     ]);

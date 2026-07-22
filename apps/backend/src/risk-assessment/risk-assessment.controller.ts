@@ -15,6 +15,14 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
+import {
+  UpsertManualIndicatorDto,
+  SetHoldDto,
+  LockDateBodyDto,
+  UpsertJudgementDto,
+  SaveHistoryFromRiskbranchDto,
+  UpsertBranchScoresDto,
+} from "./dto/risk-assessment.dto";
 
 @UseGuards(JwtAuthGuard, ToolGuard)
 @RequireTools("risk_assessment")
@@ -30,7 +38,7 @@ export class RiskAssessmentController {
 
   @Put("manual-indicators")
   async upsertManualIndicator(
-    @Body() body: { branchId: string; indicatorId: string; value: number },
+    @Body() body: UpsertManualIndicatorDto,
     @Request() req,
   ) {
     await this.service.upsertManualIndicator({ ...body, userId: req.user.id });
@@ -62,10 +70,7 @@ export class RiskAssessmentController {
   }
 
   @Put("holds")
-  async setHold(
-    @Body() body: { indicatorId: string; period: string; isHeld: boolean },
-    @Request() req,
-  ) {
+  async setHold(@Body() body: SetHoldDto, @Request() req) {
     await this.service.setHold(
       body.indicatorId,
       body.period,
@@ -93,7 +98,7 @@ export class RiskAssessmentController {
   }
 
   @Post("riskbranch/lock")
-  async lockDate(@Body() body: { date: string }, @Request() req) {
+  async lockDate(@Body() body: LockDateBodyDto, @Request() req) {
     await this.service.lockDate(body.date, req.user.id);
     return { ok: true };
   }
@@ -117,31 +122,14 @@ export class RiskAssessmentController {
   }
 
   @Put("judgement")
-  async upsertJudgement(
-    @Body()
-    body: {
-      branchId: string;
-      branchName: string;
-      fetchedDate: string;
-      score: number;
-      comment?: string;
-    },
-    @Request() req,
-  ) {
+  async upsertJudgement(@Body() body: UpsertJudgementDto, @Request() req) {
     await this.service.upsertJudgement({ ...body, userId: req.user.id });
     return { ok: true };
   }
 
   @Post("history/from-riskbranch")
   async saveHistoryFromRiskbranch(
-    @Body()
-    body: {
-      fetchedDate: string;
-      name: string;
-      rows?: unknown[];
-      manualMap?: Record<string, Record<string, number>>;
-      judgementComments?: Record<string, string>;
-    },
+    @Body() body: SaveHistoryFromRiskbranchDto,
     @Request() req,
   ) {
     return this.service.saveHistoryFromRiskbranch({
@@ -164,24 +152,7 @@ export class RiskAssessmentController {
   @UseGuards(AdminGuard)
   @Post("branch-scores")
   async upsertBranchScores(
-    @Body()
-    body: {
-      fetchDate: string;
-      scores: {
-        branchId: string;
-        branchName: string;
-        solid: string;
-        rating: string;
-        region: string;
-        s1: number | null;
-        s2: number | null;
-        s3: number | null;
-        s4: number;
-        j: number;
-        total: number | null;
-        level: string;
-      }[];
-    },
+    @Body() body: UpsertBranchScoresDto,
     @Request() req,
   ) {
     await this.service.upsertBranchScores(

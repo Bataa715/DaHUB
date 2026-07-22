@@ -31,30 +31,11 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
-          {
-            key: "Content-Security-Policy",
-            // Development: Next.js React Refresh (HMR) нь 'unsafe-eval' шаарддаг.
-            // Production: 'unsafe-eval' хэрэггүй — аюулгүй байдлын үүднээс хасна.
-            value: [
-              "default-src 'self'",
-              process.env.NODE_ENV === "development"
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-                : "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' blob: data: http://localhost:3001 https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pinimg.com https://api.dicebear.com https://cdn.simpleicons.org https://api.qrserver.com",
-              "font-src 'self' data:",
-              "connect-src 'self' " +
-                (process.env.NEXT_PUBLIC_API_URL ?? "") +
-                (process.env.NODE_ENV === "development"
-                  ? " ws://localhost:* wss://localhost:*"
-                  : "") +
-                " https://cdn.simpleicons.org",
-              "object-src 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "frame-ancestors 'none'",
-            ].join("; "),
-          },
+          // [MED-4] Content-Security-Policy is now generated per-request in
+          // middleware.ts with a random nonce for script-src (replacing the
+          // static 'unsafe-inline' below) — see middleware.ts for the actual
+          // policy. Keeping it here too would just create a duplicate/looser
+          // policy, so it has been removed from this static header list.
         ],
       },
     ];

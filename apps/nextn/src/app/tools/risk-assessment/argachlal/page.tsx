@@ -39,7 +39,10 @@ function describeScale(scaleJson: string): {
 } {
   const scale = parseScale(scaleJson);
 
-  const rangeText = (r: { min?: number | null; max?: number | null }): string => {
+  const rangeText = (r: {
+    min?: number | null;
+    max?: number | null;
+  }): string => {
     if (r.min == null && r.max == null) return "бүх утга";
     if (r.min == null) return `${r.max}-аас бага`;
     if (r.max == null) return `${r.min}-аас их/тэнцүү`;

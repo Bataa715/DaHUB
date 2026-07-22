@@ -225,9 +225,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // Create database if not exists
       await this.exec(`CREATE DATABASE IF NOT EXISTS audit_db`);
 
-      // Legacy orphan table (app кодонд ашиглагдахгүй)
-      await this.exec(`DROP TABLE IF EXISTS weekly_reports`).catch(() => {});
-
       // Create departments table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS departments (
@@ -475,24 +472,16 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS grantableTools String DEFAULT '[]'`,
       ).catch(() => {});
 
-      // 2) Хэзээ ч бөглөгддөггүй / уншигддаггүй баганууд — DROP
-      const dropColumns: [string, string][] = [
-        ["audit_logs", "userEmail"],
-        ["audit_logs", "ipAddress"],
-        ["audit_logs", "userAgent"],
-        ["refresh_tokens", "id"],
-        ["login_attempts", "id"],
-        ["departments", "employeeCount"],
-        ["tailan_images", "dataBase64"], // legacy нэртэй хуучин багана
-      ];
-      for (const [table, column] of dropColumns) {
-        await this.exec(
-          `ALTER TABLE ${table} DROP COLUMN IF EXISTS ${column}`,
-          undefined,
-          1,
-          true,
-        ).catch(() => {});
-      }
+      // 1b) tailan_reports.sectionsDataJson — template-driven generic section
+      // storage (Tailan dynamic template refactor). Old per-field JSON columns
+      // above are kept read-only for backward compat with pre-refactor rows.
+      await this.exec(
+        `ALTER TABLE tailan_reports ADD COLUMN IF NOT EXISTS sectionsDataJson String DEFAULT ''`,
+      ).catch(() => {});
+
+      // [SAFETY] DROP TABLE/DROP COLUMN migration-уудыг эндээс хассан — app boot
+      // (onModuleInit) local/prod ижил DB руу холбогдоход эргэлт буцалтгүй
+      // өгөгдөл устгах эрсдэлтэй байсан тул.
 
       // 3) TTL — лог хүснэгтүүд автоматаар цэвэрлэгдэнэ
       await this.exec(

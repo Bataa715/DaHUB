@@ -11,7 +11,7 @@ import { JwtService } from "@nestjs/jwt";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import {
   buildUserId,
   safeParseTools,
@@ -150,7 +150,19 @@ export class AuthService {
     });
   }
 
-  /** Generate a refresh token and store it in the database */
+  // [MED-1] Refresh tokens are high-value bearer credentials (3h validity,
+  // usable to mint new access tokens). Store only a SHA-256 hash in the DB —
+  // identical in spirit to password hashing — so a read-only DB leak (backup,
+  // dump, misconfigured access) cannot be replayed as a live session. The
+  // raw token is still returned to the caller and set as the HttpOnly cookie;
+  // only the DB copy is hashed. A fast hash (not bcrypt) is appropriate here
+  // since the token itself is a high-entropy random UUID, not a
+  // human-guessable secret — there's no brute-force risk to slow down.
+  private hashToken(token: string): string {
+    return createHash("sha256").update(token).digest("hex");
+  }
+
+  /** Generate a refresh token and store it (hashed) in the database */
   private async generateRefreshToken(userId: string): Promise<string> {
     const refreshToken = randomUUID();
     // Store expiresAt as Unix epoch integer — ClickHouse JSONEachRow treats numbers
@@ -160,7 +172,7 @@ export class AuthService {
     await this.clickhouse.insert("refresh_tokens", [
       {
         userId,
-        token: refreshToken,
+        token: this.hashToken(refreshToken),
         expiresAt: expiresAtEpoch,
         isRevoked: 0,
         createdAt: nowCH(),
@@ -173,6 +185,7 @@ export class AuthService {
   /** Validate and use a refresh token to generate a new access token */
   async refreshAccessToken(refreshTokenDto: RefreshTokenDto): Promise<any> {
     const { refreshToken } = refreshTokenDto;
+    const tokenHash = this.hashToken(refreshToken);
 
     // Find the refresh token — compare with epoch integer to stay timezone-independent.
     const nowEpoch = Math.floor(Date.now() / 1000);
@@ -182,7 +195,7 @@ export class AuthService {
          AND isRevoked = 0
          AND toUnixTimestamp(expiresAt) > {nowEpoch:UInt32}
        LIMIT 1`,
-      { token: refreshToken, nowEpoch },
+      { token: tokenHash, nowEpoch },
     )) as any[];
 
     const tokenRecord = tokens[0];
@@ -212,7 +225,7 @@ export class AuthService {
     // before we return — prevents token replay if the client retries the request.
     await this.clickhouse.exec(
       "ALTER TABLE refresh_tokens UPDATE isRevoked = 1 WHERE token = {token:String} SETTINGS mutations_sync = 1",
-      { token: refreshToken },
+      { token: tokenHash },
     );
 
     // Generate new tokens after old token is revoked
@@ -535,19 +548,6 @@ export class AuthService {
     return this.formatUserResponse(user);
   }
 
-  async getUsersByDepartment(departmentName: string, limit = 100, offset = 0) {
-    const users = await this.clickhouse.query<any>(
-      `SELECT u.id, u.name, u.position
-       FROM users u JOIN departments d ON u.departmentId = d.id
-       WHERE d.name = {departmentName:String}
-         AND u.isActive = 1
-         AND ${webVisibleUserSql("u")}
-       LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
-      { departmentName, limit, offset },
-    );
-    return { users: users || [] };
-  }
-
   async searchUsersByUserId(query: string, adminOnly: boolean = false) {
     if (!query || query.length < 3) return { users: [] };
     const pattern = `%${query}%`;
@@ -569,8 +569,11 @@ export class AuthService {
         name: u.name,
         userId: u.userId || "",
         department: u.departmentName || "",
-        position: u.position,
-        ...(adminOnly ? { id: u.id } : {}),
+        // [SEC] `position` is only needed by the (currently unused) admin
+        // search path — the public pre-auth login autocomplete doesn't
+        // render it, so don't hand it to anonymous callers. Minimizes
+        // PII exposed via this unauthenticated enumeration surface.
+        ...(adminOnly ? { position: u.position, id: u.id } : {}),
       })),
     };
   }

@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
+import { getApiAuth, hasToolAccess } from "@/lib/api-auth";
+
+// [H-10] User-supplied filename is echoed into the Content-Disposition header.
+// Strip anything that isn't a safe filename character (blocks CR/LF header
+// injection and path separators) and cap the length.
+function sanitizeFilename(name: string | undefined): string {
+  const fallback = "sample_result.xlsx";
+  if (!name) return fallback;
+  const cleaned = name
+    .replace(/[\r\n]/g, "")
+    .replace(/[^\w.\-() \u0400-\u04FF]/g, "_")
+    .trim()
+    .slice(0, 150);
+  if (!cleaned) return fallback;
+  return /\.xlsx$/i.test(cleaned) ? cleaned : `${cleaned}.xlsx`;
+}
 
 // ── Types (mirror from page) ──────────────────────────────────────────────────
 interface SampleGroup {
@@ -28,8 +44,17 @@ interface ExportPayload {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await getApiAuth(req);
+  if (!hasToolAccess(auth, ["sanamsargui-tuuwer"])) {
+    return NextResponse.json(
+      { error: "Нэвтрэх шаардлагатай" },
+      { status: 401 },
+    );
+  }
+
   const body: ExportPayload = await req.json();
   const { result, isStratified, filename } = body;
+  const safeFilename = sanitizeFilename(filename);
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "Internal Audit Tool";
@@ -175,7 +200,7 @@ export async function POST(req: NextRequest) {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${filename || "sample_result.xlsx"}"`,
+      "Content-Disposition": `attachment; filename="${safeFilename}"`,
     },
   });
 }

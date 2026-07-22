@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useState, useMemo, useEffect } from "react";
 import type ExcelJS from "exceljs";
 import {
@@ -565,8 +564,7 @@ async function downloadIndicatorXlsx(
   const judgmentInd = pickJudgmentIndicator(catalog);
   const judgmentIndId = judgmentInd?.id ?? "";
   const includeJudgment =
-    judgmentInd != null &&
-    (!filterIds || filterIds.has(judgmentIndId));
+    judgmentInd != null && (!filterIds || filterIds.has(judgmentIndId));
   const sortedInd = [
     ...selected,
     ...(includeJudgment ? [judgmentInd] : []),
@@ -778,10 +776,7 @@ export default function CsvExportModal({
       m.get(c.group)!.push(c);
     }
     if (!m.has(5)) m.set(5, []);
-    if (
-      judgmentInd &&
-      !m.get(5)!.some((c) => c.id === judgmentInd.id)
-    ) {
+    if (judgmentInd && !m.get(5)!.some((c) => c.id === judgmentInd.id)) {
       m.get(5)!.push(judgmentInd);
     }
     return m;
@@ -842,8 +837,7 @@ export default function CsvExportModal({
   );
 
   const prevManualForAgg = useMemo(
-    () =>
-      mergeJudgementsIntoManualMap(prevManualMap, prevJudgements, catalog),
+    () => mergeJudgementsIntoManualMap(prevManualMap, prevJudgements, catalog),
     [prevManualMap, prevJudgements, catalog],
   );
 

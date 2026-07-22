@@ -255,9 +255,7 @@ export default function RedFlagPage() {
   }));
 
   const otherChains =
-    data?.chains.filter(
-      (c) => !chainGroups.some((g) => g.filter(c)),
-    ) ?? [];
+    data?.chains.filter((c) => !chainGroups.some((g) => g.filter(c))) ?? [];
 
   return (
     <div className="space-y-5">

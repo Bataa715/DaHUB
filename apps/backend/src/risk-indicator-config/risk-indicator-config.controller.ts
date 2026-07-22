@@ -16,7 +16,6 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import {
   RiskIndicatorConfigService,
   IndicatorConfig,
-  GroupConfig,
 } from "./risk-indicator-config.service";
 
 @Controller("risk-indicator-config")
@@ -28,12 +27,6 @@ export class RiskIndicatorConfigController {
   @Get()
   list(): Promise<IndicatorConfig[]> {
     return this.svc.listIndicators();
-  }
-
-  /** GET /risk-indicator-config/group-config — бүх нэвтэрсэн хэрэглэгч уншиж болно */
-  @Get("group-config")
-  listGroups(): Promise<GroupConfig[]> {
-    return this.svc.listGroupConfig();
   }
 
   @UseGuards(AdminGuard)
@@ -69,15 +62,5 @@ export class RiskIndicatorConfigController {
     @CurrentUser() user: { id: string },
   ): Promise<void> {
     return this.svc.deleteIndicator(id, user.id);
-  }
-
-  @UseGuards(AdminGuard)
-  @Post("reorder")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  reorder(
-    @Body() body: { ids: string[] },
-    @CurrentUser() user: { id: string },
-  ): Promise<void> {
-    return this.svc.reorderIndicators(body.ids, user.id);
   }
 }

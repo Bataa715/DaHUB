@@ -49,12 +49,11 @@ function toScored(
     .filter((r) => r.rowType === "oracle")
     .map((r) => {
       const subid = String(r.SUBID ?? "").trim();
-      const { score, label, indicator: ind } = computeOracleRowScore(
-        catalog,
-        subid,
-        r.RESULT,
-        r.RESULT_TYPE,
-      );
+      const {
+        score,
+        label,
+        indicator: ind,
+      } = computeOracleRowScore(catalog, subid, r.RESULT, r.RESULT_TYPE);
       const grpNum = ind?.group;
       const __group: ScoreGroup | null =
         grpNum === 1
@@ -623,9 +622,7 @@ export default function RiskWorkPage() {
                 <BookmarkPlus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">
-                  Тайланг хадгалах
-                </h3>
+                <h3 className="text-sm font-semibold">Тайланг хадгалах</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   Сонгосон огноо: {saveModalMeta.pDate}
                 </p>

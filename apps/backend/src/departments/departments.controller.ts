@@ -29,16 +29,6 @@ export class DepartmentsController {
     return this.departmentsService.findAll();
   }
 
-  @Get("by-name/:name")
-  findByName(@Param("name") name: string) {
-    return this.departmentsService.findByName(decodeURIComponent(name));
-  }
-
-  @Get(":id")
-  findOne(@Param("id") id: string) {
-    return this.departmentsService.findOne(id);
-  }
-
   @UseGuards(AdminGuard)
   @Patch(":id")
   update(

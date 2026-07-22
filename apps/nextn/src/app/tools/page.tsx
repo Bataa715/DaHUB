@@ -18,6 +18,7 @@ import {
   Database,
   BellDot,
   ShieldAlert,
+  Activity,
 } from "lucide-react";
 
 interface Tool {
@@ -126,6 +127,16 @@ function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-rose-500 to-orange-500",
       glow: "shadow-rose-500/20 group-hover:shadow-rose-500/40",
       tag: "Risk",
+    },
+    {
+      id: "monitoring_box",
+      title: t("toolMonitoringBoxTitle"),
+      description: t("toolMonitoringBoxDesc"),
+      icon: Activity,
+      href: "/tools/monitoring-box",
+      gradient: "from-orange-500 to-red-500",
+      glow: "shadow-orange-500/20 group-hover:shadow-orange-500/40",
+      tag: "Audit",
     },
   ];
 }

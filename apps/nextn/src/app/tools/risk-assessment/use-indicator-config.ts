@@ -315,7 +315,11 @@ export function evaluateBranchDynamic(
       }
     }
     // Oracle мөр байхгүй эсвэл хоосон утга — score_scale-ийн null_empty_score бодлого
-    if (score === null && !ind.is_manual && !isMultiSubidScale(ind.score_scale)) {
+    if (
+      score === null &&
+      !ind.is_manual &&
+      !isMultiSubidScale(ind.score_scale)
+    ) {
       const empty = resolveEmptyNullScoreFromJson(ind.score_scale);
       if (typeof empty.score === "number" && empty.score > 0) {
         score = empty.score;
