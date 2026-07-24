@@ -3,27 +3,61 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Wrench, Users, Building2, Shield, Lock, LogOut } from "lucide-react";
+import { registrationRequestsApi } from "@/lib/api";
+import {
+  Wrench,
+  Users,
+  UserPlus,
+  Building2,
+  Shield,
+  Lock,
+  LogOut,
+  ScrollText,
+} from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 
-const OTHER_LINKS = [
-  { href: "/admin/users", label: "Хэрэглэгчид", icon: Users, superOnly: false },
+const OTHER_LINKS: {
+  href: string;
+  labelKey: TranslationKey;
+  icon: typeof Users;
+  superOnly: boolean;
+}[] = [
+  {
+    href: "/admin/users",
+    labelKey: "admLayoutNavUsers",
+    icon: Users,
+    superOnly: false,
+  },
+  {
+    href: "/admin/registrations",
+    labelKey: "admLayoutNavRegistrations",
+    icon: UserPlus,
+    superOnly: false,
+  },
+  {
+    href: "/admin/homepage-ethics",
+    labelKey: "admLayoutNavEthics",
+    icon: ScrollText,
+    superOnly: false,
+  },
   {
     href: "/admin/departments",
-    label: "Хэлтсүүд",
+    labelKey: "admDeptPageTitle",
     icon: Building2,
     superOnly: false,
   },
   {
     href: "/admin/admins",
-    label: "Админ удирдлага",
+    labelKey: "admAdminsPageTitle",
     icon: Shield,
     superOnly: true,
   },
   {
     href: "/admin/change-password",
-    label: "Нууц үг солих",
+    labelKey: "passwordChangeBtn",
     icon: Lock,
     superOnly: false,
   },
@@ -33,8 +67,26 @@ function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
+  const [pendingCount, setPendingCount] = useState(0);
 
   const isTools = pathname.startsWith("/admin/tools");
+
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+    let cancelled = false;
+    registrationRequestsApi
+      .list("pending")
+      .then((data: unknown) => {
+        if (!cancelled && Array.isArray(data)) setPendingCount(data.length);
+      })
+      .catch(() => {
+        /* ignore — badge is optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.isAdmin, pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -75,18 +127,20 @@ function AdminSidebar() {
           }`}
         >
           <Wrench className="w-3.5 h-3.5 shrink-0" />
-          Хэрэгсэл
+          {t("navTools")}
         </Link>
 
         {/* Бусад */}
         <div className="pt-3 pb-1 px-3">
           <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">
-            Бусад
+            {t("admLayoutOtherSectionLabel")}
           </p>
         </div>
         {visibleOthers.map((link) => {
           const Icon = link.icon;
           const active = pathname.startsWith(link.href);
+          const showBadge =
+            link.href === "/admin/registrations" && pendingCount > 0;
           return (
             <Link
               key={link.href}
@@ -98,7 +152,12 @@ function AdminSidebar() {
               }`}
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
-              {link.label}
+              <span className="flex-1 truncate">{t(link.labelKey)}</span>
+              {showBadge && (
+                <span className="shrink-0 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -114,7 +173,7 @@ function AdminSidebar() {
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-foreground/70 hover:text-red-500 hover:bg-red-500/10 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5 shrink-0" />
-          Гарах
+          {t("logout")}
         </button>
       </div>
     </aside>

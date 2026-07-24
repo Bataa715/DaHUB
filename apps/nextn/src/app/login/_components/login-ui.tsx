@@ -16,15 +16,6 @@ export function LoginBrandHeader() {
         DaHUB
       </motion.h1>
 
-      <motion.p
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="login-brand-subtitle mt-2 text-sm font-medium text-muted-foreground tracking-wide"
-      >
-        Дотоод аудитын систем
-      </motion.p>
-
       <motion.div
         initial={{ width: 0, opacity: 0 }}
         animate={{ width: 40, opacity: 1 }}

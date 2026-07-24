@@ -8,17 +8,13 @@ import {
   type RiskCurrentRow,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/contexts/LanguageContext";
-import Link from "next/link";
 import {
   Loader2,
   AlertTriangle,
   Bookmark,
   Trash2,
   BookmarkCheck,
-  GitCompare,
-  FileSpreadsheet,
-  Activity,
+  Search,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -35,12 +31,10 @@ import {
   judgementsFromListForBranches,
   normalizeBranchKeyedMap,
   oracleSolidsFromRows,
-  resolveNearestJudgements,
 } from "../branch-resolve";
 import ReportView from "../report-view";
-import ComparePanel from "./_ComparePanel";
-import CsvExportModal from "./_CsvExportModal";
-import type { ManualMap } from "../indicator-catalog";
+import MonthFilter, { formatMonthMn, prevMonthKey } from "./_MonthFilter";
+import { cn } from "@/lib/utils";
 
 type ScoredRow = RiskCurrentRow & {
   __score: ScoreResult;
@@ -79,15 +73,56 @@ function toScored(
     });
 }
 
+function monthKeyFromDate(iso: string): string {
+  return iso.slice(0, 7); // YYYY-MM
+}
+
+function currentMonthKey(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function hasJudgementScores(map: Record<string, number>): boolean {
+  return Object.values(map).some((v) => Number(v) > 0);
+}
+
+/** Тухайн огноонд judgement байхгүй бол ≤ огнооны хамгийн ойрын judgement авна */
+async function listJudgementsAsOf(pDate: string) {
+  const target = pDate.slice(0, 10);
+  const exact = await riskApi.listJudgements(target);
+  if (exact.length > 0) return exact;
+
+  const all = await riskApi.listJudgements();
+  const nearestDate = [
+    ...new Set(all.map((j) => String(j.fetchedDate).slice(0, 10))),
+  ]
+    .filter((d) => d && d <= target)
+    .sort((a, b) => b.localeCompare(a))[0];
+  if (!nearestDate) return [];
+  return all.filter((j) => String(j.fetchedDate).slice(0, 10) === nearestDate);
+}
+
 export default function RiskReportsPage() {
   const { user } = useAuth();
-  const { t } = useLanguage();
   const isAdmin = user?.isAdmin === true;
-  const { catalog, weights } = useIndicatorConfig();
+  const { catalog } = useIndicatorConfig();
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  /** Сараар шүүх (YYYY-MM) — хайлт дарсан үед л хэрэгжинэ */
+  const [filterMonth, setFilterMonth] = useState("");
+  /** Харьцуулах өмнөх сар (YYYY-MM) — хайлт дарсан үед л хэрэгжинэ */
+  const [compareMonth, setCompareMonth] = useState("");
+  /** UI дээрх draft сонголт (хайлт хүртэл table өөрчлөгдөхгүй) */
+  const [draftFilterMonth, setDraftFilterMonth] = useState("");
+  const [draftCompareMonth, setDraftCompareMonth] = useState("");
+  const [compareMonthOptOut, setCompareMonthOptOut] = useState(false);
+  /** Шүүлтийн горим: сар | улирал */
+  const [filterMode, setFilterMode] = useState<"month" | "quarter">("month");
 
   // Selected Primary Report
   const [selectedReportId, setSelectedReportId] = useState<string>("");
@@ -103,7 +138,7 @@ export default function RiskReportsPage() {
   >({});
   const [loadingReport, setLoadingReport] = useState(false);
 
-  // Selected Comparison Report
+  // Selected Comparison Report (өмнөх улирал)
   const [comparisonReportId, setComparisonReportId] = useState<string>("");
   const comparisonReportIdRef = useRef(comparisonReportId);
   comparisonReportIdRef.current = comparisonReportId;
@@ -115,31 +150,12 @@ export default function RiskReportsPage() {
   const [, setComparisonJudgementComments] =
     useState<Record<string, string>>({});
   const [loadingComparison, setLoadingComparison] = useState(false);
-
-  // Огноогоор харьцуулах (хяналттай адил — riskbranch-аас)
-  const [compareDate, setCompareDate] = useState("");
-  const compareDateRef = useRef(compareDate);
-  compareDateRef.current = compareDate;
-  const [dateCompareRows, setDateCompareRows] = useState<RiskCurrentRow[]>([]);
-  const [dateCompareManualMap, setDateCompareManualMap] = useState<ManualMap>(
-    {},
-  );
-  const [dateCompareJudgements, setDateCompareJudgements] = useState<
-    Record<string, number>
-  >({});
-  const [dateCompareActual, setDateCompareActual] = useState<string | null>(
-    null,
-  );
-  const [loadingDateCompare, setLoadingDateCompare] = useState(false);
   /** Хоосон сонгосон — харьцуулахгүй (авто өмнөх улирал цуцлагдсан) */
   const [compareOptOut, setCompareOptOut] = useState(false);
 
   const [riskFilter, setRiskFilter] = useState<
     "all" | "Өндөр" | "Дунд" | "Бага"
   >("all");
-
-  const [compareOpen, setCompareOpen] = useState(false);
-  const [csvModalOpen, setCsvModalOpen] = useState(false);
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -152,10 +168,17 @@ export default function RiskReportsPage() {
       .listHistory()
       .then((data) => {
         if (cancelled) return;
-        setHistoryList(data || []);
-        // Automatically select the most recent saved report if any
-        if (data && data.length > 0) {
-          setSelectedReportId(data[0].id);
+        const list = data || [];
+        setHistoryList(list);
+        if (list.length > 0) {
+          const latestMonth = monthKeyFromDate(list[0].pDate);
+          const month = latestMonth || currentMonthKey();
+          const prev = prevMonthKey(month);
+          setFilterMonth(month);
+          setCompareMonth(prev);
+          setDraftFilterMonth(month);
+          setDraftCompareMonth(prev);
+          setSelectedReportId(list[0].id);
         }
       })
       .catch(() => {
@@ -170,7 +193,60 @@ export default function RiskReportsPage() {
     };
   }, []);
 
-  // Fetch primary report details + risk_judgement (эх сурвалж)
+  /** Сонгосон сарын тайлангууд — бүрэн жагсаалт */
+  const monthFilteredHistory = useMemo(() => {
+    if (!filterMonth) return historyList;
+    return historyList.filter(
+      (h) => monthKeyFromDate(h.pDate) === filterMonth,
+    );
+  }, [historyList, filterMonth]);
+
+  /** Сараар сонголт солигдоход — тухайн сарын хамгийн сүүлийн тайланг автомат сонгоно */
+  useEffect(() => {
+    if (!filterMonth) return;
+    if (monthFilteredHistory.length === 0) {
+      setSelectedReportId("");
+      return;
+    }
+    const stillInMonth = monthFilteredHistory.some(
+      (h) => h.id === selectedReportIdRef.current,
+    );
+    if (!stillInMonth) {
+      setSelectedReportId(monthFilteredHistory[0].id);
+    }
+  }, [filterMonth, monthFilteredHistory]);
+
+  /** Draft үндсэн сар солигдоход — өмнөх сарыг draft дээр автоматаар тохируулна */
+  useEffect(() => {
+    if (!draftFilterMonth) {
+      setDraftCompareMonth("");
+      return;
+    }
+    if (compareMonthOptOut) return;
+    setDraftCompareMonth(prevMonthKey(draftFilterMonth));
+  }, [draftFilterMonth, compareMonthOptOut]);
+
+  const monthFilterDirty =
+    draftFilterMonth !== filterMonth || draftCompareMonth !== compareMonth;
+
+  const applyMonthFilter = useCallback(() => {
+    setFilterMonth(draftFilterMonth);
+    setCompareMonth(draftCompareMonth);
+    setCompareMonthOptOut(!draftCompareMonth);
+    if (draftCompareMonth) setCompareOptOut(true);
+    setErrorMsg(null);
+  }, [draftFilterMonth, draftCompareMonth]);
+
+  /** Өмнөх сарын хамгийн сүүлийн тайлан → харьцуулалт */
+  const compareMonthReportId = useMemo(() => {
+    if (!compareMonth) return "";
+    const inMonth = historyList
+      .filter((h) => monthKeyFromDate(h.pDate) === compareMonth)
+      .sort((a, b) => b.pDate.localeCompare(a.pDate));
+    return inMonth[0]?.id ?? "";
+  }, [historyList, compareMonth]);
+
+  // Fetch primary report details + risk_judgement
   useEffect(() => {
     if (!selectedReportId) {
       setReportRows([]);
@@ -181,16 +257,13 @@ export default function RiskReportsPage() {
     }
     const requestId = selectedReportId;
     const pDate = historyList.find((h) => h.id === requestId)?.pDate;
-    setReportRows([]);
-    setReportManualMap({});
-    setReportJudgements({});
-    setReportJudgementComments({});
+    // Хуучин table-ийг арилгахгүй — fade + шинэ өгөгдөл орж иртэл хадгална
     let cancelled = false;
     setLoadingReport(true);
     setErrorMsg(null);
     Promise.all([
       riskApi.getHistory(requestId),
-      pDate ? riskApi.listJudgements(pDate) : Promise.resolve([]),
+      pDate ? listJudgementsAsOf(pDate) : Promise.resolve([]),
     ])
       .then(([res, jList]) => {
         if (cancelled || requestId !== selectedReportIdRef.current) return;
@@ -204,24 +277,30 @@ export default function RiskReportsPage() {
           res.judgementComments || {},
           solids,
         );
+        // Snapshot-д judgement байвал түүнийг давуу, үгүй бол as-of API
+        const mergedJ = hasJudgementScores(snapJ)
+          ? { ...apiJ, ...snapJ }
+          : { ...snapJ, ...apiJ };
         setReportRows(rows);
         setReportManualMap(manualMap);
-        setReportJudgements({ ...snapJ, ...apiJ });
+        setReportJudgements(mergedJ);
         setReportJudgementComments({ ...snapComments, ...apiComments });
       })
-      .catch(() => {
-        if (cancelled) return;
-        setErrorMsg("Сонгосон тайлангийн өгөгдлийг уншихад алдаа гарлаа.");
+      .catch((e: unknown) => {
+        if (cancelled || requestId !== selectedReportIdRef.current) return;
+        setErrorMsg(getApiErrorMessage(e) || "Тайлан уншихад алдаа гарлаа");
       })
       .finally(() => {
-        if (!cancelled) setLoadingReport(false);
+        if (!cancelled && requestId === selectedReportIdRef.current) {
+          setLoadingReport(false);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [selectedReportId, historyList, catalog]);
 
-  // Fetch comparison report details + risk_judgement
+  // Fetch comparison (өмнөх улирал) report
   useEffect(() => {
     if (!comparisonReportId) {
       setComparisonRows([]);
@@ -232,15 +311,11 @@ export default function RiskReportsPage() {
     }
     const requestId = comparisonReportId;
     const pDate = historyList.find((h) => h.id === requestId)?.pDate;
-    setComparisonRows([]);
-    setComparisonManualMap({});
-    setComparisonJudgements({});
-    setComparisonJudgementComments({});
     let cancelled = false;
     setLoadingComparison(true);
     Promise.all([
       riskApi.getHistory(requestId),
-      pDate ? riskApi.listJudgements(pDate) : Promise.resolve([]),
+      pDate ? listJudgementsAsOf(pDate) : Promise.resolve([]),
     ])
       .then(([res, jList]) => {
         if (cancelled || requestId !== comparisonReportIdRef.current) return;
@@ -254,102 +329,59 @@ export default function RiskReportsPage() {
           res.judgementComments || {},
           solids,
         );
+        const mergedJ = hasJudgementScores(snapJ)
+          ? { ...apiJ, ...snapJ }
+          : { ...snapJ, ...apiJ };
         setComparisonRows(rows);
         setComparisonManualMap(manualMap);
-        setComparisonJudgements({ ...snapJ, ...apiJ });
+        setComparisonJudgements(mergedJ);
         setComparisonJudgementComments({ ...snapComments, ...apiComments });
       })
-      .catch((e) => console.error("getHistory амжилтгүй:", e))
+      .catch(() => {
+        if (cancelled || requestId !== comparisonReportIdRef.current) return;
+        setComparisonRows([]);
+        setComparisonManualMap({});
+        setComparisonJudgements({});
+      })
       .finally(() => {
-        if (!cancelled) setLoadingComparison(false);
+        if (!cancelled && requestId === comparisonReportIdRef.current) {
+          setLoadingComparison(false);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [comparisonReportId, historyList, catalog]);
 
-  // Сонгосон тайлан солигдоход — огноо харьцуулалт цэвэрлээд авто өмнөх улирал
+  // Сонгосон тайлан солигдоход — авто өмнөх улирал дахин
   useEffect(() => {
     setCompareOptOut(false);
-    setCompareDate("");
-    setDateCompareRows([]);
-    setDateCompareManualMap({});
-    setDateCompareJudgements({});
-    setDateCompareActual(null);
   }, [selectedReportId]);
 
-  // Авто: хамгийн ойрын өмнөх улирлын тайлан (огноо/opt-out үед биш)
+  // Харьцуулалт: өмнөх сар давуу, үгүй бол өмнөх улирлын тайлан
   useEffect(() => {
+    if (compareMonth) {
+      setComparisonReportId(compareMonthReportId);
+      return;
+    }
     const selP = historyList.find((h) => h.id === selectedReportId)?.pDate;
     if (!selectedReportId || !selP) {
       setComparisonReportId("");
       return;
     }
-    if (compareDate || compareOptOut) return;
+    if (compareOptOut) return;
     const earlier = historyList
       .filter((h) => h.id !== selectedReportId && h.pDate < selP)
       .sort((a, b) => b.pDate.localeCompare(a.pDate));
     setComparisonReportId(earlier[0]?.id ?? "");
-  }, [selectedReportId, historyList, compareOptOut, compareDate]);
+  }, [
+    selectedReportId,
+    historyList,
+    compareOptOut,
+    compareMonth,
+    compareMonthReportId,
+  ]);
 
-  // Огноогоор харьцуулах — riskbranch-аас тухайн (эсвэл ойр) өдрийн үр дүн
-  useEffect(() => {
-    if (!compareDate || catalog.length === 0) {
-      if (!compareDate) {
-        setDateCompareRows([]);
-        setDateCompareManualMap({});
-        setDateCompareJudgements({});
-        setDateCompareActual(null);
-      }
-      return;
-    }
-    const requestDate = compareDate.slice(0, 10);
-    let cancelled = false;
-    setLoadingDateCompare(true);
-    (async () => {
-      try {
-        const [res, allJudge] = await Promise.all([
-          riskApi.getRiskbranch(requestDate),
-          riskApi.listJudgements(),
-        ]);
-        if (cancelled || requestDate !== compareDateRef.current.slice(0, 10))
-          return;
-        const actualDate = (res.fetchedDate || requestDate).slice(0, 10);
-        const rows = (res.rows || []).filter(
-          (r) => r.rowType === "oracle" || !r.rowType,
-        );
-        const manualMap = (res.manualMap || {}) as ManualMap;
-        const solids = oracleSolidsFromRows(rows);
-        const resolved = resolveNearestJudgements(allJudge, actualDate, solids);
-        setDateCompareRows(rows);
-        setDateCompareManualMap(manualMap);
-        setDateCompareJudgements(resolved.scores);
-        setDateCompareActual(actualDate);
-        if (rows.length === 0) {
-          setErrorMsg(
-            `${requestDate} өдөр (эсвэл өмнөх)-ийн эрсдэлийн өгөгдөл олдсонгүй`,
-          );
-        }
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setDateCompareRows([]);
-          setDateCompareManualMap({});
-          setDateCompareJudgements({});
-          setDateCompareActual(null);
-          setErrorMsg(
-            getApiErrorMessage(e) || "Харьцуулах огнооны өгөгдөл олдсонгүй",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoadingDateCompare(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [compareDate, catalog]);
-
-  // Delete handler
   const openDeleteConfirm = useCallback((id: string) => {
     setDeleteTargetId(id);
     setDeleteModalOpen(true);
@@ -379,7 +411,6 @@ export default function RiskReportsPage() {
     return historyList.find((h) => h.id === comparisonReportId) || null;
   }, [historyList, comparisonReportId]);
 
-  /** Сонгосон тайланаас өмнөх pDate-тай хадгалсан тайлангууд */
   const earlierHistoryOptions = useMemo(() => {
     const selP = selectedReportInfo?.pDate;
     if (!selP) return [];
@@ -389,33 +420,175 @@ export default function RiskReportsPage() {
       .sort((a, b) => b.pDate.localeCompare(a.pDate));
   }, [historyList, selectedReportId, selectedReportInfo?.pDate]);
 
-  /** Огноо сонгосон бол тэр үргэлж давуу — хадгалсан өмнөх улирлаас түрүүлж */
-  const useDateCompare = Boolean(compareDate);
-
   const primaryScoredRows = useMemo(
     () => toScored(reportRows, catalog),
     [reportRows, catalog],
   );
   const comparisonScoredRows = useMemo(
-    () =>
-      toScored(useDateCompare ? dateCompareRows : comparisonRows, catalog),
-    [useDateCompare, dateCompareRows, comparisonRows, catalog],
+    () => toScored(comparisonRows, catalog),
+    [comparisonRows, catalog],
   );
 
-  const activePrevManualMap = useDateCompare
-    ? dateCompareManualMap
-    : comparisonManualMap;
-  const activePrevJudgements = useDateCompare
-    ? dateCompareJudgements
-    : comparisonJudgements;
-  const activePrevName = useDateCompare
-    ? compareDate
-      ? `Огноо ${compareDate}`
-      : null
-    : (comparisonReportInfo?.name ?? null);
-  const showComparison = useDateCompare
-    ? dateCompareRows.length > 0 && !loadingDateCompare
-    : Boolean(comparisonReportId) && comparisonRows.length > 0;
+  const showComparison =
+    Boolean(comparisonReportId) &&
+    comparisonRows.length > 0 &&
+    !loadingComparison;
+
+  const fieldClass =
+    "h-7 px-2 rounded-md border border-border bg-background text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/40 cursor-pointer disabled:opacity-40";
+
+  const filterControls = (
+    <div className="flex items-center gap-x-2.5 gap-y-1.5 flex-wrap min-w-0">
+      <div className="flex items-center rounded-md border border-border bg-background p-0.5 shrink-0">
+        <button
+          type="button"
+          onClick={() => {
+            setFilterMode("month");
+            setCompareMonthOptOut(false);
+            if (draftFilterMonth) {
+              setDraftCompareMonth(prevMonthKey(draftFilterMonth));
+            }
+          }}
+          className={cn(
+            "h-6 px-2.5 rounded text-[10px] font-semibold transition-colors",
+            filterMode === "month"
+              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Сараар
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setFilterMode("quarter");
+            setDraftCompareMonth("");
+            setCompareMonth("");
+            setCompareMonthOptOut(true);
+            setCompareOptOut(false);
+          }}
+          className={cn(
+            "h-6 px-2.5 rounded text-[10px] font-semibold transition-colors",
+            filterMode === "quarter"
+              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Улирлаар
+        </button>
+      </div>
+
+      {filterMode === "month" ? (
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          <MonthFilter
+            value={draftFilterMonth}
+            onChange={(m) => {
+              setDraftFilterMonth(m);
+              setCompareMonthOptOut(false);
+              setErrorMsg(null);
+            }}
+            ariaLabel="Үндсэн сар"
+          />
+          <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+            Өмнөх сар
+          </span>
+          <MonthFilter
+            value={draftCompareMonth}
+            maxExclusive={draftFilterMonth || undefined}
+            placeholder="өмнөх сар"
+            ariaLabel="Өмнөх сар"
+            onChange={(m) => {
+              setDraftCompareMonth(m);
+              setCompareMonthOptOut(!m);
+              setErrorMsg(null);
+            }}
+          />
+          <button
+            type="button"
+            onClick={applyMonthFilter}
+            disabled={!draftFilterMonth || !monthFilterDirty || loadingReport}
+            title="Сонгосон сараар хайх"
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors shrink-0",
+              monthFilterDirty
+                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-400"
+                : "border-border bg-background text-muted-foreground hover:bg-muted/40",
+              "disabled:opacity-40 disabled:pointer-events-none",
+            )}
+          >
+            {loadingReport ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Search className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          <select
+            value={selectedReportId}
+            onChange={(e) => setSelectedReportId(e.target.value)}
+            disabled={loading || historyList.length === 0}
+            className={cn(fieldClass, "min-w-[12rem] max-w-[18rem]")}
+          >
+            <option value="">— тайлан сонгох —</option>
+            {historyList.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name} ({h.pDate})
+              </option>
+            ))}
+          </select>
+          {selectedReportId && isAdmin && (
+            <button
+              onClick={() => openDeleteConfirm(selectedReportId)}
+              title="Энэ тайланг устгах"
+              className="p-1 rounded-md border border-red-500/20 bg-red-500/5 text-red-600 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+            Өмнөх
+          </span>
+          <select
+            value={comparisonReportId}
+            onChange={(e) => {
+              const v = e.target.value;
+              setCompareMonth("");
+              setCompareMonthOptOut(true);
+              if (!v) {
+                setCompareOptOut(true);
+                setComparisonReportId("");
+                return;
+              }
+              setCompareOptOut(false);
+              setComparisonReportId(v);
+            }}
+            disabled={loading || !selectedReportId}
+            className={cn(fieldClass, "min-w-[11rem] max-w-[16rem]")}
+          >
+            <option value="">— сонгох —</option>
+            {earlierHistoryOptions.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name} ({h.pDate})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  );
+
+  const showReportTable =
+    !loading &&
+    !(loadingReport && reportRows.length === 0) &&
+    historyList.length > 0 &&
+    !(
+      filterMode === "month" &&
+      filterMonth &&
+      monthFilteredHistory.length === 0
+    ) &&
+    !(!selectedReportId && reportRows.length === 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
@@ -423,36 +596,6 @@ export default function RiskReportsPage() {
         href="/tools/risk-assessment"
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
         title="Тайлан"
-        rightContent={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/tools/risk-assessment/hyanalt"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
-            >
-              <Activity className="w-3.5 h-3.5" />
-              {t("riskMonitorCardTitle")}
-            </Link>
-            {selectedReportId &&
-              !loadingReport &&
-              primaryScoredRows.length > 0 && (
-                <button
-                  onClick={() => setCsvModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-xs font-semibold hover:bg-sky-500/20 transition-colors"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  Татах
-                </button>
-              )}
-            <button
-              onClick={() => setCompareOpen(true)}
-              disabled={historyList.length < 2}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-semibold hover:bg-violet-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <GitCompare className="w-3.5 h-3.5" />
-              Харьцуулалт
-            </button>
-          </div>
-        }
       />
 
       <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1800px]">
@@ -469,126 +612,19 @@ export default function RiskReportsPage() {
           </div>
         )}
 
-        {/* Toolbar with Select Dropdowns */}
-        <div className="rounded-xl border border-border bg-muted/30 p-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                Тайлан сонгох
-              </span>
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedReportId}
-                  onChange={(e) => setSelectedReportId(e.target.value)}
-                  disabled={loading || historyList.length === 0}
-                  className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer min-w-[220px]"
-                >
-                  <option value="">-- Тайлан сонгох --</option>
-                  {historyList.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name} ({h.pDate})
-                    </option>
-                  ))}
-                </select>
-                {selectedReportId && isAdmin && (
-                  <button
-                    onClick={() => openDeleteConfirm(selectedReportId)}
-                    title="Энэ тайланг устгах"
-                    className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-600 hover:bg-red-500/10 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-            {selectedReportId && (
-              <>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                    Өмнөх улирал
-                  </span>
-                  <select
-                    value={comparisonReportId}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (!v) {
-                        setCompareOptOut(true);
-                        setComparisonReportId("");
-                        return;
-                      }
-                      setCompareOptOut(false);
-                      setComparisonReportId(v);
-                      setCompareDate("");
-                    }}
-                    disabled={loading}
-                    className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer min-w-[220px]"
-                  >
-                    <option value=""> </option>
-                    {earlierHistoryOptions.map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.name} ({h.pDate})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                    Огноогоор харьцуулах
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={compareDate}
-                      max={selectedReportInfo?.pDate || undefined}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setCompareDate(v);
-                        if (v) {
-                          setComparisonReportId("");
-                          setCompareOptOut(true);
-                          setErrorMsg(null);
-                        } else {
-                          setCompareOptOut(false);
-                        }
-                      }}
-                      disabled={!selectedReportInfo?.pDate}
-                      title="Сонгосон огнооны эрсдэлийн Total/түвшинг тайлантай харьцуулах"
-                      aria-label="Харьцуулах огноо"
-                      className="h-8 px-2 rounded-lg border border-emerald-500/40 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer disabled:opacity-40"
-                    />
-                    {loadingDateCompare && (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                    )}
-                    {compareDate && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCompareDate("");
-                          setCompareOptOut(false);
-                          setDateCompareRows([]);
-                          setDateCompareActual(null);
-                        }}
-                        className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 h-7 rounded-md border border-border"
-                        title="Огноо харьцуулалт цуцлах"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+        {/* ReportView байхгүй үед шүүлтийг тусад нь харуулна */}
+        {!showReportTable && (
+          <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 sm:px-4 sm:py-2.5">
+            {filterControls}
           </div>
-        </div>
+        )}
 
-        {/* Loading Spinner — огноо/өмнөх улирал ачаалахад хүснэгтийг нуухгүй */}
-        {loading || loadingReport ? (
+        {loading || (loadingReport && reportRows.length === 0) ? (
           <div className="flex flex-col items-center justify-center py-32 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
             <p className="text-sm text-muted-foreground">Уншиж байна…</p>
           </div>
         ) : historyList.length === 0 ? (
-          /* Empty State */
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
               <Bookmark className="w-6 h-6 text-muted-foreground/60" />
@@ -601,62 +637,64 @@ export default function RiskReportsPage() {
               хадгалснаар энд жагсаалт харагдах болно.
             </div>
           </div>
-        ) : !selectedReportId ? (
+        ) : filterMode === "month" &&
+          filterMonth &&
+          monthFilteredHistory.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+            <div className="text-sm font-semibold text-muted-foreground">
+              {formatMonthMn(filterMonth)}-д хадгалсан тайлан байхгүй
+            </div>
+            <div className="text-xs text-muted-foreground/60 mt-1">
+              Өөр сар сонгох эсвэл улирлаар горимд шилжэж харна уу
+            </div>
+          </div>
+        ) : !selectedReportId && reportRows.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
               Дээрх цонхоор харах тайлангаа сонгоно уу
             </div>
           </div>
         ) : (
-          /* Report view (ReadOnly) */
-          <ReportView
-            key={`${selectedReportId}:${comparisonReportId}:${compareDate}:${dateCompareActual ?? ""}`}
-            scoredRows={primaryScoredRows}
-            riskFilter={riskFilter}
-            setRiskFilter={setRiskFilter}
-            pDate={selectedReportInfo?.pDate}
-            readOnly={true}
-            initialManualMap={reportManualMap}
-            externalJudgements={reportJudgements}
-            externalJudgementComments={reportJudgementComments}
-            previousScoredRows={comparisonScoredRows}
-            previousHistoryName={activePrevName}
-            previousManualMap={activePrevManualMap}
-            previousJudgements={activePrevJudgements}
-            hideComparison={!showComparison}
-          />
+          <div
+            className={cn(
+              "relative transition-opacity duration-300 ease-out",
+              loadingReport || loadingComparison ? "opacity-45" : "opacity-100",
+            )}
+          >
+            {(loadingReport || loadingComparison) && (
+              <div className="absolute inset-x-0 top-8 z-10 flex justify-center pointer-events-none">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-3 py-1.5 shadow-sm backdrop-blur-sm">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                  <span className="text-[11px] text-muted-foreground">
+                    Шинэчилж байна…
+                  </span>
+                </div>
+              </div>
+            )}
+            <ReportView
+              scoredRows={primaryScoredRows}
+              riskFilter={riskFilter}
+              setRiskFilter={setRiskFilter}
+              pDate={selectedReportInfo?.pDate}
+              readOnly={true}
+              initialManualMap={reportManualMap}
+              externalJudgements={reportJudgements}
+              externalJudgementComments={reportJudgementComments}
+              previousScoredRows={comparisonScoredRows}
+              previousHistoryName={
+                compareMonth
+                  ? formatMonthMn(compareMonth)
+                  : (comparisonReportInfo?.name ?? null)
+              }
+              previousManualMap={comparisonManualMap}
+              previousJudgements={comparisonJudgements}
+              hideComparison={!showComparison}
+              toolbarStart={filterControls}
+            />
+          </div>
         )}
       </div>
 
-      <ComparePanel
-        open={compareOpen}
-        onCloseAction={() => setCompareOpen(false)}
-        historyList={historyList}
-      />
-
-      <CsvExportModal
-        open={csvModalOpen}
-        onClose={() => setCsvModalOpen(false)}
-        primaryRows={reportRows}
-        primaryManualMap={reportManualMap}
-        primaryJudgements={reportJudgements}
-        primaryJudgementComments={reportJudgementComments}
-        primaryName={selectedReportInfo?.name ?? ""}
-        primaryDate={selectedReportInfo?.pDate ?? ""}
-        prevRows={useDateCompare ? dateCompareRows : comparisonRows}
-        prevManualMap={
-          useDateCompare ? dateCompareManualMap : comparisonManualMap
-        }
-        prevJudgements={
-          useDateCompare ? dateCompareJudgements : comparisonJudgements
-        }
-        prevName={activePrevName}
-        catalog={catalog}
-        weights={weights}
-        currentComparisonId={comparisonReportId}
-      />
-
-      {/* Delete Confirmation Modal */}
       {deleteModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"

@@ -6,22 +6,24 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import axios from "axios";
 
 export const dynamic = "force-dynamic";
 
-const formSchema = z.object({
-  userId: z.string().min(1, { message: "Админы ID-ээ оруулна уу." }),
-  password: z.string().min(1, { message: "Нууц үгээ оруулна уу." }),
-});
-
 export default function AdminLoginPage() {
   const { adminLogin } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const formSchema = z.object({
+    userId: z.string().min(1, { message: t("adminLoginErrIdRequired") }),
+    password: z.string().min(1, { message: t("adminLoginErrPasswordRequired") }),
+  });
 
   const {
     register,
@@ -38,12 +40,12 @@ export default function AdminLoginPage() {
       await adminLogin(values.userId, values.password);
       window.location.replace("/admin");
     } catch (error) {
-      let message = "Нэвтрэхэд тодорхойгүй алдаа гарлаа.";
+      let message = t("adminLoginErrUnknown");
       if (axios.isAxiosError(error))
         message = error.response?.data?.message ?? message;
       else if (error instanceof Error) message = error.message;
       toast({
-        title: "Нэвтрэхэд алдаа гарлаа",
+        title: t("adminLoginErrToastTitle"),
         description: message,
         variant: "destructive",
       });
@@ -68,10 +70,10 @@ export default function AdminLoginPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                Admin нэвтрэх
+                {t("adminLoginHeading")}
               </p>
               <p className="text-xs text-muted-foreground">
-                DaHUB · Дотоод аудит
+                {t("adminLoginSubtitle")}
               </p>
             </div>
           </div>
@@ -83,12 +85,12 @@ export default function AdminLoginPage() {
           >
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/70 block">
-                Админы ID
+                {t("adminLoginLabelId")}
               </label>
               <input
                 {...register("userId")}
                 autoComplete="off"
-                placeholder="Таны ID"
+                placeholder={t("loginYourIdPrefix")}
                 className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30"
               />
               {errors.userId && (
@@ -98,13 +100,13 @@ export default function AdminLoginPage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/70 block">
-                Нууц үг
+                {t("loginLabelPassword")}
               </label>
               <div className="relative">
                 <input
                   {...register("password")}
                   type={showPassword ? "text" : "password"}
-                  placeholder="Нууц үг"
+                  placeholder={t("loginLabelPassword")}
                   className="w-full rounded-xl px-3 py-2 pr-10 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30"
                 />
                 <button
@@ -133,7 +135,7 @@ export default function AdminLoginPage() {
               className="w-full py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold shadow-premium hover:shadow-premium-lg hover:opacity-90 transition-all duration-300 disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Нэвтрэх
+              {t("loginSignIn")}
             </button>
           </form>
         </div>

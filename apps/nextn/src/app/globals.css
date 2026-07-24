@@ -2,9 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Body font — Source Sans 3 Variable (@fontsource, bundled). Mono зөвхөн code-д. */
+/* Body font — Source Sans 3 (@fontsource). Mono зөвхөн code-д. */
 :root {
-  --font-sans: "Source Sans 3 Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
   --font-mono:
     ui-monospace, "Cascadia Code", Consolas, Menlo, Monaco, monospace;
 }
@@ -126,15 +126,14 @@ html.light .border-r {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GLOBAL BOLD TYPOGRAPHY — бүх хуудас дээр admin-шиг bold, тод текст
-   Admin, tools, knowledge, employee — хаана ч байсан нэг дэн жинтэй
+   GLOBAL TYPOGRAPHY — Source Sans 3 (400 / 500 / 600 / 700)
    ═══════════════════════════════════════════════════════════════════════════ */
 @layer base {
   body {
-    font-weight: 450;
+    font-weight: 400;
   }
 
-  /* Ерөнхий текст элементүүд — medium weight */
+  /* Ерөнхий текст — regular; тодлохыг utility-ээр */
   p,
   span,
   label,
@@ -149,10 +148,9 @@ html.light .border-r {
   input,
   select,
   textarea {
-    font-weight: 500;
+    font-weight: 400;
   }
 
-  /* Гарчгуудыг bold */
   h1,
   h2,
   h3,
@@ -162,18 +160,17 @@ html.light .border-r {
     font-weight: 700;
   }
 
-  /* font-medium → semibold, font-semibold → bold */
   .font-medium {
-    font-weight: 600 !important;
+    font-weight: 500 !important;
   }
   .font-semibold {
-    font-weight: 700 !important;
+    font-weight: 600 !important;
   }
   .font-bold {
-    font-weight: 800 !important;
+    font-weight: 700 !important;
   }
   .font-extrabold {
-    font-weight: 900 !important;
+    font-weight: 700 !important;
   }
   .font-normal {
     font-weight: 400 !important;
@@ -357,13 +354,13 @@ html:not(.light) .text-muted-foreground {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Alert Box (.ab-theme) — bold typography + CIF/ID текст тод харагдах
+   Alert Box (.ab-theme) — CIF/ID тод; Source Sans 3 (400/500/600/700)
    ═══════════════════════════════════════════════════════════════════════════ */
 .ab-theme {
-  font-weight: 500;
+  font-weight: 400;
 }
 .ab-theme :is(p, span, label, a, td, th, li, dt, dd, button, div) {
-  font-weight: 550;
+  font-weight: 400;
 }
 .ab-theme h1,
 .ab-theme h2,
@@ -372,14 +369,14 @@ html:not(.light) .text-muted-foreground {
   font-weight: 700;
 }
 .ab-theme .font-medium {
-  font-weight: 600 !important;
+  font-weight: 500 !important;
 }
 .ab-theme .font-semibold {
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 .ab-theme .font-bold,
 .ab-theme .font-extrabold {
-  font-weight: 800 !important;
+  font-weight: 700 !important;
 }
 
 /* CIF / ID — font-mono тоонууд table-д */
@@ -387,7 +384,7 @@ html:not(.light) .text-muted-foreground {
 .ab-theme td.font-mono,
 .ab-theme span.font-mono,
 .ab-theme p.font-mono {
-  font-weight: 650;
+  font-weight: 500;
 }
 
 /* Dark: txt-dim/muted → цагаан ойролцоо */
@@ -511,38 +508,37 @@ html.light .tabular-nums:not([class*="text-"]) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Admin хэсэг — текстийг илүү тод, bold болгож уншихад хялбар болгох.
-   Dark theme дээр цагаан, Light theme дээр хар өнгөтэй, дунд зэрэг тод жинтэй.
+   Admin хэсэг — Source Sans 3 (400/500/600/700), уншихад тод
    `.admin-shell` нь зөвхөн /admin доорх хуудаснуудад хэрэгжинэ.
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Үндсэн текстийн жинг дунд зэрэг тод болгох */
 .admin-shell {
-  font-weight: 600;
+  font-weight: 400;
 }
 
-/* Бүдэг (muted) болон хагас тунгалаг foreground текстийг тод + bold болгох */
 .admin-shell :is(p, span, label, a, td, th, li, dt, dd, button, div) {
-  font-weight: 650;
+  font-weight: 400;
 }
 .admin-shell h1,
 .admin-shell h2,
 .admin-shell h3,
 .admin-shell h4 {
-  font-weight: 800;
+  font-weight: 700;
 }
 
-/* Картын гарчиг, badge, statистик тоонуудыг илүү тод болгох */
 .admin-shell
   :is([class*="rounded-xl"], [class*="rounded-lg"], [class*="rounded-2xl"])
   :is(p, span, h1, h2, h3, h4, dt, dd) {
-  font-weight: 650;
+  font-weight: 500;
 }
-.admin-shell :is(.font-medium, .font-semibold) {
-  font-weight: 750 !important;
+.admin-shell .font-medium {
+  font-weight: 500 !important;
+}
+.admin-shell .font-semibold {
+  font-weight: 600 !important;
 }
 .admin-shell .font-bold {
-  font-weight: 900 !important;
+  font-weight: 700 !important;
 }
 
 /* Бүх muted-foreground хувилбарыг (opacity-тэй ч гэсэн) тод болгох */
@@ -665,7 +661,7 @@ html.light .bg-emerald-500\/8 {
 
 /* Layout frame — энгийн статик хүрээ (эргэлдэх animation байхгүй) */
 .animated-border-wrapper {
-  @apply relative rounded-2xl border border-border isolate;
+  @apply relative rounded-2xl border border-border isolate overflow-hidden;
   contain: layout paint;
 }
 
@@ -673,8 +669,9 @@ html.light .animated-border-wrapper {
   border-width: 1.5px;
 }
 
+/* Доторх хүүхдүүд гаднах radius-тай уусна — тус тусад нь rounded хийхгүй */
 .animated-border-wrapper > * {
-  @apply rounded-[calc(1rem-1px)];
+  border-radius: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

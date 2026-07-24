@@ -41,6 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type TabKey = "dashboards" | "chains";
 
@@ -76,6 +77,7 @@ function formatIds(ids: number[]): string {
 }
 
 export default function AdminAlertBoxPage() {
+  const { t } = useLanguage();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -115,15 +117,14 @@ export default function AdminAlertBoxPage() {
       setChains(c);
     } catch (e: unknown) {
       toast({
-        title: "Алдаа",
-        description:
-          getApiErrorMessage(e) || "Тохиргоог ачаалахад алдаа гарлаа.",
+        title: t("error"),
+        description: getApiErrorMessage(e) || t("admAlertBoxLoadError"),
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     void loadAll();
@@ -169,17 +170,23 @@ export default function AdminAlertBoxPage() {
         setDashboards((prev) =>
           prev.map((x) => (x.id === editingDash.id ? updated : x)),
         );
-        toast({ title: "Амжилттай", description: "Дашбоард шинэчлэгдлээ." });
+        toast({
+          title: t("success"),
+          description: t("admAlertBoxDashUpdatedDesc"),
+        });
       } else {
         const created = await oracleConfigApi.createDashboard(payload);
         setDashboards((prev) => [...prev, created].sort((a, b) => a.id - b.id));
-        toast({ title: "Амжилттай", description: "Шинэ дашбоард нэмэгдлээ." });
+        toast({
+          title: t("success"),
+          description: t("admAlertBoxDashCreatedDesc"),
+        });
       }
       setDashModalOpen(false);
     } catch (e: unknown) {
       toast({
-        title: "Алдаа",
-        description: getApiErrorMessage(e) || "Хадгалахад алдаа гарлаа.",
+        title: t("error"),
+        description: getApiErrorMessage(e) || t("admAlertBoxSaveError"),
         variant: "destructive",
       });
     } finally {
@@ -212,8 +219,8 @@ export default function AdminAlertBoxPage() {
     const targetIds = parseIds(chainForm.targetIds);
     if (!sourceIds.length || !targetIds.length) {
       toast({
-        title: "Алдаа",
-        description: "Source/Target ID-уудыг зөв оруулна уу (жишээ: 5, 6).",
+        title: t("error"),
+        description: t("admAlertBoxIdsInvalid"),
         variant: "destructive",
       });
       return;
@@ -237,20 +244,23 @@ export default function AdminAlertBoxPage() {
         setChains((prev) =>
           prev.map((x) => (x.id === editingChain.id ? updated : x)),
         );
-        toast({ title: "Амжилттай", description: "Event chain шинэчлэгдлээ." });
+        toast({
+          title: t("success"),
+          description: t("admAlertBoxChainUpdatedDesc"),
+        });
       } else {
         const created = await oracleConfigApi.createChain(payload);
         setChains((prev) => [...prev, created].sort((a, b) => a.id - b.id));
         toast({
-          title: "Амжилттай",
-          description: "Шинэ event chain нэмэгдлээ.",
+          title: t("success"),
+          description: t("admAlertBoxChainCreatedDesc"),
         });
       }
       setChainModalOpen(false);
     } catch (e: unknown) {
       toast({
-        title: "Алдаа",
-        description: getApiErrorMessage(e) || "Хадгалахад алдаа гарлаа.",
+        title: t("error"),
+        description: getApiErrorMessage(e) || t("admAlertBoxSaveError"),
         variant: "destructive",
       });
     } finally {
@@ -275,11 +285,11 @@ export default function AdminAlertBoxPage() {
         await oracleConfigApi.deleteChain(deleteTarget.item.id);
         setChains((prev) => prev.filter((x) => x.id !== deleteTarget.item.id));
       }
-      toast({ title: "Амжилттай", description: "Устгагдлаа." });
+      toast({ title: t("success"), description: t("admAlertBoxDeletedDesc") });
     } catch (e: unknown) {
       toast({
-        title: "Алдаа",
-        description: getApiErrorMessage(e) || "Устгахад алдаа гарлаа.",
+        title: t("error"),
+        description: getApiErrorMessage(e) || t("admAlertBoxDeleteError"),
         variant: "destructive",
       });
     } finally {
@@ -303,8 +313,8 @@ export default function AdminAlertBoxPage() {
       );
     } catch (e: unknown) {
       toast({
-        title: "Алдаа",
-        description: getApiErrorMessage(e) || "Төлөв өөрчлөхөд алдаа гарлаа.",
+        title: t("error"),
+        description: getApiErrorMessage(e) || t("admAlertBoxToggleError"),
         variant: "destructive",
       });
     } finally {
@@ -324,8 +334,8 @@ export default function AdminAlertBoxPage() {
       );
     } catch (e: unknown) {
       toast({
-        title: "Алдаа",
-        description: getApiErrorMessage(e) || "Төлөв өөрчлөхөд алдаа гарлаа.",
+        title: t("error"),
+        description: getApiErrorMessage(e) || t("admAlertBoxToggleError"),
         variant: "destructive",
       });
     } finally {
@@ -354,7 +364,7 @@ export default function AdminAlertBoxPage() {
             <BellDot className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Alert Box — Тохиргоо"
+        title={t("admAlertBoxPageTitle")}
       />
 
       <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-5">
@@ -369,7 +379,7 @@ export default function AdminAlertBoxPage() {
               }`}
             >
               <Database className="w-3.5 h-3.5" />
-              Дашбоард
+              {t("admAlertBoxTabDashboards")}
               <span className="text-xs opacity-70">
                 {enabledDashboards}/{dashboards.length}
               </span>
@@ -393,12 +403,12 @@ export default function AdminAlertBoxPage() {
           {tab === "dashboards" ? (
             <Button size="sm" onClick={openCreateDashboard} className="gap-1.5">
               <Plus className="w-3.5 h-3.5" />
-              Дашбоард нэмэх
+              {t("admAlertBoxAddDashboardBtn")}
             </Button>
           ) : (
             <Button size="sm" onClick={openCreateChain} className="gap-1.5">
               <Plus className="w-3.5 h-3.5" />
-              Chain нэмэх
+              {t("admAlertBoxAddChainBtn")}
             </Button>
           )}
         </div>
@@ -407,7 +417,7 @@ export default function AdminAlertBoxPage() {
           <div className="grid gap-2.5 md:grid-cols-2">
             {dashboards.length === 0 ? (
               <p className="text-sm text-muted-foreground col-span-2 py-8 text-center">
-                Дашбоард байхгүй. «Дашбоард нэмэх» товчоор шинээр үүсгэнэ үү.
+                {t("admAlertBoxEmptyDashboards")}
               </p>
             ) : (
               dashboards.map((d) => (
@@ -431,7 +441,9 @@ export default function AdminAlertBoxPage() {
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {d.enabled ? "Идэвхтэй" : "Идэвхгүй"}
+                        {d.enabled
+                          ? t("admAlertBoxActiveBadge")
+                          : t("admReportsInactiveBadge")}
                       </span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">
@@ -449,7 +461,7 @@ export default function AdminAlertBoxPage() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => openEditDashboard(d)}
-                      title="Засах"
+                      title={t("admCommonEditBtn")}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -458,7 +470,7 @@ export default function AdminAlertBoxPage() {
                       onClick={() =>
                         setDeleteTarget({ type: "dashboard", item: d })
                       }
-                      title="Устгах"
+                      title={t("tailan_deleteAction")}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500/70 hover:bg-red-500/10 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -466,7 +478,11 @@ export default function AdminAlertBoxPage() {
                     <button
                       onClick={() => toggleDashboard(d)}
                       disabled={savingId === `d-${d.id}`}
-                      title={d.enabled ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
+                      title={
+                        d.enabled
+                          ? t("admAlertBoxDisableTooltip")
+                          : t("admAlertBoxEnableTooltip")
+                      }
                       className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 ${
                         d.enabled
                           ? "text-emerald-500 hover:bg-emerald-500/10"
@@ -492,7 +508,7 @@ export default function AdminAlertBoxPage() {
           <div className="grid gap-2.5 md:grid-cols-2">
             {chains.length === 0 ? (
               <p className="text-sm text-muted-foreground col-span-2 py-8 text-center">
-                Event chain байхгүй. «Chain нэмэх» товчоор шинээр үүсгэнэ үү.
+                {t("admAlertBoxEmptyChains")}
               </p>
             ) : (
               chains.map((c) => (
@@ -516,7 +532,9 @@ export default function AdminAlertBoxPage() {
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {c.enabled ? "Идэвхтэй" : "Идэвхгүй"}
+                        {c.enabled
+                          ? t("admAlertBoxActiveBadge")
+                          : t("admReportsInactiveBadge")}
                       </span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">
@@ -535,7 +553,7 @@ export default function AdminAlertBoxPage() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => openEditChain(c)}
-                      title="Засах"
+                      title={t("admCommonEditBtn")}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -544,7 +562,7 @@ export default function AdminAlertBoxPage() {
                       onClick={() =>
                         setDeleteTarget({ type: "chain", item: c })
                       }
-                      title="Устгах"
+                      title={t("tailan_deleteAction")}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500/70 hover:bg-red-500/10 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -552,7 +570,11 @@ export default function AdminAlertBoxPage() {
                     <button
                       onClick={() => toggleChain(c)}
                       disabled={savingId === `c-${c.id}`}
-                      title={c.enabled ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
+                      title={
+                        c.enabled
+                          ? t("admAlertBoxDisableTooltip")
+                          : t("admAlertBoxEnableTooltip")
+                      }
                       className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 ${
                         c.enabled
                           ? "text-emerald-500 hover:bg-emerald-500/10"
@@ -581,23 +603,23 @@ export default function AdminAlertBoxPage() {
           <DialogHeader>
             <DialogTitle>
               {editingDash
-                ? `Дашбоард засах (DB${editingDash.id})`
-                : "Шинэ дашбоард"}
+                ? `${t("admAlertBoxEditDashboardTitle")} (DB${editingDash.id})`
+                : t("admAlertBoxNewDashboardTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label>Нэр</Label>
+              <Label>{t("admAlertBoxNameLabel")}</Label>
               <Input
                 value={dashForm.name}
                 onChange={(e) =>
                   setDashForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder="Дашбоардын нэр"
+                placeholder={t("admAlertBoxNamePlaceholder")}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Хүснэгт (tableName)</Label>
+              <Label>{t("admAlertBoxTableNameLabel")}</Label>
               <Input
                 value={dashForm.tableName}
                 onChange={(e) =>
@@ -608,7 +630,7 @@ export default function AdminAlertBoxPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>FROM clause (заавал биш)</Label>
+              <Label>{t("admAlertBoxFromClauseLabel")}</Label>
               <Textarea
                 value={dashForm.fromClause}
                 onChange={(e) =>
@@ -659,12 +681,12 @@ export default function AdminAlertBoxPage() {
                   setDashForm((f) => ({ ...f, enabled: e.target.checked }))
                 }
               />
-              Идэвхтэй
+              {t("admAlertBoxActiveBadge")}
             </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDashModalOpen(false)}>
-              Болих
+              {t("cancel")}
             </Button>
             <Button
               onClick={saveDashboard}
@@ -678,7 +700,7 @@ export default function AdminAlertBoxPage() {
               {dashSaving && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
               )}
-              Хадгалах
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -690,13 +712,13 @@ export default function AdminAlertBoxPage() {
           <DialogHeader>
             <DialogTitle>
               {editingChain
-                ? `Event chain засах (#${editingChain.id})`
-                : "Шинэ event chain"}
+                ? `${t("admAlertBoxEditChainTitle")} (#${editingChain.id})`
+                : t("admAlertBoxNewChainTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label>Нэр</Label>
+              <Label>{t("admAlertBoxNameLabel")}</Label>
               <Input
                 value={chainForm.name}
                 onChange={(e) =>
@@ -705,7 +727,7 @@ export default function AdminAlertBoxPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Тайлбар</Label>
+              <Label>{t("dataDocColDesc")}</Label>
               <Textarea
                 value={chainForm.description}
                 onChange={(e) =>
@@ -766,12 +788,12 @@ export default function AdminAlertBoxPage() {
                   setChainForm((f) => ({ ...f, enabled: e.target.checked }))
                 }
               />
-              Идэвхтэй
+              {t("admAlertBoxActiveBadge")}
             </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChainModalOpen(false)}>
-              Болих
+              {t("cancel")}
             </Button>
             <Button
               onClick={saveChain}
@@ -780,7 +802,7 @@ export default function AdminAlertBoxPage() {
               {chainSaving && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
               )}
-              Хадгалах
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -793,7 +815,7 @@ export default function AdminAlertBoxPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Устгах уу?</AlertDialogTitle>
+            <AlertDialogTitle>{t("admReportsDeleteConfirmTitle")}</AlertDialogTitle>
           </AlertDialogHeader>
           <p className="text-sm text-muted-foreground">
             {deleteTarget?.type === "dashboard"
@@ -801,12 +823,12 @@ export default function AdminAlertBoxPage() {
               : `#${deleteTarget?.item.id} — ${(deleteTarget?.item as OracleEventChainConfig)?.name}`}
           </p>
           <AlertDialogFooter>
-            <AlertDialogCancel>Болих</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-500"
             >
-              Устгах
+              {t("tailan_deleteAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -7,13 +7,14 @@ import { z } from "zod";
 import Cookies from "js-cookie";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { DEPARTMENT_POSITIONS, DEPARTMENT_CODES } from "@/lib/constants";
 import { RegisterFlow } from "./_components/RegisterFlow";
 import { LoginFlow } from "./_components/LoginFlow";
 import {
   registerFormSchema,
   loginFormSchema,
-  passwordFormSchema,
+  claimSetPasswordFormSchema,
   loginPasswordSchema,
   type FlowType,
   type RegisterStep,
@@ -27,6 +28,7 @@ export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [flowType, setFlowType] = useState<FlowType>("login");
 
   // Register state
@@ -36,7 +38,6 @@ export default function LoginPage() {
   const [registeredUser, setRegisteredUser] = useState<{
     userId: string;
     name: string;
-    claimToken: string;
   } | null>(null);
 
   // Login state
@@ -65,10 +66,12 @@ export default function LoginPage() {
     defaultValues: { userId: "" },
   });
 
-  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
-    resolver: zodResolver(passwordFormSchema),
-    defaultValues: { password: "", confirmPassword: "" },
-  });
+  const claimPasswordForm = useForm<z.infer<typeof claimSetPasswordFormSchema>>(
+    {
+      resolver: zodResolver(claimSetPasswordFormSchema),
+      defaultValues: { claimCode: "", password: "", confirmPassword: "" },
+    },
+  );
 
   const loginPasswordForm = useForm<z.infer<typeof loginPasswordSchema>>({
     resolver: zodResolver(loginPasswordSchema),
@@ -77,7 +80,7 @@ export default function LoginPage() {
 
   const selectedDepartment = registerForm.watch("department");
   const enteredName = registerForm.watch("name");
-  const password = passwordForm.watch("password");
+  const password = claimPasswordForm.watch("password");
 
   useEffect(() => {
     if (selectedDepartment) {
@@ -171,9 +174,7 @@ export default function LoginPage() {
 
   const authFetchError = async (response: Response, fallback: string) => {
     if (response.status === 429) {
-      throw new Error(
-        "Хэт олон хүсэлт илгээгдлээ. Хэдэн секунд хүлээгээд дахин оролдоно уу.",
-      );
+      throw new Error(t("loginErrTooManyRequests"));
     }
     let message = fallback;
     try {
@@ -196,22 +197,21 @@ export default function LoginPage() {
         body: JSON.stringify(values),
       });
       if (!response.ok) {
-        await authFetchError(response, "Бүртгэл үүсгэхэд алдаа гарлаа");
+        await authFetchError(response, t("loginErrRegisterFailed"));
       }
       const data = await response.json();
       setRegisteredUser({
         userId: data.userId,
         name: data.name,
-        claimToken: data.claimToken,
       });
-      setRegisterStep("password");
+      setRegisterStep("pending");
       toast({
-        title: "Бүртгэл амжилттай",
-        description: `Таны ID: ${data.userId}`,
+        title: t("loginToastRequestSentTitle"),
+        description: `${t("loginYourIdPrefix")}: ${data.userId}`,
       });
     } catch (error: unknown) {
       toast({
-        title: "Алдаа",
+        title: t("error"),
         description: (error as Error).message,
         variant: "destructive",
       });
@@ -221,21 +221,24 @@ export default function LoginPage() {
   };
 
   const handleSetPassword = async (
-    values: z.infer<typeof passwordFormSchema>,
+    values: z.infer<typeof claimSetPasswordFormSchema>,
   ) => {
-    const userId = registeredUser?.userId || checkedUser?.userId;
-    const claimToken = registeredUser?.claimToken || checkedUser?.claimToken;
-    if (!userId || !claimToken) return;
+    const userId = checkedUser?.userId;
+    if (!userId) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/set-password`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password: values.password, claimToken }),
+        body: JSON.stringify({
+          userId,
+          password: values.password,
+          claimToken: values.claimCode,
+        }),
       });
       if (!response.ok) {
-        await authFetchError(response, "Нууц үг тохируулахад алдаа гарлаа");
+        await authFetchError(response, t("loginErrSetPasswordFailed"));
       }
       const data = await response.json();
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
@@ -248,13 +251,13 @@ export default function LoginPage() {
         path: "/",
       });
       toast({
-        title: "Амжилттай",
-        description: "Нууц үг амжилттай тохирууллаа",
+        title: t("success"),
+        description: t("loginToastPasswordSetDesc"),
       });
       window.location.replace("/");
     } catch (error: unknown) {
       toast({
-        title: "Алдаа",
+        title: t("error"),
         description: (error as Error).message,
         variant: "destructive",
       });
@@ -272,41 +275,51 @@ export default function LoginPage() {
         body: JSON.stringify(values),
       });
       if (!response.ok) {
-        await authFetchError(response, "Хэрэглэгч шалгахад алдаа гарлаа");
+        await authFetchError(response, t("loginErrCheckUserFailed"));
       }
       const data: UserCheckResult = await response.json();
       if (!data.exists) {
+        if (data.registrationStatus === "pending") {
+          toast({
+            title: t("loginToastPendingTitle"),
+            description: t("loginToastPendingDesc"),
+            variant: "destructive",
+          });
+          return;
+        }
+        if (data.registrationStatus === "rejected") {
+          toast({
+            title: t("loginToastRejectedTitle"),
+            description: t("loginToastRejectedDesc"),
+            variant: "destructive",
+          });
+          return;
+        }
         toast({
-          title: "Хэрэглэгч олдсонгүй",
-          description: "Энэ ID-тай хэрэглэгч бүртгэлгүй байна",
+          title: t("loginToastUserNotFoundTitle"),
+          description: t("loginToastUserNotFoundDesc"),
           variant: "destructive",
         });
         return;
       }
       if (data.isActive === false && data.hasPassword) {
         toast({
-          title: "Эрх хаагдсан",
-          description: "Таны эрх идэвхгүй байна. Админд хандана уу.",
+          title: t("loginToastAccountDisabledTitle"),
+          description: t("loginToastAccountDisabledDesc"),
           variant: "destructive",
         });
         return;
       }
-      if (!data.hasPassword && data.needsPasswordSetup) {
-        toast({
-          title: "Нууц үг тохируулаагүй",
-          description:
-            "Бүртгэлийн үед нууц үгээ тохируулаагүй бол админд хандана уу.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // needsPasswordSetup: an admin has approved the registration and the
+      // account is now claimable — the user proceeds to enter the claim
+      // code the admin gave them + their new password (createPassword step).
       setCheckedUser(data);
       setLoginStep(data.hasPassword ? "password" : "createPassword");
     } catch (error: unknown) {
       toast({
-        title: "Алдаа",
+        title: t("error"),
         description:
-          (error as Error).message || "Хэрэглэгч шалгахад алдаа гарлаа",
+          (error as Error).message || t("loginErrCheckUserFailed"),
         variant: "destructive",
       });
     } finally {
@@ -329,15 +342,12 @@ export default function LoginPage() {
       });
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error("Нууц үг буруу байна");
+          throw new Error(t("loginErrWrongPassword"));
         }
         if (response.status === 403) {
-          await authFetchError(
-            response,
-            "Админ хэрэглэгч энд нэвтрэх боломжгүй. Админ хуудсаар нэвтэрнэ үү.",
-          );
+          await authFetchError(response, t("loginErrAdminCannotLoginHere"));
         }
-        await authFetchError(response, "Нэвтрэх үед алдаа гарлаа");
+        await authFetchError(response, t("loginErrLoginFailed"));
       }
       const data = await response.json();
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
@@ -350,13 +360,13 @@ export default function LoginPage() {
         path: "/",
       });
       toast({
-        title: "Амжилттай нэвтэрлээ",
-        description: "Нүүр хуудас руу шилжүүлж байна...",
+        title: t("loginToastLoginSuccessTitle"),
+        description: t("loginToastRedirectingDesc"),
       });
       window.location.replace("/");
     } catch (error: unknown) {
       toast({
-        title: "Нэвтрэх амжилтгүй",
+        title: t("loginToastLoginFailedTitle"),
         description: (error as Error).message,
         variant: "destructive",
       });
@@ -369,13 +379,12 @@ export default function LoginPage() {
   const backStepRegister = () => {
     setRegisterStep("info");
     setRegisteredUser(null);
-    passwordForm.reset();
   };
 
   const backStepLogin = () => {
     setLoginStep("userId");
     setCheckedUser(null);
-    passwordForm.reset();
+    claimPasswordForm.reset();
     loginPasswordForm.reset();
   };
 
@@ -389,7 +398,7 @@ export default function LoginPage() {
     setRegisteredUser(null);
     setGeneratedUserId("");
     registerForm.reset();
-    passwordForm.reset();
+    claimPasswordForm.reset();
     setFlowType("register");
   };
 
@@ -402,7 +411,7 @@ export default function LoginPage() {
     setCheckedUser(null);
     loginForm.reset();
     loginPasswordForm.reset();
-    passwordForm.reset();
+    claimPasswordForm.reset();
     setFlowType("login");
   };
 
@@ -418,22 +427,14 @@ export default function LoginPage() {
         >
           <RegisterFlow
             registerForm={registerForm}
-            passwordForm={passwordForm}
             positions={positions}
             selectedDepartment={selectedDepartment}
             generatedUserId={generatedUserId}
             registeredUser={registeredUser}
             registerStep={registerStep}
             isLoading={isLoading}
-            showPassword={showPassword}
-            showConfirmPassword={showConfirmPassword}
-            setShowPassword={setShowPassword}
-            setShowConfirmPassword={setShowConfirmPassword}
-            passwordChecks={passwordChecks}
-            allChecksPass={allChecksPass}
             getUserIdPrefix={getUserIdPrefix}
             handleRegisterInfo={handleRegisterInfo}
-            handleSetPassword={handleSetPassword}
             onBack={backStepRegister}
             onSwitch={switchToLogin}
           />
@@ -449,7 +450,7 @@ export default function LoginPage() {
           <LoginFlow
             loginForm={loginForm}
             loginPasswordForm={loginPasswordForm}
-            passwordForm={passwordForm}
+            claimPasswordForm={claimPasswordForm}
             loginStep={loginStep}
             checkedUser={checkedUser}
             userSuggestions={userSuggestions}

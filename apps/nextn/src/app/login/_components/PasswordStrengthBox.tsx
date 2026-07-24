@@ -1,23 +1,26 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import type { TranslationKey } from "@/contexts/LanguageContext";
 import type { PasswordChecks } from "./login.types";
 
-const CHECKS: { key: keyof PasswordChecks; label: string }[] = [
-  { key: "minLength", label: "8+ тэмдэгт" },
-  { key: "hasLower", label: "Жижиг үсэг (a-z)" },
-  { key: "hasUpper", label: "Том үсэг (A-Z)" },
-  { key: "hasNumber", label: "Тоо (0-9)" },
-  { key: "hasSpecial", label: "Тусгай тэмдэгт (@$!%*?&#)" },
+const CHECKS: { key: keyof PasswordChecks; labelKey: TranslationKey }[] = [
+  { key: "minLength", labelKey: "pwStrengthMinLength" },
+  { key: "hasLower", labelKey: "pwStrengthLower" },
+  { key: "hasUpper", labelKey: "pwStrengthUpper" },
+  { key: "hasNumber", labelKey: "pwStrengthNumber" },
+  { key: "hasSpecial", labelKey: "pwStrengthSpecial" },
 ];
 
 export function PasswordStrengthBox({ checks }: { checks: PasswordChecks }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-2 p-4 bg-muted/50 border border-border/50 rounded-xl">
       <p className="text-xs text-muted-foreground mb-2">
-        Нууц үгийн шаардлага:
+        {t("pwStrengthReqTitle")}
       </p>
-      {CHECKS.map(({ key, label }) => (
+      {CHECKS.map(({ key, labelKey }) => (
         <div key={key} className="flex items-center gap-2">
           {checks[key] ? (
             <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
@@ -27,7 +30,7 @@ export function PasswordStrengthBox({ checks }: { checks: PasswordChecks }) {
           <span
             className={`text-sm ${checks[key] ? "text-emerald-500 dark:text-emerald-400" : "text-muted-foreground/70"}`}
           >
-            {label}
+            {t(labelKey)}
           </span>
         </div>
       ))}

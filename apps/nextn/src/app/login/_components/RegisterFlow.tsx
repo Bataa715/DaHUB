@@ -4,15 +4,13 @@ import { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Lock,
   ArrowRight,
   Loader2,
   Building2,
   User,
   ChevronLeft,
   Briefcase,
-  Eye,
-  EyeOff,
+  Clock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DEPARTMENTS } from "@/lib/constants";
-import { PasswordStrengthBox } from "./PasswordStrengthBox";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LoginBrandHeader,
   LoginAmbientBackground,
@@ -41,34 +39,19 @@ import {
   loginInputClass,
   loginLabelClass,
 } from "./login-ui";
-import type {
-  RegisterStep,
-  PasswordChecks,
-  registerFormSchema,
-  passwordFormSchema,
-} from "./login.types";
+import type { RegisterStep, registerFormSchema } from "./login.types";
 
 interface RegisterFlowProps {
   registerForm: UseFormReturn<z.infer<typeof registerFormSchema>>;
-  passwordForm: UseFormReturn<z.infer<typeof passwordFormSchema>>;
   positions: string[];
   selectedDepartment: string;
   generatedUserId: string;
   registeredUser: { userId: string; name: string } | null;
   registerStep: RegisterStep;
   isLoading: boolean;
-  showPassword: boolean;
-  showConfirmPassword: boolean;
-  setShowPassword: (v: boolean) => void;
-  setShowConfirmPassword: (v: boolean) => void;
-  passwordChecks: PasswordChecks;
-  allChecksPass: boolean;
   getUserIdPrefix: () => string;
   handleRegisterInfo: (
     values: z.infer<typeof registerFormSchema>,
-  ) => Promise<void>;
-  handleSetPassword: (
-    values: z.infer<typeof passwordFormSchema>,
   ) => Promise<void>;
   onBack: () => void;
   onSwitch: () => void;
@@ -76,31 +59,22 @@ interface RegisterFlowProps {
 
 export function RegisterFlow({
   registerForm,
-  passwordForm,
   positions,
   selectedDepartment,
   generatedUserId,
   registeredUser,
   registerStep,
   isLoading,
-  showPassword,
-  showConfirmPassword,
-  setShowPassword,
-  setShowConfirmPassword,
-  passwordChecks,
-  allChecksPass,
   getUserIdPrefix,
   handleRegisterInfo,
-  handleSetPassword,
   onBack,
   onSwitch,
 }: RegisterFlowProps) {
+  const { t } = useLanguage();
   const showBack = registerStep !== "info";
 
   const inputClass = loginInputClass;
   const labelClass = loginLabelClass;
-  const eyeBtnClass =
-    "absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors";
 
   return (
     <div className="login-page min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -122,7 +96,7 @@ export function RegisterFlow({
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
             >
               <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm">Буцах</span>
+              <span className="text-sm">{t("back")}</span>
             </motion.button>
           )}
 
@@ -139,10 +113,10 @@ export function RegisterFlow({
                 <div className="text-center mb-8">
                   <LoginStepLogo />
                   <h2 className="text-2xl font-bold text-foreground">
-                    Бүртгүүлэх
+                    {t("regFlowHeadingRequest")}
                   </h2>
                   <p className="text-muted-foreground mt-2">
-                    Мэдээллээ оруулна уу
+                    {t("regFlowInfoSubtitle")}
                   </p>
                 </div>
 
@@ -158,7 +132,7 @@ export function RegisterFlow({
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <Building2 className="w-4 h-4 text-primary" />
-                            Хэлтэс
+                            {t("regFlowLabelDept")}
                           </FormLabel>
                           <Select
                             onValueChange={field.onChange}
@@ -168,7 +142,11 @@ export function RegisterFlow({
                               <SelectTrigger
                                 className={`${inputClass} text-left`}
                               >
-                                <SelectValue placeholder="Хэлтсээ сонгоно уу" />
+                                <SelectValue
+                                  placeholder={t(
+                                    "regFlowPlaceholderSelectDept",
+                                  )}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -191,7 +169,7 @@ export function RegisterFlow({
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <Briefcase className="w-4 h-4 text-primary" />
-                            Албан тушаал
+                            {t("regFlowLabelPosition")}
                           </FormLabel>
                           <Select
                             onValueChange={field.onChange}
@@ -205,8 +183,8 @@ export function RegisterFlow({
                                 <SelectValue
                                   placeholder={
                                     positions.length === 0
-                                      ? "Эхлээд хэлтэс сонгоно уу"
-                                      : "Албан тушаалаа сонгоно уу"
+                                      ? t("regFlowPlaceholderSelectDeptFirst")
+                                      : t("regFlowPlaceholderSelectPosition")
                                   }
                                 />
                               </SelectTrigger>
@@ -231,7 +209,7 @@ export function RegisterFlow({
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <User className="w-4 h-4 text-primary" />
-                            Таны нэр
+                            {t("regFlowLabelName")}
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -243,8 +221,8 @@ export function RegisterFlow({
                               <Input
                                 placeholder={
                                   selectedDepartment
-                                    ? "Нэрээ оруулна уу"
-                                    : "Эхлээд хэлтэс сонгоно уу"
+                                    ? t("regFlowPlaceholderEnterName")
+                                    : t("regFlowPlaceholderSelectDeptFirst")
                                 }
                                 className={inputClass}
                                 style={{
@@ -257,7 +235,7 @@ export function RegisterFlow({
                                 onChange={(e) => {
                                   const value = e.target.value
                                     .replace(/\s+/g, "")
-                                    .replace(/[^a-zA-Z\u0400-\u04FF-]/g, "");
+                                    .replace(/[^a-zA-ZЀ-ӿ-]/g, "");
                                   field.onChange(value);
                                 }}
                               />
@@ -277,7 +255,7 @@ export function RegisterFlow({
                           className="p-4 bg-primary/5 rounded-xl border border-primary/20"
                         >
                           <p className="text-xs text-muted-foreground mb-1">
-                            Таны ID:
+                            {t("regFlowYourIdLabel")}
                           </p>
                           <code className="text-lg font-mono text-primary font-bold">
                             {generatedUserId}
@@ -291,7 +269,7 @@ export function RegisterFlow({
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
                         <>
-                          Үргэлжлүүлэх
+                          {t("regFlowBtnSubmitRequest")}
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -301,119 +279,44 @@ export function RegisterFlow({
               </motion.div>
             )}
 
-            {/* Step 2: Create Password */}
-            {registerStep === "password" && (
+            {/* Step 2: Pending admin approval */}
+            {registerStep === "pending" && (
               <motion.div
-                key="password"
+                key="pending"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
+                className="text-center"
               >
-                <div className="text-center mb-8">
-                  <LoginStepLogo />
-                  <h2 className="text-2xl font-bold text-foreground">
-                    Нууц үг үүсгэх
-                  </h2>
-                  <p className="text-muted-foreground mt-2">
-                    ID:{" "}
-                    <code className="text-primary">
-                      {registeredUser?.userId}
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-6">
+                  <Clock className="w-8 h-8 text-amber-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  {t("loginToastRequestSentTitle")}
+                </h2>
+                <p className="text-muted-foreground mb-1">
+                  {t("regFlowPendingDesc")}
+                </p>
+                {registeredUser?.userId && (
+                  <p className="text-muted-foreground mt-3 mb-6">
+                    {t("regFlowYourIdLabel")}{" "}
+                    <code className="text-primary font-mono font-bold">
+                      {registeredUser.userId}
                     </code>
                   </p>
-                </div>
+                )}
+                <p className="text-xs text-muted-foreground/70 mb-8">
+                  {t("regFlowPendingHint")}
+                </p>
 
-                <Form {...passwordForm}>
-                  <form
-                    onSubmit={passwordForm.handleSubmit(handleSetPassword)}
-                    className="space-y-5"
-                  >
-                    <FormField
-                      control={passwordForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={labelClass}>
-                            <Lock className="w-4 h-4 text-emerald-500" />
-                            Нууц үг
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showPassword ? "text" : "password"}
-                                placeholder="Нууц үгээ оруулна уу"
-                                className={`${inputClass} pr-12`}
-                                {...field}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className={eyeBtnClass}
-                              >
-                                {showPassword ? (
-                                  <EyeOff className="w-5 h-5" />
-                                ) : (
-                                  <Eye className="w-5 h-5" />
-                                )}
-                              </button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <PasswordStrengthBox checks={passwordChecks} />
-
-                    <FormField
-                      control={passwordForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={labelClass}>
-                            <Lock className="w-4 h-4 text-emerald-500" />
-                            Нууц үг давтах
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showConfirmPassword ? "text" : "password"}
-                                placeholder="Нууц үгээ давтана уу"
-                                className={`${inputClass} pr-12`}
-                                {...field}
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setShowConfirmPassword(!showConfirmPassword)
-                                }
-                                className={eyeBtnClass}
-                              >
-                                {showConfirmPassword ? (
-                                  <EyeOff className="w-5 h-5" />
-                                ) : (
-                                  <Eye className="w-5 h-5" />
-                                )}
-                              </button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <LoginSubmitButton disabled={isLoading || !allChecksPass}>
-                      {isLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <>
-                          Бүртгэл дуусгах
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </LoginSubmitButton>
-                  </form>
-                </Form>
+                <button
+                  type="button"
+                  onClick={onSwitch}
+                  className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors underline-offset-4 hover:underline"
+                >
+                  {t("regFlowGoToLoginBtn")}
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -422,14 +325,14 @@ export function RegisterFlow({
           {registerStep === "info" && (
             <div className="mt-6 pt-5 border-t border-border/50 text-center">
               <span className="text-sm text-muted-foreground">
-                Бүртгэлтэй юу?{" "}
+                {t("regFlowHaveAccountText")}{" "}
               </span>
               <button
                 type="button"
                 onClick={onSwitch}
                 className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors underline-offset-4 hover:underline"
               >
-                Нэвтрэх
+                {t("loginSignIn")}
               </button>
             </div>
           )}

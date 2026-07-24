@@ -159,6 +159,7 @@ function DepartmentRow({
   dept: DepartmentData;
   currentUserId: string;
 }) {
+  const { t } = useLanguage();
   const color = getColor(dept.name);
   const members = visibleMembers(dept);
 
@@ -196,7 +197,7 @@ function DepartmentRow({
         </div>
       ) : (
         <p className="text-muted-foreground/60 text-sm py-4">
-          Ажилтан бүртгэгдээгүй байна
+          {t("noEmployees")}
         </p>
       )}
     </section>

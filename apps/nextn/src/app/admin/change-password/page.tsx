@@ -10,6 +10,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import axios from "axios";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function PasswordInput({
   id,
@@ -59,13 +60,17 @@ export default function AdminChangePasswordPage() {
   const { toast } = useToast();
   const { logout } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const requirements = [
-    { label: "Хамгийн багадаа 8 тэмдэгт", ok: newPassword.length >= 8 },
-    { label: "Том үсэг", ok: /[A-Z]/.test(newPassword) },
-    { label: "Жижиг үсэг", ok: /[a-z]/.test(newPassword) },
-    { label: "Тоо", ok: /\d/.test(newPassword) },
-    { label: "Тусгай тэмдэгт (@$!%*?&)", ok: /[@$!%*?&]/.test(newPassword) },
+    { label: t("passwordReq1"), ok: newPassword.length >= 8 },
+    { label: t("admChangePwUpperLabel"), ok: /[A-Z]/.test(newPassword) },
+    { label: t("admChangePwLowerLabel"), ok: /[a-z]/.test(newPassword) },
+    { label: t("admChangePwNumberLabel"), ok: /\d/.test(newPassword) },
+    {
+      label: t("admChangePwSpecialCharLabel"),
+      ok: /[@$!%*?&]/.test(newPassword),
+    },
   ];
 
   const isValid = requirements.every((r) => r.ok);
@@ -74,24 +79,24 @@ export default function AdminChangePasswordPage() {
     e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast({
-        title: "Алдаа",
-        description: "Бүх талбарыг бөглөнэ үү",
+        title: t("error"),
+        description: t("admChangePwFillAllError"),
         variant: "destructive",
       });
       return;
     }
     if (newPassword !== confirmPassword) {
       toast({
-        title: "Алдаа",
-        description: "Шинэ нууц үг таарахгүй байна",
+        title: t("error"),
+        description: t("passwordMismatch"),
         variant: "destructive",
       });
       return;
     }
     if (!isValid) {
       toast({
-        title: "Алдаа",
-        description: "Нууц үг шаардлагыг хангахгүй байна",
+        title: t("error"),
+        description: t("passwordInvalid"),
         variant: "destructive",
       });
       return;
@@ -101,15 +106,19 @@ export default function AdminChangePasswordPage() {
       await api.post("/auth/change-password", { currentPassword, newPassword });
       await logout();
       toast({
-        title: "Амжилттай",
-        description: "Нууц үг солигдлоо. Дахин нэвтэрнэ үү.",
+        title: t("success"),
+        description: t("admChangePwSuccessDesc"),
       });
       router.replace("/admin/login");
     } catch (error) {
-      let message = "Нууц үг солихоор алдаа гарлаа";
+      let message = t("admChangePwGenericError");
       if (axios.isAxiosError(error))
         message = error.response?.data?.message ?? message;
-      toast({ title: "Алдаа", description: message, variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +126,7 @@ export default function AdminChangePasswordPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AdminPageHeader title="Нууц үг солих" />
+      <AdminPageHeader title={t("passwordChangeBtn")} />
 
       <div className="max-w-md mx-auto px-4 py-10">
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -127,7 +136,7 @@ export default function AdminChangePasswordPage() {
                 htmlFor="currentPassword"
                 className="text-muted-foreground text-xs"
               >
-                Одоогийн нууц үг
+                {t("currentPassword")}
               </Label>
               <PasswordInput
                 id="currentPassword"
@@ -135,7 +144,7 @@ export default function AdminChangePasswordPage() {
                 show={showCurrentPassword}
                 onToggle={() => setShowCurrentPassword(!showCurrentPassword)}
                 onChange={setCurrentPassword}
-                placeholder="Одоогийн нууц үг"
+                placeholder={t("currentPassword")}
               />
             </div>
 
@@ -144,7 +153,7 @@ export default function AdminChangePasswordPage() {
                 htmlFor="newPassword"
                 className="text-muted-foreground text-xs"
               >
-                Шинэ нууц үг
+                {t("newPassword")}
               </Label>
               <PasswordInput
                 id="newPassword"
@@ -152,7 +161,7 @@ export default function AdminChangePasswordPage() {
                 show={showNewPassword}
                 onToggle={() => setShowNewPassword(!showNewPassword)}
                 onChange={setNewPassword}
-                placeholder="Шинэ нууц үг"
+                placeholder={t("newPassword")}
               />
             </div>
 
@@ -161,7 +170,7 @@ export default function AdminChangePasswordPage() {
                 htmlFor="confirmPassword"
                 className="text-muted-foreground text-xs"
               >
-                Нууц үг давтах
+                {t("confirmPassword")}
               </Label>
               <PasswordInput
                 id="confirmPassword"
@@ -169,12 +178,12 @@ export default function AdminChangePasswordPage() {
                 show={showConfirmPassword}
                 onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
                 onChange={setConfirmPassword}
-                placeholder="Нууц үг давтах"
+                placeholder={t("confirmPasswordPlaceholder")}
               />
               {confirmPassword.length > 0 &&
                 newPassword !== confirmPassword && (
                   <p className="text-xs text-red-400">
-                    Нууц үг таарахгүй байна
+                    {t("admChangePwNoMatchInline")}
                   </p>
                 )}
             </div>
@@ -183,7 +192,7 @@ export default function AdminChangePasswordPage() {
           {newPassword.length > 0 && (
             <div className="bg-background border border-border rounded-xl p-4 space-y-2">
               <p className="text-xs text-muted-foreground/60 font-medium mb-2">
-                Шаардлага
+                {t("admChangePwRequirementsLabel")}
               </p>
               {requirements.map((r) => (
                 <div key={r.label} className="flex items-center gap-2">
@@ -210,7 +219,7 @@ export default function AdminChangePasswordPage() {
               }}
               className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-background/80 transition-colors"
             >
-              Цэвэрлэх
+              {t("admChangePwClearBtn")}
             </button>
             <button
               type="submit"
@@ -218,7 +227,7 @@ export default function AdminChangePasswordPage() {
               className="flex-1 py-2.5 text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:bg-muted disabled:text-muted-foreground/60 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Нууц үг солих
+              {t("passwordChangeBtn")}
             </button>
           </div>
         </form>

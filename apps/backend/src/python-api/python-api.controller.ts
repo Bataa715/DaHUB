@@ -20,6 +20,7 @@ import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { PythonApiService } from "./python-api.service";
+import { AuthenticatedRequest } from "../common/types/authenticated-request";
 import {
   CreatePythonToolDto,
   UpdatePythonToolDto,
@@ -107,7 +108,7 @@ export class PythonApiController {
 
   @Post("admin/permissions")
   @UseGuards(AdminGuard)
-  async grantPermission(@Body() body: GrantPermissionDto, @Request() req: any) {
+  async grantPermission(@Body() body: GrantPermissionDto, @Request() req: AuthenticatedRequest) {
     await this.service.grantPermission(
       body.userId,
       body.templateId,
@@ -126,7 +127,7 @@ export class PythonApiController {
   // ── User routes ────────────────────────────────────────────────────────────
 
   @Get("tools")
-  getActiveTools(@Request() req: any) {
+  getActiveTools(@Request() req: AuthenticatedRequest) {
     return this.service.getActiveToolsForUser(
       req.user?.id,
       !!req.user?.isAdmin,
@@ -143,7 +144,7 @@ export class PythonApiController {
   async runTool(
     @Body() dto: RunToolDto,
     @Res() res: Response,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     // ── Permission check ──────────────────────────────────────────────────
     if (!req.user?.isAdmin && dto.toolId) {
@@ -198,7 +199,7 @@ export class PythonApiController {
   /** POST /python-api/preview — эхний 50 мөрийг JSON-оор буцаана */
   @Post("preview")
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async previewTool(@Body() dto: RunToolDto, @Request() req: any) {
+  async previewTool(@Body() dto: RunToolDto, @Request() req: AuthenticatedRequest) {
     if (!dto.toolId) throw new BadRequestException("toolId шаардлагатай");
     // ── Permission check ──────────────────────────────────────────────────
     if (!req.user?.isAdmin) {

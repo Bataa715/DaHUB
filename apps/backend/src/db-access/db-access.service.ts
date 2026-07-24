@@ -20,6 +20,7 @@ import {
   ReviewRequestDto,
   RevokeGrantDto,
 } from "./dto/db-access.dto";
+import { AuthenticatedUser } from "../common/types/authenticated-request";
 
 // Databases exposed to auditors
 const ALLOWED_DATABASES = ["FINACLE", "ERP", "CARDZONE", "EBANK"];
@@ -91,7 +92,7 @@ export class DbAccessService {
     return date.toISOString().slice(0, 19).replace("T", " ");
   }
 
-  private canGrantAccess(user: any): boolean {
+  private canGrantAccess(user: AuthenticatedUser): boolean {
     if (user.isAdmin || user.isSuperAdmin) return true;
     const tools: string[] = user.allowedTools || [];
     return tools.includes("db_access_granter");
@@ -130,7 +131,7 @@ export class DbAccessService {
 
   /** Submit a new access request */
   async createRequest(
-    user: any,
+    user: AuthenticatedUser,
     dto: CreateAccessRequestDto,
   ): Promise<{ id: string }> {
     const validUntil = new Date(dto.validUntil);
@@ -250,7 +251,7 @@ export class DbAccessService {
   }
 
   /** Get all pending requests (grantors & admins only) */
-  async getPendingRequests(user: any) {
+  async getPendingRequests(user: AuthenticatedUser) {
     if (!this.canGrantAccess(user)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
@@ -265,7 +266,7 @@ export class DbAccessService {
   }
 
   /** Get ALL requests (admin view) */
-  async getAllRequests(user: any) {
+  async getAllRequests(user: AuthenticatedUser) {
     if (!this.canGrantAccess(user)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
@@ -278,7 +279,7 @@ export class DbAccessService {
   }
 
   /** Hard-delete a single pending request (granter / admin only) */
-  async deleteRequest(id: string, user: any) {
+  async deleteRequest(id: string, user: AuthenticatedUser) {
     if (!this.canGrantAccess(user)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
@@ -311,7 +312,7 @@ export class DbAccessService {
    * Use this when a user is stuck after a failed revoke/approve cycle.
    * After cleanup, the next approval will recreate everything cleanly.
    */
-  async cleanupUserChAccess(requesterUserId: string, admin: any) {
+  async cleanupUserChAccess(requesterUserId: string, admin: AuthenticatedUser) {
     if (!this.canGrantAccess(admin)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
@@ -509,7 +510,7 @@ export class DbAccessService {
   }
 
   /** Get all active grants (admin view) */
-  async getAllGrants(user: any) {
+  async getAllGrants(user: AuthenticatedUser) {
     if (!this.canGrantAccess(user)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
@@ -619,7 +620,7 @@ export class DbAccessService {
   }
 
   /** User self-cancels their own active grant before expiry */
-  async selfRevokeGrant(grantId: string, requester: any) {
+  async selfRevokeGrant(grantId: string, requester: AuthenticatedUser) {
     const rows = await this.clickhouse.query<any>(
       `SELECT * FROM access_grants FINAL WHERE id = {id:String} LIMIT 1`,
       { id: grantId },

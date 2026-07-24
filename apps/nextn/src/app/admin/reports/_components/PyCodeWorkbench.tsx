@@ -18,6 +18,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { pythonToolApi, getApiErrorMessage, FilterDef } from "@/lib/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── Editor ────────────────────────────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ export function PyCodeWorkbench({
   filtersJson?: string;
   minHeight?: number;
 }) {
+  const { t } = useLanguage();
   const [validation, setValidation] = useState<ValidateState>({ kind: "idle" });
   const [preview, setPreview] = useState<PreviewState>({ kind: "idle" });
   const today = new Date().toISOString().slice(0, 10);
@@ -188,7 +190,7 @@ export function PyCodeWorkbench({
       else
         setValidation({
           kind: "error",
-          message: res.error ?? "Тодорхойгүй алдаа",
+          message: res.error ?? t("admPyWorkbenchUnknownError"),
           line: res.line,
         });
     } catch (e) {
@@ -260,7 +262,7 @@ export function PyCodeWorkbench({
           ) : (
             <ShieldCheck className="w-3.5 h-3.5" />
           )}
-          Шалгах
+          {t("admPyWorkbenchValidateBtn")}
         </button>
 
         {dateMode !== "none" && (
@@ -291,7 +293,7 @@ export function PyCodeWorkbench({
             onClick={() => setShowTestFilters((p) => !p)}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
           >
-            Тест утга ({parsedTestFilterDefs.length})
+            {t("admPyWorkbenchTestValuesBtn")} ({parsedTestFilterDefs.length})
           </button>
         )}
 
@@ -306,14 +308,14 @@ export function PyCodeWorkbench({
           ) : (
             <Play className="w-3.5 h-3.5" />
           )}
-          Тест (эхний 50 мөр)
+          {t("admPyWorkbenchTestRunBtn")}
         </button>
 
-        {/* Validate үр дүн */}
+        {/* Validate result */}
         {validation.kind === "ok" && (
           <span className="flex items-center gap-1 text-[11px] text-emerald-500">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Код зөв
+            {t("admPyWorkbenchCodeOk")}
             {validation.warning && (
               <span className="text-amber-500 ml-1">
                 — {validation.warning}
@@ -324,7 +326,9 @@ export function PyCodeWorkbench({
         {validation.kind === "error" && (
           <span className="flex items-center gap-1 text-[11px] text-red-400">
             <XCircle className="w-3.5 h-3.5" />
-            {validation.line ? `Мөр ${validation.line}: ` : ""}
+            {validation.line
+              ? `${t("admPyWorkbenchLinePrefix")} ${validation.line}: `
+              : ""}
             {validation.message}
           </span>
         )}
@@ -337,7 +341,9 @@ export function PyCodeWorkbench({
               <label className="text-[10px] text-muted-foreground/70">
                 {f.label || f.key}{" "}
                 {f.type === "list" && (
-                  <span className="text-violet-400">(олон утга)</span>
+                  <span className="text-violet-400">
+                    {t("admPyWorkbenchMultiValueTag")}
+                  </span>
                 )}
               </label>
               {f.type === "list" ? (
@@ -367,7 +373,7 @@ export function PyCodeWorkbench({
         </div>
       )}
 
-      {/* Test-run үр дүн */}
+      {/* Test-run result */}
       {preview.kind === "error" && (
         <div className="flex items-start gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
           <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
@@ -380,7 +386,8 @@ export function PyCodeWorkbench({
         <div className="rounded-xl border border-border/40 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 bg-foreground/[0.03] border-b border-border/30">
             <span className="text-[11px] text-muted-foreground/70">
-              Тест үр дүн — {preview.rows.length} мөр харуулав (нийт{" "}
+              {t("admPyWorkbenchResultLabel")} — {preview.rows.length}{" "}
+              {t("admPyWorkbenchRowsShownSuffix")} ({t("admPyWorkbenchTotalLabel")}{" "}
               {preview.totalCount.toLocaleString()})
             </span>
             <button
@@ -388,7 +395,7 @@ export function PyCodeWorkbench({
               onClick={() => setPreview({ kind: "idle" })}
               className="text-[11px] text-muted-foreground/50 hover:text-foreground"
             >
-              Хаах
+              {t("close")}
             </button>
           </div>
           <div className="overflow-auto max-h-64">

@@ -22,21 +22,54 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { usersApi } from "@/lib/api";
 import { isRegularAppUser } from "@/lib/utils";
+import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 
-const ALL_TOOLS = [
+const ALL_TOOLS: { id: string; name: string; nameKey?: TranslationKey }[] = [
   { id: "todo", name: "Todo" },
-  { id: "chess", name: "Оюуны спорт" },
-  { id: "sanamsargui-tuuwer", name: "Санамсаргүй түүвэр" },
+  { id: "chess", name: "Оюуны спорт", nameKey: "admAdminsToolChess" },
+  {
+    id: "sanamsargui-tuuwer",
+    name: "Санамсаргүй түүвэр",
+    nameKey: "toolSampleTitle",
+  },
   { id: "pivot", name: "Pivot" },
-  { id: "db_access_requester", name: "Эрх хүсэгч" },
-  { id: "db_access_granter", name: "Эрх олгогч" },
-  { id: "tailan", name: "Улирлын тайлан (ажилтан)" },
-  { id: "tailan_dept_head", name: "Улирлын тайлан (ахлагч)" },
-  { id: "english", name: "Англи үгс" },
-  { id: "excel_report", name: "Excel тайлан" },
-  { id: "data_doc", name: "Өгөгдлийн толь бичиг" },
+  {
+    id: "db_access_requester",
+    name: "Эрх хүсэгч",
+    nameKey: "admAdminsToolAccessRequester",
+  },
+  {
+    id: "db_access_granter",
+    name: "Эрх олгогч",
+    nameKey: "admAdminsToolAccessGranter",
+  },
+  {
+    id: "tailan",
+    name: "Улирлын тайлан (ажилтан)",
+    nameKey: "admAdminsToolTailanEmployee",
+  },
+  {
+    id: "tailan_dept_head",
+    name: "Улирлын тайлан (ахлагч)",
+    nameKey: "admAdminsToolTailanManager",
+  },
+  { id: "english", name: "Англи үгс", nameKey: "admAdminsToolEnglishWords" },
+  {
+    id: "excel_report",
+    name: "Excel тайлан",
+    nameKey: "admAdminsToolExcelReport",
+  },
+  {
+    id: "data_doc",
+    name: "Өгөгдлийн толь бичиг",
+    nameKey: "toolDataDocTitle",
+  },
   { id: "alert_box", name: "Alert Box" },
-  { id: "risk_assessment", name: "Салбарын эрсдэлийн үнэлгээ" },
+  {
+    id: "risk_assessment",
+    name: "Салбарын эрсдэлийн үнэлгээ",
+    nameKey: "toolRiskAssessmentTitle",
+  },
 ];
 
 interface AdminUser {
@@ -64,9 +97,12 @@ function ToolCheckList({
   tools: string[];
   setTools: (v: string[]) => void;
 }) {
+  const { t } = useLanguage();
   const toggle = (id: string) =>
     setTools(
-      tools.includes(id) ? tools.filter((t) => t !== id) : [...tools, id],
+      tools.includes(id)
+        ? tools.filter((toolId) => toolId !== id)
+        : [...tools, id],
     );
   return (
     <div className="space-y-2 rounded-xl bg-muted/50 p-3 border border-border max-h-52 overflow-y-auto">
@@ -104,7 +140,7 @@ function ToolCheckList({
             <span
               className={`text-sm select-none transition-colors ${checked ? "text-foreground" : "text-muted-foreground group-hover:text-foreground/80"}`}
             >
-              {tool.name}
+              {tool.nameKey ? t(tool.nameKey) : tool.name}
             </span>
           </label>
         );
@@ -115,6 +151,7 @@ function ToolCheckList({
 
 export default function AdminsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const isSuperAdmin = user?.isSuperAdmin;
 
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -146,11 +183,11 @@ export default function AdminsPage() {
         })),
       );
     } catch {
-      setError("Админуудыг ачааллахад алдаа гарлаа.");
+      setError(t("admAdminsLoadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchAllUsers = useCallback(async () => {
     try {
@@ -179,7 +216,7 @@ export default function AdminsPage() {
         ),
       );
     } catch {
-      setError("Эрх шинэчлэхэд алдаа гарлаа.");
+      setError(t("admAdminsRoleUpdateError"));
     }
   };
 
@@ -192,7 +229,7 @@ export default function AdminsPage() {
       setAllUsers((prev) => [...prev, { ...removeTarget, isAdmin: false }]);
       setRemoveTarget(null);
     } catch {
-      setError("Админ устгахад алдаа гарлаа.");
+      setError(t("admAdminsRemoveError"));
     } finally {
       setRemoveLoading(false);
     }
@@ -216,7 +253,7 @@ export default function AdminsPage() {
       setSelectedRole("sub");
       setGrantableTools([]);
     } catch {
-      setError("Админ нэмэхэд алдаа гарлаа.");
+      setError(t("admAdminsAddError"));
     } finally {
       setAddLoading(false);
     }
@@ -239,7 +276,7 @@ export default function AdminsPage() {
       );
       setEditTarget(null);
     } catch {
-      setError("Хэрэгсэл шинэчлэхэд алдаа гарлаа.");
+      setError(t("admAdminsToolsUpdateError"));
     } finally {
       setEditLoading(false);
     }
@@ -254,14 +291,14 @@ export default function AdminsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AdminPageHeader
-        title="Админ удирдлага"
+        title={t("admAdminsPageTitle")}
         rightContent={
           isSuperAdmin ? (
             <button
               onClick={() => setShowAddSheet(true)}
               className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors"
             >
-              + Нэмэх
+              + {t("tailan_addEntry")}
             </button>
           ) : undefined
         }
@@ -281,15 +318,16 @@ export default function AdminsPage() {
           </div>
         ) : admins.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground/50 py-16">
-            Одоогоор админ бүртгэгдээгүй байна
+            {t("admAdminsNoneRegistered")}
           </p>
         ) : (
           admins.map((admin) => {
             const isSelf = admin.id === user?.id;
             const isExpanded = expandedAdmin === admin.id;
-            const toolNames = (admin.grantableTools ?? []).map(
-              (tid) => ALL_TOOLS.find((t) => t.id === tid)?.name ?? tid,
-            );
+            const toolNames = (admin.grantableTools ?? []).map((tid) => {
+              const found = ALL_TOOLS.find((tool) => tool.id === tid);
+              return found ? (found.nameKey ? t(found.nameKey) : found.name) : tid;
+            });
 
             return (
               <div
@@ -310,11 +348,13 @@ export default function AdminsPage() {
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded-full border ${admin.isSuperAdmin ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}
                       >
-                        {admin.isSuperAdmin ? "Супер" : "Саб"}
+                        {admin.isSuperAdmin
+                          ? t("admAdminsSuperBadge")
+                          : t("admAdminsSubBadge")}
                       </span>
                       {isSelf && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                          Та
+                          {t("youBadge")}
                         </span>
                       )}
                     </div>
@@ -330,8 +370,8 @@ export default function AdminsPage() {
                           className="flex items-center gap-0.5 text-[10px] text-muted-foreground/40 hover:text-foreground/60 ml-2 transition-colors"
                         >
                           {toolNames.length > 0
-                            ? `${toolNames.length} хэрэгсэл`
-                            : "хэрэгсэл тохируулаагүй"}
+                            ? `${toolNames.length} ${t("admAdminsToolCountSuffix")}`
+                            : t("admAdminsNoToolsShort")}
                           {isExpanded ? (
                             <ChevronUp className="w-3 h-3" />
                           ) : (
@@ -351,20 +391,22 @@ export default function AdminsPage() {
                           }}
                           className="text-xs text-muted-foreground/60 hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors border border-border"
                         >
-                          Эрх
+                          {t("admAdminsGrantBtn")}
                         </button>
                       )}
                       <button
                         onClick={() => handleToggleSuperAdmin(admin)}
                         className="text-xs text-muted-foreground/60 hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors border border-border"
                       >
-                        {admin.isSuperAdmin ? "Саб болгох" : "Супер болгох"}
+                        {admin.isSuperAdmin
+                          ? t("admAdminsMakeSubBtn")
+                          : t("admAdminsMakeSuperBtn")}
                       </button>
                       <button
                         onClick={() => setRemoveTarget(admin)}
                         className="text-xs text-muted-foreground/60 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors border border-border"
                       >
-                        Хасах
+                        {t("admAdminsRemoveBtn")}
                       </button>
                     </div>
                   )}
@@ -384,7 +426,7 @@ export default function AdminsPage() {
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground/40">
-                        Ямар ч хэрэгсэл тохируулаагүй байна.
+                        {t("admAdminsNoToolsConfiguredFull")}
                       </p>
                     )}
                   </div>
@@ -399,7 +441,7 @@ export default function AdminsPage() {
       <Sheet open={showAddSheet} onOpenChange={setShowAddSheet}>
         <SheetContent className="bg-background border-border overflow-y-auto">
           <SheetTitle className="text-base font-semibold mb-4">
-            Шинэ админ нэмэх
+            {t("admAdminsAddSheetTitle")}
           </SheetTitle>
           <div className="space-y-4">
             <div className="relative">
@@ -407,14 +449,14 @@ export default function AdminsPage() {
               <input
                 value={addSearch}
                 onChange={(e) => setAddSearch(e.target.value)}
-                placeholder="Хэрэглэгч хайх..."
+                placeholder={t("admAdminsSearchUserPlaceholder")}
                 className="w-full bg-muted border border-border rounded-xl pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-ring"
               />
             </div>
             <div className="space-y-1 max-h-48 overflow-y-auto rounded-xl border border-border">
               {filteredUsers.length === 0 ? (
                 <p className="text-muted-foreground/60 text-sm p-4 text-center">
-                  Хэрэглэгч олдсонгүй
+                  {t("admAdminsUserNotFound")}
                 </p>
               ) : (
                 filteredUsers.map((u) => (
@@ -442,7 +484,9 @@ export default function AdminsPage() {
               )}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground/60 mb-2">Роль</p>
+              <p className="text-xs text-muted-foreground/60 mb-2">
+                {t("admAdminsRoleLabel")}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {(["sub", "super"] as const).map((role) => (
                   <button
@@ -450,7 +494,9 @@ export default function AdminsPage() {
                     onClick={() => setSelectedRole(role)}
                     className={`py-2 rounded-xl border text-sm font-medium transition-all ${selectedRole === role ? "bg-muted border-foreground/20 text-foreground" : "border-border text-muted-foreground hover:bg-muted/50"}`}
                   >
-                    {role === "super" ? "Супер админ" : "Саб админ"}
+                    {role === "super"
+                      ? t("admAdminsSuperAdminOption")
+                      : t("admAdminsSubAdminOption")}
                   </button>
                 ))}
               </div>
@@ -458,7 +504,7 @@ export default function AdminsPage() {
             {selectedRole === "sub" && (
               <div>
                 <p className="text-xs text-muted-foreground/60 mb-2">
-                  Олгох эрхийн хэрэгсэл
+                  {t("admAdminsGrantableToolsLabel")}
                 </p>
                 <ToolCheckList
                   tools={grantableTools}
@@ -472,7 +518,7 @@ export default function AdminsPage() {
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-background hover:bg-muted disabled:opacity-50 text-sm font-medium transition-colors"
             >
               {addLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Нэмэх
+              {t("tailan_addEntry")}
             </button>
           </div>
         </SheetContent>
@@ -487,13 +533,13 @@ export default function AdminsPage() {
       >
         <SheetContent className="bg-background border-border overflow-y-auto">
           <SheetTitle className="text-base font-semibold mb-1">
-            Хэрэгсэл эрх засах
+            {t("admAdminsEditToolsSheetTitle")}
           </SheetTitle>
           <p className="text-xs text-muted-foreground/60 mb-4">
             <span className="text-foreground font-medium">
               {editTarget?.name || editTarget?.userId}
             </span>
-            -д олгох хэрэгслийн эрхийг сонгоно уу.
+            {t("admAdminsEditToolsDesc")}
           </p>
           <ToolCheckList tools={editTools} setTools={setEditTools} />
           <button
@@ -502,7 +548,7 @@ export default function AdminsPage() {
             className="w-full flex items-center justify-center gap-2 mt-4 py-2.5 rounded-xl border border-border bg-background hover:bg-muted disabled:opacity-50 text-sm font-medium transition-colors"
           >
             {editLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Хадгалах
+            {t("save")}
           </button>
         </SheetContent>
       </Sheet>
@@ -516,12 +562,12 @@ export default function AdminsPage() {
       >
         <DialogContent className="bg-background border-border text-foreground max-w-sm">
           <DialogHeader>
-            <DialogTitle>Админ эрх хасах</DialogTitle>
+            <DialogTitle>{t("admAdminsRemoveDialogTitle")}</DialogTitle>
             <DialogDescription className="text-muted-foreground/60">
               <span className="text-foreground font-medium">
                 {removeTarget?.name || removeTarget?.userId}
               </span>
-              -н админ эрхийг хасах уу?
+              {t("admAdminsRemoveDialogDesc")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -530,7 +576,7 @@ export default function AdminsPage() {
               onClick={() => setRemoveTarget(null)}
               className="border border-border"
             >
-              Болих
+              {t("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -540,7 +586,7 @@ export default function AdminsPage() {
               {removeLoading && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               )}
-              Хасах
+              {t("admAdminsRemoveBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>

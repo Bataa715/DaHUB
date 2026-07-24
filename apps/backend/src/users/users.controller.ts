@@ -24,6 +24,7 @@ import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 import { VALID_TOOLS_SET } from "../common/constants/tools";
+import { AuthenticatedRequest } from "../common/types/authenticated-request";
 
 @Controller("users")
 export class UsersController {
@@ -60,7 +61,7 @@ export class UsersController {
   /** Authenticated users can view their own profile; admins can view any profile */
   @UseGuards(JwtAuthGuard)
   @Get(":id")
-  findOne(@Param("id") id: string, @Request() req: any) {
+  findOne(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     // M-1: IDOR fix — prevent any user from reading another user's full profile
     if (id !== req.user.id && !req.user.isAdmin) {
       throw new ForbiddenException("Зөвхөн өөрийн профайлыг харах боломжтой");
@@ -74,7 +75,7 @@ export class UsersController {
   update(
     @Param("id") id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     const isSelf = id === req.user.id;
     const isAdmin = req.user.isAdmin;
@@ -111,7 +112,7 @@ export class UsersController {
   async setAdminRole(
     @Param("id") id: string,
     @Body() body: SetAdminRoleDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     const result = await this.usersService.setAdminRole(
       id,
@@ -142,7 +143,7 @@ export class UsersController {
   async resetPassword(
     @Param("id") id: string,
     @Body() body: ResetPasswordDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     try {
       const result = await this.usersService.resetPassword(
@@ -176,7 +177,10 @@ export class UsersController {
   /** Authenticated: user can remove own profile image; admin can remove any user's */
   @UseGuards(JwtAuthGuard)
   @Delete(":id/profile-image")
-  removeProfileImage(@Param("id") id: string, @Request() req: any) {
+  removeProfileImage(
+    @Param("id") id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     const isSelf = id === req.user.id;
     const isAdmin = req.user.isAdmin;
 
@@ -192,7 +196,7 @@ export class UsersController {
   /** Admin: delete a user (SuperAdmin required if target is an admin) */
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Delete(":id")
-  async remove(@Param("id") id: string, @Request() req: any) {
+  async remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     try {
       const result = await this.usersService.remove(
         id,

@@ -28,13 +28,13 @@ import {
   ChevronRight,
   TrendingUp,
 } from "lucide-react";
-import Image from "next/image";
 import {
   knowledgeApi,
   knowledgeReactionsApi,
   knowledgeCommentsApi,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { KnowledgeCoverImage } from "./_components/KnowledgeCoverImage";
 
 interface TopPublisher {
   rank: number;
@@ -44,8 +44,8 @@ interface TopPublisher {
   totalViews: number;
 }
 
-function getImageUrl(path?: string): string | null {
-  return knowledgeApi.resolveImageUrl(path);
+function hasKnowledgeImage(path?: string): boolean {
+  return !!knowledgeApi.parseImageId(path);
 }
 
 function sanitizeHtml(html: string): string {
@@ -106,18 +106,18 @@ interface Comment {
 
 // ─── Category config ───────────────────────────────────────────────────────
 const CATEGORIES = [
-  { key: "Бүгд", label: "Бүгд", icon: Layers, color: "text-foreground" },
-  { key: "Аудит", label: "Аудит", icon: ShieldCheck, color: "text-blue-500" },
-  { key: "Технологи", label: "Технологи", icon: Cpu, color: "text-violet-500" },
+  { key: "Бүгд", labelKey: "knowledgeCatAll" as const, icon: Layers, color: "text-foreground" },
+  { key: "Аудит", labelKey: "knowledgeCatAudit" as const, icon: ShieldCheck, color: "text-blue-500" },
+  { key: "Технологи", labelKey: "knowledgeCatTech" as const, icon: Cpu, color: "text-violet-500" },
   {
     key: "Сонин хачин",
-    label: "Сонин хачин",
+    labelKey: "knowledgeCatFun" as const,
     icon: Laugh,
     color: "text-emerald-500",
   },
   {
     key: "Банк санхүү",
-    label: "Банк санхүү",
+    labelKey: "knowledgeCatFinance" as const,
     icon: Landmark,
     color: "text-amber-500",
   },
@@ -200,10 +200,10 @@ function calcReadTime(content: string) {
   const words = content.replace(/<[^>]*>/g, "").split(/\s+/).length;
   return Math.max(1, Math.ceil(words / 200));
 }
-function formatRelative(d: string) {
+function formatRelative(d: string, justNowLabel = "Яг одоо") {
   const diff = Date.now() - new Date(d).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Дэнд";
+  if (mins < 1) return justNowLabel;
   if (mins < 60) return `${mins}м`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}ц`;
@@ -252,17 +252,13 @@ function PostCard({
         className="cursor-pointer rounded-2xl border border-border bg-card hover:border-violet-300/60 dark:hover:border-violet-700/50 shadow-premium hover:shadow-premium-lg ring-hairline transition-all duration-300 overflow-hidden"
       >
         {/* Image banner */}
-        {getImageUrl(item.imageUrl) && (
+        {hasKnowledgeImage(item.imageUrl) && (
           <div className="relative w-full h-44 overflow-hidden bg-muted">
-            <Image
-              src={getImageUrl(item.imageUrl)!}
+            <KnowledgeCoverImage
+              path={item.imageUrl}
               alt={item.title}
               fill
-              unoptimized
-              loading={index < 4 ? "eager" : "lazy"}
-              priority={index < 4}
-              className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-              sizes="640px"
+              className="transition-transform duration-500 group-hover:scale-[1.02]"
             />
             {/* Category pill over image */}
             <div className="absolute bottom-3 left-3">
@@ -288,7 +284,7 @@ function PostCard({
                 {authorName}
               </span>
             </div>
-            {!getImageUrl(item.imageUrl) && (
+            {!hasKnowledgeImage(item.imageUrl) && (
               <span
                 className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 flex-shrink-0 ${cat.bg} ${cat.text} ${cat.ring}`}
               >
@@ -317,7 +313,7 @@ function PostCard({
               {t("minRead")}
             </span>
             <span className="ml-auto text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
-              Унших <ChevronRight className="w-3 h-3" />
+              {t("knowledgeRead")} <ChevronRight className="w-3 h-3" />
             </span>
           </div>
         </div>
@@ -338,6 +334,7 @@ function LeftSidebar({
   newsCountByCategory: Record<string, number>;
   onCreateClick: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-2 py-6 px-3">
       {/* Create button */}
@@ -346,13 +343,13 @@ function LeftSidebar({
         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-violet-600 dark:bg-violet-500/20 text-white dark:text-violet-300 dark:border dark:border-violet-400/30 hover:bg-violet-700 dark:hover:bg-violet-500/35 transition-colors text-sm font-semibold shadow-sm mb-2"
       >
         <PenLine className="w-4 h-4" />
-        Мэдлэг хуваалцах
+        {t("knowledgeShare")}
       </button>
 
       {/* Category filters */}
       <div className="space-y-0.5">
         <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1.5">
-          Ангилал
+          {t("knowledgeCategory")}
         </p>
         {CATEGORIES.map((c) => {
           const Icon = c.icon;
@@ -374,7 +371,7 @@ function LeftSidebar({
               <Icon
                 className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-violet-600 dark:text-violet-400" : c.color}`}
               />
-              <span className="flex-1 text-left font-bold">{c.label}</span>
+              <span className="flex-1 text-left font-bold">{t(c.labelKey ?? "knowledgeCatAll")}</span>
               {count > 0 && (
                 <span
                   className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
@@ -402,11 +399,12 @@ function RightSidebar({
   publishers: TopPublisher[];
   loading: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4 py-6 px-4">
       <div className="flex items-center gap-2 mb-1">
         <Trophy className="w-4 h-4 text-amber-500" />
-        <p className="text-foreground text-sm font-bold">Мэдлэг түгээгч</p>
+        <p className="text-foreground text-sm font-bold">{t("knowledgePublisher")}</p>
       </div>
 
       {loading ? (
@@ -415,7 +413,7 @@ function RightSidebar({
         </div>
       ) : publishers.length === 0 ? (
         <p className="text-muted-foreground text-xs text-center py-6">
-          Мэдээлэл байхгүй
+          {t("knowledgeEmpty")}
         </p>
       ) : (
         <div className="space-y-1">
@@ -446,7 +444,7 @@ function RightSidebar({
                   <p className="text-foreground text-xs font-bold">
                     {p.totalViews.toLocaleString()}
                   </p>
-                  <p className="text-muted-foreground text-[10px]">үзэлт</p>
+                  <p className="text-muted-foreground text-[10px]">{t("knowledgeViews")}</p>
                 </div>
               </div>
             );
@@ -542,7 +540,7 @@ export default function ShineMedlegPage() {
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: t("error"),
-        description: "Зураг 2MB-аас ихгүй байх ёстой",
+        description: t("knowledgeImageTooBig"),
         variant: "destructive",
       });
       return;
@@ -742,13 +740,13 @@ export default function ShineMedlegPage() {
             <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
             </div>
-            <h1 className="text-foreground text-lg font-black">Мэдлэг</h1>
+            <h1 className="text-foreground text-lg font-black">{t("knowledgeTitle")}</h1>
           </div>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors shadow-sm"
           >
-            <PenLine className="w-3.5 h-3.5" /> Мэдлэг хуваалцах
+            <PenLine className="w-3.5 h-3.5" /> {t("knowledgeShare")}
           </button>
         </div>
 
@@ -766,7 +764,7 @@ export default function ShineMedlegPage() {
                     : "bg-muted text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {c.label}
+                {t(c.labelKey ?? "knowledgeCatAll")}
               </button>
             );
           })}
@@ -784,7 +782,7 @@ export default function ShineMedlegPage() {
             </div>
             <p className="font-semibold text-sm">{t("noNews")}</p>
             <p className="text-xs mt-1 opacity-60">
-              Эхний мэдлэгийг та бичиж болно
+              {t("knowledgeFirstPost")}
             </p>
           </div>
         ) : (
@@ -827,7 +825,7 @@ export default function ShineMedlegPage() {
               <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-border flex-shrink-0">
                 <h2 className="text-foreground font-bold text-base flex items-center gap-2">
                   <PenLine className="w-4 h-4 text-violet-500" />
-                  Мэдлэг хуваалцах
+                  {t("knowledgeShare")}
                 </h2>
                 <button
                   onClick={() => setShowCreate(false)}
@@ -841,7 +839,7 @@ export default function ShineMedlegPage() {
                   <div className="space-y-4 md:overflow-y-auto landscape:overflow-y-auto md:pr-1">
                     <div>
                       <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                        Гарчиг
+                        {t("knowledgeTitleLabel")}
                       </label>
                       <input
                         type="text"
@@ -853,12 +851,12 @@ export default function ShineMedlegPage() {
                           }))
                         }
                         className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                        placeholder="Мэдлэгийн гарчиг..."
+                        placeholder={t("knowledgeTitlePlaceholder")}
                       />
                     </div>
                     <div>
                       <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                        Ангилал
+                        {t("knowledgeCategory")}
                       </label>
                       <select
                         value={createForm.category}
@@ -870,10 +868,10 @@ export default function ShineMedlegPage() {
                         }
                         className="w-full rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input focus:outline-none focus:ring-2 focus:ring-violet-500/30"
                       >
-                        <option value="Аудит">Аудит</option>
-                        <option value="Технологи">Технологи</option>
-                        <option value="Сонин хачин">Сонин хачин</option>
-                        <option value="Банк санхүү">Банк санхүү</option>
+                        <option value="Аудит">{t("knowledgeCatAudit")}</option>
+                        <option value="Технологи">{t("knowledgeCatTech")}</option>
+                        <option value="Сонин хачин">{t("knowledgeCatFun")}</option>
+                        <option value="Банк санхүү">{t("knowledgeCatFinance")}</option>
                         <option value="Risk">Risk</option>
                       </select>
                     </div>
@@ -883,12 +881,11 @@ export default function ShineMedlegPage() {
                       </label>
                       {imagePreview ? (
                         <div className="relative w-full h-40 landscape:h-32 md:h-44 rounded-xl overflow-hidden">
-                          <Image
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
                             src={imagePreview}
                             alt="preview"
-                            fill
-                            className="object-cover"
-                            unoptimized
+                            className="absolute inset-0 h-full w-full object-cover"
                           />
                           <button
                             onClick={() => {
@@ -939,7 +936,7 @@ export default function ShineMedlegPage() {
                   onClick={() => setShowCreate(false)}
                   className="px-4 py-2 rounded-xl border border-border text-foreground text-xs font-semibold hover:bg-muted transition-colors"
                 >
-                  Болих
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={handleCreate}
@@ -991,16 +988,12 @@ export default function ShineMedlegPage() {
                     transition={{ duration: 0.32, delay: 0.06 }}
                     className="relative hidden md:flex w-[42%] flex-shrink-0 flex-col overflow-hidden"
                   >
-                    {getImageUrl(selectedNews.imageUrl) ? (
+                    {hasKnowledgeImage(selectedNews.imageUrl) ? (
                       <>
-                        <Image
-                          src={getImageUrl(selectedNews.imageUrl)!}
+                        <KnowledgeCoverImage
+                          path={selectedNews.imageUrl}
                           alt={selectedNews.title}
                           fill
-                          unoptimized
-                          className="object-cover"
-                          sizes="45vw"
-                          priority
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
                         <div className="absolute top-0 right-0 bottom-0 w-5 bg-gradient-to-l from-black/40 to-transparent" />
@@ -1032,7 +1025,7 @@ export default function ShineMedlegPage() {
                       {(() => {
                         const name = selectedNews.authorName || "Ажилтан";
                         const grad = getAvatarColor(name);
-                        const hasImg = !!getImageUrl(selectedNews.imageUrl);
+                        const hasImg = hasKnowledgeImage(selectedNews.imageUrl);
                         return (
                           <>
                             <div
@@ -1060,7 +1053,7 @@ export default function ShineMedlegPage() {
                     {/* Bottom: category + title */}
                     {(() => {
                       const cat = getCat(selectedNews.category);
-                      const hasImg = !!getImageUrl(selectedNews.imageUrl);
+                      const hasImg = hasKnowledgeImage(selectedNews.imageUrl);
                       return (
                         <div className="absolute bottom-0 left-0 right-0 p-8 z-10 space-y-3">
                           <span
@@ -1105,7 +1098,7 @@ export default function ShineMedlegPage() {
                       >
                         <ArrowLeft className="w-4 h-4" />
                         <span className="hidden sm:inline text-xs font-medium">
-                          Буцах
+                          {t("back")}
                         </span>
                       </button>
                       <div className="flex-1" />
@@ -1253,7 +1246,10 @@ export default function ShineMedlegPage() {
                                         {c.authorName}
                                       </span>
                                       <span className="text-muted-foreground text-[10px]">
-                                        {formatRelative(c.createdAt)}
+                                        {formatRelative(
+                                          c.createdAt,
+                                          t("knowledgeJustNow"),
+                                        )}
                                       </span>
                                       {user?.id === c.authorId && (
                                         <button

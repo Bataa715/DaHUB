@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
+import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 import {
   Loader2,
   Plus,
@@ -50,11 +51,11 @@ interface Department {
 
 const TYPE_META: Record<
   TailanSectionType,
-  { label: string; icon: typeof FileText }
+  { labelKey: TranslationKey; icon: typeof FileText }
 > = {
-  richtext: { label: "Чөлөөт текст", icon: FileText },
-  taskList: { label: "Ажлын жагсаалт", icon: ListChecks },
-  table: { label: "Хүснэгт", icon: Table2 },
+  richtext: { labelKey: "admTailanTplTypeRichtext", icon: FileText },
+  taskList: { labelKey: "admTailanTplTypeTaskList", icon: ListChecks },
+  table: { labelKey: "admTailanTplTypeTable", icon: Table2 },
 };
 
 function emptySection(order: number): TailanSectionDef {
@@ -72,6 +73,7 @@ function emptyColumn(): TailanTableColumnDef {
 }
 
 export default function TailanTemplatesPage() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [scope, setScope] = useState<"employee" | "department">("employee");
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -109,12 +111,12 @@ export default function TailanTemplatesPage() {
     } catch (e) {
       toast({
         variant: "destructive",
-        title: "Загвар ачааллахад алдаа гарлаа",
+        title: t("admTailanTplLoadError"),
       });
     } finally {
       setLoading(false);
     }
-  }, [departmentId, scope, toast]);
+  }, [departmentId, scope, toast, t]);
 
   useEffect(() => {
     loadDepartments();
@@ -143,15 +145,15 @@ export default function TailanTemplatesPage() {
         name:
           departmentId === DEFAULT_TAILAN_DEPARTMENT_ID
             ? scope === "employee"
-              ? "Үндсэн загвар (ажилтан)"
-              : "Үндсэн загвар (хэлтэс)"
-            : `${departments.find((d) => d.id === departmentId)?.name ?? departmentId} загвар`,
+              ? t("admTailanTplDefaultNameEmployee")
+              : t("admTailanTplDefaultNameDept")
+            : `${departments.find((d) => d.id === departmentId)?.name ?? departmentId} ${t("admTailanTplNameSuffix")}`,
         sections: reOrdered,
       });
       setTemplate(saved);
-      toast({ title: "Хадгаллаа" });
+      toast({ title: t("admEthicsSavedTitle") });
     } catch (e) {
-      toast({ variant: "destructive", title: "Хадгалахад алдаа гарлаа" });
+      toast({ variant: "destructive", title: t("admTailanTplSaveError") });
     } finally {
       setSaving(false);
     }
@@ -166,7 +168,7 @@ export default function TailanTemplatesPage() {
   };
 
   const removeSection = (key: string) => {
-    if (!confirm("Энэ хэсгийг устгах уу?")) return;
+    if (!confirm(t("admTailanTplDeleteSectionConfirm"))) return;
     save(sortedSections.filter((s) => s.key !== key));
   };
 
@@ -180,7 +182,10 @@ export default function TailanTemplatesPage() {
   const submitSectionEdit = () => {
     if (!editingSection) return;
     if (!editingSection.titleMn.trim()) {
-      toast({ variant: "destructive", title: "Гарчиг заавал шаардлагатай" });
+      toast({
+        variant: "destructive",
+        title: t("admTailanTplTitleRequired"),
+      });
       return;
     }
     const exists = sortedSections.some((s) => s.key === editingSection.key);
@@ -195,17 +200,14 @@ export default function TailanTemplatesPage() {
 
   const resetToDefault = async () => {
     if (!template || departmentId === DEFAULT_TAILAN_DEPARTMENT_ID) return;
-    if (
-      !confirm("Тухайн хэлтсийн загварыг устгаж, үндсэн загвар руу шилжих үү?")
-    )
-      return;
+    if (!confirm(t("admTailanTplResetConfirm"))) return;
     setSaving(true);
     try {
       await tailanTemplateApi.remove(template.id);
-      toast({ title: "Үндсэн загвар руу шилжлээ" });
+      toast({ title: t("admTailanTplResetSuccess") });
       await loadTemplate();
     } catch {
-      toast({ variant: "destructive", title: "Алдаа гарлаа" });
+      toast({ variant: "destructive", title: t("errorBoundaryTitle") });
     } finally {
       setSaving(false);
     }
@@ -215,13 +217,13 @@ export default function TailanTemplatesPage() {
     <div className="min-h-screen bg-background">
       <AdminPageHeader
         icon={<LayoutTemplate className="w-4 h-4" />}
-        title="Тайлангийн загвар (Tailan template)"
+        title={t("admTailanTplPageTitle")}
       />
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label>Тайлангийн төрөл</Label>
+            <Label>{t("admTailanTplTypeLabel")}</Label>
             <Select
               value={scope}
               onValueChange={(v) => setScope(v as "employee" | "department")}
@@ -230,23 +232,25 @@ export default function TailanTemplatesPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="employee">Ажилтны улирлын тайлан</SelectItem>
+                <SelectItem value="employee">
+                  {t("admTailanTplScopeEmployee")}
+                </SelectItem>
                 <SelectItem value="department">
-                  Хэлтсийн (ТУЗ/BSC) тайлан
+                  {t("admTailanTplScopeDept")}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label>Хэлтэс</Label>
+            <Label>{t("regFlowLabelDept")}</Label>
             <Select value={departmentId} onValueChange={setDepartmentId}>
               <SelectTrigger className="w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={DEFAULT_TAILAN_DEPARTMENT_ID}>
-                  Үндсэн загвар (бүх хэлтэст)
+                  {t("admTailanTplDefaultDeptOption")}
                 </SelectItem>
                 {departments.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
@@ -263,7 +267,7 @@ export default function TailanTemplatesPage() {
               onClick={resetToDefault}
               disabled={saving}
             >
-              Үндсэн загвар руу шилжих
+              {t("admTailanTplResetToDefaultBtn")}
             </Button>
           )}
 
@@ -272,15 +276,13 @@ export default function TailanTemplatesPage() {
             onClick={() => openEdit()}
             disabled={loading}
           >
-            <Plus className="w-4 h-4 mr-1" /> Хэсэг нэмэх
+            <Plus className="w-4 h-4 mr-1" /> {t("admTailanTplAddSectionBtn")}
           </Button>
         </div>
 
         {!isOwnTemplate && departmentId !== DEFAULT_TAILAN_DEPARTMENT_ID && (
           <p className="text-xs text-muted-foreground">
-            Энэ хэлтэс одоогоор өөрийн загваргүй тул үндсэн загварыг ашиглаж
-            байна. Хэсэг нэмэх/засах бүрд тухайн хэлтсэд зориулсан шинэ загвар
-            үүснэ.
+            {t("admTailanTplNoOwnTemplateInfo")}
           </p>
         )}
 
@@ -321,9 +323,13 @@ export default function TailanTemplatesPage() {
                       {sec.titleMn}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {meta.label}
-                      {sec.orientation === "landscape" ? " · хэвтээ" : ""}
-                      {sec.defaultHidden ? " · анхны байдлаар нуугдсан" : ""}
+                      {t(meta.labelKey)}
+                      {sec.orientation === "landscape"
+                        ? ` · ${t("admTailanTplLandscapeSuffix")}`
+                        : ""}
+                      {sec.defaultHidden
+                        ? ` · ${t("admTailanTplHiddenSuffix")}`
+                        : ""}
                     </div>
                   </div>
                   <Button
@@ -345,7 +351,7 @@ export default function TailanTemplatesPage() {
             })}
             {sortedSections.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-10">
-                Одоогоор хэсэг байхгүй байна. "Хэсэг нэмэх" дарж эхлээрэй.
+                {t("admTailanTplEmptySections")}
               </p>
             )}
           </div>
@@ -381,6 +387,7 @@ function SectionEditDialog({
   onSubmit: () => void;
   saving: boolean;
 }) {
+  const { t } = useLanguage();
   const update = (patch: Partial<TailanSectionDef>) =>
     onChange({ ...section, ...patch });
 
@@ -388,21 +395,21 @@ function SectionEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Хэсэг тохируулах</DialogTitle>
+          <DialogTitle>{t("admTailanTplSectionDialogTitle")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
-            <Label>Гарчиг (MN)</Label>
+            <Label>{t("admTailanTplTitleLabel")}</Label>
             <Input
               value={section.titleMn}
               onChange={(e) => update({ titleMn: e.target.value })}
-              placeholder="Тухайн хэсгийн гарчиг"
+              placeholder={t("admTailanTplTitlePlaceholder")}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Түвшин</Label>
+              <Label>{t("admTailanTplLevelLabel")}</Label>
               <Select
                 value={section.headingLevel}
                 onValueChange={(v) =>
@@ -413,13 +420,17 @@ function SectionEditDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="main">Гол (дугаартай)</SelectItem>
-                  <SelectItem value="sub">Дэд (дугааргүй)</SelectItem>
+                  <SelectItem value="main">
+                    {t("admTailanTplLevelMain")}
+                  </SelectItem>
+                  <SelectItem value="sub">
+                    {t("admTailanTplLevelSub")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Төрөл</Label>
+              <Label>{t("admTailanTplTypeFieldLabel")}</Label>
               <Select
                 value={section.type}
                 onValueChange={(v) => update({ type: v as TailanSectionType })}
@@ -428,9 +439,15 @@ function SectionEditDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="richtext">Чөлөөт текст</SelectItem>
-                  <SelectItem value="taskList">Ажлын жагсаалт</SelectItem>
-                  <SelectItem value="table">Хүснэгт</SelectItem>
+                  <SelectItem value="richtext">
+                    {t("admTailanTplTypeRichtext")}
+                  </SelectItem>
+                  <SelectItem value="taskList">
+                    {t("admTailanTplTypeTaskList")}
+                  </SelectItem>
+                  <SelectItem value="table">
+                    {t("admTailanTplTypeTable")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -438,7 +455,7 @@ function SectionEditDialog({
 
           <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
             <Label className="cursor-pointer" htmlFor="orientation-sw">
-              Хэвтээ (landscape) хуудас
+              {t("admTailanTplLandscapePageLabel")}
             </Label>
             <Checkbox
               id="orientation-sw"
@@ -451,7 +468,7 @@ function SectionEditDialog({
 
           <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
             <Label className="cursor-pointer" htmlFor="hidden-sw">
-              Анхны байдлаар нуух
+              {t("admTailanTplDefaultHideLabel")}
             </Label>
             <Checkbox
               id="hidden-sw"
@@ -469,11 +486,11 @@ function SectionEditDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Болих
+            {t("cancel")}
           </Button>
           <Button onClick={onSubmit} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-            Хадгалах
+            {t("save")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -488,6 +505,7 @@ function TaskListConfigEditor({
   section: TailanSectionDef;
   onChange: (s: TailanSectionDef) => void;
 }) {
+  const { t } = useLanguage();
   const cfg = section.taskList ?? {};
   const update = (patch: Partial<typeof cfg>) =>
     onChange({ ...section, taskList: { ...cfg, ...patch } });
@@ -495,7 +513,7 @@ function TaskListConfigEditor({
   return (
     <div className="rounded-lg border border-border/60 p-3 space-y-3">
       <div className="text-xs font-medium text-muted-foreground">
-        Ажлын жагсаалтын багана тохиргоо
+        {t("admTailanTplTaskListColConfig")}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex items-center gap-2 text-sm">
@@ -503,39 +521,39 @@ function TaskListConfigEditor({
             checked={!!cfg.showCompletion}
             onCheckedChange={(v) => update({ showCompletion: !!v })}
           />
-          Гүйцэтгэл %
+          {t("admTailanTplShowCompletion")}
         </label>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
             checked={!!cfg.showPeriod}
             onCheckedChange={(v) => update({ showPeriod: !!v })}
           />
-          Хугацаа
+          {t("admTailanTplShowPeriod")}
         </label>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
             checked={cfg.showDescription !== false}
             onCheckedChange={(v) => update({ showDescription: !!v })}
           />
-          Тайлбар
+          {t("dataDocColDesc")}
         </label>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
             checked={cfg.showImages !== false}
             onCheckedChange={(v) => update({ showImages: !!v })}
           />
-          Зураг
+          {t("admTailanTplShowImages")}
         </label>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Input
-          placeholder="Гарчгийн багана нэр"
+          placeholder={t("admTailanTplTitleColLabel")}
           value={cfg.titleLabel ?? ""}
           onChange={(e) => update({ titleLabel: e.target.value })}
         />
         {cfg.showDescription !== false && (
           <Input
-            placeholder="Тайлбарын багана нэр"
+            placeholder={t("admTailanTplDescColLabel")}
             value={cfg.descriptionLabel ?? ""}
             onChange={(e) => update({ descriptionLabel: e.target.value })}
           />
@@ -552,6 +570,7 @@ function TableConfigEditor({
   section: TailanSectionDef;
   onChange: (s: TailanSectionDef) => void;
 }) {
+  const { t } = useLanguage();
   const cfg = section.table ?? { columns: [] };
   const update = (patch: Partial<typeof cfg>) =>
     onChange({ ...section, table: { ...cfg, ...patch } });
@@ -569,9 +588,11 @@ function TableConfigEditor({
   return (
     <div className="rounded-lg border border-border/60 p-3 space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-medium text-muted-foreground">Багана</div>
+        <div className="text-xs font-medium text-muted-foreground">
+          {t("admTailanTplColumnsLabel")}
+        </div>
         <Button size="sm" variant="outline" onClick={addColumn}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Багана нэмэх
+          <Plus className="w-3.5 h-3.5 mr-1" /> {t("admTailanTplAddColumnBtn")}
         </Button>
       </div>
       <div className="space-y-2">
@@ -579,7 +600,7 @@ function TableConfigEditor({
           <div key={col.key} className="flex items-center gap-2">
             <Input
               className="flex-1"
-              placeholder="Гарчиг"
+              placeholder={t("admTailanTplHeaderPlaceholder")}
               value={col.label}
               onChange={(e) => updateColumn(idx, { label: e.target.value })}
             />
@@ -599,7 +620,7 @@ function TableConfigEditor({
                 checked={!!col.numeric}
                 onCheckedChange={(v) => updateColumn(idx, { numeric: !!v })}
               />
-              тоо
+              {t("admTailanTplNumericLabel")}
             </label>
             <Button
               variant="ghost"
@@ -612,7 +633,7 @@ function TableConfigEditor({
         ))}
       </div>
       <div className="space-y-1">
-        <Label className="text-xs">Дундаж мөр гаргах багана (сонголт)</Label>
+        <Label className="text-xs">{t("admTailanTplAvgColLabel")}</Label>
         <Select
           value={cfg.averageColumnKey ?? "__none__"}
           onValueChange={(v) =>
@@ -623,7 +644,9 @@ function TableConfigEditor({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">Дундаж мөр байхгүй</SelectItem>
+            <SelectItem value="__none__">
+              {t("admTailanTplNoAvgOption")}
+            </SelectItem>
             {cfg.columns.map((c) => (
               <SelectItem key={c.key} value={c.key}>
                 {c.label || c.key}

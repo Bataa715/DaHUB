@@ -39,25 +39,26 @@ import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { DEPARTMENTS } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 
-// Системд байгаа бүх хэрэгслүүд
+// All tools available in the system
 interface Tool {
   id: string;
-  name: string;
-  description: string;
+  nameKey: TranslationKey;
+  descKey: TranslationKey;
   icon: React.ComponentType<any>;
   color: string;
   gradient: string;
   category: "free" | "work";
   adminPath?: string;
-  adminLabel?: string;
+  adminLabelKey?: TranslationKey;
 }
 
 const AVAILABLE_TOOLS: Tool[] = [
   {
     id: "sanamsargui-tuuwer",
-    name: "Санамсаргүй түүвэр",
-    description: "Түүврийн хэмжээ тооцоолох, санамсаргүй сонгон авах хэрэгсэл",
+    nameKey: "toolSampleTitle",
+    descKey: "admToolsPageSampleDesc",
     icon: Dice6,
     color: "from-violet-500 to-blue-500",
     gradient: "bg-gradient-to-br from-violet-500/20 to-blue-500/20",
@@ -65,8 +66,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "pivot",
-    name: "Pivot",
-    description: "Excel файлаас pivot хүснэгт болон давтамжийн хүснэгт үүсгэх",
+    nameKey: "toolPivotTitle",
+    descKey: "admToolsPagePivotDesc",
     icon: Table2,
     color: "from-cyan-500 to-teal-500",
     gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
@@ -74,8 +75,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "db_access_requester",
-    name: "Эрх хүсэгч",
-    description: "ClickHouse хүснэгтэд хандах эрх хүсэх боломж олгох",
+    nameKey: "admAdminsToolAccessRequester",
+    descKey: "admToolsPageDbRequesterDesc",
     icon: Database,
     color: "from-cyan-500 to-teal-500",
     gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
@@ -83,9 +84,8 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "db_access_granter",
-    name: "Эрх олгогч",
-    description:
-      "ClickHouse хүснэгтэд хандах эрхийн хүсэлтийг зөвшөөрөх, татгалзах",
+    nameKey: "admAdminsToolAccessGranter",
+    descKey: "admToolsPageDbGranterDesc",
     icon: Database,
     color: "from-violet-500 to-indigo-500",
     gradient: "bg-gradient-to-br from-violet-500/20 to-indigo-500/20",
@@ -93,19 +93,19 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "tailan",
-    name: "Улирлын тайлан (ажилтан)",
-    description: "Улирлын ажлын тайлангаа бэлтгэж хэлтсийн ахлагч руу илгээх",
+    nameKey: "admAdminsToolTailanEmployee",
+    descKey: "admToolsPageTailanDesc",
     icon: FileText,
     color: "from-blue-500 to-violet-500",
     gradient: "bg-gradient-to-br from-blue-500/20 to-violet-500/20",
     category: "work",
     adminPath: "/admin/tailan-templates",
-    adminLabel: "Загвар →",
+    adminLabelKey: "admToolsPageTemplateArrow",
   },
   {
     id: "tailan_dept_head",
-    name: "Улирлын тайлан (хэлтсийн ахлагч)",
-    description: "Хэлтсийн гишүүдийн улирлын ажлын тайланг нэгтгэж, татах эрх",
+    nameKey: "admToolsPageTailanDeptHeadName",
+    descKey: "admToolsPageTailanDeptHeadDesc",
     icon: FileStack,
     color: "from-violet-500 to-purple-500",
     gradient: "bg-gradient-to-br from-violet-500/20 to-purple-500/20",
@@ -113,20 +113,19 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "reports",
-    name: "Тайлан татах",
-    description:
-      "SQL болон Python горимын тайлангуудыг нэг дороос татах хэрэгсэл",
+    nameKey: "toolReportsTitle",
+    descKey: "admToolsPageReportsDesc",
     icon: FileSpreadsheet,
     color: "from-emerald-500 to-violet-500",
     gradient: "bg-gradient-to-br from-emerald-500/20 to-violet-500/20",
     category: "work",
     adminPath: "/admin/reports",
-    adminLabel: "Тайлан →",
+    adminLabelKey: "admToolsPageReportArrow",
   },
   {
     id: "data_doc",
-    name: "Өгөгдлийн толь бичиг",
-    description: "ClickHouse баганын тайлбар",
+    nameKey: "toolDataDocTitle",
+    descKey: "admToolsPageDataDocDesc",
     icon: Database,
     color: "from-teal-500 to-cyan-500",
     gradient: "bg-gradient-to-br from-teal-500/20 to-cyan-500/20",
@@ -134,33 +133,30 @@ const AVAILABLE_TOOLS: Tool[] = [
   },
   {
     id: "alert_box",
-    name: "Alert Box",
-    description:
-      "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, улаан тугийн мэдэгдэл",
+    nameKey: "toolAlertBoxTitle",
+    descKey: "admToolsPageAlertBoxDesc",
     icon: BellDot,
     color: "from-red-500 to-rose-500",
     gradient: "bg-gradient-to-br from-red-500/20 to-rose-500/20",
     category: "work",
     adminPath: "/admin/alert-box",
-    adminLabel: "Тохиргоо →",
+    adminLabelKey: "admToolsPageSettingsArrow",
   },
   {
     id: "risk_assessment",
-    name: "Салбарын эрсдэлийн үнэлгээ",
-    description:
-      "Сар бүрийн эрсдэлийн үнэлгээ — салбаруудын оноо, гар засвар, аудит лог",
+    nameKey: "toolRiskAssessmentTitle",
+    descKey: "admToolsPageRiskDesc",
     icon: ShieldAlert,
     color: "from-rose-500 to-orange-500",
     gradient: "bg-gradient-to-br from-rose-500/20 to-orange-500/20",
     category: "work",
     adminPath: "/admin/risk-indicators",
-    adminLabel: "Тохиргоо →",
+    adminLabelKey: "admToolsPageSettingsArrow",
   },
   {
     id: "monitoring_box",
-    name: "Monitoring Box",
-    description:
-      "Continuous auditing — харилцсан гүйлгээ болон бусад хяналтын карт цуглуулга",
+    nameKey: "toolMonitoringBoxTitle",
+    descKey: "admToolsPageMonitoringDesc",
     icon: Activity,
     color: "from-orange-500 to-red-500",
     gradient: "bg-gradient-to-br from-orange-500/20 to-red-500/20",
@@ -181,6 +177,7 @@ interface User {
 }
 
 export default function AdminToolsPage() {
+  const { t } = useLanguage();
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
@@ -191,7 +188,7 @@ export default function AdminToolsPage() {
     user?.isAdmin && !isSuperAdmin ? (user?.grantableTools ?? []) : null;
   const visibleTools =
     subAdminTools !== null
-      ? AVAILABLE_TOOLS.filter((t) => subAdminTools.includes(t.id))
+      ? AVAILABLE_TOOLS.filter((tool) => subAdminTools.includes(tool.id))
       : AVAILABLE_TOOLS;
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -231,8 +228,8 @@ export default function AdminToolsPage() {
       if (process.env.NODE_ENV !== "production")
         console.error("Error loading users:", error);
       toast({
-        title: "Алдаа",
-        description: "Хэрэглэгчдийг татахад алдаа гарлаа",
+        title: t("error"),
+        description: t("admToolsPageLoadUsersError"),
         variant: "destructive",
       });
     } finally {
@@ -322,13 +319,13 @@ export default function AdminToolsPage() {
 
       if (errors.length === 0) {
         toast({
-          title: "Амжилттай",
-          description: `${successCount} хэрэглэгчид ${selectedTool.name} эрх олголоо`,
+          title: t("success"),
+          description: `${successCount} ${t("admToolsPageGrantedPart1")} ${t(selectedTool.nameKey)} ${t("admToolsPageGrantedPart2")}`,
         });
       } else {
         toast({
-          title: "Хэсэгчлэн амжилттай",
-          description: `${successCount} амжилттай, ${errors.length} алдаа: ${errors.join(", ")}`,
+          title: t("admToolsPagePartialSuccess"),
+          description: `${successCount} ${t("admToolsPagePartialPart1")}, ${errors.length} ${t("admToolsPagePartialPart2")}: ${errors.join(", ")}`,
           variant: "destructive",
         });
       }
@@ -340,8 +337,8 @@ export default function AdminToolsPage() {
       if (process.env.NODE_ENV !== "production")
         console.error("Error granting access:", error);
       toast({
-        title: "Алдаа",
-        description: "Эрх олгоход алдаа гарлаа",
+        title: t("error"),
+        description: t("admToolsPageGrantError"),
         variant: "destructive",
       });
     } finally {
@@ -364,7 +361,9 @@ export default function AdminToolsPage() {
         try {
           const fresh = await usersApi.getOne(userId);
           const currentTools: string[] = fresh.allowedTools || [];
-          const newTools = currentTools.filter((t) => t !== selectedTool.id);
+          const newTools = currentTools.filter(
+            (toolId) => toolId !== selectedTool.id,
+          );
           await usersApi.updateTools(userId, newTools);
           successCount++;
         } catch (err) {
@@ -376,13 +375,13 @@ export default function AdminToolsPage() {
 
       if (errors.length === 0) {
         toast({
-          title: "Амжилттай",
-          description: `${successCount} хэрэглэгчээс ${selectedTool.name} эрхийг хаслаа`,
+          title: t("success"),
+          description: `${successCount} ${t("admToolsPageRevokedPart1")} ${t(selectedTool.nameKey)} ${t("admToolsPageRevokedPart2")}`,
         });
       } else {
         toast({
-          title: "Хэсэгчлэн амжилттай",
-          description: `${successCount} амжилттай, ${errors.length} алдаа: ${errors.join(", ")}`,
+          title: t("admToolsPagePartialSuccess"),
+          description: `${successCount} ${t("admToolsPagePartialPart1")}, ${errors.length} ${t("admToolsPagePartialPart2")}: ${errors.join(", ")}`,
           variant: "destructive",
         });
       }
@@ -393,8 +392,8 @@ export default function AdminToolsPage() {
       if (process.env.NODE_ENV !== "production")
         console.error("Error revoking access:", error);
       toast({
-        title: "Алдаа",
-        description: "Эрх хасахад алдаа гарлаа",
+        title: t("error"),
+        description: t("admToolsPageRevokeError"),
         variant: "destructive",
       });
     } finally {
@@ -479,13 +478,13 @@ export default function AdminToolsPage() {
         <div className="text-center">
           <Shield className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
           <p className="text-muted-foreground/60 text-sm">
-            Та энэ хуудсыг үзэх эрхгүй байна.
+            {t("admToolsPageNoAccessMsg")}
           </p>
           <a
             href="/admin/login"
             className="mt-3 inline-block text-xs text-muted-foreground hover:text-foreground underline"
           >
-            Admin нэвтрэх
+            {t("admToolsPageAdminLoginLink")}
           </a>
         </div>
       </div>
@@ -500,17 +499,23 @@ export default function AdminToolsPage() {
             <Wrench className="w-3.5 h-3.5 text-primary-foreground" />
           </div>
         }
-        title="Хэрэгсэл - Эрх удирдах"
+        title={t("admToolsPagePageTitle")}
       />
 
       <div className="container mx-auto py-6 px-4 space-y-6">
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: "Нийт хэрэглэгч", value: users.length },
-            { label: "Эрхтэй", value: totalUsersWithAnyTool },
-            { label: "Нийт эрх", value: totalPermissions },
-            { label: "Хэрэгсэл", value: visibleTools.length },
+            { label: t("admToolsPageStatTotalUsers"), value: users.length },
+            {
+              label: t("admToolsPageStatWithAccess"),
+              value: totalUsersWithAnyTool,
+            },
+            {
+              label: t("admToolsPageStatTotalPermissions"),
+              value: totalPermissions,
+            },
+            { label: t("admToolsPageStatTools"), value: visibleTools.length },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -542,12 +547,12 @@ export default function AdminToolsPage() {
                   className="group text-left bg-background border-2 border-border hover:border-border rounded-xl p-3 flex flex-col gap-3 hover:-translate-y-0.5 transition-all duration-300"
                 >
                   <p className="text-sm font-medium text-foreground leading-snug whitespace-normal break-words">
-                    {tool.name}
+                    {t(tool.nameKey)}
                   </p>
                   <div className="mt-auto">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs text-muted-foreground/60">
-                        {usersWithAccess.length} хэрэглэгч
+                        {usersWithAccess.length} {t("admToolsPageUserUnit")}
                       </span>
                       {tool.adminPath ? (
                         <Link
@@ -555,7 +560,9 @@ export default function AdminToolsPage() {
                           onClick={(e) => e.stopPropagation()}
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {tool.adminLabel ?? "Тохиргоо →"}
+                          {tool.adminLabelKey
+                            ? t(tool.adminLabelKey)
+                            : t("admToolsPageSettingsArrow")}
                         </Link>
                       ) : (
                         <span className="text-xs text-muted-foreground/40">
@@ -581,34 +588,38 @@ export default function AdminToolsPage() {
       <Sheet open={!!selectedTool} onOpenChange={() => setSelectedTool(null)}>
         <SheetContent className="w-full sm:max-w-md bg-background border-border p-0 flex flex-col">
           <SheetTitle className="sr-only">
-            {selectedTool?.name ?? "Эрх удирдах"}
+            {selectedTool ? t(selectedTool.nameKey) : t("admReportsManageAccessTitle")}
           </SheetTitle>
           {selectedTool && (
             <>
               {/* Header */}
               <div className={`bg-gradient-to-br ${selectedTool.color} p-5`}>
                 <p className="text-foreground/70 text-xs font-medium uppercase tracking-widest mb-1">
-                  Эрх удирдах
+                  {t("admReportsManageAccessTitle")}
                 </p>
                 <p className="text-foreground text-lg font-semibold leading-snug">
-                  {selectedTool.name}
+                  {t(selectedTool.nameKey)}
                 </p>
                 <p className="text-foreground/60 text-xs mt-1 line-clamp-2">
-                  {selectedTool.description}
+                  {t(selectedTool.descKey)}
                 </p>
                 <div className="flex gap-4 mt-3">
                   <div className="text-center">
                     <p className="text-foreground text-xl font-bold leading-none">
                       {getUsersWithAccess(selectedTool.id).length}
                     </p>
-                    <p className="text-foreground/60 text-xs mt-0.5">эрхтэй</p>
+                    <p className="text-foreground/60 text-xs mt-0.5">
+                      {t("admReportsWithAccessUnit")}
+                    </p>
                   </div>
                   <div className="w-px bg-foreground/20" />
                   <div className="text-center">
                     <p className="text-foreground text-xl font-bold leading-none">
                       {getUsersWithoutAccess(selectedTool.id).length}
                     </p>
-                    <p className="text-foreground/60 text-xs mt-0.5">эрхгүй</p>
+                    <p className="text-foreground/60 text-xs mt-0.5">
+                      {t("admReportsWithoutAccessUnit")}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -624,17 +635,19 @@ export default function AdminToolsPage() {
                     value="current"
                     className="rounded-none text-xs font-medium text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
                   >
-                    Эрхтэй ({getUsersWithAccess(selectedTool.id).length})
+                    {t("admReportsWithAccessTabLabel")} (
+                    {getUsersWithAccess(selectedTool.id).length})
                   </TabsTrigger>
                   <TabsTrigger
                     value="grant"
                     className="rounded-none text-xs font-medium text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
                   >
-                    Эрх олгох ({getUsersWithoutAccess(selectedTool.id).length})
+                    {t("admReportsGrantAccessTabLabel")} (
+                    {getUsersWithoutAccess(selectedTool.id).length})
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Эрхтэй хэрэглэгчид */}
+                {/* Users with access */}
                 <TabsContent
                   value="current"
                   className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex flex-col"
@@ -649,14 +662,14 @@ export default function AdminToolsPage() {
                         }
                         className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Бүгдийг сонгох
+                        {t("admReportsSelectAllBtn")}
                       </button>
                       <button
                         onClick={() => setRevokeSelectedUsers(new Set())}
                         disabled={revokeSelectedUsers.size === 0}
                         className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Цэвэрлэх
+                        {t("admReportsClearBtn")}
                       </button>
                     </div>
                     <Select
@@ -667,7 +680,9 @@ export default function AdminToolsPage() {
                       }}
                     >
                       <SelectTrigger className="bg-background border-border text-muted-foreground text-xs h-8 focus:ring-0">
-                        <SelectValue placeholder="Хэлтсээр сонгох..." />
+                        <SelectValue
+                          placeholder={t("admToolsPageDeptSelectPlaceholder")}
+                        />
                       </SelectTrigger>
                       <SelectContent className="bg-background border-border">
                         {DEPARTMENTS.map((dept) => (
@@ -687,7 +702,7 @@ export default function AdminToolsPage() {
                         type="text"
                         value={revokeSearch}
                         onChange={(e) => setRevokeSearch(e.target.value)}
-                        placeholder="Нэр, хэлтсээр хайх..."
+                        placeholder={t("admToolsPageSearchPlaceholder")}
                         className="w-full bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/50 pl-8 pr-3 py-1.5 focus:outline-none focus:border-border"
                       />
                     </div>
@@ -703,20 +718,20 @@ export default function AdminToolsPage() {
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
-                          Одоогоор эрхтэй хэрэглэгч байхгүй
+                          {t("admToolsPageNoUsersWithAccess")}
                         </p>
                         <button
                           onClick={() => setActiveTab("grant")}
                           className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
                         >
-                          Эрх олгох
+                          {t("admReportsGrantAccessTabLabel")}
                         </button>
                       </div>
                     ) : getFilteredUsersWithAccess().length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
-                          Хайлтад тохирох хэрэглэгч олдсонгүй
+                          {t("admToolsPageNoSearchResults")}
                         </p>
                       </div>
                     ) : (
@@ -774,12 +789,13 @@ export default function AdminToolsPage() {
                           {isSaving ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              Хасаж байна...
+                              {t("admToolsPageRevokingText")}
                             </>
                           ) : (
                             <>
                               <UserMinus className="w-4 h-4" />
-                              {revokeSelectedUsers.size} хэрэглэгчээс эрх хасах
+                              {revokeSelectedUsers.size}{" "}
+                              {t("admToolsPageRevokeBtnSuffix")}
                             </>
                           )}
                         </button>
@@ -788,7 +804,7 @@ export default function AdminToolsPage() {
                   </AnimatePresence>
                 </TabsContent>
 
-                {/* Эрх олгох */}
+                {/* Grant access */}
                 <TabsContent
                   value="grant"
                   className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex flex-col"
@@ -803,14 +819,14 @@ export default function AdminToolsPage() {
                         }
                         className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Бүгдийг сонгох
+                        {t("admReportsSelectAllBtn")}
                       </button>
                       <button
                         onClick={() => setSelectedUsers(new Set())}
                         disabled={selectedUsers.size === 0}
                         className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Цэвэрлэх
+                        {t("admReportsClearBtn")}
                       </button>
                     </div>
                     <Select
@@ -821,7 +837,9 @@ export default function AdminToolsPage() {
                       }}
                     >
                       <SelectTrigger className="bg-background border-border text-muted-foreground text-xs h-8 focus:ring-0">
-                        <SelectValue placeholder="Хэлтсээр сонгох..." />
+                        <SelectValue
+                          placeholder={t("admToolsPageDeptSelectPlaceholder")}
+                        />
                       </SelectTrigger>
                       <SelectContent className="bg-background border-border">
                         {DEPARTMENTS.map((dept) => (
@@ -841,7 +859,7 @@ export default function AdminToolsPage() {
                         type="text"
                         value={grantSearch}
                         onChange={(e) => setGrantSearch(e.target.value)}
-                        placeholder="Нэр, хэлтсээр хайх..."
+                        placeholder={t("admToolsPageSearchPlaceholder")}
                         className="w-full bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/50 pl-8 pr-3 py-1.5 focus:outline-none focus:border-border"
                       />
                     </div>
@@ -856,13 +874,15 @@ export default function AdminToolsPage() {
                     ) : getUsersWithoutAccess(selectedTool.id).length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Check className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">Бүх хэрэглэгчид эрхтэй байна</p>
+                        <p className="text-sm">
+                          {t("admToolsPageAllUsersHaveAccess")}
+                        </p>
                       </div>
                     ) : getFilteredUsersWithoutAccess().length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
-                          Хайлтад тохирох хэрэглэгч олдсонгүй
+                          {t("admToolsPageNoSearchResults")}
                         </p>
                       </div>
                     ) : (
@@ -918,12 +938,13 @@ export default function AdminToolsPage() {
                           {isSaving ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              Хадгалж байна...
+                              {t("admToolsPageSavingText")}
                             </>
                           ) : (
                             <>
                               <UserPlus className="w-4 h-4" />
-                              {selectedUsers.size} хэрэглэгчид эрх олгох
+                              {selectedUsers.size}{" "}
+                              {t("admToolsPageGrantBtnSuffix")}
                             </>
                           )}
                         </button>

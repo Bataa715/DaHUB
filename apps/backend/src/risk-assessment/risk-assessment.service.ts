@@ -461,44 +461,6 @@ export class RiskAssessmentService implements OnModuleInit {
     return { fetchedDate: anchor, rows, manualMap: {} };
   }
 
-  /**
-   * Бүх indicator-ын хамгийн сүүлийн утгийг нэг дор буцаана.
-   * (SOLID, SUBID) бүрт RESULT хоосон БУС хамгийн сүүлийн fetchedDate-ийн утгыг авна.
-   */
-  async getRiskbranchLatestAll(): Promise<{
-    rows: RiskCurrentRow[];
-    manualMap: Record<string, Record<string, number>>;
-  }> {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT
-         argMax(rowKey, fetchedDate)              AS rowKey,
-         'oracle'                                 AS rowType,
-         toString(argMax(fetchedAt, fetchedDate)) AS fetchedAt,
-         ''                                       AS pDate,
-         ''                                       AS pDateBeg,
-         SOLID,
-         argMax(BRANCHNAME, fetchedDate)          AS BRANCHNAME,
-         argMax(STATUS, fetchedDate)              AS STATUS,
-         argMax(RESULT, fetchedDate)              AS RESULT,
-         argMax(RESULT_TYPE, fetchedDate)         AS RESULT_TYPE,
-         argMax(DESCRIPTION_TEXT, fetchedDate)    AS DESCRIPTION_TEXT,
-         argMax(P_DATEBEG, fetchedDate)           AS P_DATEBEG,
-         argMax(P_DATE, fetchedDate)              AS P_DATE,
-         argMax(ID, fetchedDate)                  AS ID,
-         SUBID,
-         argMax(OPERATION_TYPE, fetchedDate)      AS OPERATION_TYPE,
-         0                                        AS isManual,
-         ''                                       AS indicatorId,
-         NULL                                     AS indicatorValue,
-         max(fetchedDate)                         AS latestFetchedDate
-       FROM riskbranch FINAL
-       WHERE fetchedDate != ''
-       GROUP BY SOLID, SUBID
-       ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
-    );
-    return { rows, manualMap: {} };
-  }
-
   // ── Lock ──────────────────────────────────────────────────────────────────
 
   /** Тухайн огноог lock хийх */

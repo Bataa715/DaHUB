@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import axios from "axios";
 import { isRegularAppUser } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface UserData {
   id: string;
@@ -82,6 +83,7 @@ function generatePassword(): string {
 }
 
 export default function UsersPage() {
+  const { t } = useLanguage();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserData[]>([]);
@@ -120,8 +122,8 @@ export default function UsersPage() {
       setUsers((data || []).filter((u: UserData) => isRegularAppUser(u)));
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хэрэглэгчдийг ачааллахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("admUsersLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -152,13 +154,13 @@ export default function UsersPage() {
     setIsSavingDept(true);
     try {
       await usersApi.update(userId, { departmentId: selectedDeptId });
-      toast({ title: "Амжилттай", description: "Хэлтэс өөрчлөгдлөө." });
+      toast({ title: t("success"), description: t("admUsersDeptChangedDesc") });
       setChangingDeptUserId(null);
       loadUsers();
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хэлтэс өөрчлөхөд алдаа гарлаа.",
+        title: t("error"),
+        description: t("admUsersDeptChangeError"),
         variant: "destructive",
       });
     } finally {
@@ -171,13 +173,13 @@ export default function UsersPage() {
     setIsDeleting(true);
     try {
       await usersApi.delete(deleteUser.id);
-      toast({ title: "Амжилттай", description: "Хэрэглэгч устгагдлаа." });
+      toast({ title: t("success"), description: t("admUsersDeletedDesc") });
       setDeleteUser(null);
       loadUsers();
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хэрэглэгч устгахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("admUsersDeleteError"),
         variant: "destructive",
       });
     } finally {
@@ -191,16 +193,20 @@ export default function UsersPage() {
     try {
       await usersApi.update(changingUserIdId, { userId: editUserId.trim() });
       toast({
-        title: "Амжилттай",
-        description: "Хэрэглэгчийн ID өөрчлөгдлөө.",
+        title: t("success"),
+        description: t("admUsersIdChangedDesc"),
       });
       setChangingUserIdId(null);
       loadUsers();
     } catch (error) {
-      let message = "ID өөрчлөхд алдаа гарлаа.";
+      let message = t("admUsersIdChangeError");
       if (axios.isAxiosError(error))
         message = error.response?.data?.message ?? message;
-      toast({ title: "Алдаа", description: message, variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setIsSavingUserId(false);
     }
@@ -212,16 +218,20 @@ export default function UsersPage() {
     try {
       await usersApi.resetPassword(resetPasswordUser.id, newPassword);
       toast({
-        title: "Нууц үг сэргээлээ",
-        description: `${resetPasswordUser.name} — шинэ нууц үг тохируулагдлаа.`,
+        title: t("admUsersPasswordResetTitle"),
+        description: `${resetPasswordUser.name} ${t("admUsersPasswordResetDescSuffix")}`,
       });
       setResetPasswordUser(null);
       setNewPassword("");
     } catch (error) {
-      let message = "Нууц үг сэргээхэд алдаа гарлаа.";
+      let message = t("admUsersPasswordResetError");
       if (axios.isAxiosError(error))
         message = error.response?.data?.message ?? message;
-      toast({ title: "Алдаа", description: message, variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setIsResetting(false);
     }
@@ -240,10 +250,10 @@ export default function UsersPage() {
   return (
     <div className="min-h-screen bg-background">
       <AdminPageHeader
-        title="Хэрэглэгчид"
+        title={t("admLayoutNavUsers")}
         rightContent={
           <span className="text-muted-foreground/60 text-xs">
-            {users.length} хэрэглэгч
+            {users.length} {t("admUsersCountUnit")}
           </span>
         }
       />
@@ -251,7 +261,7 @@ export default function UsersPage() {
       <div className="max-w-[1400px] mx-auto px-4 py-6">
         {users.length === 0 ? (
           <p className="text-muted-foreground/40 text-sm text-center py-20">
-            Хэрэглэгч олдсонгүй
+            {t("admUsersEmptyList")}
           </p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -295,6 +305,7 @@ export default function UsersPage() {
                       <button
                         disabled={isSavingUserId || !editUserId.trim()}
                         onClick={handleChangeUserId}
+                        aria-label={t("admUsersSaveIdAria")}
                         className="p-1 text-emerald-400 disabled:opacity-40"
                       >
                         {isSavingUserId ? (
@@ -305,6 +316,7 @@ export default function UsersPage() {
                       </button>
                       <button
                         onClick={() => setChangingUserIdId(null)}
+                        aria-label={t("admDeptCancelBtn")}
                         className="p-1 text-muted-foreground/60 hover:text-foreground"
                       >
                         <X className="w-3 h-3" />
@@ -329,7 +341,7 @@ export default function UsersPage() {
                 {/* Department */}
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] text-muted-foreground/50 w-12 shrink-0">
-                    Хэлтэс
+                    {t("regFlowLabelDept")}
                   </span>
                   {changingDeptUserId === userData.id ? (
                     <div className="flex items-center gap-1">
@@ -338,7 +350,7 @@ export default function UsersPage() {
                         onValueChange={setSelectedDeptId}
                       >
                         <SelectTrigger className="h-7 bg-muted border-border text-foreground text-xs">
-                          <SelectValue placeholder="Сонгох" />
+                          <SelectValue placeholder={t("admUsersSelectPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent className="bg-background border-border">
                           {departments.map((dept) => (
@@ -355,6 +367,7 @@ export default function UsersPage() {
                       <button
                         disabled={isSavingDept || !selectedDeptId}
                         onClick={() => handleSaveDept(userData.id)}
+                        aria-label={t("admUsersSaveDeptAria")}
                         className="p-1 text-emerald-400 disabled:opacity-40"
                       >
                         {isSavingDept ? (
@@ -365,6 +378,7 @@ export default function UsersPage() {
                       </button>
                       <button
                         onClick={() => setChangingDeptUserId(null)}
+                        aria-label={t("admDeptCancelBtn")}
                         className="p-1 text-muted-foreground/60 hover:text-foreground"
                       >
                         <X className="w-3 h-3" />
@@ -393,14 +407,14 @@ export default function UsersPage() {
                       }}
                       className="flex-1 text-xs text-muted-foreground/60 hover:text-amber-400 py-1 rounded-lg hover:bg-amber-500/10 transition-colors"
                     >
-                      Нууц үг
+                      {t("admUsersPasswordBtn")}
                     </button>
                   )}
                   <button
                     onClick={() => setDeleteUser(userData)}
                     className="flex-1 text-xs text-muted-foreground/60 hover:text-red-400 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
                   >
-                    Устгах
+                    {t("tailan_deleteAction")}
                   </button>
                 </div>
               </div>
@@ -421,7 +435,7 @@ export default function UsersPage() {
       >
         <DialogContent className="bg-background border-border text-foreground max-w-sm">
           <DialogHeader>
-            <DialogTitle>Нууц үг сэргээх</DialogTitle>
+            <DialogTitle>{t("admUsersResetPwDialogTitle")}</DialogTitle>
             <DialogDescription className="text-muted-foreground">
               <span className="text-foreground font-medium">
                 {resetPasswordUser?.name}
@@ -431,12 +445,12 @@ export default function UsersPage() {
           </DialogHeader>
           <div className="py-2">
             <Label className="text-muted-foreground text-xs mb-1.5 block">
-              Шинэ нууц үг
+              {t("admUsersNewPasswordLabel")}
             </Label>
             <div className="relative">
               <Input
                 type="text"
-                placeholder="Том/жижиг үсэг, тоо, тэмдэгт — 8+"
+                placeholder={t("admUsersPasswordPlaceholderHint")}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 pr-10"
@@ -445,7 +459,7 @@ export default function UsersPage() {
               <button
                 type="button"
                 onClick={() => setNewPassword(generatePassword())}
-                title="Санамсаргүй нууц үг үүсгэх"
+                title={t("admUsersGenPasswordTooltip")}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -455,11 +469,11 @@ export default function UsersPage() {
               (() => {
                 const r = checkPasswordRules(newPassword);
                 const items: { ok: boolean; label: string }[] = [
-                  { ok: r.length, label: "8+ тэмдэгт" },
-                  { ok: r.upper, label: "Том үсэг (A-Z)" },
-                  { ok: r.lower, label: "Жижиг үсэг (a-z)" },
-                  { ok: r.digit, label: "Тоо (0-9)" },
-                  { ok: r.special, label: "Тусгай тэмдэгт" },
+                  { ok: r.length, label: t("admUsersRuleLength") },
+                  { ok: r.upper, label: t("admUsersRuleUpper") },
+                  { ok: r.lower, label: t("admUsersRuleLower") },
+                  { ok: r.digit, label: t("admUsersRuleDigit") },
+                  { ok: r.special, label: t("admUsersRuleSpecial") },
                 ];
                 return (
                   <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
@@ -493,7 +507,7 @@ export default function UsersPage() {
               disabled={isResetting}
               className="flex-1 py-2 text-sm text-muted-foreground border border-border rounded-xl hover:bg-muted transition-colors"
             >
-              Болих
+              {t("cancel")}
             </button>
             <button
               onClick={handleResetPassword}
@@ -501,7 +515,7 @@ export default function UsersPage() {
               className="flex-1 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:bg-secondary disabled:text-muted-foreground/60 text-black rounded-xl flex items-center justify-center gap-2"
             >
               {isResetting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              Сэргээх
+              {t("admUsersResetBtn")}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -511,15 +525,14 @@ export default function UsersPage() {
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
         <AlertDialogContent className="bg-background border-border text-foreground max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Хэрэглэгч устгах</AlertDialogTitle>
+            <AlertDialogTitle>{t("admUsersDeleteDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              "{deleteUser?.name}" хэрэглэгчийг устгахдаа итгэлтэй байна уу?
-              Буцаах боломжгүй.
+              "{deleteUser?.name}" {t("admUsersDeleteConfirmSuffix")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="bg-transparent border-border text-foreground/80 hover:bg-muted">
-              Болих
+              {t("cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteUser}
@@ -529,7 +542,7 @@ export default function UsersPage() {
               {isDeleting && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               )}
-              Устгах
+              {t("tailan_deleteAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -44,6 +44,7 @@ import {
   Search,
   BarChart3,
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { invalidateIndicatorCache } from "@/app/tools/risk-assessment/use-indicator-config";
 
 // ── Scale editor + туслах тогтмолууд _components/ScaleEditor.tsx-д байрлана ──
@@ -62,6 +63,7 @@ import {
 
 export default function RiskIndicatorsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [indicators, setIndicators] = useState<IndicatorConfig[]>([]);
@@ -125,8 +127,8 @@ export default function RiskIndicatorsPage() {
       setIndicators(data ?? []);
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Үзүүлэлт ачааллахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("admRiskIndLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -218,8 +220,8 @@ export default function RiskIndicatorsPage() {
     const isJudgement = form.group_num === 5;
     if (!isJudgement && (!form.subid.trim() || !form.name.trim())) {
       toast({
-        title: "Алдаа",
-        description: "SubID болон Нэр шаардлагатай.",
+        title: t("error"),
+        description: t("admRiskIndValidationRequired"),
         variant: "destructive",
       });
       return;
@@ -241,18 +243,18 @@ export default function RiskIndicatorsPage() {
     try {
       if (editingId) {
         await riskIndicatorConfigApi.update(editingId, payload);
-        toast({ title: "Хадгалагдлаа" });
+        toast({ title: t("admRiskIndSavedTitle") });
       } else {
         await riskIndicatorConfigApi.create(payload);
-        toast({ title: "Нэмэгдлээ" });
+        toast({ title: t("admRiskIndAddedTitle") });
       }
       closeDialog();
       invalidateIndicatorCache();
       await loadIndicators();
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хадгалахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("admRiskIndSaveError"),
         variant: "destructive",
       });
     } finally {
@@ -266,13 +268,13 @@ export default function RiskIndicatorsPage() {
     setDeleting(true);
     try {
       await riskIndicatorConfigApi.delete(deleteTarget);
-      toast({ title: "Устгагдлаа" });
+      toast({ title: t("admRiskIndDeletedTitle") });
       setDeleteTarget(null);
       await loadIndicators();
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Устгахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("admRiskIndDeleteError"),
         variant: "destructive",
       });
     } finally {
@@ -293,8 +295,8 @@ export default function RiskIndicatorsPage() {
           .setHold({ indicatorId, period: holdsPeriod, isHeld: !wasHeld })
           .catch(() => {
             toast({
-              title: "Алдаа",
-              description: "Hold хадгалахад алдаа гарлаа.",
+              title: t("error"),
+              description: t("admRiskIndHoldSaveError"),
               variant: "destructive",
             });
           });
@@ -314,11 +316,11 @@ export default function RiskIndicatorsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AdminPageHeader
-        title="Эрсдэлийн үзүүлэлт"
+        title={t("admRiskIndPageTitle")}
         rightContent={
           !loading ? (
             <span className="text-xs text-muted-foreground/60">
-              {indicators.length} үзүүлэлт · нийт жин{" "}
+              {indicators.length} {t("admRiskIndCountUnit")} · {t("admRiskIndTotalWeightLabel")}{" "}
               <span
                 className={`font-semibold ${Math.abs(totalAllWeight - 100) > 0.01 ? "text-amber-500" : "text-emerald-500"}`}
               >
@@ -336,7 +338,7 @@ export default function RiskIndicatorsPage() {
               value="indicators"
               className="text-xs h-7 px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground"
             >
-              Үзүүлэлтүүд
+              {t("admRiskIndTabIndicators")}
             </TabsTrigger>
             <TabsTrigger
               value="holds"
@@ -354,7 +356,7 @@ export default function RiskIndicatorsPage() {
               onClick={loadHistory}
               className="text-xs h-7 px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground"
             >
-              Тайлан
+              {t("admRiskIndTabReports")}
             </TabsTrigger>
           </TabsList>
 
@@ -366,7 +368,7 @@ export default function RiskIndicatorsPage() {
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Хайх..."
+                  placeholder={t("admRiskIndSearchPlaceholder")}
                   className="pl-8 h-8 text-sm bg-foreground/[0.03] border-border/40 rounded-lg"
                 />
               </div>
@@ -376,7 +378,7 @@ export default function RiskIndicatorsPage() {
                 onClick={() => openCreate()}
                 className="h-8 text-xs font-medium gap-1 bg-blue-600 hover:bg-blue-500 text-white px-4"
               >
-                <Plus className="w-3 h-3" /> Нэмэх
+                <Plus className="w-3 h-3" /> {t("admRiskIndAddBtn")}
               </Button>
             </div>
 
@@ -402,7 +404,7 @@ export default function RiskIndicatorsPage() {
                         {GROUP_LABELS[group]}
                       </span>
                       <span className="text-xs text-muted-foreground/40">
-                        {rows.length} үзүүлэлт
+                        {rows.length} {t("admRiskIndCountUnit")}
                       </span>
                       <div className="flex-1" />
                       <span className="text-xs font-semibold text-foreground/60 tabular-nums">
@@ -419,7 +421,7 @@ export default function RiskIndicatorsPage() {
                     {/* Indicator rows */}
                     {rows.length === 0 ? (
                       <div className="px-4 py-5 text-center text-xs text-muted-foreground/30">
-                        Үзүүлэлт байхгүй
+                        {t("admRiskIndGroupEmpty")}
                       </div>
                     ) : (
                       <div className="divide-y divide-border/25">
@@ -442,8 +444,9 @@ export default function RiskIndicatorsPage() {
                               <span
                                 className={`text-[10px] border px-1.5 py-0.5 rounded font-medium shrink-0 ${badgeClass}`}
                               >
-                                {SCALE_TYPE_LABELS[scaleObj.type] ??
-                                  scaleObj.type}
+                                {SCALE_TYPE_LABELS[scaleObj.type]
+                                  ? t(SCALE_TYPE_LABELS[scaleObj.type])
+                                  : scaleObj.type}
                               </span>
                               <span className="text-[13px] font-medium text-foreground/60 tabular-nums w-9 text-right shrink-0">
                                 {ind.weight}%
@@ -473,17 +476,17 @@ export default function RiskIndicatorsPage() {
                 {indicators.length === 0 && (
                   <div className="rounded-xl border border-border/30 py-16 text-center">
                     <p className="text-sm text-muted-foreground">
-                      Үзүүлэлт байхгүй байна
+                      {t("admRiskIndEmptyTitle")}
                     </p>
                     <p className="text-xs text-muted-foreground/40 mt-1">
-                      «Нэмэх» товчоор эхлэнэ үү
+                      {t("admRiskIndEmptyHint")}
                     </p>
                   </div>
                 )}
                 {indicators.length > 0 && filteredGrouped.length === 0 && (
                   <div className="rounded-xl border border-border/30 py-12 text-center">
                     <p className="text-sm text-muted-foreground/60">
-                      «{search}» хайлтад тохирсон үзүүлэлт олдсонгүй
+                      «{search}» {t("admRiskIndNoSearchResultsSuffix")}
                     </p>
                   </div>
                 )}
@@ -495,9 +498,9 @@ export default function RiskIndicatorsPage() {
           <TabsContent value="holds" className="mt-0">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-sm font-medium">Hold үзүүлэлтүүд</p>
+                <p className="text-sm font-medium">{t("admRiskIndHoldSectionTitle")}</p>
                 <p className="text-xs text-muted-foreground/60 mt-0.5">
-                  Hold хийсэн үзүүлэлт бүх огноо/улирлын тооцооноос хасагдана
+                  {t("admRiskIndHoldSectionDesc")}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -511,13 +514,13 @@ export default function RiskIndicatorsPage() {
               <div className="flex items-center gap-2 mb-4 px-3.5 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20 text-xs">
                 <span className="text-amber-600 dark:text-amber-400">
                   <strong className="font-semibold">{heldIds.size}</strong>{" "}
-                  үзүүлэлт hold хийгдсэн — тооцооноос хасагдана
+                  {t("admRiskIndHeldCountSuffix")}
                 </span>
                 <button
                   onClick={() => [...heldIds].forEach((id) => toggleHold(id))}
                   className="ml-auto font-medium text-amber-500/60 hover:text-amber-500 transition-colors"
                 >
-                  Бүгдийг цуцлах
+                  {t("admRiskIndCancelAllHolds")}
                 </button>
               </div>
             )}
@@ -621,9 +624,9 @@ export default function RiskIndicatorsPage() {
           <TabsContent value="settings" className="mt-0">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-sm font-medium">Хадгалсан тайлангууд</p>
+                <p className="text-sm font-medium">{t("admRiskIndSavedReportsTitle")}</p>
                 <p className="text-xs text-muted-foreground/60 mt-0.5">
-                  Шаардлагагүй тайлануудыг устгана уу
+                  {t("admRiskIndSavedReportsDesc")}
                 </p>
               </div>
               <Button
@@ -634,7 +637,7 @@ export default function RiskIndicatorsPage() {
                 className="h-8 text-xs gap-1.5 rounded-lg"
               >
                 {historyLoading && <Loader2 className="w-3 h-3 animate-spin" />}
-                Шинэчлэх
+                {t("admRiskIndRefreshBtn")}
               </Button>
             </div>
             {historyLoading ? (
@@ -644,7 +647,7 @@ export default function RiskIndicatorsPage() {
             ) : historyList.length === 0 ? (
               <div className="rounded-xl border border-border/30 py-12 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Хадгалсан тайлан байхгүй
+                  {t("admRiskIndNoSavedReports")}
                 </p>
               </div>
             ) : (
@@ -653,13 +656,13 @@ export default function RiskIndicatorsPage() {
                   <thead className="border-b border-border/40 bg-muted/20">
                     <tr>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wide">
-                        Нэр
+                        {t("admRiskIndNameCol")}
                       </th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wide">
-                        Огноо
+                        {t("admRiskIndDateCol")}
                       </th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wide">
-                        Хадгалсан
+                        {t("admRiskIndTableSavedCol")}
                       </th>
                       <th className="w-28" />
                     </tr>
@@ -687,13 +690,13 @@ export default function RiskIndicatorsPage() {
                                 disabled={historyDeleting}
                                 className="h-7 px-3 text-[11px] font-semibold bg-red-500 hover:bg-red-400 text-white rounded-lg disabled:opacity-50"
                               >
-                                {historyDeleting ? "..." : "Тийм"}
+                                {historyDeleting ? "..." : t("admRiskIndConfirmYes")}
                               </button>
                               <button
                                 onClick={() => setHistoryDeleteTarget(null)}
                                 className="h-7 px-3 text-[11px] text-muted-foreground hover:text-foreground border border-border/50 rounded-lg"
                               >
-                                Болих
+                                {t("cancel")}
                               </button>
                             </div>
                           ) : (
@@ -725,7 +728,7 @@ export default function RiskIndicatorsPage() {
         <DialogContent className="bg-card border-border/40 text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold">
-              {editingId ? "Үзүүлэлт засах" : "Шинэ үзүүлэлт"}
+              {editingId ? t("admRiskIndEditTitle") : t("admRiskIndNewTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-1">
@@ -733,12 +736,11 @@ export default function RiskIndicatorsPage() {
               <div className="space-y-4">
                 <div className="px-3.5 py-3 rounded-xl bg-emerald-500/8 border border-emerald-500/20">
                   <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                    Judgement — зөвхөн жин тохируулна. Нэр болон бусад тохиргоо
-                    автоматаар тавигдана.
+                    {t("admRiskIndJudgementHint")}
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Жин %</Label>
+                  <Label className="text-xs text-muted-foreground">{t("admRiskIndWeightLabel")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -772,14 +774,14 @@ export default function RiskIndicatorsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Нэр <span className="text-red-400">*</span>
+                      {t("admRiskIndNameCol")} <span className="text-red-400">*</span>
                     </Label>
                     <Input
                       value={form.name}
                       onChange={(e) =>
                         setForm({ ...form, name: e.target.value })
                       }
-                      placeholder="Үзүүлэлтийн нэр"
+                      placeholder={t("admRiskIndNamePlaceholder")}
                       className="h-9 rounded-xl bg-foreground/5 border-border/50 placeholder:text-muted-foreground/30"
                     />
                   </div>
@@ -787,7 +789,7 @@ export default function RiskIndicatorsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Бүлэг
+                      {t("admRiskIndGroupLabel")}
                     </Label>
                     <Select
                       value={String(form.group_num)}
@@ -820,7 +822,7 @@ export default function RiskIndicatorsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Жин %
+                      {t("admRiskIndWeightLabel")}
                     </Label>
                     <Input
                       type="number"
@@ -836,12 +838,12 @@ export default function RiskIndicatorsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">
-                    Аргачлал
+                    {t("admRiskIndMethodologyLabel")}
                   </Label>
                   <textarea
                     value={form.hint}
                     onChange={(e) => setForm({ ...form, hint: e.target.value })}
-                    placeholder="Энэ үзүүлэлтийг хэрхэн үнэлэх аргачлал, тайлбарыг бичнэ үү. Ажилтнууд «Аргачлал» хуудаснаас уншина."
+                    placeholder={t("admRiskIndMethodologyPlaceholder")}
                     rows={4}
                     className="w-full rounded-xl bg-foreground/5 border border-border/50 px-3 py-2 text-sm placeholder:text-muted-foreground/30 resize-y focus:outline-none focus:ring-1 focus:ring-primary/40"
                   />
@@ -850,7 +852,7 @@ export default function RiskIndicatorsPage() {
                   <div className="flex items-center gap-2">
                     <BarChart3 className="w-3.5 h-3.5 text-muted-foreground/40" />
                     <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
-                      Оноо тооцоолох бүтэц
+                      {t("admRiskIndScoreStructureLabel")}
                     </span>
                   </div>
                   <ScaleEditor
@@ -870,7 +872,7 @@ export default function RiskIndicatorsPage() {
               disabled={saving}
               className="flex-1 h-9 text-sm text-muted-foreground hover:text-foreground border border-border/50 rounded-xl hover:bg-foreground/5 transition-colors"
             >
-              Болих
+              {t("cancel")}
             </button>
             <button
               onClick={handleSave}
@@ -878,7 +880,7 @@ export default function RiskIndicatorsPage() {
               className="flex-1 h-9 text-sm font-semibold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {editingId ? "Хадгалах" : "Нэмэх"}
+              {editingId ? t("save") : t("admRiskIndAddBtn")}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -897,15 +899,15 @@ export default function RiskIndicatorsPage() {
               <Trash2 className="w-4 h-4 text-red-400" />
             </div>
             <AlertDialogTitle className="text-center text-sm">
-              Үзүүлэлт устгах уу?
+              {t("admRiskIndDeleteConfirmTitle")}
             </AlertDialogTitle>
           </AlertDialogHeader>
           <p className="text-xs text-muted-foreground/60 text-center pb-2">
-            Устгасны дараа буцаах боломжгүй.
+            {t("admRiskIndDeleteConfirmDesc")}
           </p>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel className="flex-1 bg-transparent border-border/50 text-foreground/70 hover:text-foreground rounded-xl text-sm">
-              Болих
+              {t("cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
@@ -915,7 +917,7 @@ export default function RiskIndicatorsPage() {
               {deleting && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
               )}
-              Устгах
+              {t("admRiskIndDeleteBtn")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

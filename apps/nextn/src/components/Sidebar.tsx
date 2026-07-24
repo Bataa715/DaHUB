@@ -114,8 +114,15 @@ export function SidebarNavItems({
     collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2",
   );
   const activeClass = "bg-muted text-foreground font-bold";
-  const inactiveClass =
-    "text-foreground hover:bg-muted/50";
+  const inactiveClass = "text-foreground hover:bg-muted/50";
+
+  const iconClass = (active: boolean) =>
+    cn(
+      "w-4 h-4 shrink-0 mt-0.5 stroke-[1.75]",
+      active
+        ? "text-primary"
+        : "text-muted-foreground group-hover/nav:text-foreground/80",
+    );
 
   return (
     <nav className="flex flex-col gap-1">
@@ -125,10 +132,11 @@ export function SidebarNavItems({
         title={t("navHome")}
         className={cn(
           baseLinkClass,
+          "group/nav",
           isActive("/") ? activeClass : inactiveClass,
         )}
       >
-        <Home className="w-4 h-4 shrink-0 mt-0.5" />
+        <Home className={iconClass(isActive("/"))} />
         {!collapsed && <span className="leading-snug">{t("navHome")}</span>}
       </Link>
       <Link
@@ -137,10 +145,11 @@ export function SidebarNavItems({
         title={t("navNews")}
         className={cn(
           baseLinkClass,
+          "group/nav",
           isActive("/knowledge") ? activeClass : inactiveClass,
         )}
       >
-        <Newspaper className="w-4 h-4 shrink-0 mt-0.5" />
+        <Newspaper className={iconClass(isActive("/knowledge"))} />
         {!collapsed && <span className="leading-snug">{t("navNews")}</span>}
       </Link>
 
@@ -155,7 +164,7 @@ export function SidebarNavItems({
 
           {authLoading || isLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50" />
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50 stroke-[1.75]" />
             </div>
           ) : available.length === 0 ? (
             !collapsed && (
@@ -166,6 +175,7 @@ export function SidebarNavItems({
           ) : (
             available.map((tool) => {
               const Icon = tool.icon;
+              const active = isActive(tool.href);
               return (
                 <Link
                   key={tool.id}
@@ -174,10 +184,11 @@ export function SidebarNavItems({
                   title={tool.title}
                   className={cn(
                     baseLinkClass,
-                    isActive(tool.href) ? activeClass : inactiveClass,
+                    "group/nav",
+                    active ? activeClass : inactiveClass,
                   )}
                 >
-                  <Icon className="w-4 h-4 shrink-0 mt-0.5" />
+                  <Icon className={iconClass(active)} />
                   {!collapsed && (
                     <span className="leading-snug break-words whitespace-normal">
                       {tool.title}
@@ -195,9 +206,9 @@ export function SidebarNavItems({
                 href="/admin"
                 onClick={onNavigate}
                 title={t("navAdmin")}
-                className={cn(baseLinkClass, inactiveClass)}
+                className={cn(baseLinkClass, "group/nav", inactiveClass)}
               >
-                <Shield className="w-4 h-4 shrink-0 mt-0.5" />
+                <Shield className={iconClass(false)} />
                 {!collapsed && (
                   <span className="leading-snug">{t("navAdmin")}</span>
                 )}
@@ -244,7 +255,7 @@ function SettingsMenu({
           variant="ghost"
           size="icon"
           className="h-9 w-9 text-muted-foreground hover:text-foreground"
-          aria-label="Тохиргоо нээх"
+          aria-label={t("sidebarOpenSettings")}
           aria-haspopup="menu"
           title={t("navProfileSettings")}
         >
@@ -300,7 +311,7 @@ function SettingsMenu({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger aria-label="Хэл солих">
+          <DropdownMenuSubTrigger aria-label={t("sidebarChangeLanguage")}>
             <Globe className="mr-2 h-4 w-4" aria-hidden="true" />
             <span>{language === "mn" ? "🇲🇳 Монгол" : "🇺🇸 English"}</span>
           </DropdownMenuSubTrigger>
@@ -351,12 +362,13 @@ function readStoredCollapsed(): boolean {
 }
 
 export default function Sidebar() {
+  const { t } = useLanguage();
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const widthRef = useRef(width);
-  const { toggle: toggleFullscreen } = useChromeFullscreen();
+  const { fullscreen, toggle: toggleFullscreen } = useChromeFullscreen();
 
   useEffect(() => {
     setWidth(readStoredWidth());
@@ -410,121 +422,142 @@ export default function Sidebar() {
   );
 
   const railWidth = collapsed ? COLLAPSED_WIDTH : width;
+  const panelWidth = mounted ? railWidth : DEFAULT_WIDTH;
+  // Maximize: sidebar гулсаж хаагдана (устгахгүй) — зөөлөн easing
+  const chromeHidden = fullscreen;
+  const ease = "cubic-bezier(0.22, 1, 0.36, 1)";
 
   return (
     <aside
-      className="flex flex-col shrink-0 mr-1.5 lg:mr-2 relative"
+      className={cn(
+        "flex flex-col shrink-0 relative overflow-hidden",
+        chromeHidden && "pointer-events-none",
+      )}
       style={{
-        width: mounted ? railWidth : DEFAULT_WIDTH,
-        transition: isResizing ? "none" : "width 180ms ease",
+        width: chromeHidden ? 0 : panelWidth,
+        opacity: chromeHidden ? 0 : 1,
+        transition: isResizing
+          ? "none"
+          : `width 480ms ${ease}, opacity 360ms ease`,
       }}
+      aria-hidden={chromeHidden}
     >
-      <div className="flex flex-col h-full rounded-2xl border border-border/60 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl shadow-premium ring-hairline overflow-hidden">
-        <div
-          className={cn(
-            "flex items-center border-b border-border/50 shrink-0",
-            collapsed
-              ? "justify-center px-2 py-3"
-              : "justify-between px-3 py-3",
-          )}
-        >
-          <Link
-            href="/"
-            className={cn(
-              "flex items-center gap-2.5 min-w-0",
-              collapsed && "justify-center",
-            )}
-            title="DaHUB"
-          >
-            <Image
-              src="/golomt.jpg"
-              alt="Golomt"
-              width={28}
-              height={28}
-              className="rounded-lg ring-1 ring-border/70 shadow-sm shrink-0"
-            />
-            {!collapsed && (
-              <span className="font-bold text-lg tracking-tight text-foreground truncate">
-                DaHUB
-              </span>
-            )}
-          </Link>
-          {!collapsed && (
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
-              title="Хураах"
-              aria-label="Хураах"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {collapsed && (
-          <div className="flex justify-center py-2 border-b border-border/40">
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              title="Дэлгэх"
-              aria-label="Дэлгэх"
-            >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none px-2 py-3">
-          <SidebarNavItems collapsed={collapsed} />
-        </div>
-
-        <div
-          className={cn(
-            "shrink-0 border-t border-border/50 gap-1",
-            collapsed
-              ? "flex flex-col items-center p-2"
-              : "flex items-center justify-between p-2",
-          )}
-        >
-          <SettingsMenu
-            side="top"
-            align={collapsed ? "center" : "start"}
-          />
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            title="Бүтэн дэлгэцээр харах"
-            aria-label="Бүтэн дэлгэцээр харах"
-            className="flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <Maximize2 className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-
-      {!collapsed && (
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Sidebar өргөн өөрчлөх"
-          onMouseDown={onResizeStart}
-          className={cn(
-            "absolute top-0 -right-1 w-2 h-full cursor-col-resize z-20 group flex justify-center",
-            isResizing && "bg-foreground/5",
-          )}
-        >
+      <div
+        className="flex flex-col h-full"
+        style={{
+          width: panelWidth,
+          minWidth: panelWidth,
+        }}
+      >
+        <div className="relative flex flex-col h-full rounded-none border-0 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl overflow-hidden">
+          {/* Толгой — Буцах-тай ижил h-14+border-b (box-border) */}
           <div
             className={cn(
-              "w-0.5 h-full rounded-full transition-colors",
-              isResizing
-                ? "bg-foreground/40"
-                : "bg-transparent group-hover:bg-foreground/25",
+              "flex items-center border-b border-border/50 shrink-0 h-14",
+              collapsed
+                ? "justify-center px-2"
+                : "justify-between px-3",
             )}
+          >
+            {collapsed ? (
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title={t("sidebarExpand")}
+                aria-label={t("sidebarExpand")}
+              >
+                <PanelLeftOpen className="w-4 h-4 stroke-[1.75]" />
+              </button>
+            ) : (
+              <>
+                <Link
+                  href="/"
+                  className="flex items-center gap-2.5 min-w-0"
+                  title="DaHUB"
+                >
+                  <Image
+                    src="/golomt.jpg"
+                    alt="Golomt"
+                    width={28}
+                    height={28}
+                    className="rounded-lg ring-1 ring-border/70 shadow-sm shrink-0"
+                  />
+                  <span className="font-bold text-lg tracking-tight text-foreground truncate">
+                    DaHUB
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={toggleCollapsed}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
+                  title={t("sidebarCollapse")}
+                  aria-label={t("sidebarCollapse")}
+                >
+                  <PanelLeftClose className="w-4 h-4 stroke-[1.75]" />
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none px-2 py-3">
+              <SidebarNavItems collapsed={collapsed} />
+            </div>
+
+            <div
+              className={cn(
+                "shrink-0 border-t border-border/50 gap-1",
+                collapsed
+                  ? "flex flex-col items-center p-2"
+                  : "flex items-center justify-between p-2",
+              )}
+            >
+              <SettingsMenu
+                side="top"
+                align={collapsed ? "center" : "start"}
+              />
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                title={t("sidebarFullscreen")}
+                aria-label={t("sidebarFullscreen")}
+                className="flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <Maximize2 className="h-4 w-4 stroke-[1.75]" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          {/* Босоо шугам: layout-оос гадуур — h-14-ийн доороос яг эхэлнэ */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-14 right-0 bottom-0 w-px bg-border/50"
           />
         </div>
-      )}
+
+        {!collapsed && !chromeHidden && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t("sidebarResize")}
+            onMouseDown={onResizeStart}
+            className={cn(
+              "absolute top-0 -right-1 w-2 h-full cursor-col-resize z-20 group flex justify-center",
+              isResizing && "bg-foreground/5",
+            )}
+          >
+            <div
+              className={cn(
+                "w-0.5 h-full rounded-full transition-colors",
+                isResizing
+                  ? "bg-foreground/40"
+                  : "bg-transparent group-hover:bg-foreground/25",
+              )}
+            />
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

@@ -8,6 +8,7 @@ import {
   Fragment,
   useRef,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from "react";
 import { ChevronDown, Loader2, MessageSquare } from "lucide-react";
 import Cookies from "js-cookie";
@@ -99,6 +100,8 @@ interface Props {
   previousJudgements?: Record<string, number>;
   /** Сонгосон огноо — fill-forward хуучин өгөгдөл тэмдэглэхэд */
   dataReferenceDate?: string;
+  /** Toolbar-ийн зүүн талд нэмэлт шүүлт (жишээ: сар/улирал) */
+  toolbarStart?: ReactNode;
 }
 
 const MANUAL_KEY_LEGACY = "riskass_manual_indicators";
@@ -142,6 +145,7 @@ export default function ReportView({
   hideUnevaluatedInDetail = false,
   previousManualMap = {},
   dataReferenceDate,
+  toolbarStart,
 }: Props) {
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
@@ -430,9 +434,8 @@ export default function ReportView({
     [aggregates, riskFilter],
   );
 
-  // Гараар Sort дарахад л эрэмбэлнэ — judgement оруулах үед автоматаар sort хийхгүй
-  // Анхны байдал (sortKey=0): SOLID-аар тоон дарааллаар эрэмбэлнэ
-  const [sortKey, setSortKey] = useState<number>(0);
+  // Анхнаасаа Total/judgement эрэмбэ (sortKey=1). SOLID дараалал руу товчоор буцна.
+  const [sortKey, setSortKey] = useState<number>(1);
   const [tableLayout, setTableLayout] = useState<TableLayout>("unified");
   const sortedFiltered = useMemo(() => {
     const bySolid = (a: BranchAggregate, b: BranchAggregate) => {
@@ -564,38 +567,44 @@ export default function ReportView({
         </div>
       )}
       {/* ── Toolbar ── */}
-      <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {/* Risk filter */}
-          <div className="flex rounded-lg border border-border overflow-hidden bg-background/60">
-            {(["all", "Өндөр", "Дунд", "Бага"] as const).map((opt) => {
-              const colors: Record<string, string> = {
-                all: "text-foreground",
-                Өндөр: "text-rose-600 dark:text-rose-400",
-                Дунд: "text-amber-600 dark:text-amber-400",
-                Бага: "text-emerald-600 dark:text-emerald-400",
-              };
-              const dot: Record<string, string> = {
-                all: "bg-muted-foreground",
-                Өндөр: "bg-rose-500",
-                Дунд: "bg-amber-500",
-                Бага: "bg-emerald-500",
-              };
-              return (
-                <button
-                  key={opt}
-                  onClick={() => setRiskFilter(opt)}
-                  className={`px-3 py-1.5 text-[11px] font-semibold border-r last:border-r-0 border-border flex items-center gap-1.5 transition-all ${
-                    riskFilter === opt
-                      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                      : `hover:bg-accent/60 ${colors[opt]}`
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${dot[opt]}`} />
-                  {opt === "all" ? "Бүгд" : opt}
-                </button>
-              );
-            })}
+      <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 sm:px-4 sm:py-2.5">
+        <div className="flex items-center justify-between gap-x-3 gap-y-2 flex-wrap">
+          <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap min-w-0">
+            {toolbarStart}
+            {toolbarStart ? (
+              <div className="w-px h-4 bg-border/80 shrink-0 hidden sm:block" />
+            ) : null}
+            {/* Risk filter */}
+            <div className="flex rounded-lg border border-border overflow-hidden bg-background/60">
+              {(["all", "Өндөр", "Дунд", "Бага"] as const).map((opt) => {
+                const colors: Record<string, string> = {
+                  all: "text-foreground",
+                  Өндөр: "text-rose-600 dark:text-rose-400",
+                  Дунд: "text-amber-600 dark:text-amber-400",
+                  Бага: "text-emerald-600 dark:text-emerald-400",
+                };
+                const dot: Record<string, string> = {
+                  all: "bg-muted-foreground",
+                  Өндөр: "bg-rose-500",
+                  Дунд: "bg-amber-500",
+                  Бага: "bg-emerald-500",
+                };
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => setRiskFilter(opt)}
+                    className={`px-3 py-1.5 text-[11px] font-semibold border-r last:border-r-0 border-border flex items-center gap-1.5 transition-all ${
+                      riskFilter === opt
+                        ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                        : `hover:bg-accent/60 ${colors[opt]}`
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${dot[opt]}`} />
+                    {opt === "all" ? "Бүгд" : opt}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -744,7 +753,7 @@ function ReadOnlyJudgementCell({
         if (!canOpen) return;
         onOpenComment({ branchId, branchName, draft: jComment });
       }}
-      className={`inline-flex items-center justify-center gap-1 font-normal text-foreground tabular-nums ${
+      className={`inline-flex items-center justify-center gap-1 font-semibold text-foreground tabular-nums ${
         canOpen ? "hover:text-amber-500 cursor-pointer" : "cursor-default"
       }`}
       title={jComment ? "Тайлбар харах" : hasJ ? "Тайлбар байхгүй" : undefined}
@@ -845,19 +854,19 @@ const REPORT_COLS: ReportColDef[] = [
     minWidth: 52,
   },
   {
+    key: "level",
+    label: "Түвшин",
+    align: "center",
+    defaultWidth: 88,
+    minWidth: 72,
+  },
+  {
     key: "prev",
     label: "Өмнөх",
     align: "center",
     defaultWidth: 80,
     minWidth: 64,
     compareOnly: true,
-  },
-  {
-    key: "level",
-    label: "Түвшин",
-    align: "center",
-    defaultWidth: 88,
-    minWidth: 72,
   },
   {
     key: "diff",
@@ -1183,22 +1192,22 @@ function ReportTable({
                         />
                       </button>
                     </td>
-                    <td className="px-2 py-2 text-center tabular-nums text-foreground font-normal">
+                    <td className="px-2 py-2 text-center tabular-nums text-foreground font-semibold">
                       {i + 1}
                     </td>
-                    <td className="px-2 py-2 text-center tabular-nums font-normal text-foreground">
+                    <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground">
                       {b.solid}
                     </td>
-                    <td className="px-2 py-2 font-normal text-foreground">
+                    <td className="px-2 py-2 font-semibold text-foreground">
                       {b.branchName}
                     </td>
-                    <td className="px-2 py-2 text-center text-xs text-foreground font-normal">
+                    <td className="px-2 py-2 text-center text-xs text-foreground font-semibold">
                       {b.rating}
                     </td>
                     <ScoreCell value={b.s1} colBg="bg-sky-500/[0.08]" />
                     <ScoreCell value={b.s2} colBg="bg-violet-500/[0.08]" />
                     <ScoreCell value={b.s3} colBg="bg-amber-500/[0.08]" />
-                    <td className="px-2 py-2 text-center tabular-nums font-normal text-foreground bg-emerald-500/[0.08]">
+                    <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground bg-emerald-500/[0.08]">
                       {fmt(b.s4 ?? null)}
                     </td>
                     <td
@@ -1228,7 +1237,7 @@ function ReportTable({
                             if (e.key === "Escape") setEditingJBranch(null);
                           }}
                           onBlur={() => commitJ(b.branchId)}
-                          className="w-14 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-foreground font-normal"
+                          className="w-14 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-foreground font-semibold"
                         />
                       ) : (
                         <div className="inline-flex items-center justify-center gap-1">
@@ -1310,7 +1319,7 @@ function ReportTable({
                                     : String(b.j || ""),
                               );
                             }}
-                            className="group/jbtn inline-flex items-center gap-1 font-normal text-foreground hover:text-amber-500 transition-colors"
+                            className="group/jbtn inline-flex items-center gap-1 font-semibold text-foreground hover:text-amber-500 transition-colors"
                             title="Клик — оноо засах"
                           >
                             {b.j != null && b.j > 0
@@ -1325,39 +1334,14 @@ function ReportTable({
                         </div>
                       )}
                     </td>
-                    <td className="px-2 py-2 text-center tabular-nums font-bold text-foreground bg-indigo-500/[0.08]">
+                    <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground bg-indigo-500/[0.08]">
                       {fmt(b.total)}
                     </td>
-                    {!hideComparison && (
-                      <td className="px-2 py-2 text-center">
-                        {prev ? (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="tabular-nums font-normal text-xs text-foreground">
-                              {fmt(prev.total)}
-                            </span>
-                            {prev.level && (
-                              <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0 rounded text-[9px] font-normal border ${riskLevelClass(prev.level)}`}
-                              >
-                                <span
-                                  className={`w-1 h-1 rounded-full ${prev.level === "Өндөр" ? "bg-red-500" : prev.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
-                                />
-                                {prev.level}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/30 text-xs">
-                            —
-                          </span>
-                        )}
-                      </td>
-                    )}
                     <td className="px-2 py-2 text-center">
                       {b.level && (
                         <div className="inline-flex flex-col items-center gap-0.5">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-normal ${riskLevelClass(b.level)}`}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${riskLevelClass(b.level)}`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${b.level === "Өндөр" ? "bg-red-500" : b.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
@@ -1384,17 +1368,42 @@ function ReportTable({
                     </td>
                     {!hideComparison && (
                       <td className="px-2 py-2 text-center">
+                        {prev ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="tabular-nums font-semibold text-xs text-foreground">
+                              {fmt(prev.total)}
+                            </span>
+                            {prev.level && (
+                              <span
+                                className={`inline-flex items-center gap-1 px-1.5 py-0 rounded text-[9px] font-semibold border ${riskLevelClass(prev.level)}`}
+                              >
+                                <span
+                                  className={`w-1 h-1 rounded-full ${prev.level === "Өндөр" ? "bg-red-500" : prev.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
+                                />
+                                {prev.level}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/30 text-xs">
+                            —
+                          </span>
+                        )}
+                      </td>
+                    )}
+                    {!hideComparison && (
+                      <td className="px-2 py-2 text-center">
                         {diff == null ? (
                           <span className="text-muted-foreground/30 text-xs">
                             —
                           </span>
                         ) : diff === 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-semibold text-muted-foreground">
                             ━ 0.00
                           </span>
                         ) : (
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
                               diff > 0
                                 ? "bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400"
                                 : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400"
@@ -1820,7 +1829,7 @@ function IndicatorDetailRow({
                         <td className="py-1 pr-3 font-medium text-foreground/90">
                           {ind.name}
                         </td>
-                        <td className="py-1 pr-3 tabular-nums font-normal text-right text-foreground">
+                        <td className="py-1 pr-3 tabular-nums font-semibold text-right text-foreground">
                           {ev.autoRaw !== undefined ? (
                             <span className="inline-flex items-center justify-end gap-1.5 w-full">
                               <span>{ev.autoRaw || "—"}</span>
@@ -1842,7 +1851,7 @@ function IndicatorDetailRow({
                             "—"
                           )}
                         </td>
-                        <td className="py-1 text-center tabular-nums font-normal">
+                        <td className="py-1 text-center tabular-nums font-semibold">
                           {ev.score != null && ev.score > 0 ? (
                             <span
                               className={
@@ -1885,7 +1894,7 @@ function ScoreCell({
 }) {
   return (
     <td
-      className={`px-2 py-2 text-center tabular-nums font-normal text-foreground ${colBg}`}
+      className={`px-2 py-2 text-center tabular-nums font-semibold text-foreground ${colBg}`}
     >
       {value == null ? "—" : value.toFixed(2)}
     </td>

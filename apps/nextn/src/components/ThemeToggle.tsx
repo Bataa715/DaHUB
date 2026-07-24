@@ -10,9 +10,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { themes } from "@/lib/themes";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function ThemeToggle({ small }: { small?: boolean } = {}) {
   const { setTheme, theme: activeTheme } = useTheme();
+  const { language, t } = useLanguage();
 
   return (
     <DropdownMenu>
@@ -27,21 +29,21 @@ export function ThemeToggle({ small }: { small?: boolean } = {}) {
           }
         >
           <Palette className={small ? "h-3 w-3" : "h-[1.2rem] w-[1.2rem]"} />
-          <span className="sr-only">Загвар солих</span>
+          <span className="sr-only">{t("changeThemeSr")}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {themes.map((t) => (
+        {themes.map((theme) => (
           <DropdownMenuItem
-            key={t.name}
-            onClick={() => setTheme(t.name)}
+            key={theme.name}
+            onClick={() => setTheme(theme.name)}
             className={
-              activeTheme === t.name
+              activeTheme === theme.name
                 ? "bg-accent text-accent-foreground font-semibold"
                 : ""
             }
           >
-            {t.labelMn}
+            {language === "mn" ? theme.labelMn : theme.label}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

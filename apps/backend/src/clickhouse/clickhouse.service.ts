@@ -66,8 +66,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // fall back to "audit_app" which was just provisioned above.
       const envUser = process.env.CLICKHOUSE_USER;
       const runtimeUser =
-        !envUser || envUser === adminUser ? "audit_app" : envUser;
-      if (!envUser || envUser === adminUser) {
+        !envUser || envUser === "default" ? "audit_app" : envUser;
+      if (!envUser || envUser === "default") {
         this.logger.warn(
           `CLICKHOUSE_USER is "${envUser ?? "(unset)"}" — automatically using "audit_app" service account.`,
         );
@@ -337,6 +337,29 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY (newsId, userId)
       `);
 
+      // Create registration_requests table — public self-registration now only
+      // files a request; an admin must approve it before the real `users` row
+      // (and claim token) is created. See AuthService.registerUser/reviewRegistration.
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS registration_requests (
+          id String,
+          userId String,
+          name String,
+          department String,
+          departmentId String,
+          position String,
+          status String DEFAULT 'pending',
+          claimToken String DEFAULT '',
+          reviewedBy String DEFAULT '',
+          reviewedByName String DEFAULT '',
+          reviewNote String DEFAULT '',
+          requestedAt DateTime DEFAULT now(),
+          reviewedAt DateTime DEFAULT '1970-01-01 00:00:00',
+          updatedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY id
+      `);
+
       // Create refresh_tokens table
       await this.exec(`
         CREATE TABLE IF NOT EXISTS refresh_tokens (
@@ -554,24 +577,38 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
            AND password NOT LIKE 'PENDING:%'`,
       );
 
-      try {
-        await this.provisionServiceUsers();
-      } catch (provisionErr: any) {
-        const msg = provisionErr?.message || String(provisionErr);
-        if (
-          msg.includes("ACCESS_STORAGE_READONLY") ||
-          msg.includes("users_xml") ||
-          msg.includes("ACCESS_DENIED") ||
-          msg.includes("Not enough privileges") ||
-          msg.includes("WITH GRANT OPTION")
-        ) {
-          this.logger.warn(
-            "Skipping user provisioning because current ClickHouse account cannot manage users/grants in this environment.",
-          );
-        } else {
-          throw provisionErr;
+      // Service user provisioning зөвхөн bootstrap/admin эрхтэй үед.
+      // CLICKHOUSE_USER=audit_app үед CREATE USER оролдвол ACCESS_STORAGE_READONLY
+      // ERROR (@clickhouse/client) шууд console-д асгарна — алгасна.
+      const bootstrapUser =
+        process.env.CLICKHOUSE_BOOTSTRAP_USER ||
+        process.env.CLICKHOUSE_USER ||
+        "default";
+      const canProvisionUsers =
+        Boolean(process.env.CLICKHOUSE_BOOTSTRAP_USER) ||
+        bootstrapUser === "default";
+
+      if (canProvisionUsers) {
+        try {
+          await this.provisionServiceUsers();
+        } catch (provisionErr: any) {
+          const msg = provisionErr?.message || String(provisionErr);
+          if (
+            msg.includes("ACCESS_STORAGE_READONLY") ||
+            msg.includes("users_xml") ||
+            msg.includes("ACCESS_DENIED") ||
+            msg.includes("Not enough privileges") ||
+            msg.includes("WITH GRANT OPTION")
+          ) {
+            this.logger.warn(
+              "Skipping user provisioning because current ClickHouse account cannot manage users/grants in this environment.",
+            );
+          } else {
+            throw provisionErr;
+          }
         }
       }
+
       this.logger.log(
         "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts)",
       );

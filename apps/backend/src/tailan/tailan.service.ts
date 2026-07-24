@@ -26,17 +26,7 @@ import {
   SectionType,
 } from "docx";
 import { randomUUID } from "crypto";
-
-interface UserPayload {
-  id: string;
-  name: string;
-  position?: string;
-  department?: string;
-  departmentId?: string;
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-  allowedTools: string[];
-}
+import type { AuthenticatedUser } from "../common/types/authenticated-request";
 
 /** Returns e.g. "ДАА", "ЕАХ", "ЗАГЧБХ", "МТАХ" from the dept name */
 function deptAbbrev(deptName: string): string {
@@ -112,16 +102,16 @@ export class TailanService {
     });
   }
 
-  isDeptHead(user: UserPayload): boolean {
+  isDeptHead(user: AuthenticatedUser): boolean {
     return (
       user.isAdmin ||
       user.isSuperAdmin ||
-      user.allowedTools.includes("tailan_dept_head")
+      (user.allowedTools ?? []).includes("tailan_dept_head")
     );
   }
 
   // ─── Save / upsert draft ───────────────────────────────────────────────────
-  async saveDraft(user: UserPayload, dto: SaveTailanDto) {
+  async saveDraft(user: AuthenticatedUser, dto: SaveTailanDto) {
     const existing = await this.clickhouse.query<{ id: string }>(
       `SELECT id FROM tailan_reports FINAL
        WHERE userId = {userId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
@@ -183,7 +173,7 @@ export class TailanService {
 
   // ─── Department BSC (ТҮЗ) report save ─────────────────────────────────────
   async saveDeptBsc(
-    user: UserPayload,
+    user: AuthenticatedUser,
     year: number,
     quarter: number,
     sections: Record<string, unknown>,
@@ -204,7 +194,7 @@ export class TailanService {
   }
 
   // ─── Department BSC (ТҮЗ) report load ─────────────────────────────────────
-  async getDeptBsc(user: UserPayload, year: number, quarter: number) {
+  async getDeptBsc(user: AuthenticatedUser, year: number, quarter: number) {
     const deptId = user.departmentId || user.id;
     const rows = await this.clickhouse.query<{
       sectionsJson: string;
@@ -251,7 +241,7 @@ export class TailanService {
   }
 
   // ─── Get dept submitted reports ─────────────────────────────────────────────
-  async getDeptReports(user: UserPayload, year: number, quarter: number) {
+  async getDeptReports(user: AuthenticatedUser, year: number, quarter: number) {
     if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
 
     const rows = await this.clickhouse.query(
@@ -268,7 +258,7 @@ export class TailanService {
   }
 
   // ─── Get all dept reports for dept head's own ─────────────────────────────
-  async getAllDeptReports(user: UserPayload, year: number, quarter: number) {
+  async getAllDeptReports(user: AuthenticatedUser, year: number, quarter: number) {
     if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
 
     const rows = await this.clickhouse.query(
@@ -286,7 +276,7 @@ export class TailanService {
 
   // ─── Dept head: render a member's saved report as .docx ───────────────────
   async generateMemberWord(
-    user: UserPayload,
+    user: AuthenticatedUser,
     targetUserId: string,
     year: number,
     quarter: number,
@@ -474,7 +464,7 @@ export class TailanService {
   }
 
   // ─── Get image raw data ────────────────────────────────────────────────────
-  async getImageData(id: string, user: UserPayload) {
+  async getImageData(id: string, user: AuthenticatedUser) {
     await this.ensureImagesTable();
     const rows = await this.clickhouse.query<any>(
       `SELECT userId, departmentId, mimeType, imageData FROM tailan_images WHERE id = {id:String} LIMIT 1`,
@@ -560,7 +550,7 @@ export class TailanService {
   }
 
   // ─── Live "real docx" preview from unsaved editor state ───────────────────
-  async previewWord(user: UserPayload, dto: SaveTailanDto): Promise<Buffer> {
+  async previewWord(user: AuthenticatedUser, dto: SaveTailanDto): Promise<Buffer> {
     let position = "";
     let departmentName = "";
     try {

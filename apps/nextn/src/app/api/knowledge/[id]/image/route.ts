@@ -24,9 +24,11 @@ export async function GET(
   }
 
   // Серверээс backend руу хандах хаяг — дотоод хаягийг эрхэмлэнэ
+  // API_URL нь /api/auth/search-тэй ижил (deploy-д ихэвчлэн энэ л тохируулагддаг)
   const backendUrl =
     process.env.INTERNAL_API_URL ||
     process.env.BACKEND_URL ||
+    process.env.API_URL ||
     process.env.NEXT_PUBLIC_API_URL;
   if (!backendUrl) {
     console.error("[knowledge image] backend URL env is not set");

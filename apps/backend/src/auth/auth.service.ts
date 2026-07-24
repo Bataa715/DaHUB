@@ -28,6 +28,7 @@ import {
   SetPasswordDto,
   ChangePasswordDto,
   RefreshTokenDto,
+  ReviewRegistrationDto,
 } from "./dto/auth.dto";
 
 // [LOW-1] buildUserId and safeParseTools imported from src/common/utils/user-utils.ts
@@ -585,7 +586,21 @@ export class AuthService {
       { userId },
     );
     const user = users[0];
-    if (!user) return { exists: false, hasPassword: false };
+    if (!user) {
+      // No live account yet — surface an in-flight registration request's
+      // status (pending/rejected) instead of a bare "not found" so the login
+      // page can show a helpful message.
+      const reqRows = await this.clickhouse.query<any>(
+        `SELECT status FROM registration_requests FINAL
+         WHERE userId = {userId:String} ORDER BY updatedAt DESC LIMIT 1`,
+        { userId },
+      );
+      const registrationStatus = reqRows[0]?.status as string | undefined;
+      if (registrationStatus === "pending" || registrationStatus === "rejected") {
+        return { exists: false, hasPassword: false, registrationStatus };
+      }
+      return { exists: false, hasPassword: false };
+    }
 
     if (isPrivilegedUser(user)) {
       throw new ForbiddenException(
@@ -614,6 +629,12 @@ export class AuthService {
     };
   }
 
+  // [SEC] Public self-registration no longer creates a live account directly —
+  // it only files a request (registration_requests, status='pending'). An
+  // admin must approve it (see reviewRegistration) before the actual `users`
+  // row + one-time claim token are created. This closes a gap where anyone
+  // who could derive a coworker's deterministic userId (dept+name) could
+  // self-provision an account with zero human review.
   async registerUser(registerUserDto: RegisterUserDto) {
     const { department, position, name } = registerUserDto;
 
@@ -642,20 +663,160 @@ export class AuthService {
       );
     }
 
+    const pendingReq = await this.clickhouse.query<any>(
+      `SELECT status FROM registration_requests FINAL
+       WHERE userId = {userId:String} ORDER BY updatedAt DESC LIMIT 1`,
+      { userId },
+    );
+    if (pendingReq[0]?.status === "pending") {
+      throw new ConflictException(
+        "Энэ ID-тай бүртгэлийн хүсэлт аль хэдийн илгээгдсэн байна. Админ баталгаажуулах хүртэл хүлээнэ үү.",
+      );
+    }
+
     const dept = await this.ensureDepartment(department);
     const id = randomUUID();
     const now = nowCH();
-    // [N-3] Generate a one-time claim token — returned to caller so only they can set the password
-    const claimToken = randomUUID();
 
-    await this.clickhouse.insert("users", [
+    await this.clickhouse.insert("registration_requests", [
       {
         id,
         userId,
-        password: "PENDING:" + claimToken,
         name,
-        position,
+        department,
         departmentId: dept.id,
+        position,
+        status: "pending",
+        claimToken: "",
+        reviewedBy: "",
+        reviewedByName: "",
+        reviewNote: "",
+        requestedAt: now,
+        reviewedAt: "1970-01-01 00:00:00",
+        updatedAt: now,
+      },
+    ]);
+
+    await this.auditLogService.log({
+      userId: "unknown",
+      action: "registration_request",
+      resource: "registration_requests",
+      resourceId: id,
+      method: "registerUser",
+      status: "success",
+      metadata: { userId, department, position },
+    });
+
+    return {
+      success: true,
+      userId,
+      name,
+      department,
+      position,
+      message:
+        "Хүсэлт амжилттай илгээгдлээ. Админ баталгаажуулсны дараа нэвтрэх боломжтой болно.",
+    };
+  }
+
+  /** Admin: list registration requests (optionally filtered by status) */
+  async getRegistrationRequests(status?: string) {
+    const rows = status
+      ? await this.clickhouse.query<any>(
+          `SELECT * FROM registration_requests FINAL
+           WHERE status = {status:String} ORDER BY requestedAt DESC`,
+          { status },
+        )
+      : await this.clickhouse.query<any>(
+          `SELECT * FROM registration_requests FINAL ORDER BY requestedAt DESC`,
+        );
+
+    // claimToken intentionally omitted here — it's only ever returned once,
+    // synchronously, from reviewRegistration()'s approve response.
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      department: r.department,
+      position: r.position,
+      status: r.status,
+      reviewedByName: r.reviewedByName || null,
+      reviewNote: r.reviewNote || null,
+      requestedAt: r.requestedAt,
+      reviewedAt:
+        r.reviewedAt && r.reviewedAt !== "1970-01-01 00:00:00"
+          ? r.reviewedAt
+          : null,
+    }));
+  }
+
+  /** Admin: approve or reject a pending registration request */
+  async reviewRegistration(
+    requestId: string,
+    reviewer: { id: string; name?: string },
+    dto: ReviewRegistrationDto,
+  ) {
+    const rows = await this.clickhouse.query<any>(
+      `SELECT * FROM registration_requests FINAL WHERE id = {id:String} LIMIT 1`,
+      { id: requestId },
+    );
+    const req = rows[0];
+    if (!req) throw new NotFoundException("Хүсэлт олдсонгүй");
+    if (req.status !== "pending") {
+      throw new BadRequestException("Хүсэлт аль хэдийн шийдвэрлэгдсэн байна");
+    }
+
+    const now = nowCH();
+
+    if (dto.action === "reject") {
+      await this.clickhouse.insert("registration_requests", [
+        {
+          ...req,
+          status: "rejected",
+          reviewedBy: reviewer.id,
+          reviewedByName: reviewer.name ?? "",
+          reviewNote: dto.reviewNote ?? "",
+          reviewedAt: now,
+          updatedAt: now,
+        },
+      ]);
+      await this.auditLogService.log({
+        userId: reviewer.id,
+        action: "registration_reject",
+        resource: "registration_requests",
+        resourceId: requestId,
+        method: "reviewRegistration",
+        status: "success",
+        metadata: { targetUserId: req.userId },
+      });
+      return { success: true, status: "rejected" as const };
+    }
+
+    // Approve — re-check for a userId collision (race: someone else may have
+    // registered/been approved with the same derived ID meanwhile).
+    const existing = await this.clickhouse.query<any>(
+      "SELECT id FROM users WHERE userId = {userId:String} LIMIT 1",
+      { userId: req.userId },
+    );
+    if (existing.length > 0) {
+      throw new ConflictException(
+        `Энэ хэрэглэгчийн ID (${req.userId}) аль хэдийн бүртгэлтэй байна`,
+      );
+    }
+
+    // [N-3] One-time claim token — only ever shown to the reviewing admin,
+    // who relays it to the employee out-of-band (chat/in person) so they can
+    // set their own password. Nobody else can claim the account without it.
+    const claimToken = randomUUID();
+    const userRowId = randomUUID();
+
+    await this.clickhouse.insert("users", [
+      {
+        id: userRowId,
+        userId: req.userId,
+        password: "PENDING:" + claimToken,
+        name: req.name,
+        position: req.position,
+        departmentId: req.departmentId,
         isAdmin: 0,
         isActive: 1,
         allowedTools: JSON.stringify([]),
@@ -666,15 +827,37 @@ export class AuthService {
       },
     ]);
 
+    await this.clickhouse.insert("registration_requests", [
+      {
+        ...req,
+        status: "approved",
+        claimToken,
+        reviewedBy: reviewer.id,
+        reviewedByName: reviewer.name ?? "",
+        reviewNote: dto.reviewNote ?? "",
+        reviewedAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    await this.auditLogService.log({
+      userId: reviewer.id,
+      action: "registration_approve",
+      resource: "registration_requests",
+      resourceId: requestId,
+      method: "reviewRegistration",
+      status: "success",
+      metadata: { targetUserId: req.userId },
+    });
+
     return {
       success: true,
-      userId,
-      name,
-      department,
-      position,
+      status: "approved" as const,
+      userId: req.userId,
+      name: req.name,
       claimToken,
       message:
-        "Бүртгэл амжилттай. Нууц үгээ үүсгээд нэвтэрнэ үү. Хэрэгслийн эрхийг админаас авах боломжтой.",
+        "Хэрэглэгчийг баталгаажууллаа. Доорх кодыг ажилтанд өгч нууц үгээ тохируулахыг мэдэгдэнэ үү.",
     };
   }
 

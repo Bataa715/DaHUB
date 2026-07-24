@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { ThemeStyleInjector } from "@/components/ThemeStyleInjector";
-/** Source Sans 3 — төсөлдөө (npm) багцлагдсан, компьютер бүрт ижил; Google/систем фонт шаардлагагүй */
-import "@fontsource-variable/source-sans-3/wght.css";
+/** Source Sans 3 — кирилл + уншихад тод */
+import "@fontsource/source-sans-3/400.css";
+import "@fontsource/source-sans-3/500.css";
+import "@fontsource/source-sans-3/600.css";
+import "@fontsource/source-sans-3/700.css";
 import "./globals.css";
 import Providers from "./providers";
 
@@ -43,12 +46,6 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://cdn.simpleicons.org" />
       </head>
       <body className="min-h-screen bg-background font-body antialiased">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
-        >
-          Үндсэн агуулга руу үсрэх
-        </a>
         <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Lock,
+  KeyRound,
   ArrowRight,
   Loader2,
   User,
@@ -13,6 +14,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Form,
   FormControl,
@@ -47,13 +49,13 @@ import type {
   PasswordChecks,
   loginFormSchema,
   loginPasswordSchema,
-  passwordFormSchema,
+  claimSetPasswordFormSchema,
 } from "./login.types";
 
 interface LoginFlowProps {
   loginForm: UseFormReturn<z.infer<typeof loginFormSchema>>;
   loginPasswordForm: UseFormReturn<z.infer<typeof loginPasswordSchema>>;
-  passwordForm: UseFormReturn<z.infer<typeof passwordFormSchema>>;
+  claimPasswordForm: UseFormReturn<z.infer<typeof claimSetPasswordFormSchema>>;
   loginStep: LoginStep;
   checkedUser: UserCheckResult | null;
   userSuggestions: Array<{
@@ -78,7 +80,7 @@ interface LoginFlowProps {
   handleCheckUser: (values: z.infer<typeof loginFormSchema>) => Promise<void>;
   handleLogin: (values: z.infer<typeof loginPasswordSchema>) => Promise<void>;
   handleSetPassword: (
-    values: z.infer<typeof passwordFormSchema>,
+    values: z.infer<typeof claimSetPasswordFormSchema>,
   ) => Promise<void>;
   onBack: () => void;
   onSwitch: () => void;
@@ -87,7 +89,7 @@ interface LoginFlowProps {
 export function LoginFlow({
   loginForm,
   loginPasswordForm,
-  passwordForm,
+  claimPasswordForm,
   loginStep,
   checkedUser,
   userSuggestions,
@@ -111,6 +113,7 @@ export function LoginFlow({
   onBack,
   onSwitch,
 }: LoginFlowProps) {
+  const { t } = useLanguage();
   const showBack = loginStep !== "userId";
 
   const inputClass = loginInputClass;
@@ -138,7 +141,7 @@ export function LoginFlow({
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
             >
               <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm">Буцах</span>
+              <span className="text-sm">{t("back")}</span>
             </motion.button>
           )}
 
@@ -155,7 +158,7 @@ export function LoginFlow({
                 <div className="text-center mb-8">
                   <LoginStepLogo />
                   <h2 className="text-2xl font-bold text-foreground">
-                    Нэвтрэх
+                    {t("loginSignIn")}
                   </h2>
                 </div>
 
@@ -171,12 +174,12 @@ export function LoginFlow({
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <User className="w-4 h-4 text-primary" />
-                            Хэрэглэгчийн ID
+                            {t("loginLabelUserId")}
                           </FormLabel>
                           <div className="relative">
                             <FormControl>
                               <Input
-                                placeholder="ID эсвэл нэрээ бичнэ үү"
+                                placeholder={t("loginPlaceholderIdOrName")}
                                 className={`${inputClass} font-mono`}
                                 {...field}
                                 onChange={(e) => {
@@ -252,7 +255,7 @@ export function LoginFlow({
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
                         <>
-                          Шалгах
+                          {t("loginBtnCheck")}
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -274,7 +277,7 @@ export function LoginFlow({
                 <div className="text-center mb-8">
                   <LoginStepLogo />
                   <h2 className="text-2xl font-bold text-foreground">
-                    Нууц үг оруулах
+                    {t("loginHeadingEnterPassword")}
                   </h2>
                   <code className="text-xs text-primary">
                     {checkedUser.userId}
@@ -293,19 +296,24 @@ export function LoginFlow({
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <Lock className="w-4 h-4 text-primary" />
-                            Нууц үг
+                            {t("loginLabelPassword")}
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showPassword ? "text" : "password"}
-                                placeholder="Нууц үгээ оруулна уу"
+                                placeholder={t("loginPlaceholderEnterPassword")}
                                 className={`${inputClass} pr-12`}
                                 {...field}
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
+                                aria-label={
+                                  showPassword
+                                    ? t("loginAriaHidePassword")
+                                    : t("loginAriaShowPassword")
+                                }
                                 className={eyeBtnClass}
                               >
                                 {showPassword ? (
@@ -328,7 +336,7 @@ export function LoginFlow({
                         className="text-sm text-primary hover:text-primary/80 transition-colors underline-offset-4 hover:underline inline-flex items-center gap-1"
                       >
                         <Lock className="w-3 h-3" />
-                        Нууц үг мартсан уу?
+                        {t("loginForgotPasswordLink")}
                       </button>
                     </div>
 
@@ -337,7 +345,7 @@ export function LoginFlow({
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
                         <>
-                          Нэвтрэх
+                          {t("loginSignIn")}
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -359,41 +367,68 @@ export function LoginFlow({
                 <div className="text-center mb-8">
                   <LoginStepLogo />
                   <h2 className="text-2xl font-bold text-foreground">
-                    Нууц үг үүсгэх
+                    {t("loginHeadingCreatePassword")}
                   </h2>
                   <p className="text-muted-foreground mt-2">
-                    Анх удаа нэвтэрч байна
+                    {t("loginCreatePasswordSubtitle")}
                   </p>
                   <code className="text-xs text-emerald-400">
                     {checkedUser.userId}
                   </code>
                 </div>
 
-                <Form {...passwordForm}>
+                <Form {...claimPasswordForm}>
                   <form
-                    onSubmit={passwordForm.handleSubmit(handleSetPassword)}
+                    onSubmit={claimPasswordForm.handleSubmit(handleSetPassword)}
                     className="space-y-5"
                   >
                     <FormField
-                      control={passwordForm.control}
+                      control={claimPasswordForm.control}
+                      name="claimCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className={labelClass}>
+                            <KeyRound className="w-4 h-4 text-emerald-400" />
+                            {t("loginLabelClaimCode")}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={t("loginPlaceholderClaimCode")}
+                              className={inputClass}
+                              autoComplete="off"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={claimPasswordForm.control}
                       name="password"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <Lock className="w-4 h-4 text-emerald-400" />
-                            Нууц үг
+                            {t("loginLabelPassword")}
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showPassword ? "text" : "password"}
-                                placeholder="Нууц үгээ оруулна уу"
+                                placeholder={t("loginPlaceholderEnterPassword")}
                                 className={`${inputClass} pr-12`}
                                 {...field}
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
+                                aria-label={
+                                  showPassword
+                                    ? t("loginAriaHidePassword")
+                                    : t("loginAriaShowPassword")
+                                }
                                 className={eyeBtnClass}
                               >
                                 {showPassword ? (
@@ -412,19 +447,21 @@ export function LoginFlow({
                     <PasswordStrengthBox checks={passwordChecks} />
 
                     <FormField
-                      control={passwordForm.control}
+                      control={claimPasswordForm.control}
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <Lock className="w-4 h-4 text-teal-400" />
-                            Нууц үг давтах
+                            {t("loginLabelConfirmPassword")}
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showConfirmPassword ? "text" : "password"}
-                                placeholder="Нууц үгээ давтана уу"
+                                placeholder={t(
+                                  "loginPlaceholderConfirmPassword",
+                                )}
                                 className={`${inputClass} pr-12`}
                                 {...field}
                               />
@@ -432,6 +469,11 @@ export function LoginFlow({
                                 type="button"
                                 onClick={() =>
                                   setShowConfirmPassword(!showConfirmPassword)
+                                }
+                                aria-label={
+                                  showConfirmPassword
+                                    ? t("loginAriaHidePassword")
+                                    : t("loginAriaShowPassword")
                                 }
                                 className={eyeBtnClass}
                               >
@@ -453,7 +495,7 @@ export function LoginFlow({
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
                         <>
-                          Нууц үг үүсгэж нэвтрэх
+                          {t("loginBtnCreateAndSignIn")}
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -468,14 +510,14 @@ export function LoginFlow({
           {loginStep === "userId" && (
             <div className="mt-6 pt-5 border-t border-border/50 text-center">
               <span className="text-sm text-muted-foreground">
-                Бүртгэлгүй юу?{" "}
+                {t("loginNoAccountText")}{" "}
               </span>
               <button
                 type="button"
                 onClick={onSwitch}
                 className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors underline-offset-4 hover:underline"
               >
-                Бүртгүүлэх
+                {t("loginRegisterLink")}
               </button>
             </div>
           )}
@@ -491,7 +533,7 @@ export function LoginFlow({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground flex items-center gap-2">
               <Lock className="w-5 h-5 text-primary" />
-              Нууц үг мартсан
+              {t("loginForgotPasswordTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription
               asChild
@@ -500,25 +542,25 @@ export function LoginFlow({
               <div>
                 <div className="bg-muted/50 rounded-lg p-4 border border-border">
                   <span className="block text-foreground/80 text-sm leading-relaxed">
-                    Нууц үгээ мартсан бол{" "}
+                    {t("loginForgotPasswordIntro")}{" "}
                     <span className="text-primary font-semibold">Skype</span>{" "}
-                    аар{" "}
+                    {t("loginForgotPasswordViaSuffix")}{" "}
                     <span className="text-foreground font-semibold">
                       DAA – Батмягмар
                     </span>{" "}
-                    руу бичиж сэргээлгэнэ үү.
+                    {t("loginForgotPasswordOutro")}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground italic">
-                  💡 Админ таны нууц үгийг шинэчилж өгөх болно.
+                  {t("loginForgotPasswordAdminNote")}
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Хаах</AlertDialogCancel>
+            <AlertDialogCancel>{t("close")}</AlertDialogCancel>
             <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90">
-              Ойлголоо
+              {t("loginGotItBtn")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -21,22 +21,12 @@ export const loginFormSchema = z.object({
   userId: z.string().min(1, "ID оруулна уу"),
 });
 
-export const passwordFormSchema = z
-  .object({
-    password: passwordSchema,
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Нууц үг таарахгүй байна",
-    path: ["confirmPassword"],
-  });
-
 export const loginPasswordSchema = z.object({
   password: z.string().min(1, "Нууц үгээ оруулна уу"),
 });
 
 export type FlowType = "select" | "register" | "login";
-export type RegisterStep = "info" | "password";
+export type RegisterStep = "info" | "pending";
 export type LoginStep = "userId" | "password" | "createPassword";
 
 export interface UserCheckResult {
@@ -44,11 +34,24 @@ export interface UserCheckResult {
   hasPassword: boolean;
   userId: string | null;
   isActive?: boolean;
-  /** Бүртгэлийн claimToken — зөвхөн POST /auth/register хариунд */
-  claimToken?: string;
-  /** PENDING бүртгэл — нууц үг тохируулаагүй (check-user-ээр token өгөхгүй) */
+  /** PENDING бүртгэл — админ баталгаажуулж, claim код өгсний дараа нууц үг тохируулна */
   needsPasswordSetup?: boolean;
+  /** exists=false үед — бүртгэлийн хүсэлтийн одоогийн төлөв (админ хараахан
+   *  шийдээгүй/татгалзсан) байвал login хуудсанд харуулах зорилготой */
+  registrationStatus?: "pending" | "rejected";
 }
+
+/** Админаас авсан claim код ашиглан анхны удаа нууц үг тохируулах schema */
+export const claimSetPasswordFormSchema = z
+  .object({
+    claimCode: z.string().min(1, "Админаас авсан кодоо оруулна уу"),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Нууц үг таарахгүй байна",
+    path: ["confirmPassword"],
+  });
 
 export interface PasswordChecks {
   minLength: boolean;

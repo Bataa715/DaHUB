@@ -86,11 +86,6 @@ export class RiskAssessmentController {
     return this.service.listRiskbranchDates();
   }
 
-  @Get("riskbranch/latest-all")
-  async getRiskbranchLatestAll() {
-    return this.service.getRiskbranchLatestAll();
-  }
-
   @Get("riskbranch/lock")
   async getLockedDate() {
     const lockedDate = await this.service.getLockedDate();

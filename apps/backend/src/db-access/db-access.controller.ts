@@ -20,6 +20,7 @@ import {
   ReviewRequestDto,
   RevokeGrantDto,
 } from "./dto/db-access.dto";
+import { AuthenticatedRequest } from "../common/types/authenticated-request";
 
 @Controller("db-access")
 @UseGuards(JwtAuthGuard, ToolGuard)
@@ -40,19 +41,19 @@ export class DbAccessController {
   /** POST /db-access/requests - submit a new access request */
   @Post("requests")
   @HttpCode(HttpStatus.CREATED)
-  createRequest(@Request() req: any, @Body() dto: CreateAccessRequestDto) {
+  createRequest(@Request() req: AuthenticatedRequest, @Body() dto: CreateAccessRequestDto) {
     return this.dbAccessService.createRequest(req.user, dto);
   }
 
   /** GET /db-access/requests/pending - pending requests waiting for review */
   @Get("requests/pending")
-  getPendingRequests(@Request() req: any) {
+  getPendingRequests(@Request() req: AuthenticatedRequest) {
     return this.dbAccessService.getPendingRequests(req.user);
   }
 
   /** GET /db-access/requests - all requests (admin/granter view) */
   @Get("requests")
-  getAllRequests(@Request() req: any) {
+  getAllRequests(@Request() req: AuthenticatedRequest) {
     return this.dbAccessService.getAllRequests(req.user);
   }
 
@@ -60,7 +61,7 @@ export class DbAccessController {
   @Patch("requests/:id/review")
   reviewRequest(
     @Param("id") id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: ReviewRequestDto,
   ) {
     return this.dbAccessService.reviewRequest(id, req.user, dto);
@@ -68,7 +69,7 @@ export class DbAccessController {
 
   /** DELETE /db-access/requests/:id - hard-delete a single request (not approved) */
   @Delete("requests/:id")
-  deleteRequest(@Param("id") id: string, @Request() req: any) {
+  deleteRequest(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     return this.dbAccessService.deleteRequest(id, req.user);
   }
 
@@ -80,7 +81,7 @@ export class DbAccessController {
   @Post("grants/cleanup-ch/:requesterUserId")
   cleanupChUser(
     @Param("requesterUserId") requesterUserId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.dbAccessService.cleanupUserChAccess(requesterUserId, req.user);
   }
@@ -89,13 +90,13 @@ export class DbAccessController {
 
   /** GET /db-access/grants/my - my active grants */
   @Get("grants/my")
-  getMyGrants(@Request() req: any) {
+  getMyGrants(@Request() req: AuthenticatedRequest) {
     return this.dbAccessService.getMyGrants(req.user.id);
   }
 
   /** GET /db-access/grants - all active grants (admin view) */
   @Get("grants")
-  getAllGrants(@Request() req: any) {
+  getAllGrants(@Request() req: AuthenticatedRequest) {
     return this.dbAccessService.getAllGrants(req.user);
   }
 
@@ -103,7 +104,7 @@ export class DbAccessController {
   @Delete("grants/:id")
   revokeGrant(
     @Param("id") id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: RevokeGrantDto,
   ) {
     return this.dbAccessService.revokeGrant(id, req.user, dto);
@@ -111,7 +112,7 @@ export class DbAccessController {
 
   /** DELETE /db-access/grants/:id/cancel - user self-cancels their own grant */
   @Delete("grants/:id/cancel")
-  selfRevokeGrant(@Param("id") id: string, @Request() req: any) {
+  selfRevokeGrant(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     return this.dbAccessService.selfRevokeGrant(id, req.user);
   }
 }

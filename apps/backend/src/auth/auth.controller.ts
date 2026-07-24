@@ -3,6 +3,8 @@ import {
   Post,
   Body,
   Get,
+  Patch,
+  Param,
   UseGuards,
   Request,
   Query,
@@ -21,8 +23,10 @@ import {
   SetPasswordDto,
   ChangePasswordDto,
   RefreshTokenDto,
+  ReviewRegistrationDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
+import { AdminGuard } from "./guards/admin.guard";
 
 @Controller("auth")
 export class AuthController {
@@ -114,6 +118,28 @@ export class AuthController {
   @Post("register")
   async registerUser(@Body() registerUserDto: RegisterUserDto) {
     return this.authService.registerUser(registerUserDto);
+  }
+
+  // Admin: list registration requests (?status=pending|approved|rejected)
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get("registration-requests")
+  async getRegistrationRequests(@Query("status") status?: string) {
+    return this.authService.getRegistrationRequests(status);
+  }
+
+  // Admin: approve or reject a pending registration request
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch("registration-requests/:id")
+  async reviewRegistration(
+    @Param("id") id: string,
+    @Body() dto: ReviewRegistrationDto,
+    @Request() req: ExpressRequest & { user: Record<string, unknown> },
+  ) {
+    return this.authService.reviewRegistration(
+      id,
+      { id: req.user.id as string, name: req.user.name as string },
+      dto,
+    );
   }
 
   // Set password for first-time user

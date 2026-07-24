@@ -21,6 +21,7 @@ import { Loader2, Building2, Users, Pencil, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import { isRegularAppUser } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DepartmentUser {
   id: string;
@@ -45,6 +46,7 @@ interface DepartmentData {
 export default function AdminDepartmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
 
   const [selectedDepartment, setSelectedDepartment] =
@@ -72,8 +74,8 @@ export default function AdminDepartmentsPage() {
       setDepartments(filtered);
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хэлтсүүдийг ачаалахад алдаа гарлаа.",
+        title: t("error"),
+        description: t("admDeptLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -95,16 +97,20 @@ export default function AdminDepartmentsPage() {
         name,
         code: createCode.trim().toUpperCase() || undefined,
       });
-      toast({ title: "Амжилттай", description: "Шинэ хэлтэс нэмэгдлээ." });
+      toast({ title: t("success"), description: t("admDeptCreatedDesc") });
       setIsCreateOpen(false);
       setCreateName("");
       setCreateCode("");
       loadDepartments();
     } catch (error) {
-      let message = "Хэлтэс нэмэхэд алдаа гарлаа.";
+      let message = t("admDeptCreateError");
       if (axios.isAxiosError(error))
         message = error.response?.data?.message ?? message;
-      toast({ title: "Алдаа", description: message, variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -126,15 +132,15 @@ export default function AdminDepartmentsPage() {
         description: selectedDepartment.description,
       });
       toast({
-        title: "Амжилттай",
-        description: "Хэлтсийн мэдээлэл шинэчлэгдлээ.",
+        title: t("success"),
+        description: t("admDeptUpdatedDesc"),
       });
       setIsEditOpen(false);
       loadDepartments();
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.",
+        title: t("error"),
+        description: t("admDeptUpdateError"),
         variant: "destructive",
       });
     } finally {
@@ -147,17 +153,20 @@ export default function AdminDepartmentsPage() {
     dept: DepartmentData,
   ) => {
     e.stopPropagation();
-    if (!confirm(`"${dept.name}" хэлтсийг устгахдаа итгэлтэй байна уу?`))
-      return;
+    if (!confirm(`"${dept.name}" ${t("admDeptDeleteConfirmSuffix")}`)) return;
     try {
       await departmentsApi.delete(dept.id);
-      toast({ title: "Амжилттай", description: "Хэлтэс устгагдлаа." });
+      toast({ title: t("success"), description: t("admDeptDeletedDesc") });
       loadDepartments();
     } catch (error) {
-      let message = "Хэлтсийг устгахад алдаа гарлаа.";
+      let message = t("admDeptDeleteError");
       if (axios.isAxiosError(error))
         message = error.response?.data?.message ?? message;
-      toast({ title: "Алдаа", description: message, variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -174,11 +183,11 @@ export default function AdminDepartmentsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AdminPageHeader
-        title="Хэлтсүүд"
+        title={t("admDeptPageTitle")}
         rightContent={
           <div className="flex items-center gap-3">
             <span className="text-muted-foreground/60 text-xs">
-              {departments.length} хэлтэс
+              {departments.length} {t("admDeptUnit")}
             </span>
             <Button
               size="sm"
@@ -188,7 +197,7 @@ export default function AdminDepartmentsPage() {
               }}
               className="h-8 gap-1.5 text-xs"
             >
-              <Plus className="w-3.5 h-3.5" /> Хэлтэс нэмэх
+              <Plus className="w-3.5 h-3.5" /> {t("admDeptAddBtn")}
             </Button>
           </div>
         }
@@ -200,7 +209,7 @@ export default function AdminDepartmentsPage() {
           <div className="rounded-xl border border-dashed border-border py-20 text-center">
             <Building2 className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground/50">
-              Хэлтэс байхгүй байна
+              {t("admDeptEmpty")}
             </p>
           </div>
         ) : (
@@ -224,14 +233,14 @@ export default function AdminDepartmentsPage() {
                           handleEditDepartment(dept);
                         }}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-secondary transition-colors"
-                        title="Засах"
+                        title={t("admCommonEditBtn")}
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
                       <button
                         onClick={(e) => handleDeleteDepartment(e, dept)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                        title="Устгах"
+                        title={t("tailan_deleteAction")}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -248,7 +257,7 @@ export default function AdminDepartmentsPage() {
                         </span>
                       )}
                       <p className="text-xs text-muted-foreground/50">
-                        {userCount} ажилтан
+                        {userCount} {t("admDeptEmployeeUnit")}
                       </p>
                     </div>
                   </div>
@@ -263,7 +272,7 @@ export default function AdminDepartmentsPage() {
       <Sheet open={isViewOpen} onOpenChange={setIsViewOpen}>
         <SheetContent className="sm:max-w-md bg-background border-border p-0 flex flex-col">
           <SheetTitle className="sr-only">
-            {selectedDepartment?.name ?? "Хэлтэс"}
+            {selectedDepartment?.name ?? t("navDepartments")}
           </SheetTitle>
           {selectedDepartment && (
             <>
@@ -277,7 +286,8 @@ export default function AdminDepartmentsPage() {
                       {selectedDepartment.name}
                     </p>
                     <p className="text-xs text-muted-foreground/50">
-                      {selectedDepartment.users?.length || 0} ажилтан
+                      {selectedDepartment.users?.length || 0}{" "}
+                      {t("admDeptEmployeeUnit")}
                     </p>
                   </div>
                 </div>
@@ -288,7 +298,7 @@ export default function AdminDepartmentsPage() {
                 selectedDepartment.users.length > 0 ? (
                   <div className="py-2">
                     <p className="px-5 py-2 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">
-                      Ажилтнууд
+                      {t("navEmployees")}
                     </p>
                     <div className="divide-y divide-border">
                       {selectedDepartment.users.map((u) => (
@@ -317,7 +327,7 @@ export default function AdminDepartmentsPage() {
                   <div className="flex flex-col items-center justify-center py-20 gap-2">
                     <Users className="w-6 h-6 text-muted-foreground/30" />
                     <p className="text-sm text-muted-foreground/50">
-                      Ажилтан бүртгэгдээгүй
+                      {t("admDeptNoEmployeesShort")}
                     </p>
                   </div>
                 )}
@@ -331,7 +341,7 @@ export default function AdminDepartmentsPage() {
                   }}
                   className="w-full py-2 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
                 >
-                  <Pencil className="w-3.5 h-3.5" /> Хэлтэс засах
+                  <Pencil className="w-3.5 h-3.5" /> {t("admDeptEditBtnFull")}
                 </button>
               </div>
             </>
@@ -344,15 +354,15 @@ export default function AdminDepartmentsPage() {
         <DialogContent className="bg-background border-border text-foreground max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-foreground text-base">
-              Хэлтэс засах
+              {t("admDeptEditBtnFull")}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground/60 text-xs">
-              Хэлтсийн нэрийг шинэчлэх
+              {t("admDeptEditDialogDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs">
-              Хэлтсийн нэр
+              {t("admDeptNameLabel")}
             </Label>
             <Input
               value={formData.name}
@@ -364,7 +374,7 @@ export default function AdminDepartmentsPage() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs">
-              Код (ID prefix)
+              {t("admDeptCodeLabel")}
             </Label>
             <Input
               value={formData.code}
@@ -374,12 +384,12 @@ export default function AdminDepartmentsPage() {
                   code: e.target.value.toUpperCase(),
                 }))
               }
-              placeholder="Жишээ: EAH"
+              placeholder={t("admDeptCodeExamplePlaceholder")}
               maxLength={12}
               className="bg-muted border-border text-foreground focus-visible:ring-ring uppercase"
             />
             <p className="text-muted-foreground/60 text-[11px]">
-              Хэрэглэгчийн ID-н эхний prefix код. Зөвхөн том үсэг/тоо.
+              {t("admDeptCodeHintEdit")}
             </p>
           </div>
           <DialogFooter className="gap-2 mt-2">
@@ -388,13 +398,13 @@ export default function AdminDepartmentsPage() {
               onClick={() => setIsEditOpen(false)}
               className="border border-border text-foreground/80 hover:bg-muted"
             >
-              Цуцлах
+              {t("admDeptCancelBtn")}
             </Button>
             <Button onClick={handleSaveEdit} disabled={isSaving}>
               {isSaving && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               )}
-              Хадгалах
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -405,15 +415,15 @@ export default function AdminDepartmentsPage() {
         <DialogContent className="bg-background border-border text-foreground max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-foreground text-base">
-              Шинэ хэлтэс нэмэх
+              {t("admDeptCreateDialogTitle")}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground/60 text-xs">
-              Хэлтсийн нэрийг оруулна уу
+              {t("admDeptCreateDialogDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs">
-              Хэлтсийн нэр
+              {t("admDeptNameLabel")}
             </Label>
             <Input
               value={createName}
@@ -421,14 +431,14 @@ export default function AdminDepartmentsPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleCreateDepartment();
               }}
-              placeholder="Жишээ: Ерөнхий аудитын хэлтэс"
+              placeholder={t("admDeptNamePlaceholder")}
               autoFocus
               className="bg-muted border-border text-foreground focus-visible:ring-ring"
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs">
-              Код (ID prefix)
+              {t("admDeptCodeLabel")}
             </Label>
             <Input
               value={createCode}
@@ -436,12 +446,12 @@ export default function AdminDepartmentsPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleCreateDepartment();
               }}
-              placeholder="Жишээ: EAH"
+              placeholder={t("admDeptCodeExamplePlaceholder")}
               maxLength={12}
               className="bg-muted border-border text-foreground focus-visible:ring-ring uppercase"
             />
             <p className="text-muted-foreground/60 text-[11px]">
-              Хоосон орхивол автоматаар оноохгүй. Зөвхөн том үсэг/тоо.
+              {t("admDeptCodeHintCreate")}
             </p>
           </div>
           <DialogFooter className="gap-2 mt-2">
@@ -450,7 +460,7 @@ export default function AdminDepartmentsPage() {
               onClick={() => setIsCreateOpen(false)}
               className="border border-border text-foreground/80 hover:bg-muted"
             >
-              Цуцлах
+              {t("admDeptCancelBtn")}
             </Button>
             <Button
               onClick={handleCreateDepartment}
@@ -459,7 +469,7 @@ export default function AdminDepartmentsPage() {
               {isSaving && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               )}
-              Нэмэх
+              {t("tailan_addEntry")}
             </Button>
           </DialogFooter>
         </DialogContent>

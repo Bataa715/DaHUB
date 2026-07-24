@@ -28,6 +28,7 @@ import {
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
+import { AuthenticatedRequest } from "../common/types/authenticated-request";
 
 @Controller("tailan")
 @UseGuards(JwtAuthGuard, ToolGuard)
@@ -37,14 +38,14 @@ export class TailanController {
 
   // ─── Save / update draft ───────────────────────────────────────────────────
   @Post("save")
-  async save(@Req() req: any, @Body() dto: SaveTailanDto) {
+  async save(@Req() req: AuthenticatedRequest, @Body() dto: SaveTailanDto) {
     return this.tailanService.saveDraft(req.user, dto);
   }
 
   // ─── Department BSC (ТҮЗ) report save ─────────────────────────────────────
   @Post("dept-bsc")
   async saveDeptBsc(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body("year", ParseIntPipe) year: number,
     @Body("quarter", ParseIntPipe) quarter: number,
     @Body("sections") sections: Record<string, unknown>,
@@ -55,7 +56,7 @@ export class TailanController {
   // ─── Department BSC (ТҮЗ) report load ─────────────────────────────────────
   @Get("dept-bsc/:year/:quarter")
   async getDeptBsc(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
@@ -65,7 +66,7 @@ export class TailanController {
   // ─── Submit report to department head ─────────────────────────────────────
   @Post("submit")
   async submit(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body("year", ParseIntPipe) year: number,
     @Body("quarter", ParseIntPipe) quarter: number,
   ) {
@@ -75,7 +76,7 @@ export class TailanController {
   // ─── Get specific report (mine) ────────────────────────────────────────────
   @Get("my/:year/:quarter")
   async getMyReport(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
@@ -85,7 +86,7 @@ export class TailanController {
   // ─── Download Word for my report ───────────────────────────────────────────
   @Get("my/:year/:quarter/word")
   async downloadMyWord(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
     @Query("name") displayName: string | undefined,
@@ -114,7 +115,7 @@ export class TailanController {
   // ─── Live "real docx" preview from unsaved editor state ───────────────────
   @Post("preview")
   async previewWord(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: PreviewTailanDto,
     @Res() res: Response,
   ) {
@@ -131,7 +132,7 @@ export class TailanController {
   // ─── Dept head: get all submitted reports for period ──────────────────────
   @Get("dept/:year/:quarter")
   async getDeptReports(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
@@ -141,7 +142,7 @@ export class TailanController {
   // ─── Dept head: get status overview (all, not just submitted) ─────────────
   @Get("dept/:year/:quarter/overview")
   async getDeptOverview(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
@@ -151,7 +152,7 @@ export class TailanController {
   // ─── Dept head: view one member's report as real .docx ────────────────────
   @Get("dept/member/:userId/:year/:quarter/word")
   async getDeptMemberWord(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("userId") userId: string,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
@@ -175,7 +176,7 @@ export class TailanController {
   // ─── Dept head: generate Word from edited merged data ────────────────────
   @Post("dept/generate-word")
   async generateDeptWordFromData(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() body: GenerateDeptWordFromDataDto,
     @Res() res: Response,
   ) {
@@ -199,7 +200,7 @@ export class TailanController {
 
   // ─── Check role ────────────────────────────────────────────────────────────
   @Get("role")
-  async getRole(@Req() req: any) {
+  async getRole(@Req() req: AuthenticatedRequest) {
     return { isDeptHead: this.tailanService.isDeptHead(req.user) };
   }
 
@@ -239,7 +240,7 @@ export class TailanController {
     }),
   )
   async saveImage(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @UploadedFile()
     file: {
       buffer: Buffer;
@@ -267,7 +268,7 @@ export class TailanController {
   /** GET /tailan/images/my/:year/:quarter  — my image list */
   @Get("images/my/:year/:quarter")
   async getImages(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
@@ -277,7 +278,7 @@ export class TailanController {
   /** GET /tailan/images/:id/data  — serve raw image */
   @Get("images/:id/data")
   async getImageData(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
     @Res() res: Response,
   ) {
@@ -294,7 +295,7 @@ export class TailanController {
 
   /** DELETE /tailan/images/:id */
   @Delete("images/:id")
-  async deleteImage(@Req() req: any, @Param("id") id: string) {
+  async deleteImage(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.tailanService.deleteImage(id, req.user.id);
   }
 }

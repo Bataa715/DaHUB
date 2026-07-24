@@ -11,6 +11,10 @@ import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, X, AlertTriangle, ArrowDownUp } from "lucide-react";
+import {
+  useLanguage,
+  type TranslationKey,
+} from "@/contexts/LanguageContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -79,23 +83,23 @@ function applyNullEmptyPolicy<T extends NullEmptyFields>(
 
 const NULL_EMPTY_OPTIONS: {
   value: NullEmptyScore;
-  label: string;
-  hint: string;
+  labelKey: TranslationKey;
+  hintKey: TranslationKey;
 }[] = [
   {
     value: "unelehgui",
-    label: "Үнэлэхгүй",
-    hint: "жин хасагдана",
+    labelKey: "admRiskIndNullUnelehguiLabel",
+    hintKey: "admRiskIndNullUnelehguiHint",
   },
   {
     value: "1",
-    label: "Оноо 1",
-    hint: "хоосон = сайн",
+    labelKey: "admRiskIndNullScore1Label",
+    hintKey: "admRiskIndNullScore1Hint",
   },
   {
     value: "5",
-    label: "Оноо 5",
-    hint: "хоосон = муу",
+    labelKey: "admRiskIndNullScore5Label",
+    hintKey: "admRiskIndNullScore5Hint",
   },
 ];
 
@@ -152,13 +156,15 @@ export const GROUP_ACCENT: Record<
   },
 };
 
-export const SCALE_TYPE_LABELS: Record<string, string> = {
-  numeric: "Тоон",
-  string: "Мөр",
-  both: "Хосолсон",
-  manual: "Гараар",
-  no_score: "Оноогүй",
-  multi_subid: "Олон SUBID",
+// Values are TranslationKey names (not literal labels) so both consuming
+// files (this one and ../page.tsx) can look them up with t().
+export const SCALE_TYPE_LABELS: Record<string, TranslationKey> = {
+  numeric: "admRiskIndScaleTypeNumeric",
+  string: "admRiskIndScaleTypeString",
+  both: "admRiskIndScaleTypeBoth",
+  manual: "admRiskIndScaleTypeManual",
+  no_score: "admRiskIndScaleTypeNoScore",
+  multi_subid: "admRiskIndScaleTypeMultiSubid",
 };
 
 export const SCALE_TYPE_BADGE_CLASS: Record<string, string> = {
@@ -182,12 +188,12 @@ const DEFAULT_MULTI_SUBID_SCALE: ScoreScale = {
 
 const COMBINE_OPTIONS: {
   value: NonNullable<ScoreScale["combine"]>;
-  label: string;
+  labelKey: TranslationKey;
   hint: string;
 }[] = [
-  { value: "max", label: "Хамгийн муу", hint: "max" },
-  { value: "min", label: "Хамгийн сайн", hint: "min" },
-  { value: "avg", label: "Дундаж", hint: "avg" },
+  { value: "max", labelKey: "admRiskIndCombineMax", hint: "max" },
+  { value: "min", labelKey: "admRiskIndCombineMin", hint: "min" },
+  { value: "avg", labelKey: "admRiskIndCombineAvg", hint: "avg" },
 ];
 
 const DEFAULT_SCALE: ScoreScale = { type: "manual", min: 1, max: 5, step: 1 };
@@ -225,13 +231,15 @@ const SCORE_BADGE: Record<number, string> = {
   0: "bg-muted/20 text-muted-foreground/50 border-border/30",
 };
 
+// Static labels ("1".."5") plus a 0 entry whose display text comes from
+// admRiskIndScoreNA via t() at render time (see renderScoreOptionLabel).
 const SCORE_SELECT_OPTIONS = [
   { value: 1, label: "1" },
   { value: 2, label: "2" },
   { value: 3, label: "3" },
   { value: 4, label: "4" },
   { value: 5, label: "5" },
-  { value: 0, label: "Ү" },
+  { value: 0, label: null as string | null },
 ];
 
 // ── Тоон дүрмийн туслахууд ────────────────────────────────────────────────────
@@ -251,11 +259,15 @@ function matchNumericRule(rules: ScoreScaleRule[], n: number): number {
   return -1;
 }
 
-function ruleRangeText(r: ScoreScaleRule): string {
-  if (r.min == null && r.max == null) return "бүх утга";
-  if (r.min == null) return `утга < ${r.max}`;
-  if (r.max == null) return `${r.min} ≤ утга`;
-  return `${r.min} ≤ утга < ${r.max}`;
+function ruleRangeText(
+  r: ScoreScaleRule,
+  t: (key: TranslationKey) => string,
+): string {
+  const value = t("admRiskIndRuleValueWord");
+  if (r.min == null && r.max == null) return t("admRiskIndRuleAllValues");
+  if (r.min == null) return `${value} < ${r.max}`;
+  if (r.max == null) return `${r.min} ≤ ${value}`;
+  return `${r.min} ≤ ${value} < ${r.max}`;
 }
 
 /** Давхцаж буй дүрмийн хосуудыг олно (null = хязгааргүй) */
@@ -282,6 +294,7 @@ function NumericRulesSection({
   rules: ScoreScaleRule[];
   onChange: (r: ScoreScaleRule[]) => void;
 }) {
+  const { t } = useLanguage();
   const [testValue, setTestValue] = useState("");
 
   const update = (i: number, patch: Partial<ScoreScaleRule>) =>
@@ -320,18 +333,18 @@ function NumericRulesSection({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-400/80">
-          Тоон дүрмүүд
+          {t("admRiskIndNumericRulesTitle")}
         </span>
         <div className="flex items-center gap-1">
           {rules.length > 1 && (
             <button
               type="button"
               onClick={chainBounds}
-              title="Min-ээр эрэмбэлж, хязгааруудыг цоорхойгүй залгана"
+              title={t("admRiskIndChainTooltip")}
               className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-foreground/5 border border-border/30 text-muted-foreground/70 hover:bg-foreground/10 transition-colors"
             >
               <ArrowDownUp className="w-3 h-3" />
-              Залгах
+              {t("admRiskIndChainBtn")}
             </button>
           )}
           <button
@@ -340,38 +353,38 @@ function NumericRulesSection({
             className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500/20 transition-colors"
           >
             <Plus className="w-3 h-3" />
-            Нэмэх
+            {t("tailan_addEntry")}
           </button>
         </div>
       </div>
       <p className="text-[10px] text-muted-foreground/50 leading-relaxed">
-        Муж нь{" "}
-        <span className="font-mono text-sky-400/90">Доод ≤ утга &lt; Дээд</span>{" "}
-        — доод хязгаар <b>орно</b>, дээд хязгаар <b>орохгүй</b>. Жишээ нь 3–4 ба
-        4–5 гэсэн хоёр мужид <span className="font-mono">4</span> утга{" "}
-        <b>4–5 мужид</b> орно.
+        {t("admRiskIndRangeIntro")}{" "}
+        <span className="font-mono text-sky-400/90">
+          {t("admRiskIndRangeFormula")}
+        </span>{" "}
+        {t("admRiskIndRangeExplain")}
       </p>
       {rules.length === 0 ? (
         <div className="text-[11px] text-muted-foreground/30 text-center py-4 border border-dashed border-border/20 rounded-xl">
-          Дүрэм байхгүй — «Нэмэх» дараарай
+          {t("admRiskIndNoRulesHint")}
         </div>
       ) : (
         <div className="space-y-1">
           <div className="grid grid-cols-[68px_68px_84px_1fr_120px_28px] gap-1.5 px-1">
             <span className="text-[10px] text-muted-foreground/40 uppercase">
-              Доод ≤
+              {t("admRiskIndColMin")}
             </span>
             <span className="text-[10px] text-muted-foreground/40 uppercase">
-              &lt; Дээд
+              {t("admRiskIndColMax")}
             </span>
             <span className="text-[10px] text-muted-foreground/40 uppercase">
-              Оноо
+              {t("admRiskIndColScore")}
             </span>
             <span className="text-[10px] text-muted-foreground/40 uppercase">
-              Тайлбар
+              {t("dataDocColDesc")}
             </span>
             <span className="text-[10px] text-muted-foreground/40 uppercase">
-              Муж
+              {t("admRiskIndColRange")}
             </span>
             <span />
           </div>
@@ -424,21 +437,21 @@ function NumericRulesSection({
                     value={o.value}
                     className="bg-background text-foreground"
                   >
-                    {o.label}
+                    {o.label ?? t("admRiskIndScoreNA")}
                   </option>
                 ))}
               </select>
               <Input
                 value={rule.label}
                 onChange={(e) => update(i, { label: e.target.value })}
-                placeholder="Тайлбар..."
+                placeholder={t("admRiskIndDescPlaceholder")}
                 className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/80 placeholder:text-muted-foreground/20"
               />
               <span
                 className="text-[10px] font-mono text-muted-foreground/60 truncate"
-                title={ruleRangeText(rule)}
+                title={ruleRangeText(rule, t)}
               >
-                {ruleRangeText(rule)}
+                {ruleRangeText(rule, t)}
               </span>
               <button
                 type="button"
@@ -454,10 +467,9 @@ function NumericRulesSection({
             <div className="flex items-start gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
               <span className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed">
-                Мужууд давхцаж байна (
+                {t("admRiskIndOverlapWarningIntro")} (
                 {overlaps.map(([a, b]) => `№${a + 1}↔№${b + 1}`).join(", ")}
-                ). Давхцсан утгад <b>өндөр оноотой</b> дүрэм түрүүлж хэрэгжинэ.
-                «Залгах» товчоор цэгцлэх боломжтой.
+                ). {t("admRiskIndOverlapWarningRest")}
               </span>
             </div>
           )}
@@ -465,13 +477,13 @@ function NumericRulesSection({
           {/* Шууд шалгах — тодорхой утга аль мужид орохыг харуулна */}
           <div className="flex items-center gap-2 pt-1">
             <span className="text-[11px] text-muted-foreground/60 shrink-0">
-              Утга шалгах:
+              {t("admRiskIndTestValueLabel")}
             </span>
             <Input
               type="number"
               value={testValue}
               onChange={(e) => setTestValue(e.target.value)}
-              placeholder="ж: 4"
+              placeholder={t("admRiskIndExamplePlaceholder")}
               className="h-7 w-24 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/80 placeholder:text-muted-foreground/20 px-2"
             />
             {testValue.trim() !== "" &&
@@ -482,20 +494,21 @@ function NumericRulesSection({
                       SCORE_BADGE[rules[testMatch].score] ?? ""
                     }`}
                   >
-                    → Оноо{" "}
+                    → {t("admRiskIndColScore")}{" "}
                     {rules[testMatch].score === 0
-                      ? "Ү"
+                      ? t("admRiskIndScoreNA")
                       : rules[testMatch].score}{" "}
-                    ({ruleRangeText(rules[testMatch])})
+                    ({ruleRangeText(rules[testMatch], t)})
                   </span>
                 ) : (
                   <span className="text-[11px] px-2 py-0.5 rounded-md border border-border/30 text-muted-foreground/60">
-                    → Ямар ч мужид орохгүй (Үнэлэхгүй)
+                    → {t("admRiskIndNoRangeMatchPrefix")} (
+                    {t("admRiskIndNullUnelehguiLabel")})
                   </span>
                 )
               ) : (
                 <span className="text-[11px] text-muted-foreground/40">
-                  тоо оруулна уу
+                  {t("admRiskIndEnterNumberHint")}
                 </span>
               ))}
           </div>
@@ -512,6 +525,7 @@ function StringRulesSection({
   rules: ScoreScaleRule[];
   onChange: (r: ScoreScaleRule[]) => void;
 }) {
+  const { t } = useLanguage();
   const update = (i: number, patch: Partial<ScoreScaleRule>) =>
     onChange(rules.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) => onChange(rules.filter((_, idx) => idx !== i));
@@ -525,7 +539,7 @@ function StringRulesSection({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-violet-400/80">
-          Мөр дүрмүүд
+          {t("admRiskIndStringRulesTitle")}
         </span>
         <button
           type="button"
@@ -533,12 +547,12 @@ function StringRulesSection({
           className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 hover:bg-violet-500/20 transition-colors"
         >
           <Plus className="w-3 h-3" />
-          Нэмэх
+          {t("tailan_addEntry")}
         </button>
       </div>
       {rules.length === 0 ? (
         <div className="text-[11px] text-muted-foreground/30 text-center py-4 border border-dashed border-border/20 rounded-xl">
-          Дүрэм байхгүй — «Нэмэх» дараарай
+          {t("admRiskIndNoRulesHint")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -558,10 +572,10 @@ function StringRulesSection({
                   className="h-7 flex-1 text-xs rounded-lg bg-foreground/5 border border-border/40 text-foreground/80 px-2"
                 >
                   <option value="exact" className="bg-background">
-                    Яг тохирно
+                    {t("admRiskIndMatchExact")}
                   </option>
                   <option value="contains" className="bg-background">
-                    Агуулна
+                    {t("admRiskIndMatchContains")}
                   </option>
                 </select>
                 <select
@@ -578,7 +592,7 @@ function StringRulesSection({
                       value={o.value}
                       className="bg-background text-foreground"
                     >
-                      {o.label}
+                      {o.label ?? t("admRiskIndScoreNA")}
                     </option>
                   ))}
                 </select>
@@ -600,13 +614,13 @@ function StringRulesSection({
                   update(i, { values: vals });
                 }}
                 rows={3}
-                placeholder={"утга1\nутга2\n..."}
+                placeholder={t("admRiskIndValuesPlaceholder")}
                 className="w-full text-xs rounded-lg bg-foreground/5 border border-border/40 text-foreground/70 placeholder:text-muted-foreground/30 px-2.5 py-1.5 resize-y focus:outline-none focus:ring-1 focus:ring-violet-500/40"
               />
               <Input
                 value={rule.label}
                 onChange={(e) => update(i, { label: e.target.value })}
-                placeholder="Тайлбар..."
+                placeholder={t("admRiskIndDescPlaceholder")}
                 className="h-7 text-xs rounded-lg bg-foreground/5 border-border/40 text-foreground/70 placeholder:text-muted-foreground/30"
               />
             </div>
@@ -630,20 +644,21 @@ function MultiSubidSourceEditor({
   onRemove: () => void;
   canRemove: boolean;
 }) {
+  const { t } = useLanguage();
   const numericRules = source.numericRules ?? [];
 
   return (
     <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 space-y-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400/90">
-          Эх үүсвэр #{index + 1}
+          {t("admRiskIndSourceLabel")} #{index + 1}
         </span>
         {canRemove && (
           <button
             type="button"
             onClick={onRemove}
             className="p-1 rounded-md text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-            title="Устгах"
+            title={t("tailan_deleteAction")}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -660,7 +675,9 @@ function MultiSubidSourceEditor({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-[10px] text-muted-foreground/50">Шошго</Label>
+          <Label className="text-[10px] text-muted-foreground/50">
+            {t("admRiskIndLabelWord")}
+          </Label>
           <Input
             value={source.label ?? ""}
             onChange={(e) => onChange({ ...source, label: e.target.value })}
@@ -671,7 +688,7 @@ function MultiSubidSourceEditor({
       </div>
       <div className="space-y-1">
         <Label className="text-[10px] text-muted-foreground/50">
-          Хоосон утга (энэ SUBID)
+          {t("admRiskIndEmptyValuePolicyForSubid")}
         </Label>
         <div className="flex flex-wrap gap-1">
           {NULL_EMPTY_OPTIONS.map((opt) => {
@@ -689,7 +706,7 @@ function MultiSubidSourceEditor({
                     : "border-border/30 text-muted-foreground/50"
                 }`}
               >
-                {opt.label}
+                {t(opt.labelKey)}
               </button>
             );
           })}
@@ -712,6 +729,7 @@ function MultiSubidScaleSection({
   scale: ScoreScale;
   onChange: (next: ScoreScale) => void;
 }) {
+  const { t } = useLanguage();
   const sources = scale.sources ?? [];
   const combine = scale.combine ?? "max";
 
@@ -724,14 +742,11 @@ function MultiSubidScaleSection({
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-[11px] text-muted-foreground/80 leading-relaxed">
-        Нэг indicator, олон SUBID. Indicator-ийн гол{" "}
-        <span className="text-rose-400 font-medium">SUBID</span> талбар нь эхний
-        эх үүсвэртэй таарах ёстой. Эцсийн оноо = сонгосон нэгтгэл (ихэвчлэн
-        хамгийн муу).
+        {t("admRiskIndMultiSubidExplain")}
       </div>
       <div className="space-y-1.5">
         <Label className="text-muted-foreground/60 text-[11px] uppercase tracking-wider">
-          Оноог нэгтгэх
+          {t("admRiskIndCombineLabel")}
         </Label>
         <div className="flex flex-wrap gap-1.5">
           {COMBINE_OPTIONS.map((opt) => (
@@ -745,7 +760,7 @@ function MultiSubidScaleSection({
                   : "border-border/30 text-muted-foreground/50 hover:border-border/50"
               }`}
             >
-              {opt.label}
+              {t(opt.labelKey)}
               <span className="text-[10px] opacity-60 ml-1">({opt.hint})</span>
             </button>
           ))}
@@ -782,7 +797,7 @@ function MultiSubidScaleSection({
         className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-colors"
       >
         <Plus className="w-3 h-3" />
-        SUBID нэмэх
+        {t("admRiskIndAddSubidBtn")}
       </button>
     </div>
   );
@@ -795,6 +810,7 @@ export function ScaleEditor({
   value: string;
   onChange: (json: string) => void;
 }) {
+  const { t } = useLanguage();
   const [scale, setScale] = useState<ScoreScale>(() => parseScale(value));
   const isMounted = useRef(false);
   const onChangeRef = useRef(onChange);
@@ -833,42 +849,44 @@ export function ScaleEditor({
       {/* ── Type selector ──────────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label className="text-muted-foreground/60 text-[11px] uppercase tracking-wider">
-          Оноо тооцоолох арга
+          {t("admRiskIndScoreMethodLabel")}
         </Label>
         <div className="flex flex-wrap gap-1.5">
-          {(["numeric", "string", "both", "multi_subid"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                if (t === "multi_subid") {
-                  setScale({ ...DEFAULT_MULTI_SUBID_SCALE });
-                  return;
-                }
-                setScale((s) => ({
-                  ...s,
-                  type: t,
-                  sources: undefined,
-                  combine: undefined,
-                }));
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                scale.type === t
-                  ? (SCALE_TYPE_BADGE_CLASS[t] ??
-                    "bg-foreground/10 text-foreground border-border/50")
-                  : "border-border/30 text-muted-foreground/50 hover:border-border/50 hover:text-foreground/70 bg-transparent"
-              }`}
-            >
-              {SCALE_TYPE_LABELS[t]}
-            </button>
-          ))}
+          {(["numeric", "string", "both", "multi_subid"] as const).map(
+            (typeKey) => (
+              <button
+                key={typeKey}
+                type="button"
+                onClick={() => {
+                  if (typeKey === "multi_subid") {
+                    setScale({ ...DEFAULT_MULTI_SUBID_SCALE });
+                    return;
+                  }
+                  setScale((s) => ({
+                    ...s,
+                    type: typeKey,
+                    sources: undefined,
+                    combine: undefined,
+                  }));
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  scale.type === typeKey
+                    ? (SCALE_TYPE_BADGE_CLASS[typeKey] ??
+                      "bg-foreground/10 text-foreground border-border/50")
+                    : "border-border/30 text-muted-foreground/50 hover:border-border/50 hover:text-foreground/70 bg-transparent"
+                }`}
+              >
+                {t(SCALE_TYPE_LABELS[typeKey])}
+              </button>
+            ),
+          )}
         </div>
       </div>
 
       {/* ── Хоосон утгын бодлого ─────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label className="text-muted-foreground/60 text-[11px] uppercase tracking-wider">
-          Хоосон / null утга
+          {t("admRiskIndNullPolicyLabel")}
         </Label>
         <div className="flex flex-wrap gap-1.5">
           {NULL_EMPTY_OPTIONS.map((opt) => {
@@ -890,9 +908,9 @@ export function ScaleEditor({
                     : "border-border/30 text-muted-foreground/50 hover:border-border/50 hover:text-foreground/70 bg-transparent"
                 }`}
               >
-                {opt.label}
+                {t(opt.labelKey)}
                 <span className="text-[10px] font-normal opacity-70 ml-1">
-                  ({opt.hint})
+                  ({t(opt.hintKey)})
                 </span>
               </button>
             );

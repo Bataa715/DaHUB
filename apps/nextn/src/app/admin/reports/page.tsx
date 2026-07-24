@@ -48,24 +48,28 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { CodeEditor, PyCodeWorkbench } from "./_components/PyCodeWorkbench";
+import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 
-const DATE_MODE_META = {
+const DATE_MODE_META: Record<
+  "none" | "single" | "range",
+  { labelKey: TranslationKey; Icon: typeof MinusCircle; color: string; bg: string }
+> = {
   none: {
-    label: "Огноогүй",
+    labelKey: "admReportsDateNoneLabel",
     Icon: MinusCircle,
     color: "text-muted-foreground",
     bg: "bg-muted/30 border-border/30",
   },
   single: {
-    label: "Нэг огноо",
+    labelKey: "admReportsDateSingleLabel",
     Icon: Calendar,
     color: "text-sky-400",
     bg: "bg-sky-500/10 border-sky-500/20",
   },
   range: {
-    label: "Хугацааны интервал",
+    labelKey: "admReportsDateRangeLabel",
     Icon: CalendarRange,
     color: "text-emerald-400",
     bg: "bg-emerald-500/10 border-emerald-500/20",
@@ -170,6 +174,7 @@ function FiltersEditor({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<FilterDef[]>([]);
   useEffect(() => {
     try {
@@ -203,7 +208,7 @@ function FiltersEditor({
           <Input
             value={f.label}
             onChange={(e) => set(i, "label", e.target.value)}
-            placeholder="Нэр"
+            placeholder={t("admReportsFilterNamePlaceholder")}
             className="h-8 text-xs bg-background border-border flex-1"
           />
           <Input
@@ -215,11 +220,11 @@ function FiltersEditor({
           <select
             value={f.type ?? "text"}
             onChange={(e) => set(i, "type", e.target.value)}
-            title="Нэг талбар (text) эсвэл олон утга (list — CIF/дугаарын жагсаалт)"
+            title={t("admReportsFilterTypeTitle")}
             className="h-8 text-xs bg-background border border-border rounded px-1.5 text-foreground"
           >
-            <option value="text">Нэг утга</option>
-            <option value="list">Олон утга (жагсаалт)</option>
+            <option value="text">{t("admReportsFilterTypeSingleOption")}</option>
+            <option value="list">{t("admReportsFilterTypeListOption")}</option>
           </select>
           <button
             type="button"
@@ -235,16 +240,14 @@ function FiltersEditor({
         onClick={add}
         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1"
       >
-        <Plus className="w-3.5 h-3.5" /> Шүүлтүүр нэмэх
+        <Plus className="w-3.5 h-3.5" /> {t("admReportsAddFilterBtn")}
       </button>
       <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-        &ldquo;Олон утга&rdquo; төрлийн шүүлтүүрт хэрэглэгч дурын олон утга
-        (жиш: CIF дугаар) шинэ мөр бүрт эсвэл ,-аар зааглаж оруулж чадна. Python
-        кодод:{" "}
+        {t("admReportsFilterHelpPre")}{" "}
         <code>
           filters.get(&quot;key&quot;, &quot;&quot;).split(&quot;,&quot;)
         </code>{" "}
-        гэж бичээд жагсаалт болгоно.
+        {t("admReportsFilterHelpPost")}
       </p>
     </div>
   );
@@ -279,6 +282,7 @@ const EMPTY_PY_FORM: PyFormState = {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminReportsPage() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [pageTab, setPageTab] = useState<"templates" | "permissions" | "logs">(
     "templates",
@@ -326,7 +330,10 @@ export default function AdminReportsPage() {
     try {
       setPyTools(await pythonToolApi.adminGetAll());
     } catch {
-      toast({ title: "Python tool ачаалахад алдаа", variant: "destructive" });
+      toast({
+        title: t("admReportsToolLoadError"),
+        variant: "destructive",
+      });
     } finally {
       setPyLoading(false);
     }
@@ -351,7 +358,7 @@ export default function AdminReportsPage() {
       setPPermissions(perms);
     } catch {
       toast({
-        title: "Эрхийн мэдээлэл татахад алдаа гарлаа",
+        title: t("admReportsPermLoadError"),
         variant: "destructive",
       });
     } finally {
@@ -365,7 +372,7 @@ export default function AdminReportsPage() {
       const data = await pythonToolApi.adminGetRunLogs(500);
       setLogs(data);
     } catch {
-      toast({ title: "Лог татахад алдаа гарлаа", variant: "destructive" });
+      toast({ title: t("admReportsLogLoadError"), variant: "destructive" });
     } finally {
       setLogsLoading(false);
     }
@@ -398,14 +405,14 @@ export default function AdminReportsPage() {
         setPPermissions((prev) => [...prev, { userId, templateId }]);
       }
     } catch {
-      toast({ title: "Алдаа гарлаа", variant: "destructive" });
+      toast({ title: t("errorBoundaryTitle"), variant: "destructive" });
     } finally {
       setPSaving(null);
     }
   };
 
-  const openPermSheet = (t: { id: string; name: string; color: string }) => {
-    setPSelectedTemplate(t);
+  const openPermSheet = (tool: { id: string; name: string; color: string }) => {
+    setPSelectedTemplate(tool);
     setPSheetTab("with");
     setPSelectedUsers(new Set());
   };
@@ -429,9 +436,11 @@ export default function AdminReportsPage() {
       }
       setPSelectedUsers(new Set());
       setPSheetTab("with");
-      toast({ title: `${pSelectedUsers.size} хэрэглэгчид эрх олголоо` });
+      toast({
+        title: `${pSelectedUsers.size} ${t("admReportsGrantedCountSuffix")}`,
+      });
     } catch {
-      toast({ title: "Алдаа гарлаа", variant: "destructive" });
+      toast({ title: t("errorBoundaryTitle"), variant: "destructive" });
     } finally {
       setPGranting(false);
     }
@@ -456,22 +465,22 @@ export default function AdminReportsPage() {
     setPanelOpen(true);
   };
 
-  const openEditPy = (t: PythonToolAdmin) => {
-    setEditingPy(t);
+  const openEditPy = (tool: PythonToolAdmin) => {
+    setEditingPy(tool);
     setPyForm({
-      name: t.name,
-      apiPath: t.apiPath,
-      description: t.description ?? "",
-      pythonCode: t.pythonCode,
-      connectionType: (t.connectionType ??
+      name: tool.name,
+      apiPath: tool.apiPath,
+      description: tool.description ?? "",
+      pythonCode: tool.pythonCode,
+      connectionType: (tool.connectionType ??
         "clickhouse") as PyFormState["connectionType"],
       connectionConfig:
-        t.connectionConfig && t.connectionConfig !== "{}"
-          ? JSON.stringify(JSON.parse(t.connectionConfig), null, 2)
-          : DEFAULT_CONN_CONFIG[t.connectionType ?? "clickhouse"],
-      outputFormat: (t.outputFormat ?? "excel") as PyFormState["outputFormat"],
-      dateMode: (t.dateMode ?? "none") as PyFormState["dateMode"],
-      filters: t.filters ?? "[]",
+        tool.connectionConfig && tool.connectionConfig !== "{}"
+          ? JSON.stringify(JSON.parse(tool.connectionConfig), null, 2)
+          : DEFAULT_CONN_CONFIG[tool.connectionType ?? "clickhouse"],
+      outputFormat: (tool.outputFormat ?? "excel") as PyFormState["outputFormat"],
+      dateMode: (tool.dateMode ?? "none") as PyFormState["dateMode"],
+      filters: tool.filters ?? "[]",
     });
     setPanelOpen(true);
   };
@@ -480,19 +489,25 @@ export default function AdminReportsPage() {
 
   const handleSavePy = async () => {
     if (!pyForm.name.trim())
-      return toast({ title: "Нэр шаардлагатай", variant: "destructive" });
+      return toast({
+        title: t("admReportsNameRequired"),
+        variant: "destructive",
+      });
     if (!pyForm.apiPath.trim())
-      return toast({ title: "API зам шаардлагатай", variant: "destructive" });
+      return toast({
+        title: t("admReportsApiPathRequired"),
+        variant: "destructive",
+      });
     if (!pyForm.pythonCode.trim())
       return toast({
-        title: "Python код шаардлагатай",
+        title: t("admReportsPyCodeRequired"),
         variant: "destructive",
       });
     try {
       JSON.parse(pyForm.connectionConfig);
     } catch {
       return toast({
-        title: "Connection Config JSON буруу",
+        title: t("admReportsConnConfigInvalid"),
         variant: "destructive",
       });
     }
@@ -505,16 +520,16 @@ export default function AdminReportsPage() {
       };
       if (editingPy) {
         await pythonToolApi.adminUpdate(editingPy.id, payload);
-        toast({ title: "Шинэчлэгдлээ" });
+        toast({ title: t("admReportsUpdatedTitle") });
       } else {
         await pythonToolApi.adminCreate(payload);
-        toast({ title: "Үүслээ" });
+        toast({ title: t("admReportsCreatedTitle") });
       }
       closePanel();
       loadPy();
     } catch (e: unknown) {
       toast({
-        title: "Хадгалахад алдаа",
+        title: t("admReportsSaveError"),
         description: getApiErrorMessage(e),
         variant: "destructive",
       });
@@ -525,15 +540,15 @@ export default function AdminReportsPage() {
 
   // ── Toggle / Delete ───────────────────────────────────────────────────────
 
-  const handleTogglePy = async (t: PythonToolAdmin) => {
-    setToggling(t.id);
+  const handleTogglePy = async (tool: PythonToolAdmin) => {
+    setToggling(tool.id);
     try {
-      const updated = await pythonToolApi.adminToggle(t.id, !t.isActive);
+      const updated = await pythonToolApi.adminToggle(tool.id, !tool.isActive);
       setPyTools((prev) =>
         prev.map((x) => (x.id === updated.id ? updated : x)),
       );
     } catch {
-      toast({ title: "Алдаа", variant: "destructive" });
+      toast({ title: t("error"), variant: "destructive" });
     } finally {
       setToggling(null);
     }
@@ -543,28 +558,28 @@ export default function AdminReportsPage() {
     if (!deletePyTarget) return;
     try {
       await pythonToolApi.adminDelete(deletePyTarget.id);
-      setPyTools((prev) => prev.filter((t) => t.id !== deletePyTarget.id));
-      toast({ title: "Устгагдлаа" });
+      setPyTools((prev) => prev.filter((tool) => tool.id !== deletePyTarget.id));
+      toast({ title: t("admReportsDeletedTitle") });
       setDeletePyTarget(null);
       setConfirmDelete(false);
     } catch {
-      toast({ title: "Устгахад алдаа", variant: "destructive" });
+      toast({ title: t("admReportsDeleteError"), variant: "destructive" });
     }
   };
 
   // [SORT] Move tool up/down in display order; persists via /admin/tools/reorder
   const movePy = async (id: string, dir: -1 | 1) => {
-    const idx = pyTools.findIndex((t) => t.id === id);
+    const idx = pyTools.findIndex((tool) => tool.id === id);
     const target = idx + dir;
     if (idx < 0 || target < 0 || target >= pyTools.length) return;
     const reordered = [...pyTools];
     [reordered[idx], reordered[target]] = [reordered[target], reordered[idx]];
     setPyTools(reordered); // optimistic
     try {
-      await pythonToolApi.adminReorder(reordered.map((t) => t.id));
+      await pythonToolApi.adminReorder(reordered.map((tool) => tool.id));
     } catch (e: unknown) {
       toast({
-        title: "Дарааллыг хадгалж чадсангүй",
+        title: t("admReportsReorderError"),
         description: getApiErrorMessage(e),
         variant: "destructive",
       });
@@ -581,7 +596,7 @@ export default function AdminReportsPage() {
             href="/admin"
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
-            <ArrowLeft className="w-4 h-4" /> Буцах
+            <ArrowLeft className="w-4 h-4" /> {t("back")}
           </Link>
           <span className="text-border">/</span>
           <div className="flex items-center gap-2">
@@ -589,7 +604,7 @@ export default function AdminReportsPage() {
               <FileSpreadsheet className="w-3.5 h-3.5 text-foreground" />
             </div>
             <span className="font-semibold text-foreground">
-              Тайлан татах - Удирдах
+              {t("admReportsHeaderTitle")}
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -598,7 +613,7 @@ export default function AdminReportsPage() {
                 onClick={openCreate}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-foreground text-sm font-medium transition-colors"
               >
-                <Plus className="w-4 h-4" /> Шинэ тайлан
+                <Plus className="w-4 h-4" /> {t("admReportsNewBtn")}
               </button>
             )}
             {pageTab === "permissions" && (
@@ -631,15 +646,19 @@ export default function AdminReportsPage() {
           {[
             {
               id: "templates" as const,
-              label: "Тайлангууд",
+              label: t("admReportsTabTemplates"),
               Icon: FileSpreadsheet,
             },
             {
               id: "permissions" as const,
-              label: "Тайлангийн эрх",
+              label: t("admReportsTabPermissions"),
               Icon: KeyRound,
             },
-            { id: "logs" as const, label: "Татах лог", Icon: History },
+            {
+              id: "logs" as const,
+              label: t("admReportsTabLogs"),
+              Icon: History,
+            },
           ].map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -663,53 +682,55 @@ export default function AdminReportsPage() {
             ) : pyTools.length === 0 ? (
               <div className="text-center py-24 text-muted-foreground">
                 <Code2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p className="text-lg font-medium">Тайлан байхгүй байна</p>
+                <p className="text-lg font-medium">
+                  {t("admReportsEmptyTemplates")}
+                </p>
                 <p className="text-sm mt-1">
-                  Дээрх &quot;Шинэ тайлан&quot; дарж нэмнэ үү
+                  {t("admReportsEmptyTemplatesHint")}
                 </p>
               </div>
             ) : (
               <div className="grid gap-3">
                 <AnimatePresence>
-                  {pyTools.map((t, idx) => {
-                    const connType = (t.connectionType ??
+                  {pyTools.map((tool, idx) => {
+                    const connType = (tool.connectionType ??
                       "clickhouse") as keyof typeof CONNECTION_META;
                     const ConnIcon = CONNECTION_META[connType].icon;
-                    const OutIcon = OUTPUT_META[t.outputFormat ?? "excel"].icon;
-                    const DateIcon = DATE_MODE_META[t.dateMode ?? "none"].Icon;
+                    const OutIcon = OUTPUT_META[tool.outputFormat ?? "excel"].icon;
+                    const DateIcon = DATE_MODE_META[tool.dateMode ?? "none"].Icon;
                     return (
                       <motion.div
-                        key={t.id}
+                        key={tool.id}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
-                        className={`flex items-center gap-4 p-4 rounded-xl border bg-card transition-all ${t.isActive ? "border-border" : "border-dashed border-border/40 opacity-60"}`}
+                        className={`flex items-center gap-4 p-4 rounded-xl border bg-card transition-all ${tool.isActive ? "border-border" : "border-dashed border-border/40 opacity-60"}`}
                       >
                         <div
-                          className={`w-10 h-10 rounded-lg bg-gradient-to-br ${t.color} shrink-0 flex items-center justify-center shadow`}
+                          className={`w-10 h-10 rounded-lg bg-gradient-to-br ${tool.color} shrink-0 flex items-center justify-center shadow`}
                         >
                           <Code2 className="w-5 h-5 text-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm truncate">
-                              {t.name}
+                              {tool.name}
                             </span>
                             <code className="text-xs px-1.5 py-0.5 rounded bg-muted text-violet-300 font-mono">
-                              /python-api/run/{t.apiPath}
+                              /python-api/run/{tool.apiPath}
                             </code>
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 font-mono">
                               Python
                             </span>
-                            {!t.isActive && (
+                            {!tool.isActive && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
-                                Идэвхгүй
+                                {t("admReportsInactiveBadge")}
                               </span>
                             )}
                           </div>
-                          {t.description && (
+                          {tool.description && (
                             <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                              {t.description}
+                              {tool.description}
                             </p>
                           )}
                           <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -720,60 +741,60 @@ export default function AdminReportsPage() {
                               {CONNECTION_META[connType].label}
                             </span>
                             <span
-                              className={`flex items-center gap-1 text-xs ${OUTPUT_META[t.outputFormat ?? "excel"].color}`}
+                              className={`flex items-center gap-1 text-xs ${OUTPUT_META[tool.outputFormat ?? "excel"].color}`}
                             >
                               <OutIcon className="w-3 h-3" />{" "}
-                              {OUTPUT_META[t.outputFormat ?? "excel"].label}
+                              {OUTPUT_META[tool.outputFormat ?? "excel"].label}
                             </span>
                             <span
-                              className={`flex items-center gap-1 text-xs ${DATE_MODE_META[t.dateMode ?? "none"].color}`}
+                              className={`flex items-center gap-1 text-xs ${DATE_MODE_META[tool.dateMode ?? "none"].color}`}
                             >
                               <DateIcon className="w-3 h-3" />{" "}
-                              {DATE_MODE_META[t.dateMode ?? "none"].label}
+                              {t(DATE_MODE_META[tool.dateMode ?? "none"].labelKey)}
                             </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <div className="flex flex-col gap-0.5 mr-1">
                             <button
-                              onClick={() => movePy(t.id, -1)}
+                              onClick={() => movePy(tool.id, -1)}
                               disabled={idx === 0}
-                              title="Дээш"
+                              title={t("admReportsMoveUpTitle")}
                               className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => movePy(t.id, 1)}
+                              onClick={() => movePy(tool.id, 1)}
                               disabled={idx === pyTools.length - 1}
-                              title="Доош"
+                              title={t("admReportsMoveDownTitle")}
                               className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />
                             </button>
                           </div>
                           <button
-                            onClick={() => handleTogglePy(t)}
-                            disabled={toggling === t.id}
-                            className={`p-2 rounded-lg transition-colors ${t.isActive ? "text-emerald-400 hover:bg-emerald-500/10" : "text-muted-foreground/60 hover:bg-muted/30"}`}
+                            onClick={() => handleTogglePy(tool)}
+                            disabled={toggling === tool.id}
+                            className={`p-2 rounded-lg transition-colors ${tool.isActive ? "text-emerald-400 hover:bg-emerald-500/10" : "text-muted-foreground/60 hover:bg-muted/30"}`}
                           >
-                            {toggling === t.id ? (
+                            {toggling === tool.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : t.isActive ? (
+                            ) : tool.isActive ? (
                               <Power className="w-4 h-4" />
                             ) : (
                               <PowerOff className="w-4 h-4" />
                             )}
                           </button>
                           <button
-                            onClick={() => openEditPy(t)}
+                            onClick={() => openEditPy(tool)}
                             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => {
-                              setDeletePyTarget(t);
+                              setDeletePyTarget(tool);
                               setConfirmDelete(false);
                             }}
                             className="p-2 rounded-lg text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -797,30 +818,32 @@ export default function AdminReportsPage() {
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
                 <span className="ml-3 text-sm text-muted-foreground">
-                  Ачаалж байна...
+                  {t("admReportsLoadingText")}
                 </span>
               </div>
             ) : (
               <>
                 <p className="text-xs text-muted-foreground">
-                  Python тайлан дарж хэрэглэгчдэд эрх олгох, хасах.
+                  {t("admReportsPermTabDesc")}
                 </p>
                 {(() => {
-                  const allItems = pyTools.filter((t) => t.isActive);
+                  const allItems = pyTools.filter((tool) => tool.isActive);
                   if (allItems.length === 0) {
                     return (
                       <div className="text-center py-16 text-muted-foreground">
                         <Code2 className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm">Идэвхтэй тайлан байхгүй байна</p>
+                        <p className="text-sm">
+                          {t("admReportsNoActiveTemplates")}
+                        </p>
                       </div>
                     );
                   }
                   const nonAdminTotal = pUsers.filter((u) => !u.isAdmin).length;
                   return (
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {allItems.map((t) => {
+                      {allItems.map((tool) => {
                         const permCount = pPermissions.filter(
-                          (p) => p.templateId === t.id,
+                          (p) => p.templateId === tool.id,
                         ).length;
                         const pct =
                           nonAdminTotal > 0
@@ -828,44 +851,44 @@ export default function AdminReportsPage() {
                             : 0;
                         return (
                           <button
-                            key={t.id}
+                            key={tool.id}
                             onClick={() =>
                               openPermSheet({
-                                id: t.id,
-                                name: t.name,
-                                color: t.color,
+                                id: tool.id,
+                                name: tool.name,
+                                color: tool.color,
                               })
                             }
                             className="group text-left bg-card border border-border hover:border-border/60 rounded-xl p-4 transition-all hover:bg-accent"
                           >
                             <div className="flex items-start gap-3 mb-3">
                               <div
-                                className={`w-9 h-9 rounded-lg bg-gradient-to-br ${t.color} flex items-center justify-center shrink-0`}
+                                className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tool.color} flex items-center justify-center shrink-0`}
                               >
                                 <Code2 className="w-4 h-4 text-foreground" />
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-sm truncate">
-                                  {t.name}
+                                  {tool.name}
                                 </p>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  {`${permCount} / ${nonAdminTotal} хэрэглэгч`}
+                                  {`${permCount} / ${nonAdminTotal} ${t("admReportsUserUnit")}`}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                                 <div
-                                  className={`h-full bg-gradient-to-r ${t.color} transition-all`}
+                                  className={`h-full bg-gradient-to-r ${tool.color} transition-all`}
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
                               <span className="text-[10px] shrink-0 text-muted-foreground">
-                                {permCount} эрх
+                                {permCount} {t("admReportsRightsUnit")}
                               </span>
                             </div>
                             <p className="text-[10px] text-muted-foreground mt-2 group-hover:text-foreground transition-colors">
-                              Эрх удирдах →
+                              {t("admReportsManageAccessArrow")}
                             </p>
                           </button>
                         );
@@ -885,7 +908,7 @@ export default function AdminReportsPage() {
         >
           <SheetContent className="w-full sm:max-w-md bg-background border-border p-0 flex flex-col">
             <SheetTitle className="sr-only">
-              {pSelectedTemplate?.name ?? "Эрх удирдах"}
+              {pSelectedTemplate?.name ?? t("admReportsManageAccessTitle")}
             </SheetTitle>
             {pSelectedTemplate &&
               (() => {
@@ -899,7 +922,7 @@ export default function AdminReportsPage() {
                       className={`bg-gradient-to-br ${pSelectedTemplate.color} p-5`}
                     >
                       <p className="text-foreground/70 text-xs font-medium uppercase tracking-widest mb-1">
-                        Эрх удирдах
+                        {t("admReportsManageAccessTitle")}
                       </p>
                       <p className="text-foreground text-lg font-semibold leading-snug">
                         {pSelectedTemplate.name}
@@ -910,7 +933,7 @@ export default function AdminReportsPage() {
                             {withAccess.length}
                           </p>
                           <p className="text-foreground/60 text-xs mt-0.5">
-                            эрхтэй
+                            {t("admReportsWithAccessUnit")}
                           </p>
                         </div>
                         <div className="w-px bg-foreground/20" />
@@ -919,7 +942,7 @@ export default function AdminReportsPage() {
                             {withoutAccess.length}
                           </p>
                           <p className="text-foreground/60 text-xs mt-0.5">
-                            эрхгүй
+                            {t("admReportsWithoutAccessUnit")}
                           </p>
                         </div>
                       </div>
@@ -935,8 +958,8 @@ export default function AdminReportsPage() {
                           className={`py-2.5 text-xs font-medium transition-colors border-b-2 ${pSheetTab === tab ? "border-white text-foreground" : "border-transparent text-muted-foreground/60 hover:text-foreground/80"}`}
                         >
                           {tab === "with"
-                            ? `Эрхтэй (${withAccess.length})`
-                            : `Эрх олгох (${withoutAccess.length})`}
+                            ? `${t("admReportsWithAccessTabLabel")} (${withAccess.length})`
+                            : `${t("admReportsGrantAccessTabLabel")} (${withoutAccess.length})`}
                         </button>
                       ))}
                     </div>
@@ -945,12 +968,14 @@ export default function AdminReportsPage() {
                         {withAccess.length === 0 ? (
                           <div className="text-center py-16 text-muted-foreground/40">
                             <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                            <p className="text-sm">Эрхтэй хэрэглэгч байхгүй</p>
+                            <p className="text-sm">
+                              {t("admReportsNoUsersWithAccess")}
+                            </p>
                             <button
                               onClick={() => setPSheetTab("without")}
                               className="mt-2 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
                             >
-                              Эрх олгох
+                              {t("admReportsGrantAccessTabLabel")}
                             </button>
                           </div>
                         ) : (
@@ -994,7 +1019,7 @@ export default function AdminReportsPage() {
                                       {busy ? (
                                         <Loader2 className="w-3 h-3 animate-spin" />
                                       ) : (
-                                        "Хасах"
+                                        t("admReportsRevokeBtn")
                                       )}
                                     </button>
                                   )}
@@ -1017,14 +1042,14 @@ export default function AdminReportsPage() {
                             disabled={withoutAccess.length === 0}
                             className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40"
                           >
-                            Бүгдийг сонгох
+                            {t("admReportsSelectAllBtn")}
                           </button>
                           <button
                             onClick={() => setPSelectedUsers(new Set())}
                             disabled={pSelectedUsers.size === 0}
                             className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40"
                           >
-                            Цэвэрлэх
+                            {t("admReportsClearBtn")}
                           </button>
                         </div>
                         <ScrollArea className="flex-1">
@@ -1032,7 +1057,7 @@ export default function AdminReportsPage() {
                             <div className="text-center py-16 text-muted-foreground/40">
                               <UserCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
                               <p className="text-sm">
-                                Бүх хэрэглэгч эрхтэй байна
+                                {t("admReportsAllUsersHaveAccess")}
                               </p>
                             </div>
                           ) : (
@@ -1089,7 +1114,7 @@ export default function AdminReportsPage() {
                               ) : (
                                 <UserCheck className="w-4 h-4" />
                               )}
-                              {pSelectedUsers.size} хэрэглэгчид эрх олгох
+                              {pSelectedUsers.size} {t("admReportsGrantBtnSuffix")}
                             </button>
                           </div>
                         )}
@@ -1108,14 +1133,14 @@ export default function AdminReportsPage() {
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
                 <span className="ml-3 text-sm text-muted-foreground">
-                  Ачаалж байна...
+                  {t("admReportsLoadingText")}
                 </span>
               </div>
             ) : logs.length === 0 ? (
               <div className="text-center py-20">
                 <History className="w-10 h-10 mx-auto text-muted-foreground mb-3 opacity-30" />
                 <p className="text-sm text-muted-foreground">
-                  Татсан тайлангийн лог байхгүй байна
+                  {t("admReportsNoLogs")}
                 </p>
               </div>
             ) : (
@@ -1127,13 +1152,13 @@ export default function AdminReportsPage() {
                         #
                       </th>
                       <th className="px-4 py-3 text-left text-muted-foreground font-medium">
-                        Хэрэглэгч
+                        {t("admReportsColUser")}
                       </th>
                       <th className="px-4 py-3 text-left text-muted-foreground font-medium">
-                        Тайлан
+                        {t("admReportsColReport")}
                       </th>
                       <th className="px-4 py-3 text-left text-muted-foreground font-medium">
-                        Ажлуулсан огноо
+                        {t("admReportsColRanAt")}
                       </th>
                     </tr>
                   </thead>
@@ -1201,10 +1226,11 @@ export default function AdminReportsPage() {
                 </div>
                 <div>
                   <p className="font-semibold text-foreground text-sm">
-                    Устгах уу?
+                    {t("admReportsDeleteConfirmTitle")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    &quot;{deletePyTarget.name}&quot; тайланг устгана
+                    &quot;{deletePyTarget.name}&quot;{" "}
+                    {t("admReportsDeleteConfirmDescSuffix")}
                   </p>
                 </div>
               </div>
@@ -1214,19 +1240,19 @@ export default function AdminReportsPage() {
                     onClick={() => setDeletePyTarget(null)}
                     className="flex-1 py-2 text-sm rounded-lg border border-border text-foreground/80 hover:bg-muted"
                   >
-                    Болих
+                    {t("cancel")}
                   </button>
                   <button
                     onClick={() => setConfirmDelete(true)}
                     className="flex-1 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-foreground"
                   >
-                    Устгах
+                    {t("tailan_deleteAction")}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <p className="text-xs text-amber-400">
-                    Та итгэлтэй байна уу? Буцаах боломжгүй.
+                    {t("admReportsDeleteConfirmFinal")}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -1236,13 +1262,13 @@ export default function AdminReportsPage() {
                       }}
                       className="flex-1 py-2 text-sm rounded-lg border border-border text-foreground/80 hover:bg-muted"
                     >
-                      Болих
+                      {t("cancel")}
                     </button>
                     <button
                       onClick={handleDeletePy}
                       className="flex-1 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-foreground font-semibold"
                     >
-                      Тийм, устга
+                      {t("admReportsConfirmDeleteBtn")}
                     </button>
                   </div>
                 </div>
@@ -1259,7 +1285,9 @@ export default function AdminReportsPage() {
           className="w-full sm:max-w-2xl bg-background border-border p-0 flex flex-col"
         >
           <SheetTitle className="sr-only">
-            {editingPy ? "Python tool засах" : "Шинэ Python tool"}
+            {editingPy
+              ? t("admReportsEditToolTitle")
+              : t("admReportsNewToolTitle")}
           </SheetTitle>
 
           {/* Panel header */}
@@ -1269,10 +1297,12 @@ export default function AdminReportsPage() {
             </div>
             <div>
               <p className="font-semibold text-foreground text-sm">
-                {editingPy ? "Python tool засах" : "Шинэ Python tool"}
+                {editingPy
+                  ? t("admReportsEditToolTitle")
+                  : t("admReportsNewToolTitle")}
               </p>
               <p className="text-xs text-muted-foreground">
-                FastAPI дээр ажиллах Python код
+                {t("admReportsFastApiDesc")}
               </p>
             </div>
             <div className="ml-auto flex gap-2">
@@ -1280,7 +1310,7 @@ export default function AdminReportsPage() {
                 onClick={closePanel}
                 className="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm transition-colors"
               >
-                Болих
+                {t("cancel")}
               </button>
               <button
                 onClick={handleSavePy}
@@ -1292,7 +1322,7 @@ export default function AdminReportsPage() {
                 ) : (
                   <Check className="w-3.5 h-3.5" />
                 )}
-                Хадгалах
+                {t("save")}
               </button>
             </div>
           </div>
@@ -1303,20 +1333,20 @@ export default function AdminReportsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-foreground/80 text-xs">
-                    Харагдах нэр *
+                    {t("admReportsNameLabel")}
                   </Label>
                   <Input
                     value={pyForm.name}
                     onChange={(e) =>
                       setPyForm((f) => ({ ...f, name: e.target.value }))
                     }
-                    placeholder="Зээлийн тайлан"
+                    placeholder={t("admReportsNamePlaceholderExample")}
                     className="bg-background border-border text-foreground"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-foreground/80 text-xs">
-                    API зам *{" "}
+                    {t("admReportsApiPathLabel")}{" "}
                     <span className="text-muted-foreground/60 font-normal ml-1">
                       /python-api/run/
                       <span className="text-violet-400">
@@ -1339,7 +1369,9 @@ export default function AdminReportsPage() {
                   />
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <Label className="text-foreground/80 text-xs">Тайлбар</Label>
+                  <Label className="text-foreground/80 text-xs">
+                    {t("dataDocColDesc")}
+                  </Label>
                   <Input
                     value={pyForm.description}
                     onChange={(e) =>
@@ -1348,13 +1380,13 @@ export default function AdminReportsPage() {
                         description: e.target.value,
                       }))
                     }
-                    placeholder="Tool-ийн зориулалт"
+                    placeholder={t("admReportsDescPlaceholder")}
                     className="bg-background border-border text-foreground"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-foreground/80 text-xs">
-                    Холболтын төрөл
+                    {t("admReportsConnTypeLabel")}
                   </Label>
                   <Select
                     value={pyForm.connectionType}
@@ -1384,7 +1416,7 @@ export default function AdminReportsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-foreground/80 text-xs">
-                    Гаралтын төрөл
+                    {t("admReportsOutputTypeLabel")}
                   </Label>
                   <Select
                     value={pyForm.outputFormat}
@@ -1413,7 +1445,7 @@ export default function AdminReportsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-foreground/80 text-xs">
-                    Огноо горим
+                    {t("admReportsDateModeLabel")}
                   </Label>
                   <Select
                     value={pyForm.dateMode}
@@ -1434,7 +1466,7 @@ export default function AdminReportsPage() {
                           value={k}
                           className="text-foreground"
                         >
-                          {v.label}
+                          {t(v.labelKey)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1457,7 +1489,7 @@ export default function AdminReportsPage() {
 
               <div className="space-y-1.5">
                 <Label className="text-foreground/80 text-xs">
-                  Python код *
+                  {t("admReportsPyCodeLabel")}
                 </Label>
                 <PyCodeWorkbench
                   value={pyForm.pythonCode}
@@ -1474,7 +1506,7 @@ export default function AdminReportsPage() {
 
               <div className="space-y-1.5">
                 <Label className="text-foreground/80 text-xs">
-                  Нэмэлт шүүлтүүрүүд
+                  {t("admReportsExtraFiltersLabel")}
                 </Label>
                 <FiltersEditor
                   value={pyForm.filters}

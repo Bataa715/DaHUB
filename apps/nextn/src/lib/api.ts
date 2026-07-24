@@ -167,6 +167,28 @@ export const authApi = {
   },
 };
 
+// Registration requests (admin approval workflow) APIs
+export const registrationRequestsApi = {
+  list: async (status?: "pending" | "approved" | "rejected") => {
+    const response = await api.get("/auth/registration-requests", {
+      params: status ? { status } : undefined,
+    });
+    return response.data;
+  },
+
+  review: async (
+    id: string,
+    action: "approve" | "reject",
+    reviewNote?: string,
+  ) => {
+    const response = await api.patch(`/auth/registration-requests/${id}`, {
+      action,
+      reviewNote,
+    });
+    return response.data;
+  },
+};
+
 // Users APIs
 export const usersApi = {
   getAll: async (opts?: { excludeAdmins?: boolean; limit?: number }) => {
@@ -791,15 +813,6 @@ export const riskApi = {
     return res.data;
   },
 
-  /** Бүх indicator-ын хамгийн сүүлийн утгийг (per SOLID+SUBID) буцаана */
-  getRiskbranchLatestAll: async (): Promise<{
-    rows: RiskCurrentRow[];
-    manualMap: Record<string, Record<string, number>>;
-  }> => {
-    const res = await api.get(`/risk-assessment/riskbranch/latest-all`);
-    return res.data;
-  },
-
   /** Lock хийгдсэн огноог авах */
   getRiskbranchLock: async (): Promise<{ lockedDate: string | null }> => {
     const res = await api.get(`/risk-assessment/riskbranch/lock`);
@@ -1001,6 +1014,43 @@ export const riskIndicatorConfigApi = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/risk-indicator-config/${id}`);
+  },
+};
+
+// ── Homepage ethics carousel (Аудиторын ёс зүйн код) ─────────────────────────
+export interface EthicsSlide {
+  id: string;
+  title: string;
+  body: string;
+  sort_order: number;
+  is_active?: number;
+}
+
+export const homepageEthicsApi = {
+  list: async (): Promise<EthicsSlide[]> => {
+    const res = await api.get("/homepage-ethics");
+    return res.data;
+  },
+
+  create: async (dto: {
+    title: string;
+    body: string;
+    sort_order?: number;
+  }): Promise<EthicsSlide> => {
+    const res = await api.post("/homepage-ethics", dto);
+    return res.data;
+  },
+
+  update: async (
+    id: string,
+    dto: Partial<{ title: string; body: string; sort_order: number }>,
+  ): Promise<EthicsSlide> => {
+    const res = await api.patch(`/homepage-ethics/${id}`, dto);
+    return res.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/homepage-ethics/${id}`);
   },
 };
 
@@ -1292,7 +1342,28 @@ export const knowledgeApi = {
     return r.data;
   },
 
-  /** Backend `/medleg/:id/image` → Next proxy `/api/knowledge/:id/image` */
+  /**
+   * Backend path (`/medleg/:id/image`) → id.
+   * Deploy дээр Next proxy (hairpin) бүтэлгүйтдэг тул browser-ээс шууд
+   * axios + cookie-р татаж blob URL үүсгэнэ (бусад API-тай ижил зам).
+   */
+  parseImageId: (path?: string): string | null => {
+    if (!path) return null;
+    const m = path.match(/\/(?:medleg|knowledge)\/([^/]+)\/image/);
+    return m?.[1] ?? null;
+  },
+
+  /** Auth cookie-тэй backend-ээс зураг татаж object URL буцаана */
+  fetchImageObjectUrl: async (path?: string): Promise<string | null> => {
+    const id = knowledgeApi.parseImageId(path);
+    if (!id) return null;
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/${id}/image`, {
+      responseType: "blob",
+    });
+    return URL.createObjectURL(r.data as Blob);
+  },
+
+  /** @deprecated Prefer KnowledgeCoverImage + fetchImageObjectUrl (deploy-safe) */
   resolveImageUrl: (path?: string): string | null => {
     if (!path) return null;
     const normalized = path.replace(/^\/medleg\//, "/knowledge/");

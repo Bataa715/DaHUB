@@ -6,6 +6,10 @@ import {
   IsOptional,
   Matches,
 } from "class-validator";
+import { Transform } from "class-transformer";
+
+/** userId — латин + кирилл (Монгол нэр), тоо, . _ - */
+const USER_ID_PATTERN = /^[\p{L}\p{N}._\-]+$/u;
 
 export class SignupDto {
   @IsString()
@@ -53,8 +57,15 @@ export class LoginDto {
 }
 
 export class LoginByIdDto {
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() : value,
+  )
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
+  @Matches(USER_ID_PATTERN, {
+    message: "userId формат буруу байна",
+  })
   userId: string;
 
   @IsString()
@@ -74,10 +85,15 @@ export class AdminLoginDto {
 
 // New DTOs for registration flow
 export class CheckUserDto {
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() : value,
+  )
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  @Matches(/^[A-Za-z0-9._\-]+$/, { message: "userId формат буруу байна" })
+  @Matches(USER_ID_PATTERN, {
+    message: "userId формат буруу байна",
+  })
   userId: string;
 }
 
@@ -99,8 +115,15 @@ export class RegisterUserDto {
 }
 
 export class SetPasswordDto {
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() : value,
+  )
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
+  @Matches(USER_ID_PATTERN, {
+    message: "userId формат буруу байна",
+  })
   userId: string;
 
   @IsString()
@@ -118,6 +141,20 @@ export class SetPasswordDto {
   @IsString()
   @IsNotEmpty()
   claimToken: string;
+}
+
+export class ReviewRegistrationDto {
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^(approve|reject)$/, {
+    message: "action нь 'approve' эсвэл 'reject' байх ёстой",
+  })
+  action: "approve" | "reject";
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reviewNote?: string;
 }
 
 export class ChangePasswordDto {
