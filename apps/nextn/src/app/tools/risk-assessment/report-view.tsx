@@ -440,6 +440,9 @@ export default function ReportView({
 
   /** Holds + catalog бэлэн болохоос өмнө table зурвал буруу total → дараа нь эрэмбэ «үсрэх» */
   const scoringReady = holdsLoaded && dynamicConfig.loaded;
+  const scoringReadyOnce = useRef(false);
+  if (scoringReady) scoringReadyOnce.current = true;
+  const showScoredTable = scoringReady || scoringReadyOnce.current;
 
   const sortedFiltered = useMemo(() => {
     const bySolid = (a: BranchAggregate, b: BranchAggregate) => {
@@ -643,7 +646,7 @@ export default function ReportView({
         </div>
       </div>
 
-      {!scoringReady ? (
+      {!showScoredTable ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 className="w-7 h-7 animate-spin text-emerald-500" />
           <p className="text-sm text-muted-foreground">Хүснэгт бэлдэж байна…</p>
@@ -671,7 +674,7 @@ export default function ReportView({
         </div>
       )}
       {/* Summary */}
-      {scoringReady && !hideComparison && (
+      {showScoredTable && !hideComparison && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryBlock title="1. ҮНЭЛГЭЭ" cols={["Үзүүлэлт", "Одоо", "Өмнө"]}>
             <SRow

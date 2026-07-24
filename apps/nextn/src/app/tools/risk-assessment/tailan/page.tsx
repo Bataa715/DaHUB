@@ -86,14 +86,36 @@ function currentMonthKey(): string {
   return `${y}-${m}`;
 }
 
-/** YYYY-MM → тухайн сарын сүүлийн өдөр (backend fill-forward-д өгнө) */
-function monthEndDate(monthKey: string): string {
-  const m = monthKey.match(/^(\d{4})-(\d{2})$/);
-  if (!m) return monthKey;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const last = new Date(y, mo, 0).getDate();
-  return `${m[1]}-${m[2]}-${String(last).padStart(2, "0")}`;
+/** YYYY-MM → тухайн сарын эхний өдөр */
+function monthStartDate(monthKey: string): string {
+  return `${monthKey}-01`;
+}
+
+/**
+ * Сонгосон сарын датаны anchor:
+ * 1) тухайн сард байгаа бол хамгийн сүүлийн өдөр (5/15, 5/31 → 5/31)
+ * 2) байхгүй бол урагш (өмнөх сар, өмнөх жил…) хамгийн ойр огноо
+ * dates: DESC жагсаалт (listRiskbranchDates)
+ */
+function resolveMonthDataDate(
+  monthKey: string,
+  dates: string[],
+): string | null {
+  if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return null;
+  const normalized = dates
+    .map((d) => String(d).slice(0, 10))
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+
+  const inMonth = normalized
+    .filter((d) => d.startsWith(`${monthKey}-`))
+    .sort((a, b) => b.localeCompare(a));
+  if (inMonth.length > 0) return inMonth[0];
+
+  const start = monthStartDate(monthKey);
+  const earlier = normalized
+    .filter((d) => d < start)
+    .sort((a, b) => b.localeCompare(a));
+  return earlier[0] ?? null;
 }
 
 function hasJudgementScores(map: Record<string, number>): boolean {
@@ -101,22 +123,29 @@ function hasJudgementScores(map: Record<string, number>): boolean {
 }
 
 type MonthBundle = {
+  requestedMonth: string;
   actualDate: string;
+  actualMonth: string;
+  filledFromEarlier: boolean;
   rows: RiskCurrentRow[];
   manualMap: Record<string, Record<string, number>>;
   judgements: Record<string, number>;
   judgementComments: Record<string, string>;
 };
 
-/** Үнэлгээ хийхтэй адил riskbranch сарын дата + хамгийн ойрын judgement */
+/** Сарын сүүлийн (эсвэл fill-forward) riskbranch + ойрын judgement */
 async function loadRiskbranchMonth(
   monthKey: string,
   catalog: DynamicCatalogIndicator[],
-): Promise<MonthBundle> {
-  const target = monthEndDate(monthKey);
-  const res = await riskApi.getRiskbranch(target);
+  availableDates: string[],
+): Promise<MonthBundle | null> {
+  const anchor = resolveMonthDataDate(monthKey, availableDates);
+  if (!anchor) return null;
+
+  const res = await riskApi.getRiskbranch(anchor);
   const rows = res.rows ?? [];
-  const actualDate = (res.fetchedDate || target).slice(0, 10);
+  const actualDate = (res.fetchedDate || anchor).slice(0, 10);
+  const actualMonth = monthKeyFromDate(actualDate);
   const solids = oracleSolidsFromRows(rows);
   const manualMap = res.manualMap || {};
   const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
@@ -128,13 +157,15 @@ async function loadRiskbranchMonth(
   const exact = judgementsFromListForBranches(exactList, solids);
   const nearest = resolveNearestJudgements(allJudge, actualDate, solids);
 
-  // Ойрын judgement-ийг үндэс болгож, exact/snapshot байвал давхарлана
   const judgements = hasJudgementScores(snapJ)
     ? { ...nearest.scores, ...exact.scores, ...snapJ }
     : { ...nearest.scores, ...exact.scores };
 
   return {
+    requestedMonth: monthKey,
     actualDate,
+    actualMonth,
+    filledFromEarlier: actualMonth !== monthKey,
     rows,
     manualMap,
     judgements,
@@ -200,6 +231,8 @@ export default function RiskReportsPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const monthLoadGen = useRef(0);
+  const riskbranchDatesRef = useRef<string[]>([]);
+  riskbranchDatesRef.current = riskbranchDates;
 
   // Init: riskbranch огноо + хадгалсан тайлан (улирлаар)
   useEffect(() => {
@@ -238,7 +271,7 @@ export default function RiskReportsPage() {
     };
   }, []);
 
-  /** Draft үндсэн сар солигдоход — өмнөх сарыг автоматаар */
+  /** Draft үндсэн сар солигдоход — өмнөх сарыг автоматаар (гар combо түгжээгүй бол) */
   useEffect(() => {
     if (!draftFilterMonth) {
       setDraftCompareMonth("");
@@ -254,12 +287,12 @@ export default function RiskReportsPage() {
   const applyMonthFilter = useCallback(() => {
     setFilterMonth(draftFilterMonth);
     setCompareMonth(draftCompareMonth);
-    setCompareMonthOptOut(!draftCompareMonth);
+    setCompareMonthOptOut(Boolean(draftCompareMonth));
     if (draftCompareMonth) setCompareOptOut(true);
     setErrorMsg(null);
   }, [draftFilterMonth, draftCompareMonth]);
 
-  // ── Сараар: riskbranch сарын дата + ойрын judgement ─────────────────────
+  // ── Сараар: сарын хамгийн сүүлийн дата (эсвэл урагш fill-forward) ───────
   useEffect(() => {
     if (filterMode !== "month" || !filterMonth) return;
     const gen = ++monthLoadGen.current;
@@ -271,10 +304,24 @@ export default function RiskReportsPage() {
 
     (async () => {
       try {
-        const primary = await loadRiskbranchMonth(filterMonth, catalog);
+        const cached = riskbranchDatesRef.current;
+        const dates =
+          cached.length > 0
+            ? cached
+            : await riskApi.listRiskbranchDates();
         if (cancelled || gen !== monthLoadGen.current) return;
-        // Сонгосон сард дата байхгүй (өөр сар руу fill-forward) эсэх
-        if (monthKeyFromDate(primary.actualDate) !== filterMonth) {
+        if (cached.length === 0 && dates.length > 0) {
+          setRiskbranchDates(dates);
+        }
+
+        const primary = await loadRiskbranchMonth(
+          filterMonth,
+          catalog,
+          dates,
+        );
+        if (cancelled || gen !== monthLoadGen.current) return;
+
+        if (!primary || primary.rows.length === 0) {
           setReportRows([]);
           setReportManualMap({});
           setReportJudgements({});
@@ -282,8 +329,10 @@ export default function RiskReportsPage() {
           setMonthAnchorDate("");
           setComparisonRows([]);
           setComparisonJudgements({});
+          setLoadingComparison(false);
           return;
         }
+
         setReportRows(primary.rows);
         setReportManualMap(primary.manualMap);
         setReportJudgements(primary.judgements);
@@ -293,9 +342,13 @@ export default function RiskReportsPage() {
         if (compareMonth) {
           setLoadingComparison(true);
           try {
-            const prev = await loadRiskbranchMonth(compareMonth, catalog);
+            const prev = await loadRiskbranchMonth(
+              compareMonth,
+              catalog,
+              dates,
+            );
             if (cancelled || gen !== monthLoadGen.current) return;
-            if (monthKeyFromDate(prev.actualDate) !== compareMonth) {
+            if (!prev || prev.rows.length === 0) {
               setComparisonRows([]);
               setComparisonManualMap({});
               setComparisonJudgements({});
@@ -323,7 +376,9 @@ export default function RiskReportsPage() {
         }
       } catch (e: unknown) {
         if (cancelled || gen !== monthLoadGen.current) return;
-        setErrorMsg(getApiErrorMessage(e) || "Сарын өгөгдөл уншихад алдаа гарлаа");
+        setErrorMsg(
+          getApiErrorMessage(e) || "Сарын өгөгдөл уншихад алдаа гарлаа",
+        );
         setReportRows([]);
       } finally {
         if (!cancelled && gen === monthLoadGen.current) {
@@ -336,6 +391,8 @@ export default function RiskReportsPage() {
       cancelled = true;
     };
   }, [filterMode, filterMonth, compareMonth, catalog]);
+
+  // riskbranchDates зөвхөн init-д бөглөгдөнө — effect deps-д оруулахгүй (давтан ачаалалт)
 
   // ── Улирлаар: хадгалсан тайлан ───────────────────────────────────────────
   useEffect(() => {
@@ -527,16 +584,28 @@ export default function RiskReportsPage() {
 
   const showComparison =
     comparisonRows.length > 0 &&
-    !loadingComparison &&
     (filterMode === "month"
       ? Boolean(compareMonth)
       : Boolean(comparisonReportId));
 
   const monthHasNoData =
     filterMode === "month" &&
-    filterMonth &&
+    Boolean(filterMonth) &&
+    !loading &&
     !loadingReport &&
     reportRows.length === 0;
+
+  /** Хүснэгт байвал ачаалж байхад бүү нуу */
+  const showReportTable =
+    reportRows.length > 0 &&
+    !(filterMode === "quarter" && !selectedReportId);
+
+  const isRefreshing = Boolean(
+    showReportTable && (loadingReport || loadingComparison),
+  );
+
+  const showInitialSpinner =
+    (loading || loadingReport) && reportRows.length === 0;
 
   const fieldClass =
     "h-7 px-2 rounded-md border border-border bg-background text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/40 cursor-pointer disabled:opacity-40";
@@ -591,6 +660,7 @@ export default function RiskReportsPage() {
             value={draftFilterMonth}
             onChange={(m) => {
               setDraftFilterMonth(m);
+              // Үндсэн сар солигдвол өмнөх сарыг автоматаар шинэчилнэ
               setCompareMonthOptOut(false);
               setErrorMsg(null);
             }}
@@ -606,7 +676,8 @@ export default function RiskReportsPage() {
             ariaLabel="Өмнөх сар"
             onChange={(m) => {
               setDraftCompareMonth(m);
-              setCompareMonthOptOut(!m);
+              // Хэрэглэгч өөрөө сонгосон — авто prevMonth буцааж бичихгүй
+              setCompareMonthOptOut(true);
               setErrorMsg(null);
             }}
           />
@@ -641,7 +712,7 @@ export default function RiskReportsPage() {
             <option value="">— тайлан сонгох —</option>
             {historyList.map((h) => (
               <option key={h.id} value={h.id}>
-                {h.name} ({h.pDate})
+                {h.name}
               </option>
             ))}
           </select>
@@ -677,7 +748,7 @@ export default function RiskReportsPage() {
             <option value="">— сонгох —</option>
             {earlierHistoryOptions.map((h) => (
               <option key={h.id} value={h.id}>
-                {h.name} ({h.pDate})
+                {h.name}
               </option>
             ))}
           </select>
@@ -685,17 +756,6 @@ export default function RiskReportsPage() {
       )}
     </div>
   );
-
-  const waitingData =
-    loading ||
-    loadingReport ||
-    ((filterMode === "month" ? Boolean(compareMonth) : Boolean(comparisonReportId)) &&
-      loadingComparison);
-
-  const showReportTable =
-    !waitingData &&
-    reportRows.length > 0 &&
-    !(filterMode === "quarter" && !selectedReportId);
 
   return (
     <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
@@ -725,12 +785,14 @@ export default function RiskReportsPage() {
           </div>
         )}
 
-        {waitingData ? (
+        {showInitialSpinner ? (
           <div className="flex flex-col items-center justify-center py-32 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
             <p className="text-sm text-muted-foreground">Уншиж байна…</p>
           </div>
-        ) : filterMode === "month" && riskbranchDates.length === 0 && !filterMonth ? (
+        ) : filterMode === "month" &&
+          riskbranchDates.length === 0 &&
+          !filterMonth ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
               Riskbranch өгөгдөл одоогоор байхгүй байна
@@ -763,37 +825,56 @@ export default function RiskReportsPage() {
               Дээрх цонхоор харах тайлангаа сонгоно уу
             </div>
           </div>
-        ) : (
-          <ReportView
-            scoredRows={primaryScoredRows}
-            riskFilter={riskFilter}
-            setRiskFilter={setRiskFilter}
-            pDate={
-              filterMode === "month"
-                ? monthAnchorDate
-                : selectedReportInfo?.pDate
-            }
-            readOnly={true}
-            initialManualMap={reportManualMap}
-            externalJudgements={reportJudgements}
-            externalJudgementComments={reportJudgementComments}
-            previousScoredRows={comparisonScoredRows}
-            previousHistoryName={
-              filterMode === "month"
-                ? compareMonth
-                  ? formatMonthMn(compareMonth)
-                  : null
-                : (comparisonReportInfo?.name ?? null)
-            }
-            previousManualMap={comparisonManualMap}
-            previousJudgements={comparisonJudgements}
-            hideComparison={!showComparison}
-            toolbarStart={filterControls}
-            dataReferenceDate={
-              filterMode === "month" ? monthAnchorDate : undefined
-            }
-          />
-        )}
+        ) : showReportTable ? (
+          <div
+            className={cn(
+              "relative w-full min-w-0 transition-[opacity,filter] duration-300 ease-out",
+              isRefreshing
+                ? "opacity-55 pointer-events-none"
+                : "opacity-100",
+            )}
+          >
+            {isRefreshing && (
+              <div className="absolute inset-x-0 top-3 z-10 flex justify-center pointer-events-none">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/95 px-3 py-1 shadow-sm backdrop-blur-sm">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                  <span className="text-[11px] text-muted-foreground">
+                    Шинэчилж байна…
+                  </span>
+                </div>
+              </div>
+            )}
+            <ReportView
+              scoredRows={primaryScoredRows}
+              riskFilter={riskFilter}
+              setRiskFilter={setRiskFilter}
+              pDate={
+                filterMode === "month"
+                  ? monthAnchorDate
+                  : selectedReportInfo?.pDate
+              }
+              readOnly={true}
+              initialManualMap={reportManualMap}
+              externalJudgements={reportJudgements}
+              externalJudgementComments={reportJudgementComments}
+              previousScoredRows={comparisonScoredRows}
+              previousHistoryName={
+                filterMode === "month"
+                  ? compareMonth
+                    ? formatMonthMn(compareMonth)
+                    : null
+                  : (comparisonReportInfo?.name ?? null)
+              }
+              previousManualMap={comparisonManualMap}
+              previousJudgements={comparisonJudgements}
+              hideComparison={!showComparison}
+              toolbarStart={filterControls}
+              dataReferenceDate={
+                filterMode === "month" ? monthAnchorDate : undefined
+              }
+            />
+          </div>
+        ) : null}
       </div>
 
       {deleteModalOpen && (
