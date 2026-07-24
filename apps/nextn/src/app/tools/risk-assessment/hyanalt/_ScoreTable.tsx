@@ -276,73 +276,73 @@ export default function HyanaltScoreTable({
                 switch (key) {
                   case "num":
                     return (
-                      <span className="tabular-nums text-foreground font-bold">
+                      <span className="tabular-nums text-foreground font-normal">
                         {i + 1}
                       </span>
                     );
                   case "solid":
                     return (
-                      <span className="tabular-nums font-bold text-foreground">
+                      <span className="tabular-nums font-normal text-foreground">
                         {b.solid}
                       </span>
                     );
                   case "name":
                     return (
-                      <span className="font-bold text-foreground truncate block">
+                      <span className="font-normal text-foreground truncate block">
                         {b.branchName}
                       </span>
                     );
                   case "rating":
                     return (
-                      <span className="text-xs text-foreground font-bold">
+                      <span className="text-xs text-foreground font-normal">
                         {b.rating}
                       </span>
                     );
                   case "s1":
                     return (
-                      <span className="tabular-nums font-bold text-foreground">
+                      <span className="tabular-nums font-normal text-foreground">
                         {fmt(b.s1)}
                       </span>
                     );
                   case "s2":
                     return (
-                      <span className="tabular-nums font-bold text-foreground">
+                      <span className="tabular-nums font-normal text-foreground">
                         {fmt(b.s2)}
                       </span>
                     );
                   case "s3":
                     return (
-                      <span className="tabular-nums font-bold text-foreground">
+                      <span className="tabular-nums font-normal text-foreground">
                         {fmt(b.s3)}
                       </span>
                     );
                   case "s4":
                     return (
-                      <span className="tabular-nums font-bold text-foreground">
+                      <span className="tabular-nums font-normal text-foreground">
                         {(b.s4 ?? 0) > 0 ? fmt(b.s4) : "—"}
                       </span>
                     );
                   case "j":
                     return (
-                      <span className="tabular-nums font-bold text-foreground">
+                      <span className="tabular-nums font-normal text-foreground">
                         {(b.j ?? 0) > 0 ? fmt(b.j) : "—"}
                       </span>
                     );
                   case "total":
                     return (
-                      <span className="tabular-nums font-bold text-foreground">
+                      <span className="tabular-nums font-normal text-foreground">
                         {fmt(b.total)}
                       </span>
                     );
                   case "prev":
                     return prev ? (
                       <div className="flex flex-col items-center gap-0.5">
-                        <span className="tabular-nums font-bold text-xs text-foreground">
+                        <span className="tabular-nums font-normal text-xs text-foreground">
                           {fmt(prev.total)}
                         </span>
                         {prev.level && (
                           <span
-                            className={`inline-flex items-center gap-1 px-1.5 py-0 rounded text-[9px] font-bold border ${riskLevelClass(prev.level)}`}
+                            className={`inline-flex items-center gap-1 px-1.5 py-0 rounded text-[9px] font-normal border ${riskLevelClass(prev.level)}`}
                           >
                             {prev.level}
                           </span>
@@ -355,7 +355,7 @@ export default function HyanaltScoreTable({
                     return b.level ? (
                       <div className="inline-flex flex-col items-center gap-0.5">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(b.level)}`}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-normal ${riskLevelClass(b.level)}`}
                         >
                           {b.level}
                         </span>
@@ -363,7 +363,7 @@ export default function HyanaltScoreTable({
                           prev?.level &&
                           prev.level !== b.level && (
                             <span
-                              className={`text-[9px] font-semibold ${
+                              className={`text-[9px] font-normal ${
                                 (prev.level === "Бага" && b.level !== "Бага") ||
                                 (prev.level === "Дунд" && b.level === "Өндөр")
                                   ? "text-muted-foreground"
@@ -381,11 +381,11 @@ export default function HyanaltScoreTable({
                     return diff == null ? (
                       <span className="text-muted-foreground/40 text-xs">—</span>
                     ) : diff === 0 ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-medium text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-normal text-muted-foreground">
                         ━ 0.00
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted/50 text-[10px] font-medium text-foreground">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted/50 text-[10px] font-normal text-foreground">
                         {diff > 0 ? "▲" : "▼"} {diff > 0 ? "+" : ""}
                         {diff.toFixed(2)}
                       </span>
