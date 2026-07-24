@@ -248,9 +248,12 @@ export default function HyanaltScoreTable({
                   className={cn(
                     "relative px-2 py-2.5 text-xs font-bold text-foreground bg-background select-none border-b border-border",
                     alignClass[col.align],
+                    col.key === "total" || col.key === "diff"
+                      ? "font-extrabold"
+                      : undefined,
                   )}
                 >
-                  <span className="truncate block">{col.label}</span>
+                  <span className="truncate block font-bold">{col.label}</span>
                   <span
                     role="separator"
                     aria-orientation="vertical"
@@ -330,7 +333,7 @@ export default function HyanaltScoreTable({
                     );
                   case "total":
                     return (
-                      <span className="tabular-nums font-normal text-foreground">
+                      <span className="tabular-nums font-bold text-foreground">
                         {fmt(b.total)}
                       </span>
                     );
@@ -381,11 +384,11 @@ export default function HyanaltScoreTable({
                     return diff == null ? (
                       <span className="text-muted-foreground/40 text-xs">—</span>
                     ) : diff === 0 ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-normal text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground">
                         ━ 0.00
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted/50 text-[10px] font-normal text-foreground">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted/50 text-[10px] font-bold text-foreground">
                         {diff > 0 ? "▲" : "▼"} {diff > 0 ? "+" : ""}
                         {diff.toFixed(2)}
                       </span>

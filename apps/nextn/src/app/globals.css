@@ -2,11 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Body font — Source Sans 3 via next/font (--font-sans). Mono зөвхөн code-д. */
+/* Body font — Source Sans 3 Variable (@fontsource, bundled). Mono зөвхөн code-д. */
 :root {
-  --font-sans:
-    "Source Sans 3", "Segoe UI", "Helvetica Neue", Arial, "Noto Sans",
-    sans-serif;
+  --font-sans: "Source Sans 3 Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono:
     ui-monospace, "Cascadia Code", Consolas, Menlo, Monaco, monospace;
 }
@@ -173,6 +171,12 @@ html.light .border-r {
   }
   .font-bold {
     font-weight: 800 !important;
+  }
+  .font-extrabold {
+    font-weight: 900 !important;
+  }
+  .font-normal {
+    font-weight: 400 !important;
   }
 
   /* muted-foreground текстийг бага тунгалаг бус тод болгох */

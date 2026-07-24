@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Source_Sans_3 } from "next/font/google";
 import { ThemeStyleInjector } from "@/components/ThemeStyleInjector";
+/** Source Sans 3 — төсөлдөө (npm) багцлагдсан, компьютер бүрт ижил; Google/систем фонт шаардлагагүй */
+import "@fontsource-variable/source-sans-3/wght.css";
 import "./globals.css";
 import Providers from "./providers";
-
-/** Банк / дотоод аудитын UI — Cyrillic дэмжсэн мэргэжлийн sans (self-hosted via next/font) */
-const sourceSans = Source_Sans_3({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "DaHUB",
@@ -49,9 +42,7 @@ export default async function RootLayout({
         <ThemeStyleInjector />
         <link rel="dns-prefetch" href="https://cdn.simpleicons.org" />
       </head>
-      <body
-        className={`${sourceSans.variable} min-h-screen bg-background font-body antialiased`}
-      >
+      <body className="min-h-screen bg-background font-body antialiased">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"

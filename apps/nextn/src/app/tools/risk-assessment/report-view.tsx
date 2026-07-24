@@ -1134,9 +1134,12 @@ function ReportTable({
                   className={cn(
                     "relative px-2 py-2.5 text-xs font-bold text-foreground bg-background select-none border-b border-border",
                     alignClass[col.align],
+                    col.key === "total" || col.key === "diff"
+                      ? "font-extrabold"
+                      : undefined,
                   )}
                 >
-                  <span className="truncate block">{col.label}</span>
+                  <span className="truncate block font-bold">{col.label}</span>
                   <span
                     role="separator"
                     aria-orientation="vertical"
@@ -1322,7 +1325,7 @@ function ReportTable({
                         </div>
                       )}
                     </td>
-                    <td className="px-2 py-2 text-center tabular-nums font-normal text-foreground bg-indigo-500/[0.08]">
+                    <td className="px-2 py-2 text-center tabular-nums font-bold text-foreground bg-indigo-500/[0.08]">
                       {fmt(b.total)}
                     </td>
                     {!hideComparison && (
@@ -1386,12 +1389,12 @@ function ReportTable({
                             —
                           </span>
                         ) : diff === 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-normal text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground">
                             ━ 0.00
                           </span>
                         ) : (
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-normal ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
                               diff > 0
                                 ? "bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400"
                                 : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400"

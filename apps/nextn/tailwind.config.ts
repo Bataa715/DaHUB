@@ -10,14 +10,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: [
-          "var(--font-sans)",
-          "Segoe UI",
-          "Helvetica Neue",
-          "Arial",
-          "Noto Sans",
-          "sans-serif",
-        ],
+        body: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: [
           "ui-monospace",
           "Cascadia Code",
