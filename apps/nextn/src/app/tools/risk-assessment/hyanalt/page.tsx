@@ -11,117 +11,77 @@ import {
   Trash2,
   AlertTriangle,
   Activity,
-  RefreshCw,
   ListTree,
+  ArrowRight,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
-import { riskLevelClass, type BranchAggregate } from "../scoring-rules";
+import { type BranchAggregate } from "../scoring-rules";
 import { useIndicatorConfig } from "../use-indicator-config";
 import {
+  oracleSolidsFromRows,
+  resolveNearestJudgements,
+} from "../branch-resolve";
+import {
   type RiskRow,
-  fmt,
   buildScoredRows,
   aggregateFromScoredRows,
   sortByTotalDesc,
 } from "../hyanalt-shared";
+import HyanaltScoreTable from "./_ScoreTable";
 
-function ScoreTable({ rows }: { rows: BranchAggregate[] }) {
-  if (rows.length === 0) return null;
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline">
-      <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20 flex items-center gap-2">
-        <Activity className="w-3.5 h-3.5 text-emerald-500" />
-        <h3 className="text-sm font-semibold">Салбаруудын оноо</h3>
-        <span className="text-[10px] text-muted-foreground">
-          (Total-оор эрэмбэлсэн · Judgement оруулаагүй)
-        </span>
-        <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
-          {rows.length} салбар
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-2 py-2 text-left font-semibold">№</th>
-              <th className="px-2 py-2 text-left font-semibold">SOL</th>
-              <th className="px-2 py-2 text-left font-semibold">
-                Салбарын нэр
-              </th>
-              <th className="px-2 py-2 text-center font-semibold">Зэрэглэл</th>
-              <th className="px-2 py-2 text-right font-semibold text-sky-600 dark:text-sky-400">
-                Score 1
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-violet-600 dark:text-violet-400">
-                Score 2
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-amber-600 dark:text-amber-400">
-                Score 3
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                Score 4
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-indigo-600 dark:text-indigo-400">
-                Total
-              </th>
-              <th className="px-2 py-2 text-center font-semibold">Түвшин</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((b, i) => (
-              <tr
-                key={b.branchId}
-                className="border-t border-border hover:bg-accent/30"
-              >
-                <td className="px-2 py-2 tabular-nums text-muted-foreground font-semibold">
-                  {i + 1}
-                </td>
-                <td className="px-2 py-2 tabular-nums font-bold">{b.solid}</td>
-                <td className="px-2 py-2 font-bold">{b.branchName}</td>
-                <td className="px-2 py-2 text-center text-xs text-muted-foreground font-semibold">
-                  {b.rating}
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums font-bold text-sky-700 dark:text-sky-400">
-                  {fmt(b.s1)}
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums font-bold text-violet-700 dark:text-violet-400">
-                  {fmt(b.s2)}
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums font-bold text-amber-700 dark:text-amber-400">
-                  {fmt(b.s3)}
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
-                  {(b.s4 ?? 0) > 0 ? fmt(b.s4) : "—"}
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums font-bold text-indigo-700 dark:text-indigo-400">
-                  {fmt(b.total)}
-                </td>
-                <td className="px-2 py-2 text-center">
-                  {b.level ? (
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(b.level)}`}
-                    >
-                      {b.level}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground/40 text-xs">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+function todayIso(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function monthsBefore(iso: string, months: number): string {
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  d.setMonth(d.getMonth() - months);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+async function loadBranchAggregates(
+  date: string,
+  catalog: Parameters<typeof buildScoredRows>[1],
+): Promise<{
+  actualDate: string;
+  rows: RiskRow[];
+  judgements: Record<string, number>;
+  aggregates: BranchAggregate[];
+}> {
+  const res = await riskApi.getRiskbranch(date);
+  const actualDate = (res.fetchedDate || date).slice(0, 10);
+  const oracleRows = res.rows.filter(
+    (r) => r.rowType === "oracle" || !r.rowType,
+  ) as RiskRow[];
+  const allJudge = await riskApi.listJudgements();
+  const solids = oracleSolidsFromRows(oracleRows);
+  const resolved = resolveNearestJudgements(allJudge, actualDate, solids);
+  const scored = buildScoredRows(oracleRows, catalog);
+  const aggregates = sortByTotalDesc(
+    aggregateFromScoredRows(scored, resolved.scores),
   );
+  return {
+    actualDate,
+    rows: oracleRows,
+    judgements: resolved.scores,
+    aggregates,
+  };
 }
 
 export default function RiskAssessmentDetailPage() {
   const { t } = useLanguage();
 
   const [rows, setRows] = useState<RiskRow[]>([]);
+  const [judgements, setJudgements] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [loadingDate, setLoadingDate] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
@@ -131,34 +91,31 @@ export default function RiskAssessmentDetailPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
+  /** Зүүн — өмнөх (default: 3 сарын өмнө) */
+  const [fromDate, setFromDate] = useState("");
+  /** Баруун — одоогийн (default: өнөөдөр) */
+  const [toDate, setToDate] = useState("");
+
+  const [comparePrevMap, setComparePrevMap] = useState<Map<
+    string,
+    BranchAggregate
+  > | null>(null);
+  const [loadingTo, setLoadingTo] = useState(false);
+  const [loadingFrom, setLoadingFrom] = useState(false);
+
   const { catalog, loaded: catalogLoaded } = useIndicatorConfig();
 
-  const loadLatestAll = useCallback(async () => {
-    setLoadingDate(true);
-    setErrorMsg(null);
-    try {
-      const res = await riskApi.getRiskbranchLatestAll();
-      setRows(res.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
-    } catch (e: unknown) {
-      setErrorMsg(getApiErrorMessage(e));
-    } finally {
-      setLoadingDate(false);
-    }
-  }, []);
-
+  // Анхны ачаалал: баруун = өнөөдөр, зүүн = 3 сарын өмнө
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [hist, latestRes] = await Promise.all([
-          riskApi.listHistory(),
-          riskApi.getRiskbranchLatestAll(),
-        ]);
+        const hist = await riskApi.listHistory();
         if (cancelled) return;
         setHistoryList(hist);
-        setRows(
-          latestRes.rows.filter((r) => r.rowType === "oracle") as RiskRow[],
-        );
+        const today = todayIso();
+        setToDate(today);
+        setFromDate(monthsBefore(today, 3));
       } catch {
         /* silent */
       } finally {
@@ -169,6 +126,63 @@ export default function RiskAssessmentDetailPage() {
       cancelled = true;
     };
   }, []);
+
+  // Баруун огноо → одоогийн хүснэгт
+  useEffect(() => {
+    if (!toDate || catalog.length === 0 || viewHistoryId) return;
+    let cancelled = false;
+    setLoadingTo(true);
+    (async () => {
+      try {
+        const data = await loadBranchAggregates(toDate, catalog);
+        if (cancelled) return;
+        setRows(data.rows);
+        setJudgements(data.judgements);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setRows([]);
+          setJudgements({});
+          setErrorMsg(getApiErrorMessage(e) || "Огнооны өгөгдөл олдсонгүй");
+        }
+      } finally {
+        if (!cancelled) setLoadingTo(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [toDate, catalog, viewHistoryId]);
+
+  // Зүүн огноо → өмнөх харьцуулалт
+  useEffect(() => {
+    if (!fromDate || catalog.length === 0 || viewHistoryId) {
+      if (!fromDate) setComparePrevMap(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingFrom(true);
+    (async () => {
+      try {
+        const data = await loadBranchAggregates(fromDate, catalog);
+        if (cancelled) return;
+        setComparePrevMap(
+          new Map(data.aggregates.map((b) => [b.branchId, b])),
+        );
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setComparePrevMap(null);
+          setErrorMsg(
+            getApiErrorMessage(e) || "Харьцуулах огнооны өгөгдөл олдсонгүй",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingFrom(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fromDate, catalog, viewHistoryId]);
 
   const doDeleteHistory = useCallback(async () => {
     if (!deleteTargetId) return;
@@ -187,6 +201,7 @@ export default function RiskAssessmentDetailPage() {
   }, [deleteTargetId, viewHistoryId]);
 
   const activeRows = viewHistoryId ? viewHistoryRows : rows;
+  const activeJudgements = viewHistoryId ? {} : judgements;
 
   const scoredRows = useMemo(
     () => buildScoredRows(activeRows, catalog),
@@ -194,12 +209,21 @@ export default function RiskAssessmentDetailPage() {
   );
 
   const aggregates = useMemo(
-    () => sortByTotalDesc(aggregateFromScoredRows(scoredRows)),
-    [scoredRows],
+    () =>
+      sortByTotalDesc(aggregateFromScoredRows(scoredRows, activeJudgements)),
+    [scoredRows, activeJudgements],
   );
 
   const viewHistoryEntry = historyList.find((h) => h.id === viewHistoryId);
-  const hasData = rows.length > 0;
+  const hasData = rows.length > 0 || !!viewHistoryId;
+  const showCompareUi = !viewHistoryId;
+  const loadingCompare = loadingFrom || loadingTo;
+  const showPrev =
+    showCompareUi &&
+    !!fromDate &&
+    !!comparePrevMap &&
+    !loadingFrom &&
+    comparePrevMap.size > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
@@ -207,13 +231,43 @@ export default function RiskAssessmentDetailPage() {
         href="/tools/risk-assessment"
         icon={<Activity className="w-4 h-4 text-emerald-500" />}
         title={t("riskMonitorCardTitle")}
-        subtitle={t("riskDetailSubtitle")}
         rightContent={
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/25">
-              Хамгийн сүүлийн
-            </span>
-            {hasData && !viewHistoryId && (
+            {showCompareUi && (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={fromDate}
+                  max={toDate || undefined}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    setErrorMsg(null);
+                  }}
+                  disabled={loadingFrom}
+                  title="Өмнөх огноо"
+                  aria-label="Өмнөх огноо"
+                  className="h-8 px-2 rounded-lg border border-border bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer disabled:opacity-40"
+                />
+                <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <input
+                  type="date"
+                  value={toDate}
+                  min={fromDate || undefined}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    setErrorMsg(null);
+                  }}
+                  disabled={loadingTo}
+                  title="Одоогийн огноо"
+                  aria-label="Одоогийн огноо"
+                  className="h-8 px-2 rounded-lg border border-emerald-500/40 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer disabled:opacity-40"
+                />
+                {loadingCompare && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                )}
+              </div>
+            )}
+            {(hasData || rows.length > 0) && !viewHistoryId && (
               <Link
                 href="/tools/risk-assessment/hyanalt/delgerengui"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold transition-all"
@@ -221,24 +275,6 @@ export default function RiskAssessmentDetailPage() {
                 <ListTree className="w-3.5 h-3.5" />
                 Дэлгэрэнгүй
               </Link>
-            )}
-            <button
-              onClick={loadLatestAll}
-              disabled={loadingDate}
-              title="Дахин татах"
-              className="flex items-center justify-center w-7 h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 transition-all"
-            >
-              {loadingDate ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
-              )}
-            </button>
-            {rows.length > 0 && (
-              <span className="relative flex w-1.5 h-1.5">
-                <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
-                <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              </span>
             )}
           </div>
         }
@@ -281,30 +317,40 @@ export default function RiskAssessmentDetailPage() {
           </div>
         )}
 
-        {loading || !catalogLoaded ? (
+        {loading || !catalogLoaded || (loadingTo && rows.length === 0) ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
             <p className="text-sm text-muted-foreground">{t("loading")}</p>
           </div>
         ) : null}
 
-        {!loading && catalogLoaded && !hasData && !viewHistoryId && (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
-            <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
-              <Activity className="w-6 h-6 text-muted-foreground/60" />
+        {!loading &&
+          catalogLoaded &&
+          !loadingTo &&
+          !hasData &&
+          !viewHistoryId && (
+            <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+              <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
+                <Activity className="w-6 h-6 text-muted-foreground/60" />
+              </div>
+              <div className="text-sm font-semibold text-muted-foreground">
+                Өгөгдөл байхгүй байна
+              </div>
+              <div className="text-xs text-muted-foreground/60 mt-1">
+                Airflow-с өгөгдөл ирсний дараа хамгийн сүүлийн утга автоматаар
+                харагдана
+              </div>
             </div>
-            <div className="text-sm font-semibold text-muted-foreground">
-              Өгөгдөл байхгүй байна
-            </div>
-            <div className="text-xs text-muted-foreground/60 mt-1">
-              Airflow-с өгөгдөл ирсний дараа хамгийн сүүлийн утга автоматаар
-              харагдана
-            </div>
-          </div>
-        )}
+          )}
 
         {!loading && catalogLoaded && scoredRows.length > 0 && (
-          <ScoreTable rows={aggregates} />
+          <HyanaltScoreTable
+            rows={aggregates}
+            prevMap={showPrev ? comparePrevMap : null}
+            compareDate={showPrev ? fromDate : null}
+            fromDateLabel={fromDate || null}
+            toDateLabel={toDate || null}
+          />
         )}
       </div>
 

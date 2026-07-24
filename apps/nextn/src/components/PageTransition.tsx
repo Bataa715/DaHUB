@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const WRAPPER_CLASS =
-  "flex flex-col flex-1 min-w-0 w-full max-w-full overflow-x-hidden";
+  "flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-x-hidden";
 
 /**
  * PageTransition — хуудас хооронд шилжихэд зөөлөн fade + slide animation өгнө.

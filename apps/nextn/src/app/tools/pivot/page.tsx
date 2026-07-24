@@ -26,8 +26,6 @@ import {
 } from "lucide-react";
 
 import {
-  getZ,
-  calcSampleSize,
   extractCode,
   parseCsv,
   toYear,
@@ -368,12 +366,11 @@ export default function PivotPage() {
           </div>
         }
         title={t("pivotTitle")}
-        subtitle={t("pivotSubtitle")}
       />
 
-      <div className="container mx-auto px-6 py-6 max-w-6xl space-y-4">
+      <div className="w-full px-4 md:px-6 py-6 space-y-4">
         {/* File Upload */}
-        <Card className="border border-border shadow-sm">
+        <Card className="rounded-none border-0 shadow-none bg-transparent">
           <CardContent className="pt-5 space-y-3">
             <Label className="text-sm font-medium">{t("pivotFileLabel")}</Label>
             <div
@@ -427,7 +424,7 @@ export default function PivotPage() {
 
         {/* Config — shown when file is loaded */}
         {fileData && headers.length > 0 && (
-          <Card className="border border-border shadow-sm">
+          <Card className="rounded-none border-0 shadow-none bg-transparent">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Table2 className="w-4 h-4 text-cyan-500" />
@@ -750,7 +747,7 @@ export default function PivotPage() {
         )}
 
         {/* Info */}
-        <Card className="border border-border shadow-sm">
+        <Card className="rounded-none border-0 shadow-none bg-transparent">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Тайлбар</CardTitle>
           </CardHeader>

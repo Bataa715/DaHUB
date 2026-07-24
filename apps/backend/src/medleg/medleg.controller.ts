@@ -120,7 +120,6 @@ export class MedlegController {
   @UseGuards(JwtAuthGuard)
   @Delete(":id/comments/:commentId")
   async deleteComment(
-    @Param("id") id: string,
     @Param("commentId") commentId: string,
     @Request() req,
   ) {

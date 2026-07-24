@@ -139,6 +139,11 @@ export async function middleware(request: NextRequest) {
     return withCsp(NextResponse.redirect(new URL("/login", request.url)));
   }
 
+  // Legacy tools grid — sidebar is primary nav
+  if (pathname === "/tools") {
+    return withCsp(NextResponse.redirect(new URL("/", request.url)));
+  }
+
   //  Tool route permission check
   if (isUserAuth && pathname.startsWith("/tools/")) {
     // Find the most-specific matching guard (longest prefix)
@@ -156,7 +161,9 @@ export async function middleware(request: NextRequest) {
         const userTools = (userPayload!["allowedTools"] as string[]) ?? [];
         const hasAccess = requiredTools.some((t) => userTools.includes(t));
         if (!hasAccess) {
-          return withCsp(NextResponse.redirect(new URL("/tools", request.url)));
+          // "/tools" grid is no longer the primary nav surface (sidebar is) —
+          // send unauthorized tool visits back to the home page instead.
+          return withCsp(NextResponse.redirect(new URL("/", request.url)));
         }
       }
     }

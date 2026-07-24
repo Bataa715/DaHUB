@@ -37,10 +37,9 @@ export default function MonitoringBoxPage() {
           </div>
         }
         title="Monitoring Box"
-        subtitle="Continuous auditing — тасралтгүй хяналтын карт цуглуулга"
       />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="w-full px-4 md:px-6 py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {MONITOR_CARDS.map((card) => {
             const Icon = card.icon;

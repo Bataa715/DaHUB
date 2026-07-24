@@ -2,10 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* JetBrains Mono fallback — system monospace (Google Fonts татахгүй) */
+/* Body font — Source Sans 3 via next/font (--font-sans). Mono зөвхөн code-д. */
 :root {
-  --font-jetbrainsMono:
-    "Consolas", "Cascadia Code", "Fira Mono", "Menlo", "Monaco", monospace;
+  --font-sans:
+    "Source Sans 3", "Segoe UI", "Helvetica Neue", Arial, "Noto Sans",
+    sans-serif;
+  --font-mono:
+    ui-monospace, "Cascadia Code", Consolas, Menlo, Monaco, monospace;
 }
 
 @layer utilities {
@@ -81,10 +84,7 @@
     overflow-x: hidden;
     width: 100%;
     max-width: 100%;
-    font-family:
-      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-      Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-      "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: var(--font-sans);
   }
 
   /* Хөдөлгөөн багасгах тохиргоотой хэрэглэгчдэд animation-г унтраах */

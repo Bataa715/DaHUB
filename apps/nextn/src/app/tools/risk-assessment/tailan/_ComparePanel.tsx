@@ -673,7 +673,6 @@ function TableView({
   selectedReports,
   tableBranches,
   aggMap,
-  indMap,
   metricMode,
   showSub,
   getValue,

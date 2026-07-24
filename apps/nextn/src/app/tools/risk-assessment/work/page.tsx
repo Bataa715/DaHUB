@@ -6,7 +6,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
   AlertTriangle,
-  RefreshCw,
   BookmarkPlus,
   Lock,
   LockOpen,
@@ -408,7 +407,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               Аргачлал
             </Link>
 
-            {/* Date Picker + Refresh */}
+            {/* Date Picker */}
             <div className="flex items-center gap-1.5">
               <input
                 type="date"
@@ -421,18 +420,6 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
                 disabled={loadingDate}
                 className="h-7 px-2 rounded-md border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-medium disabled:opacity-40 outline-none cursor-pointer"
               />
-              <button
-                onClick={() => selectedDate && loadDate(selectedDate)}
-                disabled={loadingDate || !selectedDate}
-                title="Дахин татах"
-                className="flex items-center justify-center w-7 h-7 rounded-md bg-rose-600 hover:bg-rose-500 text-foreground disabled:opacity-40 transition-all"
-              >
-                {loadingDate ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5" />
-                )}
-              </button>
             </div>
 
             {/* Indicator Filter toggle */}
@@ -460,10 +447,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
                     ? `${fetchedDate} lock хасах`
                     : `${fetchedDate} lock хийх`
                 }
-                className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-semibold transition-all disabled:opacity-40 ${
+                aria-label={isLocked ? "Unlock" : "Lock"}
+                className={`inline-flex items-center justify-center h-7 w-7 rounded-md border transition-all disabled:opacity-40 ${
                   isLocked
                     ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 }`}
               >
                 {lockingDate ? (
@@ -473,7 +461,6 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
                 ) : (
                   <LockOpen className="w-3.5 h-3.5" />
                 )}
-                {isLocked ? "Locked" : "Lock"}
               </button>
             )}
 

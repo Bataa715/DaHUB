@@ -12,7 +12,6 @@ import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
-import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ChainResult {
@@ -259,24 +258,22 @@ export default function RedFlagPage() {
 
   return (
     <div className="space-y-5">
-      <ToolPageHeader
-        href="/tools"
-        icon={<Flag size={16} className="text-red-400" />}
-        title="Red Flag"
-        subtitle={t("redflagSubtitle")}
-        rightContent={
-          <button
-            onClick={load}
-            disabled={loading}
-            className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50"
-          >
-            <RefreshCw
-              size={14}
-              className={`text-txt-dim ${loading ? "animate-spin" : ""}`}
-            />
-          </button>
-        }
-      />
+      <div className="px-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Flag size={16} className="text-red-400 shrink-0" />
+          <h1 className="text-sm font-bold text-txt truncate">Red Flag</h1>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50 shrink-0"
+        >
+          <RefreshCw
+            size={14}
+            className={`text-txt-dim ${loading ? "animate-spin" : ""}`}
+          />
+        </button>
+      </div>
       <div className="px-6 space-y-5">
         {loading && (
           <div className="flex items-center justify-center py-20">

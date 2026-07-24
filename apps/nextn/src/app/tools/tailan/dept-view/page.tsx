@@ -174,11 +174,10 @@ export default function DeptViewPage() {
           </div>
         }
         title={t("tailan_membersView")}
-        subtitle={t("tailan_membersViewDesc")}
       />
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+      <div className="relative z-10 w-full px-4 md:px-6 py-8">
         {/* Year / Quarter selectors */}
         <div className="flex items-center gap-3 mb-8 flex-wrap">
           {/* Year */}

@@ -327,7 +327,6 @@ export default function CodePage() {
           </div>
         }
         title={t("dataDocCodeLib")}
-        subtitle={`${snippets.length} ${t("dataDocCodeSaved")}`}
       />
 
       <div className="flex flex-1 overflow-hidden">

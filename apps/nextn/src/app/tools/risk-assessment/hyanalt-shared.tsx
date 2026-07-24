@@ -85,7 +85,10 @@ export function buildScoredRows(
   });
 }
 
-export function aggregateFromScoredRows(rows: ScoredRow[]): BranchAggregate[] {
+export function aggregateFromScoredRows(
+  rows: ScoredRow[],
+  judgementMap: Record<string, number> = {},
+): BranchAggregate[] {
   const map = new Map<
     string,
     {
@@ -147,7 +150,19 @@ export function aggregateFromScoredRows(rows: ScoredRow[]): BranchAggregate[] {
       ? acc.sums["Score 4"].sum / acc.sums["Score 4"].cnt
       : null;
     const region = detectRegion(acc.rating);
-    const total = computeTotal(region, s1, s2, s3, s4, null);
+    const rawJ = judgementMap[acc.branchId] ?? judgementMap[acc.solid];
+    const j =
+      typeof rawJ === "number" && rawJ > 0
+        ? rawJ
+        : (() => {
+            const norm = acc.branchId.replace(/^0+/, "") || acc.branchId;
+            for (const [k, v] of Object.entries(judgementMap)) {
+              const kn = String(k).replace(/^0+/, "") || k;
+              if ((kn === norm || k === acc.branchId) && v > 0) return v;
+            }
+            return null;
+          })();
+    const total = computeTotal(region, s1, s2, s3, s4, j);
     list.push({
       branchId: acc.branchId,
       branchName: acc.branchName,
@@ -159,7 +174,7 @@ export function aggregateFromScoredRows(rows: ScoredRow[]): BranchAggregate[] {
       s2,
       s3,
       s4,
-      j: null,
+      j,
       total,
       level: riskLevel(total),
     });

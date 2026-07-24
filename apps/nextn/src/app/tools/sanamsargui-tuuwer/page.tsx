@@ -59,12 +59,11 @@ export default function SanamsarguiTuuwerPage() {
           </div>
         }
         title={t("sampleTitle")}
-        subtitle={t("sampleSubtitle")}
       />
 
-      <div className="container mx-auto px-6 py-6 max-w-4xl space-y-4">
+      <div className="w-full px-4 md:px-6 py-6 space-y-4">
         {/* Config Card */}
-        <Card className="border border-border shadow-sm">
+        <Card className="rounded-none border-0 shadow-none bg-transparent">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Calculator className="w-4 h-4 text-violet-500" />
@@ -194,18 +193,6 @@ export default function SanamsarguiTuuwerPage() {
                   </div>
                 </div>
               )}
-
-              <div className="space-y-1.5">
-                <Label className="text-sm">{t("sampleSeed")}</Label>
-                <Input
-                  value={s.seed}
-                  onChange={(e) => s.setSeed(e.target.value)}
-                  placeholder={t("sampleSeedPlaceholder")}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("sampleSeedHint")}
-                </p>
-              </div>
 
               <div className="space-y-1.5">
                 <Label className="text-sm">{t("sampleFileName")}</Label>
@@ -578,7 +565,7 @@ export default function SanamsarguiTuuwerPage() {
           (() => {
             const result = s.result!;
             return (
-              <Card className="border border-emerald-200 dark:border-emerald-800 shadow-sm">
+              <Card className="rounded-none border-0 shadow-none bg-transparent">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -725,7 +712,7 @@ export default function SanamsarguiTuuwerPage() {
           })()}
 
         {/* Тайлбар */}
-        <Card className="border border-border shadow-sm">
+        <Card className="rounded-none border-0 shadow-none bg-transparent">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Тайлбар</CardTitle>
           </CardHeader>

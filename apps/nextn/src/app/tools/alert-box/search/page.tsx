@@ -11,7 +11,6 @@ import {
   ChevronUp,
   Calendar,
 } from "lucide-react";
-import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DashboardResult {
@@ -87,12 +86,10 @@ function SearchContent() {
 
   return (
     <div className="space-y-5">
-      <ToolPageHeader
-        href="/tools"
-        icon={<Search size={16} className="text-blue-400" />}
-        title="Search Engine"
-        subtitle={t("searchSubtitle")}
-      />
+      <div className="px-6 flex items-center gap-2">
+        <Search size={16} className="text-blue-400 shrink-0" />
+        <h1 className="text-sm font-bold text-txt">Search Engine</h1>
+      </div>
       <div className="px-6 space-y-5">
         {/* Search Form */}
         <div className="bg-surface-card rounded-xl border border-surface-border p-5">

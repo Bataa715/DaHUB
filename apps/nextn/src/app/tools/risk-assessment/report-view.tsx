@@ -7,10 +7,12 @@ import {
   useCallback,
   Fragment,
   useRef,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { ChevronDown, Loader2, MessageSquare } from "lucide-react";
 import Cookies from "js-cookie";
 import { riskApi, HOLD_GLOBAL_PERIOD } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import {
   aggregateBranch,
   classifyBranchTableGroup,
@@ -127,7 +129,6 @@ export default function ReportView({
   riskFilter,
   setRiskFilter,
   previousScoredRows = [],
-  previousHistoryName,
   pDate,
   readOnly = false,
   initialManualMap,
@@ -320,7 +321,11 @@ export default function ReportView({
   }, [scoredRows]);
 
   const getAggregates = useCallback(
-    (rows: AnyRow[], mKeyMap: ManualMap) => {
+    (
+      rows: AnyRow[],
+      mKeyMap: ManualMap,
+      judgementsOverride?: Record<string, number>,
+    ) => {
       const base = aggregateBranch(rows, {}, {}, activeCatalog);
       if (!dynamicConfig.loaded || !holdsLoaded) return base;
 
@@ -337,6 +342,8 @@ export default function ReportView({
         arr.push(r);
       }
 
+      const judgementsForAgg = judgementsOverride ?? externalJudgements;
+
       return base.map((b) => {
         const branchRows = byBranch.get(b.branchId) ?? [];
         const ev = computeGroupScoresDynamic(
@@ -352,7 +359,7 @@ export default function ReportView({
         // tailan: manualJson snapshot (catalog judgment id)
         const j = resolveBranchJudgementScore(
           b.branchId,
-          externalJudgements,
+          judgementsForAgg,
           mKeyMap,
           judgmentIndId,
         );
@@ -469,9 +476,18 @@ export default function ReportView({
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
-    const prevAggs = getAggregates(previousScoredRows, previousManualMap);
+    const prevAggs = getAggregates(
+      previousScoredRows,
+      previousManualMap,
+      previousJudgements,
+    );
     return new Map(prevAggs.map((b) => [b.branchId, b]));
-  }, [previousScoredRows, previousManualMap, getAggregates]);
+  }, [
+    previousScoredRows,
+    previousManualMap,
+    previousJudgements,
+    getAggregates,
+  ]);
 
   const reportTableProps = {
     previousAggMap,
@@ -728,20 +744,144 @@ function ReadOnlyJudgementCell({
         if (!canOpen) return;
         onOpenComment({ branchId, branchName, draft: jComment });
       }}
-      className={`inline-flex items-center justify-end gap-1 font-bold text-rose-700 dark:text-rose-400 tabular-nums ${
-        canOpen ? "hover:text-rose-500 cursor-pointer" : "cursor-default"
+      className={`inline-flex items-center justify-center gap-1 font-bold text-foreground tabular-nums ${
+        canOpen ? "hover:text-amber-500 cursor-pointer" : "cursor-default"
       }`}
       title={jComment ? "Тайлбар харах" : hasJ ? "Тайлбар байхгүй" : undefined}
     >
       {hasJ ? (score! % 1 === 0 ? score!.toFixed(0) : score!.toFixed(1)) : "—"}
       {jComment ? (
-        <MessageSquare className="w-2.5 h-2.5 shrink-0 text-rose-500 fill-rose-500/20" />
+        <MessageSquare className="w-2.5 h-2.5 shrink-0 text-muted-foreground fill-muted/40" />
       ) : null}
     </button>
   );
 }
 
 // ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
+
+type ReportColKey =
+  | "expand"
+  | "num"
+  | "solid"
+  | "name"
+  | "rating"
+  | "s1"
+  | "s2"
+  | "s3"
+  | "s4"
+  | "j"
+  | "total"
+  | "prev"
+  | "level"
+  | "diff";
+
+type ReportColDef = {
+  key: ReportColKey;
+  label: string;
+  align: "left" | "center" | "right";
+  defaultWidth: number;
+  minWidth: number;
+  compareOnly?: boolean;
+};
+
+const REPORT_COLS: ReportColDef[] = [
+  { key: "expand", label: "⊕", align: "center", defaultWidth: 36, minWidth: 32 },
+  { key: "num", label: "№", align: "center", defaultWidth: 44, minWidth: 36 },
+  { key: "solid", label: "SOL", align: "center", defaultWidth: 64, minWidth: 48 },
+  {
+    key: "name",
+    label: "Салбарын нэр",
+    align: "left",
+    defaultWidth: 200,
+    minWidth: 100,
+  },
+  {
+    key: "rating",
+    label: "Зэрэглэл",
+    align: "center",
+    defaultWidth: 72,
+    minWidth: 56,
+  },
+  {
+    key: "s1",
+    label: "Score 1",
+    align: "center",
+    defaultWidth: 72,
+    minWidth: 52,
+  },
+  {
+    key: "s2",
+    label: "Score 2",
+    align: "center",
+    defaultWidth: 72,
+    minWidth: 52,
+  },
+  {
+    key: "s3",
+    label: "Score 3",
+    align: "center",
+    defaultWidth: 72,
+    minWidth: 52,
+  },
+  {
+    key: "s4",
+    label: "Score 4",
+    align: "center",
+    defaultWidth: 72,
+    minWidth: 52,
+  },
+  {
+    key: "j",
+    label: "Judgement",
+    align: "center",
+    defaultWidth: 88,
+    minWidth: 64,
+  },
+  {
+    key: "total",
+    label: "Total",
+    align: "center",
+    defaultWidth: 72,
+    minWidth: 52,
+  },
+  {
+    key: "prev",
+    label: "Өмнөх",
+    align: "center",
+    defaultWidth: 80,
+    minWidth: 64,
+    compareOnly: true,
+  },
+  {
+    key: "level",
+    label: "Түвшин",
+    align: "center",
+    defaultWidth: 88,
+    minWidth: 72,
+  },
+  {
+    key: "diff",
+    label: "Зөрүү",
+    align: "center",
+    defaultWidth: 80,
+    minWidth: 64,
+    compareOnly: true,
+  },
+];
+
+const REPORT_WIDTHS_KEY = "dahub-report-col-widths";
+
+function readReportStoredWidths(): Partial<Record<ReportColKey, number>> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(REPORT_WIDTHS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Partial<Record<ReportColKey, number>>;
+  } catch {
+    return {};
+  }
+}
+
 function ReportTable({
   title,
   region,
@@ -759,7 +899,6 @@ function ReportTable({
   externalJudgementComments,
   onJudgementChange,
   onJudgementCommentSave,
-  previousJudgements,
   dataReferenceDate,
 }: {
   title: string;
@@ -797,6 +936,61 @@ function ReportTable({
   const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
   const committingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const visibleCols = useMemo(
+    () =>
+      REPORT_COLS.filter((c) => (c.compareOnly ? !hideComparison : true)),
+    [hideComparison],
+  );
+  const [widths, setWidths] = useState<Partial<Record<ReportColKey, number>>>(
+    {},
+  );
+
+  useEffect(() => {
+    setWidths(readReportStoredWidths());
+  }, []);
+
+  const widthOf = useCallback(
+    (col: ReportColDef) => widths[col.key] ?? col.defaultWidth,
+    [widths],
+  );
+
+  const onResizeStart = useCallback(
+    (e: ReactMouseEvent, col: ReportColDef) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startW = widthOf(col);
+
+      const onMove = (ev: MouseEvent) => {
+        const next = Math.max(col.minWidth, startW + (ev.clientX - startX));
+        setWidths((prev) => ({ ...prev, [col.key]: next }));
+      };
+
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        setWidths((prev) => {
+          const merged = { ...prev };
+          try {
+            localStorage.setItem(REPORT_WIDTHS_KEY, JSON.stringify(merged));
+          } catch {
+            /* ignore */
+          }
+          return merged;
+        });
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [widthOf],
+  );
+
   useEffect(() => {
     if (editingJBranch && inputRef.current) {
       inputRef.current.focus();
@@ -841,8 +1035,15 @@ function ReportTable({
           (readJudgmentScoreFromManual(manualMap[b.branchId], judgmentInd.id) ??
             0) > 0,
       ).length;
+
+  const alignClass = {
+    left: "text-left",
+    center: "text-center",
+    right: "text-right",
+  } as const;
+
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline">
+    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
       <div
         className={`px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20 ${
           region === "UB"
@@ -911,56 +1112,42 @@ function ReportTable({
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-xs uppercase text-muted-foreground sticky top-0 z-10">
+        <table
+          className="text-sm border-collapse"
+          style={{
+            tableLayout: "fixed",
+            width: "max-content",
+            minWidth: "100%",
+          }}
+        >
+          <colgroup>
+            {visibleCols.map((col) => (
+              <col key={col.key} style={{ width: widthOf(col) }} />
+            ))}
+          </colgroup>
+          <thead className="sticky top-0 z-10">
             <tr>
-              <th
-                className="px-2 py-2 text-center font-semibold w-8 text-sky-500/70"
-                title="Дэлгэрэнгүй харах"
-              >
-                ⊕
-              </th>
-              <th className="px-2 py-2 text-left font-semibold">№</th>
-              <th className="px-2 py-2 text-left font-semibold">SOL</th>
-              <th className="px-2 py-2 text-left font-semibold">
-                Салбарын нэр
-              </th>
-              <th className="px-2 py-2 text-center font-semibold">Зэрэглэл</th>
-              <th className="px-2 py-2 text-right font-semibold text-sky-600 dark:text-sky-400">
-                Score 1
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-violet-600 dark:text-violet-400">
-                Score 2
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-amber-600 dark:text-amber-400">
-                Score 3
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                Score 4
-              </th>
-              <th className="px-2 py-2 text-right font-semibold text-rose-600 dark:text-rose-400">
-                <div className="flex flex-col items-end gap-0.5">
-                  {!readOnly && (
-                    <span
-                      className="w-1.5 h-1.5 rounded-full bg-emerald-500"
-                      title="Гараар оруулах боломжтой"
-                    />
+              {visibleCols.map((col) => (
+                <th
+                  key={col.key}
+                  title={col.key === "expand" ? "Дэлгэрэнгүй харах" : undefined}
+                  className={cn(
+                    "relative px-2 py-2.5 text-xs font-bold text-foreground bg-background select-none border-b border-border",
+                    alignClass[col.align],
                   )}
-                  <span className="inline-flex items-center gap-1.5">
-                    Judgement
+                >
+                  <span className="truncate block">{col.label}</span>
+                  <span
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label={`${col.label} өргөн өөрчлөх`}
+                    onMouseDown={(e) => onResizeStart(e, col)}
+                    className="absolute top-0 -right-0.5 w-2 h-full cursor-col-resize z-10 group flex justify-center"
+                  >
+                    <span className="w-px h-full bg-transparent group-hover:bg-foreground/30" />
                   </span>
-                </div>
-              </th>
-              <th className="px-2 py-2 text-right font-semibold">Total</th>
-              {!hideComparison && (
-                <th className="px-2 py-2 text-right font-semibold text-muted-foreground/70">
-                  Өмнөх
                 </th>
-              )}
-              <th className="px-2 py-2 text-center font-semibold">Түвшин</th>
-              {!hideComparison && (
-                <th className="px-2 py-2 text-right font-semibold">Зөрүү</th>
-              )}
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -993,24 +1180,26 @@ function ReportTable({
                         />
                       </button>
                     </td>
-                    <td className="px-2 py-2 tabular-nums text-muted-foreground font-semibold">
+                    <td className="px-2 py-2 text-center tabular-nums text-foreground font-bold">
                       {i + 1}
                     </td>
-                    <td className="px-2 py-2 tabular-nums font-bold">
+                    <td className="px-2 py-2 text-center tabular-nums font-bold text-foreground">
                       {b.solid}
                     </td>
-                    <td className="px-2 py-2 font-bold">{b.branchName}</td>
-                    <td className="px-2 py-2 text-center text-xs text-muted-foreground font-semibold">
+                    <td className="px-2 py-2 font-bold text-foreground">
+                      {b.branchName}
+                    </td>
+                    <td className="px-2 py-2 text-center text-xs text-foreground font-bold">
                       {b.rating}
                     </td>
-                    <ScoreCell value={b.s1} color="sky" />
-                    <ScoreCell value={b.s2} color="violet" />
-                    <ScoreCell value={b.s3} color="amber" />
-                    <td className="px-2 py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
+                    <ScoreCell value={b.s1} colBg="bg-sky-500/[0.08]" />
+                    <ScoreCell value={b.s2} colBg="bg-violet-500/[0.08]" />
+                    <ScoreCell value={b.s3} colBg="bg-amber-500/[0.08]" />
+                    <td className="px-2 py-2 text-center tabular-nums font-bold text-foreground bg-emerald-500/[0.08]">
                       {fmt(b.s4 ?? null)}
                     </td>
                     <td
-                      className="px-2 py-2 text-right tabular-nums"
+                      className="px-2 py-2 text-center tabular-nums bg-rose-500/[0.08]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {readOnly ? (
@@ -1036,70 +1225,67 @@ function ReportTable({
                             if (e.key === "Escape") setEditingJBranch(null);
                           }}
                           onBlur={() => commitJ(b.branchId)}
-                          className="w-14 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-rose-600 dark:text-rose-400 font-bold"
+                          className="w-14 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-foreground font-bold"
                         />
                       ) : (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <div className="flex items-center gap-1 h-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 shrink-0" />
-                            {(readOnly
-                              ? Boolean(
-                                  resolveJudgementComment(
-                                    b.branchId,
-                                    externalJudgementComments,
-                                  ),
-                                )
-                              : (b.j != null && b.j > 0) ||
-                                Boolean(
-                                  resolveJudgementComment(
-                                    b.branchId,
-                                    externalJudgementComments,
-                                  ),
-                                )) && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCommentModal({
-                                    branchId: b.branchId,
-                                    branchName: b.branchName,
-                                    draft:
-                                      resolveJudgementComment(
-                                        b.branchId,
-                                        externalJudgementComments,
-                                      ) ?? "",
-                                  });
-                                }}
-                                className={`p-0 leading-none transition-colors ${
-                                  resolveJudgementComment(
-                                    b.branchId,
-                                    externalJudgementComments,
-                                  )
-                                    ? "text-rose-500 hover:text-rose-400"
-                                    : "text-muted-foreground/50 hover:text-rose-500"
-                                }`}
-                                title={
-                                  resolveJudgementComment(
-                                    b.branchId,
-                                    externalJudgementComments,
-                                  )
-                                    ? "Тайлбар харах"
-                                    : "Тайлбар нэмэх"
-                                }
-                              >
-                                <MessageSquare
-                                  className={`w-2.5 h-2.5 ${
+                        <div className="inline-flex items-center justify-center gap-1">
+                          {(readOnly
+                            ? Boolean(
+                                resolveJudgementComment(
+                                  b.branchId,
+                                  externalJudgementComments,
+                                ),
+                              )
+                            : (b.j != null && b.j > 0) ||
+                              Boolean(
+                                resolveJudgementComment(
+                                  b.branchId,
+                                  externalJudgementComments,
+                                ),
+                              )) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCommentModal({
+                                  branchId: b.branchId,
+                                  branchName: b.branchName,
+                                  draft:
                                     resolveJudgementComment(
                                       b.branchId,
                                       externalJudgementComments,
-                                    )
-                                      ? "fill-rose-500/25"
-                                      : ""
-                                  }`}
-                                />
-                              </button>
-                            )}
-                          </div>
+                                    ) ?? "",
+                                });
+                              }}
+                              className={`p-0 leading-none transition-colors ${
+                                resolveJudgementComment(
+                                  b.branchId,
+                                  externalJudgementComments,
+                                )
+                                  ? "text-rose-500 hover:text-rose-400"
+                                  : "text-muted-foreground/50 hover:text-rose-500"
+                              }`}
+                              title={
+                                resolveJudgementComment(
+                                  b.branchId,
+                                  externalJudgementComments,
+                                )
+                                  ? "Тайлбар харах"
+                                  : "Тайлбар нэмэх"
+                              }
+                            >
+                              <MessageSquare
+                                className={`w-2.5 h-2.5 ${
+                                  resolveJudgementComment(
+                                    b.branchId,
+                                    externalJudgementComments,
+                                  )
+                                    ? "fill-rose-500/25"
+                                    : ""
+                                }`}
+                              />
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1121,7 +1307,7 @@ function ReportTable({
                                     : String(b.j || ""),
                               );
                             }}
-                            className="group/jbtn inline-flex items-center gap-1 font-bold text-rose-700 dark:text-rose-400 hover:text-amber-500 transition-colors"
+                            className="group/jbtn inline-flex items-center gap-1 font-bold text-foreground hover:text-amber-500 transition-colors"
                             title="Клик — оноо засах"
                           >
                             {b.j != null && b.j > 0
@@ -1136,26 +1322,14 @@ function ReportTable({
                         </div>
                       )}
                     </td>
-                    <td className="px-2 py-2 text-right tabular-nums font-bold">
-                      <span
-                        className={
-                          b.total != null && b.total >= 3.5
-                            ? "text-rose-600 dark:text-rose-400"
-                            : b.total != null && b.total >= 2.5
-                              ? "text-amber-600 dark:text-amber-400"
-                              : b.total != null
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-muted-foreground"
-                        }
-                      >
-                        {fmt(b.total)}
-                      </span>
+                    <td className="px-2 py-2 text-center tabular-nums font-bold text-foreground bg-indigo-500/[0.08]">
+                      {fmt(b.total)}
                     </td>
                     {!hideComparison && (
-                      <td className="px-2 py-2 text-right">
+                      <td className="px-2 py-2 text-center">
                         {prev ? (
-                          <div className="flex flex-col items-end gap-0.5">
-                            <span className="tabular-nums font-bold text-xs text-muted-foreground">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="tabular-nums font-bold text-xs text-foreground">
                               {fmt(prev.total)}
                             </span>
                             {prev.level && (
@@ -1206,7 +1380,7 @@ function ReportTable({
                       )}
                     </td>
                     {!hideComparison && (
-                      <td className="px-2 py-2 text-right">
+                      <td className="px-2 py-2 text-center">
                         {diff == null ? (
                           <span className="text-muted-foreground/30 text-xs">
                             —
@@ -1238,7 +1412,7 @@ function ReportTable({
                       catalog={catalog}
                       rawRows={rawRowsByBranch.get(b.branchId) ?? []}
                       manualValues={manualMap[b.branchId]}
-                      colSpan={hideComparison ? 12 : 14}
+                      colSpan={visibleCols.length}
                       currentAgg={b}
                       previousAgg={prev}
                       hideComparison={hideComparison}
@@ -1409,7 +1583,6 @@ function hasEvaluatedScore(score: number | null | undefined): boolean {
 }
 
 function IndicatorDetailRow({
-  branchId,
   branchName,
   catalog,
   rawRows,
@@ -1702,19 +1875,15 @@ function IndicatorDetailRow({
 
 function ScoreCell({
   value,
-  color,
+  colBg,
 }: {
   value: number | null;
-  color: "sky" | "violet" | "amber";
+  colBg: string;
 }) {
-  const cls =
-    color === "sky"
-      ? "text-sky-700 dark:text-sky-400"
-      : color === "violet"
-        ? "text-violet-700 dark:text-violet-400"
-        : "text-amber-700 dark:text-amber-400";
   return (
-    <td className={`px-2 py-2 text-right tabular-nums font-bold ${cls}`}>
+    <td
+      className={`px-2 py-2 text-center tabular-nums font-bold text-foreground ${colBg}`}
+    >
       {value == null ? "—" : value.toFixed(2)}
     </td>
   );
@@ -1730,7 +1899,7 @@ function SummaryBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline">
+    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
       <div className="px-3.5 py-2.5 border-b border-border bg-gradient-to-r from-blue-500/5 to-transparent text-xs font-bold uppercase tracking-wider text-foreground">
         {title}
       </div>

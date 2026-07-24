@@ -5,7 +5,6 @@ import {
   abFetchDashboardTop,
   abFetchDashboardSummaries,
 } from "../_lib/api";
-import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
   BarChart,
   Bar,
@@ -493,12 +492,10 @@ export default function DashboardsPage() {
 
   return (
     <div className="space-y-5 pb-8">
-      <ToolPageHeader
-        href="/tools"
-        icon={<LayoutDashboard size={16} className="text-violet-400" />}
-        title="Alert Box Dashboards"
-        subtitle={`Oracle · ${dashboards.length} dashboard`}
-      />
+      <div className="px-6 flex items-center gap-2">
+        <LayoutDashboard size={16} className="text-violet-400 shrink-0" />
+        <h1 className="text-sm font-bold text-foreground">Dashboards</h1>
+      </div>
 
       <div className="px-6 space-y-5">
         {/* Search */}

@@ -358,12 +358,18 @@ export class UsersService {
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
     this.assertCanManageTarget(users[0], callerIsSuperAdmin);
     const hashed = await bcrypt.hash(newPassword, 13);
+    // mutations_sync = 1: wait until the UPDATE is applied before returning —
+    // without this, admin "password reset" appears successful but login still
+    // uses the old hash until ClickHouse finishes the async mutation.
     await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
+      `ALTER TABLE users
+       UPDATE password = {password:String}, updatedAt = {updatedAt:String}
+       WHERE id = {id:String}
+       SETTINGS mutations_sync = 1`,
       { id, password: hashed, updatedAt: nowCH() },
     );
     this.logger.warn(
-      `Password reset by superadmin for user: ${users[0].userId} (${users[0].name})`,
+      `Password reset by admin for user: ${users[0].userId} (${users[0].name})`,
     );
     return {
       message: "Нууц үг амжилттай сэргээлээ",

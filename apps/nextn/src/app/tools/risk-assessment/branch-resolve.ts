@@ -67,6 +67,57 @@ export function judgementsFromListForBranches(
   return { scores, comments };
 }
 
+/**
+ * Ачаалсан огноонд хамгийн ойр judgement огноог сонгоно:
+ * 1) тухайн өдөр байвал түүнийг
+ * 2) эсвэл <= огнооны хамгийн сүүлийн (fill-forward)
+ * 3) өнгөрсөнд байхгүй бол > огнооны хамгийн ойр ирээдүй
+ */
+export function resolveNearestJudgements(
+  allJudge: {
+    branchId: string;
+    fetchedDate: string;
+    score: number;
+    comment?: string;
+  }[],
+  anchorDate: string,
+  branchIds: string[],
+): {
+  scores: Record<string, number>;
+  comments: Record<string, string>;
+  judgementDate: string | null;
+} {
+  const anchor = String(anchorDate ?? "").slice(0, 10);
+  const empty = {
+    scores: {} as Record<string, number>,
+    comments: {} as Record<string, string>,
+    judgementDate: null as string | null,
+  };
+  if (!anchor) return empty;
+
+  const dated = allJudge
+    .filter((j) => j.score > 0)
+    .map((j) => ({
+      ...j,
+      d: String(j.fetchedDate ?? "").slice(0, 10),
+    }))
+    .filter((j) => /^\d{4}-\d{2}-\d{2}$/.test(j.d));
+
+  if (dated.length === 0) return empty;
+
+  const uniqueDates = Array.from(new Set(dated.map((j) => j.d))).sort();
+  const pastOrSame = uniqueDates.filter((d) => d <= anchor);
+  const chosen =
+    pastOrSame[pastOrSame.length - 1] ??
+    uniqueDates.find((d) => d > anchor) ??
+    null;
+  if (!chosen) return empty;
+
+  const list = dated.filter((j) => j.d === chosen);
+  const mapped = judgementsFromListForBranches(list, branchIds);
+  return { ...mapped, judgementDate: chosen };
+}
+
 export function normalizeBranchKeyedMap<T>(
   map: Record<string, T>,
   branchIds: string[],

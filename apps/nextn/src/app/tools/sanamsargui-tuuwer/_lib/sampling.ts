@@ -25,34 +25,9 @@ export interface SamplingResult {
   stdDev: number;
   groups: GroupResult[];
   headers: string[];
-  /** Ашигласан seed — дүнг дахин гаргах (reproducibility) боломж олгоно */
-  seed?: string;
 }
 
-// ── Seeded PRNG (mulberry32) — давтагдах түүвэр ──────────────────────────────
 export type Rng = () => number;
-
-export function hashSeed(seed: string): number {
-  let h = 1779033703 ^ seed.length;
-  for (let i = 0; i < seed.length; i++) {
-    h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
-    h = (h << 13) | (h >>> 19);
-  }
-  return h >>> 0;
-}
-
-/** Seed өгвөл детерминистик, өгөхгүй бол Math.random */
-export function makeRng(seed?: string): Rng {
-  if (!seed || !seed.trim()) return Math.random;
-  let a = hashSeed(seed.trim());
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 // ── Z-score from confidence level ─────────────────────────────────────────────
 export function getZ(cl: number): number {
@@ -139,7 +114,6 @@ export function buildCsvContent(
   lines.push(`Эх олонлог (N),${result.N}`);
   lines.push(`Итгэлийн түвшин,${(result.confidence * 100).toFixed(0)}%`);
   lines.push(`Алдааны марж,${result.margin}%`);
-  if (result.seed) lines.push(`Seed,${toCsvCell(result.seed)}`);
   lines.push("");
 
   for (const g of result.groups) {

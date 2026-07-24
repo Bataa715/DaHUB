@@ -775,8 +775,12 @@ export class AuthService {
       throw new UnauthorizedException("Одоогийн нууц үг буруу байна");
 
     const hashedPassword = await bcrypt.hash(newPassword, 13);
+    // mutations_sync = 1 so the new hash is readable immediately on next login
     await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE password = {password:String}, updatedAt = {updatedAt:String} WHERE id = {id:String}",
+      `ALTER TABLE users
+       UPDATE password = {password:String}, updatedAt = {updatedAt:String}
+       WHERE id = {id:String}
+       SETTINGS mutations_sync = 1`,
       {
         password: hashedPassword,
         updatedAt: nowCH(),

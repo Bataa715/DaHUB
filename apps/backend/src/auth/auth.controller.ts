@@ -5,12 +5,11 @@ import {
   Get,
   UseGuards,
   Request,
-  Param,
   Query,
   Res,
   UnauthorizedException,
 } from "@nestjs/common";
-import { ThrottlerGuard, Throttle, SkipThrottle } from "@nestjs/throttler";
+import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
 import { Request as ExpressRequest, Response, CookieOptions } from "express";
 import { AuthService } from "./auth.service";
 import {

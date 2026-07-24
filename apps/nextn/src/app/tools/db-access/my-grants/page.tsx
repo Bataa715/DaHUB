@@ -164,21 +164,20 @@ export default function MyGrantsPage() {
             <CheckCircle2 className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
-        title={t("myGrantsTitle")}
-        subtitle={t("myGrantsSubtitle")}
+        title={t("toolDbRequestTitle")}
         rightContent={
           <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         }
       />
-      <div className="max-w-3xl mx-auto space-y-6 p-4 md:p-8">
+      <div className="w-full space-y-6 p-4 md:px-6 md:py-6">
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : grants.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-xl border bg-card text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
             <Database className="h-12 w-12 opacity-20" />
             <p className="font-medium">{t("myGrantsEmpty")}</p>
             <p className="text-sm">{t("myGrantsEmptyHint")}</p>

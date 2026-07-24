@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import Header from "@/components/header";
+import { Minimize2 } from "lucide-react";
 import Footer from "@/components/footer";
 import PageTransition from "@/components/PageTransition";
 import { cn } from "@/lib/utils";
+import { useChromeFullscreen } from "@/lib/chrome-fullscreen";
+
+const Sidebar = dynamic(() => import("@/components/Sidebar"), {
+  ssr: false,
+});
 
 export default function MainLayout({
   children,
@@ -13,30 +19,23 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { fullscreen, toggle, mounted } = useChromeFullscreen();
 
   const isPublicPath =
     pathname === "/login" ||
     pathname === "/signup" ||
     pathname.startsWith("/admin");
 
-  // Tools that manage their own layout (no DaHUB header/footer)
-  const isSelfLayoutTool = pathname.startsWith("/tools/alert-box");
+  const isAlertBox = pathname.startsWith("/tools/alert-box");
+  // Avoid SSR/client chrome mismatch — wait until localStorage is read
+  const chromeFullscreen = mounted && fullscreen;
 
-  // Хуудас шилжихэд scroll + overflow reset — header алга болох layout bug засах
   useEffect(() => {
     document.documentElement.scrollLeft = 0;
     document.body.scrollLeft = 0;
     const main = document.getElementById("main-content");
     if (main) main.scrollTop = 0;
   }, [pathname]);
-
-  if (isSelfLayoutTool) {
-    return (
-      <div className="min-h-screen w-full overflow-x-hidden bg-background">
-        <main className="relative min-w-0">{children}</main>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -48,17 +47,34 @@ export default function MainLayout({
       )}
     >
       {!isPublicPath ? (
-        <div className="animated-border-wrapper flex flex-1 min-h-0 min-w-0 w-full max-w-full overflow-hidden">
+        <div className="animated-border-wrapper flex flex-1 min-h-0 min-w-0 w-full max-w-full overflow-hidden relative">
+          {!chromeFullscreen && <Sidebar />}
           <div className="flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-hidden bg-background">
-            <Header />
             <main
               id="main-content"
-              className="relative flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-none"
+              className={cn(
+                "relative flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-x-hidden",
+                isAlertBox
+                  ? "overflow-hidden"
+                  : "overflow-y-auto scroll-smooth scrollbar-none",
+              )}
             >
               <PageTransition>{children}</PageTransition>
             </main>
-            <Footer />
+            {!isAlertBox && <Footer />}
           </div>
+
+          {chromeFullscreen && (
+            <button
+              type="button"
+              onClick={toggle}
+              title="Sidebar-тай харах"
+              aria-label="Sidebar-тай харах"
+              className="absolute bottom-3 left-3 z-50 flex items-center justify-center w-8 h-8 rounded-lg border border-border/60 bg-background/90 backdrop-blur-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-premium transition-colors"
+            >
+              <Minimize2 className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
       ) : (
         <div className="relative min-h-screen w-full overflow-x-hidden bg-background">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   riskIndicatorConfigApi,
   riskApi,
@@ -35,7 +35,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import {
   Loader2,
@@ -44,8 +43,6 @@ import {
   Trash2,
   Search,
   BarChart3,
-  Layers,
-  PauseCircle,
 } from "lucide-react";
 import { invalidateIndicatorCache } from "@/app/tools/risk-assessment/use-indicator-config";
 

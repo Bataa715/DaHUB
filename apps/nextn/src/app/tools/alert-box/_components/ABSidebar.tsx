@@ -1,7 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+
 import {
   Bell,
   AlertTriangle,
@@ -9,10 +7,13 @@ import {
   Search,
   Flag,
   BellDot,
-  ChevronLeft,
   LayoutDashboard,
 } from "lucide-react";
 import { abFetchNotifications } from "../_lib/api";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 
 const BASE = "/tools/alert-box";
 
@@ -71,14 +72,14 @@ export default function ABSidebar() {
   const notifCount = notifications?.total || 0;
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[220px] bg-surface-card border-r border-surface-border flex flex-col z-40">
+    <aside className="relative shrink-0 h-full self-stretch w-[220px] bg-surface-card border-r border-surface-border flex flex-col z-40">
       {/* Logo */}
       <div className="px-4 py-4 border-b border-surface-border">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center shrink-0">
             <BellDot size={15} className="text-foreground" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-[13px] font-bold text-txt">Alert Box</p>
             <p className="text-[9px] text-txt-dim uppercase tracking-wide">
               Голомт Банк
@@ -135,7 +136,9 @@ export default function ABSidebar() {
       {notifOpen && (
         <div
           ref={notifPopupRef}
-          className="fixed left-[230px] bottom-16 w-[320px] max-h-[380px] bg-surface-card border border-surface-border rounded-xl shadow-2xl overflow-hidden z-[60]"
+          className={cn(
+            "absolute left-full bottom-16 ml-2 w-[320px] max-h-[380px] bg-surface-card border border-surface-border rounded-xl shadow-2xl overflow-hidden z-[60]",
+          )}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
             <span className="text-xs font-bold text-txt">Мэдэгдэл</span>
@@ -184,16 +187,8 @@ export default function ABSidebar() {
         </div>
       )}
 
-      {/* Back to Tools */}
-      <div className="border-t border-surface-border p-3">
-        <Link
-          href="/tools"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] text-txt-muted hover:text-txt hover:bg-surface-hover transition-all"
-        >
-          <ChevronLeft size={13} />
-          <span>Tools руу буцах</span>
-        </Link>
-      </div>
+      {/* Nav footer spacer */}
+      <div className="border-t border-surface-border p-3" />
     </aside>
   );
 }

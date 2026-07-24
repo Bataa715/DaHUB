@@ -10,7 +10,21 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ["var(--font-jetbrainsMono)", "sans-serif"],
+        body: [
+          "var(--font-sans)",
+          "Segoe UI",
+          "Helvetica Neue",
+          "Arial",
+          "Noto Sans",
+          "sans-serif",
+        ],
+        mono: [
+          "ui-monospace",
+          "Cascadia Code",
+          "Consolas",
+          "Menlo",
+          "monospace",
+        ],
       },
       colors: {
         background: "hsl(var(--background))",

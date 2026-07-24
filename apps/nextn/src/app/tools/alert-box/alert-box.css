@@ -1,7 +1,7 @@
 /* GolomtTableui — surface/txt CSS variables are injected by ThemeStyleInjector */
 /* Non-variable styles: fonts, scrollbar, animations */
 .ab-theme {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-sans);
   background: var(--surface);
   color: var(--txt);
 }

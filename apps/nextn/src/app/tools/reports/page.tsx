@@ -1,12 +1,12 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { Download, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { pythonToolApi, PythonTool } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 
 const DATE_LABEL = {
   none: "reportsDateInstant" as const,
@@ -47,22 +47,13 @@ export default function ReportsPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl">
-        <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center">
-          <Link
-            href="/tools"
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
-          >
-            <ArrowLeft className="w-4 h-4" /> {t("back")}
-          </Link>
-        </div>
-      </div>
+      <ToolPageHeader
+        href="/"
+        icon={<Download className="w-4 h-4 text-sky-500" />}
+        title={t("toolReportsTitle")}
+      />
 
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
-        <h1 className="text-lg font-semibold text-foreground mb-6">
-          {t("toolReportsTitle")}
-        </h1>
-
+      <div className="w-full px-4 md:px-6 py-8">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin" />

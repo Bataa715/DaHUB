@@ -3,9 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ChevronRight } from "lucide-react";
 
 function HeroProfilePortrait({
   name,
@@ -75,7 +73,6 @@ const RULES = [
 export default function Hero() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
-  const router = useRouter();
 
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -158,9 +155,6 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground mb-3">
-              Тавтай морил
-            </p>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-foreground leading-[1.05]">
               {user?.name || "Хэрэглэгч"}
             </h1>
@@ -171,21 +165,6 @@ export default function Hero() {
           </motion.div>
 
           {/* Mottos - hidden */}
-
-          {/* CTA товчлуур */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45, duration: 0.5 }}
-          >
-            <button
-              onClick={() => router.push("/tools")}
-              className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-foreground text-background text-sm font-bold tracking-wide shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 transition-all duration-300"
-            >
-              Хэрэгсэл
-              <ChevronRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-            </button>
-          </motion.div>
 
           {/* ── Carousel: дүрэм журам ── */}
           <motion.div

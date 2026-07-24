@@ -20,17 +20,14 @@ import {
   type CatalogEntry,
 } from "./scoring-rules";
 import type { ManualMap } from "./indicator-catalog";
+// [цэвэрлэсэн] Зөвхөн доор бодитоор ашиглагдаж буй нэрсийг локал импортолно —
+// доорх "export { ... } from './branch-resolve'" бол өөрийн гэсэн бие даасан
+// "./branch-resolve" эх сурвалжтай тул энэ импортоос үл хамааран ажиллана.
 import {
   resolveManualBranch,
-  resolveJudgementComment,
-  resolveJudgementScore,
   normalizeJudgmentCatalog,
   pickJudgmentIndicator,
   readJudgmentScoreFromManual,
-  judgementsFromManualSnapshot,
-  judgementsFromList,
-  judgementCommentsFromList,
-  resolveBranchJudgementScore,
 } from "./branch-resolve";
 
 export {

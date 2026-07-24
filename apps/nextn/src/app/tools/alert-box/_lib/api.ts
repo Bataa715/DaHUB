@@ -1,30 +1,31 @@
-// DaHUB-ийн өөрийн backend-ийг ашиглана — тусдаа API URL хэрэггүй
+import axios from "axios";
+import api from "@/lib/api";
 
-const AB_API = process.env.NEXT_PUBLIC_API_URL;
-if (!AB_API) {
-  throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
-}
-
-// HttpOnly cookie автоматаар дамжих тул credentials: 'include' хангалттай.
-// Гар аргаар Bearer token тохируулах шаардлагагүй.
-async function req(path: string, opts?: RequestInit) {
-  const headers: Record<string, string> = {
-    ...(opts?.headers as Record<string, string>),
-  };
-
-  const res = await fetch(`${AB_API}${path}`, {
-    cache: "no-store",
-    credentials: "include",
-    ...opts,
-    headers,
-  });
-  const data = await res.json();
-  if (!res.ok || data?.error) {
-    let msg = data?.message || data?.error || "Хүсэлт амжилтгүй боллоо";
-    if (data?.table) msg += ` [хүснэгт: ${data.table}]`;
-    throw new Error(msg);
+// DaHUB-ийн өөрийн backend-ийг ашиглана — тусдаа API URL хэрэггүй.
+// Программын дундын `api` (axios) instance-ыг ашигладаг тул access token
+// хугацаа дуусахад silent-refresh-and-retry автоматаар ажилладаг (401 ирэхэд
+// шууд "Нэвтрэх шаардлагатай" гэж харагдахгүй, дуу чимээгүй дахин нэвтэрдэг).
+async function req(path: string, opts?: { signal?: AbortSignal }) {
+  try {
+    const res = await api.get(path, { signal: opts?.signal });
+    const data = res.data;
+    if (data?.error) {
+      let msg = data?.message || data?.error || "Хүсэлт амжилтгүй боллоо";
+      if (data?.table) msg += ` [хүснэгт: ${data.table}]`;
+      throw new Error(msg);
+    }
+    return data;
+  } catch (e) {
+    if (axios.isAxiosError(e)) {
+      const data = e.response?.data as
+        | { message?: string; error?: string; table?: string }
+        | undefined;
+      let msg = data?.message || data?.error || e.message;
+      if (data?.table) msg += ` [хүснэгт: ${data.table}]`;
+      throw new Error(msg);
+    }
+    throw e;
   }
-  return data;
 }
 
 export async function abFetchAlerts(

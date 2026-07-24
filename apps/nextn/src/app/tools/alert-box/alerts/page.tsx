@@ -24,7 +24,6 @@ import {
   Pie,
 } from "recharts";
 import type { TooltipContentProps } from "recharts";
-import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const ML_DASH_IDS = new Set([13, 14, 15, 16]);
@@ -300,42 +299,40 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-5">
-      <ToolPageHeader
-        href="/tools"
-        icon={<AlertTriangle size={16} className="text-red-400" />}
-        title="Alert"
-        subtitle={t("alertSubtitle")}
-        rightContent={
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-surface-card border border-surface-border rounded-lg px-3 py-1.5">
-              <span className="text-[10px] text-txt-dim">
-                {t("alertMinDash")}
-              </span>
-              <select
-                value={minDash}
-                onChange={(e) => setMinDash(Number(e.target.value))}
-                className="bg-transparent text-[11px] font-bold text-txt border-none focus:outline-none cursor-pointer"
-              >
-                {[2, 3, 4, 5, 6].map((n) => (
-                  <option key={n} value={n}>
-                    {n}+ dashboard
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              onClick={() => loadAlerts()}
-              disabled={loading}
-              className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50"
+      <div className="px-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <AlertTriangle size={16} className="text-red-400 shrink-0" />
+          <h1 className="text-sm font-bold text-txt truncate">Alert</h1>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 bg-surface-card border border-surface-border rounded-lg px-3 py-1.5">
+            <span className="text-[10px] text-txt-dim">
+              {t("alertMinDash")}
+            </span>
+            <select
+              value={minDash}
+              onChange={(e) => setMinDash(Number(e.target.value))}
+              className="bg-transparent text-[11px] font-bold text-txt border-none focus:outline-none cursor-pointer"
             >
-              <RefreshCw
-                size={14}
-                className={`text-txt-dim ${loading ? "animate-spin" : ""}`}
-              />
-            </button>
+              {[2, 3, 4, 5, 6].map((n) => (
+                <option key={n} value={n}>
+                  {n}+ dashboard
+                </option>
+              ))}
+            </select>
           </div>
-        }
-      />
+          <button
+            onClick={() => loadAlerts()}
+            disabled={loading}
+            className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50"
+          >
+            <RefreshCw
+              size={14}
+              className={`text-txt-dim ${loading ? "animate-spin" : ""}`}
+            />
+          </button>
+        </div>
+      </div>
       <div className="px-6 space-y-4">
         {loading && (
           <div className="flex items-center justify-center py-20">

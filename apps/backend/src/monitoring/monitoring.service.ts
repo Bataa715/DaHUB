@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { RelatedPartyTransactionsDto } from "./dto/monitoring.dto";
 
@@ -67,8 +67,6 @@ export interface RelatedPartyResult {
 // / self-dealing activity for continuous auditing.
 @Injectable()
 export class MonitoringService {
-  private readonly logger = new Logger(MonitoringService.name);
-
   constructor(private readonly clickhouse: ClickHouseService) {}
 
   private normalizeCustomerIds(customerIds: string[]): string[] {

@@ -18,7 +18,6 @@ import {
   Download,
   ArrowRightLeft,
   Wallet,
-  ListChecks,
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -153,12 +152,11 @@ export default function RelatedPartyTransactionsPage() {
           </div>
         }
         title="Харилцсан гүйлгээ"
-        subtitle="Monitoring Box"
       />
 
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="w-full px-4 md:px-6 py-6 space-y-6">
         {/* ── Filters ─────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-border/50 bg-card/60 p-5">
+        <div className="p-5">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto] gap-4 items-start">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -270,7 +268,7 @@ export default function RelatedPartyTransactionsPage() {
             </div>
 
             {totalsByCurrency.length > 0 && (
-              <div className="rounded-2xl border border-border/50 bg-card/60 p-5">
+              <div className="p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Wallet className="w-4 h-4 text-orange-500" />
                   <h3 className="text-sm font-semibold">Нийт дүн (валютаар)</h3>
@@ -437,7 +435,7 @@ export default function RelatedPartyTransactionsPage() {
         )}
 
         {!result && !loading && !error && (
-          <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center text-sm text-muted-foreground">
+          <div className="p-10 text-center text-sm text-muted-foreground">
             CIF/FORACID жагсаалт, огнооны хугацаа оруулж "Хайх" товч дарна уу.
           </div>
         )}
@@ -458,7 +456,7 @@ function StatCard({
   gradient: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/60 p-5 flex items-center gap-4">
+    <div className="p-5 flex items-center gap-4">
       <div
         className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg shrink-0`}
       >
@@ -480,7 +478,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/60 p-5">
+    <div className="p-5">
       <h3 className="text-sm font-semibold mb-3">{title}</h3>
       {children}
     </div>

@@ -64,7 +64,7 @@ export function SectionEditor({
     def.id === "s4" ? mergeKpi(report.s4kpiTable, DEFAULT_S4_KPI) : [];
 
   return (
-    <div className="space-y-4 max-w-5xl">
+    <div className="space-y-4 w-full">
       <div>
         <div className="text-sm font-bold text-foreground mb-0.5">
           {def.num}. {def.heading}

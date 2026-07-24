@@ -43,7 +43,7 @@ export default function DbAccessRequestPage() {
       user.isAdmin ||
       user.isSuperAdmin ||
       user.allowedTools?.includes("db_access_requester");
-    if (!allowed) router.replace("/tools");
+    if (!allowed) router.replace("/");
   }, [user, router]);
 
   // Available tables
@@ -196,14 +196,13 @@ export default function DbAccessRequestPage() {
   return (
     <div className="min-h-screen bg-background">
       <ToolPageHeader
-        href="/tools"
+        href="/"
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-md">
             <Database className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
-        title={t("dbAccessMyGrants")}
-        subtitle={t("dbAccessSelectSection")}
+        title={t("toolDbRequestTitle")}
         rightContent={
           <div className="flex items-center gap-2">
             <Link href="/tools/db-access/my-grants">
@@ -224,9 +223,9 @@ export default function DbAccessRequestPage() {
           </div>
         }
       />
-      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-8">
+      <div className="w-full space-y-6 p-4 md:px-6 md:py-6">
         <div className="space-y-4">
-          <div className="rounded-xl border bg-card p-5 space-y-4">
+          <div className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold flex items-center gap-2">
                 <Database className="h-4 w-4 text-cyan-400" />
@@ -398,7 +397,7 @@ export default function DbAccessRequestPage() {
           </div>
 
           {/* Date/time + reason */}
-          <div className="rounded-xl border bg-card p-5 space-y-4">
+          <div className="p-5 space-y-4">
             <h2 className="font-semibold flex items-center gap-2">
               <Calendar className="h-4 w-4 text-cyan-400" />
               {t("dbAccessExpirySection")}

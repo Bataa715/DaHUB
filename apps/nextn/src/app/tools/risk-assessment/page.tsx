@@ -16,14 +16,13 @@ export default function RiskAssessmentPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-rose-500/[0.02] text-foreground flex flex-col">
+    <div className="bg-background text-foreground">
       <ToolPageHeader
-        href="/tools"
+        href="/"
         icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
         title={t("toolRiskAssessmentTitle")}
-        subtitle={t("riskBranchSubtitle")}
       />
-      <div className="container mx-auto px-4 py-10 flex-1 max-w-[1200px]">
+      <div className="w-full px-4 md:px-6 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {/* Card 1: Эрсдэлийн үнэлгээ хийх */}
           <button

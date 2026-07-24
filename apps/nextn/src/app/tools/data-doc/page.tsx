@@ -191,12 +191,7 @@ export default function DataDocPage() {
             <Database className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
-        title={t("dataDocDbLabel")}
-        subtitle={
-          schema
-            ? `${schema.totalTables} ${t("dataDocDbLabel")} · ${schema.describedColumns}/${schema.totalColumns} ${t("dataDocColDesc")}`
-            : undefined
-        }
+        title={t("toolDataDocTitle")}
         rightContent={
           <Link
             href="/tools/data-doc/code"

@@ -13,7 +13,6 @@ import {
   ChevronRight,
   AlertTriangle,
   Activity,
-  RefreshCw,
   ListTree,
   ChevronsDownUp,
   ChevronsUpDown,
@@ -21,6 +20,10 @@ import {
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { riskLevelClass, type BranchAggregate } from "../../scoring-rules";
 import { useIndicatorConfig } from "../../use-indicator-config";
+import {
+  oracleSolidsFromRows,
+  resolveNearestJudgements,
+} from "../../branch-resolve";
 import {
   type RiskRow,
   type ScoredRow,
@@ -149,6 +152,7 @@ function BranchCard({
                 { label: "S2", val: agg.s2, cls: "text-violet-600" },
                 { label: "S3", val: agg.s3, cls: "text-amber-600" },
                 { label: "S4", val: agg.s4, cls: "text-emerald-600" },
+                { label: "J", val: agg.j, cls: "text-rose-600" },
               ].map(({ label, val, cls }) => (
                 <span
                   key={label}
@@ -182,8 +186,9 @@ export default function HyanaltDetailPage() {
   const { t } = useLanguage();
 
   const [rows, setRows] = useState<RiskRow[]>([]);
+  const [judgements, setJudgements] = useState<Record<string, number>>({});
+  const [judgementDate, setJudgementDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingDate, setLoadingDate] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
@@ -193,26 +198,44 @@ export default function HyanaltDetailPage() {
 
   const { catalog, loaded: catalogLoaded } = useIndicatorConfig();
 
-  const loadLatestAll = useCallback(async () => {
-    setLoadingDate(true);
-    setErrorMsg(null);
-    try {
-      const res = await riskApi.getRiskbranchLatestAll();
-      setRows(res.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
-    } catch (e: unknown) {
-      setErrorMsg(getApiErrorMessage(e));
-    } finally {
-      setLoadingDate(false);
+  const applyLatest = useCallback(async (oracleRows: RiskRow[], dates: string[]) => {
+    const filtered = oracleRows.filter((r) => r.rowType === "oracle") as RiskRow[];
+    setRows(filtered);
+    let max = "";
+    for (const r of filtered) {
+      const d = String(
+        (r as RiskRow & { latestFetchedDate?: string }).latestFetchedDate ??
+          r.sourceFetchedDate ??
+          "",
+      ).slice(0, 10);
+      if (d && d > max) max = d;
     }
+    const anchor = max || (dates[0] ? String(dates[0]).slice(0, 10) : "");
+    if (!anchor) {
+      setJudgements({});
+      setJudgementDate(null);
+      return;
+    }
+    const allJudge = await riskApi.listJudgements();
+    const solids = oracleSolidsFromRows(filtered);
+    const resolved = resolveNearestJudgements(allJudge, anchor, solids);
+    setJudgements(resolved.scores);
+    setJudgementDate(resolved.judgementDate);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await riskApi.getRiskbranchLatestAll();
+        const [res, dates] = await Promise.all([
+          riskApi.getRiskbranchLatestAll(),
+          riskApi.listRiskbranchDates(),
+        ]);
         if (cancelled) return;
-        setRows(res.rows.filter((r) => r.rowType === "oracle") as RiskRow[]);
+        await applyLatest(
+          res.rows.filter((r) => r.rowType === "oracle") as RiskRow[],
+          dates,
+        );
       } catch (e: unknown) {
         if (!cancelled) setErrorMsg(getApiErrorMessage(e));
       } finally {
@@ -222,7 +245,7 @@ export default function HyanaltDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyLatest]);
 
   const scoredRows = useMemo(
     () => buildScoredRows(rows, catalog),
@@ -230,8 +253,8 @@ export default function HyanaltDetailPage() {
   );
 
   const aggregates = useMemo(
-    () => sortByTotalDesc(aggregateFromScoredRows(scoredRows)),
-    [scoredRows],
+    () => sortByTotalDesc(aggregateFromScoredRows(scoredRows, judgements)),
+    [scoredRows, judgements],
   );
 
   const groupFilteredRows = useMemo(
@@ -283,24 +306,16 @@ export default function HyanaltDetailPage() {
         href="/tools/risk-assessment/hyanalt"
         icon={<ListTree className="w-4 h-4 text-emerald-500" />}
         title="Дэлгэрэнгүй өгөгдөл"
-        subtitle="Салбар бүрийн үзүүлэлт, оноо"
         rightContent={
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/25">
               Хамгийн сүүлийн
             </span>
-            <button
-              onClick={loadLatestAll}
-              disabled={loadingDate}
-              title="Дахин татах"
-              className="flex items-center justify-center w-7 h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 transition-all"
-            >
-              {loadingDate ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
-              )}
-            </button>
+            {judgementDate && (
+              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/25 hidden sm:inline">
+                J: {judgementDate}
+              </span>
+            )}
           </div>
         }
       />

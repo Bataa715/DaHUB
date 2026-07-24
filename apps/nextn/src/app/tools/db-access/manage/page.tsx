@@ -145,7 +145,7 @@ export default function DbAccessManagePage() {
       user.isAdmin ||
       user.isSuperAdmin ||
       user.allowedTools?.includes("db_access_granter");
-    if (!allowed) router.replace("/tools");
+    if (!allowed) router.replace("/");
   }, [user, router]);
 
   type Tab = "pending" | "all" | "grants";
@@ -308,14 +308,13 @@ export default function DbAccessManagePage() {
   return (
     <div className="min-h-screen bg-background">
       <ToolPageHeader
-        href="/tools/db-access"
+        href="/"
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
             <ShieldCheck className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
-        title={t("dbManageTitle")}
-        subtitle={t("dbManageSubtitle")}
+        title={t("toolDbGrantTitle")}
         rightContent={
           <Button
             variant="ghost"
@@ -329,7 +328,7 @@ export default function DbAccessManagePage() {
           </Button>
         }
       />
-      <div className="max-w-5xl mx-auto space-y-6 p-4 md:p-8">
+      <div className="w-full space-y-6 p-4 md:px-6 md:py-6">
         {/* Tabs */}
         <div className="flex gap-0 border-b">
           {(
@@ -382,7 +381,7 @@ export default function DbAccessManagePage() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : requests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground rounded-xl border bg-card">
+              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
                 <CheckCircle2 className="h-10 w-10 opacity-20" />
                 <p className="font-medium">
                   {tab === "pending"
@@ -674,7 +673,7 @@ export default function DbAccessManagePage() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : allGrants.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground rounded-xl border bg-card">
+              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
                 <Database className="h-10 w-10 opacity-20" />
                 <p className="font-medium">{t("dbManageNoPending")}</p>
               </div>

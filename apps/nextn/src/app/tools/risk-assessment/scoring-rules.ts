@@ -620,7 +620,11 @@ export interface CatalogEntry {
  */
 export function aggregateBranch(
   rows: AggInputRow[],
-  score4Map: Record<string, number> = {},
+  // Бүх дуудагдах газарт "{}" дамждаг бөгөөд функц дотор ашиглагдахгүй —
+  // Score 4 нь эгнээнүүд/каталогоос шууд тооцоологддог тул энэ параметр
+  // одоогоор хэрэглэгддэггүй. Дуудах газруудын позиционал зохицлыг
+  // алдагдуулахгүйн тулд signature-д хэвээр үлдээв.
+  _score4Map: Record<string, number> = {},
   judgementMap: Record<string, number> = {},
   catalog: CatalogEntry[] = [],
 ): BranchAggregate[] {

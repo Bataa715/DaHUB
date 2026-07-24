@@ -8,7 +8,6 @@ import {
   calcStratifiedSampleSize,
   normalizeFilterValue,
   sampleWithoutReplacement,
-  makeRng,
   LARGE_EXPORT_ROW_THRESHOLD,
   buildCsvContent,
   logExportFailure,
@@ -19,8 +18,6 @@ export function useSampling() {
   const [confidence, setConfidence] = useState(0.95);
   const [margin, setMargin] = useState(5.0);
   const [stdDev, setStdDev] = useState(0.5);
-  /** Хоосон биш бол давтагдах (reproducible) түүвэр гарна */
-  const [seed, setSeed] = useState("");
   const [exportFilename, setExportFilename] = useState("sample_result.xlsx");
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -169,9 +166,7 @@ export function useSampling() {
   // ── Calculate ────────────────────────────────────────────────────────────
   const handleCalculate = () => {
     const Z = getZ(confidence);
-    // Seed өгсөн бол бүх санамсаргүй сонголт детерминистик болно
-    const rng = makeRng(seed);
-    const usedSeed = seed.trim() || undefined;
+    const rng = Math.random;
 
     if (isStratified) {
       const N = totalVars;
@@ -209,7 +204,6 @@ export function useSampling() {
         confidence,
         margin,
         stdDev,
-        seed: usedSeed,
         headers: [],
         groups: groups.map((g) => ({ ...g, rows: [] })),
       });
@@ -306,7 +300,6 @@ export function useSampling() {
         confidence,
         margin,
         stdDev,
-        seed: usedSeed,
         headers: fileHeaders,
         groups: [
           {
@@ -516,8 +509,6 @@ export function useSampling() {
     setMargin,
     stdDev,
     setStdDev,
-    seed,
-    setSeed,
     exportFilename,
     setExportFilename,
     exporting,
