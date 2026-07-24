@@ -5,7 +5,6 @@ import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ShieldAlert,
-  Activity,
   ClipboardList,
   ChevronRight,
   BookmarkCheck,
@@ -23,8 +22,8 @@ export default function RiskAssessmentPage() {
         title={t("toolRiskAssessmentTitle")}
       />
       <div className="w-full px-4 md:px-6 py-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {/* Card 1: Эрсдэлийн үнэлгээ хийх */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl">
+          {/* Эрсдэлийн үнэлгээ хийх */}
           <button
             onClick={() => router.push("/tools/risk-assessment/work")}
             className="group rounded-2xl border border-border bg-card shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 hover:border-rose-500/40 ring-hairline transition-all duration-300 text-left p-6 flex flex-col gap-4"
@@ -45,28 +44,7 @@ export default function RiskAssessmentPage() {
             </span>
           </button>
 
-          {/* Card 2: Эрсдэлийн хяналт */}
-          <button
-            onClick={() => router.push("/tools/risk-assessment/hyanalt")}
-            className="group rounded-2xl border border-border bg-card shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 hover:border-emerald-500/40 ring-hairline transition-all duration-300 text-left p-6 flex flex-col gap-4"
-          >
-            <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <Activity className="w-6 h-6 text-emerald-500" />
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
-            </div>
-            <div>
-              <div className="text-base font-semibold text-foreground mb-1">
-                {t("riskMonitorCardTitle")}
-              </div>
-            </div>
-            <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              {t("toolsOpen")} <ChevronRight className="w-3.5 h-3.5" />
-            </span>
-          </button>
-
-          {/* Card 3: Эрсдэлийн тайлангууд */}
+          {/* Тайлан */}
           <button
             onClick={() => router.push("/tools/risk-assessment/tailan")}
             className="group rounded-2xl border border-border bg-card shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 hover:border-blue-500/40 ring-hairline transition-all duration-300 text-left p-6 flex flex-col gap-4"

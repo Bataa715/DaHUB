@@ -228,7 +228,7 @@ export default function RiskAssessmentDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
       <ToolPageHeader
-        href="/tools/risk-assessment"
+        href="/tools/risk-assessment/tailan"
         icon={<Activity className="w-4 h-4 text-emerald-500" />}
         title={t("riskMonitorCardTitle")}
         rightContent={

@@ -8,6 +8,8 @@ import {
   type RiskCurrentRow,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import Link from "next/link";
 import {
   Loader2,
   AlertTriangle,
@@ -16,6 +18,7 @@ import {
   BookmarkCheck,
   GitCompare,
   FileSpreadsheet,
+  Activity,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -78,6 +81,7 @@ function toScored(
 
 export default function RiskReportsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const isAdmin = user?.isAdmin === true;
   const { catalog, weights } = useIndicatorConfig();
 
@@ -421,12 +425,19 @@ export default function RiskReportsPage() {
         title="Тайлан"
         rightContent={
           <div className="flex items-center gap-2">
+            <Link
+              href="/tools/risk-assessment/hyanalt"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              {t("riskMonitorCardTitle")}
+            </Link>
             {selectedReportId &&
               !loadingReport &&
               primaryScoredRows.length > 0 && (
                 <button
                   onClick={() => setCsvModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-xs font-semibold hover:bg-sky-500/20 transition-colors"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
                   Татах
