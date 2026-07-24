@@ -35,7 +35,7 @@ export default function RiskAssessmentPage() {
               <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-rose-500 group-hover:translate-x-0.5 transition-all" />
             </div>
             <div>
-              <div className="text-base font-semibold text-foreground mb-1">
+              <div className="text-sm font-semibold text-foreground mb-1">
                 {t("riskDoAssessCardTitle")}
               </div>
             </div>
@@ -56,8 +56,8 @@ export default function RiskAssessmentPage() {
               <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
             </div>
             <div>
-              <div className="text-base font-semibold text-foreground mb-1">
-                Тайлан
+              <div className="text-sm font-semibold text-foreground mb-1">
+                {t("riskReportCardTitle")}
               </div>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400">

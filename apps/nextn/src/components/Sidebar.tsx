@@ -453,7 +453,7 @@ export default function Sidebar() {
           {/* Толгой — Буцах-тай ижил h-14+border-b (box-border) */}
           <div
             className={cn(
-              "flex items-center border-b border-border/50 shrink-0 h-14",
+              "flex items-center border-b border-border/50 shrink-0 h-14 min-h-14 box-border",
               collapsed
                 ? "justify-center px-2"
                 : "justify-between px-3",

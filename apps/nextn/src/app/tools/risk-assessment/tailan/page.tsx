@@ -8,6 +8,7 @@ import {
   type RiskCurrentRow,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Loader2,
   AlertTriangle,
@@ -31,6 +32,7 @@ import {
   judgementsFromListForBranches,
   normalizeBranchKeyedMap,
   oracleSolidsFromRows,
+  resolveNearestJudgements,
 } from "../branch-resolve";
 import ReportView from "../report-view";
 import MonthFilter, { formatMonthMn, prevMonthKey } from "./_MonthFilter";
@@ -74,7 +76,7 @@ function toScored(
 }
 
 function monthKeyFromDate(iso: string): string {
-  return iso.slice(0, 7); // YYYY-MM
+  return iso.slice(0, 7);
 }
 
 function currentMonthKey(): string {
@@ -84,52 +86,88 @@ function currentMonthKey(): string {
   return `${y}-${m}`;
 }
 
+/** YYYY-MM → тухайн сарын сүүлийн өдөр (backend fill-forward-д өгнө) */
+function monthEndDate(monthKey: string): string {
+  const m = monthKey.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return monthKey;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const last = new Date(y, mo, 0).getDate();
+  return `${m[1]}-${m[2]}-${String(last).padStart(2, "0")}`;
+}
+
 function hasJudgementScores(map: Record<string, number>): boolean {
   return Object.values(map).some((v) => Number(v) > 0);
 }
 
-/** Тухайн огноонд judgement байхгүй бол ≤ огнооны хамгийн ойрын judgement авна */
-async function listJudgementsAsOf(pDate: string) {
-  const target = pDate.slice(0, 10);
-  const exact = await riskApi.listJudgements(target);
-  if (exact.length > 0) return exact;
+type MonthBundle = {
+  actualDate: string;
+  rows: RiskCurrentRow[];
+  manualMap: Record<string, Record<string, number>>;
+  judgements: Record<string, number>;
+  judgementComments: Record<string, string>;
+};
 
-  const all = await riskApi.listJudgements();
-  const nearestDate = [
-    ...new Set(all.map((j) => String(j.fetchedDate).slice(0, 10))),
-  ]
-    .filter((d) => d && d <= target)
-    .sort((a, b) => b.localeCompare(a))[0];
-  if (!nearestDate) return [];
-  return all.filter((j) => String(j.fetchedDate).slice(0, 10) === nearestDate);
+/** Үнэлгээ хийхтэй адил riskbranch сарын дата + хамгийн ойрын judgement */
+async function loadRiskbranchMonth(
+  monthKey: string,
+  catalog: DynamicCatalogIndicator[],
+): Promise<MonthBundle> {
+  const target = monthEndDate(monthKey);
+  const res = await riskApi.getRiskbranch(target);
+  const rows = res.rows ?? [];
+  const actualDate = (res.fetchedDate || target).slice(0, 10);
+  const solids = oracleSolidsFromRows(rows);
+  const manualMap = res.manualMap || {};
+  const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
+
+  const [exactList, allJudge] = await Promise.all([
+    riskApi.listJudgements(actualDate),
+    riskApi.listJudgements(),
+  ]);
+  const exact = judgementsFromListForBranches(exactList, solids);
+  const nearest = resolveNearestJudgements(allJudge, actualDate, solids);
+
+  // Ойрын judgement-ийг үндэс болгож, exact/snapshot байвал давхарлана
+  const judgements = hasJudgementScores(snapJ)
+    ? { ...nearest.scores, ...exact.scores, ...snapJ }
+    : { ...nearest.scores, ...exact.scores };
+
+  return {
+    actualDate,
+    rows,
+    manualMap,
+    judgements,
+    judgementComments: { ...nearest.comments, ...exact.comments },
+  };
 }
 
 export default function RiskReportsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const isAdmin = user?.isAdmin === true;
   const { catalog } = useIndicatorConfig();
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
+  const [riskbranchDates, setRiskbranchDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   /** Сараар шүүх (YYYY-MM) — хайлт дарсан үед л хэрэгжинэ */
   const [filterMonth, setFilterMonth] = useState("");
-  /** Харьцуулах өмнөх сар (YYYY-MM) — хайлт дарсан үед л хэрэгжинэ */
   const [compareMonth, setCompareMonth] = useState("");
-  /** UI дээрх draft сонголт (хайлт хүртэл table өөрчлөгдөхгүй) */
   const [draftFilterMonth, setDraftFilterMonth] = useState("");
   const [draftCompareMonth, setDraftCompareMonth] = useState("");
   const [compareMonthOptOut, setCompareMonthOptOut] = useState(false);
-  /** Шүүлтийн горим: сар | улирал */
   const [filterMode, setFilterMode] = useState<"month" | "quarter">("month");
 
-  // Selected Primary Report
   const [selectedReportId, setSelectedReportId] = useState<string>("");
   const selectedReportIdRef = useRef(selectedReportId);
   selectedReportIdRef.current = selectedReportId;
   const [reportRows, setReportRows] = useState<RiskCurrentRow[]>([]);
-  const [reportManualMap, setReportManualMap] = useState<any>({});
+  const [reportManualMap, setReportManualMap] = useState<
+    Record<string, Record<string, number>>
+  >({});
   const [reportJudgements, setReportJudgements] = useState<
     Record<string, number>
   >({});
@@ -137,86 +175,70 @@ export default function RiskReportsPage() {
     Record<string, string>
   >({});
   const [loadingReport, setLoadingReport] = useState(false);
+  const [monthAnchorDate, setMonthAnchorDate] = useState<string>("");
 
-  // Selected Comparison Report (өмнөх улирал)
   const [comparisonReportId, setComparisonReportId] = useState<string>("");
   const comparisonReportIdRef = useRef(comparisonReportId);
   comparisonReportIdRef.current = comparisonReportId;
   const [comparisonRows, setComparisonRows] = useState<RiskCurrentRow[]>([]);
-  const [comparisonManualMap, setComparisonManualMap] = useState<any>({});
+  const [comparisonManualMap, setComparisonManualMap] = useState<
+    Record<string, Record<string, number>>
+  >({});
   const [comparisonJudgements, setComparisonJudgements] = useState<
     Record<string, number>
   >({});
   const [, setComparisonJudgementComments] =
     useState<Record<string, string>>({});
   const [loadingComparison, setLoadingComparison] = useState(false);
-  /** Хоосон сонгосон — харьцуулахгүй (авто өмнөх улирал цуцлагдсан) */
   const [compareOptOut, setCompareOptOut] = useState(false);
 
   const [riskFilter, setRiskFilter] = useState<
     "all" | "Өндөр" | "Дунд" | "Бага"
   >("all");
 
-  // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // Fetch saved reports list on mount
+  const monthLoadGen = useRef(0);
+
+  // Init: riskbranch огноо + хадгалсан тайлан (улирлаар)
   useEffect(() => {
     let cancelled = false;
-    riskApi
-      .listHistory()
-      .then((data) => {
+    (async () => {
+      try {
+        const [dates, history] = await Promise.all([
+          riskApi.listRiskbranchDates(),
+          riskApi.listHistory().catch(() => [] as RiskHistoryEntry[]),
+        ]);
         if (cancelled) return;
-        const list = data || [];
-        setHistoryList(list);
-        if (list.length > 0) {
-          const latestMonth = monthKeyFromDate(list[0].pDate);
-          const month = latestMonth || currentMonthKey();
-          const prev = prevMonthKey(month);
-          setFilterMonth(month);
-          setCompareMonth(prev);
-          setDraftFilterMonth(month);
-          setDraftCompareMonth(prev);
-          setSelectedReportId(list[0].id);
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setErrorMsg("Хадгалсан тайлангуудыг уншихад алдаа гарлаа.");
-      })
-      .finally(() => {
+        setRiskbranchDates(dates || []);
+        setHistoryList(history || []);
+
+        const latest =
+          dates?.[0] ||
+          (history?.[0]?.pDate ? history[0].pDate.slice(0, 10) : "");
+        const month = latest
+          ? monthKeyFromDate(latest)
+          : currentMonthKey();
+        const prev = prevMonthKey(month);
+        setFilterMonth(month);
+        setCompareMonth(prev);
+        setDraftFilterMonth(month);
+        setDraftCompareMonth(prev);
+        if (history?.length) setSelectedReportId(history[0].id);
+      } catch (e: unknown) {
+        if (!cancelled)
+          setErrorMsg(getApiErrorMessage(e) || "Өгөгдөл уншихад алдаа гарлаа");
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  /** Сонгосон сарын тайлангууд — бүрэн жагсаалт */
-  const monthFilteredHistory = useMemo(() => {
-    if (!filterMonth) return historyList;
-    return historyList.filter(
-      (h) => monthKeyFromDate(h.pDate) === filterMonth,
-    );
-  }, [historyList, filterMonth]);
-
-  /** Сараар сонголт солигдоход — тухайн сарын хамгийн сүүлийн тайланг автомат сонгоно */
-  useEffect(() => {
-    if (!filterMonth) return;
-    if (monthFilteredHistory.length === 0) {
-      setSelectedReportId("");
-      return;
-    }
-    const stillInMonth = monthFilteredHistory.some(
-      (h) => h.id === selectedReportIdRef.current,
-    );
-    if (!stillInMonth) {
-      setSelectedReportId(monthFilteredHistory[0].id);
-    }
-  }, [filterMonth, monthFilteredHistory]);
-
-  /** Draft үндсэн сар солигдоход — өмнөх сарыг draft дээр автоматаар тохируулна */
+  /** Draft үндсэн сар солигдоход — өмнөх сарыг автоматаар */
   useEffect(() => {
     if (!draftFilterMonth) {
       setDraftCompareMonth("");
@@ -237,54 +259,130 @@ export default function RiskReportsPage() {
     setErrorMsg(null);
   }, [draftFilterMonth, draftCompareMonth]);
 
-  /** Өмнөх сарын хамгийн сүүлийн тайлан → харьцуулалт */
-  const compareMonthReportId = useMemo(() => {
-    if (!compareMonth) return "";
-    const inMonth = historyList
-      .filter((h) => monthKeyFromDate(h.pDate) === compareMonth)
-      .sort((a, b) => b.pDate.localeCompare(a.pDate));
-    return inMonth[0]?.id ?? "";
-  }, [historyList, compareMonth]);
-
-  // Fetch primary report details + risk_judgement
+  // ── Сараар: riskbranch сарын дата + ойрын judgement ─────────────────────
   useEffect(() => {
+    if (filterMode !== "month" || !filterMonth) return;
+    const gen = ++monthLoadGen.current;
+    let cancelled = false;
+    setLoadingReport(true);
+    setErrorMsg(null);
+    setSelectedReportId("");
+    setComparisonReportId("");
+
+    (async () => {
+      try {
+        const primary = await loadRiskbranchMonth(filterMonth, catalog);
+        if (cancelled || gen !== monthLoadGen.current) return;
+        // Сонгосон сард дата байхгүй (өөр сар руу fill-forward) эсэх
+        if (monthKeyFromDate(primary.actualDate) !== filterMonth) {
+          setReportRows([]);
+          setReportManualMap({});
+          setReportJudgements({});
+          setReportJudgementComments({});
+          setMonthAnchorDate("");
+          setComparisonRows([]);
+          setComparisonJudgements({});
+          return;
+        }
+        setReportRows(primary.rows);
+        setReportManualMap(primary.manualMap);
+        setReportJudgements(primary.judgements);
+        setReportJudgementComments(primary.judgementComments);
+        setMonthAnchorDate(primary.actualDate);
+
+        if (compareMonth) {
+          setLoadingComparison(true);
+          try {
+            const prev = await loadRiskbranchMonth(compareMonth, catalog);
+            if (cancelled || gen !== monthLoadGen.current) return;
+            if (monthKeyFromDate(prev.actualDate) !== compareMonth) {
+              setComparisonRows([]);
+              setComparisonManualMap({});
+              setComparisonJudgements({});
+            } else {
+              setComparisonRows(prev.rows);
+              setComparisonManualMap(prev.manualMap);
+              setComparisonJudgements(prev.judgements);
+              setComparisonJudgementComments(prev.judgementComments);
+            }
+          } catch {
+            if (!cancelled && gen === monthLoadGen.current) {
+              setComparisonRows([]);
+              setComparisonJudgements({});
+            }
+          } finally {
+            if (!cancelled && gen === monthLoadGen.current) {
+              setLoadingComparison(false);
+            }
+          }
+        } else {
+          setComparisonRows([]);
+          setComparisonManualMap({});
+          setComparisonJudgements({});
+          setLoadingComparison(false);
+        }
+      } catch (e: unknown) {
+        if (cancelled || gen !== monthLoadGen.current) return;
+        setErrorMsg(getApiErrorMessage(e) || "Сарын өгөгдөл уншихад алдаа гарлаа");
+        setReportRows([]);
+      } finally {
+        if (!cancelled && gen === monthLoadGen.current) {
+          setLoadingReport(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filterMode, filterMonth, compareMonth, catalog]);
+
+  // ── Улирлаар: хадгалсан тайлан ───────────────────────────────────────────
+  useEffect(() => {
+    if (filterMode !== "quarter") return;
     if (!selectedReportId) {
       setReportRows([]);
       setReportManualMap({});
       setReportJudgements({});
       setReportJudgementComments({});
+      setMonthAnchorDate("");
       return;
     }
     const requestId = selectedReportId;
     const pDate = historyList.find((h) => h.id === requestId)?.pDate;
-    // Хуучин table-ийг арилгахгүй — fade + шинэ өгөгдөл орж иртэл хадгална
     let cancelled = false;
     setLoadingReport(true);
     setErrorMsg(null);
     Promise.all([
       riskApi.getHistory(requestId),
-      pDate ? listJudgementsAsOf(pDate) : Promise.resolve([]),
+      pDate ? riskApi.listJudgements(pDate.slice(0, 10)) : Promise.resolve([]),
+      riskApi.listJudgements(),
     ])
-      .then(([res, jList]) => {
+      .then(([res, exactList, allJudge]) => {
         if (cancelled || requestId !== selectedReportIdRef.current) return;
         const manualMap = res.manualMap || {};
         const rows = res.rows || [];
         const solids = oracleSolidsFromRows(rows);
         const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
-        const { scores: apiJ, comments: apiComments } =
-          judgementsFromListForBranches(jList, solids);
+        const anchor = (pDate || "").slice(0, 10);
+        const exact = judgementsFromListForBranches(exactList, solids);
+        const nearest = resolveNearestJudgements(allJudge, anchor, solids);
+        const judgements = hasJudgementScores(snapJ)
+          ? { ...nearest.scores, ...exact.scores, ...snapJ }
+          : { ...nearest.scores, ...exact.scores };
         const snapComments = normalizeBranchKeyedMap(
           res.judgementComments || {},
           solids,
         );
-        // Snapshot-д judgement байвал түүнийг давуу, үгүй бол as-of API
-        const mergedJ = hasJudgementScores(snapJ)
-          ? { ...apiJ, ...snapJ }
-          : { ...snapJ, ...apiJ };
         setReportRows(rows);
         setReportManualMap(manualMap);
-        setReportJudgements(mergedJ);
-        setReportJudgementComments({ ...snapComments, ...apiComments });
+        setReportJudgements(judgements);
+        setReportJudgementComments({
+          ...nearest.comments,
+          ...exact.comments,
+          ...snapComments,
+        });
+        setMonthAnchorDate(anchor);
       })
       .catch((e: unknown) => {
         if (cancelled || requestId !== selectedReportIdRef.current) return;
@@ -298,10 +396,10 @@ export default function RiskReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedReportId, historyList, catalog]);
+  }, [filterMode, selectedReportId, historyList, catalog]);
 
-  // Fetch comparison (өмнөх улирал) report
   useEffect(() => {
+    if (filterMode !== "quarter") return;
     if (!comparisonReportId) {
       setComparisonRows([]);
       setComparisonManualMap({});
@@ -315,32 +413,32 @@ export default function RiskReportsPage() {
     setLoadingComparison(true);
     Promise.all([
       riskApi.getHistory(requestId),
-      pDate ? listJudgementsAsOf(pDate) : Promise.resolve([]),
+      pDate ? riskApi.listJudgements(pDate.slice(0, 10)) : Promise.resolve([]),
+      riskApi.listJudgements(),
     ])
-      .then(([res, jList]) => {
+      .then(([res, exactList, allJudge]) => {
         if (cancelled || requestId !== comparisonReportIdRef.current) return;
         const manualMap = res.manualMap || {};
         const rows = res.rows || [];
         const solids = oracleSolidsFromRows(rows);
         const snapJ = judgementsFromManualSnapshot(manualMap, catalog);
-        const { scores: apiJ, comments: apiComments } =
-          judgementsFromListForBranches(jList, solids);
-        const snapComments = normalizeBranchKeyedMap(
-          res.judgementComments || {},
-          solids,
-        );
-        const mergedJ = hasJudgementScores(snapJ)
-          ? { ...apiJ, ...snapJ }
-          : { ...snapJ, ...apiJ };
+        const anchor = (pDate || "").slice(0, 10);
+        const exact = judgementsFromListForBranches(exactList, solids);
+        const nearest = resolveNearestJudgements(allJudge, anchor, solids);
+        const judgements = hasJudgementScores(snapJ)
+          ? { ...nearest.scores, ...exact.scores, ...snapJ }
+          : { ...nearest.scores, ...exact.scores };
         setComparisonRows(rows);
         setComparisonManualMap(manualMap);
-        setComparisonJudgements(mergedJ);
-        setComparisonJudgementComments({ ...snapComments, ...apiComments });
+        setComparisonJudgements(judgements);
+        setComparisonJudgementComments({
+          ...nearest.comments,
+          ...exact.comments,
+        });
       })
       .catch(() => {
         if (cancelled || requestId !== comparisonReportIdRef.current) return;
         setComparisonRows([]);
-        setComparisonManualMap({});
         setComparisonJudgements({});
       })
       .finally(() => {
@@ -351,19 +449,17 @@ export default function RiskReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [comparisonReportId, historyList, catalog]);
+  }, [filterMode, comparisonReportId, historyList, catalog]);
 
-  // Сонгосон тайлан солигдоход — авто өмнөх улирал дахин
+  // Улирлаар: авто өмнөх тайлан
   useEffect(() => {
+    if (filterMode !== "quarter") return;
     setCompareOptOut(false);
-  }, [selectedReportId]);
+  }, [filterMode, selectedReportId]);
 
-  // Харьцуулалт: өмнөх сар давуу, үгүй бол өмнөх улирлын тайлан
   useEffect(() => {
-    if (compareMonth) {
-      setComparisonReportId(compareMonthReportId);
-      return;
-    }
+    if (filterMode !== "quarter") return;
+    if (compareMonth) return;
     const selP = historyList.find((h) => h.id === selectedReportId)?.pDate;
     if (!selectedReportId || !selP) {
       setComparisonReportId("");
@@ -375,11 +471,11 @@ export default function RiskReportsPage() {
       .sort((a, b) => b.pDate.localeCompare(a.pDate));
     setComparisonReportId(earlier[0]?.id ?? "");
   }, [
+    filterMode,
     selectedReportId,
     historyList,
     compareOptOut,
     compareMonth,
-    compareMonthReportId,
   ]);
 
   const openDeleteConfirm = useCallback((id: string) => {
@@ -430,9 +526,17 @@ export default function RiskReportsPage() {
   );
 
   const showComparison =
-    Boolean(comparisonReportId) &&
     comparisonRows.length > 0 &&
-    !loadingComparison;
+    !loadingComparison &&
+    (filterMode === "month"
+      ? Boolean(compareMonth)
+      : Boolean(comparisonReportId));
+
+  const monthHasNoData =
+    filterMode === "month" &&
+    filterMonth &&
+    !loadingReport &&
+    reportRows.length === 0;
 
   const fieldClass =
     "h-7 px-2 rounded-md border border-border bg-background text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/40 cursor-pointer disabled:opacity-40";
@@ -466,6 +570,9 @@ export default function RiskReportsPage() {
             setCompareMonth("");
             setCompareMonthOptOut(true);
             setCompareOptOut(false);
+            if (historyList.length > 0 && !selectedReportId) {
+              setSelectedReportId(historyList[0].id);
+            }
           }}
           className={cn(
             "h-6 px-2.5 rounded text-[10px] font-semibold transition-colors",
@@ -579,26 +686,26 @@ export default function RiskReportsPage() {
     </div>
   );
 
+  const waitingData =
+    loading ||
+    loadingReport ||
+    ((filterMode === "month" ? Boolean(compareMonth) : Boolean(comparisonReportId)) &&
+      loadingComparison);
+
   const showReportTable =
-    !loading &&
-    !(loadingReport && reportRows.length === 0) &&
-    historyList.length > 0 &&
-    !(
-      filterMode === "month" &&
-      filterMonth &&
-      monthFilteredHistory.length === 0
-    ) &&
-    !(!selectedReportId && reportRows.length === 0);
+    !waitingData &&
+    reportRows.length > 0 &&
+    !(filterMode === "quarter" && !selectedReportId);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
+    <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
       <ToolPageHeader
         href="/tools/risk-assessment"
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
-        title="Тайлан"
+        title={t("riskReportPageTitle")}
       />
 
-      <div className="container mx-auto px-4 py-6 space-y-5 flex-1 max-w-[1800px]">
+      <div className="container mx-auto px-4 py-6 space-y-5 flex-1 min-w-0 w-full max-w-[1800px]">
         {errorMsg && (
           <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
@@ -612,19 +719,33 @@ export default function RiskReportsPage() {
           </div>
         )}
 
-        {/* ReportView байхгүй үед шүүлтийг тусад нь харуулна */}
         {!showReportTable && (
           <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 sm:px-4 sm:py-2.5">
             {filterControls}
           </div>
         )}
 
-        {loading || (loadingReport && reportRows.length === 0) ? (
+        {waitingData ? (
           <div className="flex flex-col items-center justify-center py-32 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
             <p className="text-sm text-muted-foreground">Уншиж байна…</p>
           </div>
-        ) : historyList.length === 0 ? (
+        ) : filterMode === "month" && riskbranchDates.length === 0 && !filterMonth ? (
+          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+            <div className="text-sm font-semibold text-muted-foreground">
+              Riskbranch өгөгдөл одоогоор байхгүй байна
+            </div>
+          </div>
+        ) : monthHasNoData ? (
+          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+            <div className="text-sm font-semibold text-muted-foreground">
+              {formatMonthMn(filterMonth)}-д өгөгдөл байхгүй
+            </div>
+            <div className="text-xs text-muted-foreground/60 mt-1">
+              Өөр сар сонгох эсвэл улирлаар горимд шилжинэ үү
+            </div>
+          </div>
+        ) : filterMode === "quarter" && historyList.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
               <Bookmark className="w-6 h-6 text-muted-foreground/60" />
@@ -633,65 +754,45 @@ export default function RiskReportsPage() {
               Хадгалагдсан тайлан одоогоор байхгүй байна
             </div>
             <div className="text-xs text-muted-foreground/60 mt-1 max-w-sm mx-auto">
-              «Эрсдэлийн үнэлгээ хийх» хуудсаар орж, аудиторын үнэлэмжийг
-              хадгалснаар энд жагсаалт харагдах болно.
+              «Үнэлгээ хийх» хуудсаар орж хадгалснаар энд жагсаалт гарна.
             </div>
           </div>
-        ) : filterMode === "month" &&
-          filterMonth &&
-          monthFilteredHistory.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
-            <div className="text-sm font-semibold text-muted-foreground">
-              {formatMonthMn(filterMonth)}-д хадгалсан тайлан байхгүй
-            </div>
-            <div className="text-xs text-muted-foreground/60 mt-1">
-              Өөр сар сонгох эсвэл улирлаар горимд шилжэж харна уу
-            </div>
-          </div>
-        ) : !selectedReportId && reportRows.length === 0 ? (
+        ) : filterMode === "quarter" && !selectedReportId ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
               Дээрх цонхоор харах тайлангаа сонгоно уу
             </div>
           </div>
         ) : (
-          <div
-            className={cn(
-              "relative transition-opacity duration-300 ease-out",
-              loadingReport || loadingComparison ? "opacity-45" : "opacity-100",
-            )}
-          >
-            {(loadingReport || loadingComparison) && (
-              <div className="absolute inset-x-0 top-8 z-10 flex justify-center pointer-events-none">
-                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-3 py-1.5 shadow-sm backdrop-blur-sm">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                  <span className="text-[11px] text-muted-foreground">
-                    Шинэчилж байна…
-                  </span>
-                </div>
-              </div>
-            )}
-            <ReportView
-              scoredRows={primaryScoredRows}
-              riskFilter={riskFilter}
-              setRiskFilter={setRiskFilter}
-              pDate={selectedReportInfo?.pDate}
-              readOnly={true}
-              initialManualMap={reportManualMap}
-              externalJudgements={reportJudgements}
-              externalJudgementComments={reportJudgementComments}
-              previousScoredRows={comparisonScoredRows}
-              previousHistoryName={
-                compareMonth
+          <ReportView
+            scoredRows={primaryScoredRows}
+            riskFilter={riskFilter}
+            setRiskFilter={setRiskFilter}
+            pDate={
+              filterMode === "month"
+                ? monthAnchorDate
+                : selectedReportInfo?.pDate
+            }
+            readOnly={true}
+            initialManualMap={reportManualMap}
+            externalJudgements={reportJudgements}
+            externalJudgementComments={reportJudgementComments}
+            previousScoredRows={comparisonScoredRows}
+            previousHistoryName={
+              filterMode === "month"
+                ? compareMonth
                   ? formatMonthMn(compareMonth)
-                  : (comparisonReportInfo?.name ?? null)
-              }
-              previousManualMap={comparisonManualMap}
-              previousJudgements={comparisonJudgements}
-              hideComparison={!showComparison}
-              toolbarStart={filterControls}
-            />
-          </div>
+                  : null
+                : (comparisonReportInfo?.name ?? null)
+            }
+            previousManualMap={comparisonManualMap}
+            previousJudgements={comparisonJudgements}
+            hideComparison={!showComparison}
+            toolbarStart={filterControls}
+            dataReferenceDate={
+              filterMode === "month" ? monthAnchorDate : undefined
+            }
+          />
         )}
       </div>
 

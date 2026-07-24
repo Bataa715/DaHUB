@@ -23,12 +23,14 @@ export default function ToolPageHeader({
   const { t } = useLanguage();
 
   return (
-    // h-14 + border-b ижил box — sidebar толгойтой 1px зөрөхгүй
-    <div className="sticky top-0 z-20 h-14 px-4 flex items-center gap-3 border-b border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl">
+    // h-14 + border-b ижил box — sidebar толгойтой 1px зөрөхгүй.
+    // shrink-0: урт хүснэгт/их өгөгдөл үед flex багана header-ийг шахахгүй.
+    // min-w-0 max-w-full: өргөн table page-ийг тэлэхэд header дагаж сунахгүй.
+    <div className="sticky top-0 z-20 shrink-0 h-14 min-h-14 w-full min-w-0 max-w-full px-4 flex items-center gap-3 border-b border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl box-border">
       {onBack ? (
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-sm"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-sm shrink-0"
         >
           <ArrowLeft className="w-4 h-4 stroke-[1.75]" />
           {t("back")}
@@ -36,21 +38,21 @@ export default function ToolPageHeader({
       ) : (
         <Link
           href={href}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-sm"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-sm shrink-0"
         >
           <ArrowLeft className="w-4 h-4 stroke-[1.75]" />
           {t("back")}
         </Link>
       )}
-      <span className="text-border/70 select-none">/</span>
-      <div className="flex items-center gap-2 min-w-0">
-        {icon}
-        <span className="font-semibold text-foreground tracking-tight truncate">
+      <span className="text-border/70 select-none shrink-0">/</span>
+      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+        <span className="shrink-0 flex items-center">{icon}</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight truncate leading-none">
           {title}
         </span>
       </div>
       {rightContent && (
-        <div className="ml-auto flex items-center gap-2 shrink-0">
+        <div className="ml-auto flex items-center gap-2 shrink-0 max-w-[55%] overflow-x-auto scrollbar-none">
           {rightContent}
         </div>
       )}

@@ -535,7 +535,10 @@ export const translations = {
 
     // Risk Assessment tool
     riskMonitorCardTitle: "Эрсдэлийн хяналт",
-    riskDoAssessCardTitle: "Эрсдэлийн үнэлгээ хийх",
+    riskDoAssessCardTitle: "Үнэлгээ хийх",
+    riskWorkPageTitle: "Үнэлгээ хийх",
+    riskReportCardTitle: "Тайлан",
+    riskReportPageTitle: "Тайлан",
     riskBranchSubtitle: "Салбарын үнэлгээ",
     riskDetailSubtitle: "Мөр бүрийн дэлгэрэнгүй",
     riskSavePlaceholder: "Жишээ: 2025 Q4 Улирал",
@@ -1658,7 +1661,10 @@ export const translations = {
 
     // Risk Assessment tool
     riskMonitorCardTitle: "Risk Monitoring",
-    riskDoAssessCardTitle: "Do Risk Assessment",
+    riskDoAssessCardTitle: "Do assessment",
+    riskWorkPageTitle: "Do assessment",
+    riskReportCardTitle: "Report",
+    riskReportPageTitle: "Report",
     riskBranchSubtitle: "Branch assessment",
     riskDetailSubtitle: "Detail by row",
     riskSavePlaceholder: "Example: 2025 Q4 Quarter",

@@ -434,9 +434,13 @@ export default function ReportView({
     [aggregates, riskFilter],
   );
 
-  // Анхнаасаа Total/judgement эрэмбэ (sortKey=1). SOLID дараалал руу товчоор буцна.
+  // Анхнаасаа Total буурахаар эрэмбэ (sortKey=1). SOLID дараалал руу товчоор буцна.
   const [sortKey, setSortKey] = useState<number>(1);
   const [tableLayout, setTableLayout] = useState<TableLayout>("unified");
+
+  /** Holds + catalog бэлэн болохоос өмнө table зурвал буруу total → дараа нь эрэмбэ «үсрэх» */
+  const scoringReady = holdsLoaded && dynamicConfig.loaded;
+
   const sortedFiltered = useMemo(() => {
     const bySolid = (a: BranchAggregate, b: BranchAggregate) => {
       const na = parseFloat(a.solid) || 0;
@@ -445,22 +449,13 @@ export default function ReportView({
       return a.solid.localeCompare(b.solid);
     };
     if (sortKey === 0) return [...filtered].sort(bySolid);
+    // Зөвхөн Total-аар (том → жижиг) — judgement-first биш, дахин эрэмбэлэх хөдөлгөөн гаргахгүй
     return [...filtered].sort((a, b) => {
-      const aHasJ = externalJudgements
-        ? (lookupJudgementScore(externalJudgements, a.branchId) ?? 0) > 0
-        : judgmentIndId
-          ? (manualMap[a.branchId]?.[judgmentIndId] ?? 0) > 0
-          : false;
-      const bHasJ = externalJudgements
-        ? (lookupJudgementScore(externalJudgements, b.branchId) ?? 0) > 0
-        : judgmentIndId
-          ? (manualMap[b.branchId]?.[judgmentIndId] ?? 0) > 0
-          : false;
-      if (aHasJ !== bHasJ) return aHasJ ? -1 : 1;
-      return (b.total ?? 0) - (a.total ?? 0);
+      const dt = (b.total ?? 0) - (a.total ?? 0);
+      if (dt !== 0) return dt;
+      return a.solid.localeCompare(b.solid, undefined, { numeric: true });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, readOnly, sortKey]);
+  }, [filtered, sortKey]);
 
   const ubRows = useMemo(
     () =>
@@ -554,7 +549,7 @@ export default function ReportView({
   }
 
   return (
-    <div className="space-y-5 p-4 sm:p-5">
+    <div className="space-y-5 p-4 sm:p-5 w-full min-w-0 max-w-full overflow-x-hidden">
       {/* ── Fallback config анхааруулга ── */}
       {dynamicConfig.isFallback && (
         <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-[12px] text-amber-400">
@@ -639,9 +634,7 @@ export default function ReportView({
               title={
                 sortKey > 0
                   ? "SOLID дарааллаар буцах"
-                  : readOnly
-                    ? "Total-аар эрэмбэлэх (judgement оруулсан салбар дээр)"
-                    : "Judgement оруулсан салбарыг дээрт, Total-аар эрэмбэлэх"
+                  : "Total-аар эрэмбэлэх (их → бага)"
               }
             >
               {sortKey > 0 ? "↕ SOLID↑" : "↕ Эрэмбэлэх"}
@@ -650,7 +643,12 @@ export default function ReportView({
         </div>
       </div>
 
-      {tableLayout === "unified" ? (
+      {!scoringReady ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <Loader2 className="w-7 h-7 animate-spin text-emerald-500" />
+          <p className="text-sm text-muted-foreground">Хүснэгт бэлдэж байна…</p>
+        </div>
+      ) : tableLayout === "unified" ? (
         <ReportTable
           title="Бүх салбар, тооцооны төвүүд"
           rows={sortedFiltered}
@@ -673,7 +671,7 @@ export default function ReportView({
         </div>
       )}
       {/* Summary */}
-      {!hideComparison && (
+      {scoringReady && !hideComparison && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryBlock title="1. ҮНЭЛГЭЭ" cols={["Үзүүлэлт", "Одоо", "Өмнө"]}>
             <SRow
@@ -1052,7 +1050,7 @@ function ReportTable({
   } as const;
 
   return (
-    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
+    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline w-full min-w-0 max-w-full">
       <div
         className={`px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20 ${
           region === "UB"

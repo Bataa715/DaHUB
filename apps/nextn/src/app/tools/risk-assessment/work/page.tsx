@@ -390,11 +390,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const scoredRows = useMemo(() => toScored(rows, catalog), [rows, catalog]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-rose-500/[0.02] text-foreground flex flex-col">
+    <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-gradient-to-br from-background via-background to-rose-500/[0.02] text-foreground flex flex-col">
       <ToolPageHeader
         href="/tools/risk-assessment"
         icon={<ClipboardEdit className="w-4 h-4 text-rose-500" />}
-        title={t("riskDoAssessCardTitle")}
+        title={t("riskWorkPageTitle")}
         rightContent={
           <div className="flex items-center gap-2">
             {/* Аргачлал — бүх үзүүлэлтийн үнэлгээний аргачлалыг унших */}
@@ -477,7 +477,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           </div>
         }
       />
-      <div className="container mx-auto px-4 py-6 space-y-4 flex-1 max-w-[1800px]">
+      <div className="container mx-auto px-4 py-6 space-y-4 flex-1 min-w-0 w-full max-w-[1800px]">
         {errorMsg && (
           <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
