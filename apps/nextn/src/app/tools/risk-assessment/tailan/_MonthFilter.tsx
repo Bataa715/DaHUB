@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 /** YYYY-MM → «2025 - 10 сар» */
 export function formatMonthMn(key: string): string {
@@ -55,9 +56,14 @@ export function buildMonthOptions(monthsBack = 24): string[] {
 
 /** Өмнөх сар (YYYY-MM) */
 export function prevMonthKey(key: string): string {
+  return shiftMonthKey(key, -1);
+}
+
+/** n сараар шилжүүлэх (YYYY-MM) */
+export function shiftMonthKey(key: string, deltaMonths: number): string {
   const m = key.match(/^(\d{4})-(\d{2})$/);
   if (!m) return key;
-  const d = new Date(Number(m[1]), Number(m[2]) - 2, 1);
+  const d = new Date(Number(m[1]), Number(m[2]) - 1 + deltaMonths, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
@@ -67,9 +73,13 @@ type MonthFilterProps = {
   className?: string;
   /** Зөвхөн энэ сараас өмнөхүүдийг харуулна (YYYY-MM) */
   maxExclusive?: string;
+  /** Энэ сараас хойшихыг харуулна (YYYY-MM, inclusive) */
+  minInclusive?: string;
   placeholder?: string;
   ariaLabel?: string;
   allowClear?: boolean;
+  /** Үндсэн сар — илүү тод харагдана */
+  emphasis?: "primary" | "secondary";
 };
 
 /**
@@ -81,19 +91,33 @@ export default function MonthFilter({
   onChange,
   className,
   maxExclusive,
-  placeholder = "ж: 2025 - 10 сар",
-  ariaLabel = "Сар",
+  minInclusive,
+  placeholder,
+  ariaLabel,
   allowClear = true,
+  emphasis = "secondary",
 }: MonthFilterProps) {
+  const { language, t } = useLanguage();
+  // formatMonthMn always renders the Mongolian "сар" (month) suffix — this
+  // example placeholder mirrors that same locale-specific format string, so
+  // only the "e.g." lead-in is translated, consistent with the format helper.
+  const effectivePlaceholder =
+    placeholder ?? (language === "mn" ? "ж: 2025 - 10 сар" : "e.g. 2025 - 10");
+  const effectiveAriaLabel = ariaLabel ?? t("monthFilterAriaLabel");
   const options = useMemo(() => {
-    const all = buildMonthOptions(24);
-    if (!maxExclusive) return all;
-    return all.filter((k) => k < maxExclusive);
-  }, [maxExclusive]);
+    const all = buildMonthOptions(36);
+    return all.filter((k) => {
+      if (maxExclusive && !(k < maxExclusive)) return false;
+      if (minInclusive && k < minInclusive) return false;
+      return true;
+    });
+  }, [maxExclusive, minInclusive]);
+
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value ? formatMonthMn(value) : "");
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const isPrimary = emphasis === "primary";
 
   useEffect(() => {
     setDraft(value ? formatMonthMn(value) : "");
@@ -116,10 +140,16 @@ export default function MonthFilter({
     el?.scrollIntoView({ block: "nearest" });
   }, [open, value]);
 
+  const inRange = (parsed: string) => {
+    if (maxExclusive && !(parsed < maxExclusive)) return false;
+    if (minInclusive && parsed < minInclusive) return false;
+    return true;
+  };
+
   const commitDraft = () => {
     const parsed = parseMonthInput(draft);
     if (parsed) {
-      if (maxExclusive && !(parsed < maxExclusive)) {
+      if (!inRange(parsed)) {
         setDraft(value ? formatMonthMn(value) : "");
         return;
       }
@@ -135,11 +165,18 @@ export default function MonthFilter({
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
-      <div className="flex items-center h-7 rounded-md border border-border bg-background overflow-hidden focus-within:ring-1 focus-within:ring-emerald-500/40">
+      <div
+        className={cn(
+          "flex items-center rounded-md overflow-hidden focus-within:ring-1",
+          isPrimary
+            ? "h-8 border-2 border-emerald-500/55 bg-emerald-500/10 focus-within:ring-emerald-500/45 shadow-sm"
+            : "h-7 border border-border bg-background focus-within:ring-emerald-500/30",
+        )}
+      >
         <input
           type="text"
           value={draft}
-          placeholder={placeholder}
+          placeholder={effectivePlaceholder}
           onChange={(e) => setDraft(e.target.value)}
           onFocus={() => setOpen(true)}
           onBlur={commitDraft}
@@ -156,9 +193,14 @@ export default function MonthFilter({
               setOpen(true);
             }
           }}
-          className="h-full min-w-[9.5rem] flex-1 bg-transparent px-2 text-[11px] font-medium text-foreground outline-none placeholder:text-muted-foreground/50"
-          aria-label={ariaLabel}
-          title="Гараар засаж эсвэл жагсаалтаас сонгоно"
+          className={cn(
+            "h-full min-w-[9.5rem] flex-1 bg-transparent px-2 outline-none placeholder:text-muted-foreground/50",
+            isPrimary
+              ? "text-xs font-bold text-emerald-800 dark:text-emerald-300"
+              : "text-[11px] font-medium text-foreground",
+          )}
+          aria-label={effectiveAriaLabel}
+          title={t("monthFilterInputTitle")}
         />
         {allowClear && value ? (
           <button
@@ -171,8 +213,8 @@ export default function MonthFilter({
               setOpen(false);
             }}
             className="px-1 h-full text-muted-foreground hover:text-foreground"
-            title="Цэвэрлэх"
-            aria-label="Цэвэрлэх"
+            title={t("monthFilterClear")}
+            aria-label={t("monthFilterClear")}
           >
             <X className="w-3 h-3" />
           </button>
@@ -182,11 +224,19 @@ export default function MonthFilter({
           tabIndex={-1}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setOpen((o) => !o)}
-          className="px-1.5 h-full border-l border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          aria-label="Сарын жагсаалт"
+          className={cn(
+            "px-1.5 h-full border-l transition-colors",
+            isPrimary
+              ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/15"
+              : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40",
+          )}
+          aria-label={t("monthFilterListAriaLabel")}
         >
           <ChevronDown
-            className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")}
+            className={cn(
+              "w-3.5 h-3.5 transition-transform",
+              open && "rotate-180",
+            )}
           />
         </button>
       </div>
@@ -200,7 +250,7 @@ export default function MonthFilter({
         >
           {options.length === 0 ? (
             <div className="px-2.5 h-7 flex items-center text-[11px] text-muted-foreground">
-              Сонголт байхгүй
+              {t("monthFilterNoOptions")}
             </div>
           ) : (
             options.map((key) => {

@@ -24,7 +24,7 @@ import {
   Pie,
 } from "recharts";
 import type { TooltipContentProps } from "recharts";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, type TranslationKey } from "@/contexts/LanguageContext";
 
 const ML_DASH_IDS = new Set([13, 14, 15, 16]);
 const ALERT_COLORS = [
@@ -88,36 +88,41 @@ function formatAmount(n: number) {
   return String(Math.round(n));
 }
 
-function Top10Tooltip({ active, payload }: TooltipContentProps) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload as AlertItem & { stdAmount: number };
-  return (
-    <div className="bg-surface-elevated border border-surface-border rounded-xl px-3 py-2.5 text-xs shadow-2xl space-y-1">
-      <p className="font-mono font-extrabold text-txt text-sm">{d.cif}</p>
-      <p className="text-txt-dim">
-        Дүн:{" "}
-        <span className="text-amber-400 font-bold">
-          {formatAmount(d.stdAmount)}₮
-        </span>
-      </p>
-      {d.mlAmount > 0 && (
+function createTop10Tooltip(t: (key: TranslationKey) => string) {
+  return function Top10Tooltip({ active, payload }: TooltipContentProps) {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload as AlertItem & { stdAmount: number };
+    return (
+      <div className="bg-surface-elevated border border-surface-border rounded-xl px-3 py-2.5 text-xs shadow-2xl space-y-1">
+        <p className="font-mono font-extrabold text-txt text-sm">{d.cif}</p>
         <p className="text-txt-dim">
-          ML:{" "}
-          <span className="text-golomt-400 font-bold">
-            +{formatAmount(d.mlAmount)}₮
+          {t("abAlertsAmountLabel")}{" "}
+          <span className="text-amber-400 font-bold">
+            {formatAmount(d.stdAmount)}₮
           </span>
         </p>
-      )}
-      <p className="text-txt-dim">
-        Гүйлгээ:{" "}
-        <span className="text-txt font-bold">{d.totalTransactions}</span>
-      </p>
-      <p className="text-txt-dim">
-        Dashboard:{" "}
-        <span className="text-golomt-400 font-bold">{d.dashboardCount}ш</span>
-      </p>
-    </div>
-  );
+        {d.mlAmount > 0 && (
+          <p className="text-txt-dim">
+            ML:{" "}
+            <span className="text-golomt-400 font-bold">
+              +{formatAmount(d.mlAmount)}₮
+            </span>
+          </p>
+        )}
+        <p className="text-txt-dim">
+          {t("abAlertsTxnLabel")}{" "}
+          <span className="text-txt font-bold">{d.totalTransactions}</span>
+        </p>
+        <p className="text-txt-dim">
+          Dashboard:{" "}
+          <span className="text-golomt-400 font-bold">
+            {d.dashboardCount}
+            {t("abAlertsCountSuffix")}
+          </span>
+        </p>
+      </div>
+    );
+  };
 }
 
 function SevTooltip({ active, payload }: TooltipContentProps) {
@@ -297,6 +302,8 @@ export default function AlertsPage() {
     return "text-blue-400 bg-blue-500/10 border-blue-500/25";
   };
 
+  const Top10TooltipContent = useMemo(() => createTop10Tooltip(t), [t]);
+
   return (
     <div className="space-y-5">
       <div className="px-6 flex items-center justify-between gap-3">
@@ -459,7 +466,7 @@ export default function AlertsPage() {
                                 {formatAmount(getStdAmount(alert))}₮
                               </p>
                               <p className="text-xs text-txt-dim">
-                                стандарт дүн
+                                {t("abAlertsStdAmountLabel")}
                               </p>
                               {(alert.mlAmount ?? 0) > 0 && (
                                 <p className="text-xs text-golomt-400/70">
@@ -585,7 +592,7 @@ export default function AlertsPage() {
                               }
                               className="mt-3 text-sm font-semibold text-golomt-400 hover:underline"
                             >
-                              Search Engine дээр дэлгэрэнгүй харах →
+                              {t("abAlertsViewOnSearchEngine")}
                             </button>
                           </div>
                         )}
@@ -629,7 +636,7 @@ export default function AlertsPage() {
                           <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
                             <div className="w-2 h-2 rounded-full bg-blue-400" />
                             <span className="text-xs text-txt-dim">
-                              Нийт гүйлгээ
+                              {t("abAlertsTotalTxnLabel")}
                             </span>
                             <span className="text-xl font-extrabold text-txt">
                               {totalTxns.toLocaleString()}
@@ -638,7 +645,7 @@ export default function AlertsPage() {
                           <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
                             <div className="w-2 h-2 rounded-full bg-amber-400" />
                             <span className="text-xs text-txt-dim">
-                              Стандарт дүн
+                              {t("abAlertsStdAmountChipLabel")}
                             </span>
                             <span className="text-xl font-extrabold text-amber-400">
                               {formatAmount(totalStdAmt)}₮
@@ -648,7 +655,7 @@ export default function AlertsPage() {
                             <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
                               <div className="w-2 h-2 rounded-full bg-golomt-400" />
                               <span className="text-xs text-txt-dim">
-                                ML дүн
+                                {t("abAlertsMlAmountLabel")}
                               </span>
                               <span className="text-xl font-extrabold text-golomt-400">
                                 +{formatAmount(totalMLAmt)}₮
@@ -662,10 +669,10 @@ export default function AlertsPage() {
                           {/* Top 10 CIFs horizontal bar */}
                           <div className="lg:col-span-3 bg-surface-card border border-surface-border rounded-2xl p-5">
                             <p className="text-sm font-bold text-txt">
-                              Top {top10.length} CIF — дүнгээр
+                              Top {top10.length} CIF — {t("abAlertsByAmountLabel")}
                             </p>
                             <p className="text-xs text-txt-dim mb-4">
-                              Стандарт дүнгээр эрэмбэлсэн
+                              {t("abAlertsSortedByStdAmount")}
                             </p>
                             <ResponsiveContainer
                               width="100%"
@@ -702,7 +709,7 @@ export default function AlertsPage() {
                                 />
                                 <Tooltip
                                   cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                                  content={Top10Tooltip}
+                                  content={Top10TooltipContent}
                                 />
                                 <Bar
                                   dataKey="stdAmount"
@@ -726,10 +733,10 @@ export default function AlertsPage() {
                           {/* Severity donut */}
                           <div className="lg:col-span-2 bg-surface-card border border-surface-border rounded-2xl p-5">
                             <p className="text-sm font-bold text-txt">
-                              Severity тархалт
+                              {t("abAlertsSeverityDistribution")}
                             </p>
                             <p className="text-xs text-txt-dim mb-4">
-                              Dashboard тоогоор ангилсан
+                              {t("abAlertsClassifiedByDashCount")}
                             </p>
                             <div className="flex items-center justify-center gap-6">
                               <ResponsiveContainer width={120} height={120}>
@@ -783,10 +790,10 @@ export default function AlertsPage() {
                         {/* DB hit frequency */}
                         <div className="bg-surface-card border border-surface-border rounded-2xl p-5">
                           <p className="text-sm font-bold text-txt">
-                            Dashboard хамрах хүрээ
+                            {t("abAlertsDashCoverage")}
                           </p>
                           <p className="text-xs text-txt-dim mb-4">
-                            Хэдэн CIF-д тус бүрийн дүрэм идэвхжсэн
+                            {t("abAlertsRuleTriggerHint")}
                           </p>
                           <ResponsiveContainer width="100%" height={150}>
                             <BarChart
@@ -830,7 +837,7 @@ export default function AlertsPage() {
                         <div className="flex items-center gap-3 py-1">
                           <div className="h-px flex-1 bg-surface-border" />
                           <span className="text-xs text-txt-dim font-medium tracking-wide uppercase">
-                            {data.alerts.length} CIF жагсаалт
+                            {data.alerts.length} {t("abAlertsCifListLabel")}
                           </span>
                           <div className="h-px flex-1 bg-surface-border" />
                         </div>
@@ -892,7 +899,9 @@ export default function AlertsPage() {
                           <p className="text-[15px] font-extrabold text-amber-400">
                             {formatAmount(getStdAmount(alert))}₮
                           </p>
-                          <p className="text-xs text-txt-dim">стандарт дүн</p>
+                          <p className="text-xs text-txt-dim">
+                            {t("abAlertsStdAmountLabel")}
+                          </p>
                           {(alert.mlAmount ?? 0) > 0 && (
                             <p className="text-xs text-golomt-400/70">
                               +ML {formatAmount(alert.mlAmount ?? 0)}₮
@@ -1017,7 +1026,7 @@ export default function AlertsPage() {
                           }
                           className="mt-3 text-sm font-semibold text-golomt-400 hover:underline"
                         >
-                          Search Engine дээр дэлгэрэнгүй харах →
+                          {t("abAlertsViewOnSearchEngine")}
                         </button>
                       </div>
                     )}

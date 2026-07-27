@@ -126,10 +126,10 @@ export default function AdminDepartmentsPage() {
     if (!selectedDepartment) return;
     setIsSaving(true);
     try {
+      // Зөвхөн засагдах талбарууд — description/users илгээхгүй (validation 400-ээс сэргийлнэ)
       await departmentsApi.update(selectedDepartment.id, {
-        name: formData.name,
-        code: formData.code.trim().toUpperCase(),
-        description: selectedDepartment.description,
+        name: formData.name.trim(),
+        code: formData.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""),
       });
       toast({
         title: t("success"),
@@ -137,10 +137,13 @@ export default function AdminDepartmentsPage() {
       });
       setIsEditOpen(false);
       loadDepartments();
-    } catch {
+    } catch (error) {
+      let message = t("admDeptUpdateError");
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
       toast({
         title: t("error"),
-        description: t("admDeptUpdateError"),
+        description: Array.isArray(message) ? message.join(", ") : message,
         variant: "destructive",
       });
     } finally {

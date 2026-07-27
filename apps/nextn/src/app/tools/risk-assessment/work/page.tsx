@@ -400,11 +400,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             {/* Аргачлал — бүх үзүүлэлтийн үнэлгээний аргачлалыг унших */}
             <Link
               href="/tools/risk-assessment/argachlal"
-              title="Үзүүлэлт бүрийн үнэлгээний аргачлал"
+              title={t("raWorkPageMethodologyTooltip")}
               className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-muted/30 text-xs font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              Аргачлал
+              {t("admRiskIndMethodologyLabel")}
             </Link>
 
             {/* Date Picker */}
@@ -433,7 +433,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
                 }`}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
-                Шүүлтүүр
+                {t("raWorkPageFilterBtn")}
               </button>
             )}
 
@@ -444,8 +444,8 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
                 disabled={lockingDate}
                 title={
                   isLocked
-                    ? `${fetchedDate} lock хасах`
-                    : `${fetchedDate} lock хийх`
+                    ? `${fetchedDate} ${t("raWorkPageUnlockAction")}`
+                    : `${fetchedDate} ${t("raWorkPageLockAction")}`
                 }
                 aria-label={isLocked ? "Unlock" : "Lock"}
                 className={`inline-flex items-center justify-center h-7 w-7 rounded-md border transition-all disabled:opacity-40 ${
@@ -471,7 +471,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
                 className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-amber-600 hover:bg-amber-500 text-foreground text-xs font-semibold transition-all"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
-                Тайлан Хадгалах
+                {t("raWorkPageSaveReportBtn")}
               </button>
             )}
           </div>
@@ -496,7 +496,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
             <p className="text-sm text-muted-foreground">
               {loadingDate && fetchedDate
-                ? `${fetchedDate} татаж байна…`
+                ? `${fetchedDate} ${t("raWorkPageLoadingDate")}`
                 : t("loading")}
             </p>
           </div>
@@ -507,12 +507,12 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             </div>
             <div className="text-sm font-semibold text-muted-foreground">
               {fetchedDate
-                ? `${fetchedDate} өдрийн өгөгдөл байхгүй байна`
-                : "Огноо оруулж татна уу"}
+                ? `${fetchedDate} ${t("raWorkPageNoDataForDate")}`
+                : t("raWorkPageEnterDateHint")}
             </div>
             {!fetchedDate && (
               <div className="text-xs text-muted-foreground/60 mt-1">
-                Дээрх огноо талбарт өдрөө сонгоно уу
+                {t("raWorkPageSelectDateAboveHint")}
               </div>
             )}
           </div>
@@ -609,9 +609,11 @@ export default function RiskWorkPage() {
                 <BookmarkPlus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">Тайланг хадгалах</h3>
+                <h3 className="text-sm font-semibold">
+                  {t("raWorkPageSaveModalTitle")}
+                </h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Сонгосон огноо: {saveModalMeta.pDate}
+                  {t("raWorkPageSelectedDateLabel")} {saveModalMeta.pDate}
                 </p>
               </div>
             </div>
@@ -634,7 +636,7 @@ export default function RiskWorkPage() {
                 onClick={() => setSaveModalOpen(false)}
                 className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
               >
-                Болих
+                {t("cancel")}
               </button>
               <button
                 onClick={doSaveHistory}
@@ -642,7 +644,7 @@ export default function RiskWorkPage() {
                 className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-foreground text-xs font-semibold disabled:opacity-40 transition-all"
               >
                 {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Хадгалах
+                {t("save")}
               </button>
             </div>
           </div>

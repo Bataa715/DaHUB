@@ -222,10 +222,9 @@ export class AuthService {
     }
 
     // [H-3] Revoke the old refresh token FIRST (single-use) before issuing a new one.
-    // mutations_sync=1 makes this mutation synchronous so the row is visibly revoked
-    // before we return — prevents token replay if the client retries the request.
+    // ALTER UPDATE биш — DELETE (query нь isRevoked=0 шүүдэг тул устгахад хангалттай).
     await this.clickhouse.exec(
-      "ALTER TABLE refresh_tokens UPDATE isRevoked = 1 WHERE token = {token:String} SETTINGS mutations_sync = 1",
+      "ALTER TABLE refresh_tokens DELETE WHERE token = {token:String} SETTINGS mutations_sync = 1",
       { token: tokenHash },
     );
 
@@ -243,7 +242,7 @@ export class AuthService {
   /** Revoke all refresh tokens for a user (on logout) */
   async revokeRefreshTokens(userId: string): Promise<any> {
     await this.clickhouse.exec(
-      "ALTER TABLE refresh_tokens UPDATE isRevoked = 1 WHERE userId = {userId:String}",
+      "ALTER TABLE refresh_tokens DELETE WHERE userId = {userId:String} SETTINGS mutations_sync = 1",
       { userId },
     );
     return { success: true, message: "All refresh tokens revoked" };
@@ -251,12 +250,41 @@ export class AuthService {
 
   /** Stamp the user's lastLoginAt */
   private async updateLastLogin(userId: string): Promise<void> {
-    await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE lastLoginAt = {lastLoginAt:String} WHERE id = {id:String}",
-      {
-        lastLoginAt: nowCH(),
-        id: userId,
-      },
+    const users = await this.clickhouse.query<any>(
+      "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
+      { id: userId },
+    );
+    if (users.length === 0) return;
+    const u = users[0];
+    await this.clickhouse.replaceRows(
+      "users",
+      "id = {id:String}",
+      { id: userId },
+      [
+        {
+          id: u.id,
+          userId: u.userId,
+          password: u.password ?? "",
+          name: u.name ?? "",
+          position: u.position ?? "",
+          profileImage: u.profileImage ?? "",
+          departmentId: u.departmentId ?? "",
+          isAdmin: Number(u.isAdmin) || 0,
+          isSuperAdmin: Number(u.isSuperAdmin) || 0,
+          isActive: u.isActive === undefined ? 1 : Number(u.isActive),
+          allowedTools:
+            typeof u.allowedTools === "string"
+              ? u.allowedTools
+              : JSON.stringify(u.allowedTools ?? []),
+          grantableTools:
+            typeof u.grantableTools === "string"
+              ? u.grantableTools
+              : JSON.stringify(u.grantableTools ?? []),
+          lastLoginAt: nowCH(),
+          createdAt: u.createdAt,
+          updatedAt: nowCH(),
+        },
+      ],
     );
   }
 
@@ -915,14 +943,35 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 13);
     const updatedAt = nowCH();
-    await this.clickhouse.exec(
-      `ALTER TABLE users UPDATE password = {password:String}, isActive = 1, updatedAt = {updatedAt:String}
-       WHERE id = {id:String} SETTINGS mutations_sync = 1`,
-      {
-        password: hashedPassword,
-        id: user.id,
-        updatedAt,
-      },
+    await this.clickhouse.replaceRows(
+      "users",
+      "id = {id:String}",
+      { id: user.id },
+      [
+        {
+          id: user.id,
+          userId: user.userId,
+          password: hashedPassword,
+          name: user.name ?? "",
+          position: user.position ?? "",
+          profileImage: user.profileImage ?? "",
+          departmentId: user.departmentId ?? "",
+          isAdmin: Number(user.isAdmin) || 0,
+          isSuperAdmin: Number(user.isSuperAdmin) || 0,
+          isActive: 1,
+          allowedTools:
+            typeof user.allowedTools === "string"
+              ? user.allowedTools
+              : JSON.stringify(user.allowedTools ?? []),
+          grantableTools:
+            typeof user.grantableTools === "string"
+              ? user.grantableTools
+              : JSON.stringify(user.grantableTools ?? []),
+          lastLoginAt: user.lastLoginAt ?? null,
+          createdAt: user.createdAt,
+          updatedAt,
+        },
+      ],
     );
 
     await this.clearFailedLogins("setpw:" + userId);
@@ -958,17 +1007,35 @@ export class AuthService {
       throw new UnauthorizedException("Одоогийн нууц үг буруу байна");
 
     const hashedPassword = await bcrypt.hash(newPassword, 13);
-    // mutations_sync = 1 so the new hash is readable immediately on next login
-    await this.clickhouse.exec(
-      `ALTER TABLE users
-       UPDATE password = {password:String}, updatedAt = {updatedAt:String}
-       WHERE id = {id:String}
-       SETTINGS mutations_sync = 1`,
-      {
-        password: hashedPassword,
-        updatedAt: nowCH(),
-        id: userId,
-      },
+    await this.clickhouse.replaceRows(
+      "users",
+      "id = {id:String}",
+      { id: userId },
+      [
+        {
+          id: user.id,
+          userId: user.userId,
+          password: hashedPassword,
+          name: user.name ?? "",
+          position: user.position ?? "",
+          profileImage: user.profileImage ?? "",
+          departmentId: user.departmentId ?? "",
+          isAdmin: Number(user.isAdmin) || 0,
+          isSuperAdmin: Number(user.isSuperAdmin) || 0,
+          isActive: user.isActive === undefined ? 1 : Number(user.isActive),
+          allowedTools:
+            typeof user.allowedTools === "string"
+              ? user.allowedTools
+              : JSON.stringify(user.allowedTools ?? []),
+          grantableTools:
+            typeof user.grantableTools === "string"
+              ? user.grantableTools
+              : JSON.stringify(user.grantableTools ?? []),
+          lastLoginAt: user.lastLoginAt ?? null,
+          createdAt: user.createdAt,
+          updatedAt: nowCH(),
+        },
+      ],
     );
 
     await this.revokeRefreshTokens(userId);

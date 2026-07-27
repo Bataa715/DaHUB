@@ -163,11 +163,27 @@ export class MedlegService {
         this.clickhouse
           .insert("medleg_views", [{ newsId: id, userId, viewedAt: nowCH() }])
           .catch(() => {});
+        // ALTER UPDATE биш — views + 1-ийг DELETE + INSERT-ээр
         this.clickhouse
-          .exec(
-            "ALTER TABLE medleg UPDATE views = views + 1 WHERE id = {id:String}",
-            { id },
-          )
+          .query<any>(`SELECT * FROM medleg WHERE id = {id:String} LIMIT 1`, {
+            id,
+          })
+          .then(async (rows) => {
+            if (!rows[0]) return;
+            const row = rows[0];
+            await this.clickhouse.replaceRows(
+              "medleg",
+              "id = {id:String}",
+              { id },
+              [
+                {
+                  ...row,
+                  views: Number(row.views ?? 0) + 1,
+                  updatedAt: nowCH(),
+                },
+              ],
+            );
+          })
           .catch(() => {});
       }
     }

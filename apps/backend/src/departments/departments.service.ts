@@ -2,14 +2,18 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  Logger,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
 import { randomUUID } from "crypto";
 import { buildUserId, WEB_VISIBLE_USER_SQL } from "../common/utils/user-utils";
+import { UserFacingBadRequestException } from "../common/exceptions/user-facing.exception";
 
 @Injectable()
 export class DepartmentsService {
+  private readonly logger = new Logger(DepartmentsService.name);
+
   constructor(private clickhouse: ClickHouseService) {}
 
   async create(createDepartmentDto: CreateDepartmentDto) {
@@ -112,58 +116,64 @@ export class DepartmentsService {
       }
     }
 
-    const fields: string[] = [];
-    const params: Record<string, any> = { id };
-
-    if (updateDepartmentDto.name !== undefined) {
-      fields.push("name = {name:String}");
-      params.name = updateDepartmentDto.name;
-    }
-    if (updateDepartmentDto.description !== undefined) {
-      fields.push("description = {description:String}");
-      params.description = updateDepartmentDto.description;
-    }
-    if (updateDepartmentDto.manager !== undefined) {
-      fields.push("manager = {manager:String}");
-      params.manager = updateDepartmentDto.manager;
-    }
+    // ClickHouse-д MySQL-ийн UPDATE privilege байхгүй — ALTER UPDATE mutation
+    // зарим орчинд хориглогдсон байдаг. INSERT + ALTER DELETE ажилладаг тул
+    // update-ийг DELETE → INSERT (row replace) хэлбэрээр хийнэ.
     const newCode =
       updateDepartmentDto.code !== undefined
         ? (updateDepartmentDto.code || "").toUpperCase()
         : undefined;
-    if (newCode !== undefined) {
-      fields.push("code = {code:String}");
-      params.code = newCode;
-    }
 
-    if (fields.length > 0) {
-      fields.push("updatedAt = {updatedAt:String}");
-      params.updatedAt = nowCH();
-      await this.clickhouse.exec(
-        `ALTER TABLE departments UPDATE ${fields.join(", ")} WHERE id = {id:String} SETTINGS mutations_sync = 1`,
-        params,
+    const nextRow = {
+      id: department.id,
+      name: updateDepartmentDto.name ?? department.name,
+      description:
+        updateDepartmentDto.description !== undefined
+          ? updateDepartmentDto.description
+          : (department.description ?? ""),
+      manager:
+        updateDepartmentDto.manager !== undefined
+          ? updateDepartmentDto.manager
+          : (department.manager ?? ""),
+      code: newCode !== undefined ? newCode : String(department.code ?? ""),
+      createdAt: department.createdAt,
+      updatedAt: nowCH(),
+    };
+
+    try {
+      await this.clickhouse.replaceRows(
+        "departments",
+        "id = {id:String}",
+        { id },
+        [nextRow],
       );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Department update failed: ${msg}`);
+      if (/Not enough privileges|ACCESS_DENIED|Code:\s*497/i.test(msg)) {
+        throw new UserFacingBadRequestException(
+          "ClickHouse дээр хэлтэс засах эрх хүрэлцэхгүй байна (ALTER DELETE / INSERT шаардлагатай)",
+        );
+      }
+      throw err;
     }
 
-    const finalName = updateDepartmentDto.name ?? department.name;
+    const finalName = String(nextRow.name);
     const oldCode = String(department.code ?? "");
 
     // Хэлтсийн ID prefix (code) өөрчлөгдвөл тухайн хэлтсийн бүх ажилтны
-    // userId-г шинэ prefix-тэй дахин үүсгэнэ (нэр, ID-г гараар оруулсан бол хэвээр үлдээнэ).
+    // userId-г шинэ prefix-тэй дахин үүсгэнэ.
     if (newCode !== undefined && newCode !== oldCode) {
       await this.resyncUserIdsForDepartment(id, finalName, newCode);
     }
 
-    const updated = await this.clickhouse.query<any>(
-      "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
-      { id },
-    );
-    return updated[0];
+    return nextRow;
   }
 
   /**
    * Хэлтсийн ID prefix (code) өөрчлөгдөх үед тухайн хэлтсийн бүх ажилтны
    * userId-г шинэ prefix ашиглан дахин тооцоолж шинэчилнэ.
+   * ALTER UPDATE биш — DELETE + INSERT (row replace).
    */
   private async resyncUserIdsForDepartment(
     departmentId: string,
@@ -171,17 +181,43 @@ export class DepartmentsService {
     newCode: string,
   ) {
     const users = await this.clickhouse.query<any>(
-      "SELECT id, name, userId FROM users WHERE departmentId = {deptId:String}",
+      "SELECT * FROM users WHERE departmentId = {deptId:String}",
       { deptId: departmentId },
     );
 
     for (const user of users) {
       const newUserId = buildUserId(departmentName, user.name, newCode);
       if (newUserId === user.userId) continue;
-      await this.clickhouse.exec(
-        `ALTER TABLE users UPDATE userId = {userId:String}, updatedAt = {updatedAt:String}
-         WHERE id = {id:String} SETTINGS mutations_sync = 1`,
-        { userId: newUserId, updatedAt: nowCH(), id: user.id },
+
+      const nextUser = {
+        id: user.id,
+        userId: newUserId,
+        password: user.password ?? "",
+        name: user.name ?? "",
+        position: user.position ?? "",
+        profileImage: user.profileImage ?? "",
+        departmentId: user.departmentId ?? departmentId,
+        isAdmin: Number(user.isAdmin) || 0,
+        isSuperAdmin: Number(user.isSuperAdmin) || 0,
+        isActive: user.isActive === undefined ? 1 : Number(user.isActive),
+        allowedTools:
+          typeof user.allowedTools === "string"
+            ? user.allowedTools
+            : JSON.stringify(user.allowedTools ?? []),
+        grantableTools:
+          typeof user.grantableTools === "string"
+            ? user.grantableTools
+            : JSON.stringify(user.grantableTools ?? []),
+        lastLoginAt: user.lastLoginAt ?? null,
+        createdAt: user.createdAt,
+        updatedAt: nowCH(),
+      };
+
+      await this.clickhouse.replaceRows(
+        "users",
+        "id = {id:String}",
+        { id: user.id },
+        [nextUser],
       );
     }
   }

@@ -7,6 +7,7 @@ import {
   type TailanReportPayload,
 } from "@/lib/api";
 import { DocxBlobViewer } from "./DocxBlobViewer";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Real .docx preview ──────────────────────────────────────────────────────
 // Renders the ACTUAL generated .docx (via /tailan/preview) using docx-preview,
@@ -20,6 +21,7 @@ export function RealDocxPreview({
   payload: TailanReportPayload;
   debounceMs?: number;
 }) {
+  const { t } = useLanguage();
   const [blob, setBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,7 +38,9 @@ export function RealDocxPreview({
         setError("");
       } catch (err: unknown) {
         if (!cancelled) {
-          setError(getApiErrorMessage(err) || "Preview үүсгэхэд алдаа гарлаа");
+          setError(
+            getApiErrorMessage(err) || t("tailanRealPreviewGenerateError"),
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);

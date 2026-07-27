@@ -16,6 +16,10 @@ import {
   loginFormSchema,
   claimSetPasswordFormSchema,
   loginPasswordSchema,
+  createRegisterFormSchema,
+  createLoginFormSchema,
+  createClaimSetPasswordFormSchema,
+  createLoginPasswordSchema,
   type FlowType,
   type RegisterStep,
   type LoginStep,
@@ -55,26 +59,27 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
-  // Forms
+  // Forms — resolvers built from translated zod schemas so validation errors
+  // respect the language toggle (types still come from the static schemas).
   const registerForm = useForm<z.infer<typeof registerFormSchema>>({
-    resolver: zodResolver(registerFormSchema),
+    resolver: zodResolver(createRegisterFormSchema(t)),
     defaultValues: { department: "", position: "", name: "" },
   });
 
   const loginForm = useForm<z.infer<typeof loginFormSchema>>({
-    resolver: zodResolver(loginFormSchema),
+    resolver: zodResolver(createLoginFormSchema(t)),
     defaultValues: { userId: "" },
   });
 
   const claimPasswordForm = useForm<z.infer<typeof claimSetPasswordFormSchema>>(
     {
-      resolver: zodResolver(claimSetPasswordFormSchema),
+      resolver: zodResolver(createClaimSetPasswordFormSchema(t)),
       defaultValues: { claimCode: "", password: "", confirmPassword: "" },
     },
   );
 
   const loginPasswordForm = useForm<z.infer<typeof loginPasswordSchema>>({
-    resolver: zodResolver(loginPasswordSchema),
+    resolver: zodResolver(createLoginPasswordSchema(t)),
     defaultValues: { password: "" },
   });
 

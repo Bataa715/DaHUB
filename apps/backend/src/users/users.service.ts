@@ -102,6 +102,51 @@ export class UsersService {
     }));
   }
 
+  /** Normalize a users-table row for INSERT (DELETE+INSERT replace). */
+  private buildUserRow(
+    existing: Record<string, any>,
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return {
+      id: existing.id,
+      userId: existing.userId,
+      password: existing.password ?? "",
+      name: existing.name ?? "",
+      position: existing.position ?? "",
+      profileImage: existing.profileImage ?? "",
+      departmentId: existing.departmentId ?? "",
+      isAdmin: Number(existing.isAdmin) || 0,
+      isSuperAdmin: Number(existing.isSuperAdmin) || 0,
+      isActive:
+        existing.isActive === undefined ? 1 : Number(existing.isActive),
+      allowedTools:
+        typeof existing.allowedTools === "string"
+          ? existing.allowedTools
+          : JSON.stringify(existing.allowedTools ?? []),
+      grantableTools:
+        typeof existing.grantableTools === "string"
+          ? existing.grantableTools
+          : JSON.stringify(existing.grantableTools ?? []),
+      lastLoginAt: existing.lastLoginAt ?? null,
+      createdAt: existing.createdAt,
+      updatedAt: nowCH(),
+      ...overrides,
+    };
+  }
+
+  private async replaceUser(
+    id: string,
+    existing: Record<string, any>,
+    overrides: Record<string, unknown> = {},
+  ) {
+    await this.clickhouse.replaceRows(
+      "users",
+      "id = {id:String}",
+      { id },
+      [this.buildUserRow(existing, overrides)],
+    );
+  }
+
   async setAdminRole(
     id: string,
     isAdmin: boolean,
@@ -109,7 +154,7 @@ export class UsersService {
     grantableTools?: string[],
   ) {
     const users = await this.clickhouse.query<any>(
-      "SELECT id FROM users WHERE id = {id:String} LIMIT 1",
+      "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
@@ -120,20 +165,14 @@ export class UsersService {
     );
     const toolsJson = JSON.stringify(sanitizedTools);
 
-    // Админ болгоход хэлтэсээс салгана — веб дээр (ажилтнууд г.м.) харагдахгүй
-    const deptClear = isAdmin ? ", departmentId = {departmentId:String}" : "";
+    await this.replaceUser(id, users[0], {
+      isAdmin: isAdmin ? 1 : 0,
+      isSuperAdmin: isSuperAdmin ? 1 : 0,
+      grantableTools: toolsJson,
+      // Админ болгоход хэлтэсээс салгана — веб дээр харагдахгүй
+      ...(isAdmin ? { departmentId: "" } : {}),
+    });
 
-    await this.clickhouse.exec(
-      `ALTER TABLE users UPDATE isAdmin = {isAdmin:UInt8}, isSuperAdmin = {isSuperAdmin:UInt8}, grantableTools = {grantableTools:String}, updatedAt = {updatedAt:String}${deptClear} WHERE id = {id:String} SETTINGS mutations_sync = 1`,
-      {
-        id,
-        isAdmin: isAdmin ? 1 : 0,
-        isSuperAdmin: isSuperAdmin ? 1 : 0,
-        grantableTools: toolsJson,
-        updatedAt: nowCH(),
-        ...(isAdmin ? { departmentId: "" } : {}),
-      },
-    );
     return {
       message: "Амжилттай",
       id,
@@ -156,29 +195,36 @@ export class UsersService {
     const existing = users[0];
     const isPrivileged = !!existing.isAdmin || !!existing.isSuperAdmin;
 
-    const fields: string[] = [];
-    const params: Record<string, any> = { id };
+    let nextName = updateUserDto.name ?? existing.name;
+    let nextPosition =
+      updateUserDto.position !== undefined
+        ? updateUserDto.position
+        : (existing.position ?? "");
+    let nextUserId =
+      updateUserDto.userId !== undefined
+        ? updateUserDto.userId
+        : existing.userId;
+    let nextDepartmentId =
+      updateUserDto.departmentId !== undefined
+        ? updateUserDto.departmentId
+        : (existing.departmentId ?? "");
+    let nextProfileImage =
+      updateUserDto.profileImage !== undefined
+        ? updateUserDto.profileImage
+        : (existing.profileImage ?? "");
+    let nextAllowedTools =
+      updateUserDto.allowedTools !== undefined
+        ? JSON.stringify(updateUserDto.allowedTools)
+        : typeof existing.allowedTools === "string"
+          ? existing.allowedTools
+          : JSON.stringify(existing.allowedTools ?? []);
 
-    if (updateUserDto.name !== undefined) {
-      fields.push("name = {name:String}");
-      params.name = updateUserDto.name;
-    }
-    if (updateUserDto.position !== undefined) {
-      fields.push("position = {position:String}");
-      params.position = updateUserDto.position;
-    }
-    if (updateUserDto.userId !== undefined) {
-      fields.push("userId = {userId:String}");
-      params.userId = updateUserDto.userId;
-    }
     if (updateUserDto.departmentId !== undefined) {
       if (isPrivileged) {
         throw new BadRequestException(
           "Админ хэрэглэгчийг хэлтэст оноох боломжгүй",
         );
       }
-      fields.push("departmentId = {departmentId:String}");
-      params.departmentId = updateUserDto.departmentId;
 
       // Auto-generate userId only when not explicitly provided
       if (updateUserDto.userId === undefined) {
@@ -189,37 +235,37 @@ export class UsersService {
         if (depts.length > 0) {
           const newDeptName = depts[0].name as string;
           const newDeptCode = (depts[0].code as string) || "";
-          const userName = (updateUserDto.name ?? existing.name) as string;
-          const newUserId = buildUserId(newDeptName, userName, newDeptCode);
-          fields.push("userId = {userId:String}");
-          params.userId = newUserId;
+          nextUserId = buildUserId(newDeptName, nextName, newDeptCode);
         }
       }
     }
+
     if (updateUserDto.profileImage !== undefined) {
-      // Guard against oversized base64 images (~5 MB limit)
       if (updateUserDto.profileImage.length > 7_000_000) {
         throw new BadRequestException(
           "Профайл зургийн хэмжээ хэт их байна (дээд тал нь 5MB)",
         );
       }
-      fields.push("profileImage = {profileImage:String}");
-      params.profileImage = updateUserDto.profileImage;
-    }
-    if (updateUserDto.allowedTools !== undefined) {
-      fields.push("allowedTools = {allowedTools:String}");
-      params.allowedTools = JSON.stringify(updateUserDto.allowedTools);
     }
 
-    if (fields.length > 0) {
-      fields.push("updatedAt = {updatedAt:String}");
-      params.updatedAt = nowCH();
+    const hasChanges =
+      updateUserDto.name !== undefined ||
+      updateUserDto.position !== undefined ||
+      updateUserDto.userId !== undefined ||
+      updateUserDto.departmentId !== undefined ||
+      updateUserDto.profileImage !== undefined ||
+      updateUserDto.allowedTools !== undefined;
 
+    if (hasChanges) {
       try {
-        await this.clickhouse.exec(
-          `ALTER TABLE users UPDATE ${fields.join(", ")} WHERE id = {id:String} SETTINGS mutations_sync = 1`,
-          params,
-        );
+        await this.replaceUser(id, existing, {
+          userId: nextUserId,
+          name: nextName,
+          position: nextPosition,
+          profileImage: nextProfileImage,
+          departmentId: nextDepartmentId,
+          allowedTools: nextAllowedTools,
+        });
       } catch (error: unknown) {
         this.logger.error(
           `ClickHouse update error: ${error instanceof Error ? error.message : String(error)}`,
@@ -280,15 +326,9 @@ export class UsersService {
     }
     this.assertCanManageTarget(users[0], callerIsSuperAdmin);
 
-    // Soft-delete first so concurrent signup checks (AND isActive = 1) immediately
-    // see this user as gone, even before the async hard-delete mutation completes.
+    // Hard-delete synchronously — soft UPDATE isActive bypass (no ALTER UPDATE privilege)
     await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE isActive = 0 WHERE id = {id:String}",
-      { id },
-    );
-    // Hard-delete (async mutation — physically removes the row eventually)
-    await this.clickhouse.exec(
-      "ALTER TABLE users DELETE WHERE id = {id:String}",
+      "ALTER TABLE users DELETE WHERE id = {id:String} SETTINGS mutations_sync = 1",
       { id },
     );
     return { message: "Хэрэглэгчийг амжилттай устгалаа" };
@@ -296,7 +336,7 @@ export class UsersService {
 
   async updateTools(id: string, allowedTools: string[]) {
     const users = await this.clickhouse.query<any>(
-      "SELECT id, isAdmin, isSuperAdmin FROM users WHERE id = {id:String} LIMIT 1",
+      "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
 
@@ -310,14 +350,9 @@ export class UsersService {
       );
     }
 
-    await this.clickhouse.exec(
-      "ALTER TABLE users UPDATE allowedTools = {allowedTools:String}, updatedAt = {updatedAt:String} WHERE id = {id:String} SETTINGS mutations_sync = 1",
-      {
-        id,
-        allowedTools: JSON.stringify(allowedTools),
-        updatedAt: nowCH(),
-      },
-    );
+    await this.replaceUser(id, users[0], {
+      allowedTools: JSON.stringify(allowedTools),
+    });
 
     const updated = await this.clickhouse.query<any>(
       `SELECT u.*, d.name as departmentName
@@ -352,22 +387,13 @@ export class UsersService {
       );
     }
     const users = await this.clickhouse.query<any>(
-      "SELECT id, name, userId, isAdmin, isSuperAdmin FROM users WHERE id = {id:String} LIMIT 1",
+      "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
     this.assertCanManageTarget(users[0], callerIsSuperAdmin);
     const hashed = await bcrypt.hash(newPassword, 13);
-    // mutations_sync = 1: wait until the UPDATE is applied before returning —
-    // without this, admin "password reset" appears successful but login still
-    // uses the old hash until ClickHouse finishes the async mutation.
-    await this.clickhouse.exec(
-      `ALTER TABLE users
-       UPDATE password = {password:String}, updatedAt = {updatedAt:String}
-       WHERE id = {id:String}
-       SETTINGS mutations_sync = 1`,
-      { id, password: hashed, updatedAt: nowCH() },
-    );
+    await this.replaceUser(id, users[0], { password: hashed });
     this.logger.warn(
       `Password reset by admin for user: ${users[0].userId} (${users[0].name})`,
     );

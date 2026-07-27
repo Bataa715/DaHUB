@@ -69,7 +69,8 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
-  /** Authenticated: user can update own profileImage; Admin can update any field */
+  /** Authenticated: user can update own profileImage; Admin can update any field.
+   *  departmentId солихыг зөвхөн SuperAdmin хийнэ. */
   @UseGuards(JwtAuthGuard)
   @Patch(":id")
   update(
@@ -79,6 +80,7 @@ export class UsersController {
   ) {
     const isSelf = id === req.user.id;
     const isAdmin = req.user.isAdmin;
+    const isSuperAdmin = !!req.user.isSuperAdmin;
 
     if (!isSelf && !isAdmin) {
       throw new ForbiddenException("Зөвхөн өөрийн профайлыг засах боломжтой");
@@ -88,6 +90,12 @@ export class UsersController {
     if (!isAdmin) {
       const { profileImage } = updateUserDto;
       return this.usersService.update(id, { profileImage });
+    }
+
+    if (updateUserDto.departmentId !== undefined && !isSuperAdmin) {
+      throw new ForbiddenException(
+        "Хэрэглэгчийн хэлтэс солихыг зөвхөн супер админ хийх боломжтой",
+      );
     }
 
     return this.usersService.update(id, updateUserDto);

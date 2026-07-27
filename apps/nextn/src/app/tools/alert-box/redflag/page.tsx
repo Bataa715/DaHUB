@@ -196,33 +196,33 @@ export default function RedFlagPage() {
     {
       icon: Flag,
       iconClass: "text-red-400",
-      title: "Спортбет → Бусад Dashboard",
+      title: t("abRedflagGroup1Title"),
       range: "1–10",
-      hint: "Спортбет тавиад орлого олсон хүн мөнгө олох гэж хууль бус үйлдэл хийж эхэлсэн.",
+      hint: t("abRedflagGroup1Hint"),
       filter: (c: ChainResult) => c.id >= 1 && c.id <= 10,
     },
     {
       icon: AlertTriangle,
       iconClass: "text-amber-400",
-      title: "Бусад Dashboard → Спортбет",
+      title: t("abRedflagGroup2Title"),
       range: "11–15",
-      hint: "Хууль бусаар олсон мөнгөөрөө Спортбет тоглосон гэсэн үг.",
+      hint: t("abRedflagGroup2Hint"),
       filter: (c: ChainResult) => c.id >= 11 && c.id <= 15,
     },
     {
       icon: Flag,
       iconClass: "text-purple-400",
-      title: "PRED Нийлүүлэгч↔Ажилтан",
+      title: t("abRedflagGroup3Title"),
       range: "16–21",
-      hint: "ML загвараар нийлүүлэгч, ажилтан хоорондын сэжигтэй гүйлгээний event chain.",
+      hint: t("abRedflagGroup3Hint"),
       filter: (c: ChainResult) => c.id >= 16 && c.id <= 21,
     },
     {
       icon: Flag,
       iconClass: "text-blue-400",
-      title: "PRED Зээлдэгч↔Ажилтан",
+      title: t("abRedflagGroup4Title"),
       range: "22–27",
-      hint: "ML загвараар зээлдэгч, ажилтан хоорондын сэжигтэй гүйлгээний event chain.",
+      hint: t("abRedflagGroup4Hint"),
       filter: (c: ChainResult) => c.id >= 22 && c.id <= 27,
     },
   ] as const;
@@ -325,7 +325,9 @@ export default function RedFlagPage() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Flag size={14} className="text-txt-dim" />
-                  <h2 className="text-[13px] font-bold text-txt">Бусад</h2>
+                  <h2 className="text-[13px] font-bold text-txt">
+                    {t("admLayoutOtherSectionLabel")}
+                  </h2>
                   <span className="text-[10px] text-txt-dim">
                     ({otherChains.length})
                   </span>

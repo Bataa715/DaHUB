@@ -1,6 +1,7 @@
 import React from "react";
 import { ImageIcon, X } from "lucide-react";
 import { uid } from "./tailan.types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface RowInlineImg {
   id: string;
@@ -18,6 +19,7 @@ export function RowImageUpload({
   onChange: (imgs: RowInlineImg[]) => void;
   inputId?: string;
 }) {
+  const { t } = useLanguage();
   const fileRef = React.useRef<HTMLInputElement>(null);
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -57,7 +59,7 @@ export function RowImageUpload({
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-400 transition"
         >
           <ImageIcon className="h-3.5 w-3.5" />
-          <span>Зураг нэмэх</span>
+          <span>{t("tailanRowImageAddButton")}</span>
         </button>
       )}
       <input
@@ -76,8 +78,10 @@ export function RowImageUpload({
             <div key={img.id} className="bg-card/50 rounded-lg p-2 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground/70">
-                  {img.width}% өргөн
-                  {img.height ? ` · ${img.height}px өндөр` : ""}
+                  {img.width}% {t("tailanRowImageWideSuffix")}
+                  {img.height
+                    ? ` · ${img.height}px ${t("tailanRowImageTallSuffix")}`
+                    : ""}
                 </span>
                 <button
                   type="button"
@@ -99,7 +103,7 @@ export function RowImageUpload({
               />
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground/50 w-10 shrink-0">
-                  Өргөн
+                  {t("tailanRowImageWidthLabel")}
                 </span>
                 <input
                   type="range"
@@ -116,7 +120,7 @@ export function RowImageUpload({
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground/50 w-10 shrink-0">
-                  Өндөр
+                  {t("tailanRowImageHeightLabel")}
                 </span>
                 <input
                   type="number"

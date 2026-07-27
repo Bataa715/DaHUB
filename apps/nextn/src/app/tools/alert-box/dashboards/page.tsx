@@ -28,6 +28,7 @@ import {
   Database,
   RefreshCw,
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ML загварт суурилсан dashboard-уудын ID — нийлбэр тооцоололд оруулахгүй
 const ML_IDS = new Set([13, 14, 15, 16]);
@@ -98,6 +99,7 @@ function CustomTooltip({
   label?: string;
   hasAmount?: boolean;
 }) {
+  const { t } = useLanguage();
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   const isAmt = payload[0]?.dataKey === "totalAmount";
@@ -105,14 +107,14 @@ function CustomTooltip({
     <div className="bg-card border border-border rounded-lg px-3 py-2 text-[11px] shadow-xl">
       <p className="font-mono font-bold text-foreground mb-1">{d.cif}</p>
       <p className="text-muted-foreground">
-        Гүйлгээ:{" "}
+        {t("abDashTxCountLabel")}{" "}
         <span className="text-foreground font-semibold">
           {fmtFull(d.count)}
         </span>
       </p>
       {isAmt && d.totalAmount > 0 && (
         <p className="text-muted-foreground">
-          Дүн:{" "}
+          {t("abDashAmountLabel")}{" "}
           <span className="text-amber-400 font-semibold">
             ₮{fmtFull(d.totalAmount)}
           </span>
@@ -135,6 +137,7 @@ function DetailPanel({
   onSearch: (v: string) => void;
   onRetry: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="px-4 pb-4 pt-3 space-y-3 border-t border-border/50 bg-muted/10">
       <div className="relative max-w-xs">
@@ -145,7 +148,7 @@ function DetailPanel({
         <input
           value={search}
           onChange={(e) => onSearch(e.target.value)}
-          placeholder="CIF хайх…"
+          placeholder={t("abDashDetailCifSearchPlaceholder")}
           className="w-full bg-background border border-border rounded-lg pl-7 pr-8 py-1.5 text-[11px] placeholder:text-muted-foreground/60 outline-none focus:border-violet-500/50"
         />
         {search && (
@@ -161,14 +164,14 @@ function DetailPanel({
       {detail.status === "loading" && (
         <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
           <Loader2 size={16} className="animate-spin" />
-          <span className="text-[11px]">Oracle-с татаж байна…</span>
+          <span className="text-[11px]">{t("abDashOracleLoading")}</span>
         </div>
       )}
 
       {detail.status === "error" && (
         <div className="rounded-lg border border-red-500/25 bg-red-500/5 px-3 py-3 space-y-1.5">
           <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1.5">
-            <AlertTriangle size={12} /> Алдаа гарлаа
+            <AlertTriangle size={12} /> {t("errorBoundaryTitle")}
           </p>
           <p className="text-[10px] text-red-300/70 font-mono whitespace-pre-wrap break-all">
             {detail.error}
@@ -177,14 +180,14 @@ function DetailPanel({
             onClick={onRetry}
             className="flex items-center gap-1.5 text-[10px] text-red-400 border border-red-500/30 rounded px-2 py-0.5 hover:bg-red-500/10 transition-colors"
           >
-            <RefreshCw size={10} /> Дахин оролдох
+            <RefreshCw size={10} /> {t("errorBoundaryRetry")}
           </button>
         </div>
       )}
 
       {detail.status === "done" && detail.rows.length === 0 && (
         <p className="text-[11px] text-muted-foreground text-center py-8">
-          Өгөгдөл олдсонгүй
+          {t("abDashNoData")}
         </p>
       )}
 
@@ -194,8 +197,8 @@ function DetailPanel({
           <div className="rounded-xl border border-border bg-card p-3">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               {detail.hasAmount
-                ? "Гүйлгээний дүн (₮) — Top CIFs"
-                : "Гүйлгээний тоо — Top CIFs"}
+                ? t("abDashChartTitleAmount")
+                : t("abDashChartTitleCount")}
             </p>
             <ResponsiveContainer
               width="100%"
@@ -259,14 +262,14 @@ function DetailPanel({
                   <th className="px-3 py-2 text-right text-muted-foreground font-medium">
                     <span className="flex items-center justify-end gap-1">
                       <Hash size={9} />
-                      Тоо
+                      {t("abDashColCount")}
                     </span>
                   </th>
                   {detail.hasAmount && (
                     <th className="px-3 py-2 text-right text-muted-foreground font-medium">
                       <span className="flex items-center justify-end gap-1">
                         <TrendingUp size={9} />
-                        Дүн (₮)
+                        {t("abDashColAmount")}
                       </span>
                     </th>
                   )}
@@ -408,6 +411,7 @@ function DashboardCard({
 }
 
 export default function DashboardsPage() {
+  const { t } = useLanguage();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -426,7 +430,7 @@ export default function DashboardsPage() {
   useEffect(() => {
     abFetchDashboards()
       .then(setDashboards)
-      .catch((e) => setError(e?.message || "Oracle алдаа"))
+      .catch((e) => setError(e?.message || t("abDashOracleError")))
       .finally(() => setLoading(false));
 
     abFetchDashboardSummaries()
@@ -446,10 +450,10 @@ export default function DashboardsPage() {
           status: "error",
           hasAmount: false,
           rows: [],
-          error: e?.message || "Oracle алдаа",
+          error: e?.message || t("abDashOracleError"),
         }),
       );
-  }, []);
+  }, [t]);
 
   const handleToggle = (id: number) => {
     if (openId === id) {
@@ -507,7 +511,7 @@ export default function DashboardsPage() {
           <input
             value={listSearch}
             onChange={(e) => setListSearch(e.target.value)}
-            placeholder="Dashboard хайх…"
+            placeholder={t("abDashSearchPlaceholder")}
             className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-[12px] placeholder:text-muted-foreground/60 outline-none focus:border-violet-500/50 transition-colors"
           />
           {listSearch && (
@@ -523,7 +527,7 @@ export default function DashboardsPage() {
         {loading && (
           <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
             <Loader2 size={18} className="animate-spin" />
-            <span className="text-[12px]">Татаж байна…</span>
+            <span className="text-[12px]">{t("abDashLoadingList")}</span>
           </div>
         )}
 
@@ -541,7 +545,7 @@ export default function DashboardsPage() {
                 <div className="flex items-center gap-2 px-1">
                   <Database size={13} className="text-violet-400" />
                   <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Стандарт загвар
+                    {t("abDashStandardModel")}
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-mono">
                     {filteredStd.length}
@@ -575,13 +579,13 @@ export default function DashboardsPage() {
                 <div className="flex items-center gap-2 px-1">
                   <Brain size={13} className="text-amber-400" />
                   <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    ML загварт суурилсан
+                    {t("abDashMlBased")}
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
                     {filteredML.length}
                   </span>
                   <span className="text-[10px] text-muted-foreground/50 ml-1">
-                    · нийт дүнгийн тооцоолоос хасагдсан
+                    {t("abDashMlExcludedNote")}
                   </span>
                 </div>
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5">
@@ -590,9 +594,7 @@ export default function DashboardsPage() {
                     className="text-amber-400 flex-shrink-0 mt-0.5"
                   />
                   <p className="text-[10.5px] text-amber-300/80 leading-relaxed">
-                    Эдгээр dashboard-ууд нь ID 1–12-ын стандарт загваруудтай
-                    ижил өгөгдлийг ML загвараар дахин боловсруулсан тул нийлбэр
-                    тооцоолол давхардахаас зайлсхийж нийт дүнд оруулаагүй.
+                    {t("abDashMlNote")}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -619,7 +621,7 @@ export default function DashboardsPage() {
 
             {filteredStd.length === 0 && filteredML.length === 0 && (
               <div className="text-center py-12 text-[12px] text-muted-foreground">
-                Хайлтад тохирох dashboard олдсонгүй
+                {t("abDashNoSearchResults")}
               </div>
             )}
           </div>

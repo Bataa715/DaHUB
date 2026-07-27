@@ -1,11 +1,14 @@
+import type { TranslationKey } from "@/contexts/LanguageContext";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type DesignType = "srswr" | "srswor" | "prop" | "nonprop";
 
-export const DESIGN_LABELS: Record<DesignType, string> = {
-  srswr: "1. Буцаалттай энгийн санамсаргүй (SRSWR)",
-  srswor: "2. Буцаалтгүй энгийн санамсаргүй (SRSWOR)",
-  prop: "3. Пропорциональ",
-  nonprop: "4. Пропорциональ биш",
+/** Design labels are locale-dependent — resolve via t(DESIGN_LABEL_KEYS[design]) at render time. */
+export const DESIGN_LABEL_KEYS: Record<DesignType, TranslationKey> = {
+  srswr: "sampleDesignSrswr",
+  srswor: "sampleDesignSrswor",
+  prop: "sampleDesignProp",
+  nonprop: "sampleDesignNonprop",
 };
 
 export interface GroupResult {

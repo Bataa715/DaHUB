@@ -1,10 +1,5 @@
-import {
-  Injectable,
-  ForbiddenException,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
-import { AuditLogService } from "../audit/audit-log.service";
 import { SaveTailanDto } from "./dto/tailan.dto";
 import { TailanTemplateService } from "../tailan-template/tailan-template.service";
 import { TailanTemplate } from "../tailan-template/tailan-template.types";
@@ -25,8 +20,9 @@ import {
   PageOrientation,
   SectionType,
 } from "docx";
-import { randomUUID } from "crypto";
 import type { AuthenticatedUser } from "../common/types/authenticated-request";
+import { isTailanDeptHead } from "./utils/tailan-permissions.util";
+import { parseReport } from "./utils/tailan-report-parser.util";
 
 /** Returns e.g. "ДАА", "ЕАХ", "ЗАГЧБХ", "МТАХ" from the dept name */
 function deptAbbrev(deptName: string): string {
@@ -77,202 +73,20 @@ const ROMAN_NUMS = [
   "X",
 ];
 
+/**
+ * .docx generation for the Tailan quarterly-report tool — the previous
+ * ~750-line hardcoded buildDocx() was replaced by a generic template-driven
+ * renderDocx() (section titles, columns, orientation, numbering all come from
+ * the active TailanTemplate), plus buildDeptDocxFromData() for the
+ * department-head merged-data export. Report CRUD lives in
+ * TailanReportsService; image handling lives in TailanImagesService.
+ */
 @Injectable()
-export class TailanService {
+export class TailanDocxService {
   constructor(
     private readonly clickhouse: ClickHouseService,
-    private readonly auditLog: AuditLogService,
     private readonly tailanTemplates: TailanTemplateService,
   ) {}
-
-  private auditMutation(
-    userId: string,
-    action: string,
-    resourceId?: string,
-    metadata?: Record<string, unknown>,
-  ): void {
-    void this.auditLog.log({
-      userId,
-      action,
-      resource: "tailan",
-      resourceId: resourceId ?? "",
-      method: action,
-      status: "success",
-      metadata,
-    });
-  }
-
-  isDeptHead(user: AuthenticatedUser): boolean {
-    return (
-      user.isAdmin ||
-      user.isSuperAdmin ||
-      (user.allowedTools ?? []).includes("tailan_dept_head")
-    );
-  }
-
-  // ─── Save / upsert draft ───────────────────────────────────────────────────
-  async saveDraft(user: AuthenticatedUser, dto: SaveTailanDto) {
-    const existing = await this.clickhouse.query<{ id: string }>(
-      `SELECT id FROM tailan_reports FINAL
-       WHERE userId = {userId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
-       ORDER BY updatedAt DESC LIMIT 1`,
-      { userId: user.id, year: dto.year, quarter: dto.quarter },
-    );
-
-    const id = existing.length > 0 ? existing[0].id : randomUUID();
-    const now = new Date().toISOString().replace("T", " ").substring(0, 19);
-
-    await this.clickhouse.insert("tailan_reports", [
-      {
-        id,
-        userId: user.id,
-        userName: user.name,
-        departmentId: user.departmentId ?? "",
-        year: dto.year,
-        quarter: dto.quarter,
-        status: dto.status ?? "draft",
-        // Legacy per-field columns are left at defaults for new saves — all
-        // section data now lives in sectionsDataJson (template-driven).
-        plannedTasksJson: "[]",
-        dynamicSectionsJson: JSON.stringify(dto.dynamicSections ?? []),
-        otherWork: "",
-        teamActivitiesJson: "[]",
-        extraDataJson: JSON.stringify({
-          hiddenSections: dto.hiddenSections ?? [],
-        }),
-        sectionsDataJson: JSON.stringify(dto.sections ?? {}),
-        submittedAt: dto.status === "submitted" ? now : "1970-01-01 00:00:00",
-        updatedAt: now,
-        createdAt:
-          existing.length > 0 ? (existing[0]["createdAt"] ?? now) : now,
-      },
-    ]);
-
-    if (dto.status === "submitted") {
-      this.auditMutation(user.id, "tailan_submit", id, {
-        year: dto.year,
-        quarter: dto.quarter,
-      });
-    }
-
-    return { id, message: "Амжилттай хадгаллаа" };
-  }
-
-  // ─── Get my report ─────────────────────────────────────────────────────────
-  async getMyReport(userId: string, year: number, quarter: number) {
-    const rows = await this.clickhouse.query(
-      `SELECT * FROM tailan_reports FINAL
-       WHERE userId = {userId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
-       ORDER BY updatedAt DESC LIMIT 1`,
-      { userId, year, quarter },
-    );
-
-    if (rows.length === 0) return null;
-    return this.parseReport(rows[0]);
-  }
-
-  // ─── Department BSC (ТҮЗ) report save ─────────────────────────────────────
-  async saveDeptBsc(
-    user: AuthenticatedUser,
-    year: number,
-    quarter: number,
-    sections: Record<string, unknown>,
-  ) {
-    const deptId = user.departmentId || user.id;
-    const now = new Date().toISOString().replace("T", " ").substring(0, 19);
-    await this.clickhouse.insert("dept_bsc_reports", [
-      {
-        departmentId: deptId,
-        year,
-        quarter,
-        sectionsJson: JSON.stringify(sections),
-        savedByName: user.name,
-        updatedAt: now,
-      },
-    ]);
-    return { ok: true, message: "Амжилттай хадгаллаа" };
-  }
-
-  // ─── Department BSC (ТҮЗ) report load ─────────────────────────────────────
-  async getDeptBsc(user: AuthenticatedUser, year: number, quarter: number) {
-    const deptId = user.departmentId || user.id;
-    const rows = await this.clickhouse.query<{
-      sectionsJson: string;
-      savedByName: string;
-      updatedAt: string;
-    }>(
-      `SELECT sectionsJson, savedByName, updatedAt FROM dept_bsc_reports FINAL
-       WHERE departmentId = {deptId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
-       ORDER BY updatedAt DESC LIMIT 1`,
-      { deptId, year, quarter },
-    );
-    if (rows.length === 0) return null;
-    const row = rows[0];
-    return {
-      sections: JSON.parse(row.sectionsJson || "{}"),
-      savedByName: row.savedByName,
-      updatedAt: row.updatedAt,
-    };
-  }
-
-  // ─── Submit report ──────────────────────────────────────────────────────────
-  async submitReport(userId: string, year: number, quarter: number) {
-    const rows = await this.clickhouse.query(
-      `SELECT * FROM tailan_reports FINAL
-       WHERE userId = {userId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
-       ORDER BY updatedAt DESC LIMIT 1`,
-      { userId, year, quarter },
-    );
-    if (rows.length === 0) throw new NotFoundException("Тайлан олдсонгүй");
-
-    const report = rows[0];
-    const now = new Date().toISOString().replace("T", " ").substring(0, 19);
-
-    await this.clickhouse.insert("tailan_reports", [
-      { ...report, status: "submitted", submittedAt: now, updatedAt: now },
-    ]);
-
-    this.auditMutation(userId, "tailan_submit", String(report.id), {
-      year,
-      quarter,
-    });
-
-    return { message: "Тайлан илгээгдлээ" };
-  }
-
-  // ─── Get dept submitted reports ─────────────────────────────────────────────
-  async getDeptReports(user: AuthenticatedUser, year: number, quarter: number) {
-    if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
-
-    const rows = await this.clickhouse.query(
-      `SELECT * FROM tailan_reports FINAL
-       WHERE departmentId = {deptId:String}
-         AND year = {year:UInt16}
-         AND quarter = {quarter:UInt8}
-         AND status = 'submitted'
-       ORDER BY userName ASC`,
-      { deptId: user.departmentId ?? "", year, quarter },
-    );
-
-    return rows.map((r) => this.parseReport(r));
-  }
-
-  // ─── Get all dept reports for dept head's own ─────────────────────────────
-  async getAllDeptReports(user: AuthenticatedUser, year: number, quarter: number) {
-    if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
-
-    const rows = await this.clickhouse.query(
-      `SELECT id, userId, userName, status, updatedAt, submittedAt
-       FROM tailan_reports FINAL
-       WHERE departmentId = {deptId:String}
-         AND year = {year:UInt16}
-         AND quarter = {quarter:UInt8}
-       ORDER BY userName ASC`,
-      { deptId: user.departmentId ?? "", year, quarter },
-    );
-
-    return rows;
-  }
 
   // ─── Dept head: render a member's saved report as .docx ───────────────────
   async generateMemberWord(
@@ -281,7 +95,7 @@ export class TailanService {
     year: number,
     quarter: number,
   ): Promise<Buffer> {
-    if (!this.isDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
+    if (!isTailanDeptHead(user)) throw new ForbiddenException("Эрх хүрэхгүй");
 
     const rows = await this.clickhouse.query<any>(
       `SELECT * FROM tailan_reports FINAL
@@ -299,7 +113,7 @@ export class TailanService {
       },
     );
     if (rows.length === 0) throw new NotFoundException("Тайлан олдсонгүй");
-    const report = this.parseReport(rows[0]);
+    const report = parseReport(rows[0]);
 
     let position = "";
     let departmentName = "";
@@ -331,175 +145,6 @@ export class TailanService {
     });
   }
 
-  // ─── Parse stored report ────────────────────────────────────────────────────
-  private parseReport(row: any) {
-    const extra = this.safeJson(row.extraDataJson, {});
-    return {
-      ...row,
-      dynamicSections: this.safeJson(row.dynamicSectionsJson, []),
-      hiddenSections: extra.hiddenSections ?? [],
-      sectionsData: this.legacyRowToSectionsData(row, extra),
-    };
-  }
-
-  /** Reads the generic sectionsData blob for a report row, falling back to
-   * reconstructing it from the pre-refactor per-field JSON columns for rows
-   * saved before the Tailan dynamic template migration (no DB backfill needed). */
-  private legacyRowToSectionsData(
-    row: any,
-    extra: Record<string, any>,
-  ): Record<string, unknown> {
-    if (row.sectionsDataJson) {
-      const parsed = this.safeJson(row.sectionsDataJson, null);
-      if (parsed && typeof parsed === "object") return parsed;
-    }
-    const plannedTasks = this.safeJson(row.plannedTasksJson, []);
-    const toPeriod = (t: any) =>
-      t?.startDate || t?.endDate
-        ? `${t?.startDate ?? ""} – ${t?.endDate ?? ""}`
-        : "";
-    return {
-      s1: (plannedTasks ?? []).map((t: any) => ({
-        _id: t._id,
-        order: t.order,
-        title: t.title,
-        completion: t.completion,
-        period: toPeriod(t),
-        description: t.description,
-        images: t.images ?? [],
-      })),
-      s12: extra.section1Dashboards ?? [],
-      s2: (extra.section2Tasks ?? []).map((t: any) => ({
-        _id: t._id,
-        order: t.order,
-        title: t.title,
-        completion: t.result,
-        period: t.period,
-        description: t.completion,
-        images: t.images ?? [],
-      })),
-      s3: extra.section3AutoTasks ?? [],
-      s32: extra.section3Dashboards ?? [],
-      s4: extra.section4Trainings ?? [],
-      s41: extra.section4KnowledgeText ?? "",
-      s5: extra.section5Tasks ?? [],
-      s6: extra.section6Activities ?? [],
-      s7: extra.section7Text ?? "",
-    };
-  }
-
-  private safeJson(str: string, fallback: any) {
-    try {
-      return JSON.parse(str);
-    } catch {
-      return fallback;
-    }
-  }
-
-  // ─── Images table bootstrap (call once on module init) ─────────────────────
-  async ensureImagesTable() {
-    await this.clickhouse.exec(`
-      CREATE TABLE IF NOT EXISTS tailan_images (
-        id String,
-        userId String,
-        departmentId String DEFAULT '',
-        year UInt16,
-        quarter UInt8,
-        filename String,
-        mimeType String,
-        imageData String DEFAULT '',
-        uploadedAt DateTime DEFAULT now()
-      ) ENGINE = MergeTree() ORDER BY (userId, year, quarter, id)
-    `);
-    // migrate: add imageData column if table was created with old dataBase64 schema
-    // [SAFETY] DROP COLUMN dataBase64 cleanup хассан — энэ функц image
-    // upload/унших болгонд дуудагддаг тул local/prod ижил DB-д эрсдэлтэй.
-    try {
-      await this.clickhouse.exec(
-        `ALTER TABLE tailan_images ADD COLUMN IF NOT EXISTS imageData String DEFAULT ''`,
-      );
-    } catch {}
-  }
-
-  // ─── Save image ────────────────────────────────────────────────────────────
-  async saveImage(
-    userId: string,
-    departmentId: string,
-    year: number,
-    quarter: number,
-    filename: string,
-    mimeType: string,
-    buffer: Buffer,
-  ) {
-    await this.ensureImagesTable();
-    const id = randomUUID();
-    const now = new Date().toISOString().replace("T", " ").substring(0, 19);
-    const imageData = buffer.toString("hex");
-    await this.clickhouse.insert("tailan_images", [
-      {
-        id,
-        userId,
-        departmentId,
-        year,
-        quarter,
-        filename,
-        mimeType,
-        imageData,
-        uploadedAt: now,
-      },
-    ]);
-    this.auditMutation(userId, "tailan_image_upload", id, { year, quarter });
-    return { id, filename, mimeType };
-  }
-
-  // ─── Get image list (metadata only) ───────────────────────────────────────
-  async getImages(userId: string, year: number, quarter: number) {
-    await this.ensureImagesTable();
-    return this.clickhouse.query<any>(
-      `SELECT id, filename, mimeType, uploadedAt FROM tailan_images
-       WHERE userId = {userId:String} AND year = {year:UInt16} AND quarter = {quarter:UInt8}
-       ORDER BY uploadedAt ASC`,
-      { userId, year, quarter },
-    );
-  }
-
-  // ─── Get image raw data ────────────────────────────────────────────────────
-  async getImageData(id: string, user: AuthenticatedUser) {
-    await this.ensureImagesTable();
-    const rows = await this.clickhouse.query<any>(
-      `SELECT userId, departmentId, mimeType, imageData FROM tailan_images WHERE id = {id:String} LIMIT 1`,
-      { id },
-    );
-    if (!rows.length) throw new NotFoundException("Зураг олдсонгүй");
-
-    const img = rows[0];
-    const isOwner = String(img.userId) === user.id;
-    const isDeptHeadAccess =
-      this.isDeptHead(user) &&
-      String(img.departmentId ?? "") === String(user.departmentId ?? "");
-    const isAdmin = user.isAdmin || user.isSuperAdmin;
-
-    if (!isOwner && !isDeptHeadAccess && !isAdmin) {
-      throw new ForbiddenException("Эрх хүрэхгүй");
-    }
-
-    return {
-      mimeType: img.mimeType,
-      buffer: Buffer.from(img.imageData, "hex"),
-    };
-  }
-
-  // ─── Delete image ──────────────────────────────────────────────────────────
-  async deleteImage(id: string, userId: string) {
-    await this.ensureImagesTable();
-    await this.clickhouse.exec(
-      `ALTER TABLE tailan_images DELETE WHERE id = {id:String} AND userId = {userId:String}`,
-      { id, userId },
-    );
-    this.auditMutation(userId, "tailan_image_delete", id);
-    return { message: "Устгагдлаа" };
-  }
-
   // ─── Generate .docx for personal report (template-driven) ─────────────────
   async generateWord(
     userId: string,
@@ -515,7 +160,7 @@ export class TailanService {
     );
 
     if (rows.length === 0) throw new NotFoundException("Тайлан олдсонгүй");
-    const report = this.parseReport(rows[0]);
+    const report = parseReport(rows[0]);
 
     let position = "";
     let departmentName = "";
@@ -550,7 +195,10 @@ export class TailanService {
   }
 
   // ─── Live "real docx" preview from unsaved editor state ───────────────────
-  async previewWord(user: AuthenticatedUser, dto: SaveTailanDto): Promise<Buffer> {
+  async previewWord(
+    user: AuthenticatedUser,
+    dto: SaveTailanDto,
+  ): Promise<Buffer> {
     let position = "";
     let departmentName = "";
     try {
@@ -582,7 +230,9 @@ export class TailanService {
   }
 
   // ─── Generate Word from editor-submitted merged data (dept BSC) ───────────
-  async generateDeptWordFromData(body: any): Promise<Buffer> {
+  async generateDeptWordFromData(
+    body: Parameters<TailanDocxService["buildDeptDocxFromData"]>[0],
+  ): Promise<Buffer> {
     return this.buildDeptDocxFromData(body);
   }
 
@@ -753,7 +403,7 @@ export class TailanService {
 
   private formatPeriod(period?: string): string {
     if (!period) return "";
-    const [s, e] = period.split(" \u2013 ");
+    const [s, e] = period.split(" – ");
     const fmt = (d?: string) => (d ? d.replace(/-/g, ".") : "");
     if (!s && !e) return "";
     if (!e) return fmt(s);

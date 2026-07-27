@@ -11,31 +11,6 @@ import { Transform } from "class-transformer";
 /** userId — латин + кирилл (Монгол нэр), тоо, . _ - */
 const USER_ID_PATTERN = /^[\p{L}\p{N}._\-]+$/u;
 
-export class SignupDto {
-  @IsString()
-  @MinLength(8, { message: "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой" })
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`])[A-Za-z\d@$!%*?&#^()\-_=+\[\]{}|;:',.<>\/~`]+$/,
-    {
-      message:
-        "Нууц үг нь том үсэг, жижиг үсэг, тоо, тусгай тэмдэгт агуулсан байх ёстой",
-    },
-  )
-  password: string;
-
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  department: string;
-
-  @IsString()
-  @IsNotEmpty()
-  position: string;
-}
-
 export class RefreshTokenDto {
   @IsOptional()
   @IsString()

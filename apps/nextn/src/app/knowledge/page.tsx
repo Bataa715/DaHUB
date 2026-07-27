@@ -234,7 +234,8 @@ function PostCard({
 }) {
   const { t } = useLanguage();
   const cat = getCat(item.category);
-  const authorName = item.authorName || t("newsDefaultAuthor") || "Ажилтан";
+  const authorName =
+    item.authorName || t("newsDefaultAuthor") || t("knowledgePageEmployeeFallback");
   const avatarGrad = getAvatarColor(authorName);
   const initials = getInitials(authorName);
   const excerpt = item.content.replace(/<[^>]*>/g, "").slice(0, 180);
@@ -877,7 +878,7 @@ export default function ShineMedlegPage() {
                     </div>
                     <div>
                       <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                        Зураг
+                        {t("knowledgePageImageLabel")}
                       </label>
                       {imagePreview ? (
                         <div className="relative w-full h-40 landscape:h-32 md:h-44 rounded-xl overflow-hidden">
@@ -901,7 +902,7 @@ export default function ShineMedlegPage() {
                         <label className="flex flex-col items-center justify-center gap-2 w-full h-28 landscape:h-24 md:h-32 rounded-xl cursor-pointer border-2 border-dashed border-border hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/5 transition-all">
                           <Upload className="w-5 h-5 text-muted-foreground" />
                           <span className="text-muted-foreground text-xs">
-                            Зураг оруулах (2MB хүртэл)
+                            {t("knowledgePageImageUploadHint")}
                           </span>
                           <input
                             type="file"
@@ -915,7 +916,7 @@ export default function ShineMedlegPage() {
                   </div>
                   <div className="flex flex-col min-h-[min(50vh,420px)] md:min-h-0 md:h-full landscape:min-h-0 landscape:h-full">
                     <label className="text-foreground/70 text-xs font-semibold block mb-1.5 flex-shrink-0">
-                      Агуулга
+                      {t("raCsvExportContentLabel")}
                     </label>
                     <textarea
                       value={createForm.content}
@@ -926,7 +927,7 @@ export default function ShineMedlegPage() {
                         }))
                       }
                       className="flex-1 min-h-[min(50vh,420px)] md:min-h-0 w-full rounded-xl px-3 py-3 text-sm sm:text-base leading-relaxed text-foreground bg-muted border border-input placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                      placeholder="Мэдлэгийн агуулга..."
+                      placeholder={t("knowledgePageContentPlaceholder")}
                     />
                   </div>
                 </div>
@@ -950,7 +951,7 @@ export default function ShineMedlegPage() {
                   {createLoading && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   )}
-                  Хуваалцах
+                  {t("knowledgePageShareBtn")}
                 </button>
               </div>
             </motion.div>
@@ -1016,14 +1017,16 @@ export default function ShineMedlegPage() {
                     <div className="absolute top-6 left-6 flex items-center gap-2 z-10">
                       <BookOpen className="w-4 h-4 text-violet-400" />
                       <span className="text-violet-600/60 dark:text-violet-300/50 text-xs font-mono uppercase tracking-[0.2em]">
-                        Мэдлэг
+                        {t("knowledgeTitle")}
                       </span>
                     </div>
 
                     {/* Author */}
                     <div className="absolute top-16 left-6 flex items-center gap-2.5 z-10">
                       {(() => {
-                        const name = selectedNews.authorName || "Ажилтан";
+                        const name =
+                          selectedNews.authorName ||
+                          t("knowledgePageEmployeeFallback");
                         const grad = getAvatarColor(name);
                         const hasImg = hasKnowledgeImage(selectedNews.imageUrl);
                         return (
@@ -1075,7 +1078,8 @@ export default function ShineMedlegPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {calcReadTime(selectedNews.content)} мин
+                              {calcReadTime(selectedNews.content)}{" "}
+                              {t("minRead")}
                             </span>
                           </div>
                         </div>
@@ -1190,8 +1194,8 @@ export default function ShineMedlegPage() {
                           <MessageCircle className="w-4 h-4 text-muted-foreground" />
                           <span className="text-foreground/70 text-sm font-semibold">
                             {comments.length > 0
-                              ? `${comments.length} сэтгэгдэл`
-                              : "Сэтгэгдэл"}
+                              ? `${comments.length} ${t("knowledgePageCommentsLabel")}`
+                              : t("knowledgePageCommentsLabel")}
                           </span>
                         </div>
 

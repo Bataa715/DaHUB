@@ -1,4 +1,7 @@
 import { z } from "zod";
+import type { TranslationKey } from "@/contexts/LanguageContext";
+
+type Translate = (key: TranslationKey) => string;
 
 const passwordSchema = z
   .string()
@@ -24,6 +27,42 @@ export const loginFormSchema = z.object({
 export const loginPasswordSchema = z.object({
   password: z.string().min(1, "Нууц үгээ оруулна уу"),
 });
+
+/**
+ * Locale-aware zod schema factories — these mirror the static schemas above
+ * (used elsewhere purely for `z.infer<typeof ...>` typing) but resolve their
+ * validation messages through `t()` so errors respect the language toggle.
+ * Only `page.tsx` actually instantiates forms, so only it needs to call these.
+ */
+function createPasswordSchema(t: Translate) {
+  return z
+    .string()
+    .min(8, t("zodPasswordMinLength"))
+    .regex(/[a-z]/, t("zodPasswordLower"))
+    .regex(/[A-Z]/, t("zodPasswordUpper"))
+    .regex(/[0-9]/, t("zodPasswordNumber"))
+    .regex(/[@$!%*?&#^()\-_=+[\]{}|;:',.<>/~`]/, t("zodPasswordSpecial"));
+}
+
+export function createRegisterFormSchema(t: Translate) {
+  return z.object({
+    department: z.string().min(1, t("zodSelectDept")),
+    position: z.string().min(1, t("zodSelectPosition")),
+    name: z.string().min(1, t("zodEnterName")),
+  });
+}
+
+export function createLoginFormSchema(t: Translate) {
+  return z.object({
+    userId: z.string().min(1, t("zodEnterId")),
+  });
+}
+
+export function createLoginPasswordSchema(t: Translate) {
+  return z.object({
+    password: z.string().min(1, t("zodEnterPassword")),
+  });
+}
 
 export type FlowType = "select" | "register" | "login";
 export type RegisterStep = "info" | "pending";
@@ -52,6 +91,19 @@ export const claimSetPasswordFormSchema = z
     message: "Нууц үг таарахгүй байна",
     path: ["confirmPassword"],
   });
+
+export function createClaimSetPasswordFormSchema(t: Translate) {
+  return z
+    .object({
+      claimCode: z.string().min(1, t("zodEnterClaimCode")),
+      password: createPasswordSchema(t),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("zodPasswordsNoMatch"),
+      path: ["confirmPassword"],
+    });
+}
 
 export interface PasswordChecks {
   minLength: boolean;

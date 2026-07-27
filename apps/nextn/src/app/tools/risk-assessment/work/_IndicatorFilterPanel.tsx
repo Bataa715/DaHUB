@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { X, SlidersHorizontal } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   evaluateBranchDynamic,
   pickJudgmentIndicator,
@@ -45,6 +46,7 @@ export default function IndicatorFilterPanel({
   onSelectInd,
   onClose,
 }: Props) {
+  const { t } = useLanguage();
   const judgmentInd = useMemo(() => pickJudgmentIndicator(catalog), [catalog]);
 
   // ReportView catalog-тай ижил — judgment нэг л удаа
@@ -154,7 +156,7 @@ export default function IndicatorFilterPanel({
             <SlidersHorizontal className="w-4 h-4 text-rose-500" />
           </div>
           <span className="text-base font-bold tracking-tight">
-            Indicator харагдац
+            {t("raFilterPanelTitle")}
           </span>
         </div>
         <button
@@ -173,7 +175,9 @@ export default function IndicatorFilterPanel({
           className="h-8 px-3 rounded-lg border border-border bg-background text-xs font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/30 min-w-[300px] cursor-pointer disabled:opacity-50"
         >
           <option value="">
-            {catalogLoaded ? "— Indicator сонгох —" : "Тохиргоо ачаалж байна…"}
+            {catalogLoaded
+              ? t("raFilterPanelSelectPlaceholder")
+              : t("raFilterPanelConfigLoading")}
           </option>
           {[...byGroup.entries()].map(([grp, inds]) => (
             <optgroup key={grp} label={`── Score ${grp} ──`}>
@@ -196,21 +200,21 @@ export default function IndicatorFilterPanel({
               }`}
             >
               {selectedInd.is_manual || isJudgmentSelected
-                ? "Гар оруулга"
-                : "Автомат"}
+                ? t("raFilterPanelManualBadge")
+                : t("raFilterPanelAutoBadge")}
             </span>
             <span className="text-[10px] text-muted-foreground">
               Score {selectedInd.group}
             </span>
             <span className="text-[10px] text-muted-foreground">·</span>
             <span className="text-[10px] text-muted-foreground">
-              {filledCount}/{branchScores.length} салбар үнэлэгдсэн
+              {filledCount}/{branchScores.length} {t("raFilterPanelEvaluatedSuffix")}
             </span>
             {avgScore != null && (
               <>
                 <span className="text-[10px] text-muted-foreground">·</span>
                 <span className="text-[10px] font-semibold text-foreground/70">
-                  Дундаж: {avgScore.toFixed(2)}
+                  {t("tailan_avgLabel")}: {avgScore.toFixed(2)}
                 </span>
               </>
             )}
@@ -220,7 +224,7 @@ export default function IndicatorFilterPanel({
 
       {!catalogLoaded ? (
         <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-          Indicator тохиргоо ачаалж байна…
+          {t("raFilterPanelFullLoading")}
         </div>
       ) : selectedInd ? (
         <div className="flex-1 overflow-auto px-6 py-2">
@@ -231,18 +235,18 @@ export default function IndicatorFilterPanel({
                   #
                 </th>
                 <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Салбарын нэр
+                  {t("raSharedBranchNameCol")}
                 </th>
                 <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-24">
                   SOLID
                 </th>
                 {!isJudgmentSelected && (
                   <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-32">
-                    Утга
+                    {t("raFilterPanelValueCol")}
                   </th>
                 )}
                 <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-24">
-                  Оноо
+                  {t("admRiskIndColScore")}
                 </th>
               </tr>
             </thead>
@@ -305,7 +309,7 @@ export default function IndicatorFilterPanel({
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-10 text-center">
           <p className="text-sm text-muted-foreground">
-            Дээрхээс indicator сонгоно уу
+            {t("raFilterPanelSelectHint")}
           </p>
         </div>
       )}

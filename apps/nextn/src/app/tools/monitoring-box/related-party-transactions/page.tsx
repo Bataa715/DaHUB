@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { downloadRelatedPartyWorkbook } from "./export";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -40,6 +41,7 @@ function fmtAmount(n: number): string {
 
 export default function RelatedPartyTransactionsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const [cifInput, setCifInput] = useState("");
   const [cifIds, setCifIds] = useState<string[]>([]);
@@ -53,7 +55,7 @@ export default function RelatedPartyTransactionsPage() {
   function addCifTokens(raw: string) {
     const tokens = raw
       .split(/[\s,;]+/)
-      .map((t) => t.trim())
+      .map((tok) => tok.trim())
       .filter(Boolean);
     if (tokens.length === 0) return;
     setCifIds((prev) => Array.from(new Set([...prev, ...tokens])));
@@ -72,16 +74,16 @@ export default function RelatedPartyTransactionsPage() {
 
     if (finalIds.length < 2) {
       toast({
-        title: "CIF дугаар дутуу",
-        description: "Хамгийн багадаа 2 CIF/FORACID оруулна уу.",
+        title: t("monRptCifMissingTitle"),
+        description: t("monRptCifMissingDesc"),
         variant: "destructive",
       });
       return;
     }
     if (!startDate || !endDate) {
       toast({
-        title: "Огноо дутуу",
-        description: "Эхлэх ба дуусах огноог сонгоно уу.",
+        title: t("monRptDateMissingTitle"),
+        description: t("monRptDateMissingDesc"),
         variant: "destructive",
       });
       return;
@@ -98,15 +100,15 @@ export default function RelatedPartyTransactionsPage() {
       setResult(res);
       if (res.transactions.length === 0) {
         toast({
-          title: "Гүйлгээ олдсонгүй",
-          description: "Сонгосон CIF-үүдийн хооронд шууд гүйлгээ олдсонгүй.",
+          title: t("monRptNoTxTitle"),
+          description: t("monRptNoTxDesc"),
         });
       }
     } catch (e) {
       const msg = getApiErrorMessage(e);
       setError(msg);
       toast({
-        title: "Алдаа гарлаа",
+        title: t("errorBoundaryTitle"),
         description: msg,
         variant: "destructive",
       });
@@ -124,7 +126,7 @@ export default function RelatedPartyTransactionsPage() {
       await downloadRelatedPartyWorkbook(result, startDate, endDate);
     } catch (e) {
       toast({
-        title: "Татаж авахад алдаа гарлаа",
+        title: t("monRptDownloadErrorTitle"),
         description: getApiErrorMessage(e),
         variant: "destructive",
       });
@@ -151,7 +153,7 @@ export default function RelatedPartyTransactionsPage() {
             <Users2 className="w-3.5 h-3.5 text-white" />
           </div>
         }
-        title="Харилцсан гүйлгээ"
+        title={t("monBoxRelatedPartyTitle")}
       />
 
       <div className="w-full px-4 md:px-6 py-6 space-y-6">
@@ -160,7 +162,7 @@ export default function RelatedPartyTransactionsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto] gap-4 items-start">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                CIF / FORACID жагсаалт (хамгийн багадаа 2)
+                {t("monRptCifListLabel")}
               </label>
               <div className="flex flex-wrap gap-1.5 mb-2 min-h-[2rem]">
                 <AnimatePresence>
@@ -193,14 +195,14 @@ export default function RelatedPartyTransactionsPage() {
                   }
                 }}
                 onBlur={() => cifInput.trim() && addCifTokens(cifInput)}
-                placeholder="CIF эсвэл дансны дугаар оруулна уу"
+                placeholder={t("monRptCifPlaceholder")}
                 className="text-sm"
               />
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Эхлэх огноо
+                {t("tailan_startDateLabel")}
               </label>
               <Input
                 type="date"
@@ -211,7 +213,7 @@ export default function RelatedPartyTransactionsPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Дуусах огноо
+                {t("tailan_endDateLabel")}
               </label>
               <Input
                 type="date"
@@ -232,7 +234,7 @@ export default function RelatedPartyTransactionsPage() {
                 ) : (
                   <Search className="w-4 h-4" />
                 )}
-                Хайх
+                {t("monRptSearchBtn")}
               </Button>
             </div>
           </div>
@@ -251,13 +253,13 @@ export default function RelatedPartyTransactionsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard
                 icon={Users2}
-                label="Тохирсон дансууд"
+                label={t("monRptMatchedAccounts")}
                 value={result.accounts.length}
                 gradient="from-cyan-500 to-blue-500"
               />
               <StatCard
                 icon={ArrowRightLeft}
-                label="Илэрсэн гүйлгээ"
+                label={t("monRptFoundTx")}
                 value={result.transactions.length}
                 gradient={
                   result.transactions.length > 0
@@ -271,7 +273,9 @@ export default function RelatedPartyTransactionsPage() {
               <div className="p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Wallet className="w-4 h-4 text-orange-500" />
-                  <h3 className="text-sm font-semibold">Нийт дүн (валютаар)</h3>
+                  <h3 className="text-sm font-semibold">
+                    {t("monRptTotalByCurrency")}
+                  </h3>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {totalsByCurrency.map(([ccy, amt]) => (
@@ -302,23 +306,27 @@ export default function RelatedPartyTransactionsPage() {
                   ) : (
                     <Download className="w-4 h-4" />
                   )}
-                  Excel татах
+                  {t("reportsOutputExcel")}
                 </Button>
               </div>
             )}
 
             {/* ── Summary table ───────────────────────────────────────── */}
             {result.summary.length > 0 && (
-              <SectionCard title="Хосолсон дансны нэгтгэл">
+              <SectionCard title={t("monRptPairSummaryTitle")}>
                 <TableScroll>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-muted-foreground border-b border-border/50">
                         <Th>FROM_CIF</Th>
                         <Th>TO_CIF</Th>
-                        <Th>Валют</Th>
-                        <Th className="text-right">Нийт дүн</Th>
-                        <Th className="text-right">Гүйлгээний тоо</Th>
+                        <Th>{t("monRptColCurrency")}</Th>
+                        <Th className="text-right">
+                          {t("monRptColTotalAmount")}
+                        </Th>
+                        <Th className="text-right">
+                          {t("monRptColTxCount")}
+                        </Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -343,15 +351,17 @@ export default function RelatedPartyTransactionsPage() {
             )}
 
             {/* ── Matched accounts ────────────────────────────────────── */}
-            <SectionCard title={`Тохирсон дансууд (${result.accounts.length})`}>
+            <SectionCard
+              title={`${t("monRptMatchedAccounts")} (${result.accounts.length})`}
+            >
               <TableScroll maxHeight="240px">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-muted-foreground border-b border-border/50">
                       <Th>CIF</Th>
-                      <Th>Данс (FORACID)</Th>
+                      <Th>{t("monRptColAccount")}</Th>
                       <Th>ACID</Th>
-                      <Th>Нэр</Th>
+                      <Th>{t("monRptColName")}</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -376,21 +386,21 @@ export default function RelatedPartyTransactionsPage() {
             {/* ── Full transactions ───────────────────────────────────── */}
             {result.transactions.length > 0 && (
               <SectionCard
-                title={`Дэлгэрэнгүй гүйлгээ (${result.transactions.length})`}
+                title={`${t("monRptDetailTxTitle")} (${result.transactions.length})`}
               >
                 <TableScroll maxHeight="480px">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-left text-muted-foreground border-b border-border/50 sticky top-0 bg-card">
-                        <Th>Огноо</Th>
-                        <Th>Гүйлгээний дүн</Th>
-                        <Th>Валют</Th>
-                        <Th>FROM (CIF / данс / нэр)</Th>
-                        <Th>TO (CIF / данс / нэр)</Th>
-                        <Th>Суваг</Th>
-                        <Th>Банк</Th>
-                        <Th>Эх SOL</Th>
-                        <Th>Гүйлгээний утга</Th>
+                        <Th>{t("tailan_dateLabel")}</Th>
+                        <Th>{t("monRptColTxAmount")}</Th>
+                        <Th>{t("monRptColCurrency")}</Th>
+                        <Th>{t("monRptColFrom")}</Th>
+                        <Th>{t("monRptColTo")}</Th>
+                        <Th>{t("monRptColChannel")}</Th>
+                        <Th>{t("monRptColBank")}</Th>
+                        <Th>{t("monRptColSourceSol")}</Th>
+                        <Th>{t("monRptColParticular")}</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -436,7 +446,7 @@ export default function RelatedPartyTransactionsPage() {
 
         {!result && !loading && !error && (
           <div className="p-10 text-center text-sm text-muted-foreground">
-            CIF/FORACID жагсаалт, огнооны хугацаа оруулж "Хайх" товч дарна уу.
+            {t("monRptEmptyState")}
           </div>
         )}
       </div>

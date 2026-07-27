@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { ArrowUpRight, Activity, Users2 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 
 interface MonitorCard {
   id: string;
-  title: string;
-  description: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
   gradient: string;
@@ -17,9 +18,8 @@ interface MonitorCard {
 const MONITOR_CARDS: MonitorCard[] = [
   {
     id: "related-party-transactions",
-    title: "Харилцсан гүйлгээ",
-    description:
-      "Хэдэн ч тооны CIF/FORACID-ыг сонгож, тэдгээрийн хооронд шууд хийгдсэн дотоод гүйлгээг өгөгдсөн хугацааны хүрээнд илрүүлж, нэгтгэн харуулна.",
+    titleKey: "monBoxRelatedPartyTitle",
+    descriptionKey: "monBoxRelatedPartyDesc",
     icon: Users2,
     href: "/tools/monitoring-box/related-party-transactions",
     gradient: "from-orange-500 to-red-500",
@@ -28,6 +28,7 @@ const MONITOR_CARDS: MonitorCard[] = [
 ];
 
 export default function MonitoringBoxPage() {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-background">
       <ToolPageHeader
@@ -64,16 +65,16 @@ export default function MonitoringBoxPage() {
                   )}
                   {disabled && (
                     <span className="text-[10px] font-medium bg-muted text-muted-foreground rounded-full px-2 py-0.5">
-                      Тун удахгүй
+                      {t("monBoxComingSoon")}
                     </span>
                   )}
                 </div>
                 <div>
                   <h3 className="text-[15px] font-semibold text-foreground mb-1.5">
-                    {card.title}
+                    {t(card.titleKey)}
                   </h3>
                   <p className="text-[13px] text-muted-foreground leading-relaxed">
-                    {card.description}
+                    {t(card.descriptionKey)}
                   </p>
                 </div>
               </div>

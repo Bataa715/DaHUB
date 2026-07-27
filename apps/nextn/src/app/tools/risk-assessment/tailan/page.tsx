@@ -16,6 +16,8 @@ import {
   Trash2,
   BookmarkCheck,
   Search,
+  ArrowLeftRight,
+  FileSpreadsheet,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import {
@@ -35,7 +37,12 @@ import {
   resolveNearestJudgements,
 } from "../branch-resolve";
 import ReportView from "../report-view";
-import MonthFilter, { formatMonthMn, prevMonthKey } from "./_MonthFilter";
+import MonthFilter, {
+  formatMonthMn,
+  prevMonthKey,
+  shiftMonthKey,
+} from "./_MonthFilter";
+import CsvExportModal from "./_CsvExportModal";
 import { cn } from "@/lib/utils";
 
 type ScoredRow = RiskCurrentRow & {
@@ -177,7 +184,7 @@ export default function RiskReportsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const isAdmin = user?.isAdmin === true;
-  const { catalog } = useIndicatorConfig();
+  const { catalog, weights } = useIndicatorConfig();
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
   const [riskbranchDates, setRiskbranchDates] = useState<string[]>([]);
@@ -191,6 +198,8 @@ export default function RiskReportsPage() {
   const [draftCompareMonth, setDraftCompareMonth] = useState("");
   const [compareMonthOptOut, setCompareMonthOptOut] = useState(false);
   const [filterMode, setFilterMode] = useState<"month" | "quarter">("month");
+
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
 
   const [selectedReportId, setSelectedReportId] = useState<string>("");
   const selectedReportIdRef = useRef(selectedReportId);
@@ -261,7 +270,7 @@ export default function RiskReportsPage() {
         if (history?.length) setSelectedReportId(history[0].id);
       } catch (e: unknown) {
         if (!cancelled)
-          setErrorMsg(getApiErrorMessage(e) || "Өгөгдөл уншихад алдаа гарлаа");
+          setErrorMsg(getApiErrorMessage(e) || t("raTailanPageLoadError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -271,23 +280,39 @@ export default function RiskReportsPage() {
     };
   }, []);
 
-  /** Draft үндсэн сар солигдоход — өмнөх сарыг автоматаар (гар combо түгжээгүй бол) */
+  /** Draft үндсэн сар солигдоход — өмнөх сарыг default; гар combо/цэвэрлэсэн бол үл тооно */
   useEffect(() => {
     if (!draftFilterMonth) {
       setDraftCompareMonth("");
       return;
     }
-    if (compareMonthOptOut) return;
+    if (compareMonthOptOut) {
+      // Хэрэглэгч өөрөө сонгосон эсвэл цэвэрлэсэн — автомат бөглөхгүй
+      const minInc = shiftMonthKey(draftFilterMonth, -12);
+      setDraftCompareMonth((cur) => {
+        if (!cur) return cur; // хоосон = харьцуулалтгүй хайлт
+        if (cur >= draftFilterMonth || cur < minInc) {
+          return prevMonthKey(draftFilterMonth);
+        }
+        return cur;
+      });
+      return;
+    }
     setDraftCompareMonth(prevMonthKey(draftFilterMonth));
   }, [draftFilterMonth, compareMonthOptOut]);
 
   const monthFilterDirty =
     draftFilterMonth !== filterMonth || draftCompareMonth !== compareMonth;
 
+  /** Үндсэн сар байхад л хангалттай; харьцуулах сар заавал биш */
+  const canApplyMonthFilter =
+    Boolean(draftFilterMonth) && !loadingReport && monthFilterDirty;
+
   const applyMonthFilter = useCallback(() => {
     setFilterMonth(draftFilterMonth);
     setCompareMonth(draftCompareMonth);
-    setCompareMonthOptOut(Boolean(draftCompareMonth));
+    // Хоосон харьцуулалт ч гэсэн түгжинэ — автомат өмнөх сар дахин бөглөхгүй
+    setCompareMonthOptOut(true);
     if (draftCompareMonth) setCompareOptOut(true);
     setErrorMsg(null);
   }, [draftFilterMonth, draftCompareMonth]);
@@ -301,6 +326,11 @@ export default function RiskReportsPage() {
     setErrorMsg(null);
     setSelectedReportId("");
     setComparisonReportId("");
+    // Хуучин харьцуулалт үлдэж summary «гацах»-аас сэргийлнэ
+    setComparisonRows([]);
+    setComparisonManualMap({});
+    setComparisonJudgements({});
+    setComparisonJudgementComments({});
 
     (async () => {
       try {
@@ -314,11 +344,20 @@ export default function RiskReportsPage() {
           setRiskbranchDates(dates);
         }
 
-        const primary = await loadRiskbranchMonth(
+        const primaryPromise = loadRiskbranchMonth(
           filterMonth,
           catalog,
           dates,
         );
+        const comparePromise = compareMonth
+          ? loadRiskbranchMonth(compareMonth, catalog, dates)
+          : Promise.resolve(null);
+
+        setLoadingComparison(Boolean(compareMonth));
+        const [primary, prev] = await Promise.all([
+          primaryPromise,
+          comparePromise,
+        ]);
         if (cancelled || gen !== monthLoadGen.current) return;
 
         if (!primary || primary.rows.length === 0) {
@@ -328,7 +367,9 @@ export default function RiskReportsPage() {
           setReportJudgementComments({});
           setMonthAnchorDate("");
           setComparisonRows([]);
+          setComparisonManualMap({});
           setComparisonJudgements({});
+          setComparisonJudgementComments({});
           setLoadingComparison(false);
           return;
         }
@@ -339,47 +380,26 @@ export default function RiskReportsPage() {
         setReportJudgementComments(primary.judgementComments);
         setMonthAnchorDate(primary.actualDate);
 
-        if (compareMonth) {
-          setLoadingComparison(true);
-          try {
-            const prev = await loadRiskbranchMonth(
-              compareMonth,
-              catalog,
-              dates,
-            );
-            if (cancelled || gen !== monthLoadGen.current) return;
-            if (!prev || prev.rows.length === 0) {
-              setComparisonRows([]);
-              setComparisonManualMap({});
-              setComparisonJudgements({});
-            } else {
-              setComparisonRows(prev.rows);
-              setComparisonManualMap(prev.manualMap);
-              setComparisonJudgements(prev.judgements);
-              setComparisonJudgementComments(prev.judgementComments);
-            }
-          } catch {
-            if (!cancelled && gen === monthLoadGen.current) {
-              setComparisonRows([]);
-              setComparisonJudgements({});
-            }
-          } finally {
-            if (!cancelled && gen === monthLoadGen.current) {
-              setLoadingComparison(false);
-            }
-          }
+        if (prev && prev.rows.length > 0) {
+          setComparisonRows(prev.rows);
+          setComparisonManualMap(prev.manualMap);
+          setComparisonJudgements(prev.judgements);
+          setComparisonJudgementComments(prev.judgementComments);
         } else {
           setComparisonRows([]);
           setComparisonManualMap({});
           setComparisonJudgements({});
-          setLoadingComparison(false);
+          setComparisonJudgementComments({});
         }
+        setLoadingComparison(false);
       } catch (e: unknown) {
         if (cancelled || gen !== monthLoadGen.current) return;
         setErrorMsg(
-          getApiErrorMessage(e) || "Сарын өгөгдөл уншихад алдаа гарлаа",
+          getApiErrorMessage(e) || t("raTailanPageMonthLoadError"),
         );
         setReportRows([]);
+        setComparisonRows([]);
+        setLoadingComparison(false);
       } finally {
         if (!cancelled && gen === monthLoadGen.current) {
           setLoadingReport(false);
@@ -443,7 +463,7 @@ export default function RiskReportsPage() {
       })
       .catch((e: unknown) => {
         if (cancelled || requestId !== selectedReportIdRef.current) return;
-        setErrorMsg(getApiErrorMessage(e) || "Тайлан уншихад алдаа гарлаа");
+        setErrorMsg(getApiErrorMessage(e) || t("raTailanPageReportLoadError"));
       })
       .finally(() => {
         if (!cancelled && requestId === selectedReportIdRef.current) {
@@ -551,7 +571,7 @@ export default function RiskReportsPage() {
         setReportRows([]);
       }
     } catch (e: unknown) {
-      setErrorMsg(getApiErrorMessage(e) || "Устгахад алдаа гарлаа");
+      setErrorMsg(getApiErrorMessage(e) || t("dbManageDeleteError"));
     }
     setDeleteTargetId(null);
   }, [deleteTargetId, selectedReportId]);
@@ -629,7 +649,7 @@ export default function RiskReportsPage() {
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          Сараар
+          {t("raTailanPageByMonth")}
         </button>
         <button
           type="button"
@@ -650,7 +670,7 @@ export default function RiskReportsPage() {
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          Улирлаар
+          {t("raTailanPageByQuarter")}
         </button>
       </div>
 
@@ -658,25 +678,35 @@ export default function RiskReportsPage() {
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <MonthFilter
             value={draftFilterMonth}
+            emphasis="primary"
             onChange={(m) => {
               setDraftFilterMonth(m);
-              // Үндсэн сар солигдвол өмнөх сарыг автоматаар шинэчилнэ
               setCompareMonthOptOut(false);
               setErrorMsg(null);
             }}
-            ariaLabel="Үндсэн сар"
+            ariaLabel={t("raTailanPageMainMonthLabel")}
+            placeholder={t("raTailanPageMainMonthPlaceholder")}
           />
-          <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
-            Өмнөх сар
+          <span
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/80 bg-muted/30 text-muted-foreground shrink-0"
+            title={t("raTailanPageCompareByDate")}
+            aria-label={t("raTailanPageCompareByDate")}
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5" />
           </span>
           <MonthFilter
             value={draftCompareMonth}
+            emphasis="secondary"
             maxExclusive={draftFilterMonth || undefined}
-            placeholder="өмнөх сар"
-            ariaLabel="Өмнөх сар"
+            minInclusive={
+              draftFilterMonth
+                ? shiftMonthKey(draftFilterMonth, -12)
+                : undefined
+            }
+            placeholder={t("raTailanPageCompareMonthPlaceholder")}
+            ariaLabel={t("raTailanPageCompareMonthLabel")}
             onChange={(m) => {
               setDraftCompareMonth(m);
-              // Хэрэглэгч өөрөө сонгосон — авто prevMonth буцааж бичихгүй
               setCompareMonthOptOut(true);
               setErrorMsg(null);
             }}
@@ -684,10 +714,18 @@ export default function RiskReportsPage() {
           <button
             type="button"
             onClick={applyMonthFilter}
-            disabled={!draftFilterMonth || !monthFilterDirty || loadingReport}
-            title="Сонгосон сараар хайх"
+            disabled={!canApplyMonthFilter}
+            title={
+              !draftFilterMonth
+                ? t("raTailanPageSelectMainMonthHint")
+                : !monthFilterDirty
+                  ? t("raTailanPageNoChangeHint")
+                  : draftCompareMonth
+                    ? t("raTailanPageSearchSelectedMonthHint")
+                    : t("raTailanPageSearchMainMonthOnlyHint")
+            }
             className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors shrink-0",
+              "inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors shrink-0",
               monthFilterDirty
                 ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-400"
                 : "border-border bg-background text-muted-foreground hover:bg-muted/40",
@@ -709,7 +747,7 @@ export default function RiskReportsPage() {
             disabled={loading || historyList.length === 0}
             className={cn(fieldClass, "min-w-[12rem] max-w-[18rem]")}
           >
-            <option value="">— тайлан сонгох —</option>
+            <option value="">{t("raTailanPageSelectReportOption")}</option>
             {historyList.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name}
@@ -719,14 +757,14 @@ export default function RiskReportsPage() {
           {selectedReportId && isAdmin && (
             <button
               onClick={() => openDeleteConfirm(selectedReportId)}
-              title="Энэ тайланг устгах"
+              title={t("raTailanPageDeleteThisReport")}
               className="p-1 rounded-md border border-red-500/20 bg-red-500/5 text-red-600 hover:bg-red-500/10 transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
           <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
-            Өмнөх
+            {t("raReportViewPrevCol")}
           </span>
           <select
             value={comparisonReportId}
@@ -745,7 +783,7 @@ export default function RiskReportsPage() {
             disabled={loading || !selectedReportId}
             className={cn(fieldClass, "min-w-[11rem] max-w-[16rem]")}
           >
-            <option value="">— сонгох —</option>
+            <option value="">{t("raTailanPageSelectOption")}</option>
             {earlierHistoryOptions.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name}
@@ -763,6 +801,20 @@ export default function RiskReportsPage() {
         href="/tools/risk-assessment"
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
         title={t("riskReportPageTitle")}
+        rightContent={
+          <div className="flex items-center gap-2">
+            {primaryScoredRows.length > 0 && !loadingReport && (
+              <button
+                type="button"
+                onClick={() => setCsvModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-xs font-semibold hover:bg-sky-500/20 transition-colors"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                {t("raTailanPageDownloadBtn")}
+              </button>
+            )}
+          </div>
+        }
       />
 
       <div className="container mx-auto px-4 py-6 space-y-5 flex-1 min-w-0 w-full max-w-[1800px]">
@@ -788,23 +840,24 @@ export default function RiskReportsPage() {
         {showInitialSpinner ? (
           <div className="flex flex-col items-center justify-center py-32 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            <p className="text-sm text-muted-foreground">Уншиж байна…</p>
+            <p className="text-sm text-muted-foreground">{t("loading")}</p>
           </div>
         ) : filterMode === "month" &&
           riskbranchDates.length === 0 &&
           !filterMonth ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
-              Riskbranch өгөгдөл одоогоор байхгүй байна
+              {t("raTailanPageNoRiskbranchData")}
             </div>
           </div>
         ) : monthHasNoData ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
-              {formatMonthMn(filterMonth)}-д өгөгдөл байхгүй
+              {formatMonthMn(filterMonth)}
+              {t("raTailanPageNoDataForMonth")}
             </div>
             <div className="text-xs text-muted-foreground/60 mt-1">
-              Өөр сар сонгох эсвэл улирлаар горимд шилжинэ үү
+              {t("raTailanPageSwitchModeHint")}
             </div>
           </div>
         ) : filterMode === "quarter" && historyList.length === 0 ? (
@@ -813,16 +866,16 @@ export default function RiskReportsPage() {
               <Bookmark className="w-6 h-6 text-muted-foreground/60" />
             </div>
             <div className="text-sm font-semibold text-muted-foreground">
-              Хадгалагдсан тайлан одоогоор байхгүй байна
+              {t("raTailanPageNoSavedReports")}
             </div>
             <div className="text-xs text-muted-foreground/60 mt-1 max-w-sm mx-auto">
-              «Үнэлгээ хийх» хуудсаар орж хадгалснаар энд жагсаалт гарна.
+              {t("raTailanPageNoSavedReportsHint")}
             </div>
           </div>
         ) : filterMode === "quarter" && !selectedReportId ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
-              Дээрх цонхоор харах тайлангаа сонгоно уу
+              {t("raTailanPageSelectReportAboveHint")}
             </div>
           </div>
         ) : showReportTable ? (
@@ -839,12 +892,17 @@ export default function RiskReportsPage() {
                 <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/95 px-3 py-1 shadow-sm backdrop-blur-sm">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
                   <span className="text-[11px] text-muted-foreground">
-                    Шинэчилж байна…
+                    {t("raTailanPageRefreshing")}
                   </span>
                 </div>
               </div>
             )}
             <ReportView
+              key={
+                filterMode === "month"
+                  ? `m:${filterMonth}:${compareMonth}:${monthAnchorDate}`
+                  : `q:${selectedReportId}:${comparisonReportId}`
+              }
               scoredRows={primaryScoredRows}
               riskFilter={riskFilter}
               setRiskFilter={setRiskFilter}
@@ -877,6 +935,40 @@ export default function RiskReportsPage() {
         ) : null}
       </div>
 
+      <CsvExportModal
+        open={csvModalOpen}
+        onClose={() => setCsvModalOpen(false)}
+        primaryRows={reportRows}
+        primaryManualMap={reportManualMap}
+        primaryJudgements={reportJudgements}
+        primaryJudgementComments={reportJudgementComments}
+        primaryName={
+          filterMode === "month"
+            ? filterMonth
+              ? formatMonthMn(filterMonth)
+              : ""
+            : (selectedReportInfo?.name ?? "")
+        }
+        primaryDate={
+          filterMode === "month"
+            ? monthAnchorDate
+            : (selectedReportInfo?.pDate ?? "")
+        }
+        prevRows={comparisonRows}
+        prevManualMap={comparisonManualMap}
+        prevJudgements={comparisonJudgements}
+        prevName={
+          filterMode === "month"
+            ? compareMonth
+              ? formatMonthMn(compareMonth)
+              : null
+            : (comparisonReportInfo?.name ?? null)
+        }
+        catalog={catalog}
+        weights={weights}
+        currentComparisonId={comparisonReportId}
+      />
+
       {deleteModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -892,10 +984,10 @@ export default function RiskReportsPage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold">
-                  Хадгалсан тайланг устгах
+                  {t("raTailanPageDeleteReportModalTitle")}
                 </h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Энэ үйлдлийг буцаах боломгүй.
+                  {t("raTailanPageDeleteReportModalHint")}
                 </p>
               </div>
             </div>
@@ -904,14 +996,14 @@ export default function RiskReportsPage() {
                 onClick={() => setDeleteModalOpen(false)}
                 className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
               >
-                Болих
+                {t("cancel")}
               </button>
               <button
                 onClick={doDeleteHistory}
                 className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Тийм устгах
+                {t("raTailanPageConfirmDeleteBtn")}
               </button>
             </div>
           </div>

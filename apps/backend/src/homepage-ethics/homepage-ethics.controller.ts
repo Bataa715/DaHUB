@@ -26,13 +26,6 @@ export class HomepageEthicsController {
     return this.svc.list(true);
   }
 
-  /** Admin — идэвхтэй + устгасан бус бүгд (зөвхөн active) */
-  @UseGuards(AdminGuard)
-  @Get("admin")
-  listAdmin() {
-    return this.svc.list(true);
-  }
-
   @UseGuards(AdminGuard)
   @Post()
   create(

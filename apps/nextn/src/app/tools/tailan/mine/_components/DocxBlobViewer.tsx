@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Renders an already-fetched .docx Blob using docx-preview ─────────────
 // Shared by the live editor preview (RealDocxPreview, built from an unsaved
@@ -16,6 +17,7 @@ export function DocxBlobViewer({
   loading?: boolean;
   error?: string;
 }) {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderError, setRenderError] = useState("");
 
@@ -37,7 +39,7 @@ export function DocxBlobViewer({
         });
         setRenderError("");
       } catch {
-        if (!cancelled) setRenderError("Docx render хийхэд алдаа гарлаа");
+        if (!cancelled) setRenderError(t("tailanDocxViewerRenderError"));
       }
     })();
     return () => {
@@ -49,7 +51,7 @@ export function DocxBlobViewer({
     <div className="relative h-full overflow-auto bg-muted/20">
       {loading && (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Ачааллаж байна...
+          <Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}
         </div>
       )}
       {(error || renderError) && (

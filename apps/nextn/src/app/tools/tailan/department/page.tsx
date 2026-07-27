@@ -123,7 +123,8 @@ export default function TailanBscPage() {
           setRealError("");
         }
       } catch {
-        if (!cancelled) setRealError("Бодит харагдацыг үүсгэхэд алдаа гарлаа");
+        if (!cancelled)
+          setRealError(t("tailanRealPreviewGenerateError"));
       } finally {
         if (!cancelled) setRealLoading(false);
       }
@@ -592,9 +593,9 @@ export default function TailanBscPage() {
                     ? "bg-blue-500/20 text-blue-300"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
-                title="Хэсэг тус бүрийг шууд засварлах боломжтой урьдчилан харах"
+                title={t("tailanDeptPageEditPreviewTitle")}
               >
-                <FileEdit className="h-3 w-3" /> Засварлах
+                <FileEdit className="h-3 w-3" /> {t("tailanDeptPageEditPreviewBtn")}
               </button>
               <button
                 onClick={() => setPreviewMode("real")}
@@ -603,9 +604,9 @@ export default function TailanBscPage() {
                     ? "bg-emerald-500/20 text-emerald-300"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
-                title="Татах Word-той 100% ижил бодит харагдац"
+                title={t("tailanDeptPageRealPreviewTitle")}
               >
-                <FileCheck2 className="h-3 w-3" /> Бодит харагдац
+                <FileCheck2 className="h-3 w-3" /> {t("tailanDeptPageRealPreviewBtn")}
               </button>
             </div>
           </div>

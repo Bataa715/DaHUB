@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const BASE = "/tools/alert-box";
 
@@ -36,6 +37,7 @@ interface NotifData {
 }
 
 export default function ABSidebar() {
+  const { t } = useLanguage();
   const pathname = usePathname();
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotifData | null>(null);
@@ -44,12 +46,12 @@ export default function ABSidebar() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      const t = e.target as Node;
+      const target = e.target as Node;
       if (
         notifBtnRef.current &&
-        !notifBtnRef.current.contains(t) &&
+        !notifBtnRef.current.contains(target) &&
         notifPopupRef.current &&
-        !notifPopupRef.current.contains(t)
+        !notifPopupRef.current.contains(target)
       )
         setNotifOpen(false);
     };
@@ -91,7 +93,7 @@ export default function ABSidebar() {
       {/* Nav */}
       <nav className="flex-1 px-2.5 py-2 space-y-0.5 overflow-y-auto">
         <p className="text-[9px] font-semibold text-txt-dim uppercase tracking-wider px-2 pt-1 pb-1.5">
-          Хэрэгсэл
+          {t("navTools")}
         </p>
         {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || pathname.startsWith(href);
@@ -122,7 +124,7 @@ export default function ABSidebar() {
             }`}
           >
             <Bell size={14} />
-            <span>Мэдэгдэл</span>
+            <span>{t("abSidebarNotifications")}</span>
             {notifCount > 0 && (
               <span className="ml-auto bg-red-500 text-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                 {notifCount > 99 ? "99+" : notifCount}
@@ -141,7 +143,9 @@ export default function ABSidebar() {
           )}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
-            <span className="text-xs font-bold text-txt">Мэдэгдэл</span>
+            <span className="text-xs font-bold text-txt">
+              {t("abSidebarNotifications")}
+            </span>
             <button
               onClick={() => setNotifOpen(false)}
               className="text-txt-dim hover:text-txt"
@@ -153,7 +157,7 @@ export default function ABSidebar() {
             <div className="mx-3 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
               <AlertTriangle size={12} className="text-red-400" />
               <span className="text-[11px] text-red-300 font-medium">
-                {notifications?.criticalCount} өндөр эрсдэл
+                {notifications?.criticalCount} {t("abSidebarHighRisk")}
               </span>
             </div>
           )}
@@ -164,7 +168,9 @@ export default function ABSidebar() {
                   size={18}
                   className="text-txt-dim mx-auto mb-2 opacity-40"
                 />
-                <p className="text-xs text-txt-dim">Мэдэгдэл байхгүй</p>
+                <p className="text-xs text-txt-dim">
+                  {t("abSidebarNoNotifications")}
+                </p>
               </div>
             ) : (
               notifications.items?.map((n: NotifItem) => (

@@ -144,13 +144,14 @@ export default function UsersPage() {
   };
 
   const handleChangeDept = (userData: UserData) => {
+    if (!user?.isSuperAdmin) return;
     const current = departments.find((d) => d.name === userData.department);
     setSelectedDeptId(current?.id ?? "");
     setChangingDeptUserId(userData.id);
   };
 
   const handleSaveDept = async (userId: string) => {
-    if (!selectedDeptId) return;
+    if (!user?.isSuperAdmin || !selectedDeptId) return;
     setIsSavingDept(true);
     try {
       await usersApi.update(userId, { departmentId: selectedDeptId });
@@ -338,12 +339,13 @@ export default function UsersPage() {
                   )}
                 </div>
 
-                {/* Department */}
+                {/* Department — зөвхөн SuperAdmin засна */}
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] text-muted-foreground/50 w-12 shrink-0">
                     {t("regFlowLabelDept")}
                   </span>
-                  {changingDeptUserId === userData.id ? (
+                  {user?.isSuperAdmin &&
+                  changingDeptUserId === userData.id ? (
                     <div className="flex items-center gap-1">
                       <Select
                         value={selectedDeptId}
@@ -384,7 +386,7 @@ export default function UsersPage() {
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                  ) : (
+                  ) : user?.isSuperAdmin ? (
                     <button
                       className="flex items-center gap-1.5 group text-left"
                       onClick={() => handleChangeDept(userData)}
@@ -394,6 +396,10 @@ export default function UsersPage() {
                       </span>
                       <Pencil className="w-2.5 h-2.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-all" />
                     </button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {userData.department || "—"}
+                    </span>
                   )}
                 </div>
 

@@ -5,7 +5,7 @@ import { TailanSectionDef, TailanTemplateScope } from "./tailan-template.types";
 // hardcoded across tailan.service.ts / WordPreview.tsx / mine/page.tsx. This is
 // seeded once as the "default" employee template so existing reports keep
 // working without any data migration (extraDataJson/plannedTasksJson map onto
-// these section keys — see TailanService.legacyRowToSectionsData()).
+// these section keys — see utils/tailan-report-parser.util.ts's parseReport()).
 export const LEGACY_EMPLOYEE_SECTIONS: TailanSectionDef[] = [
   {
     key: "s1",

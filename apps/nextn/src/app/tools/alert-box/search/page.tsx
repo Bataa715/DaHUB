@@ -53,7 +53,7 @@ function SearchContent() {
 
   const doSearch = async (cifVal: string, from?: string, to?: string) => {
     if (!cifVal.trim()) {
-      setError("CIF дугаар оруулна уу");
+      setError(t("abSearchCifRequired"));
       return;
     }
     setError("");
@@ -68,7 +68,7 @@ function SearchContent() {
       );
       setResult(data);
     } catch (e: unknown) {
-      setError(getApiErrorMessage(e) || "Хайлт амжилтгүй");
+      setError(getApiErrorMessage(e) || t("abSearchFailed"));
     } finally {
       setSearching(false);
     }
@@ -96,7 +96,7 @@ function SearchContent() {
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-1.5">
-                CIF дугаар
+                {t("abSearchCifLabel")}
               </label>
               <div className="relative">
                 <Search
@@ -108,14 +108,14 @@ function SearchContent() {
                   value={cif}
                   onChange={(e) => setCif(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  placeholder="Ажилтны CIF ID оруулна уу..."
+                  placeholder={t("abSearchCifPlaceholder")}
                   className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-elevated border border-surface-border text-[12px] text-txt placeholder:text-txt-dim focus:outline-none focus:ring-2 focus:ring-golomt-500/30 focus:border-golomt-500/50"
                 />
               </div>
             </div>
             <div className="w-[170px]">
               <label className="block text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-1.5">
-                Эхлэх огноо
+                {t("tailan_startDateLabel")}
               </label>
               <div className="relative">
                 <Calendar
@@ -132,7 +132,7 @@ function SearchContent() {
             </div>
             <div className="w-[170px]">
               <label className="block text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-1.5">
-                Дуусах огноо
+                {t("tailan_endDateLabel")}
               </label>
               <div className="relative">
                 <Calendar
@@ -157,7 +157,7 @@ function SearchContent() {
               ) : (
                 <Search size={14} />
               )}
-              Хайх
+              {t("monRptSearchBtn")}
             </button>
           </div>
           {error && <p className="text-red-400 text-[11px] mt-2">{error}</p>}
@@ -178,7 +178,7 @@ function SearchContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[11px] text-txt-dim">
-                    Хайлтын үр дүн:{" "}
+                    {t("abSearchResultLabel")}{" "}
                   </span>
                   <span className="text-[13px] font-bold text-txt">
                     {result.cif}
@@ -198,14 +198,15 @@ function SearchContent() {
                       {result.totalMatches}
                     </p>
                     <p className="text-[9px] text-txt-dim uppercase">
-                      Нийт мөр
+                      {t("reportsStatTotal")}
                     </p>
                   </div>
                 </div>
               </div>
               {result.dateFrom && (
                 <p className="text-[10px] text-txt-dim mt-1">
-                  Хугацаа: {result.dateFrom} — {result.dateTo || "Одоо"}
+                  {t("abSearchPeriodLabel")}: {result.dateFrom} —{" "}
+                  {result.dateTo || t("raReportViewColNow")}
                 </p>
               )}
             </div>
@@ -217,7 +218,7 @@ function SearchContent() {
                   className="mx-auto text-txt-dim mb-2 opacity-50"
                 />
                 <p className="text-[13px] text-txt-dim">
-                  Аль ч dashboard-ааc илэрцгүй
+                  {t("abSearchNoMatchInAnyDashboard")}
                 </p>
               </div>
             )}
@@ -249,13 +250,13 @@ function SearchContent() {
                       <p className="text-[14px] font-bold text-txt">
                         {d.matchCount}
                       </p>
-                      <p className="text-[9px] text-txt-dim">мөр</p>
+                      <p className="text-[9px] text-txt-dim">{t("abSearchRowsUnit")}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[12px] font-bold text-amber-400">
                         {formatAmount(d.totalAmount)}₮
                       </p>
-                      <p className="text-[9px] text-txt-dim">дүн</p>
+                      <p className="text-[9px] text-txt-dim">{t("abSearchAmountUnit")}</p>
                     </div>
                     {expanded[d.dashboardId] ? (
                       <ChevronUp size={16} className="text-txt-dim" />
@@ -316,11 +317,10 @@ function SearchContent() {
 }
 
 export default function SearchPage() {
+  const { t } = useLanguage();
   return (
     <Suspense
-      fallback={
-        <div className="p-6 text-txt-dim text-sm">Ачааллаж байна...</div>
-      }
+      fallback={<div className="p-6 text-txt-dim text-sm">{t("loading")}</div>}
     >
       <SearchContent />
     </Suspense>

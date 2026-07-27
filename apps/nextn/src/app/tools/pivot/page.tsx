@@ -35,7 +35,7 @@ import {
 } from "./_lib/pivot";
 
 export default function PivotPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const [fileData, setFileData] = useState<unknown[][] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -235,21 +235,21 @@ export default function PivotPage() {
     };
 
     // ── Summary sheet ────────────────────────────────────────────────────────
-    const sumSheet = wb.addWorksheet("Нэгтгэл");
+    const sumSheet = wb.addWorksheet(t("pivotPageXlsSummarySheet"));
     sumSheet.mergeCells("A1:G1");
     const title = sumSheet.getCell("A1");
-    title.value = `Pivot дүн: ${selectedPrefix} — итгэлцэл: ${Math.round(confidence * 100)}%, алдаа: ${Math.round(marginError * 100)}%`;
+    title.value = `${t("pivotPageXlsTitlePrefix")} ${selectedPrefix} — ${t("pivotPageXlsConfidenceLabel")} ${Math.round(confidence * 100)}%, ${t("pivotPageXlsMarginLabel")} ${Math.round(marginError * 100)}%`;
     title.font = { bold: true, size: 13, color: { argb: "FF0F4C75" } };
     title.alignment = { horizontal: "left", vertical: "middle" };
     sumSheet.getRow(1).height = 26;
     sumSheet.addRow([]);
 
     const sumHdrs = [
-      "Жил",
+      t("pivotPageYearHeader"),
       ...group.codes,
-      "Нийт",
-      "Хувь (%)",
-      `Түүвэр (${Math.round(confidence * 100)}/${Math.round(marginError * 100)})`,
+      t("dbManageSummary"),
+      t("pivotPagePercentHeader"),
+      `${t("sampleGroupDefaultLabel")} (${Math.round(confidence * 100)}/${Math.round(marginError * 100)})`,
     ];
     const sumHdrRow = sumSheet.addRow(sumHdrs);
     applyHdr(sumHdrRow);
@@ -269,7 +269,7 @@ export default function PivotPage() {
       row.getCell(1).font = { bold: true, size: 10 };
     });
     const totalVals = [
-      "Нийт",
+      t("dbManageSummary"),
       ...group.codes.map((c) =>
         String(group.rows.reduce((s, r) => s + (r.codeCounts[c] ?? 0), 0)),
       ),
@@ -310,13 +310,18 @@ export default function PivotPage() {
       // Info row
       ws.mergeCells("A1:" + String.fromCharCode(65 + headers.length) + "1");
       const info = ws.getCell("A1");
-      info.value = `${selectedPrefix} | ${year} он | Түүвэр: ${sampleCount} / ${yearRows.length} (итгэлцэл: ${Math.round(confidence * 100)}%, алдаа: ${Math.round(marginError * 100)}%)`;
+      const yearLabel = language === "mn" ? `${year} он` : String(year);
+      info.value = `${selectedPrefix} | ${yearLabel} | ${t("sampleGroupDefaultLabel")}: ${sampleCount} / ${yearRows.length} (${t("pivotPageXlsConfidenceLabel")} ${Math.round(confidence * 100)}%, ${t("pivotPageXlsMarginLabel")} ${Math.round(marginError * 100)}%)`;
       info.font = { bold: true, size: 11, color: { argb: "FF0F4C75" } };
       info.alignment = { horizontal: "left", vertical: "middle" };
       ws.getRow(1).height = 22;
 
       // Extra cols
-      const allCols = [...headers, "Алдаатай эсэх", "Тайлбар"];
+      const allCols = [
+        ...headers,
+        t("pivotPageXlsErrorColHeader"),
+        t("dataDocColDesc"),
+      ];
       ws.columns = allCols.map((h) => ({ header: h, key: h }));
 
       const hdrRow = ws.getRow(2);
@@ -326,7 +331,7 @@ export default function PivotPage() {
       const dataRows: string[][] = [];
       sampled.forEach((r, i) => {
         const vals = [...(r as unknown[])].map((v) => String(v ?? ""));
-        vals.push("Үгүй", "");
+        vals.push(t("pivotPageXlsNoValue"), "");
         dataRows.push(vals);
         const row = ws.addRow(vals);
         applyBody(row, i % 2 === 0 ? ROW_ODD : ROW_EVN);
@@ -403,7 +408,8 @@ export default function PivotPage() {
                     {fileName}
                   </span>
                   <span className="text-muted-foreground text-sm">
-                    ({fileData?.length} мөр, {headers.length} багана)
+                    ({fileData?.length} {t("reportsStatRows")},{" "}
+                    {headers.length} {t("reportsPreviewColumns")})
                   </span>
                 </div>
               ) : (
@@ -428,7 +434,7 @@ export default function PivotPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Table2 className="w-4 h-4 text-cyan-500" />
-                Тохиргоо
+                {t("sampleConfigTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -513,7 +519,7 @@ export default function PivotPage() {
                   </div>
                   {codeCol && fileData && (
                     <p className="text-xs text-muted-foreground truncate">
-                      Жишээ: &quot;
+                      {t("pivotPageExampleLabel")} &quot;
                       {String(
                         (fileData[0] as unknown[])[headers.indexOf(codeCol)] ??
                           "",
@@ -559,7 +565,7 @@ export default function PivotPage() {
                     </Select>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Итгэлцлийн % / Алдааны %
+                    {t("pivotPageConfMarginHint")}
                   </p>
                 </div>
               </div>
@@ -636,12 +642,13 @@ export default function PivotPage() {
                         {group.prefix}
                       </span>
                       <span className="text-muted-foreground font-normal">
-                        бүлэг
+                        {t("pivotPageGroupSuffix")}
                       </span>
                     </div>
                     <span className="text-muted-foreground text-xs">
-                      {group.rows.length} жил ·{" "}
-                      {group.rows.reduce((s, r) => s + r.total, 0)} нийт
+                      {group.rows.length} {t("pivotPageYearsUnit")} ·{" "}
+                      {group.rows.reduce((s, r) => s + r.total, 0)}{" "}
+                      {t("pivotPageTotalUnit")}
                     </span>
                   </div>
                 </CardHeader>
@@ -653,7 +660,7 @@ export default function PivotPage() {
                           <thead>
                             <tr className="bg-muted/60">
                               <th className="px-3 py-2 text-left text-muted-foreground border border-border font-medium">
-                                Жил
+                                {t("pivotPageYearHeader")}
                               </th>
                               {group.codes.map((c) => (
                                 <th
@@ -664,13 +671,14 @@ export default function PivotPage() {
                                 </th>
                               ))}
                               <th className="px-3 py-2 text-right text-foreground border border-border font-bold">
-                                Нийт
+                                {t("dbManageSummary")}
                               </th>
                               <th className="px-3 py-2 text-right text-muted-foreground border border-border font-medium">
-                                Хувь (%)
+                                {t("pivotPagePercentHeader")}
                               </th>
                               <th className="px-3 py-2 text-right text-amber-600 dark:text-amber-400 border border-border whitespace-nowrap font-medium">
-                                Түүвэр ({Math.round(confidence * 100)}/
+                                {t("sampleGroupDefaultLabel")} (
+                                {Math.round(confidence * 100)}/
                                 {Math.round(marginError * 100)})
                               </th>
                             </tr>
@@ -709,7 +717,7 @@ export default function PivotPage() {
                           <tfoot>
                             <tr className="bg-muted/50 font-bold">
                               <td className="px-3 py-2 text-foreground border border-border">
-                                Нийт
+                                {t("dbManageSummary")}
                               </td>
                               {group.codes.map((c) => (
                                 <td
@@ -749,29 +757,40 @@ export default function PivotPage() {
         {/* Info */}
         <Card className="rounded-none border-0 shadow-none bg-transparent">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Тайлбар</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              {t("sampleNotesTitle")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2.5">
             <p>
-              <strong className="text-foreground">Огноон баганаа</strong>{" "}
-              сонгоход жилийг автоматаар гаргаж авна.
+              <strong className="text-foreground">
+                {t("pivotPageInfoDateColLabel")}
+              </strong>{" "}
+              {t("pivotPageInfoDateColDesc")}
             </p>
             <p>
-              <strong className="text-foreground">Бүлэглэх баганаа</strong>{" "}
-              сонгоход кодуудыг эхний <em>prefix</em> тэмдэгтээр нь бүлэглэнэ
-              (жишээ: CA602 → CA6 [prefix=3]).
+              <strong className="text-foreground">
+                {t("pivotPageInfoGroupColLabel")}
+              </strong>{" "}
+              {t("pivotPageInfoGroupColDesc1")} <em>prefix</em>{" "}
+              {t("pivotPageInfoGroupColDesc2")}
             </p>
             <p>
-              Pivot хүснэгт бүр{" "}
-              <strong className="text-foreground">жилээр мөр</strong>,{" "}
-              <strong className="text-foreground">код баганаар</strong> тоолно.
-              Түүврийн хэмжээг итгэлцлийн түвшин болон алдааны маржинг ашиглан
-              тооцоолно.
+              {t("pivotPageInfoTableDesc")}{" "}
+              <strong className="text-foreground">
+                {t("pivotPageInfoYearRowLabel")}
+              </strong>
+              ,{" "}
+              <strong className="text-foreground">
+                {t("pivotPageInfoCodeColLabel")}
+              </strong>{" "}
+              {t("pivotPageInfoTableTail")}
             </p>
             <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
-              <strong>Ашиглах заавар:</strong> Excel/CSV файл оруулаад огноон
-              болон кодын багануудыг сонгоод <strong>Pivot үүсгэх</strong> дарна
-              уу. Дараа нь prefix сонгоод Excel татна уу.
+              <strong>{t("pivotPageInfoUsageLabel")}</strong>{" "}
+              {t("pivotPageInfoUsageDesc1")}{" "}
+              <strong>{t("pivotCreateBtn")}</strong>{" "}
+              {t("pivotPageInfoUsageDesc2")}
             </div>
           </CardContent>
         </Card>

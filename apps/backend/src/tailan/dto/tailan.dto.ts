@@ -95,15 +95,3 @@ export class GenerateDeptWordFromDataDto {
   @IsOptional()
   rawSections?: Record<string, unknown>;
 }
-
-export class GetTailanQueryDto {
-  @IsNumber()
-  @Type(() => Number)
-  year: number;
-
-  @IsNumber()
-  @Type(() => Number)
-  @Min(1)
-  @Max(4)
-  quarter: number;
-}

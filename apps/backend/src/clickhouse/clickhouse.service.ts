@@ -143,6 +143,29 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Row replace without ALTER UPDATE (many CH users lack UPDATE privilege).
+   * DELETE matching rows (sync), then INSERT new versions.
+   * `table` must be a simple identifier — callers pass hardcoded names only.
+   */
+  async replaceRows(
+    table: string,
+    deleteWhere: string,
+    params: Record<string, unknown>,
+    rows: Record<string, unknown>[],
+  ) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
+      throw new Error(`Invalid ClickHouse table name: ${table}`);
+    }
+    await this.exec(
+      `ALTER TABLE ${table} DELETE WHERE ${deleteWhere} SETTINGS mutations_sync = 1`,
+      params,
+    );
+    if (rows.length > 0) {
+      await this.insert(table, rows);
+    }
+  }
+
+  /**
    * Execute DDL / mutation SQL (ALTER TABLE, CREATE, DROP, etc.)
    * Uses client.command() which automatically drains the response stream.
    * @param silent — when true, suppresses error logging before re-throwing (for expected/handled failures)
@@ -547,6 +570,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Хуучин мэдэгдэж буй хэлтсүүдийн кодыг нэг удаа seed хийнэ (code хоосон бол).
+      // ALTER UPDATE биш — DELETE + INSERT (audit_app UPDATE эрхгүй байж болно).
       const DEFAULT_DEPT_CODES: Record<string, string> = {
         Удирдлага: "DAG",
         "Дата анализын алба": "DAA",
@@ -555,27 +579,63 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         "Мэдээллийн технологийн аудитын хэлтэс": "MTAH",
       };
       for (const [deptName, deptCode] of Object.entries(DEFAULT_DEPT_CODES)) {
-        await this.exec(
-          `ALTER TABLE departments UPDATE code = {code:String} WHERE name = {name:String} AND code = ''`,
-          { code: deptCode, name: deptName },
+        const rows = await this.query<Record<string, unknown>>(
+          `SELECT * FROM departments WHERE name = {name:String} AND code = '' LIMIT 1`,
+          { name: deptName },
+        );
+        if (rows.length === 0) continue;
+        const row = rows[0];
+        await this.replaceRows(
+          "departments",
+          "id = {id:String}",
+          { id: row.id },
+          [{ ...row, code: deptCode }],
+        ).catch((e) =>
+          this.logger.warn(
+            `Dept code seed skipped for ${deptName}: ${e instanceof Error ? e.message : e}`,
+          ),
         );
       }
 
       // Админ хэрэглэгчийг хэлтэсээс салгана — веб дээр (ажилтнууд г.м.) харагдахгүй
-      await this.exec(
-        `ALTER TABLE users UPDATE departmentId = ''
+      const adminWithDept = await this.query<Record<string, unknown>>(
+        `SELECT * FROM users
          WHERE (isAdmin = 1 OR isSuperAdmin = 1) AND departmentId != ''`,
       );
+      for (const u of adminWithDept) {
+        await this.replaceRows(
+          "users",
+          "id = {id:String}",
+          { id: u.id },
+          [{ ...u, departmentId: "", updatedAt: nowCH() }],
+        ).catch((e) =>
+          this.logger.warn(
+            `Admin dept clear skipped: ${e instanceof Error ? e.message : e}`,
+          ),
+        );
+      }
 
       // Нууц үг тохируулсан боловч isActive=0 хэвээр үлдсэн хуучин бүртгэлүүдийг идэвхжүүлнэ.
-      await this.exec(
-        `ALTER TABLE users UPDATE isActive = 1
+      const inactiveReady = await this.query<Record<string, unknown>>(
+        `SELECT * FROM users
          WHERE isActive = 0
            AND isAdmin = 0
            AND isSuperAdmin = 0
            AND password != ''
            AND password NOT LIKE 'PENDING:%'`,
       );
+      for (const u of inactiveReady) {
+        await this.replaceRows(
+          "users",
+          "id = {id:String}",
+          { id: u.id },
+          [{ ...u, isActive: 1, updatedAt: nowCH() }],
+        ).catch((e) =>
+          this.logger.warn(
+            `Activate user skipped: ${e instanceof Error ? e.message : e}`,
+          ),
+        );
+      }
 
       // Service user provisioning зөвхөн bootstrap/admin эрхтэй үед.
       // CLICKHOUSE_USER=audit_app үед CREATE USER оролдвол ACCESS_STORAGE_READONLY

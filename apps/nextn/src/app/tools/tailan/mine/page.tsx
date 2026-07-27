@@ -203,8 +203,8 @@ export default function TailanMinePage() {
 
           {templateLoading && (
             <div className="flex items-center justify-center py-10 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" /> Загвар ачааллаж
-              байна...
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />{" "}
+              {t("tailanMineTemplateLoading")}
             </div>
           )}
 
@@ -255,7 +255,7 @@ export default function TailanMinePage() {
                   onChange={(e) =>
                     updateDynSection(sec._id, "title", e.target.value)
                   }
-                  placeholder="Хэсгийн гарчиг"
+                  placeholder={t("tailan_sectionTitlePlaceholder")}
                 />
                 <button
                   type="button"
@@ -271,7 +271,7 @@ export default function TailanMinePage() {
                 onChange={(e) =>
                   updateDynSection(sec._id, "content", e.target.value)
                 }
-                placeholder="Агуулга..."
+                placeholder={t("tailanMineContentPlaceholder")}
               />
             </div>
           ))}
@@ -280,7 +280,7 @@ export default function TailanMinePage() {
             onClick={addDynSection}
             className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition"
           >
-            <Plus className="h-3.5 w-3.5" /> Нэмэлт хэсэг нэмэх
+            <Plus className="h-3.5 w-3.5" /> {t("tailan_addSection")}
           </button>
         </div>
       </div>

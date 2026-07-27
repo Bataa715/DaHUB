@@ -236,7 +236,7 @@ export default function ReportDetailPage() {
         columns: [],
         rows: [],
         totalCount: 0,
-        error: getApiErrorMessage(e) || "Preview алдаа",
+        error: getApiErrorMessage(e) || t("reportsPreviewError"),
       });
     } finally {
       if (previewAbortRef.current === controller)
@@ -402,7 +402,7 @@ export default function ReportDetailPage() {
                             </label>
                             {isList && valueCount > 0 && (
                               <span className="text-[10px] text-violet-500 font-semibold">
-                                {valueCount} утга
+                                {valueCount} {t("sampleValuesUnit")}
                               </span>
                             )}
                           </div>
@@ -418,7 +418,7 @@ export default function ReportDetailPage() {
                               disabled={downloading}
                               placeholder={
                                 f.placeholder ??
-                                "Мөр бүрт нэг утга эсвэл ,-аар зааглана\nR001295678\nR000657058"
+                                t("reportsDetailPageListFilterPlaceholder")
                               }
                               rows={3}
                               className={`${fieldCls} resize-y font-mono`}

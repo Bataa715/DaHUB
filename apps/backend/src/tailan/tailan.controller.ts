@@ -19,7 +19,9 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Response } from "express";
 import type { FileFilterCallback } from "multer";
-import { TailanService } from "./tailan.service";
+import { TailanReportsService } from "./tailan-reports.service";
+import { TailanImagesService } from "./tailan-images.service";
+import { TailanDocxService } from "./tailan-docx.service";
 import {
   SaveTailanDto,
   PreviewTailanDto,
@@ -34,12 +36,16 @@ import { AuthenticatedRequest } from "../common/types/authenticated-request";
 @UseGuards(JwtAuthGuard, ToolGuard)
 @RequireTools("tailan", "tailan_dept_head")
 export class TailanController {
-  constructor(private readonly tailanService: TailanService) {}
+  constructor(
+    private readonly tailanReports: TailanReportsService,
+    private readonly tailanImages: TailanImagesService,
+    private readonly tailanDocx: TailanDocxService,
+  ) {}
 
   // ─── Save / update draft ───────────────────────────────────────────────────
   @Post("save")
   async save(@Req() req: AuthenticatedRequest, @Body() dto: SaveTailanDto) {
-    return this.tailanService.saveDraft(req.user, dto);
+    return this.tailanReports.saveDraft(req.user, dto);
   }
 
   // ─── Department BSC (ТҮЗ) report save ─────────────────────────────────────
@@ -50,7 +56,7 @@ export class TailanController {
     @Body("quarter", ParseIntPipe) quarter: number,
     @Body("sections") sections: Record<string, unknown>,
   ) {
-    return this.tailanService.saveDeptBsc(req.user, year, quarter, sections);
+    return this.tailanReports.saveDeptBsc(req.user, year, quarter, sections);
   }
 
   // ─── Department BSC (ТҮЗ) report load ─────────────────────────────────────
@@ -60,7 +66,7 @@ export class TailanController {
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.getDeptBsc(req.user, year, quarter);
+    return this.tailanReports.getDeptBsc(req.user, year, quarter);
   }
 
   // ─── Submit report to department head ─────────────────────────────────────
@@ -70,7 +76,7 @@ export class TailanController {
     @Body("year", ParseIntPipe) year: number,
     @Body("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.submitReport(req.user.id, year, quarter);
+    return this.tailanReports.submitReport(req.user.id, year, quarter);
   }
 
   // ─── Get specific report (mine) ────────────────────────────────────────────
@@ -80,7 +86,7 @@ export class TailanController {
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.getMyReport(req.user.id, year, quarter);
+    return this.tailanReports.getMyReport(req.user.id, year, quarter);
   }
 
   // ─── Download Word for my report ───────────────────────────────────────────
@@ -92,7 +98,7 @@ export class TailanController {
     @Query("name") displayName: string | undefined,
     @Res() res: Response,
   ) {
-    const buffer = await this.tailanService.generateWord(
+    const buffer = await this.tailanDocx.generateWord(
       req.user.id,
       year,
       quarter,
@@ -119,7 +125,7 @@ export class TailanController {
     @Body() dto: PreviewTailanDto,
     @Res() res: Response,
   ) {
-    const buffer = await this.tailanService.previewWord(req.user, dto);
+    const buffer = await this.tailanDocx.previewWord(req.user, dto);
     res.set({
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -136,7 +142,7 @@ export class TailanController {
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.getDeptReports(req.user, year, quarter);
+    return this.tailanReports.getDeptReports(req.user, year, quarter);
   }
 
   // ─── Dept head: get status overview (all, not just submitted) ─────────────
@@ -146,7 +152,7 @@ export class TailanController {
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.getAllDeptReports(req.user, year, quarter);
+    return this.tailanReports.getAllDeptReports(req.user, year, quarter);
   }
 
   // ─── Dept head: view one member's report as real .docx ────────────────────
@@ -158,7 +164,7 @@ export class TailanController {
     @Param("quarter", ParseIntPipe) quarter: number,
     @Res() res: Response,
   ) {
-    const buffer = await this.tailanService.generateMemberWord(
+    const buffer = await this.tailanDocx.generateMemberWord(
       req.user,
       userId,
       year,
@@ -180,11 +186,11 @@ export class TailanController {
     @Body() body: GenerateDeptWordFromDataDto,
     @Res() res: Response,
   ) {
-    if (!this.tailanService.isDeptHead(req.user)) {
+    if (!this.tailanReports.isDeptHead(req.user)) {
       res.status(403).json({ message: "Эрх хүрэхгүй" });
       return;
     }
-    const buffer = await this.tailanService.generateDeptWordFromData(body);
+    const buffer = await this.tailanDocx.generateDeptWordFromData(body);
     const filename = encodeURIComponent(
       `Хэлтсийн-тайлан-${body.year}-Q${body.quarter}.docx`,
     );
@@ -201,7 +207,7 @@ export class TailanController {
   // ─── Check role ────────────────────────────────────────────────────────────
   @Get("role")
   async getRole(@Req() req: AuthenticatedRequest) {
-    return { isDeptHead: this.tailanService.isDeptHead(req.user) };
+    return { isDeptHead: this.tailanReports.isDeptHead(req.user) };
   }
 
   // ─── Images ───────────────────────────────────────────────────────────────
@@ -254,7 +260,7 @@ export class TailanController {
     if (!file) {
       throw new BadRequestException("Файл заавал шаардлагатай");
     }
-    return this.tailanService.saveImage(
+    return this.tailanImages.saveImage(
       req.user.id,
       req.user.departmentId ?? "",
       parseInt(year, 10),
@@ -272,7 +278,7 @@ export class TailanController {
     @Param("year", ParseIntPipe) year: number,
     @Param("quarter", ParseIntPipe) quarter: number,
   ) {
-    return this.tailanService.getImages(req.user.id, year, quarter);
+    return this.tailanImages.getImages(req.user.id, year, quarter);
   }
 
   /** GET /tailan/images/:id/data  — serve raw image */
@@ -282,7 +288,7 @@ export class TailanController {
     @Param("id") id: string,
     @Res() res: Response,
   ) {
-    const { mimeType, buffer } = await this.tailanService.getImageData(
+    const { mimeType, buffer } = await this.tailanImages.getImageData(
       id,
       req.user,
     );
@@ -296,6 +302,6 @@ export class TailanController {
   /** DELETE /tailan/images/:id */
   @Delete("images/:id")
   async deleteImage(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
-    return this.tailanService.deleteImage(id, req.user.id);
+    return this.tailanImages.deleteImage(id, req.user.id);
   }
 }

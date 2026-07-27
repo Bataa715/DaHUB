@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   useIndicatorConfig,
   type DynamicCatalogIndicator,
@@ -17,6 +18,7 @@ import { GROUP_LABELS } from "../../../admin/risk-indicators/_components/ScaleEd
 const GROUP_ORDER: number[] = [1, 2, 3, 4, 5];
 
 function IndicatorCard({ ind }: { ind: DynamicCatalogIndicator }) {
+  const { t } = useLanguage();
   return (
     <div className="p-4 space-y-2 break-inside-avoid border-b border-border/40 last:border-b-0">
       <div className="flex items-start gap-3">
@@ -34,7 +36,7 @@ function IndicatorCard({ ind }: { ind: DynamicCatalogIndicator }) {
         </p>
       ) : (
         <p className="text-[13px] italic text-muted-foreground/50">
-          Тайлбар бичигдээгүй байна.
+          {t("raArgachlalNoHint")}
         </p>
       )}
     </div>
@@ -42,6 +44,7 @@ function IndicatorCard({ ind }: { ind: DynamicCatalogIndicator }) {
 }
 
 export default function ArgachlalPage() {
+  const { t } = useLanguage();
   const { catalog, loaded } = useIndicatorConfig();
   const [query, setQuery] = useState("");
 
@@ -57,7 +60,7 @@ export default function ArgachlalPage() {
       : catalog;
     return GROUP_ORDER.map((g) => ({
       group: g,
-      label: GROUP_LABELS[g] ?? `Бүлэг ${g}`,
+      label: GROUP_LABELS[g] ?? `${t("raArgachlalGroupFallback")} ${g}`,
       items: filtered
         .filter((c) => c.group === g)
         .sort((a, b) =>
@@ -71,7 +74,7 @@ export default function ArgachlalPage() {
       <ToolPageHeader
         href="/tools/risk-assessment/work"
         icon={<BookOpen className="w-4 h-4 text-primary" />}
-        title="Аргачлал"
+        title={t("admRiskIndMethodologyLabel")}
       />
 
       <div className="w-full px-4 md:px-6 py-6 space-y-5">
@@ -80,18 +83,18 @@ export default function ArgachlalPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Хайх"
+            placeholder={t("monRptSearchBtn")}
             className="w-full h-8 pl-8 pr-3 rounded-lg bg-foreground/5 border border-border/50 text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
         </div>
 
         {!loaded ? (
           <div className="text-center py-16 text-muted-foreground/50 text-sm">
-            Ачааллаж байна…
+            {t("loading")}
           </div>
         ) : grouped.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground/50 text-sm">
-            Илэрц олдсонгүй.
+            {t("redflagNoResult")}
           </div>
         ) : (
           grouped.map((section) => (
@@ -101,7 +104,7 @@ export default function ArgachlalPage() {
                   {section.label}
                 </span>
                 <span className="text-xs text-muted-foreground/60">
-                  {section.items.length} үзүүлэлт
+                  {section.items.length} {t("raArgachlalIndicatorSuffix")}
                 </span>
                 <div className="flex-1 h-px bg-border/40" />
               </div>

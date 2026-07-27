@@ -170,7 +170,7 @@ export default function RegistrationRequestsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AdminPageHeader
-        title={t("admLayoutNavRegistrations")}
+        title={t("admRegPageTitle")}
         rightContent={
           <span className="text-muted-foreground/60 text-xs">
             {requests.length} {t("admRegRequestUnit")}

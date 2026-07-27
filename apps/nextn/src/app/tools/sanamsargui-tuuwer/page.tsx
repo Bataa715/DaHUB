@@ -26,7 +26,7 @@ import {
   ChevronUp,
   CheckCircle2,
 } from "lucide-react";
-import { DESIGN_LABELS, type DesignType } from "./_lib/sampling";
+import { DESIGN_LABEL_KEYS, type DesignType } from "./_lib/sampling";
 import { useSampling } from "./_hooks/useSampling";
 import { useState } from "react";
 
@@ -67,7 +67,7 @@ export default function SanamsarguiTuuwerPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Calculator className="w-4 h-4 text-violet-500" />
-              Тохиргоо
+              {t("sampleConfigTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -84,10 +84,13 @@ export default function SanamsarguiTuuwerPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {(
-                      Object.entries(DESIGN_LABELS) as [DesignType, string][]
-                    ).map(([k, v]) => (
+                      Object.entries(DESIGN_LABEL_KEYS) as [
+                        DesignType,
+                        (typeof DESIGN_LABEL_KEYS)[DesignType],
+                      ][]
+                    ).map(([k, labelKey]) => (
                       <SelectItem key={k} value={k}>
-                        {v}
+                        {t(labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -250,7 +253,7 @@ export default function SanamsarguiTuuwerPage() {
                         {s.fileName}
                       </span>
                       <span className="text-muted-foreground text-sm">
-                        ({s.fileData?.length} мөр)
+                        ({s.fileData?.length} {t("alertRows")})
                       </span>
                     </div>
                   ) : (
@@ -290,7 +293,7 @@ export default function SanamsarguiTuuwerPage() {
                         {t("sampleFilterByCol")}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        — жишээ: SOL баганаас 100/101/102
+                        {t("sampleFilterByColHint")}
                       </span>
                     </label>
 
@@ -300,7 +303,7 @@ export default function SanamsarguiTuuwerPage() {
                           <Label className="text-sm">
                             {t("sampleFilterCol")}
                             <span className="ml-1 text-xs text-muted-foreground font-normal">
-                              (дурын багана)
+                              {t("sampleAnyColHint")}
                             </span>
                           </Label>
                           <Select
@@ -337,7 +340,8 @@ export default function SanamsarguiTuuwerPage() {
                             <Label className="text-sm">
                               {t("sampleFilterValues")}
                               <span className="ml-1 text-xs text-muted-foreground font-normal">
-                                ({s.availableFilterValues.length} утга)
+                                ({s.availableFilterValues.length}{" "}
+                                {t("sampleValuesUnit")})
                               </span>
                             </Label>
                             <div className="relative">
@@ -442,8 +446,7 @@ export default function SanamsarguiTuuwerPage() {
                               {t("sampleForceAll")}
                             </label>
                             <p className="text-xs text-muted-foreground">
-                              Жишээ: <strong>SOL</strong> баганад 100, 101, 102
-                              бол эдгээрийн аль аль нь дор хаяж 1 удаа орно.
+                              {t("sampleFilterExampleHint")}
                             </p>
                           </div>
                         )}
@@ -462,7 +465,7 @@ export default function SanamsarguiTuuwerPage() {
                 {s.computedN !== null && (
                   <div className="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-4 py-2.5 text-sm">
                     <span className="text-muted-foreground">
-                      Тооцоологдсон түүврийн хэмжээ (
+                      {t("sampleSizeLabel")} (
                       {!s.useColumnFilter || s.selectedFilterValue === "all"
                         ? t("sampleAllValues")
                         : `${s.filterCol}=${s.selectedFilterValue}`}
@@ -508,7 +511,7 @@ export default function SanamsarguiTuuwerPage() {
                 {s.computedN !== null && (
                   <div className="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-4 py-2.5 text-sm">
                     <span className="text-muted-foreground">
-                      Тооцоологдсон түүврийн хэмжээ:
+                      {t("sampleSizeLabel")}:
                     </span>
                     <strong className="text-violet-600 text-base">
                       {s.computedN}
@@ -518,13 +521,13 @@ export default function SanamsarguiTuuwerPage() {
                 {s.design === "prop" && (
                   <div>
                     <Label className="text-sm mb-2 block">
-                      Бүлэг тус бүрийн хувьсагчийн тоо:
+                      {t("sampleGroupVarCountLabel")}
                     </Label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {s.groupSizes.map((sz, i) => (
                         <div key={i} className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Бүлэг {i + 1}:
+                            {t("sampleGroupLabel")} {i + 1}:
                           </Label>
                           <Input
                             type="number"
@@ -553,9 +556,7 @@ export default function SanamsarguiTuuwerPage() {
               className="w-full bg-violet-600 hover:bg-violet-700 text-foreground font-semibold py-5 text-base disabled:opacity-40"
             >
               <Shuffle className="w-4 h-4 mr-2" />
-              {s.isStratified
-                ? "Стратифик түүвэр сонгох"
-                : t("sampleSizeLabel")}
+              {s.isStratified ? t("sampleStratifiedBtn") : t("sampleSizeLabel")}
             </Button>
           </CardContent>
         </Card>
@@ -634,13 +635,14 @@ export default function SanamsarguiTuuwerPage() {
                           ? g.label
                           : t("sampleSizeLabel")}
                         {g.size !== undefined
-                          ? ` (бүлгийн хэмжээ: ${g.size})`
+                          ? ` (${t("sampleGroupSizeSuffix")}: ${g.size})`
                           : ""}
                         {" — "}
                         <span className="text-muted-foreground">
                           {g.indices.length} {t("alertRows")}{" "}
                           {t("sampleSizeLabel")}
-                          {g.indices.length > 50 && " (эхний 50)"}
+                          {g.indices.length > 50 &&
+                            ` (${t("sampleFirst50Suffix")})`}
                         </span>
                       </p>
                       <div className="overflow-x-auto rounded-lg border border-border">
@@ -700,8 +702,8 @@ export default function SanamsarguiTuuwerPage() {
                       </div>
                       {g.indices.length > 50 && (
                         <p className="text-muted-foreground text-xs mt-1.5 text-center">
-                          Бүгдийг Excel-д татаж харна уу ({g.indices.length} мөр
-                          нийт)
+                          {t("sampleDownloadAllHint")} ({g.indices.length}{" "}
+                          {t("alertRows")} {t("sampleDownloadAllTotalSuffix")})
                         </p>
                       )}
                     </div>
@@ -711,44 +713,41 @@ export default function SanamsarguiTuuwerPage() {
             );
           })()}
 
-        {/* Тайлбар */}
+        {/* Notes */}
         <Card className="rounded-none border-0 shadow-none bg-transparent">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Тайлбар</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              {t("sampleNotesTitle")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-3">
-            <p>
-              <strong className="text-foreground">Стандарт хазайлт</strong> нь
-              өгөгдлийн хэлбэлзэлийг илэрхийлнэ. Хэрэв мэдэхгүй бол{" "}
-              <strong className="text-foreground">0.5</strong> гэж ашиглана.
-            </p>
+            <p>{t("sampleStdDevExplain")}</p>
             <div className="rounded-lg border border-border bg-muted/30 p-4 text-center font-mono text-base text-foreground">
               σ = √( Σ(x<sub>i</sub> − μ)² / N )
             </div>
             <ul className="space-y-1 text-xs">
               <li>
-                <strong className="text-foreground">σ</strong> — стандарт
-                хазайлт
+                <strong className="text-foreground">σ</strong> —{" "}
+                {t("sampleFormulaSigma")}
               </li>
               <li>
-                <strong className="text-foreground">x_i</strong> — олонлогийн
-                утга
+                <strong className="text-foreground">x_i</strong> —{" "}
+                {t("sampleFormulaXi")}
               </li>
               <li>
-                <strong className="text-foreground">μ</strong> — дундаж утга
+                <strong className="text-foreground">μ</strong> —{" "}
+                {t("sampleFormulaMu")}
               </li>
               <li>
-                <strong className="text-foreground">N</strong> — эх олонлогийн
-                хэмжээ
+                <strong className="text-foreground">N</strong> —{" "}
+                {t("sampleFormulaN")}
               </li>
             </ul>
             <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20 px-3 py-2.5 text-sm text-red-700 dark:text-red-400">
-              <strong>Алдааны марж</strong> бага байх тусам түүвэр эх олонлогоос
-              илүү сайн төлөөлнө.
+              {t("sampleMarginWarning")}
             </div>
             <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
-              <strong>Санамж:</strong> Аудитын ажилд ихэвчлэн 95%-ийн итгэлцлийн
-              түвшин, 5%-иас ихгүй алдааны маржийг ашигладаг.
+              <strong>{t("sampleNoteLabel")}</strong> {t("sampleNoteText")}
             </div>
           </CardContent>
         </Card>

@@ -48,9 +48,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `${status} error on ${request.method} ${request.url}: ${message}`,
       );
     } else {
-      // Always log all other client errors (4xx) for security monitoring
+      // Always log all other client errors (4xx) for security monitoring.
+      // ValidationPipe-ийн жинхэнэ шалтгаан getResponse()-д байдаг
+      // (exception.message зөвхөн "Bad Request Exception").
+      const details =
+        exception instanceof HttpException ? exception.getResponse() : null;
       this.logger.warn(
-        `${status} error on ${request.method} ${request.url}: ${message}`,
+        `${status} error on ${request.method} ${request.url}: ${message}` +
+          (details && typeof details === "object"
+            ? ` | ${JSON.stringify(details)}`
+            : ""),
       );
     }
 

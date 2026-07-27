@@ -5,6 +5,7 @@ import { Plus, Trash2, ChevronDown, EyeOff, Eye } from "lucide-react";
 import type { TailanSectionDef } from "@/lib/api";
 import { RowImageUpload } from "./RowImageUpload";
 import type { GenericRow } from "../_hooks/useTailanGenericReport";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const inputCls =
   "w-full bg-muted/60 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition";
@@ -29,6 +30,7 @@ function SectionShell({
   romanLabel?: string;
   children: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   return (
     <div
       className={`rounded-xl border ${hidden ? "border-dashed border-border/40 opacity-60" : "border-border/60"} bg-card/40 overflow-hidden`}
@@ -54,7 +56,9 @@ function SectionShell({
         <button
           type="button"
           onClick={onToggleHide}
-          title={hidden ? "Тайланд харуулах" : "Тайланд нуух"}
+          title={
+            hidden ? t("tailan_showInReport") : t("tailan_hideFromReport")
+          }
           className="text-muted-foreground hover:text-foreground transition shrink-0"
         >
           {hidden ? (
@@ -77,12 +81,13 @@ function RichTextEditor({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <textarea
       className={`${textareaCls} min-h-[140px]`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="Текст оруулна уу..."
+      placeholder={t("tailanSectionEditorTextPlaceholder")}
     />
   );
 }
@@ -101,6 +106,7 @@ function TaskListEditor({
   onRemove: (id: string) => void;
   onUpdate: (id: string, field: string, value: unknown) => void;
 }) {
+  const { t } = useLanguage();
   const cfg = section.taskList ?? {};
   return (
     <div className="space-y-3">
@@ -124,7 +130,9 @@ function TaskListEditor({
             )}
           </div>
           <div>
-            <label className={labelCls}>{cfg.titleLabel || "Ажил"}</label>
+            <label className={labelCls}>
+              {cfg.titleLabel || t("tailanSectionEditorTaskFallback")}
+            </label>
             <input
               className={inputCls}
               value={(row.title as string) ?? ""}
@@ -135,7 +143,8 @@ function TaskListEditor({
             {cfg.showCompletion && (
               <div>
                 <label className={labelCls}>
-                  {cfg.completionLabel || "Гүйцэтгэл (%)"}
+                  {cfg.completionLabel ||
+                    t("tailanSectionEditorCompletionFallback")}
                 </label>
                 <input
                   type="number"
@@ -152,7 +161,9 @@ function TaskListEditor({
             {cfg.showPeriod && (
               <div className="grid grid-cols-2 gap-1">
                 <div>
-                  <label className={labelCls}>Эхэлсэн</label>
+                  <label className={labelCls}>
+                    {t("tailanSectionEditorStartedLabel")}
+                  </label>
                   <input
                     type="date"
                     className={inputCls}
@@ -165,7 +176,9 @@ function TaskListEditor({
                   />
                 </div>
                 <div>
-                  <label className={labelCls}>Дууссан</label>
+                  <label className={labelCls}>
+                    {t("tailanSectionEditorEndedLabel")}
+                  </label>
                   <input
                     type="date"
                     className={inputCls}
@@ -187,7 +200,7 @@ function TaskListEditor({
           {cfg.showDescription !== false && (
             <div>
               <label className={labelCls}>
-                {cfg.descriptionLabel || "Тайлбар"}
+                {cfg.descriptionLabel || t("tailanSectionEditorDescFallback")}
               </label>
               <textarea
                 className={textareaCls}
@@ -211,7 +224,7 @@ function TaskListEditor({
         onClick={onAdd}
         className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition"
       >
-        <Plus className="h-3.5 w-3.5" /> Мөр нэмэх
+        <Plus className="h-3.5 w-3.5" /> {t("tailanSectionEditorAddRow")}
       </button>
     </div>
   );
@@ -231,6 +244,7 @@ function TableEditor({
   onRemove: (id: string) => void;
   onUpdate: (id: string, field: string, value: unknown) => void;
 }) {
+  const { t } = useLanguage();
   const cols = section.table?.columns ?? [];
   return (
     <div className="space-y-3">
@@ -279,7 +293,7 @@ function TableEditor({
         onClick={onAdd}
         className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition"
       >
-        <Plus className="h-3.5 w-3.5" /> Мөр нэмэх
+        <Plus className="h-3.5 w-3.5" /> {t("tailanSectionEditorAddRow")}
       </button>
     </div>
   );

@@ -20,7 +20,5 @@ export const VALID_TOOLS = [
   "monitoring_box",
 ] as const;
 
-export type ValidTool = (typeof VALID_TOOLS)[number];
-
 /** O(1) lookup — use this for runtime `.has()` checks */
 export const VALID_TOOLS_SET = new Set<string>(VALID_TOOLS);

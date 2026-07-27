@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { DesignType, SamplingResult, GroupResult } from "../_lib/sampling";
 import {
   getZ,
@@ -14,6 +15,7 @@ import {
 } from "../_lib/sampling";
 
 export function useSampling() {
+  const { t } = useLanguage();
   const [design, setDesign] = useState<DesignType>("srswr");
   const [confidence, setConfidence] = useState(0.95);
   const [margin, setMargin] = useState(5.0);
@@ -63,7 +65,7 @@ export function useSampling() {
   // ── File handling ────────────────────────────────────────────────────────
   const processFile = useCallback((file: File) => {
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      setFileError("Зөвхөн Excel (.xlsx, .xls) файл оруулна уу");
+      setFileError(t("sampleErrExcelOnly"));
       return;
     }
     setFileError(null);
@@ -83,7 +85,7 @@ export function useSampling() {
         );
       });
       if (rows.length < 2) {
-        setFileError("Файлд хангалттай мэдээлэл байхгүй");
+        setFileError(t("pivotNoData"));
         return;
       }
       const hdrs = (rows[0] as unknown[]).map((h) => String(h ?? ""));
@@ -97,7 +99,7 @@ export function useSampling() {
       setCoverAllValues(false);
     };
     reader.readAsArrayBuffer(file);
-  }, []);
+  }, [t]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -178,7 +180,7 @@ export function useSampling() {
         for (let i = 0; i < numGroups; i++) {
           const ni = Math.round(sampleSize * (groupSizes[i] / totalGroupSize));
           groups.push({
-            label: `Бүлэг ${i + 1}`,
+            label: `${t("sampleGroupLabel")} ${i + 1}`,
             indices: sampleWithoutReplacement(N, ni, rng),
             size: groupSizes[i],
             rows: [],
@@ -190,7 +192,7 @@ export function useSampling() {
         const ni = Math.floor(sampleSize / numGroups);
         for (let i = 0; i < numGroups; i++) {
           groups.push({
-            label: `Бүлэг ${i + 1}`,
+            label: `${t("sampleGroupLabel")} ${i + 1}`,
             indices: sampleWithoutReplacement(N, ni, rng),
             rows: [],
           });
@@ -281,15 +283,15 @@ export function useSampling() {
       const indices = sampledEntries.map((e) => e.sourceIndex);
       const rows = sampledEntries.map((e) => e.row ?? []);
 
-      let groupLabel = "Түүвэр";
+      let groupLabel = t("sampleGroupDefaultLabel");
       if (useColumnFilter && filterCol && selectedFilterValue !== "all") {
-        groupLabel = `Түүвэр ${filterCol}=${selectedFilterValue}`;
+        groupLabel = `${t("sampleGroupFilteredLabel")} ${filterCol}=${selectedFilterValue}`;
       } else if (
         useColumnFilter &&
         filterCol &&
         selectedFilterValue === "all"
       ) {
-        groupLabel = `Түүвэр (${filterCol} бүх утга)`;
+        groupLabel = `${t("sampleGroupFilteredLabel")} (${filterCol} ${t("sampleGroupAllValuesSuffix")})`;
       }
 
       setResult({
@@ -490,9 +492,7 @@ export function useSampling() {
         useSaveDialog: preferSaveDialog,
       });
       const message =
-        err instanceof Error
-          ? err.message
-          : "Excel татах үед алдаа гарлаа. Дахин оролдоно уу.";
+        err instanceof Error ? err.message : t("sampleErrExportFailed");
       setExportError(message);
     } finally {
       setExporting(false);

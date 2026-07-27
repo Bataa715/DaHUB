@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect } from "react";
 import { homepageEthicsApi, type EthicsSlide } from "@/lib/api";
+import { GolomtWatermark } from "@/components/GolomtWatermark";
+import { GolomtLogoMark } from "@/components/GolomtLogoMark";
 
 function HeroProfilePortrait({
   name,
@@ -63,39 +65,15 @@ const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
   delay: (i % 6) * 0.5,
 }));
 
-/** API ачаалагдах хүртэл / алдаа үед fallback */
-const FALLBACK_SLIDES: EthicsSlide[] = [
-  {
-    id: "fallback-1",
-    title: "Шударга байдал",
-    body: "Аудитор нь үнэнч шударга байж, өөрийн дүгнэлтэд итгэх итгэлийг бий болгох үндсийг бүрдүүлнэ.",
-    sort_order: 1,
-  },
-  {
-    id: "fallback-2",
-    title: "Бодитой байдал",
-    body: "Аудитор нь мэдээллийг цуглуулах, үнэлэх, тайлагнахдаа аливаа нөлөөнд автахгүйгээр тэнцвэртэй, шударга дүгнэлт гаргана.",
-    sort_order: 2,
-  },
-  {
-    id: "fallback-3",
-    title: "Нууцлалыг хадгалах",
-    body: "Аудитор нь олж авсан мэдээллийн нууцыг хамгаалж, зөвшөөрөлгүйгээр задруулахгүй.",
-    sort_order: 3,
-  },
-  {
-    id: "fallback-4",
-    title: "Мэргэжлийн чадвар",
-    body: "Аудитор нь ажлаа гүйцэтгэхэд шаардлагатай мэдлэг, ур чадвар, туршлагаа ашиглан чанартай, хариуцлагатай ажиллана.",
-    sort_order: 4,
-  },
-];
-
 export default function Hero() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
 
-  const [slides, setSlides] = useState<EthicsSlide[]>(FALLBACK_SLIDES);
+  // Зөвхөн admin-аас бодитоор удирдагддаг өгөгдлийг харуулна — frontend дээр
+  // hardcode хийсэн fallback текст ашиглахгүй (admin панелаас юу ч харагдахгүй
+  // байхад нүүр хуудсанд "боловч текст бий" гэсэн худал сэтгэгдэл өгдөг байсан).
+  const [slides, setSlides] = useState<EthicsSlide[]>([]);
+  const [slidesLoading, setSlidesLoading] = useState(true);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [direction, setDirection] = useState(1);
 
@@ -105,13 +83,14 @@ export default function Hero() {
       .list()
       .then((data) => {
         if (cancelled) return;
-        if (Array.isArray(data) && data.length > 0) {
-          setSlides(data);
-          setCarouselIdx(0);
-        }
+        setSlides(Array.isArray(data) ? data : []);
+        setCarouselIdx(0);
       })
       .catch(() => {
-        /* keep fallback */
+        if (!cancelled) setSlides([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSlidesLoading(false);
       });
     return () => {
       cancelled = true;
@@ -163,6 +142,26 @@ export default function Hero() {
         }}
       />
 
+      {/* ── Голомт Банкны жинхэнэ лого (буга хээ + G тэмдэг + ГОЛОМТ БАНК +
+          уриа) — эх зургаас гаргасан mask тул фонт биш, 100% жинхэнэ лого.
+          Хуудасны голд туйлын бага (4–6%) opacity-тай ус тэмдэг болгон
+          ашиглав. pointer-events-none, контентын ард (z-index-гүй, дараагийн
+          "Гол агуулга" блок нь өөрөө relative z-10). ── */}
+      <div
+        className="absolute inset-0 flex items-start justify-center overflow-hidden pointer-events-none px-8 pt-4 sm:pt-6"
+        aria-hidden
+      >
+        <GolomtLogoMark className="w-full max-w-xl sm:max-w-2xl -translate-x-8 sm:-translate-x-12 text-foreground/[0.045] dark:text-foreground/[0.06]" />
+      </div>
+
+      {/* ── Голомтын "G" тэмдэг — жижиг, тод chimeглэл болгон буланд ── */}
+      <div
+        className="absolute bottom-4 right-4 sm:bottom-6 sm:right-8 pointer-events-none"
+        aria-hidden
+      >
+        <GolomtWatermark className="w-14 h-14 sm:w-20 sm:h-20 text-foreground/[0.1] dark:text-foreground/[0.12]" />
+      </div>
+
       {/* ── Арын цэгүүдийн animation (маш зөөлөн) ── */}
       <div
         className="absolute inset-0 pointer-events-none overflow-hidden"
@@ -198,7 +197,7 @@ export default function Hero() {
             transition={{ duration: 0.5 }}
           >
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-foreground leading-[1.05]">
-              {user?.name || "Хэрэглэгч"}
+              {user?.name || t("admReportsColUser")}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground font-medium">
               {user?.position && <span>{user.position} · </span>}
@@ -206,15 +205,25 @@ export default function Hero() {
             </p>
           </motion.div>
 
-          {active && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55, duration: 0.6 }}
-              className="relative max-w-xl"
-            >
+          {slidesLoading ? (
+            <div className="relative max-w-xl animate-pulse">
+              <div className="h-2.5 w-32 rounded bg-muted-foreground/15 mb-3" />
+              <div className="rounded-2xl border border-border bg-card/70 p-5 min-h-[110px] shadow-premium ring-hairline space-y-2">
+                <div className="h-3 w-3/4 rounded bg-muted-foreground/15" />
+                <div className="h-3 w-full rounded bg-muted-foreground/10" />
+                <div className="h-3 w-2/3 rounded bg-muted-foreground/10" />
+              </div>
+            </div>
+          ) : (
+            active && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55, duration: 0.6 }}
+                className="relative max-w-xl"
+              >
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
-                Аудиторын ёс зүйн код
+                {t("heroSimpleEthicsCodeLabel")}
               </p>
               <div className="relative overflow-hidden rounded-2xl border border-border bg-card/70 backdrop-blur-sm p-5 min-h-[110px] shadow-premium ring-hairline">
                 <AnimatePresence mode="wait" custom={direction}>
@@ -238,6 +247,7 @@ export default function Hero() {
                 </AnimatePresence>
               </div>
             </motion.div>
+            )
           )}
         </div>
 

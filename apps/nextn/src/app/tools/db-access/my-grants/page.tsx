@@ -102,17 +102,15 @@ export default function MyGrantsPage() {
 
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: `${label} хуулагдлаа`, duration: 1500 });
+    toast({
+      title: `${label} ${t("myGrantsCopiedSuffix")}`,
+      duration: 1500,
+    });
   };
 
   const handleCancel = async (group: GrantGroup) => {
     const tblList = group.tables.join(", ");
-    if (
-      !confirm(
-        `"${tblList}" хандалтын эрхийг хаах уу? Та ClickHouse-руу нэвтрэх боломжгүй болно.`,
-      )
-    )
-      return;
+    if (!confirm(`"${tblList}" ${t("myGrantsCancelConfirm")}`)) return;
     try {
       setCancelingId(group.requestId);
       // Cancel every grant row belonging to this request
@@ -120,14 +118,14 @@ export default function MyGrantsPage() {
         group.grantIds.map((id) => dbAccessApi.cancelMyGrant(id)),
       );
       toast({
-        title: "✅ Эрх хаагдлаа",
-        description: "ClickHouse хандалт цуцлагдлаа",
+        title: t("myGrantsCancelSuccessTitle"),
+        description: t("myGrantsCancelSuccessDesc"),
       });
       await load();
     } catch (err: unknown) {
       toast({
-        title: "Алдаа",
-        description: getApiErrorMessage(err) || "Хаахад алдаа гарлаа",
+        title: t("error"),
+        description: getApiErrorMessage(err) || t("myGrantsCancelErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -142,14 +140,14 @@ export default function MyGrantsPage() {
       setGrants(data);
     } catch {
       toast({
-        title: "Алдаа",
-        description: "Эрхүүдийг ачаалахад алдаа гарлаа",
+        title: t("error"),
+        description: t("myGrantsLoadErrorDesc"),
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     load();

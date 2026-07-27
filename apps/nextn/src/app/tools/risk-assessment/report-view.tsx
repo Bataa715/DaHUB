@@ -5,52 +5,35 @@ import {
   useState,
   useEffect,
   useCallback,
-  Fragment,
   useRef,
-  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
-import { ChevronDown, Loader2, MessageSquare } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Cookies from "js-cookie";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { riskApi, HOLD_GLOBAL_PERIOD } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import {
   aggregateBranch,
   classifyBranchTableGroup,
-  riskLevelClass,
   type BranchAggregate,
   type RiskLevel,
-  type OracleValue,
 } from "./scoring-rules";
 import { type ManualMap } from "./indicator-catalog";
 import {
-  resolveJudgementComment,
   pickJudgmentIndicator,
-  readJudgmentScoreFromManual,
-  lookupJudgementScore,
   resolveBranchJudgementScore,
 } from "./branch-resolve";
 import {
   useIndicatorConfig,
   evaluateBranchDynamic,
   computeGroupScoresDynamic,
-  type DynamicCatalogIndicator,
-  type DynamicWeights,
 } from "./use-indicator-config";
+import { type AnyRow } from "./_report-view/types";
+import { ReportTable } from "./_report-view/report-table";
+import { SummaryBlock, SRow } from "./_report-view/summary-blocks";
 
 // localStorage key зайлсхийж — ClickHouse-д хадгалдаг болсон
 // (backward-compat: localStorage-д юу байвал нэг удаа migrate хийнэ)
-
-type AnyRow = {
-  SOLID?: OracleValue;
-  BRANCHID?: OracleValue;
-  BRANCHNAME?: OracleValue;
-  STATUS?: OracleValue;
-  SUBID?: OracleValue;
-  RESULT?: OracleValue;
-  RESULT_TYPE?: OracleValue;
-  sourceFetchedDate?: string;
-};
 
 type TableLayout = "unified" | "split";
 
@@ -147,6 +130,7 @@ export default function ReportView({
   dataReferenceDate,
   toolbarStart,
 }: Props) {
+  const { t } = useLanguage();
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
   const [manualLoading, setManualLoading] = useState(false);
@@ -476,19 +460,25 @@ export default function ReportView({
   );
 
   // Өмнөх Oracle таталтын aggregate map (харьцуулалтад ашиглана)
-  const previousAggMap = useMemo<Map<string, BranchAggregate>>(() => {
-    const prevAggs = getAggregates(
+  const previousAggs = useMemo<BranchAggregate[]>(
+    () =>
+      getAggregates(
+        previousScoredRows,
+        previousManualMap,
+        previousJudgements ?? {},
+      ),
+    [
       previousScoredRows,
       previousManualMap,
       previousJudgements,
-    );
-    return new Map(prevAggs.map((b) => [b.branchId, b]));
-  }, [
-    previousScoredRows,
-    previousManualMap,
-    previousJudgements,
-    getAggregates,
-  ]);
+      getAggregates,
+    ],
+  );
+
+  const previousAggMap = useMemo<Map<string, BranchAggregate>>(
+    () => new Map(previousAggs.map((b) => [b.branchId, b])),
+    [previousAggs],
+  );
 
   const reportTableProps = {
     previousAggMap,
@@ -508,7 +498,7 @@ export default function ReportView({
     dataReferenceDate,
   } as const;
 
-  // Summary
+  // Summary — cur/prev/transitions; сар+улирлын аль алинд previousAggs-аас шууд тооцно
   const summary = useMemo(() => {
     const cur = { Өндөр: 0, Дунд: 0, Бага: 0, Нийт: 0 };
     const prev = { Өндөр: 0, Дунд: 0, Бага: 0, Нийт: 0 };
@@ -518,34 +508,45 @@ export default function ReportView({
       newCnt = 0;
     const transitions: Record<string, number> = {};
 
+    for (const p of previousAggs) {
+      prev.Нийт++;
+      if (p.level === "Өндөр" || p.level === "Дунд" || p.level === "Бага") {
+        prev[p.level]++;
+      }
+    }
+
     for (const b of aggregates) {
       cur.Нийт++;
-      if (b.level) (cur as any)[b.level]++;
+      if (b.level === "Өндөр" || b.level === "Дунд" || b.level === "Бага") {
+        cur[b.level]++;
+      }
       const p = previousAggMap.get(b.branchId);
       if (p) {
-        prev.Нийт++;
-        if (p.level) (prev as any)[p.level]++;
         if (b.total != null && p.total != null) {
           const diff = b.total - p.total;
           if (Math.abs(diff) < 0.005) sameCnt++;
           else if (diff > 0) upCnt++;
           else downCnt++;
         }
-        const k = `${p.level}-${b.level}`;
-        transitions[k] = (transitions[k] || 0) + 1;
+        if (p.level && b.level) {
+          const k = `${p.level}-${b.level}`;
+          transitions[k] = (transitions[k] || 0) + 1;
+        }
       } else {
         newCnt++;
       }
     }
     return { cur, prev, upCnt, downCnt, sameCnt, newCnt, transitions };
-  }, [aggregates, previousAggMap]);
+  }, [aggregates, previousAggs, previousAggMap]);
 
   if (scoredRows.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <div className="text-sm font-semibold">Тайлан гаргах өгөгдөл алга</div>
+        <div className="text-sm font-semibold">
+          {t("raReportViewNoDataTitle")}
+        </div>
         <div className="text-xs mt-1 text-muted-foreground">
-          Эхлээд Oracle-аас үнэлгээг татна уу.
+          {t("raReportViewNoDataSubtitle")}
         </div>
       </div>
     );
@@ -558,9 +559,7 @@ export default function ReportView({
         <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-[12px] text-amber-400">
           <span className="text-base">⚠</span>
           <span>
-            <b>Offline горим:</b> Үзүүлэлтийн тохиргоог серверээс авч чадаагүй —
-            суурилагдсан анхдагч тохиргоог ашиглаж байна. Сүлжээний холболт
-            болон backend-ийг шалгана уу.
+            <b>{t("raReportViewOfflineBadge")}</b> {t("raReportViewOfflineMsg")}
           </span>
         </div>
       )}
@@ -598,7 +597,7 @@ export default function ReportView({
                     }`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${dot[opt]}`} />
-                    {opt === "all" ? "Бүгд" : opt}
+                    {opt === "all" ? t("admRegAllTab") : opt}
                   </button>
                 );
               })}
@@ -618,11 +617,13 @@ export default function ReportView({
               }`}
               title={
                 tableLayout === "unified"
-                  ? "УБ / ОН салбарыг тусад нь харах"
-                  : "Бүх салбарыг нэг хүснэгтээр харах"
+                  ? t("raReportViewSplitViewTooltip")
+                  : t("raReportViewUnifiedViewTooltip")
               }
             >
-              {tableLayout === "unified" ? "Салгаж харах" : "Нэгдсэнээр харах"}
+              {tableLayout === "unified"
+                ? t("raReportViewSplitViewBtn")
+                : t("raReportViewUnifiedViewBtn")}
             </button>
             {!readOnly && manualLoading && (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
@@ -636,11 +637,13 @@ export default function ReportView({
               }`}
               title={
                 sortKey > 0
-                  ? "SOLID дарааллаар буцах"
-                  : "Total-аар эрэмбэлэх (их → бага)"
+                  ? t("raReportViewSortBySolidTooltip")
+                  : t("raReportViewSortByTotalTooltip")
               }
             >
-              {sortKey > 0 ? "↕ SOLID↑" : "↕ Эрэмбэлэх"}
+              {sortKey > 0
+                ? t("raReportViewSortBySolidBtn")
+                : t("raReportViewSortByTotalBtn")}
             </button>
           </div>
         </div>
@@ -649,11 +652,13 @@ export default function ReportView({
       {!showScoredTable ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 className="w-7 h-7 animate-spin text-emerald-500" />
-          <p className="text-sm text-muted-foreground">Хүснэгт бэлдэж байна…</p>
+          <p className="text-sm text-muted-foreground">
+            {t("raReportViewTablePreparing")}
+          </p>
         </div>
       ) : tableLayout === "unified" ? (
         <ReportTable
-          title="Бүх салбар, тооцооны төвүүд"
+          title={t("raReportViewUnifiedTitle")}
           rows={sortedFiltered}
           {...reportTableProps}
         />
@@ -664,7 +669,11 @@ export default function ReportView({
             return (
               <ReportTable
                 key={section.group}
-                title={section.title}
+                title={
+                  section.group === "UB"
+                    ? t("raReportViewUbSectionTitle")
+                    : t("raReportViewOnSectionTitle")
+                }
                 region={section.region}
                 rows={sectionRows}
                 {...reportTableProps}
@@ -676,7 +685,10 @@ export default function ReportView({
       {/* Summary */}
       {showScoredTable && !hideComparison && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <SummaryBlock title="1. ҮНЭЛГЭЭ" cols={["Үзүүлэлт", "Одоо", "Өмнө"]}>
+          <SummaryBlock
+            title={t("raReportViewEval1Title")}
+            cols={[t("raReportViewColIndicator"), t("raReportViewColNow"), t("raReportViewColPrev")]}
+          >
             <SRow
               label="Өндөр"
               v={summary.cur.Өндөр}
@@ -692,16 +704,19 @@ export default function ReportView({
             />
           </SummaryBlock>
           <SummaryBlock
-            title="2. ҮНЭЛГЭЭНИЙ ӨӨРЧЛӨЛТ"
-            cols={["Үзүүлэлт", "Тоо"]}
+            title={t("raReportViewEval2Title")}
+            cols={[t("raReportViewColIndicator"), t("raReportViewColCount")]}
           >
-            <SRow label="Үнэлгээ өссөн" v={summary.upCnt} />
-            <SRow label="Үнэлгээ буурсан" v={summary.downCnt} />
-            <SRow label="Үнэлгээ өөрчлөлтгүй" v={summary.sameCnt} />
-            <SRow label="Шинээр нэмэгдсэн" v={summary.newCnt} />
+            <SRow label={t("raReportViewScoreUp")} v={summary.upCnt} />
+            <SRow label={t("raReportViewScoreDown")} v={summary.downCnt} />
+            <SRow label={t("raReportViewScoreNoChange")} v={summary.sameCnt} />
+            <SRow label={t("raReportViewNewlyAdded")} v={summary.newCnt} />
             <SRow label="Нийт" v={summary.cur.Нийт} bold />
           </SummaryBlock>
-          <SummaryBlock title="3. ТҮВШИН ӨӨРЧЛӨЛТ" cols={["Үзүүлэлт", "Тоо"]}>
+          <SummaryBlock
+            title={t("raReportViewEval3Title")}
+            cols={[t("raReportViewColIndicator"), t("raReportViewColCount")]}
+          >
             {[
               "Өндөр-Өндөр",
               "Өндөр-Дунд",
@@ -715,1256 +730,11 @@ export default function ReportView({
             ].map((k) => (
               <SRow key={k} label={k} v={summary.transitions[k] || 0} />
             ))}
-            <SRow label="Шинээр нэмэгдсэн" v={summary.newCnt} />
+            <SRow label={t("raReportViewNewlyAdded")} v={summary.newCnt} />
             <SRow label="Нийт" v={summary.cur.Нийт} bold />
           </SummaryBlock>
         </div>
       )}
     </div>
-  );
-}
-
-function ReadOnlyJudgementCell({
-  branchId,
-  branchName,
-  score,
-  comments,
-  onOpenComment,
-}: {
-  branchId: string;
-  branchName: string;
-  score: number | null;
-  comments?: Record<string, string>;
-  onOpenComment: (payload: {
-    branchId: string;
-    branchName: string;
-    draft: string;
-  }) => void;
-}) {
-  const jComment = resolveJudgementComment(branchId, comments);
-  const hasJ = score != null && score > 0;
-  const canOpen = hasJ || Boolean(jComment);
-
-  return (
-    <button
-      type="button"
-      disabled={!canOpen}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!canOpen) return;
-        onOpenComment({ branchId, branchName, draft: jComment });
-      }}
-      className={`inline-flex items-center justify-center gap-1 font-semibold text-foreground tabular-nums ${
-        canOpen ? "hover:text-amber-500 cursor-pointer" : "cursor-default"
-      }`}
-      title={jComment ? "Тайлбар харах" : hasJ ? "Тайлбар байхгүй" : undefined}
-    >
-      {hasJ ? (score! % 1 === 0 ? score!.toFixed(0) : score!.toFixed(1)) : "—"}
-      {jComment ? (
-        <MessageSquare className="w-2.5 h-2.5 shrink-0 text-muted-foreground fill-muted/40" />
-      ) : null}
-    </button>
-  );
-}
-
-// ── Тайлангийн хүснэгт ────────────────────────────────────────────────────
-
-type ReportColKey =
-  | "expand"
-  | "num"
-  | "solid"
-  | "name"
-  | "rating"
-  | "s1"
-  | "s2"
-  | "s3"
-  | "s4"
-  | "j"
-  | "total"
-  | "prev"
-  | "level"
-  | "diff";
-
-type ReportColDef = {
-  key: ReportColKey;
-  label: string;
-  align: "left" | "center" | "right";
-  defaultWidth: number;
-  minWidth: number;
-  compareOnly?: boolean;
-};
-
-const REPORT_COLS: ReportColDef[] = [
-  { key: "expand", label: "⊕", align: "center", defaultWidth: 36, minWidth: 32 },
-  { key: "num", label: "№", align: "center", defaultWidth: 44, minWidth: 36 },
-  { key: "solid", label: "SOL", align: "center", defaultWidth: 64, minWidth: 48 },
-  {
-    key: "name",
-    label: "Салбарын нэр",
-    align: "left",
-    defaultWidth: 200,
-    minWidth: 100,
-  },
-  {
-    key: "rating",
-    label: "Зэрэглэл",
-    align: "center",
-    defaultWidth: 72,
-    minWidth: 56,
-  },
-  {
-    key: "s1",
-    label: "Score 1",
-    align: "center",
-    defaultWidth: 72,
-    minWidth: 52,
-  },
-  {
-    key: "s2",
-    label: "Score 2",
-    align: "center",
-    defaultWidth: 72,
-    minWidth: 52,
-  },
-  {
-    key: "s3",
-    label: "Score 3",
-    align: "center",
-    defaultWidth: 72,
-    minWidth: 52,
-  },
-  {
-    key: "s4",
-    label: "Score 4",
-    align: "center",
-    defaultWidth: 72,
-    minWidth: 52,
-  },
-  {
-    key: "j",
-    label: "Judgement",
-    align: "center",
-    defaultWidth: 88,
-    minWidth: 64,
-  },
-  {
-    key: "total",
-    label: "Total",
-    align: "center",
-    defaultWidth: 72,
-    minWidth: 52,
-  },
-  {
-    key: "level",
-    label: "Түвшин",
-    align: "center",
-    defaultWidth: 88,
-    minWidth: 72,
-  },
-  {
-    key: "prev",
-    label: "Өмнөх",
-    align: "center",
-    defaultWidth: 80,
-    minWidth: 64,
-    compareOnly: true,
-  },
-  {
-    key: "diff",
-    label: "Зөрүү",
-    align: "center",
-    defaultWidth: 80,
-    minWidth: 64,
-    compareOnly: true,
-  },
-];
-
-const REPORT_WIDTHS_KEY = "dahub-report-col-widths";
-
-function readReportStoredWidths(): Partial<Record<ReportColKey, number>> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(REPORT_WIDTHS_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Partial<Record<ReportColKey, number>>;
-  } catch {
-    return {};
-  }
-}
-
-function ReportTable({
-  title,
-  region,
-  rows,
-  previousAggMap,
-  manualMap,
-  weights,
-  setManualValue,
-  catalog,
-  readOnly = false,
-  rawRowsByBranch,
-  hideComparison = false,
-  hideUnevaluatedInDetail = false,
-  externalJudgements,
-  externalJudgementComments,
-  onJudgementChange,
-  onJudgementCommentSave,
-  dataReferenceDate,
-}: {
-  title: string;
-  region?: "UB" | "LOC";
-  rows: BranchAggregate[];
-  previousAggMap: Map<string, BranchAggregate>;
-  manualMap: ManualMap;
-  weights: DynamicWeights;
-  setManualValue: (
-    branchId: string,
-    indicatorId: string,
-    value: number,
-  ) => void;
-  catalog: DynamicCatalogIndicator[];
-  readOnly?: boolean;
-  rawRowsByBranch: Map<string, AnyRow[]>;
-  hideComparison?: boolean;
-  hideUnevaluatedInDetail?: boolean;
-  externalJudgements?: Record<string, number>;
-  externalJudgementComments?: Record<string, string>;
-  onJudgementChange?: (branchId: string, score: number) => void;
-  onJudgementCommentSave?: (branchId: string, comment: string) => void;
-  previousJudgements?: Record<string, number>;
-  dataReferenceDate?: string;
-}) {
-  const w = region ? weights[region] : weights["UB"];
-  const fmt = (n: number | null) => (n == null ? "—" : n.toFixed(2));
-  const [editingJBranch, setEditingJBranch] = useState<string | null>(null);
-  const [editJValue, setEditJValue] = useState<string>("");
-  const [commentModal, setCommentModal] = useState<{
-    branchId: string;
-    branchName: string;
-    draft: string;
-  } | null>(null);
-  const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
-  const committingRef = useRef(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  const visibleCols = useMemo(
-    () =>
-      REPORT_COLS.filter((c) => (c.compareOnly ? !hideComparison : true)),
-    [hideComparison],
-  );
-  const [widths, setWidths] = useState<Partial<Record<ReportColKey, number>>>(
-    {},
-  );
-
-  useEffect(() => {
-    setWidths(readReportStoredWidths());
-  }, []);
-
-  const widthOf = useCallback(
-    (col: ReportColDef) => widths[col.key] ?? col.defaultWidth,
-    [widths],
-  );
-
-  const onResizeStart = useCallback(
-    (e: ReactMouseEvent, col: ReportColDef) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const startX = e.clientX;
-      const startW = widthOf(col);
-
-      const onMove = (ev: MouseEvent) => {
-        const next = Math.max(col.minWidth, startW + (ev.clientX - startX));
-        setWidths((prev) => ({ ...prev, [col.key]: next }));
-      };
-
-      const onUp = () => {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-        setWidths((prev) => {
-          const merged = { ...prev };
-          try {
-            localStorage.setItem(REPORT_WIDTHS_KEY, JSON.stringify(merged));
-          } catch {
-            /* ignore */
-          }
-          return merged;
-        });
-      };
-
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
-    },
-    [widthOf],
-  );
-
-  useEffect(() => {
-    if (editingJBranch && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editingJBranch]);
-  const judgmentInd = useMemo(() => pickJudgmentIndicator(catalog), [catalog]);
-  const commitJ = (branchId: string) => {
-    if (committingRef.current) return;
-    committingRef.current = true;
-    requestAnimationFrame(() => {
-      committingRef.current = false;
-    });
-    const raw = editJValue.trim();
-    if (raw === "") {
-      // Хоосн оруулбал: үнэлэмж цэвэрлэх (score=0)
-      if (onJudgementChange) {
-        onJudgementChange(branchId, 0);
-      } else if (judgmentInd) {
-        setManualValue(branchId, judgmentInd.id, 0);
-      }
-    } else {
-      const v = parseFloat(raw);
-      if (!isNaN(v) && v > 0) {
-        const clamped = Math.min(5, Math.max(1, v));
-        if (onJudgementChange) {
-          onJudgementChange(branchId, clamped);
-        } else if (judgmentInd) {
-          setManualValue(branchId, judgmentInd.id, clamped);
-        }
-      }
-    }
-    setEditingJBranch(null);
-  };
-  const filledJCount = externalJudgements
-    ? rows.filter(
-        (b) => (lookupJudgementScore(externalJudgements, b.branchId) ?? 0) > 0,
-      ).length
-    : rows.filter(
-        (b) =>
-          judgmentInd != null &&
-          (readJudgmentScoreFromManual(manualMap[b.branchId], judgmentInd.id) ??
-            0) > 0,
-      ).length;
-
-  const alignClass = {
-    left: "text-left",
-    center: "text-center",
-    right: "text-right",
-  } as const;
-
-  return (
-    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline w-full min-w-0 max-w-full">
-      <div
-        className={`px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20 ${
-          region === "UB"
-            ? "border-l-[3px] border-l-blue-500/40"
-            : region === "LOC"
-              ? "border-l-[3px] border-l-violet-500/40"
-              : ""
-        }`}
-      >
-        <div className="flex items-center gap-2 mb-1.5">
-          {region && (
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold bg-muted text-foreground border border-border">
-              {region === "UB" ? "УБ" : "ОН"}
-            </span>
-          )}
-          <h3
-            className={`text-sm font-semibold text-foreground ${region ? "flex-1 text-center" : ""}`}
-          >
-            {title}
-          </h3>
-          <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
-            {rows.length} салбар
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-          <span className="font-semibold uppercase tracking-wider">Жин:</span>
-          <span>
-            S1{" "}
-            <b className="text-foreground tabular-nums">
-              {(w.s1 * 100).toFixed(0)}%
-            </b>
-          </span>
-          <span>
-            S2{" "}
-            <b className="text-foreground tabular-nums">
-              {(w.s2 * 100).toFixed(0)}%
-            </b>
-          </span>
-          <span>
-            S3{" "}
-            <b className="text-foreground tabular-nums">
-              {(w.s3 * 100).toFixed(0)}%
-            </b>
-          </span>
-          <span>
-            S4{" "}
-            <b className="text-foreground tabular-nums">
-              {(w.s4 * 100).toFixed(0)}%
-            </b>
-          </span>
-          <span>
-            J{" "}
-            <b className="text-foreground tabular-nums">
-              {(w.j * 100).toFixed(0)}%
-            </b>
-          </span>
-          <span
-            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold ${
-              filledJCount > 0
-                ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                : "border-border text-muted-foreground/50"
-            }`}
-          >
-            Үнэлэмж: {filledJCount}/{rows.length}
-          </span>
-        </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table
-          className="text-sm border-collapse"
-          style={{
-            tableLayout: "fixed",
-            width: "max-content",
-            minWidth: "100%",
-          }}
-        >
-          <colgroup>
-            {visibleCols.map((col) => (
-              <col key={col.key} style={{ width: widthOf(col) }} />
-            ))}
-          </colgroup>
-          <thead className="sticky top-0 z-10">
-            <tr>
-              {visibleCols.map((col) => (
-                <th
-                  key={col.key}
-                  title={col.key === "expand" ? "Дэлгэрэнгүй харах" : undefined}
-                  className={cn(
-                    "relative px-2 py-2.5 text-xs font-bold text-foreground bg-background select-none border-b border-border",
-                    alignClass[col.align],
-                    col.key === "total" || col.key === "diff"
-                      ? "font-extrabold"
-                      : undefined,
-                  )}
-                >
-                  <span className="truncate block font-bold">{col.label}</span>
-                  <span
-                    role="separator"
-                    aria-orientation="vertical"
-                    aria-label={`${col.label} өргөн өөрчлөх`}
-                    onMouseDown={(e) => onResizeStart(e, col)}
-                    className="absolute top-0 -right-0.5 w-2 h-full cursor-col-resize z-10 group flex justify-center"
-                  >
-                    <span className="w-px h-full bg-transparent group-hover:bg-foreground/30" />
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((b, i) => {
-              const prev = previousAggMap.get(b.branchId);
-              const diff =
-                prev && b.total != null && prev.total != null
-                  ? b.total - prev.total
-                  : null;
-              const isExpanded = expandedBranchId === b.branchId;
-              return (
-                <Fragment key={b.branchId}>
-                  <tr
-                    className={`border-t border-border hover:bg-accent/10 ${isExpanded ? "bg-sky-500/5" : ""}`}
-                  >
-                    <td className="px-1 py-2 text-center">
-                      <button
-                        onClick={() =>
-                          setExpandedBranchId(isExpanded ? null : b.branchId)
-                        }
-                        title="Дэлгэрэнгүй харах"
-                        className={`inline-flex items-center justify-center w-6 h-6 rounded-md border transition-all ${
-                          isExpanded
-                            ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
-                            : "border-border bg-muted/40 text-muted-foreground hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-500"
-                        }`}
-                      >
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                    </td>
-                    <td className="px-2 py-2 text-center tabular-nums text-foreground font-semibold">
-                      {i + 1}
-                    </td>
-                    <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground">
-                      {b.solid}
-                    </td>
-                    <td className="px-2 py-2 font-semibold text-foreground">
-                      {b.branchName}
-                    </td>
-                    <td className="px-2 py-2 text-center text-xs text-foreground font-semibold">
-                      {b.rating}
-                    </td>
-                    <ScoreCell value={b.s1} colBg="bg-sky-500/[0.08]" />
-                    <ScoreCell value={b.s2} colBg="bg-violet-500/[0.08]" />
-                    <ScoreCell value={b.s3} colBg="bg-amber-500/[0.08]" />
-                    <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground bg-emerald-500/[0.08]">
-                      {fmt(b.s4 ?? null)}
-                    </td>
-                    <td
-                      className="px-2 py-2 text-center tabular-nums bg-rose-500/[0.08]"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {readOnly ? (
-                        <ReadOnlyJudgementCell
-                          branchId={b.branchId}
-                          branchName={b.branchName}
-                          score={b.j}
-                          comments={externalJudgementComments}
-                          onOpenComment={setCommentModal}
-                        />
-                      ) : editingJBranch === b.branchId ? (
-                        <input
-                          ref={inputRef}
-                          type="text"
-                          inputMode="decimal"
-                          value={editJValue}
-                          onChange={(e) => setEditJValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              commitJ(b.branchId);
-                            }
-                            if (e.key === "Escape") setEditingJBranch(null);
-                          }}
-                          onBlur={() => commitJ(b.branchId)}
-                          className="w-14 px-1 py-0.5 text-center text-xs rounded border border-rose-500/40 bg-background focus:outline-none focus:ring-2 focus:ring-rose-500/30 tabular-nums text-foreground font-semibold"
-                        />
-                      ) : (
-                        <div className="inline-flex items-center justify-center gap-1">
-                          {(readOnly
-                            ? Boolean(
-                                resolveJudgementComment(
-                                  b.branchId,
-                                  externalJudgementComments,
-                                ),
-                              )
-                            : (b.j != null && b.j > 0) ||
-                              Boolean(
-                                resolveJudgementComment(
-                                  b.branchId,
-                                  externalJudgementComments,
-                                ),
-                              )) && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCommentModal({
-                                  branchId: b.branchId,
-                                  branchName: b.branchName,
-                                  draft:
-                                    resolveJudgementComment(
-                                      b.branchId,
-                                      externalJudgementComments,
-                                    ) ?? "",
-                                });
-                              }}
-                              className={`p-0 leading-none transition-colors ${
-                                resolveJudgementComment(
-                                  b.branchId,
-                                  externalJudgementComments,
-                                )
-                                  ? "text-rose-500 hover:text-rose-400"
-                                  : "text-muted-foreground/50 hover:text-rose-500"
-                              }`}
-                              title={
-                                resolveJudgementComment(
-                                  b.branchId,
-                                  externalJudgementComments,
-                                )
-                                  ? "Тайлбар харах"
-                                  : "Тайлбар нэмэх"
-                              }
-                            >
-                              <MessageSquare
-                                className={`w-2.5 h-2.5 ${
-                                  resolveJudgementComment(
-                                    b.branchId,
-                                    externalJudgementComments,
-                                  )
-                                    ? "fill-rose-500/25"
-                                    : ""
-                                }`}
-                              />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingJBranch(b.branchId);
-                              setEditJValue(
-                                externalJudgements
-                                  ? String(
-                                      lookupJudgementScore(
-                                        externalJudgements,
-                                        b.branchId,
-                                      ) || "",
-                                    )
-                                  : judgmentInd
-                                    ? String(
-                                        manualMap[b.branchId]?.[
-                                          judgmentInd.id
-                                        ] || "",
-                                      )
-                                    : String(b.j || ""),
-                              );
-                            }}
-                            className="group/jbtn inline-flex items-center gap-1 font-semibold text-foreground hover:text-amber-500 transition-colors"
-                            title="Клик — оноо засах"
-                          >
-                            {b.j != null && b.j > 0
-                              ? b.j % 1 === 0
-                                ? b.j.toFixed(0)
-                                : b.j.toFixed(1)
-                              : "—"}
-                            <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
-                              ✎
-                            </span>
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground bg-indigo-500/[0.08]">
-                      {fmt(b.total)}
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      {b.level && (
-                        <div className="inline-flex flex-col items-center gap-0.5">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${riskLevelClass(b.level)}`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${b.level === "Өндөр" ? "bg-red-500" : b.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
-                            />
-                            {b.level}
-                          </span>
-                          {!hideComparison &&
-                            prev?.level &&
-                            prev.level !== b.level && (
-                              <span
-                                className={`text-[9px] font-semibold ${
-                                  (prev.level === "Бага" &&
-                                    b.level !== "Бага") ||
-                                  (prev.level === "Дунд" && b.level === "Өндөр")
-                                    ? "text-rose-500"
-                                    : "text-emerald-500"
-                                }`}
-                              >
-                                {prev.level} → {b.level}
-                              </span>
-                            )}
-                        </div>
-                      )}
-                    </td>
-                    {!hideComparison && (
-                      <td className="px-2 py-2 text-center">
-                        {prev ? (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="tabular-nums font-semibold text-xs text-foreground">
-                              {fmt(prev.total)}
-                            </span>
-                            {prev.level && (
-                              <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0 rounded text-[9px] font-semibold border ${riskLevelClass(prev.level)}`}
-                              >
-                                <span
-                                  className={`w-1 h-1 rounded-full ${prev.level === "Өндөр" ? "bg-red-500" : prev.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
-                                />
-                                {prev.level}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/30 text-xs">
-                            —
-                          </span>
-                        )}
-                      </td>
-                    )}
-                    {!hideComparison && (
-                      <td className="px-2 py-2 text-center">
-                        {diff == null ? (
-                          <span className="text-muted-foreground/30 text-xs">
-                            —
-                          </span>
-                        ) : diff === 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-semibold text-muted-foreground">
-                            ━ 0.00
-                          </span>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
-                              diff > 0
-                                ? "bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400"
-                                : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400"
-                            }`}
-                          >
-                            {diff > 0 ? "▲" : "▼"} {diff > 0 ? "+" : ""}
-                            {diff.toFixed(2)}
-                          </span>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                  {/* ── Дэлгэрэнгүй мөр ── */}
-                  {isExpanded && (
-                    <IndicatorDetailRow
-                      branchId={b.branchId}
-                      branchName={b.branchName}
-                      catalog={catalog}
-                      rawRows={rawRowsByBranch.get(b.branchId) ?? []}
-                      manualValues={manualMap[b.branchId]}
-                      colSpan={visibleCols.length}
-                      currentAgg={b}
-                      previousAgg={prev}
-                      hideComparison={hideComparison}
-                      hideUnevaluatedInDetail={hideUnevaluatedInDetail}
-                      dataReferenceDate={dataReferenceDate}
-                      judgementScore={b.j}
-                      judgementComment={resolveJudgementComment(
-                        b.branchId,
-                        externalJudgementComments,
-                      )}
-                    />
-                  )}
-                </Fragment>
-              );
-            })}
-            {rows.length === 0 && (
-              <tr>
-                <td
-                  colSpan={hideComparison ? 12 : 14}
-                  className="px-4 py-10 text-center text-muted-foreground"
-                >
-                  <div className="text-xs">
-                    Энэ бүсэд тохирох салбар олдсонгүй
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {commentModal && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setCommentModal(null)}
-        >
-          <div
-            className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-premium-xl ring-hairline p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold">
-                Аудиторын үнэлэмжийн тайлбар
-              </h3>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {commentModal.branchName} · SOLID {commentModal.branchId}
-              </p>
-            </div>
-            <textarea
-              value={commentModal.draft}
-              onChange={(e) =>
-                setCommentModal((m) =>
-                  m ? { ...m, draft: e.target.value } : m,
-                )
-              }
-              readOnly={readOnly}
-              rows={12}
-              placeholder="Тайлбар бичнэ үү..."
-              className="w-full min-h-[240px] px-3 py-2.5 rounded-xl border border-border bg-background text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-rose-500/30"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                type="button"
-                onClick={() => setCommentModal(null)}
-                className="px-4 py-1.5 rounded-lg border border-border text-xs hover:bg-muted/40 transition-colors"
-              >
-                {readOnly ? "Хаах" : "Болих"}
-              </button>
-              {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onJudgementCommentSave?.(
-                      commentModal.branchId,
-                      commentModal.draft,
-                    );
-                    setCommentModal(null);
-                  }}
-                  className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all"
-                >
-                  Хадгалах
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Дэлгэрэнгүй: нэг салбарын бүх үзүүлэлтийн утга + score ─────────────────
-const GROUP_LABELS: Record<number, { label: string; color: string }> = {
-  1: {
-    label: "S1",
-    color: "text-sky-600 dark:text-sky-400 bg-sky-500/10 border-sky-500/25",
-  },
-  2: {
-    label: "S2",
-    color:
-      "text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/25",
-  },
-  3: {
-    label: "S3",
-    color:
-      "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/25",
-  },
-  4: {
-    label: "S4",
-    color:
-      "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
-  },
-  5: {
-    label: "J",
-    color: "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/25",
-  },
-};
-
-const SCORE_COMPARISON_COLS = [
-  {
-    label: "S1",
-    key: "s1" as const,
-    cls: "text-sky-600 dark:text-sky-400 bg-sky-500/5 border-sky-500/20",
-  },
-  {
-    label: "S2",
-    key: "s2" as const,
-    cls: "text-violet-600 dark:text-violet-400 bg-violet-500/5 border-violet-500/20",
-  },
-  {
-    label: "S3",
-    key: "s3" as const,
-    cls: "text-amber-600 dark:text-amber-400 bg-amber-500/5 border-amber-500/20",
-  },
-  {
-    label: "S4",
-    key: "s4" as const,
-    cls: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 border-emerald-500/20",
-  },
-  {
-    label: "J",
-    key: "j" as const,
-    cls: "text-rose-600 dark:text-rose-400 bg-rose-500/5 border-rose-500/20",
-  },
-  {
-    label: "Нийт",
-    key: "total" as const,
-    cls: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/5 border-indigo-500/20",
-  },
-] as const;
-
-function normDate(d: string | undefined): string {
-  return d ? String(d).slice(0, 10) : "";
-}
-
-function isStaleIndicatorData(
-  sourceDate: string | undefined,
-  referenceDate: string | undefined,
-): boolean {
-  const ref = normDate(referenceDate);
-  const src = normDate(sourceDate);
-  if (!ref || !src) return false;
-  return src !== ref;
-}
-
-function hasEvaluatedScore(score: number | null | undefined): boolean {
-  return score != null && score > 0;
-}
-
-function IndicatorDetailRow({
-  branchName,
-  catalog,
-  rawRows,
-  manualValues,
-  colSpan,
-  currentAgg,
-  previousAgg,
-  hideComparison = false,
-  hideUnevaluatedInDetail = false,
-  dataReferenceDate,
-  judgementScore,
-  judgementComment,
-}: {
-  branchId: string;
-  branchName: string;
-  catalog: DynamicCatalogIndicator[];
-  rawRows: AnyRow[];
-  manualValues: Record<string, number> | undefined;
-  colSpan: number;
-  currentAgg?: BranchAggregate;
-  previousAgg?: BranchAggregate;
-  hideComparison?: boolean;
-  hideUnevaluatedInDetail?: boolean;
-  dataReferenceDate?: string;
-  judgementScore?: number | null;
-  judgementComment?: string;
-}) {
-  const evals = useMemo(
-    () => evaluateBranchDynamic(catalog, rawRows, manualValues),
-    [catalog, rawRows, manualValues],
-  );
-
-  const grouped = useMemo(() => {
-    const g: Record<
-      number,
-      {
-        ind: DynamicCatalogIndicator;
-        ev: {
-          score: number | null;
-          source: string;
-          autoRaw?: string;
-          autoLabel?: string | null;
-          sourceFetchedDate?: string;
-        };
-      }[]
-    > = {};
-    for (const ind of catalog) {
-      if (ind.is_judgment || ind.group === 5) continue; // Judgement дэлгэрэнгүйд харуулахгүй
-      const ev = evals[ind.id] ?? { score: null, source: "none" };
-      if (hideUnevaluatedInDetail && !hasEvaluatedScore(ev.score)) continue;
-      const grp = ind.group;
-      if (!g[grp]) g[grp] = [];
-      g[grp].push({ ind, ev });
-    }
-    for (const grp of Object.keys(g)) {
-      g[Number(grp)].sort((a, b) => {
-        if (!hideUnevaluatedInDetail) {
-          const aNo = !hasEvaluatedScore(a.ev.score);
-          const bNo = !hasEvaluatedScore(b.ev.score);
-          if (aNo !== bNo) return aNo ? 1 : -1;
-        }
-        const na = parseFloat(a.ind.subid ?? "") || 0;
-        const nb = parseFloat(b.ind.subid ?? "") || 0;
-        if (na !== nb) return na - nb;
-        return (a.ind.subid ?? "").localeCompare(b.ind.subid ?? "");
-      });
-    }
-    return g;
-  }, [catalog, evals, hideUnevaluatedInDetail]);
-
-  return (
-    <tr className="border-t border-sky-500/20 bg-sky-500/3">
-      <td colSpan={colSpan} className="px-0 py-0">
-        <div className="px-4 py-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-              {branchName} — үзүүлэлтийн дэлгэрэнгүй
-            </div>
-            <div className="flex items-center gap-2">
-              {currentAgg?.total != null && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border bg-muted/40 text-[10px] font-bold tabular-nums text-foreground/80">
-                  Эцсийн дүн: {currentAgg.total.toFixed(2)} / 5
-                  <span className="text-sky-600 dark:text-sky-400">
-                    ({Math.round((currentAgg.total / 5) * 100)}%)
-                  </span>
-                </span>
-              )}
-              {currentAgg?.level && (
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(currentAgg.level)}`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${currentAgg.level === "Өндөр" ? "bg-red-500" : currentAgg.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
-                  />
-                  {currentAgg.level}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {(judgementScore != null && judgementScore > 0) ||
-          judgementComment ? (
-            <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-3 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                Аудиторын үнэлэмж
-              </p>
-              {judgementScore != null && judgementScore > 0 && (
-                <p className="text-xs">
-                  <span className="text-muted-foreground">Оноо: </span>
-                  <span className="font-bold tabular-nums text-rose-700 dark:text-rose-400">
-                    {judgementScore % 1 === 0
-                      ? judgementScore.toFixed(0)
-                      : judgementScore.toFixed(1)}
-                  </span>
-                </p>
-              )}
-              {judgementComment ? (
-                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">
-                  {judgementComment}
-                </p>
-              ) : (
-                <p className="text-[11px] text-muted-foreground italic">
-                  Тайлбар байхгүй
-                </p>
-              )}
-            </div>
-          ) : null}
-
-          {/* ── Харьцуулалтын score карт ── */}
-          {!hideComparison && currentAgg && previousAgg && (
-            <div className="rounded-xl border border-dashed border-border bg-gradient-to-br from-muted/30 to-muted/10 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
-                <span className="w-3 h-px bg-muted-foreground/40" />
-                Өмнөх улиралтай харьцуулалт
-                <span className="w-3 h-px bg-muted-foreground/40" />
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {SCORE_COMPARISON_COLS.map(({ label, key, cls }) => {
-                  const cur =
-                    key === "s4" || key === "j"
-                      ? (currentAgg[key] ?? 0) > 0
-                        ? (currentAgg[key] as number)
-                        : null
-                      : (currentAgg[key] as number | null);
-                  const pv =
-                    key === "s4" || key === "j"
-                      ? (previousAgg[key] ?? 0) > 0
-                        ? (previousAgg[key] as number)
-                        : null
-                      : (previousAgg[key] as number | null);
-                  const d = cur != null && pv != null ? cur - pv : null;
-                  return (
-                    <div
-                      key={label}
-                      className={`rounded-lg border p-2.5 ${cls}`}
-                    >
-                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5">
-                        {label}
-                      </p>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-base font-bold tabular-nums leading-none">
-                          {cur != null ? cur.toFixed(2) : "—"}
-                        </span>
-                        <span className="text-[9px] text-muted-foreground tabular-nums">
-                          ← {pv != null ? pv.toFixed(2) : "—"}
-                        </span>
-                      </div>
-                      {d != null ? (
-                        <p
-                          className={`text-[10px] font-bold tabular-nums mt-1 ${
-                            d > 0.005
-                              ? "text-rose-500"
-                              : d < -0.005
-                                ? "text-emerald-500"
-                                : "text-muted-foreground/50"
-                          }`}
-                        >
-                          {d > 0.005
-                            ? `▲ +${d.toFixed(2)}`
-                            : d < -0.005
-                              ? `▼ ${d.toFixed(2)}`
-                              : "━ 0.00"}
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-muted-foreground/30 mt-1">
-                          шинэ
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {([1, 2, 3, 4, 5] as const).map((grp) => {
-            const items = grouped[grp];
-            if (!items || items.length === 0) return null;
-            const gl = GROUP_LABELS[grp];
-            return (
-              <div key={grp}>
-                <div
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold mb-1.5 ${gl.color}`}
-                >
-                  {gl.label}
-                </div>
-                <table className="w-full text-[11px]">
-                  <thead>
-                    <tr className="text-muted-foreground/60 uppercase text-[10px]">
-                      <th className="text-left py-0.5 pr-3 font-semibold w-8">
-                        ID
-                      </th>
-                      <th className="text-left py-0.5 pr-3 font-semibold">
-                        Үзүүлэлтийн нэр
-                      </th>
-                      <th className="text-right py-0.5 pr-3 font-semibold">
-                        Утга (RESULT)
-                      </th>
-                      <th className="text-center py-0.5 font-semibold w-16">
-                        Score
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map(({ ind, ev }) => (
-                      <tr
-                        key={ind.id}
-                        className="border-t border-border/30 hover:bg-accent/20"
-                      >
-                        <td className="py-1 pr-3 text-muted-foreground/50 font-mono tabular-nums">
-                          {ind.subid || ind.id}
-                        </td>
-                        <td className="py-1 pr-3 font-medium text-foreground/90">
-                          {ind.name}
-                        </td>
-                        <td className="py-1 pr-3 tabular-nums font-semibold text-right text-foreground">
-                          {ev.autoRaw !== undefined ? (
-                            <span className="inline-flex items-center justify-end gap-1.5 w-full">
-                              <span>{ev.autoRaw || "—"}</span>
-                              {isStaleIndicatorData(
-                                ev.sourceFetchedDate,
-                                dataReferenceDate,
-                              ) && (
-                                <span
-                                  className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"
-                                  title={`Хуучин өгөгдөл (${normDate(ev.sourceFetchedDate)})`}
-                                />
-                              )}
-                            </span>
-                          ) : ind.is_manual ? (
-                            <span className="text-muted-foreground/40 italic">
-                              гараар
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="py-1 text-center tabular-nums font-semibold">
-                          {ev.score != null && ev.score > 0 ? (
-                            <span
-                              className={
-                                ev.score <= 1.5
-                                  ? "text-emerald-600 dark:text-emerald-400"
-                                  : ev.score <= 2.5
-                                    ? "text-lime-600 dark:text-lime-400"
-                                    : ev.score <= 3.5
-                                      ? "text-amber-600 dark:text-amber-400"
-                                      : ev.score <= 4.5
-                                        ? "text-orange-600 dark:text-orange-400"
-                                        : "text-rose-600 dark:text-rose-400"
-                              }
-                            >
-                              {ev.score.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/40">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function ScoreCell({
-  value,
-  colBg,
-}: {
-  value: number | null;
-  colBg: string;
-}) {
-  return (
-    <td
-      className={`px-2 py-2 text-center tabular-nums font-semibold text-foreground ${colBg}`}
-    >
-      {value == null ? "—" : value.toFixed(2)}
-    </td>
-  );
-}
-
-function SummaryBlock({
-  title,
-  cols,
-  children,
-}: {
-  title: string;
-  cols: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
-      <div className="px-3.5 py-2.5 border-b border-border bg-gradient-to-r from-blue-500/5 to-transparent text-xs font-bold uppercase tracking-wider text-foreground">
-        {title}
-      </div>
-      <table className="w-full text-xs">
-        <thead className="bg-muted/30 text-[10px] uppercase text-muted-foreground">
-          <tr>
-            {cols.map((c, i) => (
-              <th
-                key={c}
-                className={`px-3 py-1.5 font-semibold ${i === 0 ? "text-left" : "text-right"}`}
-              >
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
-    </div>
-  );
-}
-
-function SRow({
-  label,
-  v,
-  prev,
-  bold,
-}: {
-  label: string;
-  v: number;
-  prev?: number;
-  bold?: boolean;
-}) {
-  const diff = prev !== undefined ? v - prev : null;
-  return (
-    <tr
-      className={`border-t border-border transition-colors ${bold ? "font-bold bg-muted/30" : "hover:bg-accent/30"}`}
-    >
-      <td className="px-3 py-1.5">{label}</td>
-      <td className="px-3 py-1.5 text-right tabular-nums">{v}</td>
-      {prev !== undefined && (
-        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
-          <span>{prev}</span>
-          {diff !== null && diff !== 0 && (
-            <span
-              className={`ml-1.5 text-[10px] font-semibold ${diff > 0 ? "text-rose-600" : "text-emerald-600"}`}
-            >
-              {diff > 0 ? `+${diff}` : diff}
-            </span>
-          )}
-        </td>
-      )}
-    </tr>
   );
 }

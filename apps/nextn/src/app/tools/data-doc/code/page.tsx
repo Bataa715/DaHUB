@@ -117,7 +117,7 @@ export default function CodePage() {
     const now = new Date().toISOString();
     const newSnippet: CodeSnippet = {
       id: generateId(),
-      title: form.title || "Гарчиггүй",
+      title: form.title || t("dataDocCodePageUntitled"),
       description: form.description || "",
       language: (form.language as CodeSnippet["language"]) || "other",
       code: form.code || "",
@@ -207,18 +207,18 @@ export default function CodePage() {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
-            Гарчиг
+            {t("admEthicsTitleLabel")}
           </label>
           <input
             value={form.title || ""}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            placeholder="Кодын нэр…"
+            placeholder={t("dataDocCodePageTitlePlaceholder")}
             className="w-full px-3 py-2 text-sm bg-muted border border-border/50 rounded-xl text-foreground/90 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50"
           />
         </div>
         <div>
           <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
-            Хэл
+            {t("dataDocCodePageLangLabel")}
           </label>
           <select
             value={form.language || "python"}
@@ -240,32 +240,32 @@ export default function CodePage() {
       </div>
       <div>
         <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
-          Тайлбар
+          {t("dataDocColDesc")}
         </label>
         <input
           value={form.description || ""}
           onChange={(e) =>
             setForm((f) => ({ ...f, description: e.target.value }))
           }
-          placeholder="Богино тайлбар…"
+          placeholder={t("dataDocCodePageDescPlaceholder")}
           className="w-full px-3 py-2 text-sm bg-muted border border-border/50 rounded-xl text-foreground/90 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50"
         />
       </div>
       <div>
         <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
-          Код
+          {t("dataDocCodePageCodeLabel")}
         </label>
         <textarea
           value={form.code || ""}
           onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-          placeholder="Кодоо энд оруулна уу…"
+          placeholder={t("dataDocCodePageCodePlaceholder")}
           rows={12}
           className="w-full px-3 py-2.5 text-xs font-mono bg-muted/80 border border-border/50 rounded-xl text-foreground/90 placeholder-muted-foreground/50 focus:outline-none focus:border-cyan-500/50 resize-none leading-relaxed"
         />
       </div>
       <div>
         <label className="block text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
-          Тэг
+          {t("dataDocCodePageTagsLabel")}
         </label>
         <div className="flex flex-wrap gap-1.5 mb-2">
           {(form.tags || []).map((tag) => (
@@ -288,14 +288,14 @@ export default function CodePage() {
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTag()}
-            placeholder="Тэг нэмэх + Enter"
+            placeholder={t("dataDocCodePageTagAddPlaceholder")}
             className="flex-1 px-3 py-1.5 text-xs bg-muted border border-border/50 rounded-lg text-foreground/80 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/50"
           />
           <button
             onClick={addTag}
             className="px-3 py-1.5 bg-card hover:bg-muted text-foreground/80 text-xs rounded-lg border border-border transition-colors"
           >
-            Нэмэх
+            {t("dataDocCodePageAddBtn")}
           </button>
         </div>
       </div>
@@ -305,13 +305,13 @@ export default function CodePage() {
           className="flex items-center gap-2 px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-foreground font-semibold rounded-xl transition-all text-sm"
         >
           <Save className="w-4 h-4" />
-          Хадгалах
+          {t("save")}
         </button>
         <button
           onClick={onCancel}
           className="px-4 py-2 bg-card hover:bg-muted text-foreground/80 rounded-xl border border-border transition-all text-sm"
         >
-          Цуцлах
+          {t("admDeptCancelBtn")}
         </button>
       </div>
     </div>
@@ -347,7 +347,7 @@ export default function CodePage() {
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 border border-cyan-500/20 rounded-lg text-xs font-medium transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Шинэ
+                {t("dataDocCodePageNewBtn")}
               </button>
             </div>
             <div className="relative">
@@ -355,7 +355,7 @@ export default function CodePage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Код хайх…"
+                placeholder={t("dataDocCodePageSearchPlaceholder")}
                 className="w-full pl-8 pr-3 py-2 text-xs bg-muted/60 border border-border/30 rounded-lg text-foreground/80 placeholder-muted-foreground/40 focus:outline-none focus:border-cyan-500/40"
               />
             </div>
@@ -371,7 +371,7 @@ export default function CodePage() {
                   }`}
                 >
                   {lang === "all"
-                    ? "Бүгд"
+                    ? t("knowledgeCatAll")
                     : LANG_META[lang]?.icon + " " + LANG_META[lang]?.label}
                 </button>
               ))}
@@ -381,7 +381,7 @@ export default function CodePage() {
           <div className="flex-1 overflow-y-auto py-2">
             {filtered.length === 0 ? (
               <div className="px-4 py-10 text-center text-muted-foreground/50 text-sm">
-                Код олдсонгүй
+                {t("dataDocCodePageNoCode")}
               </div>
             ) : (
               filtered.map((snippet) => {
@@ -437,7 +437,7 @@ export default function CodePage() {
           </div>
           <div className="px-4 py-3 border-t border-border/50">
             <span className="text-[11px] text-muted-foreground/50">
-              {filtered.length} код
+              {filtered.length} {t("dataDocCodePageCodeUnit")}
             </span>
           </div>
         </div>
@@ -448,7 +448,7 @@ export default function CodePage() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl">
                 <h2 className="text-base font-bold text-foreground mb-5">
-                  Шинэ код
+                  {t("dataDocCodePageNewCodeTitle")}
                 </h2>
                 <FormPanel
                   onSubmit={createSnippet}
@@ -460,7 +460,7 @@ export default function CodePage() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl">
                 <h2 className="text-base font-bold text-foreground mb-5">
-                  Код засах
+                  {t("dataDocCodePageEditCodeTitle")}
                 </h2>
                 <FormPanel
                   onSubmit={updateSnippet}
@@ -500,24 +500,24 @@ export default function CodePage() {
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
-                    {copied ? "Хуулагдлаа!" : "Хуулах"}
+                    {copied ? t("dataDocCodePageCopied") : t("admRegCopyBtnTooltip")}
                   </button>
                   <button
                     onClick={() => startEdit(selected)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-foreground/80 border border-border rounded-lg text-xs transition-colors"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
-                    Засах
+                    {t("admCommonEditBtn")}
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm("Энэ кодыг устгах уу?"))
+                      if (confirm(t("dataDocCodePageDeleteConfirm")))
                         deleteSnippet(selected.id);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Устгах
+                    {t("admRiskIndDeleteBtn")}
                   </button>
                 </div>
               </div>
@@ -549,10 +549,10 @@ export default function CodePage() {
                   <Code2 className="w-8 h-8 text-muted-foreground/50" />
                 </div>
                 <h3 className="text-muted-foreground font-medium mb-1">
-                  Код сонгоогүй байна
+                  {t("dataDocCodePageNoSelection")}
                 </h3>
                 <p className="text-muted-foreground/50 text-sm">
-                  Зүүн талаас код сонгох эсвэл шинээр нэмнэ үү
+                  {t("dataDocCodePageNoSelectionHint")}
                 </p>
               </div>
             </div>
