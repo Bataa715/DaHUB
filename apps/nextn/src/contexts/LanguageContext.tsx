@@ -700,15 +700,15 @@ export const translations = {
     admDeptEditDialogDesc: "Хэлтсийн нэрийг шинэчлэх",
     admDeptNameLabel: "Хэлтсийн нэр",
     admDeptCodeLabel: "Код (ID prefix)",
-    admDeptCodeExamplePlaceholder: "Жишээ: EAH",
+    admDeptCodeExamplePlaceholder: "Жишээ: DAG-DAA",
     admDeptCodeHintEdit:
-      "Хэрэглэгчийн ID-н эхний prefix код. Зөвхөн том үсэг/тоо.",
+      "Хэрэглэгчийн ID-н prefix. Том үсэг/тоо/зураас (жишээ: DAG-DAA).",
     admDeptCancelBtn: "Цуцлах",
     admDeptCreateDialogTitle: "Шинэ хэлтэс нэмэх",
     admDeptCreateDialogDesc: "Хэлтсийн нэрийг оруулна уу",
     admDeptNamePlaceholder: "Жишээ: Ерөнхий аудитын хэлтэс",
     admDeptCodeHintCreate:
-      "Хоосон орхивол автоматаар оноохгүй. Зөвхөн том үсэг/тоо.",
+      "Хоосон орхивол оноохгүй. Том үсэг/тоо/зураас (жишээ: DAG-DAA).",
 
     // Admin - Homepage ethics page
     admEthicsWarnTitle: "Анхааруулга",
@@ -2227,15 +2227,15 @@ export const translations = {
     admDeptEditDialogDesc: "Update the department name",
     admDeptNameLabel: "Department name",
     admDeptCodeLabel: "Code (ID prefix)",
-    admDeptCodeExamplePlaceholder: "Example: EAH",
+    admDeptCodeExamplePlaceholder: "Example: DAG-DAA",
     admDeptCodeHintEdit:
-      "The first prefix code of the user ID. Uppercase letters/numbers only.",
+      "User ID prefix. Uppercase letters, numbers, hyphens (e.g. DAG-DAA).",
     admDeptCancelBtn: "Cancel",
     admDeptCreateDialogTitle: "Add new department",
     admDeptCreateDialogDesc: "Enter the department name",
     admDeptNamePlaceholder: "Example: General Audit Department",
     admDeptCodeHintCreate:
-      "If left blank, no code will be assigned automatically. Uppercase letters/numbers only.",
+      "Leave blank for none. Uppercase letters, numbers, hyphens (e.g. DAG-DAA).",
 
     // Admin - Homepage ethics page
     admEthicsWarnTitle: "Warning",

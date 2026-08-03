@@ -94,7 +94,19 @@ export class DbAccessService {
 
   private canGrantAccess(user: AuthenticatedUser): boolean {
     if (user.isAdmin || user.isSuperAdmin) return true;
-    const tools: string[] = user.allowedTools || [];
+    // formatUserResponse array өгдөг ч edge case-д string ирж болно
+    const tools = Array.isArray(user.allowedTools)
+      ? user.allowedTools
+      : typeof user.allowedTools === "string"
+        ? (() => {
+            try {
+              const p = JSON.parse(user.allowedTools);
+              return Array.isArray(p) ? p : [];
+            } catch {
+              return [];
+            }
+          })()
+        : [];
     return tools.includes("db_access_granter");
   }
 

@@ -20,22 +20,49 @@ export async function getApiAuth(
   }
 
   const cookieHeader = req.headers.get("cookie") ?? "";
-  const token =
-    readCookie(cookieHeader, "token") ?? readCookie(cookieHeader, "adminToken");
-  if (!token) return null;
+  // Хугацаа дуусаагүй cookie-г эхлээд оролдоно (adminToken expired + token OK үед 403/401-ээс сэргийлнэ)
+  const candidates = [
+    readCookie(cookieHeader, "adminToken"),
+    readCookie(cookieHeader, "token"),
+  ].filter((t): t is string => !!t);
 
-  try {
-    const secret = new TextEncoder().encode(jwtSecret);
-    const { payload } = await jwtVerify(token, secret);
-    return payload;
-  } catch {
-    return null;
+  if (candidates.length === 0) return null;
+
+  const secret = new TextEncoder().encode(jwtSecret);
+  for (const token of candidates) {
+    try {
+      const { payload } = await jwtVerify(token, secret);
+      return payload;
+    } catch {
+      // дараагийн cookie
+    }
   }
+  return null;
 }
 
 export function isAdminPayload(payload: JWTPayload | null): boolean {
   if (!payload) return false;
-  return payload["isAdmin"] === true || payload["isAdmin"] === 1;
+  return (
+    payload["isAdmin"] === true ||
+    payload["isAdmin"] === 1 ||
+    payload["isSuperAdmin"] === true ||
+    payload["isSuperAdmin"] === 1
+  );
+}
+
+/** JWT claim-д array эсвэл JSON string хэлбэрээр ирж болно. */
+export function parseAllowedTools(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return raw.trim() ? [raw.trim()] : [];
+    }
+  }
+  return [];
 }
 
 /**
@@ -47,8 +74,8 @@ export function hasToolAccess(
   toolIds: string[],
 ): boolean {
   if (!payload) return false;
-  if (isAdminPayload(payload) || payload["isSuperAdmin"] === true) return true;
-  const allowed = (payload["allowedTools"] as string[] | undefined) ?? [];
+  if (isAdminPayload(payload)) return true;
+  const allowed = parseAllowedTools(payload["allowedTools"]);
   return toolIds.some((t) => allowed.includes(t));
 }
 

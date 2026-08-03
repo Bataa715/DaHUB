@@ -235,7 +235,12 @@ export class UsersService {
         if (depts.length > 0) {
           const newDeptName = depts[0].name as string;
           const newDeptCode = (depts[0].code as string) || "";
-          nextUserId = buildUserId(newDeptName, nextName, newDeptCode);
+          nextUserId = buildUserId(
+            newDeptName,
+            nextName,
+            newDeptCode,
+            nextPosition,
+          );
         }
       }
     }

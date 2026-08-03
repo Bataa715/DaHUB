@@ -10,10 +10,16 @@ export const dynamic = "force-dynamic";
 // болохгүй — доор нэвтрэлтийг өөрөө шалгана.
 export async function GET(req: Request) {
   const auth = await getApiAuth(req);
-  if (!hasToolAccess(auth, ["data_doc"])) {
+  if (!auth) {
     return NextResponse.json(
       { error: "Нэвтрэх шаардлагатай" },
       { status: 401 },
+    );
+  }
+  if (!hasToolAccess(auth, ["data_doc"])) {
+    return NextResponse.json(
+      { error: "Энэ хэрэгслийг ашиглах эрх байхгүй" },
+      { status: 403 },
     );
   }
 
@@ -30,10 +36,16 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   const auth = await getApiAuth(req);
-  if (!hasToolAccess(auth, ["data_doc"])) {
+  if (!auth) {
     return NextResponse.json(
       { error: "Нэвтрэх шаардлагатай" },
       { status: 401 },
+    );
+  }
+  if (!hasToolAccess(auth, ["data_doc"])) {
+    return NextResponse.json(
+      { error: "Энэ хэрэгслийг ашиглах эрх байхгүй" },
+      { status: 403 },
     );
   }
 

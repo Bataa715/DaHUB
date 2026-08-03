@@ -21,6 +21,7 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],
   "/tools/reports": ["reports"],
+  "/tools/monitoring-box": ["monitoring_box"],
 };
 
 async function getTokenPayload(token: string | undefined) {
@@ -155,10 +156,23 @@ export async function middleware(request: NextRequest) {
       const requiredTools = TOOL_GUARDS[matchedPath];
       const isSuper =
         userPayload!["isAdmin"] === true ||
-        userPayload!["isSuperAdmin"] === true;
+        userPayload!["isAdmin"] === 1 ||
+        userPayload!["isSuperAdmin"] === true ||
+        userPayload!["isSuperAdmin"] === 1;
 
       if (!isSuper) {
-        const userTools = (userPayload!["allowedTools"] as string[]) ?? [];
+        // JWT claim array эсвэл JSON string байж болно
+        const rawTools = userPayload!["allowedTools"];
+        let userTools: string[] = [];
+        if (Array.isArray(rawTools)) userTools = rawTools.map(String);
+        else if (typeof rawTools === "string") {
+          try {
+            const parsed = JSON.parse(rawTools);
+            userTools = Array.isArray(parsed) ? parsed.map(String) : [];
+          } catch {
+            userTools = [];
+          }
+        }
         const hasAccess = requiredTools.some((t) => userTools.includes(t));
         if (!hasAccess) {
           // "/tools" grid is no longer the primary nav surface (sidebar is) —

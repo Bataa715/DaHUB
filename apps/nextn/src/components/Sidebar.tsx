@@ -103,7 +103,20 @@ export function SidebarNavItems({
 
   const available = allTools.filter((tool) => {
     const ids = tool.matchIds ?? [tool.id];
-    return ids.some((id) => allowedTools.includes(id));
+    // allowedTools ихэвчлэн array; edge case-д JSON string ирвэл parse хийнэ
+    const tools = Array.isArray(allowedTools)
+      ? allowedTools
+      : typeof allowedTools === "string"
+        ? (() => {
+            try {
+              const p = JSON.parse(allowedTools);
+              return Array.isArray(p) ? p : [];
+            } catch {
+              return [];
+            }
+          })()
+        : [];
+    return ids.some((id) => tools.includes(id));
   });
 
   const isActive = (href: string) =>

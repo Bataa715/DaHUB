@@ -95,7 +95,13 @@ export default function AdminDepartmentsPage() {
     try {
       await departmentsApi.create({
         name,
-        code: createCode.trim().toUpperCase() || undefined,
+        code:
+          createCode
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9-]/g, "")
+            .replace(/-+/g, "-")
+            .replace(/^-+|-+$/g, "") || undefined,
       });
       toast({ title: t("success"), description: t("admDeptCreatedDesc") });
       setIsCreateOpen(false);
@@ -129,7 +135,12 @@ export default function AdminDepartmentsPage() {
       // Зөвхөн засагдах талбарууд — description/users илгээхгүй (validation 400-ээс сэргийлнэ)
       await departmentsApi.update(selectedDepartment.id, {
         name: formData.name.trim(),
-        code: formData.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""),
+        code: formData.code
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9-]/g, "")
+          .replace(/-+/g, "-")
+          .replace(/^-+|-+$/g, ""),
       });
       toast({
         title: t("success"),
@@ -388,7 +399,7 @@ export default function AdminDepartmentsPage() {
                 }))
               }
               placeholder={t("admDeptCodeExamplePlaceholder")}
-              maxLength={12}
+              maxLength={20}
               className="bg-muted border-border text-foreground focus-visible:ring-ring uppercase"
             />
             <p className="text-muted-foreground/60 text-[11px]">
@@ -450,7 +461,7 @@ export default function AdminDepartmentsPage() {
                 if (e.key === "Enter") handleCreateDepartment();
               }}
               placeholder={t("admDeptCodeExamplePlaceholder")}
-              maxLength={12}
+              maxLength={20}
               className="bg-muted border-border text-foreground focus-visible:ring-ring uppercase"
             />
             <p className="text-muted-foreground/60 text-[11px]">

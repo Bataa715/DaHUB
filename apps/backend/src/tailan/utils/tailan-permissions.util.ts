@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { safeParseTools } from "../../common/utils/user-utils";
 
 /**
  * Shared across TailanReportsService / TailanImagesService / TailanDocxService
@@ -7,8 +8,8 @@ import type { AuthenticatedUser } from "../../common/types/authenticated-request
  */
 export function isTailanDeptHead(user: AuthenticatedUser): boolean {
   return (
-    user.isAdmin ||
-    user.isSuperAdmin ||
-    (user.allowedTools ?? []).includes("tailan_dept_head")
+    !!user.isAdmin ||
+    !!user.isSuperAdmin ||
+    safeParseTools(user.allowedTools).includes("tailan_dept_head")
   );
 }

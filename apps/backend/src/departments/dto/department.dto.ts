@@ -7,13 +7,18 @@ import {
 } from "class-validator";
 import { Transform } from "class-transformer";
 
-/** Prefix код: том латин үсэг/тоо, хамгийн ихдээ 12. */
+/**
+ * Prefix код: том латин үсэг/тоо/зураас (жишээ: DAG-DAA).
+ * Төгсгөл/эхний `-`-ийг цэвэрлэж, давхар `--`-ийг нэг болгоно.
+ */
 function sanitizeDeptCode(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;
   return String(value)
     .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 12);
+    .replace(/[^A-Z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 20);
 }
 
 export class CreateDepartmentDto {
@@ -35,13 +40,13 @@ export class CreateDepartmentDto {
   @IsOptional()
   manager?: string;
 
-  // Хэрэглэгчийн ID-н prefix код (зөвхөн том үсэг/тоо, 1-12 тэмдэгт)
+  // Хэрэглэгчийн ID-н prefix код (том үсэг/тоо/зураас, жишээ: DAG-DAA)
   @Transform(({ value }) => sanitizeDeptCode(value))
   @IsString()
   @IsOptional()
-  @MaxLength(12)
-  @Matches(/^[A-Z0-9]*$/, {
-    message: "Код нь зөвхөн том үсэг болон тооноос бүрдэнэ",
+  @MaxLength(20)
+  @Matches(/^([A-Z0-9]+(?:-[A-Z0-9]+)*)?$/, {
+    message: "Код нь том үсэг, тоо болон зурааснаас бүрдэнэ (жишээ: DAG-DAA)",
   })
   code?: string;
 }
@@ -68,9 +73,9 @@ export class UpdateDepartmentDto {
   @Transform(({ value }) => sanitizeDeptCode(value))
   @IsString()
   @IsOptional()
-  @MaxLength(12)
-  @Matches(/^[A-Z0-9]*$/, {
-    message: "Код нь зөвхөн том үсэг болон тооноос бүрдэнэ",
+  @MaxLength(20)
+  @Matches(/^([A-Z0-9]+(?:-[A-Z0-9]+)*)?$/, {
+    message: "Код нь том үсэг, тоо болон зурааснаас бүрдэнэ (жишээ: DAG-DAA)",
   })
   code?: string;
 }

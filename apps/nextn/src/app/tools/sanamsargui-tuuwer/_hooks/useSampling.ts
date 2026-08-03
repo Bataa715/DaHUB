@@ -13,6 +13,7 @@ import {
   buildCsvContent,
   logExportFailure,
 } from "../_lib/sampling";
+import { buildSampleWorkbook } from "../_lib/buildSampleWorkbook";
 
 export function useSampling() {
   const { t } = useLanguage();
@@ -121,10 +122,19 @@ export function useSampling() {
     });
   };
 
+  // Stratified: N = бүлгүүдийн Ni-ийн нийлбэр (totalVars-тай зөрөхгүй)
+  const stratifiedN = useMemo(() => {
+    if (!isStratified) return totalVars;
+    const sum = groupSizes
+      .slice(0, numGroups)
+      .reduce((a, b) => a + Math.max(1, b || 0), 0);
+    return sum > 0 ? sum : totalVars;
+  }, [isStratified, groupSizes, numGroups, totalVars]);
+
   // ── Preview computed n ───────────────────────────────────────────────────
   const computedN = useMemo(() => {
     const Z = getZ(confidence);
-    if (isStratified) return calcStratifiedSampleSize(totalVars, Z, margin);
+    if (isStratified) return calcStratifiedSampleSize(stratifiedN, Z, margin);
 
     const baseData = fileData ?? [];
     const colIdx = filterCol ? fileHeaders.indexOf(filterCol) : -1;
@@ -153,7 +163,7 @@ export function useSampling() {
   }, [
     confidence,
     isStratified,
-    totalVars,
+    stratifiedN,
     margin,
     fileData,
     filterCol,
@@ -171,35 +181,57 @@ export function useSampling() {
     const rng = Math.random;
 
     if (isStratified) {
-      const N = totalVars;
+      // Бүлэг бүрийн Ni (эх олонлогийн хэмжээ) — түүврийг бүлгийн хүрээнд авна
+      const sizes = groupSizes
+        .slice(0, numGroups)
+        .map((s) => Math.max(1, s || 1));
+      const N = sizes.reduce((a, b) => a + b, 0);
       let sampleSize = calcStratifiedSampleSize(N, Z, margin);
       const groups: GroupResult[] = [];
+      let offset = 0;
 
       if (design === "prop") {
-        const totalGroupSize = groupSizes.reduce((a, b) => a + b, 0);
+        // Пропорциональ: ni ∝ Ni
         for (let i = 0; i < numGroups; i++) {
-          const ni = Math.round(sampleSize * (groupSizes[i] / totalGroupSize));
+          const Ni = sizes[i];
+          const ni = Math.min(
+            Ni,
+            Math.max(0, Math.round(sampleSize * (Ni / N))),
+          );
+          const local = sampleWithoutReplacement(Ni, ni, rng);
           groups.push({
             label: `${t("sampleGroupLabel")} ${i + 1}`,
-            indices: sampleWithoutReplacement(N, ni, rng),
-            size: groupSizes[i],
+            // Бүлэг доторх дугаарыг global offset-той харуулна
+            indices: local.map((x) => offset + x),
+            size: Ni,
             rows: [],
           });
+          offset += Ni;
         }
       } else {
-        if (sampleSize % numGroups !== 0)
+        // Пропорциональ биш (тэнцүү хуваарилалт): бүлэг бүрт ижил ni,
+        // гэхдээ түүвэр тухайн бүлгийн Ni-ээс (бүтэн N-ээс биш) авна.
+        if (sampleSize % numGroups !== 0) {
           sampleSize += numGroups - (sampleSize % numGroups);
-        const ni = Math.floor(sampleSize / numGroups);
+        }
+        const equalNi = Math.floor(sampleSize / numGroups);
         for (let i = 0; i < numGroups; i++) {
+          const Ni = sizes[i];
+          const ni = Math.min(Ni, equalNi);
+          const local = sampleWithoutReplacement(Ni, ni, rng);
           groups.push({
             label: `${t("sampleGroupLabel")} ${i + 1}`,
-            indices: sampleWithoutReplacement(N, ni, rng),
+            indices: local.map((x) => offset + x),
+            size: Ni,
             rows: [],
           });
+          offset += Ni;
         }
       }
+
+      const actualN = groups.reduce((s, g) => s + g.indices.length, 0);
       setResult({
-        n: sampleSize,
+        n: actualN,
         N,
         Z,
         design,
@@ -207,8 +239,10 @@ export function useSampling() {
         margin,
         stdDev,
         headers: [],
-        groups: groups.map((g) => ({ ...g, rows: [] })),
+        groups,
       });
+      // UI-ийн totalVars-ийг Ni-ийн нийлбэртэй тааруулна
+      setTotalVars(N);
     } else {
       const baseData = fileData ?? [];
       const colIdx = filterCol ? fileHeaders.indexOf(filterCol) : -1;
@@ -453,26 +487,11 @@ export function useSampling() {
         return;
       }
 
-      const res = await fetch("/api/export-sample", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          result,
-          isStratified,
-          filename: exportFilename || "sample_result.xlsx",
-        }),
-      });
-      if (!res.ok) {
-        logExportFailure("API request failed", undefined, {
-          status: res.status,
-          statusText: res.statusText,
-        });
-        throw new Error(`Export failed (${res.status})`);
-      }
-
-      const blob = await res.blob();
+      // Client-side Excel (risk-assessment/monitoring шиг) — /api/export-sample
+      // deploy дээр 401/403/body-limit алдаа өгдөг тул сервер рүү явуулахгүй.
+      const blob = await buildSampleWorkbook(result, isStratified);
       if (!blob.size) {
-        logExportFailure("Empty file received from server");
+        logExportFailure("Empty workbook generated client-side");
         throw new Error("Exported file is empty");
       }
 

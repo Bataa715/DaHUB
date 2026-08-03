@@ -1,16 +1,42 @@
 import { DEPARTMENT_CODES } from "../constants/departments";
 
+/** Хэлтсийн/газрын захирал эсэх (албан тушаалаар). */
+export function isDirectorPosition(position?: string): boolean {
+  return String(position ?? "")
+    .toLowerCase()
+    .includes("захирал");
+}
+
 /**
- * Generates a deterministic user ID from department and name.
+ * Захирлын userId: .Bilegzaya-DAG-MTAH
+ * - code = MTAH     → .Name-DAG-MTAH
+ * - code = DAG-DAA  → .Name-DAG-DAA
+ * - code = DAG      → .Name-DAG
+ */
+function formatDirectorUserId(namePart: string, deptCode: string): string {
+  const code = (deptCode || "DAG").trim();
+  if (/^DAG-/i.test(code)) return `.${namePart}-${code}`;
+  if (/^DAG$/i.test(code)) return `.${namePart}-DAG`;
+  return `.${namePart}-DAG-${code}`;
+}
+
+/**
+ * Generates a deterministic user ID from department, name, code, and position.
  * Single source of truth — replaces duplicated logic in auth.service and users.service.
  *
  * `code` — хэлтсийн динамик prefix код (DB-аас). Хоосон бол хуучин
  * DEPARTMENT_CODES map руу fallback хийнэ.
+ *
+ * Формат:
+ * - Захирал / Удирдлага: `.Bilegzaya-DAG-MTAH`
+ * - Дата анализын алба:   `DAA-Name` / `DAG-DAA-Name` (захиралгүй)
+ * - Бусад ажилтан:        `DAG-MTAH-Name`
  */
 export function buildUserId(
   department: string,
   name: string,
   code?: string,
+  position?: string,
 ): string {
   const deptCode =
     (code && code.trim()) || DEPARTMENT_CODES[department] || "USR";
@@ -19,8 +45,14 @@ export function buildUserId(
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join("-")
     .replace(/\s+/g, "");
-  if (department === "Удирдлага") return `.${namePart}-${deptCode}`;
+
+  // DAA-д захирал байхгүй — захирлын (.Name-DAG-…) формат хэрэглэхгүй
   if (department === "Дата анализын алба") return `${deptCode}-${namePart}`;
+
+  if (isDirectorPosition(position) || department === "Удирдлага") {
+    return formatDirectorUserId(namePart, deptCode);
+  }
+
   return `DAG-${deptCode}-${namePart}`;
 }
 

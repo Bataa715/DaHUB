@@ -518,34 +518,42 @@ export default function SanamsarguiTuuwerPage() {
                     </strong>
                   </div>
                 )}
-                {s.design === "prop" && (
-                  <div>
-                    <Label className="text-sm mb-2 block">
-                      {t("sampleGroupVarCountLabel")}
-                    </Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {s.groupSizes.map((sz, i) => (
-                        <div key={i} className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            {t("sampleGroupLabel")} {i + 1}:
-                          </Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={sz}
-                            onChange={(e) => {
-                              const next = [...s.groupSizes];
-                              next[i] = parseInt(e.target.value) || 1;
-                              s.setGroupSizes(next);
-                              s.setResult(null);
-                            }}
-                            className="text-center"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                {/* Prop + nonprop хоёуланд Ni оруулна — ялгаа нь хуваарилалтын томьёо */}
+                <div>
+                  <Label className="text-sm mb-2 block">
+                    {t("sampleGroupVarCountLabel")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {s.design === "prop"
+                      ? t("sampleDesignProp")
+                      : t("sampleDesignNonprop")}
+                    :{" "}
+                    {s.design === "prop"
+                      ? "ni ∝ Ni"
+                      : "бүлэг бүрт тэнцүү ni (Ni-ээс)"}
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {s.groupSizes.map((sz, i) => (
+                      <div key={i} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">
+                          {t("sampleGroupLabel")} {i + 1} (Ni):
+                        </Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={sz}
+                          onChange={(e) => {
+                            const next = [...s.groupSizes];
+                            next[i] = parseInt(e.target.value) || 1;
+                            s.setGroupSizes(next);
+                            s.setResult(null);
+                          }}
+                          className="text-center"
+                        />
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
               </div>
             )}
 

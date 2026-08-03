@@ -186,7 +186,12 @@ export class DepartmentsService {
     );
 
     for (const user of users) {
-      const newUserId = buildUserId(departmentName, user.name, newCode);
+      const newUserId = buildUserId(
+        departmentName,
+        user.name,
+        newCode,
+        user.position,
+      );
       if (newUserId === user.userId) continue;
 
       const nextUser = {

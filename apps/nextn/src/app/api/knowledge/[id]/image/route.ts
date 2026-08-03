@@ -17,10 +17,29 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const token =
-    req.cookies.get("token")?.value ?? req.cookies.get("adminToken")?.value;
-  if (!token) {
+  // Хүчинтэй cookie сонгох — expired adminToken байхад user token ашиглана
+  const candidates = [
+    req.cookies.get("adminToken")?.value,
+    req.cookies.get("token")?.value,
+  ].filter((t): t is string => !!t);
+  if (candidates.length === 0) {
     return new NextResponse(null, { status: 401 });
+  }
+  const now = Math.floor(Date.now() / 1000);
+  let token = candidates[0];
+  for (const t of candidates) {
+    try {
+      const payloadPart = t.split(".")[1];
+      if (!payloadPart) continue;
+      const json = atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/"));
+      const payload = JSON.parse(json) as { exp?: number };
+      if (typeof payload.exp === "number" && payload.exp > now) {
+        token = t;
+        break;
+      }
+    } catch {
+      /* next */
+    }
   }
 
   // Серверээс backend руу хандах хаяг — дотоод хаягийг эрхэмлэнэ

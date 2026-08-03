@@ -84,6 +84,7 @@ export default function LoginPage() {
   });
 
   const selectedDepartment = registerForm.watch("department");
+  const selectedPosition = registerForm.watch("position");
   const enteredName = registerForm.watch("name");
   const password = claimPasswordForm.watch("password");
 
@@ -94,6 +95,7 @@ export default function LoginPage() {
     }
   }, [selectedDepartment]);
 
+  // Backend buildUserId-тай ижил preview (захирал: .Name-DAG-CODE)
   useEffect(() => {
     if (selectedDepartment && enteredName) {
       const deptCode = DEPARTMENT_CODES[selectedDepartment] || "USR";
@@ -104,18 +106,29 @@ export default function LoginPage() {
         )
         .join("-")
         .replace(/\s+/g, "");
-
-      if (selectedDepartment === "Удирдлага") {
-        setGeneratedUserId(`.${namePart}-${deptCode}`);
-      } else if (selectedDepartment === "Дата анализын алба") {
+      // DAA-д захирал байхгүй
+      if (selectedDepartment === "Дата анализын алба") {
         setGeneratedUserId(`${deptCode}-${namePart}`);
       } else {
-        setGeneratedUserId(`DAG-${deptCode}-${namePart}`);
+        const isDirector =
+          selectedDepartment === "Удирдлага" ||
+          String(selectedPosition ?? "")
+            .toLowerCase()
+            .includes("захирал");
+        if (isDirector) {
+          if (/^DAG-/i.test(deptCode))
+            setGeneratedUserId(`.${namePart}-${deptCode}`);
+          else if (/^DAG$/i.test(deptCode))
+            setGeneratedUserId(`.${namePart}-DAG`);
+          else setGeneratedUserId(`.${namePart}-DAG-${deptCode}`);
+        } else {
+          setGeneratedUserId(`DAG-${deptCode}-${namePart}`);
+        }
       }
     } else {
       setGeneratedUserId("");
     }
-  }, [selectedDepartment, enteredName]);
+  }, [selectedDepartment, selectedPosition, enteredName]);
 
   const passwordChecks = {
     minLength: password.length >= 8,
@@ -129,8 +142,13 @@ export default function LoginPage() {
   const getUserIdPrefix = () => {
     if (!selectedDepartment) return "";
     const deptCode = DEPARTMENT_CODES[selectedDepartment] || "USR";
-    if (selectedDepartment === "Удирдлага") return ".";
     if (selectedDepartment === "Дата анализын алба") return `${deptCode}-`;
+    const isDirector =
+      selectedDepartment === "Удирдлага" ||
+      String(selectedPosition ?? "")
+        .toLowerCase()
+        .includes("захирал");
+    if (isDirector) return ".";
     return `DAG-${deptCode}-`;
   };
 

@@ -1,72 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { getApiAuth, hasToolAccess } from "@/lib/api-auth";
+import type { SamplingResult } from "./sampling";
 
-// [H-10] User-supplied filename is echoed into the Content-Disposition header.
-// Strip anything that isn't a safe filename character (blocks CR/LF header
-// injection and path separators) and cap the length.
-function sanitizeFilename(name: string | undefined): string {
-  const fallback = "sample_result.xlsx";
-  if (!name) return fallback;
-  const cleaned = name
-    .replace(/[\r\n]/g, "")
-    .replace(/[^\w.\-() \u0400-\u04FF]/g, "_")
-    .trim()
-    .slice(0, 150);
-  if (!cleaned) return fallback;
-  return /\.xlsx$/i.test(cleaned) ? cleaned : `${cleaned}.xlsx`;
-}
-
-// ── Types (mirror from page) ──────────────────────────────────────────────────
-interface SampleGroup {
-  label: string;
-  indices: number[];
-  rows: (string | number)[][];
-  size?: number;
-}
-
-interface SampleResult {
-  n: number;
-  N: number;
-  Z: number;
-  design: string;
-  confidence: number;
-  margin: number;
-  stdDev?: number;
-  headers: string[];
-  groups: SampleGroup[];
-}
-
-interface ExportPayload {
-  result: SampleResult;
-  isStratified: boolean;
-  filename?: string;
-}
-
-export async function POST(req: NextRequest) {
-  const auth = await getApiAuth(req);
-  if (!auth) {
-    return NextResponse.json(
-      { error: "Нэвтрэх шаардлагатай" },
-      { status: 401 },
-    );
-  }
-  if (!hasToolAccess(auth, ["sanamsargui-tuuwer"])) {
-    return NextResponse.json(
-      { error: "Энэ хэрэгслийг ашиглах эрх байхгүй" },
-      { status: 403 },
-    );
-  }
-
-  const body: ExportPayload = await req.json();
-  const { result, isStratified, filename } = body;
-  const safeFilename = sanitizeFilename(filename);
-
+/** Client/server дээр ашиглах Excel workbook — /api/export-sample-гүйгээр deploy-д 403-аас зайлсхийх. */
+export async function buildSampleWorkbook(
+  result: SamplingResult,
+  isStratified: boolean,
+): Promise<Blob> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Internal Audit Tool";
   wb.created = new Date();
 
-  // ── Colour palette ──────────────────────────────────────────────────────────
   const HDR_FILL: ExcelJS.Fill = {
     type: "pattern",
     pattern: "solid",
@@ -123,7 +66,6 @@ export async function POST(req: NextRequest) {
     const ws = wb.addWorksheet(g.label.slice(0, 31));
 
     if (isStratified) {
-      // Info row
       ws.mergeCells("A1:D1");
       const info = ws.getCell("A1");
       info.value = `${g.label} — N=${result.N}, n=${g.indices.length}, Z=${result.Z}, итгэлцэл: ${(result.confidence * 100).toFixed(0)}%`;
@@ -144,8 +86,9 @@ export async function POST(req: NextRequest) {
       });
       ws.views = [{ state: "frozen", xSplit: 0, ySplit: 2 }];
     } else {
-      const infoCols = result.headers.length + 1;
-      ws.mergeCells(`A1:${String.fromCharCode(64 + infoCols)}1`);
+      const infoCols = Math.max(2, result.headers.length + 1);
+      const lastCol = String.fromCharCode(64 + Math.min(infoCols, 26));
+      ws.mergeCells(`A1:${lastCol}1`);
       const info = ws.getCell("A1");
       info.value = `${g.label} — N=${result.N}, n=${g.indices.length}, Z=${result.Z}, итгэлцэл: ${(result.confidence * 100).toFixed(0)}%`;
       info.font = { bold: true, size: 11, color: { argb: "FF3B1F7A" } };
@@ -169,7 +112,6 @@ export async function POST(req: NextRequest) {
         applyBody(row, i % 2 === 0 ? ROW_ODD : ROW_EVN);
       });
 
-      // Auto column widths
       ws.columns = allCols.map((h, i) => ({
         width: Math.min(
           Math.max(
@@ -186,7 +128,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Summary sheet if multi-group stratified
   if (isStratified && result.groups.length > 1) {
     const sumWs = wb.addWorksheet("Дэгдэлхүүн");
     const hdr = sumWs.addRow(["Бүлэг", "N бүлэг", "n түүвэр"]);
@@ -200,13 +141,11 @@ export async function POST(req: NextRequest) {
   }
 
   const buffer = await wb.xlsx.writeBuffer();
-
-  return new NextResponse(buffer, {
-    status: 200,
-    headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${safeFilename}"`,
-    },
+  const bytes =
+    buffer instanceof ArrayBuffer
+      ? new Uint8Array(buffer)
+      : new Uint8Array(buffer as unknown as ArrayBuffer);
+  return new Blob([bytes], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 }

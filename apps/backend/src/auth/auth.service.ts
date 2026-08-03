@@ -349,8 +349,9 @@ export class AuthService {
     department: string,
     name: string,
     code?: string,
+    position?: string,
   ): string {
-    return buildUserId(department, name, code);
+    return buildUserId(department, name, code, position);
   }
 
   // ─── Public Methods ─────────────────────────────────────────────────────────
@@ -673,7 +674,7 @@ export class AuthService {
     );
     const deptCode = deptRows[0]?.code || "";
 
-    const userId = this.generateUserId(department, name, deptCode);
+    const userId = this.generateUserId(department, name, deptCode, position);
 
     const existing = await this.clickhouse.query<any>(
       "SELECT id, password FROM users WHERE userId = {userId:String} LIMIT 1",
