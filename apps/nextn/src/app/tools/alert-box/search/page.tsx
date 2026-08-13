@@ -172,6 +172,15 @@ function SearchContent() {
           </div>
         )}
 
+        {!result && !searching && !error && (
+          <div className="text-center py-16">
+            <Search size={32} className="mx-auto text-txt-dim mb-3 opacity-40" />
+            <p className="text-[13px] text-txt-dim">
+              {t("abSearchEmptyHint")}
+            </p>
+          </div>
+        )}
+
         {result && !searching && (
           <div className="space-y-4">
             <div className="bg-surface-card rounded-xl border border-surface-border p-4">

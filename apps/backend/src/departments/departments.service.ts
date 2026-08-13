@@ -5,8 +5,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
-import { CreateDepartmentDto, UpdateDepartmentDto } from "./dto/department.dto";
-import { randomUUID } from "crypto";
+import { UpdateDepartmentDto } from "./dto/department.dto";
 import { buildUserId, WEB_VISIBLE_USER_SQL } from "../common/utils/user-utils";
 import { UserFacingBadRequestException } from "../common/exceptions/user-facing.exception";
 
@@ -15,36 +14,6 @@ export class DepartmentsService {
   private readonly logger = new Logger(DepartmentsService.name);
 
   constructor(private clickhouse: ClickHouseService) {}
-
-  async create(createDepartmentDto: CreateDepartmentDto) {
-    const existing = await this.clickhouse.query<any>(
-      "SELECT id FROM departments WHERE name = {name:String} LIMIT 1",
-      { name: createDepartmentDto.name },
-    );
-
-    if (existing.length > 0) {
-      throw new ConflictException("Ийм нэртэй хэлтэс аль хэдийн байна");
-    }
-
-    const id = randomUUID();
-    await this.clickhouse.insert("departments", [
-      {
-        id,
-        name: createDepartmentDto.name,
-        description: createDepartmentDto.description || "",
-        manager: createDepartmentDto.manager || "",
-        code: (createDepartmentDto.code || "").toUpperCase(),
-        createdAt: nowCH(),
-        updatedAt: nowCH(),
-      },
-    ]);
-
-    const result = await this.clickhouse.query<any>(
-      "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
-      { id },
-    );
-    return result[0];
-  }
 
   async findAll() {
     const departments = await this.clickhouse.query<any>(

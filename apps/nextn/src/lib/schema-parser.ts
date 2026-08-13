@@ -13,10 +13,49 @@ const DB_COLORS: Record<string, string> = {
   CARDZONE: "#34d399",
 };
 
+const MD_BASENAME = "Database_Dictionary.md";
+
+/**
+ * Өгөгдлийн толь бичгийн MD файлын замыг олно.
+ * Docker (/app), nx workspace root, apps/nextn cwd — бүгдийг туршина.
+ * MD_FILE_PATH харьцангуй байвал cwd + нэмэлт candidate-уудаас хайна
+ * (nx serve үед cwd=/app/apps/nextn байж болно).
+ */
+export function getMdPath(): string {
+  const cwd = process.cwd();
+  const configured = process.env.MD_FILE_PATH?.trim();
+
+  const candidates: string[] = [];
+
+  if (configured) {
+    if (path.isAbsolute(configured)) {
+      candidates.push(configured);
+    } else {
+      candidates.push(path.resolve(cwd, configured));
+      // Docker monorepo: файл /app/Data дээр, cwd apps/nextn байж болно
+      candidates.push(path.resolve(cwd, "..", "..", configured));
+      candidates.push(path.resolve(cwd, "..", configured));
+      candidates.push(path.resolve("/app", configured));
+    }
+  }
+
+  candidates.push(
+    path.join(cwd, "Data", MD_BASENAME),
+    path.join(cwd, "..", "Data", MD_BASENAME),
+    path.join(cwd, "..", "..", "Data", MD_BASENAME),
+    path.join("/app", "Data", MD_BASENAME),
+  );
+
+  for (const candidate of candidates) {
+    const resolved = path.resolve(candidate);
+    if (fs.existsSync(resolved)) return resolved;
+  }
+
+  return path.resolve(candidates[0] ?? path.join(cwd, "Data", MD_BASENAME));
+}
+
 export function parseSchema(): DatabaseSchema {
-  const mdPath = process.env.MD_FILE_PATH
-    ? path.resolve(process.cwd(), process.env.MD_FILE_PATH)
-    : path.join(process.cwd(), "..", "..", "Data", "Database_Dictionary.md");
+  const mdPath = getMdPath();
 
   let content: string;
   try {
@@ -148,10 +187,4 @@ export function parseSchema(): DatabaseSchema {
   );
 
   return { databases, totalTables, totalColumns, describedColumns };
-}
-
-export function getMdPath(): string {
-  return process.env.MD_FILE_PATH
-    ? path.resolve(process.cwd(), process.env.MD_FILE_PATH)
-    : path.join(process.cwd(), "..", "..", "Data", "Database_Dictionary.md");
 }

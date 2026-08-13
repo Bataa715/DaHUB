@@ -8,6 +8,7 @@ import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { DepartmentsModule } from "./departments/departments.module";
 import { MedlegModule } from "./medleg/medleg.module";
+import { QuizModule } from "./quiz/quiz.module";
 import { AuditLogModule } from "./audit/audit-log.module";
 import { DbAccessModule } from "./db-access/db-access.module";
 import { TailanModule } from "./tailan/tailan.module";
@@ -44,6 +45,10 @@ import configuration from "./config/configuration";
     AuthModule,
     UsersModule,
     DepartmentsModule,
+    // [ROUTE ORDER] QuizModule заавал MedlegModule-ээс өмнө байрлана —
+    // MedlegController-т ":id" param route-той тул (quiz.controller.ts-ийн
+    // толгой хэсгийн тайлбарыг үзнэ үү).
+    QuizModule,
     MedlegModule,
     DbAccessModule,
     TailanModule,

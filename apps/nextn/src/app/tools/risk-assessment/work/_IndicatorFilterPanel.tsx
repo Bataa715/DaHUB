@@ -268,7 +268,7 @@ export default function IndicatorFilterPanel({
                   {!isJudgmentSelected && (
                     <td className="px-4 py-2.5 text-right">
                       {b.autoRaw ? (
-                        <span className="text-[11px] text-muted-foreground font-mono">
+                        <span className="text-[11px] text-muted-foreground break-words max-w-[320px] inline-block text-right">
                           {b.autoRaw}
                         </span>
                       ) : (

@@ -15,6 +15,7 @@ import {
   Lock,
   LogOut,
   ScrollText,
+  BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
@@ -47,6 +48,12 @@ const OTHER_LINKS: {
     href: "/admin/departments",
     labelKey: "admDeptPageTitle",
     icon: Building2,
+    superOnly: false,
+  },
+  {
+    href: "/admin/medleg",
+    labelKey: "admMedlegPageTitle",
+    icon: BookOpen,
     superOnly: false,
   },
   {

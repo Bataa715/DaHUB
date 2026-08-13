@@ -110,7 +110,7 @@ export const GROUP_LABELS: Record<number, string> = {
   2: "Score 2",
   3: "Score 3",
   4: "Score 4",
-  5: "Judgement",
+  5: "S5-Judgement",
 };
 export const GROUP_SHORT: Record<number, string> = {
   1: "S1",

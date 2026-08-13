@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, Building2, Users, Pencil, Trash2, Plus } from "lucide-react";
+import { Loader2, Building2, Users, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import { isRegularAppUser } from "@/lib/utils";
@@ -43,6 +43,9 @@ interface DepartmentData {
   updatedAt?: string;
 }
 
+/** Хэлтсийн жагсаалтын тогтмол харуулах дараалал (код-оор). */
+const DEPT_DISPLAY_ORDER = ["DAG", "BAH", "EKSAH", "MTAH", "DAA", "CHBA"];
+
 export default function AdminDepartmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -54,11 +57,8 @@ export default function AdminDepartmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({ name: "", code: "" });
-  const [createName, setCreateName] = useState("");
-  const [createCode, setCreateCode] = useState("");
 
   useEffect(() => {
     loadDepartments();
@@ -71,7 +71,22 @@ export default function AdminDepartmentsPage() {
         ...dept,
         users: dept.users?.filter((u) => isRegularAppUser(u)) || [],
       }));
-      setDepartments(filtered);
+      // Тогтмол харуулах дараалал: Удирдлага → БАХ → ЭКСАХ → МТАН → ДАА → ЧБА.
+      // Танигдаагүй код бүхий хэлтэс төгсгөлд, ирсэн дарааллаа хадгална.
+      const rankOf = (d: DepartmentData) => {
+        const idx = DEPT_DISPLAY_ORDER.indexOf(d.code || "");
+        return idx === -1 ? DEPT_DISPLAY_ORDER.length : idx;
+      };
+      const sorted = filtered
+        .map((d: DepartmentData, i: number) => ({ d, i, r: rankOf(d) }))
+        .sort(
+          (
+            a: { d: DepartmentData; i: number; r: number },
+            b: { d: DepartmentData; i: number; r: number },
+          ) => a.r - b.r || a.i - b.i,
+        )
+        .map(({ d }: { d: DepartmentData }) => d);
+      setDepartments(sorted);
     } catch {
       toast({
         title: t("error"),
@@ -86,40 +101,6 @@ export default function AdminDepartmentsPage() {
   const handleViewDepartment = (dept: DepartmentData) => {
     setSelectedDepartment(dept);
     setIsViewOpen(true);
-  };
-
-  const handleCreateDepartment = async () => {
-    const name = createName.trim();
-    if (!name) return;
-    setIsSaving(true);
-    try {
-      await departmentsApi.create({
-        name,
-        code:
-          createCode
-            .trim()
-            .toUpperCase()
-            .replace(/[^A-Z0-9-]/g, "")
-            .replace(/-+/g, "-")
-            .replace(/^-+|-+$/g, "") || undefined,
-      });
-      toast({ title: t("success"), description: t("admDeptCreatedDesc") });
-      setIsCreateOpen(false);
-      setCreateName("");
-      setCreateCode("");
-      loadDepartments();
-    } catch (error) {
-      let message = t("admDeptCreateError");
-      if (axios.isAxiosError(error))
-        message = error.response?.data?.message ?? message;
-      toast({
-        title: t("error"),
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const handleEditDepartment = (dept: DepartmentData) => {
@@ -199,21 +180,9 @@ export default function AdminDepartmentsPage() {
       <AdminPageHeader
         title={t("admDeptPageTitle")}
         rightContent={
-          <div className="flex items-center gap-3">
-            <span className="text-muted-foreground/60 text-xs">
-              {departments.length} {t("admDeptUnit")}
-            </span>
-            <Button
-              size="sm"
-              onClick={() => {
-                setCreateName("");
-                setIsCreateOpen(true);
-              }}
-              className="h-8 gap-1.5 text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" /> {t("admDeptAddBtn")}
-            </Button>
-          </div>
+          <span className="text-muted-foreground/60 text-xs">
+            {departments.length} {t("admDeptUnit")}
+          </span>
         }
       />
 
@@ -419,71 +388,6 @@ export default function AdminDepartmentsPage() {
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               )}
               {t("save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="bg-background border-border text-foreground max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-foreground text-base">
-              {t("admDeptCreateDialogTitle")}
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground/60 text-xs">
-              {t("admDeptCreateDialogDesc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-1.5">
-            <Label className="text-muted-foreground text-xs">
-              {t("admDeptNameLabel")}
-            </Label>
-            <Input
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreateDepartment();
-              }}
-              placeholder={t("admDeptNamePlaceholder")}
-              autoFocus
-              className="bg-muted border-border text-foreground focus-visible:ring-ring"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-muted-foreground text-xs">
-              {t("admDeptCodeLabel")}
-            </Label>
-            <Input
-              value={createCode}
-              onChange={(e) => setCreateCode(e.target.value.toUpperCase())}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreateDepartment();
-              }}
-              placeholder={t("admDeptCodeExamplePlaceholder")}
-              maxLength={20}
-              className="bg-muted border-border text-foreground focus-visible:ring-ring uppercase"
-            />
-            <p className="text-muted-foreground/60 text-[11px]">
-              {t("admDeptCodeHintCreate")}
-            </p>
-          </div>
-          <DialogFooter className="gap-2 mt-2">
-            <Button
-              variant="ghost"
-              onClick={() => setIsCreateOpen(false)}
-              className="border border-border text-foreground/80 hover:bg-muted"
-            >
-              {t("admDeptCancelBtn")}
-            </Button>
-            <Button
-              onClick={handleCreateDepartment}
-              disabled={isSaving || !createName.trim()}
-            >
-              {isSaving && (
-                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-              )}
-              {t("tailan_addEntry")}
             </Button>
           </DialogFooter>
         </DialogContent>

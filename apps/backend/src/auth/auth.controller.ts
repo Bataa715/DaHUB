@@ -27,10 +27,14 @@ import {
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AdminGuard } from "./guards/admin.guard";
+import { AuditLogService } from "../audit/audit-log.service";
 
 @Controller("auth")
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private auditLogService: AuditLogService,
+  ) {}
 
   // [N-2] Set access + refresh tokens as HttpOnly cookies
   private setAuthCookies(
@@ -135,11 +139,33 @@ export class AuthController {
     @Body() dto: ReviewRegistrationDto,
     @Request() req: ExpressRequest & { user: Record<string, unknown> },
   ) {
-    return this.authService.reviewRegistration(
-      id,
-      { id: req.user.id as string, name: req.user.name as string },
-      dto,
-    );
+    try {
+      const result = await this.authService.reviewRegistration(
+        id,
+        { id: req.user.id as string, name: req.user.name as string },
+        dto,
+      );
+      await this.auditLogService.log({
+        userId: req.user.id as string,
+        action: "registration_review",
+        resource: "registration_requests",
+        method: "update",
+        status: "success",
+        metadata: { targetId: id, decision: dto.action },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user.id as string,
+        action: "registration_review",
+        resource: "registration_requests",
+        method: "update",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetId: id, decision: dto?.action },
+      });
+      throw error;
+    }
   }
 
   // Set password for first-time user
@@ -234,6 +260,16 @@ export class AuthController {
     return this.authService.searchUsersByUserId(query, false);
   }
 
+  // [SEC] Public (pre-auth) department→employee list for the login page.
+  // Same enumeration posture as `search`: no admins, active/claimable only.
+  // `position` is returned so the client can rank Захирал → Ахлах → Аудитор.
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Get("by-department")
+  async listUsersByDepartment(@Query("department") department: string) {
+    return this.authService.listUsersByDepartment(department);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   async getProfile(
@@ -262,8 +298,13 @@ export class AuthController {
     @Request() req: ExpressRequest & { cookies: Record<string, string> },
     @Res({ passthrough: true }) res: Response,
   ) {
-    // Cookie takes priority; fall back to body for API tools
+    // Access cookie-той таарах refresh-ийг сонгоно.
+    // adminToken (хугацаа дууссан ч) байвал adminRefreshToken;
+    // эсрэгээрээ энгийн refreshToken.
     const token =
+      (req.cookies?.adminToken && req.cookies?.adminRefreshToken
+        ? req.cookies.adminRefreshToken
+        : null) ||
       req.cookies?.refreshToken ||
       req.cookies?.adminRefreshToken ||
       refreshTokenDto.refreshToken;

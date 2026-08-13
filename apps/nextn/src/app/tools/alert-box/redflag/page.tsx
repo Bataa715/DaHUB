@@ -180,7 +180,7 @@ export default function RedFlagPage() {
                   {chain.matchCount > chain.matches.length && (
                     <span className="px-2 py-1 text-[10px] text-txt-dim">
                       +{chain.matchCount - chain.matches.length}{" "}
-                      {t("redflagNoResult")}
+                      {t("abRedflagMoreLabel")}
                     </span>
                   )}
                 </div>

@@ -12,6 +12,7 @@ import {
   Logger,
   HttpException,
   HttpStatus,
+  Request,
 } from "@nestjs/common";
 import { OracleService } from "./oracle.service";
 import { OracleConfigService } from "./oracle-config.service";
@@ -19,6 +20,8 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
+import { AuditLogService } from "../audit/audit-log.service";
+import { AuthenticatedRequest } from "../common/types/authenticated-request";
 import {
   CreateDashboardDto,
   ReplaceDashboardDto,
@@ -27,16 +30,45 @@ import {
   ReplaceChainDto,
 } from "./dto/oracle-search.dto";
 
+// [PERF] short-TTL cache for getAlerts/getDashboardSummaries — both fan out
+// an expensive full-table GROUP BY per dashboard on every call.
+const ALERTS_CACHE_TTL_MS = 20_000;
+const SUMMARIES_CACHE_TTL_MS = 20_000;
+
 @UseGuards(JwtAuthGuard, ToolGuard)
 @RequireTools("alert_box")
 @Controller("oracle/search")
 export class OracleSearchController {
   private readonly logger = new Logger(OracleSearchController.name);
+  private alertsCache = new Map<
+    string,
+    { data: unknown; loadedAt: number }
+  >();
+  private summariesCache: { data: unknown; loadedAt: number } | null = null;
 
   constructor(
     private readonly oracle: OracleService,
     private readonly config: OracleConfigService,
+    private auditLogService: AuditLogService,
   ) {}
+
+  private async logAdminAction(
+    req: AuthenticatedRequest,
+    action: string,
+    status: "success" | "failure",
+    metadata?: Record<string, unknown>,
+    errorMessage?: string,
+  ) {
+    await this.auditLogService.log({
+      userId: req.user?.id,
+      action,
+      resource: "oracle_search_config",
+      method: action,
+      status,
+      ...(metadata ? { metadata } : {}),
+      ...(errorMessage ? { errorMessage } : {}),
+    });
+  }
 
   private requireOracle() {
     if (this.oracle.isAuthFailed()) {
@@ -67,10 +99,24 @@ export class OracleSearchController {
   /** POST /oracle/search/admin/dashboards — шинэ dashboard (admin) */
   @UseGuards(AdminGuard)
   @Post("admin/dashboards")
-  async adminCreateDashboard(@Body() body: CreateDashboardDto) {
+  async adminCreateDashboard(
+    @Body() body: CreateDashboardDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
-      return await this.config.createDashboard(body);
+      const result = await this.config.createDashboard(body);
+      await this.logAdminAction(req, "oracle_dashboard_create", "success", {
+        name: (body as any)?.name,
+      });
+      return result;
     } catch (err) {
+      await this.logAdminAction(
+        req,
+        "oracle_dashboard_create",
+        "failure",
+        undefined,
+        (err as Error).message,
+      );
       if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.BAD_REQUEST);
     }
@@ -82,12 +128,24 @@ export class OracleSearchController {
   async adminReplaceDashboard(
     @Param("id") id: string,
     @Body() body: ReplaceDashboardDto,
+    @Request() req: AuthenticatedRequest,
   ) {
     try {
-      return await this.config.updateDashboard(Number(id), body);
+      const result = await this.config.updateDashboard(Number(id), body);
+      await this.logAdminAction(req, "oracle_dashboard_update", "success", {
+        targetId: id,
+      });
+      return result;
     } catch (err) {
-      if (err instanceof HttpException) throw err;
       const message = err instanceof Error ? err.message : String(err);
+      await this.logAdminAction(
+        req,
+        "oracle_dashboard_update",
+        "failure",
+        { targetId: id },
+        message,
+      );
+      if (err instanceof HttpException) throw err;
       throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
   }
@@ -95,11 +153,24 @@ export class OracleSearchController {
   /** DELETE /oracle/search/admin/dashboards/:id — dashboard устгах (admin) */
   @UseGuards(AdminGuard)
   @Delete("admin/dashboards/:id")
-  async adminDeleteDashboard(@Param("id") id: string) {
+  async adminDeleteDashboard(
+    @Param("id") id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
       await this.config.deleteDashboard(Number(id));
+      await this.logAdminAction(req, "oracle_dashboard_delete", "success", {
+        targetId: id,
+      });
       return { ok: true };
     } catch (err) {
+      await this.logAdminAction(
+        req,
+        "oracle_dashboard_delete",
+        "failure",
+        { targetId: id },
+        (err as Error).message,
+      );
       if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
     }
@@ -111,10 +182,26 @@ export class OracleSearchController {
   async adminUpdateDashboard(
     @Param("id") id: string,
     @Body() body: SetEnabledDto,
+    @Request() req: AuthenticatedRequest,
   ) {
     try {
-      return await this.config.setDashboardEnabled(Number(id), body.enabled);
+      const result = await this.config.setDashboardEnabled(
+        Number(id),
+        body.enabled,
+      );
+      await this.logAdminAction(req, "oracle_dashboard_set_enabled", "success", {
+        targetId: id,
+        enabled: body.enabled,
+      });
+      return result;
     } catch (err) {
+      await this.logAdminAction(
+        req,
+        "oracle_dashboard_set_enabled",
+        "failure",
+        { targetId: id },
+        (err as Error).message,
+      );
       if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
     }
@@ -131,10 +218,24 @@ export class OracleSearchController {
   /** POST /oracle/search/admin/chains — шинэ event chain (admin) */
   @UseGuards(AdminGuard)
   @Post("admin/chains")
-  async adminCreateChain(@Body() body: CreateChainDto) {
+  async adminCreateChain(
+    @Body() body: CreateChainDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
-      return await this.config.createChain(body);
+      const result = await this.config.createChain(body);
+      await this.logAdminAction(req, "oracle_chain_create", "success", {
+        name: (body as any)?.name,
+      });
+      return result;
     } catch (err) {
+      await this.logAdminAction(
+        req,
+        "oracle_chain_create",
+        "failure",
+        undefined,
+        (err as Error).message,
+      );
       if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.BAD_REQUEST);
     }
@@ -146,12 +247,24 @@ export class OracleSearchController {
   async adminReplaceChain(
     @Param("id") id: string,
     @Body() body: ReplaceChainDto,
+    @Request() req: AuthenticatedRequest,
   ) {
     try {
-      return await this.config.updateChain(Number(id), body);
+      const result = await this.config.updateChain(Number(id), body);
+      await this.logAdminAction(req, "oracle_chain_update", "success", {
+        targetId: id,
+      });
+      return result;
     } catch (err) {
-      if (err instanceof HttpException) throw err;
       const message = err instanceof Error ? err.message : String(err);
+      await this.logAdminAction(
+        req,
+        "oracle_chain_update",
+        "failure",
+        { targetId: id },
+        message,
+      );
+      if (err instanceof HttpException) throw err;
       throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
   }
@@ -159,11 +272,24 @@ export class OracleSearchController {
   /** DELETE /oracle/search/admin/chains/:id — event chain устгах (admin) */
   @UseGuards(AdminGuard)
   @Delete("admin/chains/:id")
-  async adminDeleteChain(@Param("id") id: string) {
+  async adminDeleteChain(
+    @Param("id") id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
       await this.config.deleteChain(Number(id));
+      await this.logAdminAction(req, "oracle_chain_delete", "success", {
+        targetId: id,
+      });
       return { ok: true };
     } catch (err) {
+      await this.logAdminAction(
+        req,
+        "oracle_chain_delete",
+        "failure",
+        { targetId: id },
+        (err as Error).message,
+      );
       if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
     }
@@ -172,10 +298,29 @@ export class OracleSearchController {
   /** PATCH /oracle/search/admin/chains/:id — event chain идэвхтэй эсэхийг өөрчлөх (admin) */
   @UseGuards(AdminGuard)
   @Patch("admin/chains/:id")
-  async adminUpdateChain(@Param("id") id: string, @Body() body: SetEnabledDto) {
+  async adminUpdateChain(
+    @Param("id") id: string,
+    @Body() body: SetEnabledDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
-      return await this.config.setChainEnabled(Number(id), body.enabled);
+      const result = await this.config.setChainEnabled(
+        Number(id),
+        body.enabled,
+      );
+      await this.logAdminAction(req, "oracle_chain_set_enabled", "success", {
+        targetId: id,
+        enabled: body.enabled,
+      });
+      return result;
     } catch (err) {
+      await this.logAdminAction(
+        req,
+        "oracle_chain_set_enabled",
+        "failure",
+        { targetId: id },
+        (err as Error).message,
+      );
       if (err instanceof HttpException) throw err;
       throw new HttpException((err as Error).message, HttpStatus.NOT_FOUND);
     }
@@ -304,6 +449,9 @@ export class OracleSearchController {
     await this.config.reloadFromClickHouse();
 
     const minDashboards = Math.max(2, parseInt(minDash) || 2);
+    // NOTE: this only truncates the final sorted list, not the Oracle-side
+    // aggregation (unbounded either way) — no safe ceiling to enforce here
+    // without risking dropped alerts, so leave it as the caller requests.
     const limit = Math.max(parseInt(limitStr) || 10000, 1);
 
     // If a specific CIF is requested, search only for that CIF across all dashboards
@@ -313,6 +461,12 @@ export class OracleSearchController {
           .replace(/[^a-zA-Z0-9]/g, "")
           .substring(0, 30)
       : null;
+
+    const cacheKey = `${minDashboards}:${limit}:${safeCifFilter ?? ""}`;
+    const cached = this.alertsCache.get(cacheKey);
+    if (cached && Date.now() - cached.loadedAt < ALERTS_CACHE_TTL_MS) {
+      return cached.data;
+    }
 
     const cifMap: Record<
       string,
@@ -408,13 +562,20 @@ export class OracleSearchController {
       )
       .slice(0, safeCifFilter ? 1 : limit);
 
-    return {
+    const result = {
       minDashboards,
       totalAlerts: alerts.length,
       alerts,
       failedDashboards,
       searchedCif: safeCifFilter || null,
     };
+
+    // Only cache clean results — avoid serving a transient Oracle failure.
+    if (failedDashboards.length === 0) {
+      this.alertsCache.set(cacheKey, { data: result, loadedAt: Date.now() });
+    }
+
+    return result;
   }
 
   /**
@@ -424,6 +585,14 @@ export class OracleSearchController {
   @Get("dashboard-summaries")
   async getDashboardSummaries() {
     this.requireOracle();
+
+    if (
+      this.summariesCache &&
+      Date.now() - this.summariesCache.loadedAt < SUMMARIES_CACHE_TTL_MS
+    ) {
+      return this.summariesCache.data;
+    }
+
     await this.config.reloadFromClickHouse();
 
     const dashboards = this.config.getEnabledDashboards();
@@ -451,7 +620,7 @@ export class OracleSearchController {
       }),
     );
 
-    return results.map((r, i) => {
+    const summaries = results.map((r, i) => {
       if (r.status === "fulfilled") return r.value;
       return {
         id: dashboards[i].id,
@@ -462,6 +631,13 @@ export class OracleSearchController {
         error: String((r.reason as any)?.message ?? r.reason),
       };
     });
+
+    // Only cache when every dashboard resolved cleanly.
+    if (results.every((r) => r.status === "fulfilled")) {
+      this.summariesCache = { data: summaries, loadedAt: Date.now() };
+    }
+
+    return summaries;
   }
 
   /**

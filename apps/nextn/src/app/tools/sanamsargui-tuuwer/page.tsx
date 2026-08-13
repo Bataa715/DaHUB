@@ -216,61 +216,100 @@ export default function SanamsarguiTuuwerPage() {
               </div>
             </div>
 
-            {/* File upload — SRSWR / SRSWOR only */}
+            {/* File upload + Calculate — 50/50 minimal (SRS only) */}
             {!s.isStratified && (
               <div className="space-y-3">
-                <Label className="text-sm">{t("sampleUploadFile")}</Label>
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    s.setIsDragging(true);
-                  }}
-                  onDragLeave={() => s.setIsDragging(false)}
-                  onDrop={s.handleDrop}
-                  onClick={() => s.fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                    s.isDragging
-                      ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20"
-                      : s.fileName
-                        ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
-                        : "border-border hover:border-violet-300 hover:bg-muted/40"
-                  }`}
-                >
-                  <input
-                    ref={s.fileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) s.processFile(f);
-                    }}
-                  />
-                  {s.fileName ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
-                      <span className="text-emerald-600 font-medium text-sm">
-                        {s.fileName}
-                      </span>
-                      <span className="text-muted-foreground text-sm">
-                        ({s.fileData?.length} {t("alertRows")})
-                      </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
+                  <div className="min-w-0 flex flex-col gap-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      {t("sampleUploadFile")}
+                    </Label>
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        s.setIsDragging(true);
+                      }}
+                      onDragLeave={() => s.setIsDragging(false)}
+                      onDrop={s.handleDrop}
+                      onClick={() => s.fileInputRef.current?.click()}
+                      className={`flex-1 min-h-[4.5rem] border border-dashed rounded-lg px-3 py-2.5 flex items-center justify-center gap-2.5 cursor-pointer transition-colors ${
+                        s.isDragging
+                          ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20"
+                          : s.fileName
+                            ? "border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20"
+                            : "border-border hover:border-violet-300 hover:bg-muted/30"
+                      }`}
+                    >
+                      <input
+                        ref={s.fileInputRef}
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) s.processFile(f);
+                        }}
+                      />
+                      {s.fileName ? (
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-emerald-600 dark:text-emerald-400 font-medium text-xs truncate">
+                              {s.fileName}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {s.fileData?.length} {t("alertRows")}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-left">
+                          <Upload className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-foreground leading-snug">
+                              {t("sampleDropZone")}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              XLSX, XLS
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-1.5" />
-                      <p className="text-sm font-medium text-foreground">
-                        {t("sampleDropZone")}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        XLSX, XLS
-                      </p>
-                    </>
-                  )}
+                    {s.fileError && (
+                      <p className="text-destructive text-xs">{s.fileError}</p>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex flex-col gap-1.5">
+                    <Label className="text-xs text-muted-foreground hidden sm:block opacity-0 pointer-events-none select-none">
+                      &nbsp;
+                    </Label>
+                    <Button
+                      onClick={s.handleCalculate}
+                      disabled={!s.fileData}
+                      className="flex-1 min-h-[4.5rem] w-full bg-violet-600 hover:bg-violet-700 text-foreground font-semibold text-sm disabled:opacity-40"
+                    >
+                      <Shuffle className="w-4 h-4 mr-2 shrink-0" />
+                      <span className="leading-snug">{t("sampleSizeLabel")}</span>
+                    </Button>
+                    {s.computedN !== null && (
+                      <div className="flex items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-2.5 py-1.5 text-xs">
+                        <span className="text-muted-foreground truncate">
+                          n (
+                          {!s.useColumnFilter ||
+                          s.selectedFilterValue === "all"
+                            ? t("sampleAllValues")
+                            : `${s.filterCol}=${s.selectedFilterValue}`}
+                          )
+                        </span>
+                        <strong className="text-violet-600 tabular-nums">
+                          {s.computedN}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {s.fileError && (
-                  <p className="text-destructive text-sm">{s.fileError}</p>
-                )}
 
                 {/* Column filter */}
                 {s.fileData && s.fileHeaders.length > 0 && (
@@ -461,21 +500,6 @@ export default function SanamsarguiTuuwerPage() {
                     )}
                   </div>
                 )}
-
-                {s.computedN !== null && (
-                  <div className="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-4 py-2.5 text-sm">
-                    <span className="text-muted-foreground">
-                      {t("sampleSizeLabel")} (
-                      {!s.useColumnFilter || s.selectedFilterValue === "all"
-                        ? t("sampleAllValues")
-                        : `${s.filterCol}=${s.selectedFilterValue}`}
-                      ):
-                    </span>
-                    <strong className="text-violet-600 text-base">
-                      {s.computedN}
-                    </strong>
-                  </div>
-                )}
               </div>
             )}
 
@@ -554,18 +578,16 @@ export default function SanamsarguiTuuwerPage() {
                     ))}
                   </div>
                 </div>
+
+                <Button
+                  onClick={s.handleCalculate}
+                  className="w-full bg-violet-600 hover:bg-violet-700 text-foreground font-semibold py-5 text-base"
+                >
+                  <Shuffle className="w-4 h-4 mr-2" />
+                  {t("sampleStratifiedBtn")}
+                </Button>
               </div>
             )}
-
-            {/* Calculate Button */}
-            <Button
-              onClick={s.handleCalculate}
-              disabled={!s.isStratified && !s.fileData}
-              className="w-full bg-violet-600 hover:bg-violet-700 text-foreground font-semibold py-5 text-base disabled:opacity-40"
-            >
-              <Shuffle className="w-4 h-4 mr-2" />
-              {s.isStratified ? t("sampleStratifiedBtn") : t("sampleSizeLabel")}
-            </Button>
           </CardContent>
         </Card>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   ArrowLeft,
   Download,
@@ -12,12 +12,9 @@ import {
   Award,
   PanelLeftClose,
   PanelLeftOpen,
-  FileEdit,
-  FileCheck2,
 } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { tailanApi } from "@/lib/api";
 
 import {
   SECTION_DEFS,
@@ -29,7 +26,6 @@ import { SectionEditor } from "./_SectionEditor";
 import { WordPreview } from "./_WordPreview";
 import { AutoTextarea } from "./_KpiTableEditor";
 import { useDepartmentReport } from "./_hooks/useDepartmentReport";
-import { DocxBlobViewer } from "../mine/_components/DocxBlobViewer";
 
 const COLOR_TAB_ACTIVE: Record<string, string> = {
   blue: "bg-blue-500/20 border border-blue-500/40 text-blue-300",
@@ -92,49 +88,6 @@ export default function TailanBscPage() {
     activeDef,
     qName,
   } = useDepartmentReport();
-
-  // ── Real .docx preview toggle ────────────────────────────────────────────
-  // The hand-drawn HTML preview below can visually drift from the actual
-  // generated Word doc. This renders the SAME payload used for download
-  // (generateDeptWord) through docx-preview, so "Бодит харагдац" always shows
-  // exactly what will be downloaded — no separate rendering logic to drift.
-  const [previewMode, setPreviewMode] = useState<"edit" | "real">("edit");
-  const [realBlob, setRealBlob] = useState<Blob | null>(null);
-  const [realLoading, setRealLoading] = useState(false);
-  const [realError, setRealError] = useState("");
-
-  useEffect(() => {
-    if (previewMode !== "real") return;
-    let cancelled = false;
-    setRealLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const blob = await tailanApi.generateDeptWord({
-          year,
-          quarter,
-          tasks: [],
-          sections: [],
-          otherEntries: [],
-          activities: [],
-          rawSections: sections as Record<string, unknown>,
-        });
-        if (!cancelled) {
-          setRealBlob(blob);
-          setRealError("");
-        }
-      } catch {
-        if (!cancelled)
-          setRealError(t("tailanRealPreviewGenerateError"));
-      } finally {
-        if (!cancelled) setRealLoading(false);
-      }
-    }, 600);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewMode, year, quarter, JSON.stringify(sections)]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-background via-card to-background overflow-hidden">
@@ -580,52 +533,15 @@ export default function TailanBscPage() {
             })()}
           </div>
         )}
-        <div className="flex-1 min-w-[300px] border-l border-border/50 overflow-hidden bg-card/20 flex flex-col">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 shrink-0">
-            <span className="text-[11px] text-muted-foreground font-semibold tracking-wide uppercase">
-              {t("tailan_previewSection")}
-            </span>
-            <div className="flex rounded-lg overflow-hidden border border-border/40">
-              <button
-                onClick={() => setPreviewMode("edit")}
-                className={`flex items-center gap-1 px-2 py-1 text-[11px] transition-colors ${
-                  previewMode === "edit"
-                    ? "bg-blue-500/20 text-blue-300"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title={t("tailanDeptPageEditPreviewTitle")}
-              >
-                <FileEdit className="h-3 w-3" /> {t("tailanDeptPageEditPreviewBtn")}
-              </button>
-              <button
-                onClick={() => setPreviewMode("real")}
-                className={`flex items-center gap-1 px-2 py-1 text-[11px] transition-colors ${
-                  previewMode === "real"
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title={t("tailanDeptPageRealPreviewTitle")}
-              >
-                <FileCheck2 className="h-3 w-3" /> {t("tailanDeptPageRealPreviewBtn")}
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {previewMode === "edit" ? (
-              <WordPreview
-                year={year}
-                quarter={quarter}
-                sections={sections}
-                negtgelKpi={negtgelKpi}
-                onUpdateSection={updateSection}
-              />
-            ) : (
-              <DocxBlobViewer
-                blob={realBlob}
-                loading={realLoading}
-                error={realError}
-              />
-            )}
+        <div className="flex-1 min-w-0 border-l border-border/50 overflow-hidden bg-card/20 flex flex-col">
+          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+            <WordPreview
+              year={year}
+              quarter={quarter}
+              sections={sections}
+              negtgelKpi={negtgelKpi}
+              onUpdateSection={updateSection}
+            />
           </div>
         </div>
       </div>

@@ -24,7 +24,6 @@ import {
   Table2,
   FileText,
   Database,
-  FileStack,
   FileSpreadsheet,
   BellDot,
   Search,
@@ -41,20 +40,28 @@ import { DEPARTMENTS } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 
-// All tools available in the system
-interface Tool {
+// A "variant" is one concrete grantable tool-key (matches backend VALID_TOOLS).
+// Some real-world tools have more than one variant (e.g. DB access has a
+// "requester" and a "granter" side) — those used to render as separate cards;
+// now they're grouped into a single card with a scenario switcher inside.
+interface ToolVariant {
+  id: string;
+  labelKey: TranslationKey;
+}
+
+interface ToolGroup {
   id: string;
   nameKey: TranslationKey;
   descKey: TranslationKey;
   icon: React.ComponentType<any>;
   color: string;
   gradient: string;
-  category: "free" | "work";
   adminPath?: string;
   adminLabelKey?: TranslationKey;
+  variants: ToolVariant[];
 }
 
-const AVAILABLE_TOOLS: Tool[] = [
+const TOOL_GROUPS: ToolGroup[] = [
   {
     id: "sanamsargui-tuuwer",
     nameKey: "toolSampleTitle",
@@ -62,7 +69,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: Dice6,
     color: "from-violet-500 to-blue-500",
     gradient: "bg-gradient-to-br from-violet-500/20 to-blue-500/20",
-    category: "work",
+    variants: [{ id: "sanamsargui-tuuwer", labelKey: "toolSampleTitle" }],
   },
   {
     id: "pivot",
@@ -71,45 +78,33 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: Table2,
     color: "from-cyan-500 to-teal-500",
     gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
-    category: "work",
+    variants: [{ id: "pivot", labelKey: "toolPivotTitle" }],
   },
   {
-    id: "db_access_requester",
-    nameKey: "admAdminsToolAccessRequester",
-    descKey: "admToolsPageDbRequesterDesc",
+    id: "db_access",
+    nameKey: "admToolsPageDbAccessGroupName",
+    descKey: "admToolsPageDbAccessGroupDesc",
     icon: Database,
     color: "from-cyan-500 to-teal-500",
     gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
-    category: "work",
-  },
-  {
-    id: "db_access_granter",
-    nameKey: "admAdminsToolAccessGranter",
-    descKey: "admToolsPageDbGranterDesc",
-    icon: Database,
-    color: "from-violet-500 to-indigo-500",
-    gradient: "bg-gradient-to-br from-violet-500/20 to-indigo-500/20",
-    category: "work",
+    variants: [
+      { id: "db_access_requester", labelKey: "admAdminsToolAccessRequester" },
+      { id: "db_access_granter", labelKey: "admAdminsToolAccessGranter" },
+    ],
   },
   {
     id: "tailan",
-    nameKey: "admAdminsToolTailanEmployee",
-    descKey: "admToolsPageTailanDesc",
+    nameKey: "admToolsPageTailanGroupName",
+    descKey: "admToolsPageTailanGroupDesc",
     icon: FileText,
     color: "from-blue-500 to-violet-500",
     gradient: "bg-gradient-to-br from-blue-500/20 to-violet-500/20",
-    category: "work",
     adminPath: "/admin/tailan-templates",
     adminLabelKey: "admToolsPageTemplateArrow",
-  },
-  {
-    id: "tailan_dept_head",
-    nameKey: "admToolsPageTailanDeptHeadName",
-    descKey: "admToolsPageTailanDeptHeadDesc",
-    icon: FileStack,
-    color: "from-violet-500 to-purple-500",
-    gradient: "bg-gradient-to-br from-violet-500/20 to-purple-500/20",
-    category: "work",
+    variants: [
+      { id: "tailan", labelKey: "admAdminsToolTailanEmployee" },
+      { id: "tailan_dept_head", labelKey: "admToolsPageTailanDeptHeadName" },
+    ],
   },
   {
     id: "reports",
@@ -118,9 +113,9 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: FileSpreadsheet,
     color: "from-emerald-500 to-violet-500",
     gradient: "bg-gradient-to-br from-emerald-500/20 to-violet-500/20",
-    category: "work",
     adminPath: "/admin/reports",
     adminLabelKey: "admToolsPageReportArrow",
+    variants: [{ id: "reports", labelKey: "toolReportsTitle" }],
   },
   {
     id: "data_doc",
@@ -129,7 +124,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: Database,
     color: "from-teal-500 to-cyan-500",
     gradient: "bg-gradient-to-br from-teal-500/20 to-cyan-500/20",
-    category: "work",
+    variants: [{ id: "data_doc", labelKey: "toolDataDocTitle" }],
   },
   {
     id: "alert_box",
@@ -138,20 +133,23 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: BellDot,
     color: "from-red-500 to-rose-500",
     gradient: "bg-gradient-to-br from-red-500/20 to-rose-500/20",
-    category: "work",
     adminPath: "/admin/alert-box",
     adminLabelKey: "admToolsPageSettingsArrow",
+    variants: [{ id: "alert_box", labelKey: "toolAlertBoxTitle" }],
   },
   {
     id: "risk_assessment",
-    nameKey: "toolRiskAssessmentTitle",
-    descKey: "admToolsPageRiskDesc",
+    nameKey: "admToolsPageRiskGroupName",
+    descKey: "admToolsPageRiskGroupDesc",
     icon: ShieldAlert,
     color: "from-rose-500 to-orange-500",
     gradient: "bg-gradient-to-br from-rose-500/20 to-orange-500/20",
-    category: "work",
     adminPath: "/admin/risk-indicators",
     adminLabelKey: "admToolsPageSettingsArrow",
+    variants: [
+      { id: "risk_assessment", labelKey: "toolRiskAssessmentTitle" },
+      { id: "risk_assessment_report", labelKey: "toolRiskAssessmentReportTitle" },
+    ],
   },
   {
     id: "monitoring_box",
@@ -160,7 +158,7 @@ const AVAILABLE_TOOLS: Tool[] = [
     icon: Activity,
     color: "from-orange-500 to-red-500",
     gradient: "bg-gradient-to-br from-orange-500/20 to-red-500/20",
-    category: "work",
+    variants: [{ id: "monitoring_box", labelKey: "toolMonitoringBoxTitle" }],
   },
 ];
 
@@ -182,15 +180,20 @@ export default function AdminToolsPage() {
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
 
-  // Sub-admin: restrict visible tools to their grantableTools list
+  // Sub-admin: restrict visible tools/variants to their grantableTools list
   const isSuperAdmin = user?.isSuperAdmin;
   const subAdminTools: string[] | null =
     user?.isAdmin && !isSuperAdmin ? (user?.grantableTools ?? []) : null;
-  const visibleTools =
+  const visibleGroups: ToolGroup[] =
     subAdminTools !== null
-      ? AVAILABLE_TOOLS.filter((tool) => subAdminTools.includes(tool.id))
-      : AVAILABLE_TOOLS;
-  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+      ? TOOL_GROUPS.map((g) => ({
+          ...g,
+          variants: g.variants.filter((v) => subAdminTools.includes(v.id)),
+        })).filter((g) => g.variants.length > 0)
+      : TOOL_GROUPS;
+
+  const [selectedGroup, setSelectedGroup] = useState<ToolGroup | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -205,6 +208,14 @@ export default function AdminToolsPage() {
   const [revokeDepartment, setRevokeDepartment] = useState<string>("");
   // Grant tab search
   const [grantSearch, setGrantSearch] = useState("");
+
+  // The variant currently active inside the open Sheet — falls back to the
+  // group's first variant (covers both single- and multi-variant groups).
+  const activeVariant =
+    selectedGroup?.variants.find((v) => v.id === selectedVariantId) ??
+    selectedGroup?.variants[0] ??
+    null;
+  const activeToolId = activeVariant?.id ?? "";
 
   useEffect(() => {
     setMounted(true);
@@ -237,9 +248,23 @@ export default function AdminToolsPage() {
     }
   };
 
-  // Tool сонгоход
-  const handleToolSelect = (tool: Tool) => {
-    setSelectedTool(tool);
+  // Group сонгоход (нэг эсвэл олон variant-тай карт) — эхний variant-аар эхэлнэ
+  const handleGroupSelect = (group: ToolGroup) => {
+    setSelectedGroup(group);
+    setSelectedVariantId(group.variants[0]?.id ?? "");
+    setActiveTab("current");
+    setSelectedUsers(new Set());
+    setSelectedDepartment("");
+    setRevokeSelectedUsers(new Set());
+    setRevokeSearch("");
+    setRevokeDepartment("");
+    setGrantSearch("");
+  };
+
+  // Sheet дотор variant (тухайлбал "Эрх хүсэгч" ⇄ "Эрх олгогч") сэлгэхэд —
+  // тухайн variant-ийн хэрэглэгчийн жагсаалт шинээр эхэлнэ.
+  const handleVariantSwitch = (variantId: string) => {
+    setSelectedVariantId(variantId);
     setActiveTab("current");
     setSelectedUsers(new Set());
     setSelectedDepartment("");
@@ -259,6 +284,13 @@ export default function AdminToolsPage() {
     return users.filter((u) => !u.allowedTools?.includes(toolId));
   };
 
+  // Карт дээрх нийт тоо — group-ийн АЛЬ Ч НЭГ variant-д эрхтэй хэрэглэгчдийн
+  // цуглуулга (давхардалгүй), олон карт биш нэг картаар харуулахын тулд.
+  const getUsersWithAnyVariant = (group: ToolGroup) => {
+    const ids = new Set(group.variants.map((v) => v.id));
+    return users.filter((u) => u.allowedTools?.some((t) => ids.has(t)));
+  };
+
   // Хэрэглэгч сонгох/болих
   const toggleUserSelection = (userId: string) => {
     const newSelected = new Set(selectedUsers);
@@ -272,15 +304,15 @@ export default function AdminToolsPage() {
 
   // Бүх хэрэглэгчийг сонгох
   const selectAllUsers = () => {
-    if (!selectedTool) return;
-    const usersWithoutAccess = getUsersWithoutAccess(selectedTool.id);
+    if (!activeToolId) return;
+    const usersWithoutAccess = getUsersWithoutAccess(activeToolId);
     setSelectedUsers(new Set(usersWithoutAccess.map((u) => u.id)));
   };
 
   // Хэлтсийн хэрэглэгчдийг сонгох
   const selectDepartmentUsers = (dept: string) => {
-    if (!selectedTool) return;
-    const deptUsers = getUsersWithoutAccess(selectedTool.id).filter(
+    if (!activeToolId) return;
+    const deptUsers = getUsersWithoutAccess(activeToolId).filter(
       (u) => u.department === dept,
     );
     setSelectedUsers(new Set(deptUsers.map((u) => u.id)));
@@ -288,7 +320,7 @@ export default function AdminToolsPage() {
 
   // Эрх олгох
   const grantAccess = async () => {
-    if (!selectedTool || selectedUsers.size === 0) return;
+    if (!activeToolId || selectedUsers.size === 0) return;
 
     setIsSaving(true);
     let successCount = 0;
@@ -303,11 +335,8 @@ export default function AdminToolsPage() {
         try {
           const fresh = await usersApi.getOne(userId);
           const currentTools: string[] = fresh.allowedTools || [];
-          if (!currentTools.includes(selectedTool.id)) {
-            await usersApi.updateTools(userId, [
-              ...currentTools,
-              selectedTool.id,
-            ]);
+          if (!currentTools.includes(activeToolId)) {
+            await usersApi.updateTools(userId, [...currentTools, activeToolId]);
           }
           successCount++;
         } catch (err) {
@@ -317,10 +346,11 @@ export default function AdminToolsPage() {
         }
       }
 
+      const variantLabel = activeVariant ? t(activeVariant.labelKey) : "";
       if (errors.length === 0) {
         toast({
           title: t("success"),
-          description: `${successCount} ${t("admToolsPageGrantedPart1")} ${t(selectedTool.nameKey)} ${t("admToolsPageGrantedPart2")}`,
+          description: `${successCount} ${t("admToolsPageGrantedPart1")} ${variantLabel} ${t("admToolsPageGrantedPart2")}`,
         });
       } else {
         toast({
@@ -348,7 +378,7 @@ export default function AdminToolsPage() {
 
   // Bulk эрх хасах
   const bulkRevokeAccess = async () => {
-    if (!selectedTool || revokeSelectedUsers.size === 0) return;
+    if (!activeToolId || revokeSelectedUsers.size === 0) return;
 
     setIsSaving(true);
     let successCount = 0;
@@ -362,7 +392,7 @@ export default function AdminToolsPage() {
           const fresh = await usersApi.getOne(userId);
           const currentTools: string[] = fresh.allowedTools || [];
           const newTools = currentTools.filter(
-            (toolId) => toolId !== selectedTool.id,
+            (toolId) => toolId !== activeToolId,
           );
           await usersApi.updateTools(userId, newTools);
           successCount++;
@@ -373,10 +403,11 @@ export default function AdminToolsPage() {
         }
       }
 
+      const variantLabel = activeVariant ? t(activeVariant.labelKey) : "";
       if (errors.length === 0) {
         toast({
           title: t("success"),
-          description: `${successCount} ${t("admToolsPageRevokedPart1")} ${t(selectedTool.nameKey)} ${t("admToolsPageRevokedPart2")}`,
+          description: `${successCount} ${t("admToolsPageRevokedPart1")} ${variantLabel} ${t("admToolsPageRevokedPart2")}`,
         });
       } else {
         toast({
@@ -411,15 +442,15 @@ export default function AdminToolsPage() {
 
   // Revoke tab: select all visible
   const selectAllRevokeUsers = () => {
-    if (!selectedTool) return;
+    if (!activeToolId) return;
     const filtered = getFilteredUsersWithAccess();
     setRevokeSelectedUsers(new Set(filtered.map((u) => u.id)));
   };
 
   // Revoke tab: select department
   const selectRevokeDepartmentUsers = (dept: string) => {
-    if (!selectedTool) return;
-    const deptUsers = getUsersWithAccess(selectedTool.id).filter(
+    if (!activeToolId) return;
+    const deptUsers = getUsersWithAccess(activeToolId).filter(
       (u) => u.department === dept,
     );
     setRevokeSelectedUsers(new Set(deptUsers.map((u) => u.id)));
@@ -427,8 +458,8 @@ export default function AdminToolsPage() {
 
   // Revoke tab: filtered list
   const getFilteredUsersWithAccess = () => {
-    if (!selectedTool) return [];
-    let list = getUsersWithAccess(selectedTool.id);
+    if (!activeToolId) return [];
+    let list = getUsersWithAccess(activeToolId);
     if (revokeSearch.trim()) {
       const q = revokeSearch.toLowerCase();
       list = list.filter(
@@ -442,8 +473,8 @@ export default function AdminToolsPage() {
 
   // Grant tab: filtered list
   const getFilteredUsersWithoutAccess = () => {
-    if (!selectedTool) return [];
-    let list = getUsersWithoutAccess(selectedTool.id);
+    if (!activeToolId) return [];
+    let list = getUsersWithoutAccess(activeToolId);
     if (grantSearch.trim()) {
       const q = grantSearch.toLowerCase();
       list = list.filter(
@@ -515,7 +546,7 @@ export default function AdminToolsPage() {
               label: t("admToolsPageStatTotalPermissions"),
               value: totalPermissions,
             },
-            { label: t("admToolsPageStatTools"), value: visibleTools.length },
+            { label: t("admToolsPageStatTools"), value: visibleGroups.length },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -534,34 +565,41 @@ export default function AdminToolsPage() {
         {/* Tool Cards */}
         <div>
           <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {visibleTools.map((tool) => {
-              const usersWithAccess = getUsersWithAccess(tool.id);
+            {visibleGroups.map((group) => {
+              const usersWithAccess = getUsersWithAnyVariant(group);
               const pct =
                 users.length > 0
                   ? Math.round((usersWithAccess.length / users.length) * 100)
                   : 0;
               return (
                 <button
-                  key={tool.id}
-                  onClick={() => handleToolSelect(tool)}
+                  key={group.id}
+                  onClick={() => handleGroupSelect(group)}
                   className="group text-left bg-background border-2 border-border hover:border-border rounded-xl p-3 flex flex-col gap-3 hover:-translate-y-0.5 transition-all duration-300"
                 >
-                  <p className="text-sm font-medium text-foreground leading-snug whitespace-normal break-words">
-                    {t(tool.nameKey)}
-                  </p>
+                  <div>
+                    <p className="text-sm font-medium text-foreground leading-snug whitespace-normal break-words">
+                      {t(group.nameKey)}
+                    </p>
+                    {group.variants.length > 1 && (
+                      <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                        {group.variants.length} {t("admToolsPageScenarioUnit")}
+                      </p>
+                    )}
+                  </div>
                   <div className="mt-auto">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs text-muted-foreground/60">
                         {usersWithAccess.length} {t("admToolsPageUserUnit")}
                       </span>
-                      {tool.adminPath ? (
+                      {group.adminPath ? (
                         <Link
-                          href={tool.adminPath}
+                          href={group.adminPath}
                           onClick={(e) => e.stopPropagation()}
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {tool.adminLabelKey
-                            ? t(tool.adminLabelKey)
+                          {group.adminLabelKey
+                            ? t(group.adminLabelKey)
                             : t("admToolsPageSettingsArrow")}
                         </Link>
                       ) : (
@@ -585,28 +623,48 @@ export default function AdminToolsPage() {
       </div>
 
       {/* Tool Detail Sheet */}
-      <Sheet open={!!selectedTool} onOpenChange={() => setSelectedTool(null)}>
+      <Sheet open={!!selectedGroup} onOpenChange={() => setSelectedGroup(null)}>
         <SheetContent className="w-full sm:max-w-md bg-background border-border p-0 flex flex-col">
           <SheetTitle className="sr-only">
-            {selectedTool ? t(selectedTool.nameKey) : t("admReportsManageAccessTitle")}
+            {selectedGroup ? t(selectedGroup.nameKey) : t("admReportsManageAccessTitle")}
           </SheetTitle>
-          {selectedTool && (
+          {selectedGroup && activeVariant && (
             <>
               {/* Header */}
-              <div className={`bg-gradient-to-br ${selectedTool.color} p-5`}>
+              <div className={`bg-gradient-to-br ${selectedGroup.color} p-5`}>
                 <p className="text-foreground/70 text-xs font-medium uppercase tracking-widest mb-1">
                   {t("admReportsManageAccessTitle")}
                 </p>
                 <p className="text-foreground text-lg font-semibold leading-snug">
-                  {t(selectedTool.nameKey)}
+                  {t(selectedGroup.nameKey)}
                 </p>
                 <p className="text-foreground/60 text-xs mt-1 line-clamp-2">
-                  {t(selectedTool.descKey)}
+                  {t(selectedGroup.descKey)}
                 </p>
+
+                {/* Scenario switcher — only shown when the card groups >1 variant */}
+                {selectedGroup.variants.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {selectedGroup.variants.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => handleVariantSwitch(v.id)}
+                        className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                          v.id === activeToolId
+                            ? "bg-foreground text-background"
+                            : "bg-foreground/10 text-foreground/70 hover:bg-foreground/20"
+                        }`}
+                      >
+                        {t(v.labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex gap-4 mt-3">
                   <div className="text-center">
                     <p className="text-foreground text-xl font-bold leading-none">
-                      {getUsersWithAccess(selectedTool.id).length}
+                      {getUsersWithAccess(activeToolId).length}
                     </p>
                     <p className="text-foreground/60 text-xs mt-0.5">
                       {t("admReportsWithAccessUnit")}
@@ -615,7 +673,7 @@ export default function AdminToolsPage() {
                   <div className="w-px bg-foreground/20" />
                   <div className="text-center">
                     <p className="text-foreground text-xl font-bold leading-none">
-                      {getUsersWithoutAccess(selectedTool.id).length}
+                      {getUsersWithoutAccess(activeToolId).length}
                     </p>
                     <p className="text-foreground/60 text-xs mt-0.5">
                       {t("admReportsWithoutAccessUnit")}
@@ -636,14 +694,14 @@ export default function AdminToolsPage() {
                     className="rounded-none text-xs font-medium text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
                   >
                     {t("admReportsWithAccessTabLabel")} (
-                    {getUsersWithAccess(selectedTool.id).length})
+                    {getUsersWithAccess(activeToolId).length})
                   </TabsTrigger>
                   <TabsTrigger
                     value="grant"
                     className="rounded-none text-xs font-medium text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white"
                   >
                     {t("admReportsGrantAccessTabLabel")} (
-                    {getUsersWithoutAccess(selectedTool.id).length})
+                    {getUsersWithoutAccess(activeToolId).length})
                   </TabsTrigger>
                 </TabsList>
 
@@ -657,9 +715,7 @@ export default function AdminToolsPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={selectAllRevokeUsers}
-                        disabled={
-                          getUsersWithAccess(selectedTool.id).length === 0
-                        }
+                        disabled={getUsersWithAccess(activeToolId).length === 0}
                         className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {t("admReportsSelectAllBtn")}
@@ -714,7 +770,7 @@ export default function AdminToolsPage() {
                       <div className="flex items-center justify-center py-16">
                         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
                       </div>
-                    ) : getUsersWithAccess(selectedTool.id).length === 0 ? (
+                    ) : getUsersWithAccess(activeToolId).length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
@@ -754,7 +810,7 @@ export default function AdminToolsPage() {
                               className="border-border data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-foreground shrink-0"
                             />
                             <div
-                              className={`w-7 h-7 rounded-md bg-gradient-to-br ${selectedTool.color} flex items-center justify-center text-foreground text-xs font-bold shrink-0`}
+                              className={`w-7 h-7 rounded-md bg-gradient-to-br ${selectedGroup.color} flex items-center justify-center text-foreground text-xs font-bold shrink-0`}
                             >
                               {user.name.charAt(0)}
                             </div>
@@ -815,7 +871,7 @@ export default function AdminToolsPage() {
                       <button
                         onClick={selectAllUsers}
                         disabled={
-                          getUsersWithoutAccess(selectedTool.id).length === 0
+                          getUsersWithoutAccess(activeToolId).length === 0
                         }
                         className="flex-1 text-xs text-muted-foreground hover:text-foreground bg-background border border-border hover:border-border/80 rounded-lg py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -871,7 +927,7 @@ export default function AdminToolsPage() {
                       <div className="flex items-center justify-center py-16">
                         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
                       </div>
-                    ) : getUsersWithoutAccess(selectedTool.id).length === 0 ? (
+                    ) : getUsersWithoutAccess(activeToolId).length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground/40">
                         <Check className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">
@@ -933,7 +989,7 @@ export default function AdminToolsPage() {
                         <button
                           onClick={grantAccess}
                           disabled={isSaving}
-                          className={`w-full bg-gradient-to-r ${selectedTool.color} text-white text-sm font-semibold py-2.5 rounded-xl shadow-premium hover:shadow-premium-lg transition-all duration-300 hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2`}
+                          className={`w-full bg-gradient-to-r ${selectedGroup.color} text-white text-sm font-semibold py-2.5 rounded-xl shadow-premium hover:shadow-premium-lg transition-all duration-300 hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2`}
                         >
                           {isSaving ? (
                             <>

@@ -10,14 +10,8 @@ import {
   Clock,
   Loader2,
   X,
-  ArrowLeft,
   Trophy,
   Upload,
-  Trash2,
-  MessageCircle,
-  Send,
-  BookOpen,
-  Hash,
   Sparkles,
   PenLine,
   Layers,
@@ -27,6 +21,7 @@ import {
   Landmark,
   ChevronRight,
   TrendingUp,
+  Hash,
 } from "lucide-react";
 import {
   knowledgeApi,
@@ -35,6 +30,12 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { KnowledgeCoverImage } from "./_components/KnowledgeCoverImage";
+import { KnowledgeBookReader } from "./_components/KnowledgeBookReader";
+import { QuizSection } from "./_components/QuizSection";
+import {
+  fileToKnowledgeDataUrl,
+  KNOWLEDGE_MAX_IMAGES,
+} from "@/lib/knowledge-image";
 
 interface TopPublisher {
   rank: number;
@@ -87,6 +88,7 @@ interface News {
   content: string;
   category: string;
   imageUrl?: string;
+  imageUrls?: string[];
   authorId: string;
   authorName?: string;
   isPublished: number;
@@ -103,6 +105,11 @@ interface Comment {
   content: string;
   createdAt: string;
 }
+
+// Тусгай "ангилал" — QUIZ хэсэг рүү шилжих товч. Бодит контент ангилал биш
+// тул CATEGORIES массивт (пост үүсгэх сонголтод) ордоггүй, зөвхөн sidebar/
+// mobile pill жагсаалтад нэмэгддэг.
+const QUIZ_KEY = "__quiz__";
 
 // ─── Category config ───────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -387,6 +394,23 @@ function LeftSidebar({
             </button>
           );
         })}
+
+        {/* QUIZ — feed ангиллуудаас тусад нь, доор тодруулж харуулна */}
+        <div className="pt-1.5 mt-1 border-t border-border/60">
+          <button
+            onClick={() => onCategory(QUIZ_KEY)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold transition-all mt-1.5 ${
+              activeCategory === QUIZ_KEY
+                ? "bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <Trophy
+              className={`w-4 h-4 flex-shrink-0 ${activeCategory === QUIZ_KEY ? "text-violet-600 dark:text-violet-400" : "text-amber-500"}`}
+            />
+            <span className="flex-1 text-left font-bold">{t("knowledgeQuizTab")}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -473,10 +497,9 @@ export default function ShineMedlegPage() {
     title: "",
     content: "",
     category: "Аудит",
-    imageUrl: "",
+    imageUrls: [] as string[],
   });
   const [createLoading, setCreateLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [topPublishers, setTopPublishers] = useState<TopPublisher[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -535,39 +558,74 @@ export default function ShineMedlegPage() {
       (newsCountByCategory[item.category] ?? 0) + 1;
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+
+    const remaining = KNOWLEDGE_MAX_IMAGES - createForm.imageUrls.length;
+    if (remaining <= 0) {
       toast({
         title: t("error"),
-        description: t("knowledgeImageTooBig"),
+        description: t("knowledgeMaxImages"),
         variant: "destructive",
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const r = reader.result as string;
-      setCreateForm((f) => ({ ...f, imageUrl: r }));
-      setImagePreview(r);
-    };
-    reader.readAsDataURL(file);
+
+    const picked = files.slice(0, remaining);
+    const next: string[] = [];
+    for (const file of picked) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: t("error"),
+          description: t("knowledgeImageTooBig"),
+          variant: "destructive",
+        });
+        continue;
+      }
+      try {
+        next.push(await fileToKnowledgeDataUrl(file));
+      } catch {
+        toast({
+          title: t("error"),
+          description: t("newsCreateError"),
+          variant: "destructive",
+        });
+      }
+    }
+    if (next.length) {
+      setCreateForm((f) => ({
+        ...f,
+        imageUrls: [...f.imageUrls, ...next].slice(0, KNOWLEDGE_MAX_IMAGES),
+      }));
+    }
+  };
+
+  const removeCreateImage = (idx: number) => {
+    setCreateForm((f) => ({
+      ...f,
+      imageUrls: f.imageUrls.filter((_, i) => i !== idx),
+    }));
   };
 
   const handleCreate = async () => {
     if (!createForm.title.trim() || !createForm.content.trim()) return;
     setCreateLoading(true);
     try {
-      await knowledgeApi.create(createForm);
+      await knowledgeApi.create({
+        title: createForm.title,
+        content: createForm.content,
+        category: createForm.category,
+        imageUrls: createForm.imageUrls,
+      });
       setShowCreate(false);
       setCreateForm({
         title: "",
         content: "",
         category: "Аудит",
-        imageUrl: "",
+        imageUrls: [],
       });
-      setImagePreview(null);
       fetchNews();
     } catch {
       toast({
@@ -623,6 +681,15 @@ export default function ShineMedlegPage() {
     document.body.style.overflow = "";
     document.body.style.paddingRight = "";
   }, []);
+
+  useEffect(() => {
+    if (!selectedNews) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDetail();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedNews, closeDetail]);
 
   const handleReact = async (emoji: string) => {
     if (!selectedNews) return;
@@ -751,7 +818,7 @@ export default function ShineMedlegPage() {
           </button>
         </div>
 
-        {/* Mobile category pills */}
+        {/* Mobile category pills — QUIZ нь бусад ангиллын хамт, тусад нь тодруулж харагдана */}
         <div className="flex gap-2 overflow-x-auto pb-3 mb-4 lg:hidden scrollbar-none">
           {CATEGORIES.map((c) => {
             const isActive = activeCategory === c.key;
@@ -769,10 +836,21 @@ export default function ShineMedlegPage() {
               </button>
             );
           })}
+          <button
+            onClick={() => setActiveCategory(QUIZ_KEY)}
+            className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              activeCategory === QUIZ_KEY
+                ? "bg-violet-600 text-white shadow-sm"
+                : "bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Trophy className="w-3 h-3" /> {t("knowledgeQuizTab")}
+          </button>
         </div>
 
-        {/* Feed */}
-        {isLoading ? (
+        {activeCategory === QUIZ_KEY ? (
+          <QuizSection />
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-7 h-7 animate-spin text-violet-500" />
           </div>
@@ -801,9 +879,11 @@ export default function ShineMedlegPage() {
       </main>
 
       {/* ── Right Sidebar ── */}
-      <aside className="relative z-10 hidden xl:block w-[260px] flex-shrink-0 border-l border-border sticky top-0 self-start">
-        <RightSidebar publishers={topPublishers} loading={statsLoading} />
-      </aside>
+      {activeCategory !== QUIZ_KEY && (
+        <aside className="relative z-10 hidden xl:block w-[260px] flex-shrink-0 border-l border-border sticky top-0 self-start">
+          <RightSidebar publishers={topPublishers} loading={statsLoading} />
+        </aside>
+      )}
 
       {/* ── Create Modal ── */}
       {mounted &&
@@ -878,35 +958,45 @@ export default function ShineMedlegPage() {
                     </div>
                     <div>
                       <label className="text-foreground/70 text-xs font-semibold block mb-1.5">
-                        {t("knowledgePageImageLabel")}
+                        {t("knowledgePageImageLabel")}{" "}
+                        <span className="text-muted-foreground font-normal">
+                          ({createForm.imageUrls.length}/{KNOWLEDGE_MAX_IMAGES})
+                        </span>
                       </label>
-                      {imagePreview ? (
-                        <div className="relative w-full h-40 landscape:h-32 md:h-44 rounded-xl overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imagePreview}
-                            alt="preview"
-                            className="absolute inset-0 h-full w-full object-cover"
-                          />
-                          <button
-                            onClick={() => {
-                              setImagePreview(null);
-                              setCreateForm((f) => ({ ...f, imageUrl: "" }));
-                            }}
-                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/80 text-foreground flex items-center justify-center hover:bg-background transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                      {createForm.imageUrls.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          {createForm.imageUrls.map((src, idx) => (
+                            <div
+                              key={`${idx}-${src.slice(0, 24)}`}
+                              className="relative aspect-square rounded-xl overflow-hidden ring-1 ring-border"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={src}
+                                alt=""
+                                className="absolute inset-0 h-full w-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeCreateImage(idx)}
+                                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/85 text-foreground flex items-center justify-center hover:bg-background"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center gap-2 w-full h-28 landscape:h-24 md:h-32 rounded-xl cursor-pointer border-2 border-dashed border-border hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/5 transition-all">
+                      )}
+                      {createForm.imageUrls.length < KNOWLEDGE_MAX_IMAGES && (
+                        <label className="flex flex-col items-center justify-center gap-2 w-full h-24 rounded-xl cursor-pointer border-2 border-dashed border-border hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/5 transition-all">
                           <Upload className="w-5 h-5 text-muted-foreground" />
-                          <span className="text-muted-foreground text-xs">
+                          <span className="text-muted-foreground text-xs text-center px-2">
                             {t("knowledgePageImageUploadHint")}
                           </span>
                           <input
                             type="file"
                             accept="image/jpeg,image/png,image/gif,image/webp"
+                            multiple
                             className="hidden"
                             onChange={handleImageUpload}
                           />
@@ -959,327 +1049,63 @@ export default function ShineMedlegPage() {
           document.body,
         )}
 
-      {/* ── Detail Modal ── */}
+      {/* ── Open-book fullscreen reader ── */}
       {mounted &&
         createPortal(
           <AnimatePresence>
             {selectedNews && (
-              <motion.div
-                key="detail"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 dark:bg-black/70 backdrop-blur-sm"
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) closeDetail();
-                }}
-              >
-                <motion.div
-                  initial={{ scale: 0.94, y: 20 }}
-                  animate={{ scale: 1, y: 0 }}
-                  exit={{ scale: 0.96, y: 12 }}
-                  transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative w-full h-full md:w-[92vw] md:h-[88vh] md:max-w-6xl flex overflow-hidden md:rounded-2xl shadow-2xl"
-                >
-                  {/* ── LEFT — Cover ── */}
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.32, delay: 0.06 }}
-                    className="relative hidden md:flex w-[42%] flex-shrink-0 flex-col overflow-hidden"
-                  >
-                    {hasKnowledgeImage(selectedNews.imageUrl) ? (
-                      <>
-                        <KnowledgeCoverImage
-                          path={selectedNews.imageUrl}
-                          alt={selectedNews.title}
-                          fill
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-                        <div className="absolute top-0 right-0 bottom-0 w-5 bg-gradient-to-l from-black/40 to-transparent" />
-                      </>
-                    ) : (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-br from-violet-100 via-indigo-50 to-blue-100 dark:from-violet-950 dark:via-indigo-950 dark:to-slate-900" />
-                        <div
-                          className="absolute inset-0 opacity-20"
-                          style={{
-                            backgroundImage:
-                              "radial-gradient(circle at 30% 70%, rgb(139,92,246) 0%, transparent 60%)",
-                          }}
-                        />
-                        <div className="absolute top-0 right-0 bottom-0 w-5 bg-gradient-to-l from-black/10 to-transparent" />
-                      </>
-                    )}
-
-                    {/* Brand */}
-                    <div className="absolute top-6 left-6 flex items-center gap-2 z-10">
-                      <BookOpen className="w-4 h-4 text-violet-400" />
-                      <span className="text-violet-600/60 dark:text-violet-300/50 text-xs font-mono uppercase tracking-[0.2em]">
-                        {t("knowledgeTitle")}
-                      </span>
-                    </div>
-
-                    {/* Author */}
-                    <div className="absolute top-16 left-6 flex items-center gap-2.5 z-10">
-                      {(() => {
-                        const name =
-                          selectedNews.authorName ||
-                          t("knowledgePageEmployeeFallback");
-                        const grad = getAvatarColor(name);
-                        const hasImg = hasKnowledgeImage(selectedNews.imageUrl);
-                        return (
-                          <>
-                            <div
-                              className={`w-7 h-7 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/20`}
-                            >
-                              {getInitials(name)}
-                            </div>
-                            <div>
-                              <p
-                                className={`text-xs font-semibold ${hasImg ? "text-white/90" : "text-foreground"}`}
-                              >
-                                {name}
-                              </p>
-                              <p
-                                className={`text-[10px] ${hasImg ? "text-white/50" : "text-muted-foreground"}`}
-                              >
-                                {formatDate(selectedNews.createdAt)}
-                              </p>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Bottom: category + title */}
-                    {(() => {
-                      const cat = getCat(selectedNews.category);
-                      const hasImg = hasKnowledgeImage(selectedNews.imageUrl);
-                      return (
-                        <div className="absolute bottom-0 left-0 right-0 p-8 z-10 space-y-3">
-                          <span
-                            className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ring-1 ${cat.bg} ${cat.text} ${cat.ring}`}
-                          >
-                            {selectedNews.category}
-                          </span>
-                          <h1
-                            className={`text-2xl lg:text-3xl font-black leading-tight ${hasImg ? "text-white" : "text-foreground"}`}
-                          >
-                            {selectedNews.title}
-                          </h1>
-                          <div
-                            className={`flex items-center gap-3 text-xs ${hasImg ? "text-white/50" : "text-muted-foreground"}`}
-                          >
-                            <span className="flex items-center gap-1">
-                              <Eye className="w-3 h-3" />
-                              {selectedNews.views}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {calcReadTime(selectedNews.content)}{" "}
-                              {t("minRead")}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </motion.div>
-
-                  {/* ── RIGHT — Content ── */}
-                  <motion.div
-                    initial={{ x: 20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.32, delay: 0.1 }}
-                    className="flex-1 flex flex-col min-w-0 overflow-hidden bg-card border-l border-border"
-                  >
-                    {/* Top bar */}
-                    <div className="flex-shrink-0 flex items-center gap-3 px-5 h-12 border-b border-border bg-card">
-                      <button
-                        onClick={closeDetail}
-                        className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="hidden sm:inline text-xs font-medium">
-                          {t("back")}
-                        </span>
-                      </button>
-                      <div className="flex-1" />
-                      {user && selectedNews.authorId === user.id && (
-                        <button
-                          onClick={() => handleDelete(selectedNews.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      <button
-                        onClick={closeDetail}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Scrollable */}
-                    <div className="flex-1 min-h-0 overflow-y-auto">
-                      {/* Mobile title */}
-                      <div className="md:hidden px-5 pt-5 pb-4 border-b border-border space-y-2">
-                        {(() => {
-                          const cat = getCat(selectedNews.category);
-                          return (
-                            <span
-                              className={`inline-block text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ring-1 ${cat.bg} ${cat.text} ${cat.ring}`}
-                            >
-                              {selectedNews.category}
-                            </span>
-                          );
-                        })()}
-                        <h2 className="text-foreground text-xl font-black leading-tight">
-                          {selectedNews.title}
-                        </h2>
-                      </div>
-
-                      {/* Article */}
-                      <div className="px-6 sm:px-10 py-7 pb-4">
-                        <div
-                          className="prose prose-sm sm:prose-base max-w-none leading-relaxed
-                          text-foreground/80
-                          prose-headings:text-foreground prose-headings:font-bold
-                          prose-a:text-violet-600 dark:prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline
-                          prose-strong:text-foreground
-                          prose-code:text-violet-600 dark:prose-code:text-violet-400 prose-code:bg-muted prose-code:px-1 prose-code:rounded
-                          prose-pre:bg-muted prose-pre:border prose-pre:border-border
-                          prose-blockquote:border-l-violet-500 prose-blockquote:text-muted-foreground
-                          prose-img:rounded-xl prose-img:mx-auto
-                          prose-table:text-sm prose-th:text-foreground/70 prose-td:text-foreground/70"
-                          dangerouslySetInnerHTML={{
-                            __html: sanitizeHtml(selectedNews.content),
-                          }}
-                        />
-                      </div>
-
-                      {/* Reactions */}
-                      <div className="px-6 sm:px-10 py-4 border-t border-border">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {["👍", "❤️", "😮", "💡", "🔥"].map((emoji) => {
-                            const count = reactions?.counts[emoji] ?? 0;
-                            const active = reactions?.myReaction === emoji;
-                            return (
-                              <button
-                                key={emoji}
-                                onClick={() => handleReact(emoji)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all border font-medium ${
-                                  active
-                                    ? "bg-violet-100 dark:bg-violet-500/25 border-violet-400 dark:border-violet-400/50 text-violet-700 dark:text-violet-300 shadow-sm"
-                                    : "bg-muted border-border text-muted-foreground hover:bg-muted/80 hover:border-violet-300 dark:hover:border-violet-600"
-                                }`}
-                              >
-                                <span>{emoji}</span>
-                                {count > 0 && (
-                                  <span className="text-xs font-semibold">
-                                    {count}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Comments */}
-                      <div className="px-6 sm:px-10 pb-8 pt-4 border-t border-border">
-                        <div className="flex items-center gap-2 mb-4">
-                          <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-foreground/70 text-sm font-semibold">
-                            {comments.length > 0
-                              ? `${comments.length} ${t("knowledgePageCommentsLabel")}`
-                              : t("knowledgePageCommentsLabel")}
-                          </span>
-                        </div>
-
-                        {/* Input */}
-                        <div className="flex gap-2 mb-5">
-                          <input
-                            ref={commentInputRef}
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handleAddComment();
-                              }
-                            }}
-                            placeholder={t("newsCommentPlaceholder")}
-                            maxLength={1000}
-                            className="flex-1 rounded-xl px-3 py-2 text-sm text-foreground bg-muted border border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
-                          />
-                          <button
-                            onClick={handleAddComment}
-                            disabled={commentPosting || !commentText.trim()}
-                            className="w-9 h-9 rounded-xl bg-violet-600 dark:bg-violet-500/20 text-white dark:text-violet-300 dark:border dark:border-violet-400/25 flex items-center justify-center hover:bg-violet-700 dark:hover:bg-violet-500/35 transition-colors disabled:opacity-40 shadow-sm"
-                          >
-                            {commentPosting ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Send className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-
-                        {/* List */}
-                        <div className="space-y-4">
-                          {comments.length === 0 ? (
-                            <p className="text-muted-foreground text-sm text-center py-4">
-                              {t("newsCommentEmpty")}
-                            </p>
-                          ) : (
-                            comments.map((c) => {
-                              const grad = getAvatarColor(c.authorName);
-                              return (
-                                <div key={c.id} className="flex gap-3 group">
-                                  <div
-                                    className={`w-7 h-7 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5`}
-                                  >
-                                    {getInitials(c.authorName)}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-baseline gap-2 mb-0.5">
-                                      <span className="text-foreground text-xs font-semibold">
-                                        {c.authorName}
-                                      </span>
-                                      <span className="text-muted-foreground text-[10px]">
-                                        {formatRelative(
-                                          c.createdAt,
-                                          t("knowledgeJustNow"),
-                                        )}
-                                      </span>
-                                      {user?.id === c.authorId && (
-                                        <button
-                                          onClick={() =>
-                                            handleDeleteComment(c.id)
-                                          }
-                                          className="opacity-0 group-hover:opacity-100 ml-auto text-muted-foreground hover:text-red-500 transition-all"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <p className="text-foreground/75 text-sm leading-relaxed">
-                                      {c.content}
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              </motion.div>
+              <KnowledgeBookReader
+                news={selectedNews}
+                hasImage={
+                  hasKnowledgeImage(selectedNews.imageUrl) ||
+                  (selectedNews.imageUrls?.length ?? 0) > 0
+                }
+                imageUrls={
+                  selectedNews.imageUrls?.length
+                    ? selectedNews.imageUrls
+                    : selectedNews.imageUrl
+                      ? [selectedNews.imageUrl]
+                      : []
+                }
+                cat={getCat(selectedNews.category)}
+                authorLabel={
+                  selectedNews.authorName || t("knowledgePageEmployeeFallback")
+                }
+                authorGradient={getAvatarColor(
+                  selectedNews.authorName ||
+                    t("knowledgePageEmployeeFallback"),
+                )}
+                authorInitials={getInitials(
+                  selectedNews.authorName ||
+                    t("knowledgePageEmployeeFallback"),
+                )}
+                formattedDate={formatDate(selectedNews.createdAt)}
+                readTime={calcReadTime(selectedNews.content)}
+                minReadLabel={t("minRead")}
+                justNowLabel={t("knowledgeJustNow")}
+                backLabel={t("back")}
+                closeLabel={t("close")}
+                commentsLabel={t("knowledgePageCommentsLabel")}
+                commentPlaceholder={t("newsCommentPlaceholder")}
+                commentEmpty={t("newsCommentEmpty")}
+                sanitizedHtml={sanitizeHtml(selectedNews.content)}
+                reactions={reactions}
+                comments={comments}
+                commentText={commentText}
+                commentPosting={commentPosting}
+                commentInputRef={commentInputRef}
+                canDelete={!!user && selectedNews.authorId === user.id}
+                currentUserId={user?.id}
+                getAvatarColor={getAvatarColor}
+                getInitials={getInitials}
+                formatRelative={formatRelative}
+                onClose={closeDetail}
+                onDelete={() => handleDelete(selectedNews.id)}
+                onReact={handleReact}
+                onCommentChange={setCommentText}
+                onAddComment={handleAddComment}
+                onDeleteComment={handleDeleteComment}
+              />
             )}
           </AnimatePresence>,
           document.body,

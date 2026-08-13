@@ -14,11 +14,13 @@ import {
   HttpStatus,
   BadRequestException,
   ForbiddenException,
+  Header,
 } from "@nestjs/common";
 import { Response } from "express";
 import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
+import { AuditLogService } from "../audit/audit-log.service";
 import { PythonApiService } from "./python-api.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
 import {
@@ -36,7 +38,10 @@ import {
 @Controller("python-api")
 @UseGuards(JwtAuthGuard)
 export class PythonApiController {
-  constructor(private readonly service: PythonApiService) {}
+  constructor(
+    private readonly service: PythonApiService,
+    private auditLogService: AuditLogService,
+  ) {}
 
   // ── Admin CRUD ─────────────────────────────────────────────────────────────
 
@@ -49,34 +54,157 @@ export class PythonApiController {
   @Post("admin/tools")
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.CREATED)
-  createTool(@Body() dto: CreatePythonToolDto) {
-    return this.service.createTool(dto);
+  async createTool(
+    @Body() dto: CreatePythonToolDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      const result = await this.service.createTool(dto);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_create",
+        resource: "python_api_tools",
+        method: "create",
+        status: "success",
+        metadata: { name: (dto as any)?.name },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_create",
+        resource: "python_api_tools",
+        method: "create",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+      });
+      throw error;
+    }
   }
 
   @Patch("admin/tools/:id")
   @UseGuards(AdminGuard)
-  updateTool(@Param("id") id: string, @Body() dto: UpdatePythonToolDto) {
-    return this.service.updateTool(id, dto);
+  async updateTool(
+    @Param("id") id: string,
+    @Body() dto: UpdatePythonToolDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      const result = await this.service.updateTool(id, dto);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_update",
+        resource: "python_api_tools",
+        method: "update",
+        status: "success",
+        metadata: { targetId: id },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_update",
+        resource: "python_api_tools",
+        method: "update",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetId: id },
+      });
+      throw error;
+    }
   }
 
   @Patch("admin/tools/:id/toggle")
   @UseGuards(AdminGuard)
-  toggleTool(@Param("id") id: string, @Body() body: ToggleToolDto) {
-    return this.service.toggleActive(id, body.isActive);
+  async toggleTool(
+    @Param("id") id: string,
+    @Body() body: ToggleToolDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      const result = await this.service.toggleActive(id, body.isActive);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_toggle",
+        resource: "python_api_tools",
+        method: "toggle",
+        status: "success",
+        metadata: { targetId: id, isActive: body.isActive },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_toggle",
+        resource: "python_api_tools",
+        method: "toggle",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetId: id },
+      });
+      throw error;
+    }
   }
 
   @Delete("admin/tools/:id")
   @UseGuards(AdminGuard)
-  deleteTool(@Param("id") id: string) {
-    return this.service.deleteTool(id);
+  async deleteTool(
+    @Param("id") id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      const result = await this.service.deleteTool(id);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_delete",
+        resource: "python_api_tools",
+        method: "delete",
+        status: "success",
+        metadata: { targetId: id },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_delete",
+        resource: "python_api_tools",
+        method: "delete",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetId: id },
+      });
+      throw error;
+    }
   }
 
   // [SORT] Persist user-side display order — body: { ids: string[] }
   @Post("admin/tools/reorder")
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async reorderTools(@Body() body: ReorderToolsDto) {
-    await this.service.reorderTools(body.ids);
+  async reorderTools(
+    @Body() body: ReorderToolsDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      await this.service.reorderTools(body.ids);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_reorder",
+        resource: "python_api_tools",
+        method: "reorder",
+        status: "success",
+      });
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_reorder",
+        resource: "python_api_tools",
+        method: "reorder",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+      });
+      throw error;
+    }
   }
 
   /** Editor: кодыг ажиллуулахгүйгээр шалгах */
@@ -109,24 +237,71 @@ export class PythonApiController {
   @Post("admin/permissions")
   @UseGuards(AdminGuard)
   async grantPermission(@Body() body: GrantPermissionDto, @Request() req: AuthenticatedRequest) {
-    await this.service.grantPermission(
-      body.userId,
-      body.templateId,
-      req.user?.id ?? "",
-    );
-    return { ok: true };
+    try {
+      await this.service.grantPermission(
+        body.userId,
+        body.templateId,
+        req.user?.id ?? "",
+      );
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_permission_grant",
+        resource: "python_api_permissions",
+        method: "grant",
+        status: "success",
+        metadata: { targetUserId: body.userId, templateId: body.templateId },
+      });
+      return { ok: true };
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_permission_grant",
+        resource: "python_api_permissions",
+        method: "grant",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetUserId: body.userId, templateId: body.templateId },
+      });
+      throw error;
+    }
   }
 
   @Delete("admin/permissions")
   @UseGuards(AdminGuard)
-  async revokePermission(@Body() body: RevokePermissionDto) {
-    await this.service.revokePermission(body.userId, body.templateId);
-    return { ok: true };
+  async revokePermission(
+    @Body() body: RevokePermissionDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      await this.service.revokePermission(body.userId, body.templateId);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_permission_revoke",
+        resource: "python_api_permissions",
+        method: "revoke",
+        status: "success",
+        metadata: { targetUserId: body.userId, templateId: body.templateId },
+      });
+      return { ok: true };
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "python_tool_permission_revoke",
+        resource: "python_api_permissions",
+        method: "revoke",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetUserId: body.userId, templateId: body.templateId },
+      });
+      throw error;
+    }
   }
 
   // ── User routes ────────────────────────────────────────────────────────────
 
+  // [PERF] tool catalog changes rarely — short private cache.
   @Get("tools")
+  @Header("Cache-Control", "private, max-age=60")
   getActiveTools(@Request() req: AuthenticatedRequest) {
     return this.service.getActiveToolsForUser(
       req.user?.id,

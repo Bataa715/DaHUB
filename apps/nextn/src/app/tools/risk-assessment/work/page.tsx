@@ -27,6 +27,7 @@ import {
   type DynamicCatalogIndicator,
 } from "../use-indicator-config";
 import ReportView from "../report-view";
+import ReportSkeleton from "../_report-view/report-skeleton";
 import IndicatorFilterPanel from "./_IndicatorFilterPanel";
 import type { ManualMap } from "../indicator-catalog";
 import {
@@ -492,14 +493,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         )}
 
         {loading || (loadingDate && !hasData) ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            <p className="text-sm text-muted-foreground">
-              {loadingDate && fetchedDate
-                ? `${fetchedDate} ${t("raWorkPageLoadingDate")}`
-                : t("loading")}
-            </p>
-          </div>
+          <ReportSkeleton rows={10} />
         ) : !hasData ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">

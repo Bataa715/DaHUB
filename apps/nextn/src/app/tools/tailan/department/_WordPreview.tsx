@@ -85,11 +85,17 @@ export function WordPreview({
   negtgelKpi: KpiSubSection[];
   onUpdateSection?: (id: string, updated: SectionReport) => void;
 }) {
-  // containerRef → хуудасны хэмжээг хянах div
+  // containerRef → гадна wrapper (дэлгэцийн өргөн хэмжинэ)
   const containerRef = useRef<HTMLDivElement>(null);
+  // scaleLayerRef → scale хийхээс өмнөх жинхэнэ A4 өргөнтэй давхарга
+  const scaleLayerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   // scale → хуудсыг дэлгэцийн өргөнд тохируулан жижигрүүлэх хэмжүүр
   const [scale, setScale] = useState(1);
+  const [layout, setLayout] = useState<{
+    width?: number;
+    height?: number;
+  }>({});
 
   // A4 pagination constants
   const PAGE_H = mmToPx(297);
@@ -98,23 +104,35 @@ export function WordPreview({
   const PAD_BOTTOM = mmToPx(14);
   const PAD_LEFT = "18mm";
   const PAD_RIGHT = "18mm";
+  // 210mm ≈ 794px @ 96dpi
+  const A4_WIDTH_PX = 794;
 
   usePagination(contentRef, PAGE_H, GAP_H, PAD_TOP, PAD_BOTTOM);
 
-  // Дэлгэцийн өргөн өөрчлөгдөх бүрт хуудсыг дахин хэмжих
-  // 834px = A4 хуудасны пикселийн өргөн
+  // Дэлгэцийн өргөн өөрчлөгдөх бүрт A4-ийг багтаах scale тооцоолно (хөндлөн scrollгүй)
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const outer = containerRef.current;
+    const layer = scaleLayerRef.current;
+    if (!outer || !layer) return;
+
     const update = () => {
-      const s = Math.min(1, el.clientWidth / 834);
-      setScale(Math.round(s * 1000) / 1000);
+      const available = Math.max(120, outer.clientWidth);
+      const naturalW = Math.max(layer.scrollWidth, A4_WIDTH_PX);
+      const next = Math.min(1, available / naturalW);
+      const rounded = Math.round(next * 1000) / 1000;
+      setScale(rounded);
+      setLayout({
+        width: Math.ceil(naturalW * rounded),
+        height: Math.ceil(layer.scrollHeight * rounded),
+      });
     };
+
     update();
     const ro = new ResizeObserver(update);
-    ro.observe(el);
+    ro.observe(outer);
+    ro.observe(layer);
     return () => ro.disconnect();
-  }, []);
+  }, [year, quarter, sections, negtgelKpi]);
 
   // Q_NAMES → ["I-Р", "II-Р", "III-Р", "IV-Р"] гэсэн массив
   // _types.ts дотор тодорхойлогдсон
@@ -129,20 +147,31 @@ export function WordPreview({
   const gapH = "20px";
 
   return (
-    // Гадна wrapper → саарал дэвсгэр
+    // Гадна wrapper → саарал дэвсгэр; хөндлөн scrollгүй, өргөндөө багтана
     <div
       ref={containerRef}
-      style={{ background: "#d8d8d8", minHeight: "100%", overflow: "hidden" }}
+      className="w-full max-w-full min-w-0 overflow-x-hidden"
+      style={{ background: "#d8d8d8", minHeight: "100%" }}
     >
-      {/* zoom → хуудсыг дэлгэцэд багтай болгох scale */}
+      {/* Layout хэмжээ = scale-ийн дараах харагдах хэмжээ (transform layout-д нөлөөлдөггүй) */}
       <div
+        className="relative mx-auto overflow-hidden"
         style={{
-          zoom: scale,
-          padding: "20px",
-          width: "fit-content",
-          minWidth: "100%",
+          width: layout.width,
+          height: layout.height,
+          maxWidth: "100%",
         }}
       >
+        <div
+          ref={scaleLayerRef}
+          style={{
+            width: A4_WIDTH_PX,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            padding: "12px 0 20px",
+            boxSizing: "border-box",
+          }}
+        >
         {/* Outer wrapper: repeating page background with gaps */}
         <div
           className="mx-auto"
@@ -187,6 +216,7 @@ export function WordPreview({
           {/* Page content with correct padding */}
           <div
             ref={contentRef}
+            id="dept-word-preview-export"
             style={{
               position: "relative",
               padding: `16mm ${PAD_RIGHT} 14mm ${PAD_LEFT}`,
@@ -195,6 +225,7 @@ export function WordPreview({
               fontSize: "11pt",
               color: "#000",
               zIndex: 0,
+              background: "#fff",
             }}
           >
             {/* 1-р хуудасны дээд гарчиг — жил, улирал автоматаар орно */}
@@ -2981,6 +3012,7 @@ export function WordPreview({
               sigContent={sections["sig"]?.content}
             />
           </div>
+        </div>
         </div>
       </div>
     </div>

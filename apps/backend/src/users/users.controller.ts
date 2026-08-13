@@ -182,6 +182,38 @@ export class UsersController {
     }
   }
 
+  /** Admin: clear a user's persistent brute-force lockout (5 wrong passwords) */
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch(":id/unlock")
+  async unlock(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
+    try {
+      const result = await this.usersService.unlockUser(
+        id,
+        !!req.user.isSuperAdmin,
+      );
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "user_unlock",
+        resource: "users",
+        method: "unlock",
+        status: "success",
+        metadata: { targetUserId: id },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "user_unlock",
+        resource: "users",
+        method: "unlock",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetUserId: id },
+      });
+      throw error;
+    }
+  }
+
   /** Authenticated: user can remove own profile image; admin can remove any user's */
   @UseGuards(JwtAuthGuard)
   @Delete(":id/profile-image")

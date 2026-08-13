@@ -47,6 +47,8 @@ interface UserData {
   isAdmin: boolean;
   isSuperAdmin?: boolean;
   isActive?: boolean;
+  isLocked?: boolean;
+  failedLoginCount?: number;
   lastLoginAt?: string;
   createdAt: string;
 }
@@ -104,6 +106,12 @@ export default function UsersPage() {
   const [changingUserIdId, setChangingUserIdId] = useState<string | null>(null);
   const [editUserId, setEditUserId] = useState("");
   const [isSavingUserId, setIsSavingUserId] = useState(false);
+
+  const [changingNameId, setChangingNameId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
 
   const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(
     null,
@@ -213,6 +221,54 @@ export default function UsersPage() {
     }
   };
 
+  const handleChangeName = async () => {
+    if (!editName.trim() || !changingNameId) return;
+    setIsSavingName(true);
+    try {
+      await usersApi.update(changingNameId, { name: editName.trim() });
+      toast({
+        title: t("success"),
+        description: t("admUsersNameChangedDesc"),
+      });
+      setChangingNameId(null);
+      loadUsers();
+    } catch (error) {
+      let message = t("admUsersNameChangeError");
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  const handleUnlock = async (userData: UserData) => {
+    setUnlockingId(userData.id);
+    try {
+      await usersApi.unlock(userData.id);
+      toast({
+        title: t("success"),
+        description: `${userData.name} ${t("admUsersUnlockedDescSuffix")}`,
+      });
+      loadUsers();
+    } catch (error) {
+      let message = t("admUsersUnlockError");
+      if (axios.isAxiosError(error))
+        message = error.response?.data?.message ?? message;
+      toast({
+        title: t("error"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setUnlockingId(null);
+    }
+  };
+
   const handleResetPassword = async () => {
     if (!resetPasswordUser || !isPasswordValid(newPassword)) return;
     setIsResetting(true);
@@ -276,13 +332,63 @@ export default function UsersPage() {
                   <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-foreground shrink-0">
                     {userData.name?.[0]?.toUpperCase() ?? "?"}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {userData.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground/60 truncate">
-                      {userData.position || "—"}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    {changingNameId === userData.id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleChangeName();
+                            if (e.key === "Escape") setChangingNameId(null);
+                          }}
+                          className="h-7 bg-muted border-border text-foreground text-xs"
+                          autoFocus
+                        />
+                        <button
+                          disabled={isSavingName || !editName.trim()}
+                          onClick={handleChangeName}
+                          aria-label={t("admUsersSaveNameAria")}
+                          className="p-1 text-emerald-400 disabled:opacity-40"
+                        >
+                          {isSavingName ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Check className="w-3 h-3" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setChangingNameId(null)}
+                          aria-label={t("admDeptCancelBtn")}
+                          className="p-1 text-muted-foreground/60 hover:text-foreground"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="flex items-center gap-1.5 group text-left w-full"
+                        onClick={() => {
+                          setEditName(userData.name ?? "");
+                          setChangingNameId(userData.id);
+                        }}
+                      >
+                        <p className="text-sm font-semibold text-foreground group-hover:text-foreground/80 truncate transition-colors">
+                          {userData.name}
+                        </p>
+                        <Pencil className="w-2.5 h-2.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-all shrink-0" />
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs text-muted-foreground/60 truncate">
+                        {userData.position || "—"}
+                      </p>
+                      {userData.isLocked && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-red-500/10 text-red-500 border border-red-500/20 shrink-0">
+                          {t("admUsersBlockedBadge")}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -405,6 +511,19 @@ export default function UsersPage() {
 
                 {/* Actions */}
                 <div className="flex gap-1 pt-1 border-t border-border">
+                  {user?.isAdmin && userData.isLocked && (
+                    <button
+                      onClick={() => handleUnlock(userData)}
+                      disabled={unlockingId === userData.id}
+                      className="flex-1 text-xs text-muted-foreground/60 hover:text-emerald-400 py-1 rounded-lg hover:bg-emerald-500/10 transition-colors disabled:opacity-40"
+                    >
+                      {unlockingId === userData.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin mx-auto" />
+                      ) : (
+                        t("admUsersUnlockBtn")
+                      )}
+                    </button>
+                  )}
                   {user?.isAdmin && (
                     <button
                       onClick={() => {

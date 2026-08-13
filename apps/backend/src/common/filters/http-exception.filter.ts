@@ -28,10 +28,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.message
         : "Internal server error";
 
+    // Correlation id — set by the request-id middleware (see main.ts). Included
+    // in every log line and echoed to the client so a user-reported error can
+    // be traced to its exact server-side log entry.
+    const requestId = (request as { requestId?: string }).requestId ?? "-";
+    const rid = `[rid:${requestId}]`;
+
     // Log error details (but don't expose to client in production)
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
-        `Unhandled error on ${request.method} ${request.url}`,
+        `${rid} Unhandled error on ${request.method} ${request.url}`,
         exception instanceof Error ? exception.stack : exception,
       );
     } else if (status === HttpStatus.UNAUTHORIZED) {
@@ -40,12 +46,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // дахин оролддог. Лог дэх шуугианыг бүрэн арилгахын тулд verbose-д
       // (default log level-ээс доош) бичнэ.
       this.logger.verbose(
-        `${status} on ${request.method} ${request.url}: ${message}`,
+        `${rid} ${status} on ${request.method} ${request.url}: ${message}`,
       );
     } else if (status === HttpStatus.FORBIDDEN) {
       // 403 нь жинхэнэ эрхийн зөрчил — аюулгүй байдлын хяналтад warn хэвээр.
       this.logger.warn(
-        `${status} error on ${request.method} ${request.url}: ${message}`,
+        `${rid} ${status} error on ${request.method} ${request.url}: ${message}`,
       );
     } else {
       // Always log all other client errors (4xx) for security monitoring.
@@ -54,7 +60,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const details =
         exception instanceof HttpException ? exception.getResponse() : null;
       this.logger.warn(
-        `${status} error on ${request.method} ${request.url}: ${message}` +
+        `${rid} ${status} error on ${request.method} ${request.url}: ${message}` +
           (details && typeof details === "object"
             ? ` | ${JSON.stringify(details)}`
             : ""),
@@ -90,6 +96,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message: safeMessage,
       timestamp: new Date().toISOString(),
       path: safePath,
+      requestId,
     });
   }
 }

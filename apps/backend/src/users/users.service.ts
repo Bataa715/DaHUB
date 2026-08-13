@@ -5,12 +5,14 @@ import {
   BadRequestException,
   ForbiddenException,
 } from "@nestjs/common";
-import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
+import { ClickHouseService } from "../clickhouse/clickhouse.service";
+import { AuthService } from "../auth/auth.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
 import { VALID_TOOLS_SET } from "../common/constants/tools";
 import {
   buildUserId,
+  buildUsersTableRow,
   safeParseTools,
   webVisibleUserSql,
   isPrivilegedUser,
@@ -22,7 +24,10 @@ import {
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private clickhouse: ClickHouseService) {}
+  constructor(
+    private clickhouse: ClickHouseService,
+    private authService: AuthService,
+  ) {}
 
   async findAll(limit = 1000, offset = 0, excludeAdmins = false) {
     const adminFilter = excludeAdmins ? `WHERE ${webVisibleUserSql("u")}` : "";
@@ -49,6 +54,8 @@ export class UsersService {
       allowedTools: safeParseTools(user.allowedTools),
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
+      isLocked: !!user.isLocked,
+      failedLoginCount: Number(user.failedLoginCount) || 0,
     }));
   }
 
@@ -102,38 +109,6 @@ export class UsersService {
     }));
   }
 
-  /** Normalize a users-table row for INSERT (DELETE+INSERT replace). */
-  private buildUserRow(
-    existing: Record<string, any>,
-    overrides: Record<string, unknown> = {},
-  ): Record<string, unknown> {
-    return {
-      id: existing.id,
-      userId: existing.userId,
-      password: existing.password ?? "",
-      name: existing.name ?? "",
-      position: existing.position ?? "",
-      profileImage: existing.profileImage ?? "",
-      departmentId: existing.departmentId ?? "",
-      isAdmin: Number(existing.isAdmin) || 0,
-      isSuperAdmin: Number(existing.isSuperAdmin) || 0,
-      isActive:
-        existing.isActive === undefined ? 1 : Number(existing.isActive),
-      allowedTools:
-        typeof existing.allowedTools === "string"
-          ? existing.allowedTools
-          : JSON.stringify(existing.allowedTools ?? []),
-      grantableTools:
-        typeof existing.grantableTools === "string"
-          ? existing.grantableTools
-          : JSON.stringify(existing.grantableTools ?? []),
-      lastLoginAt: existing.lastLoginAt ?? null,
-      createdAt: existing.createdAt,
-      updatedAt: nowCH(),
-      ...overrides,
-    };
-  }
-
   private async replaceUser(
     id: string,
     existing: Record<string, any>,
@@ -143,8 +118,11 @@ export class UsersService {
       "users",
       "id = {id:String}",
       { id },
-      [this.buildUserRow(existing, overrides)],
+      [buildUsersTableRow(existing, overrides)],
     );
+    // Bust the auth-layer validateUser cache so any change (deactivation, tools,
+    // admin role, password/lock) takes effect on the user's very next request.
+    this.authService.invalidateUserValidation(id);
   }
 
   async setAdminRole(
@@ -336,6 +314,7 @@ export class UsersService {
       "ALTER TABLE users DELETE WHERE id = {id:String} SETTINGS mutations_sync = 1",
       { id },
     );
+    this.authService.invalidateUserValidation(id);
     return { message: "Хэрэглэгчийг амжилттай устгалаа" };
   }
 
@@ -398,12 +377,40 @@ export class UsersService {
     if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
     this.assertCanManageTarget(users[0], callerIsSuperAdmin);
     const hashed = await bcrypt.hash(newPassword, 13);
-    await this.replaceUser(id, users[0], { password: hashed });
+    // Admin resetting the password is a natural "fix it" moment — clear the
+    // persistent lockout too so the user isn't stuck after getting a new password.
+    await this.replaceUser(id, users[0], {
+      password: hashed,
+      isLocked: 0,
+      failedLoginCount: 0,
+    });
     this.logger.warn(
       `Password reset by admin for user: ${users[0].userId} (${users[0].name})`,
     );
     return {
       message: "Нууц үг амжилттай сэргээлээ",
+      userId: users[0].userId,
+      name: users[0].name,
+    };
+  }
+
+  /** Admin: clear the persistent brute-force lockout (5 wrong passwords). */
+  async unlockUser(id: string, callerIsSuperAdmin: boolean) {
+    const users = await this.clickhouse.query<any>(
+      "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    if (users.length === 0) throw new NotFoundException("Хэрэглэгч олдсонгүй");
+    this.assertCanManageTarget(users[0], callerIsSuperAdmin);
+    await this.replaceUser(id, users[0], {
+      isLocked: 0,
+      failedLoginCount: 0,
+    });
+    this.logger.warn(
+      `Account unlocked by admin: ${users[0].userId} (${users[0].name})`,
+    );
+    return {
+      message: "Хэрэглэгчийн түгжээ амжилттай гарлаа",
       userId: users[0].userId,
       name: users[0].name,
     };

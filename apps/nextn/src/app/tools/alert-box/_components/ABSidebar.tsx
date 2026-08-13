@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Bell,
-  AlertTriangle,
-  X,
-  Search,
-  Flag,
-  BellDot,
-  LayoutDashboard,
-} from "lucide-react";
+import { Bell, AlertTriangle, X, Search, Flag, LayoutDashboard } from "lucide-react";
 import { abFetchNotifications } from "../_lib/api";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -36,6 +28,13 @@ interface NotifData {
   items?: NotifItem[];
 }
 
+/**
+ * Alert Box-ийн дотоод дэд-навигаци — урьд нь бүтэн өндөртэй, өөрийн
+ * лого/branding-тай босоо sidebar байсан бөгөөд энэ нь webiin үндсэн
+ * Sidebar-тай давхцаж, дэлгэцийн өргөнийг илүүц эзэлж байсан. Одоо header-ийн
+ * доор нэг мөр хэвтээ tab-strip хэлбэрээр харагдана — үндсэн sidebar ганцхан
+ * үлдэнэ, branding давхардахгүй.
+ */
 export default function ABSidebar() {
   const { t } = useLanguage();
   const pathname = usePathname();
@@ -64,7 +63,7 @@ export default function ABSidebar() {
       abFetchNotifications(20)
         .then(setNotifications)
         .catch(() => {
-          /* intentional: sidebar notification poll; failure just shows no badge */
+          /* intentional: notification poll; failure just shows no badge */
         });
     load();
     const interval = setInterval(load, 60000);
@@ -74,34 +73,15 @@ export default function ABSidebar() {
   const notifCount = notifications?.total || 0;
 
   return (
-    <aside className="relative shrink-0 h-full self-stretch w-[220px] bg-surface-card border-r border-surface-border flex flex-col z-40">
-      {/* Logo */}
-      <div className="px-4 py-4 border-b border-surface-border">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center shrink-0">
-            <BellDot size={15} className="text-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-txt">Alert Box</p>
-            <p className="text-[9px] text-txt-dim uppercase tracking-wide">
-              Голомт Банк
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-2.5 py-2 space-y-0.5 overflow-y-auto">
-        <p className="text-[9px] font-semibold text-txt-dim uppercase tracking-wider px-2 pt-1 pb-1.5">
-          {t("navTools")}
-        </p>
+    <nav className="relative shrink-0 w-full min-w-0 bg-surface-card border-b border-surface-border flex items-center gap-1 px-3 py-2 z-40">
+      <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-none">
         {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-all shrink-0 ${
                 active
                   ? "bg-golomt-500/10 text-golomt-400"
                   : "text-txt-muted hover:text-txt hover:bg-surface-hover"
@@ -112,89 +92,88 @@ export default function ABSidebar() {
             </Link>
           );
         })}
+      </div>
 
-        {/* Notifications */}
-        <div ref={notifBtnRef} className="relative pt-1">
-          <button
-            onClick={() => setNotifOpen((v) => !v)}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all w-full ${
-              notifOpen
-                ? "bg-golomt-500/10 text-golomt-400"
-                : "text-txt-muted hover:text-txt hover:bg-surface-hover"
-            }`}
-          >
-            <Bell size={14} />
-            <span>{t("abSidebarNotifications")}</span>
-            {notifCount > 0 && (
-              <span className="ml-auto bg-red-500 text-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                {notifCount > 99 ? "99+" : notifCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </nav>
-
-      {/* Notification popup */}
-      {notifOpen && (
-        <div
-          ref={notifPopupRef}
-          className={cn(
-            "absolute left-full bottom-16 ml-2 w-[320px] max-h-[380px] bg-surface-card border border-surface-border rounded-xl shadow-2xl overflow-hidden z-[60]",
-          )}
+      {/* Notifications */}
+      <div ref={notifBtnRef} className="relative shrink-0">
+        <button
+          onClick={() => setNotifOpen((v) => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-all ${
+            notifOpen
+              ? "bg-golomt-500/10 text-golomt-400"
+              : "text-txt-muted hover:text-txt hover:bg-surface-hover"
+          }`}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
-            <span className="text-xs font-bold text-txt">
-              {t("abSidebarNotifications")}
+          <Bell size={14} />
+          <span className="hidden sm:inline">
+            {t("abSidebarNotifications")}
+          </span>
+          {notifCount > 0 && (
+            <span className="bg-red-500 text-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+              {notifCount > 99 ? "99+" : notifCount}
             </span>
-            <button
-              onClick={() => setNotifOpen(false)}
-              className="text-txt-dim hover:text-txt"
-            >
-              <X size={13} />
-            </button>
-          </div>
-          {(notifications?.criticalCount ?? 0) > 0 && (
-            <div className="mx-3 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
-              <AlertTriangle size={12} className="text-red-400" />
-              <span className="text-[11px] text-red-300 font-medium">
-                {notifications?.criticalCount} {t("abSidebarHighRisk")}
-              </span>
-            </div>
           )}
-          <div className="overflow-y-auto max-h-[280px] py-1">
-            {!notifications || notifCount === 0 ? (
-              <div className="text-center py-8">
-                <Bell
-                  size={18}
-                  className="text-txt-dim mx-auto mb-2 opacity-40"
-                />
-                <p className="text-xs text-txt-dim">
-                  {t("abSidebarNoNotifications")}
-                </p>
-              </div>
-            ) : (
-              notifications.items?.map((n: NotifItem) => (
-                <div
-                  key={n.id}
-                  className="flex items-start gap-3 px-4 py-2.5 border-b border-surface-border/50 last:border-0"
-                >
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${n.severity === "critical" ? "bg-red-500" : "bg-orange-500"}`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium text-txt truncate">
-                      {n.title}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+        </button>
 
-      {/* Nav footer spacer */}
-      <div className="border-t border-surface-border p-3" />
-    </aside>
+        {/* Notification popup */}
+        {notifOpen && (
+          <div
+            ref={notifPopupRef}
+            className={cn(
+              "absolute right-0 top-full mt-2 w-[320px] max-h-[380px] bg-surface-card border border-surface-border rounded-xl shadow-2xl overflow-hidden z-[60]",
+            )}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
+              <span className="text-xs font-bold text-txt">
+                {t("abSidebarNotifications")}
+              </span>
+              <button
+                onClick={() => setNotifOpen(false)}
+                className="text-txt-dim hover:text-txt"
+              >
+                <X size={13} />
+              </button>
+            </div>
+            {(notifications?.criticalCount ?? 0) > 0 && (
+              <div className="mx-3 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+                <AlertTriangle size={12} className="text-red-400" />
+                <span className="text-[11px] text-red-300 font-medium">
+                  {notifications?.criticalCount} {t("abSidebarHighRisk")}
+                </span>
+              </div>
+            )}
+            <div className="overflow-y-auto max-h-[280px] py-1">
+              {!notifications || notifCount === 0 ? (
+                <div className="text-center py-8">
+                  <Bell
+                    size={18}
+                    className="text-txt-dim mx-auto mb-2 opacity-40"
+                  />
+                  <p className="text-xs text-txt-dim">
+                    {t("abSidebarNoNotifications")}
+                  </p>
+                </div>
+              ) : (
+                notifications.items?.map((n: NotifItem) => (
+                  <div
+                    key={n.id}
+                    className="flex items-start gap-3 px-4 py-2.5 border-b border-surface-border/50 last:border-0"
+                  >
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${n.severity === "critical" ? "bg-red-500" : "bg-orange-500"}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium text-txt truncate">
+                        {n.title}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </nav>
   );
 }

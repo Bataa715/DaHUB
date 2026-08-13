@@ -152,7 +152,7 @@ const REPORT_COLS: ReportColDef[] = [
   },
   {
     key: "j",
-    label: "Judgement",
+    label: "S5-Judgement",
     align: "center",
     defaultWidth: 88,
     minWidth: 64,

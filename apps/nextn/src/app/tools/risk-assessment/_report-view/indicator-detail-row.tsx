@@ -325,10 +325,12 @@ export function IndicatorDetailRow({
                         <td className="py-1 pr-3 font-medium text-foreground/90">
                           {ind.name}
                         </td>
-                        <td className="py-1 pr-3 tabular-nums font-semibold text-right text-foreground">
+                        <td className="py-1 pr-3 font-medium text-right text-foreground max-w-[280px]">
                           {ev.autoRaw !== undefined ? (
                             <span className="inline-flex items-center justify-end gap-1.5 w-full">
-                              <span>{ev.autoRaw || "—"}</span>
+                              <span className="break-words text-left">
+                                {ev.autoRaw || "—"}
+                              </span>
                               {isStaleIndicatorData(
                                 ev.sourceFetchedDate,
                                 dataReferenceDate,

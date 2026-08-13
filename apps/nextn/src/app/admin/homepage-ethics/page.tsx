@@ -162,7 +162,7 @@ export default function HomepageEthicsAdminPage() {
     );
   }
 
-  if (!user?.isAdmin) return null;
+  if (!user?.isAdmin && !user?.isSuperAdmin) return null;
 
   return (
     <div className="min-h-screen bg-background">

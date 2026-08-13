@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { departmentsApi } from "@/lib/api";
+import { DEPARTMENT_POSITIONS } from "@/lib/constants";
 import { isWebVisibleUser } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -21,7 +22,6 @@ interface DepartmentData {
   id: string;
   name: string;
   description?: string;
-  manager?: string;
   users?: DepartmentUser[];
 }
 
@@ -73,34 +73,39 @@ function isSystemAccount(member: DepartmentUser) {
   return !isWebVisibleUser(member);
 }
 
-function isDeptManager(member: DepartmentUser, dept: DepartmentData) {
-  const pos = String(member.position ?? "")
-    .trim()
-    .toLowerCase();
-  if (isLeadership(dept.name)) {
-    return pos.includes("захирал");
-  }
-  if (pos.includes("хэлтсийн захирал")) return true;
-  const mgr = String(dept.manager ?? "").trim();
-  if (!mgr || /system\s*admin/i.test(mgr) || /^admin$/i.test(mgr)) {
-    return false;
-  }
-  return member.name === mgr;
+/**
+ * Захирал → ахлах → энгийн гишүүн дарааллаар харуулна — DEPARTMENT_POSITIONS
+ * (lib/constants) тухайн хэлтсийн албан тушаалын жагсаалт нь яг энэ эрэмбээр
+ * тодорхойлогдсон байдаг тул шууд ашиглана. Тохирохгүй/танигдаагүй албан
+ * тушаалтай гишүүд төгсгөлд, анхны дарааллаа хадгалан үлдэнэ.
+ */
+function sortByPositionRank(
+  members: DepartmentUser[],
+  deptName: string,
+): DepartmentUser[] {
+  const rank = DEPARTMENT_POSITIONS[deptName] ?? [];
+  const rankOf = (m: DepartmentUser) => {
+    const idx = rank.indexOf(String(m.position ?? "").trim());
+    return idx === -1 ? rank.length : idx;
+  };
+  return members
+    .map((m, i) => ({ m, i, r: rankOf(m) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map(({ m }) => m);
 }
 
 function visibleMembers(dept: DepartmentData): DepartmentUser[] {
-  return (dept.users ?? []).filter((m) => !isSystemAccount(m));
+  const visible = (dept.users ?? []).filter((m) => !isSystemAccount(m));
+  return sortByPositionRank(visible, dept.name);
 }
 
 // ── EmployeeCard ─────────────────────────────────────────────────────────────
 function EmployeeCard({
   member,
   isSelf,
-  isManager,
 }: {
   member: DepartmentUser;
   isSelf: boolean;
-  isManager: boolean;
 }) {
   const { t } = useLanguage();
   const color = getColor(member.name);
@@ -135,18 +140,13 @@ function EmployeeCard({
         )}
       </div>
 
-      <div className="flex flex-wrap justify-center gap-1.5">
-        {isSelf && (
+      {isSelf && (
+        <div className="flex flex-wrap justify-center gap-1.5">
           <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
             {t("youBadge")}
           </span>
-        )}
-        {isManager && !isSelf && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            {t("managerBadge")}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -191,7 +191,6 @@ function DepartmentRow({
               key={m.id}
               member={m}
               isSelf={m.id === currentUserId}
-              isManager={isDeptManager(m, dept)}
             />
           ))}
         </div>

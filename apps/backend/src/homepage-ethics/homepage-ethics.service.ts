@@ -2,11 +2,15 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
-  BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
+import { UserFacingBadRequestException } from "../common/exceptions/user-facing.exception";
+import {
+  CreateEthicsSlideDto,
+  UpdateEthicsSlideDto,
+} from "./dto/homepage-ethics.dto";
 
 export interface EthicsSlide {
   id: string;
@@ -38,18 +42,43 @@ const DEFAULT_SLIDES: { title: string; body: string }[] = [
   },
 ];
 
+function normalizeSlide(row: Record<string, unknown>): EthicsSlide {
+  return {
+    id: String(row.id ?? ""),
+    title: String(row.title ?? ""),
+    body: String(row.body ?? ""),
+    sort_order: Number(row.sort_order ?? 0),
+    is_active: Number(row.is_active) === 1 ? 1 : 0,
+    updated_by: String(row.updated_by ?? ""),
+    seq: Number(row.seq ?? 0),
+    updated_at: String(row.updated_at ?? ""),
+  };
+}
+
 @Injectable()
 export class HomepageEthicsService implements OnModuleInit {
   private readonly logger = new Logger(HomepageEthicsService.name);
+  // [PERF] ensureTable() is also called from list/create/update/remove (not
+  // just onModuleInit) — guard stops the CREATE TABLE DDL from re-running on
+  // every request. Set true only after success so a transient failure retries.
+  private tableEnsured = false;
 
   constructor(private readonly clickhouse: ClickHouseService) {}
 
   async onModuleInit() {
-    await this.ensureTable();
-    await this.seedIfEmpty();
+    try {
+      await this.ensureTable();
+      await this.seedIfEmpty();
+    } catch (e) {
+      this.logger.error(
+        `homepage_ethics init failed: ${e instanceof Error ? e.message : e}`,
+      );
+      // App-ийг бүү унагаа — дараагийн request дээр дахин оролдоно
+    }
   }
 
   private async ensureTable(): Promise<void> {
+    if (this.tableEnsured) return;
     await this.clickhouse.exec(`
       CREATE TABLE IF NOT EXISTS homepage_ethics_slides (
         id          String,
@@ -64,6 +93,7 @@ export class HomepageEthicsService implements OnModuleInit {
       ORDER BY id
       SETTINGS index_granularity = 8192
     `);
+    this.tableEnsured = true;
     this.logger.log("homepage_ethics_slides table ready");
   }
 
@@ -94,23 +124,28 @@ export class HomepageEthicsService implements OnModuleInit {
   }
 
   async list(activeOnly = true): Promise<EthicsSlide[]> {
+    await this.ensureTable();
     const where = activeOnly ? "WHERE is_active = 1" : "";
-    return this.clickhouse.query<EthicsSlide>(`
+    const rows = await this.clickhouse.query<Record<string, unknown>>(`
       SELECT *
       FROM homepage_ethics_slides FINAL
       ${where}
       ORDER BY sort_order ASC, updated_at DESC
     `);
+    return (rows ?? []).map(normalizeSlide);
   }
 
   async create(
-    dto: { title: string; body: string; sort_order?: number },
+    dto: CreateEthicsSlideDto,
     updatedBy: string,
   ): Promise<EthicsSlide> {
+    await this.ensureTable();
     const title = dto.title.trim();
     const body = dto.body.trim();
     if (!title || !body) {
-      throw new BadRequestException("Гарчиг болон текст шаардлагатай");
+      throw new UserFacingBadRequestException(
+        "Гарчиг болон текст шаардлагатай",
+      );
     }
 
     let sortOrder = dto.sort_order;
@@ -123,8 +158,9 @@ export class HomepageEthicsService implements OnModuleInit {
       sortOrder = Number(max[0]?.m ?? 0) + 1;
     }
 
-    const record: EthicsSlide = {
-      id: randomUUID(),
+    const id = randomUUID();
+    const record = {
+      id,
       title,
       body,
       sort_order: sortOrder,
@@ -133,43 +169,59 @@ export class HomepageEthicsService implements OnModuleInit {
       seq: Date.now(),
       updated_at: nowCH(),
     };
-    await this.clickhouse.insert("homepage_ethics_slides", [
-      record as unknown as Record<string, unknown>,
-    ]);
-    return record;
+    await this.clickhouse.insert("homepage_ethics_slides", [record]);
+
+    // DB-ээс дахин уншиж буцаана (persist баталгаажуулах)
+    const saved = await this.clickhouse.query<Record<string, unknown>>(
+      `SELECT * FROM homepage_ethics_slides FINAL WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    if (!saved[0] || Number(saved[0].is_active) !== 1) {
+      this.logger.error(`Ethics slide insert not visible after write: ${id}`);
+      throw new UserFacingBadRequestException(
+        "Хадгалалт амжилтгүй. ClickHouse холболт/эрхээ шалгана уу.",
+      );
+    }
+    return normalizeSlide(saved[0]);
   }
 
   async update(
     id: string,
-    dto: Partial<{ title: string; body: string; sort_order: number }>,
+    dto: UpdateEthicsSlideDto,
     updatedBy: string,
   ): Promise<EthicsSlide> {
-    const existing = await this.clickhouse.query<EthicsSlide>(
+    await this.ensureTable();
+    const existing = await this.clickhouse.query<Record<string, unknown>>(
       `SELECT * FROM homepage_ethics_slides FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
     const base = existing[0];
-    if (!base || base.is_active === 0) {
+    if (!base || Number(base.is_active) === 0) {
       throw new NotFoundException("Текст олдсонгүй");
     }
 
-    const record: EthicsSlide = {
-      ...base,
-      title: dto.title?.trim() ?? base.title,
-      body: dto.body?.trim() ?? base.body,
-      sort_order: dto.sort_order ?? base.sort_order,
+    const record = {
+      id: String(base.id),
+      title: dto.title?.trim() ?? String(base.title ?? ""),
+      body: dto.body?.trim() ?? String(base.body ?? ""),
+      sort_order: dto.sort_order ?? Number(base.sort_order ?? 0),
+      is_active: 1,
       updated_by: updatedBy,
       seq: Date.now(),
       updated_at: nowCH(),
     };
-    await this.clickhouse.insert("homepage_ethics_slides", [
-      record as unknown as Record<string, unknown>,
-    ]);
-    return record;
+    await this.clickhouse.insert("homepage_ethics_slides", [record]);
+
+    const saved = await this.clickhouse.query<Record<string, unknown>>(
+      `SELECT * FROM homepage_ethics_slides FINAL WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    return normalizeSlide(saved[0] ?? record);
   }
 
   async remove(id: string, updatedBy: string): Promise<void> {
-    const existing = await this.clickhouse.query<EthicsSlide>(
+    await this.ensureTable();
+    const existing = await this.clickhouse.query<Record<string, unknown>>(
       `SELECT * FROM homepage_ethics_slides FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
@@ -177,7 +229,10 @@ export class HomepageEthicsService implements OnModuleInit {
     const row = existing[0];
     await this.clickhouse.insert("homepage_ethics_slides", [
       {
-        ...row,
+        id: String(row.id),
+        title: String(row.title ?? ""),
+        body: String(row.body ?? ""),
+        sort_order: Number(row.sort_order ?? 0),
         is_active: 0,
         updated_by: updatedBy,
         seq: Date.now(),

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -14,12 +15,18 @@ import {
 import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
 import { Response } from "express";
 import { MedlegService } from "./medleg.service";
-import { CreateMedlegDto } from "./dto/medleg.dto";
+import { CreateMedlegDto, UpdateMedlegDto } from "./dto/medleg.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
+import { AuditLogService } from "../audit/audit-log.service";
+import { AuthenticatedRequest } from "../common/types/authenticated-request";
 
 @Controller("medleg")
 export class MedlegController {
-  constructor(private medlegService: MedlegService) {}
+  constructor(
+    private medlegService: MedlegService,
+    private auditLogService: AuditLogService,
+  ) {}
 
   // L-7: Authenticated users only — мэдлэг is internal, not public-facing
   @UseGuards(JwtAuthGuard)
@@ -35,6 +42,80 @@ export class MedlegController {
   @Get("stats/top-publishers")
   async topPublishers() {
     return this.medlegService.getTopPublishers();
+  }
+
+  // ── Admin management (view/edit/delete ANY post, incl. unpublished) ──────
+  // Тусдаа "admin/" замд байрлуулснаар доорх ердийн :id route-уудтай зэрэг
+  // байх ба эзэмшигчийн шалгалтгүй — зөвхөн AdminGuard-аар хамгаалагдана.
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get("admin/all")
+  async findAllAdmin(@Query("page") page = 1, @Query("limit") limit = 200) {
+    const take = Math.min(Number(limit), 500);
+    const skip = (Number(page) - 1) * take;
+    return this.medlegService.findAllAdmin(take, skip);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch("admin/:id")
+  async updateAsAdmin(
+    @Param("id") id: string,
+    @Body() updateMedlegDto: UpdateMedlegDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      const result = await this.medlegService.update(id, updateMedlegDto);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "medleg_admin_update",
+        resource: "medleg",
+        method: "update",
+        status: "success",
+        metadata: { targetId: id },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "medleg_admin_update",
+        resource: "medleg",
+        method: "update",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetId: id },
+      });
+      throw error;
+    }
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Delete("admin/:id")
+  async removeAsAdmin(
+    @Param("id") id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      const result = await this.medlegService.removeAsAdmin(id);
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "medleg_admin_delete",
+        resource: "medleg",
+        method: "delete",
+        status: "success",
+        metadata: { targetId: id },
+      });
+      return result;
+    } catch (error: any) {
+      await this.auditLogService.log({
+        userId: req.user?.id,
+        action: "medleg_admin_delete",
+        resource: "medleg",
+        method: "delete",
+        status: "failure",
+        errorMessage: error?.message ?? String(error),
+        metadata: { targetId: id },
+      });
+      throw error;
+    }
   }
 
   // Authenticated users only
@@ -56,7 +137,25 @@ export class MedlegController {
   @UseGuards(JwtAuthGuard)
   @Get(":id/image")
   async getMedlegImage(@Param("id") id: string, @Res() res: Response) {
-    const result = await this.medlegService.getMedlegImage(id);
+    const result = await this.medlegService.getMedlegImage(id, 0);
+    if (!result) throw new NotFoundException("Зураг олдсонгүй");
+    res.set("Content-Type", result.mimeType);
+    res.set("Cache-Control", "private, max-age=3600");
+    res.send(result.buffer);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/images/:index")
+  async getMedlegImageAt(
+    @Param("id") id: string,
+    @Param("index") index: string,
+    @Res() res: Response,
+  ) {
+    const idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx > 4) {
+      throw new NotFoundException("Зураг олдсонгүй");
+    }
+    const result = await this.medlegService.getMedlegImage(id, idx);
     if (!result) throw new NotFoundException("Зураг олдсонгүй");
     res.set("Content-Type", result.mimeType);
     res.set("Cache-Control", "private, max-age=3600");

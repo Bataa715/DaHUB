@@ -72,6 +72,7 @@ export interface UserCheckResult {
   exists: boolean;
   hasPassword: boolean;
   userId: string | null;
+  name?: string | null;
   isActive?: boolean;
   /** PENDING бүртгэл — админ баталгаажуулж, claim код өгсний дараа нууц үг тохируулна */
   needsPasswordSetup?: boolean;

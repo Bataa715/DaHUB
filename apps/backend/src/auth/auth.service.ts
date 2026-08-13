@@ -14,6 +14,7 @@ import * as bcrypt from "bcryptjs";
 import { randomUUID, createHash } from "crypto";
 import {
   buildUserId,
+  buildUsersTableRow,
   safeParseTools,
   webVisibleUserSql,
   isPrivilegedUser,
@@ -43,6 +44,62 @@ export class AuthService {
   private readonly MAX_ATTEMPTS = 5;
   private readonly ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 min window
   private readonly LOCKOUT_MS = 15 * 60 * 1000; // 15 min lockout
+
+  // ─── Refresh-token rotation grace (multi-tab / concurrent refresh) ──────────
+  // Refresh tokens are single-use: on rotation the old token is DELETED and a
+  // new one issued. When several tabs (or a page's parallel requests) refresh
+  // with the SAME token at once, the first rotates it and the rest find it gone
+  // → they were being logged out. This short-lived, in-memory map remembers the
+  // result of a just-completed rotation keyed by the OLD token hash, so a
+  // concurrent duplicate replays the IDENTICAL new tokens instead of failing.
+  //
+  // Security: an old token can still only ever yield ONE new token pair (the
+  // first rotation's), replayed idempotently for a few seconds — no session
+  // forking, no unlimited minting. After the window the map entry is pruned and
+  // the DB row is already deleted, so a later replay is rejected as before.
+  // The still-per-request validateUser() isActive/permission check is unaffected,
+  // so deactivation/revocation stay immediate. (Note: the map is per-process; on
+  // a multi-instance deploy a cross-instance concurrent refresh is no worse than
+  // today — it simply won't hit the grace path.)
+  private static readonly REFRESH_GRACE_MS = 30_000;
+  private readonly recentlyRotated = new Map<
+    string,
+    { result: unknown; at: number; userId: string }
+  >();
+
+  private pruneRotated(now: number): void {
+    for (const [k, v] of this.recentlyRotated) {
+      if (now - v.at > AuthService.REFRESH_GRACE_MS) {
+        this.recentlyRotated.delete(k);
+      }
+    }
+  }
+
+  // ─── validateUser() short-TTL cache ─────────────────────────────────────────
+  // JwtStrategy calls validateUser() on EVERY authenticated request, which hits
+  // ClickHouse (a users⋈departments point-lookup). ClickHouse is an OLAP store —
+  // fine for this, but per-request point lookups add latency under the parallel
+  // request bursts the risk pages fire. Cache the formatted user for a few
+  // seconds so a burst of requests from one user collapses to one DB read.
+  //
+  // Security: the ONLY thing this can delay is deactivation propagation
+  // (isActive 1→0). Permission/tool changes already ride in the 15-min JWT (the
+  // middleware/tool guards read allowedTools from the token, not from here), so
+  // caching does not change how fast permission edits take effect. Every path
+  // that mutates a user calls invalidateUserValidation() below, so deactivation
+  // stays effectively immediate; the TTL is only a fallback for out-of-band DB
+  // edits. Kept short (8s) so even that fallback window is tiny.
+  private static readonly USER_CACHE_TTL_MS = 8_000;
+  private readonly userValidationCache = new Map<
+    string,
+    { user: unknown; at: number }
+  >();
+
+  /** Drop a user's cached validation so the next request re-reads from DB.
+   * Call after any mutation to a user (deactivation, tools, admin role, delete). */
+  invalidateUserValidation(userId: string): void {
+    if (userId) this.userValidationCache.delete(userId);
+  }
 
   /** Throws if the key is currently locked out. */
   private async guardLogin(key: string): Promise<void> {
@@ -188,8 +245,11 @@ export class AuthService {
     const { refreshToken } = refreshTokenDto;
     const tokenHash = this.hashToken(refreshToken);
 
+    const nowMs = Date.now();
+    this.pruneRotated(nowMs);
+
     // Find the refresh token — compare with epoch integer to stay timezone-independent.
-    const nowEpoch = Math.floor(Date.now() / 1000);
+    const nowEpoch = Math.floor(nowMs / 1000);
     const tokens = (await this.clickhouse.query(
       `SELECT * FROM refresh_tokens
        WHERE token = {token:String}
@@ -201,6 +261,14 @@ export class AuthService {
 
     const tokenRecord = tokens[0];
     if (!tokenRecord) {
+      // Rotation grace: a concurrent request (another tab / a parallel page
+      // load) may have rotated this exact token a moment ago. Replay the same
+      // freshly-minted tokens instead of forcing a logout. See recentlyRotated.
+      const grace = this.recentlyRotated.get(tokenHash);
+      if (grace) {
+        this.logger.verbose("Refresh token replay served from rotation grace");
+        return grace.result;
+      }
       this.logger.warn("Invalid or expired refresh token");
       throw new UnauthorizedException("Invalid or expired refresh token");
     }
@@ -232,11 +300,16 @@ export class AuthService {
     const accessToken = this.generateTokenForUser(user);
     const newRefreshToken = await this.generateRefreshToken(user.id);
 
-    return {
+    const result = {
       user: this.formatUserResponse(user),
       accessToken,
       refreshToken: newRefreshToken,
     };
+
+    // Remember briefly so a concurrent duplicate refresh with this same (now
+    // deleted) token replays these identical tokens instead of erroring out.
+    this.recentlyRotated.set(tokenHash, { result, at: nowMs, userId: user.id });
+    return result;
   }
 
   /** Revoke all refresh tokens for a user (on logout) */
@@ -245,6 +318,11 @@ export class AuthService {
       "ALTER TABLE refresh_tokens DELETE WHERE userId = {userId:String} SETTINGS mutations_sync = 1",
       { userId },
     );
+    // Also drop any rotation-grace entries for this user so a logout can't be
+    // undone by replaying a just-rotated token within the grace window.
+    for (const [k, v] of this.recentlyRotated) {
+      if (v.userId === userId) this.recentlyRotated.delete(k);
+    }
     return { success: true, message: "All refresh tokens revoked" };
   }
 
@@ -255,36 +333,11 @@ export class AuthService {
       { id: userId },
     );
     if (users.length === 0) return;
-    const u = users[0];
     await this.clickhouse.replaceRows(
       "users",
       "id = {id:String}",
       { id: userId },
-      [
-        {
-          id: u.id,
-          userId: u.userId,
-          password: u.password ?? "",
-          name: u.name ?? "",
-          position: u.position ?? "",
-          profileImage: u.profileImage ?? "",
-          departmentId: u.departmentId ?? "",
-          isAdmin: Number(u.isAdmin) || 0,
-          isSuperAdmin: Number(u.isSuperAdmin) || 0,
-          isActive: u.isActive === undefined ? 1 : Number(u.isActive),
-          allowedTools:
-            typeof u.allowedTools === "string"
-              ? u.allowedTools
-              : JSON.stringify(u.allowedTools ?? []),
-          grantableTools:
-            typeof u.grantableTools === "string"
-              ? u.grantableTools
-              : JSON.stringify(u.grantableTools ?? []),
-          lastLoginAt: nowCH(),
-          createdAt: u.createdAt,
-          updatedAt: nowCH(),
-        },
-      ],
+      [buildUsersTableRow(users[0], { lastLoginAt: nowCH() })],
     );
   }
 
@@ -314,6 +367,54 @@ export class AuthService {
     return dept;
   }
 
+  // [SEC] Persistent account lockout — distinct from the 15-min auto-expiring
+  // IP-scoped lockout in guardLogin() above. That one only slows down a
+  // single attacking IP; this one locks the ACCOUNT itself after 5 wrong
+  // passwords (from any IP) and stays locked until an admin explicitly
+  // clears it (UsersService.unlockUser) or the user completes a password
+  // reset/claim flow. Uses ForbiddenException (not UnauthorizedException) so
+  // the outer catch blocks — which only recordFailedLogin() on
+  // UnauthorizedException — don't also feed the IP-scoped counter here.
+  private readonly MAX_FAILED_LOGINS = 5;
+
+  private async registerFailedPasswordAttempt(user: any): Promise<void> {
+    const nextCount = Number(user.failedLoginCount ?? 0) + 1;
+    const willLock = nextCount >= this.MAX_FAILED_LOGINS;
+    try {
+      await this.clickhouse.replaceRows(
+        "users",
+        "id = {id:String}",
+        { id: user.id },
+        [
+          buildUsersTableRow(user, {
+            failedLoginCount: nextCount,
+            isLocked: willLock ? 1 : Number(user.isLocked) || 0,
+          }),
+        ],
+      );
+      if (willLock) {
+        this.logger.warn(
+          `Account locked after ${nextCount} failed password attempts: userId=${user.userId}`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(`Failed to record failed password attempt: ${err}`);
+    }
+  }
+
+  private async resetFailedPasswordAttempts(user: any): Promise<void> {
+    try {
+      await this.clickhouse.replaceRows(
+        "users",
+        "id = {id:String}",
+        { id: user.id },
+        [buildUsersTableRow(user, { failedLoginCount: 0 })],
+      );
+    } catch (err) {
+      this.logger.error(`Failed to reset failed password attempts: ${err}`);
+    }
+  }
+
   /** Validate credentials and return the DB user (or throw) */
   private async validateCredentials(
     user: any | null,
@@ -333,12 +434,22 @@ export class AuthService {
         "Хэрэглэгч олдсонгүй эсвэл нууц үг буруу байна",
       );
     }
+    if (Number(user.isLocked) === 1) {
+      this.logger.warn(`Login blocked — account locked [${logContext}]`);
+      throw new ForbiddenException(
+        "Таны бүртгэл хэт олон удаа буруу нууц үг оруулсны улмаас түгжигдсэн байна. Админд хандана уу.",
+      );
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       this.logger.warn(`Login failed — wrong password [${logContext}]`);
+      await this.registerFailedPasswordAttempt(user);
       throw new UnauthorizedException(
         "Хэрэглэгч олдсонгүй эсвэл нууц үг буруу байна",
       );
+    }
+    if (Number(user.failedLoginCount) > 0) {
+      await this.resetFailedPasswordAttempts(user);
     }
     return user;
   }
@@ -560,6 +671,14 @@ export class AuthService {
   }
 
   async validateUser(userId: string) {
+    // Short-TTL cache (see userValidationCache) — collapses per-request DB reads
+    // during parallel request bursts. Only positive results are cached; a null
+    // (deactivated/deleted) always re-reads so it can never be served stale.
+    const cached = this.userValidationCache.get(userId);
+    if (cached && Date.now() - cached.at < AuthService.USER_CACHE_TTL_MS) {
+      return cached.user;
+    }
+
     // C-1: AND isActive = 1 ensures deactivated users are rejected on every request,
     // not just at login — their existing JWT becomes invalid immediately after deactivation.
     const users = await this.clickhouse.query<any>(
@@ -570,12 +689,15 @@ export class AuthService {
     );
     const user = users[0];
     if (!user) {
+      this.userValidationCache.delete(userId);
       this.logger.warn(
         `JWT validation failed — user not found or inactive: ${userId}`,
       );
       return null;
     }
-    return this.formatUserResponse(user);
+    const formatted = this.formatUserResponse(user);
+    this.userValidationCache.set(userId, { user: formatted, at: Date.now() });
+    return formatted;
   }
 
   async searchUsersByUserId(query: string, adminOnly: boolean = false) {
@@ -608,10 +730,37 @@ export class AuthService {
     };
   }
 
+  /**
+   * Pre-auth "browse employees in my department" list for the login page.
+   * Same enumeration posture as searchUsersByUserId: no admins, only
+   * active-or-claimable users. `position` is included so the UI can sort
+   * Захирал → Ахлах → Аудитор (and DAA equivalents).
+   */
+  async listUsersByDepartment(department: string) {
+    if (!department) return { users: [] };
+    const users = await this.clickhouse.query<any>(
+      `SELECT u.name, u.userId, u.position
+       FROM users u LEFT JOIN departments d ON u.departmentId = d.id
+       WHERE (u.isActive = 1 OR u.password LIKE 'PENDING:%')
+         AND ${webVisibleUserSql("u")}
+         AND d.name = {department:String}
+       ORDER BY u.name
+       LIMIT 200`,
+      { department },
+    );
+    return {
+      users: users.map((u) => ({
+        name: u.name,
+        userId: u.userId || "",
+        position: String(u.position ?? "").trim(),
+      })),
+    };
+  }
+
   async checkUser(checkUserDto: CheckUserDto) {
     const { userId } = checkUserDto;
     const users = await this.clickhouse.query<any>(
-      `SELECT userId, password, isActive, isAdmin, isSuperAdmin FROM users WHERE userId = {userId:String} LIMIT 1`,
+      `SELECT userId, name, password, isActive, isAdmin, isSuperAdmin FROM users WHERE userId = {userId:String} LIMIT 1`,
       { userId },
     );
     const user = users[0];
@@ -645,6 +794,7 @@ export class AuthService {
         exists: true,
         hasPassword: false,
         userId: user.userId,
+        name: user.name,
         isActive: !!user.isActive,
         needsPasswordSetup: true,
       };
@@ -654,6 +804,7 @@ export class AuthService {
       exists: true,
       hasPassword,
       userId: user.userId,
+      name: user.name,
       isActive: !!user.isActive,
     };
   }
@@ -943,35 +1094,18 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 13);
-    const updatedAt = nowCH();
     await this.clickhouse.replaceRows(
       "users",
       "id = {id:String}",
       { id: user.id },
       [
-        {
-          id: user.id,
-          userId: user.userId,
+        buildUsersTableRow(user, {
           password: hashedPassword,
-          name: user.name ?? "",
-          position: user.position ?? "",
-          profileImage: user.profileImage ?? "",
-          departmentId: user.departmentId ?? "",
-          isAdmin: Number(user.isAdmin) || 0,
-          isSuperAdmin: Number(user.isSuperAdmin) || 0,
           isActive: 1,
-          allowedTools:
-            typeof user.allowedTools === "string"
-              ? user.allowedTools
-              : JSON.stringify(user.allowedTools ?? []),
-          grantableTools:
-            typeof user.grantableTools === "string"
-              ? user.grantableTools
-              : JSON.stringify(user.grantableTools ?? []),
-          lastLoginAt: user.lastLoginAt ?? null,
-          createdAt: user.createdAt,
-          updatedAt,
-        },
+          // Fresh password = clean slate on the persistent lockout too.
+          isLocked: 0,
+          failedLoginCount: 0,
+        }),
       ],
     );
 
@@ -1012,31 +1146,7 @@ export class AuthService {
       "users",
       "id = {id:String}",
       { id: userId },
-      [
-        {
-          id: user.id,
-          userId: user.userId,
-          password: hashedPassword,
-          name: user.name ?? "",
-          position: user.position ?? "",
-          profileImage: user.profileImage ?? "",
-          departmentId: user.departmentId ?? "",
-          isAdmin: Number(user.isAdmin) || 0,
-          isSuperAdmin: Number(user.isSuperAdmin) || 0,
-          isActive: user.isActive === undefined ? 1 : Number(user.isActive),
-          allowedTools:
-            typeof user.allowedTools === "string"
-              ? user.allowedTools
-              : JSON.stringify(user.allowedTools ?? []),
-          grantableTools:
-            typeof user.grantableTools === "string"
-              ? user.grantableTools
-              : JSON.stringify(user.grantableTools ?? []),
-          lastLoginAt: user.lastLoginAt ?? null,
-          createdAt: user.createdAt,
-          updatedAt: nowCH(),
-        },
-      ],
+      [buildUsersTableRow(user, { password: hashedPassword })],
     );
 
     await this.revokeRefreshTokens(userId);

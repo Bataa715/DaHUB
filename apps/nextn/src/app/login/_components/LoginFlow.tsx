@@ -9,11 +9,13 @@ import {
   ArrowRight,
   Loader2,
   User,
+  Building2,
   ChevronLeft,
   Eye,
   EyeOff,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { LOGIN_DEPARTMENT_ORDER } from "@/lib/constants";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Form,
@@ -58,13 +60,13 @@ interface LoginFlowProps {
   claimPasswordForm: UseFormReturn<z.infer<typeof claimSetPasswordFormSchema>>;
   loginStep: LoginStep;
   checkedUser: UserCheckResult | null;
-  userSuggestions: Array<{
+  loginDepartment: string;
+  departmentEmployees: Array<{
     userId: string;
     name: string;
-    department: string;
+    position?: string;
   }>;
-  showSuggestions: boolean;
-  isSearching: boolean;
+  isLoadingEmployees: boolean;
   isLoading: boolean;
   showPassword: boolean;
   showConfirmPassword: boolean;
@@ -72,11 +74,9 @@ interface LoginFlowProps {
   setShowPassword: (v: boolean) => void;
   setShowConfirmPassword: (v: boolean) => void;
   setForgotPasswordOpen: (v: boolean) => void;
-  setShowSuggestions: (v: boolean) => void;
   passwordChecks: PasswordChecks;
   allChecksPass: boolean;
-  searchUsers: (query: string) => Promise<void>;
-  handleSelectSuggestion: (userId: string) => void;
+  handleSelectLoginDepartment: (department: string) => Promise<void>;
   handleCheckUser: (values: z.infer<typeof loginFormSchema>) => Promise<void>;
   handleLogin: (values: z.infer<typeof loginPasswordSchema>) => Promise<void>;
   handleSetPassword: (
@@ -92,9 +92,9 @@ export function LoginFlow({
   claimPasswordForm,
   loginStep,
   checkedUser,
-  userSuggestions,
-  showSuggestions,
-  isSearching,
+  loginDepartment,
+  departmentEmployees,
+  isLoadingEmployees,
   isLoading,
   showPassword,
   showConfirmPassword,
@@ -102,11 +102,9 @@ export function LoginFlow({
   setShowPassword,
   setShowConfirmPassword,
   setForgotPasswordOpen,
-  setShowSuggestions,
   passwordChecks,
   allChecksPass,
-  searchUsers,
-  handleSelectSuggestion,
+  handleSelectLoginDepartment,
   handleCheckUser,
   handleLogin,
   handleSetPassword,
@@ -167,6 +165,33 @@ export function LoginFlow({
                     onSubmit={loginForm.handleSubmit(handleCheckUser)}
                     className="space-y-5"
                   >
+                    <div className="space-y-2">
+                      <label className={labelClass}>
+                        <Building2 className="w-4 h-4 text-primary" />
+                        {t("regFlowLabelDept")}
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {LOGIN_DEPARTMENT_ORDER.map((dept) => {
+                          const active = loginDepartment === dept;
+                          return (
+                            <button
+                              key={dept}
+                              type="button"
+                              onClick={() => handleSelectLoginDepartment(dept)}
+                              aria-pressed={active}
+                              className={`flex items-center justify-center text-center min-h-[72px] px-2 py-2.5 rounded-2xl border text-[11px] leading-tight font-semibold transition-all duration-200 active:scale-[0.97] ${
+                                active
+                                  ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
+                                  : "bg-muted/50 border-border/80 text-foreground hover:border-primary/40 hover:bg-muted hover:shadow-sm"
+                              }`}
+                            >
+                              {dept}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <FormField
                       control={loginForm.control}
                       name="userId"
@@ -174,77 +199,68 @@ export function LoginFlow({
                         <FormItem>
                           <FormLabel className={labelClass}>
                             <User className="w-4 h-4 text-primary" />
-                            {t("loginLabelUserId")}
+                            {t("loginLabelEmployee")}
                           </FormLabel>
-                          <div className="relative">
-                            <FormControl>
-                              <Input
-                                placeholder={t("loginPlaceholderIdOrName")}
-                                className={`${inputClass} font-mono`}
-                                {...field}
-                                onChange={(e) => {
-                                  field.onChange(e.target.value);
-                                  searchUsers(e.target.value);
-                                }}
-                                onFocus={() => {
-                                  if (userSuggestions.length > 0)
-                                    setShowSuggestions(true);
-                                }}
-                                onBlur={() => {
-                                  setTimeout(
-                                    () => setShowSuggestions(false),
-                                    200,
-                                  );
-                                }}
-                                autoComplete="off"
-                              />
-                            </FormControl>
-                            {isSearching && (
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                              </div>
-                            )}
-
-                            <AnimatePresence>
-                              {showSuggestions &&
-                                userSuggestions.length > 0 && (
-                                  <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="absolute z-50 w-full mt-2 bg-popover border border-border rounded-xl shadow-xl max-h-60 overflow-y-auto"
-                                  >
-                                    {userSuggestions.map((user, index) => (
-                                      <motion.button
-                                        key={`${user.userId}-${index}`}
+                          <FormControl>
+                            <div
+                              role="listbox"
+                              aria-label={t("loginLabelEmployee")}
+                              className="rounded-2xl border border-border/80 bg-muted/30 overflow-hidden"
+                            >
+                              {!loginDepartment ? (
+                                <p className="px-4 py-3 text-sm text-muted-foreground">
+                                  {t("regFlowPlaceholderSelectDeptFirst")}
+                                </p>
+                              ) : isLoadingEmployees ? (
+                                <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  {t("loginPlaceholderLoadingEmployees")}
+                                </div>
+                              ) : departmentEmployees.length === 0 ? (
+                                <p className="px-4 py-3 text-sm text-muted-foreground">
+                                  {t("loginPlaceholderNoEmployees")}
+                                </p>
+                              ) : (
+                                <div className="max-h-56 overflow-y-auto p-1.5 space-y-1">
+                                  {departmentEmployees.map((user) => {
+                                    const selected =
+                                      field.value === user.userId;
+                                    return (
+                                      <button
+                                        key={user.userId}
                                         type="button"
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.05 }}
+                                        role="option"
+                                        aria-selected={selected}
                                         onClick={() =>
-                                          handleSelectSuggestion(user.userId)
+                                          field.onChange(user.userId)
                                         }
-                                        className="w-full px-4 py-3 text-left hover:bg-muted/60 transition-colors border-b border-border/50 last:border-b-0"
+                                        className={`w-full text-left rounded-xl px-3 py-2.5 transition-all duration-150 active:scale-[0.99] ${
+                                          selected
+                                            ? "bg-primary/10 border border-primary/40 text-primary shadow-sm"
+                                            : "border border-transparent hover:bg-muted hover:border-border/60 text-foreground"
+                                        }`}
                                       >
-                                        <div className="flex items-center justify-between">
-                                          <div>
-                                            <p className="text-foreground font-mono text-sm">
-                                              {user.userId}
-                                            </p>
-                                            <p className="text-muted-foreground text-xs">
-                                              {user.name}
-                                            </p>
-                                          </div>
-                                          <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-lg">
-                                            {user.department}
+                                        <span className="block text-sm font-semibold leading-snug">
+                                          {user.name}
+                                        </span>
+                                        {user.position ? (
+                                          <span
+                                            className={`block text-[11px] mt-0.5 ${
+                                              selected
+                                                ? "text-primary/70"
+                                                : "text-muted-foreground"
+                                            }`}
+                                          >
+                                            {user.position}
                                           </span>
-                                        </div>
-                                      </motion.button>
-                                    ))}
-                                  </motion.div>
-                                )}
-                            </AnimatePresence>
-                          </div>
+                                        ) : null}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -279,9 +295,9 @@ export function LoginFlow({
                   <h2 className="text-2xl font-bold text-foreground">
                     {t("loginHeadingEnterPassword")}
                   </h2>
-                  <code className="text-xs text-primary">
-                    {checkedUser.userId}
-                  </code>
+                  <p className="text-sm font-medium text-primary">
+                    {checkedUser.name || checkedUser.userId}
+                  </p>
                 </div>
 
                 <Form {...loginPasswordForm}>
@@ -372,9 +388,9 @@ export function LoginFlow({
                   <p className="text-muted-foreground mt-2">
                     {t("loginCreatePasswordSubtitle")}
                   </p>
-                  <code className="text-xs text-emerald-400">
-                    {checkedUser.userId}
-                  </code>
+                  <p className="text-sm font-medium text-emerald-400">
+                    {checkedUser.name || checkedUser.userId}
+                  </p>
                 </div>
 
                 <Form {...claimPasswordForm}>
@@ -506,7 +522,6 @@ export function LoginFlow({
             )}
           </AnimatePresence>
 
-          {/* Switch flow link */}
           {loginStep === "userId" && (
             <div className="mt-6 pt-5 border-t border-border/50 text-center">
               <span className="text-sm text-muted-foreground">
@@ -524,7 +539,6 @@ export function LoginFlow({
         </LoginCard>
       </motion.div>
 
-      {/* Forgot Password Dialog */}
       <AlertDialog
         open={forgotPasswordOpen}
         onOpenChange={setForgotPasswordOpen}

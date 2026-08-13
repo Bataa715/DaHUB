@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,9 +16,8 @@ import {
   Loader2,
   RefreshCw,
   Send,
-  Calendar,
-  Table2,
   Check,
+  ShieldCheck,
 } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -30,13 +28,17 @@ interface TableInfo {
   full: string;
 }
 
+const fieldCls =
+  "bg-muted/60 border-border/50 text-xs focus-visible:ring-0 focus-visible:border-cyan-500/60";
+const labelCls =
+  "text-[11px] font-semibold text-muted-foreground uppercase tracking-wide";
+
 export default function DbAccessRequestPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const router = useRouter();
 
-  // Permission guard
   useEffect(() => {
     if (!user) return;
     const allowed =
@@ -46,22 +48,16 @@ export default function DbAccessRequestPage() {
     if (!allowed) router.replace("/");
   }, [user, router]);
 
-  // Available tables
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [tablesLoading, setTablesLoading] = useState(true);
-
-  // Form state
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const [accessTypes] = useState<string[]>(["SELECT"]);
   const [validUntilDate, setValidUntilDate] = useState("");
   const [validUntilTime, setValidUntilTime] = useState("18:00");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  // Table search filter
   const [tableFilter, setTableFilter] = useState("");
 
-  // Set default date to tomorrow
   useEffect(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -82,7 +78,7 @@ export default function DbAccessRequestPage() {
     } finally {
       setTablesLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     loadTables();
@@ -90,16 +86,15 @@ export default function DbAccessRequestPage() {
 
   const toggleTable = (full: string) => {
     setSelectedTables((prev) =>
-      prev.includes(full) ? prev.filter((t) => t !== full) : [...prev, full],
+      prev.includes(full) ? prev.filter((x) => x !== full) : [...prev, full],
     );
   };
 
-  /** Toggle all tables in a given database group */
   const toggleDb = (dbTables: TableInfo[]) => {
-    const allFulls = dbTables.map((t) => t.full);
+    const allFulls = dbTables.map((x) => x.full);
     const allSelected = allFulls.every((f) => selectedTables.includes(f));
     if (allSelected) {
-      setSelectedTables((prev) => prev.filter((t) => !allFulls.includes(t)));
+      setSelectedTables((prev) => prev.filter((x) => !allFulls.includes(x)));
     } else {
       setSelectedTables((prev) => [
         ...prev,
@@ -108,9 +103,8 @@ export default function DbAccessRequestPage() {
     }
   };
 
-  /** Toggle ALL tables across all databases */
   const toggleAll = () => {
-    const allFulls = tables.map((t) => t.full);
+    const allFulls = tables.map((x) => x.full);
     const allSelected = allFulls.every((f) => selectedTables.includes(f));
     setSelectedTables(allSelected ? [] : allFulls);
   };
@@ -124,7 +118,6 @@ export default function DbAccessRequestPage() {
       });
       return;
     }
-
     if (!validUntilDate) {
       toast({
         title: t("dbAccessValidationDate"),
@@ -133,7 +126,6 @@ export default function DbAccessRequestPage() {
       });
       return;
     }
-
     if (!reason.trim()) {
       toast({
         title: t("dbAccessValidationReason"),
@@ -142,7 +134,6 @@ export default function DbAccessRequestPage() {
       });
       return;
     }
-
     const validUntil = new Date(`${validUntilDate}T${validUntilTime}:00`);
     if (validUntil <= new Date()) {
       toast({
@@ -161,13 +152,10 @@ export default function DbAccessRequestPage() {
         validUntil: validUntil.toISOString(),
         reason,
       });
-
       toast({
         title: t("dbAccessRequestSent"),
         description: t("dbAccessRequestSentMsg"),
       });
-
-      // Reset form
       setSelectedTables([]);
       setReason("");
     } catch (err: unknown) {
@@ -181,41 +169,67 @@ export default function DbAccessRequestPage() {
     }
   };
 
-  // Group tables by database
   const grouped = tables
     .filter(
-      (t) =>
+      (x) =>
         !tableFilter ||
-        t.full.toLowerCase().includes(tableFilter.toLowerCase()),
+        x.full.toLowerCase().includes(tableFilter.toLowerCase()),
     )
-    .reduce<Record<string, TableInfo[]>>((acc, t) => {
-      (acc[t.database] = acc[t.database] || []).push(t);
+    .reduce<Record<string, TableInfo[]>>((acc, x) => {
+      (acc[x.database] = acc[x.database] || []).push(x);
       return acc;
     }, {});
+
+  const CheckBox = ({
+    checked,
+    partial = false,
+  }: {
+    checked: boolean;
+    partial?: boolean;
+  }) => (
+    <div
+      className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 border ${
+        checked
+          ? "bg-cyan-600 border-cyan-600"
+          : partial
+            ? "border-cyan-500 bg-cyan-500/30"
+            : "border-border"
+      }`}
+    >
+      {checked && <Check className="h-2 w-2 text-foreground" />}
+      {!checked && partial && (
+        <div className="w-1.5 h-px bg-cyan-400 rounded" />
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
       <ToolPageHeader
         href="/"
-        icon={
-          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-md">
-            <Database className="w-3.5 h-3.5 text-foreground" />
-          </div>
-        }
+        icon={<Database className="w-4 h-4 text-cyan-500" />}
         title={t("toolDbRequestTitle")}
         rightContent={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Link href="/tools/db-access/my-grants">
-              <Button variant="outline" size="sm">
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
                 {t("dbAccessMyGrants")}
               </Button>
             </Link>
             {(user?.isAdmin ||
               user?.allowedTools?.includes("db_access_granter")) && (
               <Link href="/tools/db-access/manage">
-                <Button variant="outline" size="sm">
-                  <Table2 className="h-4 w-4 mr-2" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
                   {t("dbAccessManage")}
                 </Button>
               </Link>
@@ -223,141 +237,108 @@ export default function DbAccessRequestPage() {
           </div>
         }
       />
-      <div className="w-full space-y-6 p-4 md:px-6 md:py-6">
-        <div className="space-y-4">
-          <div className="p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold flex items-center gap-2">
-                <Database className="h-4 w-4 text-cyan-400" />
+
+      <div className="w-full px-4 md:px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Left — tables */}
+          <div className="space-y-3 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-foreground">
                 {t("dbAccessSelectSection")}
               </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={loadTables}
-                disabled={tablesLoading}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${tablesLoading ? "animate-spin" : ""}`}
-                />
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedTables.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {selectedTables.length} {t("dbAccessTableUnit")}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={loadTables}
+                  disabled={tablesLoading}
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${tablesLoading ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
             </div>
 
             <Input
               placeholder={t("dbAccessTableSearch")}
               value={tableFilter}
               onChange={(e) => setTableFilter(e.target.value)}
-              className="bg-background"
+              className={fieldCls}
             />
 
             {tablesLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <div className="space-y-3">
-                {/* Global select-all row */}
                 {!tableFilter && tables.length > 0 && (
                   <button
                     type="button"
                     onClick={toggleAll}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
-                      tables.every((t) => selectedTables.includes(t.full))
-                        ? "border-cyan-500 bg-cyan-500/10 text-cyan-300"
-                        : "border-dashed border-border hover:border-cyan-500/50 text-muted-foreground hover:text-foreground"
-                    }`}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-dashed border-border/60 text-xs text-muted-foreground hover:border-cyan-500/40 hover:text-foreground transition-colors"
                   >
-                    <div
-                      className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border ${
-                        tables.every((t) => selectedTables.includes(t.full))
-                          ? "bg-cyan-500 border-cyan-500"
-                          : tables.some((t) => selectedTables.includes(t.full))
-                            ? "border-cyan-500 bg-cyan-500/30"
-                            : "border-border"
-                      }`}
-                    >
-                      {tables.every((t) => selectedTables.includes(t.full)) && (
-                        <Check className="h-2.5 w-2.5 text-black" />
+                    <CheckBox
+                      checked={tables.every((x) =>
+                        selectedTables.includes(x.full),
                       )}
-                      {!tables.every((t) => selectedTables.includes(t.full)) &&
-                        tables.some((t) => selectedTables.includes(t.full)) && (
-                          <div className="w-2 h-0.5 bg-cyan-400 rounded" />
-                        )}
-                    </div>
-                    {t("dbAccessSelectTableHint")} ({tables.length}{" "}
-                    {t("dbAccessTableUnit")})
+                      partial={tables.some((x) =>
+                        selectedTables.includes(x.full),
+                      )}
+                    />
+                    {t("dbAccessSelectTableHint")} ({tables.length})
                   </button>
                 )}
 
-                {/* Per-database groups */}
-                <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[min(560px,60vh)] overflow-y-auto pr-1">
                   {Object.entries(grouped).map(([db, dbTables]) => {
-                    const allDbSelected = dbTables.every((t) =>
-                      selectedTables.includes(t.full),
+                    const allDbSelected = dbTables.every((x) =>
+                      selectedTables.includes(x.full),
                     );
-                    const someDbSelected = dbTables.some((t) =>
-                      selectedTables.includes(t.full),
+                    const someDbSelected = dbTables.some((x) =>
+                      selectedTables.includes(x.full),
                     );
                     return (
-                      <div key={db}>
-                        {/* DB header with select-all for this db */}
+                      <div key={db} className="space-y-1.5">
                         <button
                           type="button"
                           onClick={() => toggleDb(dbTables)}
-                          className="flex items-center gap-2 mb-2 px-1 group w-full text-left"
+                          className="flex items-center gap-2 w-full text-left px-1 py-1"
                         >
-                          <div
-                            className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
-                              allDbSelected
-                                ? "bg-cyan-500 border-cyan-500"
-                                : someDbSelected
-                                  ? "border-cyan-500 bg-cyan-500/30"
-                                  : "border-muted-foreground/40 group-hover:border-cyan-500/60"
-                            }`}
-                          >
-                            {allDbSelected && (
-                              <Check className="h-2.5 w-2.5 text-black" />
-                            )}
-                            {!allDbSelected && someDbSelected && (
-                              <div className="w-2 h-0.5 bg-cyan-400 rounded" />
-                            )}
-                          </div>
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider group-hover:text-cyan-400 transition-colors">
+                          <CheckBox
+                            checked={allDbSelected}
+                            partial={someDbSelected}
+                          />
+                          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                             {db}
-                          </p>
-                          <span className="text-xs text-muted-foreground/60">
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/60">
                             ({dbTables.length})
                           </span>
                         </button>
-
-                        {/* Individual table checkboxes */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pl-1">
-                          {dbTables.map((t) => {
-                            const selected = selectedTables.includes(t.full);
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pl-1">
+                          {dbTables.map((tbl) => {
+                            const selected = selectedTables.includes(tbl.full);
                             return (
                               <button
-                                key={t.full}
+                                key={tbl.full}
                                 type="button"
-                                onClick={() => toggleTable(t.full)}
-                                className={`flex items-center gap-2 text-left px-3 py-2 rounded-lg border text-sm transition-all ${
+                                onClick={() => toggleTable(tbl.full)}
+                                className={`flex items-center gap-2 text-left px-2.5 py-1.5 rounded-md text-xs transition-colors ${
                                   selected
-                                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-300"
-                                    : "border-border hover:border-cyan-500/50 hover:bg-cyan-500/5"
+                                    ? "bg-cyan-500/10 text-cyan-300"
+                                    : "hover:bg-muted/40 text-foreground/90"
                                 }`}
                               >
-                                <div
-                                  className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
-                                    selected
-                                      ? "bg-cyan-500 border-cyan-500"
-                                      : "border-muted-foreground/40"
-                                  }`}
-                                >
-                                  {selected && (
-                                    <Check className="h-2.5 w-2.5 text-black" />
-                                  )}
-                                </div>
-                                <span className="font-mono truncate text-xs">
-                                  {t.table}
+                                <CheckBox checked={selected} />
+                                <span className="font-mono truncate">
+                                  {tbl.table}
                                 </span>
                               </button>
                             );
@@ -367,85 +348,80 @@ export default function DbAccessRequestPage() {
                     );
                   })}
                   {Object.keys(grouped).length === 0 && (
-                    <p className="text-center text-muted-foreground py-4 text-sm">
+                    <p className="text-center text-muted-foreground/50 text-[11px] py-8">
                       {t("dbAccessSelectTableHint")}
                     </p>
                   )}
                 </div>
-              </div>
-            )}
 
-            {selectedTables.length > 0 && (
-              <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground mb-2">
-                  {t("dbAccessExpirySection")} ({selectedTables.length}):
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedTables.map((t) => (
-                    <Badge
-                      key={t}
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-destructive/20 hover:text-destructive"
-                      onClick={() => toggleTable(t)}
-                    >
-                      {t} ✕
-                    </Badge>
-                  ))}
-                </div>
+                {selectedTables.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-2 border-t border-border/40">
+                    {selectedTables.map((full) => (
+                      <button
+                        key={full}
+                        type="button"
+                        onClick={() => toggleTable(full)}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Remove"
+                      >
+                        {full} ×
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Date/time + reason */}
-          <div className="p-5 space-y-4">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-cyan-400" />
+          {/* Right — expiry + reason + submit */}
+          <div className="space-y-4 min-w-0 lg:sticky lg:top-4">
+            <h2 className="text-sm font-semibold text-foreground">
               {t("dbAccessExpirySection")}
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>{t("dbAccessExpiryDate")}</Label>
+                <Label className={labelCls}>{t("dbAccessExpiryDate")}</Label>
                 <Input
                   type="date"
                   value={validUntilDate}
                   min={(() => {
-                    const t = new Date();
-                    t.setDate(t.getDate() + 1);
-                    return t.toISOString().split("T")[0];
+                    const d = new Date();
+                    d.setDate(d.getDate() + 1);
+                    return d.toISOString().split("T")[0];
                   })()}
                   onChange={(e) => setValidUntilDate(e.target.value)}
-                  className="bg-background"
+                  className={fieldCls}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>{t("dbAccessExpiryTime")}</Label>
+                <Label className={labelCls}>{t("dbAccessExpiryTime")}</Label>
                 <Input
                   type="time"
                   value={validUntilTime}
                   onChange={(e) => setValidUntilTime(e.target.value)}
-                  className="bg-background"
+                  className={fieldCls}
                 />
               </div>
             </div>
+
             <div className="space-y-1.5">
-              <Label>
-                {t("dbAccessReason")} ({t("dbAccessValidationReason")})
-              </Label>
+              <Label className={labelCls}>{t("dbAccessReason")}</Label>
               <Textarea
                 placeholder={t("dbAccessReasonPlaceholder")}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                className="bg-background resize-none"
+                rows={4}
+                className={`${fieldCls} resize-none`}
               />
             </div>
 
             <Button
-              className="w-full bg-cyan-600 hover:bg-cyan-500"
               onClick={handleSubmit}
               disabled={
                 submitting || selectedTables.length === 0 || !reason.trim()
               }
+              className="w-full h-11 bg-cyan-600 hover:bg-cyan-700 text-foreground font-semibold text-sm disabled:opacity-40"
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -453,6 +429,11 @@ export default function DbAccessRequestPage() {
                 <Send className="h-4 w-4 mr-2" />
               )}
               {t("dbAccessSubmitBtn")}
+              {selectedTables.length > 0 && (
+                <span className="ml-1.5 opacity-70">
+                  ({selectedTables.length})
+                </span>
+              )}
             </Button>
           </div>
         </div>

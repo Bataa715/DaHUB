@@ -17,7 +17,11 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/tailan": ["tailan", "tailan_dept_head"],
   "/tools/sanamsargui-tuuwer": ["sanamsargui-tuuwer"],
   "/tools/pivot": ["pivot"],
-  "/tools/risk-assessment": ["risk_assessment"],
+  // "Эрсдэлийн үнэлгээ хийх" (edit/judgement) vs "Тайлан" (read-only report +
+  // export) are split tools — the base path accepts either (landing page has
+  // both cards), but /work is overridden below to require edit access only.
+  "/tools/risk-assessment/work": ["risk_assessment"],
+  "/tools/risk-assessment": ["risk_assessment", "risk_assessment_report"],
   "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],
   "/tools/reports": ["reports"],

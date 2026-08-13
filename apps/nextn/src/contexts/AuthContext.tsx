@@ -5,9 +5,11 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
+  useMemo,
   ReactNode,
 } from "react";
-import { authApi } from "@/lib/api";
+import { authApi, refreshSession } from "@/lib/api";
 import Cookies from "js-cookie";
 import { z } from "zod";
 import axios from "axios";
@@ -108,9 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMounted) setLoading(false);
         return;
       }
-      // [N-2] No refreshToken arg — browser sends HttpOnly cookie automatically
+      // [N-2] No refreshToken arg — browser sends HttpOnly cookie automatically.
+      // Shared single-flight refresh — coalesces with the axios interceptor's
+      // refresh so the single-use refresh token isn't rotated twice in parallel.
       try {
-        const { user: freshUser } = await authApi.refreshToken();
+        const res = await refreshSession();
+        const freshUser = (res.data as { user?: User } | undefined)?.user;
+        if (!freshUser) throw new Error("refresh: no user in response");
         if (!isMounted) return;
         const secure =
           typeof window !== "undefined" &&
@@ -163,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // [N-2] saveUserSession only saves the user display cookie; token cookies set by backend
-  const saveUserSession = (userData: User) => {
+  const saveUserSession = useCallback((userData: User) => {
     const secure =
       typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("user", JSON.stringify(userData), {
@@ -172,10 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       secure,
     });
     setUser(userData);
-  };
+  }, []);
 
   // [N-2] saveAdminSession only saves adminUser display cookie
-  const saveAdminSession = (userData: User) => {
+  const saveAdminSession = useCallback((userData: User) => {
     const secure =
       typeof window !== "undefined" && window.location.protocol === "https:";
     Cookies.set("adminUser", JSON.stringify(userData), {
@@ -184,52 +190,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       secure,
     });
     setUser(userData);
-  };
+  }, []);
 
-  const login = async (
-    department: string,
-    username: string,
-    password: string,
-  ) => {
-    try {
-      const { user } = await authApi.login(department, username, password);
-      saveUserSession(user);
-    } catch (error) {
-      const msg = axios.isAxiosError(error)
-        ? (error.response?.data?.message as string | undefined)
-        : undefined;
-      throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
-    }
-  };
-
-  const loginById = async (userId: string, password: string) => {
-    try {
-      const { user } = await authApi.loginById(userId, password);
-      saveUserSession(user);
-    } catch (error) {
-      const msg = axios.isAxiosError(error)
-        ? (error.response?.data?.message as string | undefined)
-        : undefined;
-      throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
-    }
-  };
-
-  const adminLogin = async (userId: string, password: string) => {
-    try {
-      const { user } = await authApi.adminLogin(userId, password);
-      if (!user.isAdmin) throw new Error("Та админ эрхгүй байна");
-      saveAdminSession(user);
-    } catch (error) {
-      const msg = axios.isAxiosError(error)
-        ? (error.response?.data?.message as string | undefined)
-        : error instanceof Error
-          ? error.message
+  const login = useCallback(
+    async (department: string, username: string, password: string) => {
+      try {
+        const { user } = await authApi.login(department, username, password);
+        saveUserSession(user);
+      } catch (error) {
+        const msg = axios.isAxiosError(error)
+          ? (error.response?.data?.message as string | undefined)
           : undefined;
-      throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
-    }
-  };
+        throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
+      }
+    },
+    [saveUserSession],
+  );
 
-  const logout = async () => {
+  const loginById = useCallback(
+    async (userId: string, password: string) => {
+      try {
+        const { user } = await authApi.loginById(userId, password);
+        saveUserSession(user);
+      } catch (error) {
+        const msg = axios.isAxiosError(error)
+          ? (error.response?.data?.message as string | undefined)
+          : undefined;
+        throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
+      }
+    },
+    [saveUserSession],
+  );
+
+  const adminLogin = useCallback(
+    async (userId: string, password: string) => {
+      try {
+        const { user } = await authApi.adminLogin(userId, password);
+        if (!user.isAdmin) throw new Error("Та админ эрхгүй байна");
+        saveAdminSession(user);
+      } catch (error) {
+        const msg = axios.isAxiosError(error)
+          ? (error.response?.data?.message as string | undefined)
+          : error instanceof Error
+            ? error.message
+            : undefined;
+        throw new Error(msg ?? "Нэвтрэх үед алдаа гарлаа");
+      }
+    },
+    [saveAdminSession],
+  );
+
+  const logout = useCallback(async () => {
     // Call backend to clear HttpOnly token cookies. best-effort — local cleanup proceeds regardless.
     try {
       await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
@@ -239,16 +250,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     Cookies.remove("user");
     Cookies.remove("adminUser");
     setUser(null);
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const adminPath = isAdminPath();
       const userKey = adminPath ? "adminUser" : "user";
       // [N-2] No refreshToken arg — browser sends HttpOnly cookie automatically.
       // Re-issue so the JWT cookie contains the latest allowedTools.
+      // Shared single-flight refresh (see refreshSession) — rotation-safe.
       try {
-        const { user: freshUser } = await authApi.refreshToken();
+        const res = await refreshSession();
+        const freshUser = (res.data as { user?: User } | undefined)?.user;
+        if (!freshUser) throw new Error("refresh: no user in response");
         const secure =
           typeof window !== "undefined" &&
           window.location.protocol === "https:";
@@ -270,22 +284,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Failed to refresh user profile:", error);
       }
     }
-  };
+  }, []);
+
+  // [PERF] memoize so useAuth() consumers don't re-render needlessly.
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      loginById,
+      adminLogin,
+      logout,
+      refreshUser,
+    }),
+    [user, loading, login, loginById, adminLogin, logout, refreshUser],
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        loginById,
-        adminLogin,
-        logout,
-        refreshUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 }
 

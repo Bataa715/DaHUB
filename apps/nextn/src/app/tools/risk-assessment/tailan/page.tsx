@@ -37,6 +37,7 @@ import {
   resolveNearestJudgements,
 } from "../branch-resolve";
 import ReportView from "../report-view";
+import ReportSkeleton from "../_report-view/report-skeleton";
 import MonthFilter, {
   formatMonthMn,
   prevMonthKey,
@@ -838,10 +839,7 @@ export default function RiskReportsPage() {
         )}
 
         {showInitialSpinner ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            <p className="text-sm text-muted-foreground">{t("loading")}</p>
-          </div>
+          <ReportSkeleton rows={10} />
         ) : filterMode === "month" &&
           riskbranchDates.length === 0 &&
           !filterMonth ? (

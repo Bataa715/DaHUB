@@ -1,4 +1,3 @@
-import ExcelJS from "exceljs";
 import type { RelatedPartyResult, RelatedPartyTxRow } from "@/lib/api";
 
 /**
@@ -10,6 +9,8 @@ export async function downloadRelatedPartyWorkbook(
   startDate: string,
   endDate: string,
 ) {
+  // [PERF] lazy-load exceljs — keep it out of this route's initial JS.
+  const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
 
   const summarySheet = workbook.addWorksheet("Summary");

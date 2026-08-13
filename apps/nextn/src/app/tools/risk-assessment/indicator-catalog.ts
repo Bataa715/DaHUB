@@ -356,7 +356,7 @@ export const GROUP_LABEL: Record<CatalogGroup, string> = {
   2: "Score 2",
   3: "Score 3",
   4: "Score 4",
-  5: "Judgement Score",
+  5: "S5-Judgement Score",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -24,8 +24,15 @@ import {
   UpsertBranchScoresDto,
 } from "./dto/risk-assessment.dto";
 
+// [SEC] "Эрсдэлийн үнэлгээ хийх" (data entry/judgement) and "Тайлан" (read-only
+// report + export) used to share one "risk_assessment" permission — anyone
+// granted the report couldn't be trusted with edit access without also being
+// trusted to touch live judgement data. Split into two tools: read endpoints
+// accept EITHER tool (class-level, below); every endpoint that writes/mutates
+// data is overridden per-method to require "risk_assessment" specifically, so
+// a "risk_assessment_report"-only grant is strictly read + export.
 @UseGuards(JwtAuthGuard, ToolGuard)
-@RequireTools("risk_assessment")
+@RequireTools("risk_assessment", "risk_assessment_report")
 @Controller("risk-assessment")
 export class RiskAssessmentController {
   constructor(private service: RiskAssessmentService) {}
@@ -36,6 +43,7 @@ export class RiskAssessmentController {
     return this.service.listManualIndicators();
   }
 
+  @RequireTools("risk_assessment")
   @Put("manual-indicators")
   async upsertManualIndicator(
     @Body() body: UpsertManualIndicatorDto,
@@ -69,6 +77,7 @@ export class RiskAssessmentController {
     return this.service.listHolds(period ?? "");
   }
 
+  @RequireTools("risk_assessment")
   @Put("holds")
   async setHold(@Body() body: SetHoldDto, @Request() req) {
     await this.service.setHold(
@@ -92,12 +101,14 @@ export class RiskAssessmentController {
     return { lockedDate };
   }
 
+  @RequireTools("risk_assessment")
   @Post("riskbranch/lock")
   async lockDate(@Body() body: LockDateBodyDto, @Request() req) {
     await this.service.lockDate(body.date, req.user.id);
     return { ok: true };
   }
 
+  @RequireTools("risk_assessment")
   @Delete("riskbranch/lock/:date")
   async unlockDate(@Param("date") date: string, @Request() req) {
     await this.service.unlockDate(date, req.user.id);
@@ -116,12 +127,14 @@ export class RiskAssessmentController {
     return this.service.listJudgements(date);
   }
 
+  @RequireTools("risk_assessment")
   @Put("judgement")
   async upsertJudgement(@Body() body: UpsertJudgementDto, @Request() req) {
     await this.service.upsertJudgement({ ...body, userId: req.user.id });
     return { ok: true };
   }
 
+  @RequireTools("risk_assessment")
   @Post("history/from-riskbranch")
   async saveHistoryFromRiskbranch(
     @Body() body: SaveHistoryFromRiskbranchDto,

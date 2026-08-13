@@ -17,6 +17,7 @@ export const VALID_TOOLS = [
   "python_api_tools",
   "reports",
   "risk_assessment",
+  "risk_assessment_report",
   "monitoring_box",
 ] as const;
 

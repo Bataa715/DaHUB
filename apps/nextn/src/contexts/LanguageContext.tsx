@@ -59,7 +59,7 @@ export const translations = {
     navHome: "Нүүр",
     navDepartments: "Хэлтэс",
     navEmployees: "Ажилтнууд",
-    navNews: "Мэдлэг",
+    navNews: "Мэдлэг мэдээлэл",
     navTools: "Хэрэгсэл",
     navAdmin: "Админ",
     navAdminPanel: "Админ самбар",
@@ -96,6 +96,7 @@ export const translations = {
       "Банкны эрсдэлийн шинжилгээ, CIF хайлт, Red Flag мэдэгдэл",
     toolRiskAssessmentTitle: "Салбарын эрсдэлийн үнэлгээ",
     toolRiskAssessmentDesc: "Сар бүрийн эрсдэлийн үнэлгээ",
+    toolRiskAssessmentReportTitle: "Эрсдэлийн үнэлгээ — Тайлан",
     toolReportsTitle: "Тайлан татах",
     toolReportsDesc: "Дотоод хэрэглээний тайлан татах хэрэгсэл",
     toolMonitoringBoxTitle: "Monitoring Box",
@@ -360,6 +361,7 @@ export const translations = {
     dataDocColName: "Баганын нэр",
     dataDocColType: "Төрөл",
     dataDocColDesc: "Тайлбар",
+    dataDocFilterAll: "Бүгд",
     dataDocFiltered: "Тайлбартай",
     dataDocUnfiltered: "Тайлбаргүй",
     dataDocSearchCol: "Багана хайх…",
@@ -388,6 +390,7 @@ export const translations = {
     redflagActive: "Идэвхжсэн",
     redflagTotalMatches: "Нийт давхцал",
     redflagNoResult: "Илэрц олдсонгүй",
+    abRedflagMoreLabel: "илүү",
 
     // Sanamsargui tuuwer (Random sampling)
     sampleTitle: "Санамсаргүй түүвэр",
@@ -576,6 +579,10 @@ export const translations = {
     loginSignIn: "Нэвтрэх",
     loginLabelUserId: "Хэрэглэгчийн ID",
     loginPlaceholderIdOrName: "ID эсвэл нэрээ бичнэ үү",
+    loginLabelEmployee: "Ажилтан",
+    loginPlaceholderSelectEmployee: "Хэрэглэгчээ сонгоно уу",
+    loginPlaceholderLoadingEmployees: "Ачааллаж байна...",
+    loginPlaceholderNoEmployees: "Ажилтан олдсонгүй",
     loginBtnCheck: "Шалгах",
     loginHeadingEnterPassword: "Нууц үг оруулах",
     loginLabelPassword: "Нууц үг",
@@ -682,8 +689,6 @@ export const translations = {
 
     // Admin - Departments page
     admDeptLoadError: "Хэлтсүүдийг ачаалахад алдаа гарлаа.",
-    admDeptCreatedDesc: "Шинэ хэлтэс нэмэгдлээ.",
-    admDeptCreateError: "Хэлтэс нэмэхэд алдаа гарлаа.",
     admDeptUpdatedDesc: "Хэлтсийн мэдээлэл шинэчлэгдлээ.",
     admDeptUpdateError: "Хэлтсийн мэдээлэл шинэчлэхэд алдаа гарлаа.",
     admDeptDeleteConfirmSuffix: "хэлтсийг устгахдаа итгэлтэй байна уу?",
@@ -691,7 +696,6 @@ export const translations = {
     admDeptDeleteError: "Хэлтсийг устгахад алдаа гарлаа.",
     admDeptPageTitle: "Хэлтсүүд",
     admDeptUnit: "хэлтэс",
-    admDeptAddBtn: "Хэлтэс нэмэх",
     admDeptEmpty: "Хэлтэс байхгүй байна",
     admCommonEditBtn: "Засах",
     admDeptNoEmployeesShort: "Ажилтан бүртгэгдээгүй",
@@ -704,11 +708,31 @@ export const translations = {
     admDeptCodeHintEdit:
       "Хэрэглэгчийн ID-н prefix. Том үсэг/тоо/зураас (жишээ: DAG-DAA).",
     admDeptCancelBtn: "Цуцлах",
-    admDeptCreateDialogTitle: "Шинэ хэлтэс нэмэх",
-    admDeptCreateDialogDesc: "Хэлтсийн нэрийг оруулна уу",
-    admDeptNamePlaceholder: "Жишээ: Ерөнхий аудитын хэлтэс",
-    admDeptCodeHintCreate:
-      "Хоосон орхивол оноохгүй. Том үсэг/тоо/зураас (жишээ: DAG-DAA).",
+
+    // Admin - Мэдлэг мэдээлэл удирдлага
+    admMedlegPageTitle: "Мэдлэг мэдээлэл",
+    admMedlegUnit: "нийтлэл",
+    admMedlegLoadError: "Жагсаалт татахад алдаа гарлаа.",
+    admMedlegEmpty: "Нийтлэл байхгүй байна",
+    admMedlegColTitle: "Гарчиг",
+    admMedlegColCategory: "Ангилал",
+    admMedlegColAuthor: "Зохиогч",
+    admMedlegColStatus: "Төлөв",
+    admMedlegColViews: "Үзэлт",
+    admMedlegPublished: "Нийтлэгдсэн",
+    admMedlegDraft: "Ноорог",
+    admMedlegEditDialogTitle: "Нийтлэл засах",
+    admMedlegEditDialogDesc:
+      "Админ эрхээр аль ч хэрэглэгчийн нийтлэлийг засах боломжтой.",
+    admMedlegTitleLabel: "Гарчиг",
+    admMedlegCategoryLabel: "Ангилал",
+    admMedlegContentLabel: "Агуулга (HTML)",
+    admMedlegPublishedLabel: "Нийтлэгдсэн (веб дээр харагдана)",
+    admMedlegUpdatedDesc: "Нийтлэл шинэчлэгдлээ.",
+    admMedlegSaveError: "Хадгалахад алдаа гарлаа.",
+    admMedlegDeleteConfirmSuffix: "нийтлэлийг устгахдаа итгэлтэй байна уу?",
+    admMedlegDeletedDesc: "Нийтлэл устгагдлаа.",
+    admMedlegDeleteError: "Нийтлэлийг устгахад алдаа гарлаа.",
 
     // Admin - Homepage ethics page
     admEthicsWarnTitle: "Анхааруулга",
@@ -902,10 +926,16 @@ export const translations = {
       "Түүврийн хэмжээ тооцоолох, санамсаргүй сонгон авах хэрэгсэл",
     admToolsPagePivotDesc:
       "Excel файлаас pivot хүснэгт болон давтамжийн хүснэгт үүсгэх",
+    admToolsPageDbAccessGroupName: "Өгөгдлийн сангийн эрх",
+    admToolsPageDbAccessGroupDesc:
+      "ClickHouse хүснэгтэд хандах эрх хүсэх / олгох (2 хувилбар)",
     admToolsPageDbRequesterDesc:
       "ClickHouse хүснэгтэд хандах эрх хүсэх боломж олгох",
     admToolsPageDbGranterDesc:
       "ClickHouse хүснэгтэд хандах эрхийн хүсэлтийг зөвшөөрөх, татгалзах",
+    admToolsPageTailanGroupName: "Улирлын тайлан",
+    admToolsPageTailanGroupDesc:
+      "Ажилтан болон хэлтсийн ахлагчийн улирлын тайлан (2 хувилбар)",
     admToolsPageTailanDesc:
       "Улирлын ажлын тайлангаа бэлтгэж хэлтсийн ахлагч руу илгээх",
     admToolsPageTemplateArrow: "Загвар →",
@@ -919,10 +949,16 @@ export const translations = {
     admToolsPageAlertBoxDesc:
       "Банкны гүйлгээний эрсдэлийн шинжилгээ, CIF хайлт, улаан тугийн мэдэгдэл",
     admToolsPageSettingsArrow: "Тохиргоо →",
+    admToolsPageRiskGroupName: "Салбарын эрсдэлийн үнэлгээ",
+    admToolsPageRiskGroupDesc:
+      "Үнэлгээ хийх болон тайлан харах эрх (2 хувилбар)",
     admToolsPageRiskDesc:
       "Сар бүрийн эрсдэлийн үнэлгээ — салбаруудын оноо, гар засвар, аудит лог",
+    admToolsPageRiskReportDesc:
+      "Зөвхөн унших — эрсдэлийн тайлан харах, Excel экспорт (засах эрхгүй)",
     admToolsPageMonitoringDesc:
       "Continuous auditing — харилцсан гүйлгээ болон бусад хяналтын карт цуглуулга",
+    admToolsPageScenarioUnit: "хувилбар",
     admToolsPageLoadUsersError: "Хэрэглэгчдийг татахад алдаа гарлаа",
     admToolsPageGrantedPart1: "хэрэглэгчид",
     admToolsPageGrantedPart2: "эрх олголоо",
@@ -959,6 +995,13 @@ export const translations = {
     admUsersDeleteError: "Хэрэглэгч устгахад алдаа гарлаа.",
     admUsersIdChangedDesc: "Хэрэглэгчийн ID өөрчлөгдлөө.",
     admUsersIdChangeError: "ID өөрчлөхд алдаа гарлаа.",
+    admUsersNameChangedDesc: "Хэрэглэгчийн нэр өөрчлөгдлөө.",
+    admUsersNameChangeError: "Нэр өөрчлөхөд алдаа гарлаа.",
+    admUsersSaveNameAria: "Нэр хадгалах",
+    admUsersBlockedBadge: "Блоклогдсон",
+    admUsersUnlockBtn: "Блок гаргах",
+    admUsersUnlockedDescSuffix: "— блок гарлаа.",
+    admUsersUnlockError: "Блок гаргахад алдаа гарлаа.",
     admUsersPasswordResetTitle: "Нууц үг сэргээлээ",
     admUsersPasswordResetDescSuffix: "— шинэ нууц үг тохируулагдлаа.",
     admUsersPasswordResetError: "Нууц үг сэргээхэд алдаа гарлаа.",
@@ -1118,7 +1161,7 @@ export const translations = {
     sidebarCollapse: "Хураах",
     sidebarFullscreen: "Бүтэн дэлгэцээр харах",
     sidebarResize: "Sidebar өргөн өөрчлөх",
-    knowledgeTitle: "Мэдлэг",
+    knowledgeTitle: "Мэдлэг мэдээлэл",
     knowledgeShare: "Мэдлэг хуваалцах",
     knowledgeCategory: "Ангилал",
     knowledgePublisher: "Мэдлэг түгээгч",
@@ -1128,7 +1171,8 @@ export const translations = {
     knowledgeFirstPost: "Эхний мэдлэгийг та бичиж болно",
     knowledgeTitleLabel: "Гарчиг",
     knowledgeTitlePlaceholder: "Мэдлэгийн гарчиг...",
-    knowledgeImageTooBig: "Зураг 2MB-аас ихгүй байх ёстой",
+    knowledgeImageTooBig: "Зураг 5MB-аас ихгүй байх ёстой",
+    knowledgeMaxImages: "Хамгийн ихдээ 5 зураг оруулна",
     knowledgeCatAll: "Бүгд",
     knowledgeCatAudit: "Аудит",
     knowledgeCatTech: "Технологи",
@@ -1194,8 +1238,12 @@ export const translations = {
     monRptColBank: "Банк",
     monRptColSourceSol: "Эх SOL",
     monRptColParticular: "Гүйлгээний утга",
-    monRptEmptyState:
-      'CIF/FORACID жагсаалт, огнооны хугацаа оруулж "Хайх" товч дарна уу.',
+    monRptEmptyState: "CIF (≥2) → огноо → Хайх",
+    monRptEmptyHint1: "Дор хаяж 2 CIF/FORACID нэмнэ",
+    monRptEmptyHint2: "Хугацаа сонгоод Хайх дарна",
+    monRptTabSummary: "Нэгтгэл",
+    monRptTabAccounts: "Данс",
+    monRptTabTransactions: "Гүйлгээ",
 
     // Risk Assessment - Argachlal
     raArgachlalNoHint: "Тайлбар бичигдээгүй байна.",
@@ -1410,10 +1458,57 @@ export const translations = {
     // knowledge page — leftover partial-adoption strings
     knowledgePageEmployeeFallback: "Ажилтан",
     knowledgePageImageLabel: "Зураг",
-    knowledgePageImageUploadHint: "Зураг оруулах (2MB хүртэл)",
+    knowledgePageImageUploadHint: "Зураг нэмэх (олон сонгож болно, 5 хүртэл)",
     knowledgePageContentPlaceholder: "Мэдлэгийн агуулга...",
     knowledgePageShareBtn: "Хуваалцах",
     knowledgePageCommentsLabel: "Сэтгэгдэл",
+
+    // Knowledge page — QUIZ section
+    knowledgeFeedTab: "Мэдлэг",
+    knowledgeQuizTab: "QUIZ",
+    quizCreateBtn: "Quiz үүсгэх",
+    quizCreateDialogTitle: "Шинэ QUIZ үүсгэх",
+    quizCreateDialogDesc:
+      "Гарчиг, асуултууд болон сонголтуудаа оруулаад зөв хариултыг тэмдэглэнэ үү.",
+    quizTitleLabel: "Гарчиг",
+    quizTitlePlaceholder: "Quiz-ийн гарчиг оруулна уу...",
+    quizQuestionLabel: "Асуулт",
+    quizQuestionPlaceholder: "Асуултаа бичнэ үү...",
+    quizAddQuestionBtn: "Асуулт нэмэх",
+    quizQuestionCountLabel: "асуулт",
+    quizOptionsLabel: "Сонголтууд",
+    quizOptionPlaceholder: "Сонголт",
+    quizAddOptionBtn: "Сонголт нэмэх",
+    quizCorrectAnswerHint: "Радио товчоор зөв хариултыг тэмдэглэнэ үү",
+    quizCreateSubmitBtn: "Нийтлэх",
+    quizCreateError: "Quiz үүсгэхэд алдаа гарлаа.",
+    quizCreatedDesc: "Quiz амжилттай нэмэгдлээ.",
+    quizEmpty: "Одоогоор quiz байхгүй байна",
+    quizEmptyHint: "Эхний QUIZ-г та үүсгэж болно",
+    quizAnsweredBadge: "Хариулсан",
+    quizCorrectBadge: "Зөв!",
+    quizWrongBadge: "Буруу",
+    quizSubmitAnswerBtn: "Хариулах",
+    quizSubmitQuizBtn: "Илгээх",
+    quizAnswering: "Илгээж байна...",
+    quizAnswerError: "Хариулахад алдаа гарлаа.",
+    quizByLabel: "Асуусан:",
+    quizParticipantsLabel: "оролцогч",
+    quizCorrectCountLabel: "зөв",
+    quizAvgScoreLabel: "дундаж оноо",
+    quizViewResultsBtn: "Үр дүн харах",
+    quizHideResultsBtn: "Үр дүн хаах",
+    quizResultsTitle: "Үр дүн",
+    quizResultsEmpty: "Хараахан хэн ч хариулаагүй байна",
+    quizLeaderboardTitle: "Тэргүүлэгчид",
+    quizLeaderboardEmpty: "Одоогоор тэргүүлэгч байхгүй",
+    quizRankCorrectLabel: "зөв хариулт",
+    quizDeleteConfirm: "Энэ quiz-ийг устгахдаа итгэлтэй байна уу?",
+    quizDeletedDesc: "Quiz устгагдлаа.",
+    quizDeleteError: "Устгахад алдаа гарлаа.",
+    quizTimeSecLabel: "сек",
+    quizYourAnswerLabel: "Таны хариулт",
+    quizCancelBtn: "Цуцлах",
 
     // data-doc code page — leftover partial-adoption strings
     dataDocCodePageUntitled: "Гарчиггүй",
@@ -1453,6 +1548,8 @@ export const translations = {
     abAlertsRuleTriggerHint: "Хэдэн CIF-д тус бүрийн дүрэм идэвхжсэн",
     abAlertsCifListLabel: "CIF жагсаалт",
     abAlertsViewOnSearchEngine: "Search Engine дээр дэлгэрэнгүй харах →",
+    abAlertsRetryBtn: "Дахин оролдох",
+    abAlertsLoadMoreBtn: "Цааш харах",
 
     // risk-assessment work page — leftover partial-adoption strings
     raWorkPageMethodologyTooltip: "Үзүүлэлт бүрийн үнэлгээний аргачлал",
@@ -1501,10 +1598,12 @@ export const translations = {
 
     // Hero (homepage) — ethics code carousel
     heroSimpleEthicsCodeLabel: "Аудиторын ёс зүйн код",
+    heroTeamGalleryLabel: "Хамт олон",
 
     // Alert Box — search page
     abSearchCifRequired: "CIF дугаар оруулна уу",
     abSearchFailed: "Хайлт амжилтгүй",
+    abSearchEmptyHint: "CIF дугаараар хайж бүх dashboard-аас нэгэн зэрэг үр дүн авна",
     abSearchCifLabel: "CIF дугаар",
     abSearchCifPlaceholder: "Ажилтны CIF ID оруулна уу...",
     abSearchResultLabel: "Хайлтын үр дүн:",
@@ -1626,6 +1725,7 @@ export const translations = {
     toolRiskAssessmentTitle: "Risk Assessment",
     toolRiskAssessmentDesc:
       "Monthly risk assessment — department scores, manual adjustments, and audit log",
+    toolRiskAssessmentReportTitle: "Risk Assessment — Report",
     toolReportsTitle: "Reports",
     toolReportsDesc:
       "Download SQL and Python reports from a single unified tool",
@@ -1887,6 +1987,7 @@ export const translations = {
     dataDocColName: "Column name",
     dataDocColType: "Type",
     dataDocColDesc: "Description",
+    dataDocFilterAll: "All",
     dataDocFiltered: "With description",
     dataDocUnfiltered: "Without description",
     dataDocSearchCol: "Search columns…",
@@ -1915,6 +2016,7 @@ export const translations = {
     redflagActive: "Active",
     redflagTotalMatches: "Total matches",
     redflagNoResult: "No matches found",
+    abRedflagMoreLabel: "more",
 
     // Sanamsargui tuuwer (Random sampling)
     sampleTitle: "Random Sampling",
@@ -2103,6 +2205,10 @@ export const translations = {
     loginSignIn: "Log in",
     loginLabelUserId: "User ID",
     loginPlaceholderIdOrName: "Enter your ID or name",
+    loginLabelEmployee: "Employee",
+    loginPlaceholderSelectEmployee: "Select a user",
+    loginPlaceholderLoadingEmployees: "Loading...",
+    loginPlaceholderNoEmployees: "No employees found",
     loginBtnCheck: "Check",
     loginHeadingEnterPassword: "Enter password",
     loginLabelPassword: "Password",
@@ -2208,8 +2314,6 @@ export const translations = {
 
     // Admin - Departments page
     admDeptLoadError: "Failed to load departments.",
-    admDeptCreatedDesc: "New department added.",
-    admDeptCreateError: "Failed to add department.",
     admDeptUpdatedDesc: "Department information updated.",
     admDeptUpdateError: "Failed to update department information.",
     admDeptDeleteConfirmSuffix:
@@ -2218,7 +2322,6 @@ export const translations = {
     admDeptDeleteError: "Failed to delete department.",
     admDeptPageTitle: "Departments",
     admDeptUnit: "departments",
-    admDeptAddBtn: "Add department",
     admDeptEmpty: "No departments",
     admCommonEditBtn: "Edit",
     admDeptNoEmployeesShort: "No employees registered",
@@ -2231,11 +2334,31 @@ export const translations = {
     admDeptCodeHintEdit:
       "User ID prefix. Uppercase letters, numbers, hyphens (e.g. DAG-DAA).",
     admDeptCancelBtn: "Cancel",
-    admDeptCreateDialogTitle: "Add new department",
-    admDeptCreateDialogDesc: "Enter the department name",
-    admDeptNamePlaceholder: "Example: General Audit Department",
-    admDeptCodeHintCreate:
-      "Leave blank for none. Uppercase letters, numbers, hyphens (e.g. DAG-DAA).",
+
+    // Admin - Knowledge management
+    admMedlegPageTitle: "Knowledge",
+    admMedlegUnit: "posts",
+    admMedlegLoadError: "Failed to load the list.",
+    admMedlegEmpty: "No posts",
+    admMedlegColTitle: "Title",
+    admMedlegColCategory: "Category",
+    admMedlegColAuthor: "Author",
+    admMedlegColStatus: "Status",
+    admMedlegColViews: "Views",
+    admMedlegPublished: "Published",
+    admMedlegDraft: "Draft",
+    admMedlegEditDialogTitle: "Edit post",
+    admMedlegEditDialogDesc:
+      "As an admin you can edit any user's post.",
+    admMedlegTitleLabel: "Title",
+    admMedlegCategoryLabel: "Category",
+    admMedlegContentLabel: "Content (HTML)",
+    admMedlegPublishedLabel: "Published (visible on the site)",
+    admMedlegUpdatedDesc: "Post updated.",
+    admMedlegSaveError: "Failed to save.",
+    admMedlegDeleteConfirmSuffix: "Are you sure you want to delete this post?",
+    admMedlegDeletedDesc: "Post deleted.",
+    admMedlegDeleteError: "Failed to delete the post.",
 
     // Admin - Homepage ethics page
     admEthicsWarnTitle: "Warning",
@@ -2430,10 +2553,16 @@ export const translations = {
       "Tool for calculating sample size and random selection",
     admToolsPagePivotDesc:
       "Create pivot tables and frequency tables from Excel files",
+    admToolsPageDbAccessGroupName: "Database access",
+    admToolsPageDbAccessGroupDesc:
+      "Request / grant ClickHouse table access (2 scenarios)",
     admToolsPageDbRequesterDesc:
       "Allows requesting access to ClickHouse tables",
     admToolsPageDbGranterDesc:
       "Approve or reject requests for ClickHouse table access",
+    admToolsPageTailanGroupName: "Quarterly report",
+    admToolsPageTailanGroupDesc:
+      "Employee and department-head quarterly reports (2 scenarios)",
     admToolsPageTailanDesc:
       "Prepare quarterly work report and send it to the department head",
     admToolsPageTemplateArrow: "Template →",
@@ -2447,10 +2576,16 @@ export const translations = {
     admToolsPageAlertBoxDesc:
       "Bank transaction risk analysis, CIF search, red-flag alerts",
     admToolsPageSettingsArrow: "Settings →",
+    admToolsPageRiskGroupName: "Risk assessment",
+    admToolsPageRiskGroupDesc:
+      "Perform assessment or view reports (2 scenarios)",
     admToolsPageRiskDesc:
       "Monthly risk assessment — branch scores, manual adjustments, audit log",
+    admToolsPageRiskReportDesc:
+      "Read-only — view risk reports and export to Excel (no edit access)",
     admToolsPageMonitoringDesc:
       "Continuous auditing — collection of monitoring cards for related-party transactions and more",
+    admToolsPageScenarioUnit: "scenarios",
     admToolsPageLoadUsersError: "Error fetching users",
     admToolsPageGrantedPart1: "users",
     admToolsPageGrantedPart2: "were granted access",
@@ -2487,6 +2622,13 @@ export const translations = {
     admUsersDeleteError: "Error deleting user.",
     admUsersIdChangedDesc: "User ID updated.",
     admUsersIdChangeError: "Error updating ID.",
+    admUsersNameChangedDesc: "User name updated.",
+    admUsersNameChangeError: "Error updating name.",
+    admUsersSaveNameAria: "Save name",
+    admUsersBlockedBadge: "Blocked",
+    admUsersUnlockBtn: "Unlock",
+    admUsersUnlockedDescSuffix: "— unblocked.",
+    admUsersUnlockError: "Error unblocking user.",
     admUsersPasswordResetTitle: "Password reset",
     admUsersPasswordResetDescSuffix: "— new password has been set.",
     admUsersPasswordResetError: "Error resetting password.",
@@ -2655,7 +2797,8 @@ export const translations = {
     knowledgeFirstPost: "You can write the first knowledge post",
     knowledgeTitleLabel: "Title",
     knowledgeTitlePlaceholder: "Knowledge title...",
-    knowledgeImageTooBig: "Image must be 2MB or smaller",
+    knowledgeImageTooBig: "Image must be 5MB or smaller",
+    knowledgeMaxImages: "You can upload up to 5 images",
     knowledgeCatAll: "All",
     knowledgeCatAudit: "Audit",
     knowledgeCatTech: "Technology",
@@ -2722,8 +2865,12 @@ export const translations = {
     monRptColBank: "Bank",
     monRptColSourceSol: "Source SOL",
     monRptColParticular: "Transaction narrative",
-    monRptEmptyState:
-      'Enter a CIF/FORACID list and date range, then click "Search".',
+    monRptEmptyState: "CIF (≥2) → dates → Search",
+    monRptEmptyHint1: "Add at least 2 CIF/FORACID",
+    monRptEmptyHint2: "Pick a date range, then Search",
+    monRptTabSummary: "Summary",
+    monRptTabAccounts: "Accounts",
+    monRptTabTransactions: "Transactions",
 
     // Risk Assessment - Argachlal
     raArgachlalNoHint: "No description has been written yet.",
@@ -2856,7 +3003,7 @@ export const translations = {
     raReportViewNoDataTitle: "No data available to generate a report",
     raReportViewNoDataSubtitle: "First fetch the assessment data from Oracle.",
     raReportViewWeightLabel: "Weight:",
-    raReportViewJudgementFilledLabel: "Judgement",
+    raReportViewJudgementFilledLabel: "S5-Judgement",
     raReportViewExpandTooltip: "View details",
     raReportViewResizeColSuffix: "resize column",
     raReportViewNoMatchInRegion: "No matching branches found in this region",
@@ -2942,10 +3089,57 @@ export const translations = {
     // knowledge page — leftover partial-adoption strings
     knowledgePageEmployeeFallback: "Employee",
     knowledgePageImageLabel: "Image",
-    knowledgePageImageUploadHint: "Upload image (up to 2MB)",
+    knowledgePageImageUploadHint: "Add images (multi-select, up to 5)",
     knowledgePageContentPlaceholder: "Knowledge content...",
     knowledgePageShareBtn: "Share",
     knowledgePageCommentsLabel: "Comments",
+
+    // Knowledge page — QUIZ section
+    knowledgeFeedTab: "Knowledge",
+    knowledgeQuizTab: "QUIZ",
+    quizCreateBtn: "Create quiz",
+    quizCreateDialogTitle: "Create a new QUIZ",
+    quizCreateDialogDesc:
+      "Enter a title, add one or more questions with options, then mark the correct answer for each.",
+    quizTitleLabel: "Title",
+    quizTitlePlaceholder: "Enter a title for your quiz...",
+    quizQuestionLabel: "Question",
+    quizQuestionPlaceholder: "Type your question...",
+    quizAddQuestionBtn: "Add question",
+    quizQuestionCountLabel: "questions",
+    quizOptionsLabel: "Options",
+    quizOptionPlaceholder: "Option",
+    quizAddOptionBtn: "Add option",
+    quizCorrectAnswerHint: "Use the radio button to mark the correct answer",
+    quizCreateSubmitBtn: "Post",
+    quizCreateError: "Failed to create the quiz.",
+    quizCreatedDesc: "Quiz added successfully.",
+    quizEmpty: "No quizzes yet",
+    quizEmptyHint: "You can create the first QUIZ",
+    quizAnsweredBadge: "Answered",
+    quizCorrectBadge: "Correct!",
+    quizWrongBadge: "Wrong",
+    quizSubmitAnswerBtn: "Answer",
+    quizSubmitQuizBtn: "Submit",
+    quizAnswering: "Submitting...",
+    quizAnswerError: "Failed to submit your answer.",
+    quizByLabel: "Asked by:",
+    quizParticipantsLabel: "participants",
+    quizCorrectCountLabel: "correct",
+    quizAvgScoreLabel: "avg score",
+    quizViewResultsBtn: "View results",
+    quizHideResultsBtn: "Hide results",
+    quizResultsTitle: "Results",
+    quizResultsEmpty: "No one has answered yet",
+    quizLeaderboardTitle: "Leaderboard",
+    quizLeaderboardEmpty: "No leaders yet",
+    quizRankCorrectLabel: "correct",
+    quizDeleteConfirm: "Are you sure you want to delete this quiz?",
+    quizDeletedDesc: "Quiz deleted.",
+    quizDeleteError: "Failed to delete the quiz.",
+    quizTimeSecLabel: "sec",
+    quizYourAnswerLabel: "Your answer",
+    quizCancelBtn: "Cancel",
 
     // data-doc code page — leftover partial-adoption strings
     dataDocCodePageUntitled: "Untitled",
@@ -2985,6 +3179,8 @@ export const translations = {
     abAlertsRuleTriggerHint: "How many CIFs each rule was triggered for",
     abAlertsCifListLabel: "CIF list",
     abAlertsViewOnSearchEngine: "View details on Search Engine →",
+    abAlertsRetryBtn: "Retry",
+    abAlertsLoadMoreBtn: "Load more",
 
     // risk-assessment work page — leftover partial-adoption strings
     raWorkPageMethodologyTooltip: "Evaluation methodology for each indicator",
@@ -3034,10 +3230,12 @@ export const translations = {
 
     // Hero (homepage) — ethics code carousel
     heroSimpleEthicsCodeLabel: "Auditor's code of ethics",
+    heroTeamGalleryLabel: "Our team",
 
     // Alert Box — search page
     abSearchCifRequired: "Please enter a CIF number",
     abSearchFailed: "Search failed",
+    abSearchEmptyHint: "Search by CIF to get results from every dashboard at once",
     abSearchCifLabel: "CIF number",
     abSearchCifPlaceholder: "Enter the employee's CIF ID...",
     abSearchResultLabel: "Search result:",

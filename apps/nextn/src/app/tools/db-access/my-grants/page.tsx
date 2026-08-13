@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -77,7 +76,6 @@ function daysLeft(dateStr: string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-/** Format DateTime as "YYYY.MM.DD HH:mm" (24h) */
 function fmt24(dateStr: string): string {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleString("mn-MN", {
@@ -108,12 +106,27 @@ export default function MyGrantsPage() {
     });
   };
 
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await dbAccessApi.getMyGrants();
+      setGrants(data);
+    } catch {
+      toast({
+        title: t("error"),
+        description: t("myGrantsLoadErrorDesc"),
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast, t]);
+
   const handleCancel = async (group: GrantGroup) => {
     const tblList = group.tables.join(", ");
     if (!confirm(`"${tblList}" ${t("myGrantsCancelConfirm")}`)) return;
     try {
       setCancelingId(group.requestId);
-      // Cancel every grant row belonging to this request
       await Promise.all(
         group.grantIds.map((id) => dbAccessApi.cancelMyGrant(id)),
       );
@@ -133,22 +146,6 @@ export default function MyGrantsPage() {
     }
   };
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await dbAccessApi.getMyGrants();
-      setGrants(data);
-    } catch {
-      toast({
-        title: t("error"),
-        description: t("myGrantsLoadErrorDesc"),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast, t]);
-
   useEffect(() => {
     load();
   }, [load]);
@@ -157,36 +154,44 @@ export default function MyGrantsPage() {
     <div className="min-h-screen bg-background">
       <ToolPageHeader
         href="/tools/db-access"
-        icon={
-          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md">
-            <CheckCircle2 className="w-3.5 h-3.5 text-foreground" />
-          </div>
-        }
-        title={t("toolDbRequestTitle")}
+        icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+        title={t("dbAccessMyGrants")}
         rightContent={
-          <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+          </button>
         }
       />
-      <div className="w-full space-y-6 p-4 md:px-6 md:py-6">
+
+      <div className="w-full px-4 md:px-6 py-6">
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : grants.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-            <Database className="h-12 w-12 opacity-20" />
-            <p className="font-medium">{t("myGrantsEmpty")}</p>
-            <p className="text-sm">{t("myGrantsEmptyHint")}</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground/50">
+            <Database className="h-8 w-8 opacity-40" />
+            <p className="text-sm text-muted-foreground">{t("myGrantsEmpty")}</p>
+            <p className="text-[11px]">{t("myGrantsEmptyHint")}</p>
             <Link href="/tools/db-access">
-              <Button variant="outline" size="sm" className="mt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 h-8 text-xs text-cyan-400 hover:text-cyan-300"
+              >
                 {t("myGrantsRequestBtn")}
               </Button>
             </Link>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="divide-y divide-border/40 border border-border/40 rounded-xl overflow-hidden max-w-3xl">
             {groupGrants(grants).map((grp) => {
               const days = daysLeft(grp.validUntil);
               const expiringSoon = days <= 3;
@@ -195,140 +200,108 @@ export default function MyGrantsPage() {
               return (
                 <div
                   key={grp.requestId}
-                  className={`rounded-xl border bg-card p-5 space-y-3 ${
-                    expired
-                      ? "border-red-500/30 opacity-60"
-                      : expiringSoon
-                        ? "border-amber-500/40"
-                        : ""
+                  className={`px-4 py-3.5 space-y-2.5 bg-card/30 ${
+                    expired ? "opacity-50" : ""
                   }`}
                 >
-                  {/* Header row */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0">
-                        <Database className="h-4 w-4 text-cyan-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          {t("myGrantsGrantedBy")} {grp.grantedByName}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap justify-end">
-                      <div className="flex gap-1.5 flex-wrap">
+                    <div className="min-w-0 space-y-1.5">
+                      <div className="flex flex-wrap gap-1">
+                        {grp.tables.map((tbl) => (
+                          <span
+                            key={tbl}
+                            className="text-[10px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
+                          >
+                            {tbl}
+                          </span>
+                        ))}
                         {grp.accessTypes.map((a) => (
-                          <Badge
+                          <span
                             key={a}
-                            className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
-                            variant="outline"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300"
                           >
                             {a}
-                          </Badge>
+                          </span>
                         ))}
                       </div>
-                      {!expired && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:bg-destructive/10 gap-1 h-7 px-2"
-                          disabled={cancelingId === grp.requestId}
-                          onClick={() => handleCancel(grp)}
-                          title={t("myGrantsCloseTitle")}
-                        >
-                          {cancelingId === grp.requestId ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <XCircle className="h-3.5 w-3.5" />
-                          )}
-                          <span className="text-xs">
-                            {t("myGrantsCloseBtn")}
-                          </span>
-                        </Button>
-                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        {t("myGrantsGrantedBy")} {grp.grantedByName}
+                      </p>
                     </div>
-                  </div>
-
-                  {/* Table list */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {grp.tables.map((t) => (
-                      <span
-                        key={t}
-                        className="inline-flex items-center gap-1 text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded-md"
+                    {!expired && (
+                      <button
+                        type="button"
+                        className="shrink-0 p-1.5 rounded-md text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        disabled={cancelingId === grp.requestId}
+                        onClick={() => handleCancel(grp)}
+                        title={t("myGrantsCloseTitle")}
                       >
-                        <Database className="h-3 w-3" />
-                        {t}
-                      </span>
-                    ))}
+                        {cancelingId === grp.requestId ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
-                  {/* Time info */}
                   <div
-                    className="flex flex-wrap gap-4 text-sm text-muted-foreground"
+                    className="flex flex-wrap gap-3 text-[11px] text-muted-foreground"
                     suppressHydrationWarning
                   >
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span suppressHydrationWarning>
-                        {expired ? (
-                          <span className="text-red-400">
-                            {t("myGrantsExpired")}
-                          </span>
-                        ) : expiringSoon ? (
-                          <span className="text-amber-400">
-                            {days} {t("myGrantsDaysLeft")}
-                          </span>
-                        ) : (
-                          `${days} ${t("myGrantsDaysLeft")}`
-                        )}
-                      </span>
-                    </div>
-                    <span suppressHydrationWarning>
-                      {t("myGrantsExpiresLabel")}{" "}
-                      <strong>{fmt24(grp.validUntil)}</strong>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {expired ? (
+                        <span className="text-red-400">
+                          {t("myGrantsExpired")}
+                        </span>
+                      ) : expiringSoon ? (
+                        <span className="text-amber-400">
+                          {days} {t("myGrantsDaysLeft")}
+                        </span>
+                      ) : (
+                        `${days} ${t("myGrantsDaysLeft")}`
+                      )}
                     </span>
                     <span suppressHydrationWarning>
-                      {t("myGrantsGrantedBy")} {fmt24(grp.grantedAt)}
+                      {t("myGrantsExpiresLabel")} {fmt24(grp.validUntil)}
                     </span>
                   </div>
 
-                  {/* ClickHouse credentials */}
                   {grp.chPassword && (
-                    <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 space-y-2">
-                      <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                    <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2 space-y-1.5">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                         {t("myGrantsChCreds")}
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-20 shrink-0">
+                        <span className="text-[10px] text-muted-foreground w-16 shrink-0">
                           {t("myGrantsChUser")}
                         </span>
-                        <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1">
+                        <code className="text-[11px] font-mono bg-muted/60 px-2 py-0.5 rounded flex-1 truncate">
                           {grp.userUserId}
                         </code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
+                        <button
+                          type="button"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground"
                           onClick={() =>
                             copyText(grp.userUserId, t("myGrantsCopyUser"))
                           }
                         >
                           <Copy className="h-3 w-3" />
-                        </Button>
+                        </button>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-20 shrink-0">
+                        <span className="text-[10px] text-muted-foreground w-16 shrink-0">
                           {t("myGrantsChPassword")}
                         </span>
-                        <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded flex-1 tracking-widest">
+                        <code className="text-[11px] font-mono bg-muted/60 px-2 py-0.5 rounded flex-1 tracking-widest truncate">
                           {showPwd[grp.requestId]
                             ? grp.chPassword
                             : "••••••••••••••••"}
                         </code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
+                        <button
+                          type="button"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground"
                           onClick={() =>
                             setShowPwd((p) => ({
                               ...p,
@@ -341,17 +314,16 @@ export default function MyGrantsPage() {
                           ) : (
                             <Eye className="h-3 w-3" />
                           )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground"
                           onClick={() =>
                             copyText(grp.chPassword, t("myGrantsCopyPwd"))
                           }
                         >
                           <Copy className="h-3 w-3" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}

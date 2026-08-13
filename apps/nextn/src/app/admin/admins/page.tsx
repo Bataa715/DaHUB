@@ -70,6 +70,11 @@ const ALL_TOOLS: { id: string; name: string; nameKey?: TranslationKey }[] = [
     name: "Салбарын эрсдэлийн үнэлгээ",
     nameKey: "toolRiskAssessmentTitle",
   },
+  {
+    id: "risk_assessment_report",
+    name: "Эрсдэлийн үнэлгээ — Тайлан",
+    nameKey: "toolRiskAssessmentReportTitle",
+  },
 ];
 
 interface AdminUser {

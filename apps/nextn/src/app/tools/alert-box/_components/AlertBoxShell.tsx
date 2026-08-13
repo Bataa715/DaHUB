@@ -23,10 +23,10 @@ export default function AlertBoxShell({
         }
         title={t("toolAlertBoxTitle")}
       />
-      <div className="flex flex-1 min-h-0">
-        <ABSidebar />
-        <main className="flex-1 min-w-0 overflow-y-auto py-6">{children}</main>
-      </div>
+      <ABSidebar />
+      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto py-6">
+        {children}
+      </main>
     </div>
   );
 }

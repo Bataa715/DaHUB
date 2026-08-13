@@ -71,8 +71,22 @@ export type OracleRowLike = {
   SUBID?: OracleValue;
   RESULT?: OracleValue;
   RESULT_TYPE?: OracleValue;
+  /** Riskbranch description — UI Result баганад харуулах текст */
+  DESCRIPTION_TEXT?: OracleValue;
   sourceFetchedDate?: string;
 };
+
+/** RESULT тооноос илүүтэй DESCRIPTION_TEXT-ийг UI-д харуулна */
+export function oracleDisplayRaw(row: {
+  RESULT?: OracleValue;
+  DESCRIPTION_TEXT?: OracleValue;
+} | null | undefined): string {
+  if (!row) return "";
+  const desc =
+    row.DESCRIPTION_TEXT == null ? "" : String(row.DESCRIPTION_TEXT).trim();
+  if (desc) return desc;
+  return row.RESULT == null ? "" : String(row.RESULT);
+}
 
 export function parseScoreScale(scaleJson: string): DynamicScoreScale {
   try {
@@ -362,6 +376,7 @@ export function evaluateMultiSubidScale(
     {
       RESULT?: OracleValue;
       RESULT_TYPE?: OracleValue;
+      DESCRIPTION_TEXT?: OracleValue;
       sourceFetchedDate?: string;
     }
   >,
@@ -378,7 +393,7 @@ export function evaluateMultiSubidScale(
   for (const src of sources) {
     const sid = src.subid.trim();
     const row = rowsBySubid.get(sid);
-    const raw = row?.RESULT == null ? "" : String(row.RESULT);
+    const raw = oracleDisplayRaw(row);
     const { score, label } = row
       ? computeScoreFromScale(sourceToScale(src), row.RESULT, row.RESULT_TYPE)
       : resolveEmptyNullScore(src);
@@ -432,6 +447,7 @@ export function buildRowsBySubid(
   {
     RESULT?: OracleValue;
     RESULT_TYPE?: OracleValue;
+    DESCRIPTION_TEXT?: OracleValue;
     sourceFetchedDate?: string;
   }
 > {
@@ -440,6 +456,7 @@ export function buildRowsBySubid(
     {
       RESULT?: OracleValue;
       RESULT_TYPE?: OracleValue;
+      DESCRIPTION_TEXT?: OracleValue;
       sourceFetchedDate?: string;
     }
   >();
@@ -449,6 +466,7 @@ export function buildRowsBySubid(
     map.set(sid, {
       RESULT: r.RESULT,
       RESULT_TYPE: r.RESULT_TYPE,
+      DESCRIPTION_TEXT: r.DESCRIPTION_TEXT,
       sourceFetchedDate: r.sourceFetchedDate
         ? String(r.sourceFetchedDate).slice(0, 10)
         : undefined,

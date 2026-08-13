@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 import type { SamplingResult } from "./sampling";
 
 /** Client/server дээр ашиглах Excel workbook — /api/export-sample-гүйгээр deploy-д 403-аас зайлсхийх. */
@@ -6,7 +6,9 @@ export async function buildSampleWorkbook(
   result: SamplingResult,
   isStratified: boolean,
 ): Promise<Blob> {
-  const wb = new ExcelJS.Workbook();
+  // [PERF] lazy-load exceljs — keep it out of this route's initial JS.
+  const { default: ExcelJSRuntime } = await import("exceljs");
+  const wb = new ExcelJSRuntime.Workbook();
   wb.creator = "Internal Audit Tool";
   wb.created = new Date();
 

@@ -42,21 +42,29 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     );
 
     try {
-      // Temporarily assign so exec() / query() work inside initializeSchema()
-      this.client = createClient({
+      const clientOpts = {
         url: host,
         username: adminUser,
         password: adminPass,
-        database,
         request_timeout: 30000,
         compression: { request: true, response: true },
-      });
+      } as const;
+
+      // Connect without a database first — a fresh server has no audit_db yet.
+      this.client = createClient(clientOpts);
 
       const result = await this.client.query({
         query: "SELECT version() as version",
       });
       const data = (await result.json()) as { data: { version: string }[] };
       this.logger.log(`ClickHouse version: ${data.data[0].version}`);
+
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(database)) {
+        throw new Error(`Invalid CLICKHOUSE_DATABASE: ${database}`);
+      }
+      await this.exec(`CREATE DATABASE IF NOT EXISTS ${database}`);
+      await this.client.close();
+      this.client = createClient({ ...clientOpts, database });
 
       // Initialize schema AND provision audit_app / audit_acl (needs admin rights)
       await this.initializeSchema();
@@ -277,6 +285,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           isActive UInt8 DEFAULT 1,
           allowedTools String,
           grantableTools String DEFAULT '[]',
+          isLocked UInt8 DEFAULT 0,
+          failedLoginCount UInt16 DEFAULT 0,
           lastLoginAt Nullable(DateTime),
           createdAt DateTime DEFAULT now(),
           updatedAt DateTime DEFAULT now()
@@ -317,6 +327,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           category String DEFAULT 'Ерөнхий',
           imageUrl String,
           imageMime String DEFAULT '',
+          imagesJson String DEFAULT '[]',
           authorId String,
           isPublished UInt8 DEFAULT 1,
           views UInt32 DEFAULT 0,
@@ -358,6 +369,58 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           viewedAt DateTime DEFAULT now()
         ) ENGINE = ReplacingMergeTree(viewedAt)
         ORDER BY (newsId, userId)
+      `);
+
+      // Create medleg_quizzes table — Мэдлэг мэдээлэл хуудасны QUIZ хэсэг:
+      // quiz-ийн ерөнхий мэдээлэл (гарчиг/сэдэв). Асуулт бүр тус тусдаа
+      // medleg_quiz_questions хүснэгтэд хадгалагдана (нэг quiz-д олон асуулт
+      // байж болно). [MIGRATION] Хуучин "options"/"correctIndex" багана
+      // deployed DB-д үлдэж болзошгүй ч кодоор ашиглагдахгүй.
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS medleg_quizzes (
+          id String,
+          title String,
+          authorId String,
+          isActive UInt8 DEFAULT 1,
+          createdAt DateTime DEFAULT now()
+        ) ENGINE = MergeTree()
+        ORDER BY createdAt
+      `);
+
+      // Create medleg_quiz_questions table — нэг quiz дотор дараалалтай
+      // (seq) олон асуулт байж болно. options нь JSON массив string.
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS medleg_quiz_questions (
+          id String,
+          quizId String,
+          seq UInt16,
+          question String,
+          options String,
+          correctIndex UInt8,
+          createdAt DateTime DEFAULT now()
+        ) ENGINE = MergeTree()
+        ORDER BY (quizId, seq)
+      `);
+
+      // Create medleg_quiz_answers table — хэрэглэгч тус бүр quiz-д (бүх
+      // асуултаараа) нэг л удаа бүхэлд нь хариулна (app-level шалгалт).
+      // correctCount/totalQuestions = тухайн оролдлогын нийт оноо,
+      // answersJson = асуулт тус бүрийн сонголт (дэлгэрэнгүй харах/шалгахад).
+      // timeTakenMs = quiz эхлүүлснээс дуусгах хүртэлх хугацаа (клиент тал
+      // хэмждэг, сая секундийн нарийвчлал шаардлагагүй тул хангалттай).
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS medleg_quiz_answers (
+          id String,
+          quizId String,
+          userId String,
+          userName String,
+          correctCount UInt16,
+          totalQuestions UInt16,
+          timeTakenMs UInt32,
+          answersJson String DEFAULT '[]',
+          answeredAt DateTime DEFAULT now()
+        ) ENGINE = MergeTree()
+        ORDER BY (quizId, userId)
       `);
 
       // Create registration_requests table — public self-registration now only
@@ -472,8 +535,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           status String DEFAULT 'draft',
           plannedTasksJson String DEFAULT '[]',
           dynamicSectionsJson String DEFAULT '[]',
-          otherWork String DEFAULT '',
-          teamActivitiesJson String DEFAULT '[]',
           extraDataJson String DEFAULT '{}',
           submittedAt DateTime DEFAULT '1970-01-01 00:00:00',
           createdAt DateTime DEFAULT now(),
@@ -506,6 +567,22 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY (departmentId, year, quarter)
       `);
 
+      // Homepage ethics carousel (Аудиторын ёс зүйн код)
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS homepage_ethics_slides (
+          id          String,
+          title       String,
+          body        String,
+          sort_order  UInt32,
+          is_active   UInt8,
+          updated_by  String,
+          seq         UInt64,
+          updated_at  DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(seq)
+        ORDER BY id
+        SETTINGS index_granularity = 8192
+      `);
+
       // Migration: add `code` column to departments (хэрэглэгчийн ID-н prefix).
       // ALTER ... ADD COLUMN IF NOT EXISTS нь хуучин table-д шинэ багана нэмнэ.
       await this.exec(
@@ -518,11 +595,38 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS grantableTools String DEFAULT '[]'`,
       ).catch(() => {});
 
+      // 1c) users.isLocked / failedLoginCount — persistent brute-force lockout
+      // (5 wrong passwords → locked until an admin unlocks; separate from the
+      // existing 15-min auto-expiring IP-scoped lockout in auth.service.ts).
+      await this.exec(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS isLocked UInt8 DEFAULT 0`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS failedLoginCount UInt16 DEFAULT 0`,
+      ).catch(() => {});
+
       // 1b) tailan_reports.sectionsDataJson — template-driven generic section
       // storage (Tailan dynamic template refactor). Old per-field JSON columns
       // above are kept read-only for backward compat with pre-refactor rows.
       await this.exec(
         `ALTER TABLE tailan_reports ADD COLUMN IF NOT EXISTS sectionsDataJson String DEFAULT ''`,
+      ).catch(() => {});
+
+      // 1e) medleg_quiz_answers — quiz-ийг нэг асуулттай → олон асуулттай
+      // болгож өөрчилсний дараа шинээр хэрэгтэй багана (хуучин
+      // selectedIndex/isCorrect багана deployed DB-д үлдэж болзошгүй ч
+      // кодоор ашиглагдахгүй).
+      await this.exec(
+        `ALTER TABLE medleg_quiz_answers ADD COLUMN IF NOT EXISTS correctCount UInt16 DEFAULT 0`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE medleg_quiz_answers ADD COLUMN IF NOT EXISTS totalQuestions UInt16 DEFAULT 0`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE medleg_quiz_answers ADD COLUMN IF NOT EXISTS answersJson String DEFAULT '[]'`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE medleg ADD COLUMN IF NOT EXISTS imagesJson String DEFAULT '[]'`,
       ).catch(() => {});
 
       // [SAFETY] DROP TABLE/DROP COLUMN migration-уудыг эндээс хассан — app boot
@@ -553,6 +657,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       const codecColumns: [string, string, string][] = [
         ["users", "profileImage", "String"],
         ["medleg", "imageUrl", "String"],
+        ["medleg", "imagesJson", "String DEFAULT '[]'"],
         ["medleg", "content", "String"],
         ["tailan_images", "imageData", "String DEFAULT ''"],
         ["tailan_reports", "plannedTasksJson", "String DEFAULT '[]'"],
@@ -569,14 +674,41 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ).catch(() => {});
       }
 
+      // 5) [PERF] Point-lookup query-д зориулсан нэмэлт PROJECTION-ууд (үндсэн
+      // ORDER BY хэвээрээ). [SAFETY] ReplacingMergeTree+FINAL table-д (access_
+      // requests/grants, tailan_reports) зориудаар алгассан — PROJECTION+FINAL
+      // хослол зарим ClickHouse хувилбарт эрсдэлтэй. Бүгд idempotent, алдаа
+      // гарвал (хуучин хувилбар projection дэмжихгүй гэх мэт) чимээгүй өнгөрнө.
+      const projections: [string, string, string][] = [
+        ["medleg", "proj_by_id", "SELECT * ORDER BY id"],
+        ["medleg_quizzes", "proj_by_id", "SELECT * ORDER BY id"],
+        ["audit_logs", "proj_by_user", "SELECT * ORDER BY userId, createdAt"],
+      ];
+      for (const [table, name, selectClause] of projections) {
+        await this.exec(
+          `ALTER TABLE ${table} ADD PROJECTION IF NOT EXISTS ${name} (${selectClause})`,
+          undefined,
+          1,
+          true,
+        ).catch(() => {});
+        // No mutations_sync — runs async so it can't block startup on a large table.
+        await this.exec(
+          `ALTER TABLE ${table} MATERIALIZE PROJECTION ${name}`,
+          undefined,
+          1,
+          true,
+        ).catch(() => {});
+      }
+
       // Хуучин мэдэгдэж буй хэлтсүүдийн кодыг нэг удаа seed хийнэ (code хоосон бол).
       // ALTER UPDATE биш — DELETE + INSERT (audit_app UPDATE эрхгүй байж болно).
       const DEFAULT_DEPT_CODES: Record<string, string> = {
         Удирдлага: "DAG",
         "Дата анализын алба": "DAA",
-        "Ерөнхий аудитын хэлтэс": "EAH",
-        "Зайны аудит чанарын баталгаажуулалтын хэлтэс": "ZACHBH",
+        "Бизнесийн аудитын хэлтэс": "BAH",
+        "Эрсдэл, комплаенс, санхүүгийн аудитын хэлтэс": "EKSAH",
         "Мэдээллийн технологийн аудитын хэлтэс": "MTAH",
+        "Чанарын баталгаажуулалтын алба": "CHBA",
       };
       for (const [deptName, deptCode] of Object.entries(DEFAULT_DEPT_CODES)) {
         const rows = await this.query<Record<string, unknown>>(

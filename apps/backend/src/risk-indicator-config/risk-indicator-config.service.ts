@@ -57,20 +57,7 @@ export class RiskIndicatorConfigService implements OnModuleInit {
       SETTINGS index_granularity = 8192
     `);
 
-    await this.clickhouse.exec(`
-      CREATE TABLE IF NOT EXISTS risk_group_config (
-        region      String,
-        group_num   UInt8,
-        weight      Float64,
-        label       String,
-        seq         UInt64,
-        updated_at  DateTime DEFAULT now()
-      ) ENGINE = ReplacingMergeTree(seq)
-      ORDER BY (region, group_num)
-      SETTINGS index_granularity = 8192
-    `);
-
-    this.logger.log("risk_indicator_config and risk_group_config tables ready");
+    this.logger.log("risk_indicator_config table ready");
   }
 
   // ── Indicators ─────────────────────────────────────────────────────────────

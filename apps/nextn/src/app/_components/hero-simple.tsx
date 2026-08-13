@@ -7,50 +7,75 @@ import { useState, useEffect } from "react";
 import { homepageEthicsApi, type EthicsSlide } from "@/lib/api";
 import { GolomtWatermark } from "@/components/GolomtWatermark";
 import { GolomtLogoMark } from "@/components/GolomtLogoMark";
+import { TEAM_GALLERY_SLIDES } from "./team-gallery";
 
-function HeroProfilePortrait({
-  name,
-  profileImage,
+const CAROUSEL_MS = 5000;
+
+/** Landscape хамт олны зураг — эцэгээс ирсэн sync index */
+function TeamGalleryCarousel({
+  idx,
+  direction,
 }: {
-  name?: string;
-  profileImage?: string;
+  idx: number;
+  direction: number;
 }) {
-  const initial = (name || "?")[0]?.toUpperCase() ?? "?";
+  const slides = TEAM_GALLERY_SLIDES;
+  if (slides.length === 0) return null;
+
+  const active = slides[idx % slides.length] ?? slides[0];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, rotateX: 10 }}
-      animate={{ opacity: 1, y: 0, rotateX: 0 }}
-      transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.15 }}
-      className="relative w-[15rem] h-[20rem] sm:w-[16.5rem] sm:h-[22rem] [perspective:900px]"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 200, damping: 22, delay: 0.12 }}
+      className="relative w-full max-w-[22rem] sm:max-w-[26rem]"
     >
-      <div className="hero-profile-glow absolute -inset-3 rounded-[1.4rem] blur-lg opacity-80" />
+      <div className="hero-profile-glow absolute -inset-2 rounded-2xl blur-md opacity-70" />
 
-      <div className="hero-profile-frame relative h-full w-full rounded-[1.2rem] p-[2px]">
-        <div className="hero-profile-surface relative h-full w-full overflow-hidden rounded-[1.05rem]">
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1/4 bg-gradient-to-b from-white/15 to-transparent dark:from-white/5" />
-          <div className="pointer-events-none absolute inset-x-4 bottom-2 z-10 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/15" />
+      <div className="hero-profile-frame relative rounded-xl p-[2px]">
+        <div className="hero-profile-surface relative aspect-[16/9] w-full overflow-hidden rounded-[0.7rem]">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={active.id}
+              custom={direction}
+              initial={{ x: direction * 36, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: direction * -36, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="absolute inset-0"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={active.src}
+                alt={active.alt}
+                className="h-full w-full object-cover object-center"
+                decoding="async"
+                draggable={false}
+              />
+            </motion.div>
+          </AnimatePresence>
 
-          {profileImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={profileImage}
-              alt={name || "Profile"}
-              className="h-full w-full object-cover object-center [image-rendering:auto]"
-              decoding="async"
-              draggable={false}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted">
-              <span className="text-6xl font-black text-muted-foreground/30 select-none">
-                {initial}
-              </span>
-            </div>
-          )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/35 to-transparent" />
         </div>
       </div>
 
-      <div className="hero-profile-shadow absolute -bottom-3 left-1/2 h-4 w-[78%] -translate-x-1/2 rounded-full blur-lg" />
+      {slides.length > 1 && (
+        <div className="mt-2.5 flex items-center justify-center gap-1.5 pointer-events-none">
+          {slides.map((s, i) => (
+            <span
+              key={s.id}
+              className={`h-1 rounded-full transition-all ${
+                i === idx % slides.length
+                  ? "w-4 bg-foreground/70"
+                  : "w-1.5 bg-foreground/25"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="hero-profile-shadow absolute -bottom-2 left-1/2 h-3 w-[70%] -translate-x-1/2 rounded-full blur-md" />
     </motion.div>
   );
 }
@@ -69,12 +94,10 @@ export default function Hero() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
 
-  // Зөвхөн admin-аас бодитоор удирдагддаг өгөгдлийг харуулна — frontend дээр
-  // hardcode хийсэн fallback текст ашиглахгүй (admin панелаас юу ч харагдахгүй
-  // байхад нүүр хуудсанд "боловч текст бий" гэсэн худал сэтгэгдэл өгдөг байсан).
   const [slides, setSlides] = useState<EthicsSlide[]>([]);
   const [slidesLoading, setSlidesLoading] = useState(true);
-  const [carouselIdx, setCarouselIdx] = useState(0);
+  // Нэг tick — ethics + зураг нэг зэрэг солигдоно
+  const [tick, setTick] = useState(0);
   const [direction, setDirection] = useState(1);
 
   useEffect(() => {
@@ -84,7 +107,7 @@ export default function Hero() {
       .then((data) => {
         if (cancelled) return;
         setSlides(Array.isArray(data) ? data : []);
-        setCarouselIdx(0);
+        setTick(0);
       })
       .catch(() => {
         if (!cancelled) setSlides([]);
@@ -97,15 +120,17 @@ export default function Hero() {
     };
   }, []);
 
-  // Auto-advance carousel
+  const photoCount = TEAM_GALLERY_SLIDES.length;
+  const canAdvance = slides.length > 1 || photoCount > 1;
+
   useEffect(() => {
-    if (slides.length === 0) return;
+    if (!canAdvance) return;
     const id = setInterval(() => {
       setDirection(1);
-      setCarouselIdx((i) => (i + 1) % slides.length);
-    }, 5000);
+      setTick((n) => n + 1);
+    }, CAROUSEL_MS);
     return () => clearInterval(id);
-  }, [slides.length]);
+  }, [canAdvance]);
 
   if (loading) {
     return (
@@ -115,11 +140,12 @@ export default function Hero() {
     );
   }
 
-  const active = slides[carouselIdx] ?? slides[0];
+  const ethicsIdx = slides.length > 0 ? tick % slides.length : 0;
+  const photoIdx = photoCount > 0 ? tick % photoCount : 0;
+  const active = slides[ethicsIdx];
 
   return (
     <div className="relative flex-1 flex flex-col justify-center overflow-hidden select-none">
-      {/* ── Зөөлөн арын градиент ── */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden
@@ -142,11 +168,6 @@ export default function Hero() {
         }}
       />
 
-      {/* ── Голомт Банкны жинхэнэ лого (буга хээ + G тэмдэг + ГОЛОМТ БАНК +
-          уриа) — эх зургаас гаргасан mask тул фонт биш, 100% жинхэнэ лого.
-          Хуудасны голд туйлын бага (4–6%) opacity-тай ус тэмдэг болгон
-          ашиглав. pointer-events-none, контентын ард (z-index-гүй, дараагийн
-          "Гол агуулга" блок нь өөрөө relative z-10). ── */}
       <div
         className="absolute inset-0 flex items-start justify-center overflow-hidden pointer-events-none px-8 pt-4 sm:pt-6"
         aria-hidden
@@ -154,7 +175,6 @@ export default function Hero() {
         <GolomtLogoMark className="w-full max-w-xl sm:max-w-2xl -translate-x-8 sm:-translate-x-12 text-foreground/[0.045] dark:text-foreground/[0.06]" />
       </div>
 
-      {/* ── Голомтын "G" тэмдэг — жижиг, тод chimeглэл болгон буланд ── */}
       <div
         className="absolute bottom-4 right-4 sm:bottom-6 sm:right-8 pointer-events-none"
         aria-hidden
@@ -162,7 +182,6 @@ export default function Hero() {
         <GolomtWatermark className="w-14 h-14 sm:w-20 sm:h-20 text-foreground/[0.1] dark:text-foreground/[0.12]" />
       </div>
 
-      {/* ── Арын цэгүүдийн animation (маш зөөлөн) ── */}
       <div
         className="absolute inset-0 pointer-events-none overflow-hidden"
         aria-hidden
@@ -188,74 +207,73 @@ export default function Hero() {
         ))}
       </div>
 
-      {/* ── Гол агуулга ── */}
-      <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-8 py-12 grid lg:grid-cols-[1fr_auto] gap-12 items-center">
-        <div className="space-y-8">
+      <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(16rem,26rem)] gap-8 lg:gap-10 items-center">
+        <div className="space-y-5 min-w-0">
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-foreground leading-[1.05]">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground leading-[1.08]">
               {user?.name || t("admReportsColUser")}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground font-medium">
+            <p className="mt-1.5 text-sm text-muted-foreground font-medium">
               {user?.position && <span>{user.position} · </span>}
               {user?.department || t("internalAuditDept")}
             </p>
           </motion.div>
 
           {slidesLoading ? (
-            <div className="relative max-w-xl animate-pulse">
-              <div className="h-2.5 w-32 rounded bg-muted-foreground/15 mb-3" />
-              <div className="rounded-2xl border border-border bg-card/70 p-5 min-h-[110px] shadow-premium ring-hairline space-y-2">
-                <div className="h-3 w-3/4 rounded bg-muted-foreground/15" />
-                <div className="h-3 w-full rounded bg-muted-foreground/10" />
-                <div className="h-3 w-2/3 rounded bg-muted-foreground/10" />
+            <div className="relative max-w-md animate-pulse">
+              <div className="h-2 w-28 rounded bg-muted-foreground/15 mb-2" />
+              <div className="rounded-xl border border-border bg-card/70 p-3 min-h-[64px] shadow-premium ring-hairline space-y-1.5">
+                <div className="h-2.5 w-3/4 rounded bg-muted-foreground/15" />
+                <div className="h-2.5 w-full rounded bg-muted-foreground/10" />
               </div>
             </div>
           ) : (
             active && (
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55, duration: 0.6 }}
-                className="relative max-w-xl"
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="relative max-w-md"
               >
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
-                {t("heroSimpleEthicsCodeLabel")}
-              </p>
-              <div className="relative overflow-hidden rounded-2xl border border-border bg-card/70 backdrop-blur-sm p-5 min-h-[110px] shadow-premium ring-hairline">
-                <AnimatePresence mode="wait" custom={direction}>
-                  <motion.div
-                    key={active.id}
-                    custom={direction}
-                    initial={{ x: direction * 40, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: direction * -40, opacity: 0 }}
-                    transition={{ duration: 0.35, ease: "easeInOut" }}
-                    className="absolute inset-5"
-                  >
-                    <p className="text-sm text-foreground/85 leading-relaxed font-medium">
-                      <span className="font-black text-foreground">
-                        {active.title}
-                      </span>
-                      {" – "}
-                      {active.body}
-                    </p>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </motion.div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/55 mb-1.5">
+                  {t("heroSimpleEthicsCodeLabel")}
+                </p>
+                <div className="relative overflow-hidden rounded-xl border border-border bg-card/70 backdrop-blur-sm px-3.5 py-3 min-h-[64px] max-h-[88px] shadow-premium ring-hairline">
+                  <AnimatePresence mode="wait" custom={direction}>
+                    <motion.div
+                      key={active.id}
+                      custom={direction}
+                      initial={{ x: direction * 28, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: direction * -28, opacity: 0 }}
+                      transition={{ duration: 0.35, ease: "easeInOut" }}
+                      className="absolute inset-x-3.5 inset-y-3"
+                    >
+                      <p className="text-[12px] text-foreground/80 leading-snug font-medium line-clamp-3">
+                        <span className="font-bold text-foreground">
+                          {active.title}
+                        </span>
+                        {" – "}
+                        {active.body}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </motion.div>
             )
           )}
+
+          <div className="lg:hidden pt-1">
+            <TeamGalleryCarousel idx={photoIdx} direction={direction} />
+          </div>
         </div>
 
-        <div className="hidden lg:flex flex-col items-center gap-4">
-          <HeroProfilePortrait
-            name={user?.name}
-            profileImage={user?.profileImage}
-          />
+        <div className="hidden lg:flex flex-col items-stretch justify-center">
+          <TeamGalleryCarousel idx={photoIdx} direction={direction} />
         </div>
       </div>
     </div>

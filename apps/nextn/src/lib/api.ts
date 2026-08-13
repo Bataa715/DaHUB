@@ -6,9 +6,15 @@ if (!API_URL) {
   throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
 }
 
+// [PERF] fails fast instead of hanging forever; slow endpoints (docx/report
+// generation, heavy DB scans) override with TIMEOUT_LONG per-call.
+const TIMEOUT_DEFAULT = 60_000; // 60s
+const TIMEOUT_LONG = 180_000; // 3min
+
 // [N-2] withCredentials: true so the browser sends HttpOnly token cookies with every request
 const api = axios.create({
   baseURL: API_URL,
+  timeout: TIMEOUT_DEFAULT,
   headers: {
     "Content-Type": "application/json",
   },
@@ -20,7 +26,29 @@ const api = axios.create({
 
 // Shared in-flight refresh promise — prevents concurrent 401s from each
 // triggering their own /auth/refresh call.
-let _refreshPromise: Promise<unknown> | null = null;
+let _refreshPromise: Promise<{ data?: { user?: unknown } }> | null = null;
+
+/**
+ * Бүх апп даяар ЯГ НЭГ /auth/refresh хүсэлт зэрэг явахыг баталгаажуулна.
+ *
+ * ⚠️ Refresh token нь single-use — сервер ашиглагдсан токеныг устгаад шинээр
+ * олгодог (rotation). Хэрэв AuthContext-ийн mount refresh болон axios
+ * interceptor-ийн 401 refresh хоёр НЭГ ижил refresh cookie-гоор зэрэг явбал
+ * нэг нь токеныг устгаж, нөгөө нь "Invalid or expired refresh token" 401 авч
+ * session-expired → login руу шидэгддэг байсан. Энэ бол "token дахин дахин
+ * дуудагдаад web гацдаг" гэсэн шинжийн үндсэн шалтгаан. Нэг in-flight promise-ийг
+ * хуваалцаснаар тэр race бүрэн арилна.
+ */
+export function refreshSession(): Promise<{ data?: { user?: unknown } }> {
+  if (!_refreshPromise) {
+    _refreshPromise = axios
+      .post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
+      .finally(() => {
+        _refreshPromise = null;
+      });
+  }
+  return _refreshPromise;
+}
 
 /**
  * Axios болон ерөнхий алдааны мессежийг аюулгүй гаргаж авна.
@@ -57,18 +85,10 @@ api.interceptors.response.use(
         originalRequest._retry = true;
 
         try {
-          // Reuse an in-flight refresh so concurrent 401s share one network call
-          if (!_refreshPromise) {
-            _refreshPromise = axios
-              .post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
-              .finally(() => {
-                _refreshPromise = null;
-              });
-          }
+          // Reuse the app-wide single-flight refresh so concurrent 401s AND the
+          // AuthContext mount refresh all share ONE network call (rotation-safe).
           // [N-2] No body needed — browser sends HttpOnly refreshToken cookie automatically
-          const refreshRes = (await _refreshPromise) as {
-            data?: { user?: unknown };
-          };
+          const refreshRes = await refreshSession();
           // Update the user display cookie from the refresh response
           const freshUser = refreshRes.data?.user;
           if (freshUser) {
@@ -216,6 +236,11 @@ export const usersApi = {
     return response.data;
   },
 
+  unlock: async (id: string) => {
+    const response = await api.patch(`/users/${id}/unlock`);
+    return response.data;
+  },
+
   updateTools: async (id: string, allowedTools: string[]) => {
     const response = await api.patch(`/users/${id}/tools`, { allowedTools });
     return response.data;
@@ -255,16 +280,6 @@ export const usersApi = {
 
 // Departments APIs
 export const departmentsApi = {
-  create: async (data: {
-    name: string;
-    description?: string;
-    manager?: string;
-    code?: string;
-  }) => {
-    const response = await api.post("/departments", data);
-    return response.data;
-  },
-
   getAll: async () => {
     const response = await api.get("/departments");
     return response.data;
@@ -305,6 +320,7 @@ export const tailanApi = {
   previewWord: async (data: TailanReportPayload): Promise<Blob> => {
     const response = await api.post("/tailan/preview", data, {
       responseType: "blob",
+      timeout: TIMEOUT_LONG,
     });
     return response.data as Blob;
   },
@@ -365,6 +381,7 @@ export const tailanApi = {
   }): Promise<Blob> => {
     const response = await api.post("/tailan/dept/generate-word", data, {
       responseType: "blob",
+      timeout: TIMEOUT_LONG,
     });
     return response.data as Blob;
   },
@@ -560,6 +577,7 @@ export const pythonToolApi = {
       { toolId, startDate, endDate, filters },
       {
         responseType: "blob",
+        timeout: TIMEOUT_LONG,
         signal,
         onDownloadProgress: (e) => {
           if (!onProgress) return;
@@ -590,7 +608,7 @@ export const pythonToolApi = {
         endDate,
         filters,
       },
-      { signal },
+      { signal, timeout: TIMEOUT_LONG },
     );
     return res.data as {
       columns: string[];
@@ -1029,7 +1047,10 @@ export interface EthicsSlide {
 export const homepageEthicsApi = {
   list: async (): Promise<EthicsSlide[]> => {
     const res = await api.get("/homepage-ethics");
-    return res.data;
+    const raw = res.data;
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    return [];
   },
 
   create: async (dto: {
@@ -1124,7 +1145,9 @@ export const monitoringApi = {
   findRelatedPartyTransactions: async (
     req: RelatedPartyRequest,
   ): Promise<RelatedPartyResult> => {
-    const res = await api.post("/monitoring/related-party-transactions", req);
+    const res = await api.post("/monitoring/related-party-transactions", req, {
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 };
@@ -1343,31 +1366,100 @@ export const knowledgeApi = {
   },
 
   /**
-   * Backend path (`/medleg/:id/image`) → id.
-   * Deploy дээр Next proxy (hairpin) бүтэлгүйтдэг тул browser-ээс шууд
-   * axios + cookie-р татаж blob URL үүсгэнэ (бусад API-тай ижил зам).
+   * Backend path → { id, index }.
+   * `/medleg/:id/image` → index 0
+   * `/medleg/:id/images/2` → index 2
    */
-  parseImageId: (path?: string): string | null => {
+  parseImageRef: (
+    path?: string,
+  ): { id: string; index: number } | null => {
     if (!path) return null;
-    const m = path.match(/\/(?:medleg|knowledge)\/([^/]+)\/image/);
-    return m?.[1] ?? null;
+    const multi = path.match(
+      /\/(?:medleg|knowledge)\/([^/]+)\/images\/(\d+)/,
+    );
+    if (multi) return { id: multi[1], index: Number(multi[2]) };
+    const single = path.match(/\/(?:medleg|knowledge)\/([^/]+)\/image$/);
+    if (single) return { id: single[1], index: 0 };
+    return null;
+  },
+
+  parseImageId: (path?: string): string | null => {
+    return knowledgeApi.parseImageRef(path)?.id ?? null;
   },
 
   /** Auth cookie-тэй backend-ээс зураг татаж object URL буцаана */
   fetchImageObjectUrl: async (path?: string): Promise<string | null> => {
-    const id = knowledgeApi.parseImageId(path);
-    if (!id) return null;
-    const r = await api.get(`${KNOWLEDGE_BACKEND}/${id}/image`, {
-      responseType: "blob",
-    });
+    const ref = knowledgeApi.parseImageRef(path);
+    if (!ref) return null;
+    const url =
+      ref.index === 0
+        ? `${KNOWLEDGE_BACKEND}/${ref.id}/image`
+        : `${KNOWLEDGE_BACKEND}/${ref.id}/images/${ref.index}`;
+    const r = await api.get(url, { responseType: "blob" });
     return URL.createObjectURL(r.data as Blob);
   },
+};
 
-  /** @deprecated Prefer KnowledgeCoverImage + fetchImageObjectUrl (deploy-safe) */
-  resolveImageUrl: (path?: string): string | null => {
-    if (!path) return null;
-    const normalized = path.replace(/^\/medleg\//, "/knowledge/");
-    return `/api${normalized}`;
+/** Админ: Мэдлэг мэдээллийн бүх нийтлэлийг харах/засах/устгах (эзэмшигчээс үл хамааран) */
+export const adminKnowledgeApi = {
+  listAll: async () => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/admin/all`);
+    return r.data;
+  },
+  update: async (id: string, data: Record<string, unknown>) => {
+    const r = await api.patch(`${KNOWLEDGE_BACKEND}/admin/${id}`, data);
+    return r.data;
+  },
+  delete: async (id: string) => {
+    const r = await api.delete(`${KNOWLEDGE_BACKEND}/admin/${id}`);
+    return r.data;
+  },
+};
+
+/** Мэдлэг мэдээлэл хуудасны QUIZ хэсэг */
+export interface QuizQuestionInput {
+  question: string;
+  options: string[];
+  correctIndex: number;
+}
+
+export interface QuizAnswerItem {
+  questionId: string;
+  selectedIndex: number;
+}
+
+export const quizApi = {
+  list: async () => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/quiz`);
+    return r.data;
+  },
+  create: async (data: { title: string; questions: QuizQuestionInput[] }) => {
+    const r = await api.post(`${KNOWLEDGE_BACKEND}/quiz`, data);
+    return r.data;
+  },
+  // [MULTI-Q] Quiz-ийн бүх асуултад НЭГ дор хариулна.
+  answer: async (
+    quizId: string,
+    answers: QuizAnswerItem[],
+    timeTakenMs: number,
+  ) => {
+    const r = await api.post(`${KNOWLEDGE_BACKEND}/quiz/${quizId}/answer`, {
+      answers,
+      timeTakenMs,
+    });
+    return r.data;
+  },
+  results: async (quizId: string) => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/quiz/${quizId}/results`);
+    return r.data;
+  },
+  leaderboard: async () => {
+    const r = await api.get(`${KNOWLEDGE_BACKEND}/quiz/leaderboard`);
+    return r.data;
+  },
+  delete: async (quizId: string) => {
+    const r = await api.delete(`${KNOWLEDGE_BACKEND}/quiz/${quizId}`);
+    return r.data;
   },
 };
 

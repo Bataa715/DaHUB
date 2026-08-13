@@ -1,10 +1,4 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  Matches,
-  MaxLength,
-} from "class-validator";
+import { IsString, IsOptional, Matches, MaxLength } from "class-validator";
 import { Transform } from "class-transformer";
 
 /**
@@ -19,36 +13,6 @@ function sanitizeDeptCode(value: unknown): string | undefined {
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 20);
-}
-
-export class CreateDepartmentDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @Transform(({ value }) =>
-    value === null || value === undefined ? undefined : String(value),
-  )
-  @IsString()
-  @IsOptional()
-  description?: string;
-
-  @Transform(({ value }) =>
-    value === null || value === undefined ? undefined : String(value),
-  )
-  @IsString()
-  @IsOptional()
-  manager?: string;
-
-  // Хэрэглэгчийн ID-н prefix код (том үсэг/тоо/зураас, жишээ: DAG-DAA)
-  @Transform(({ value }) => sanitizeDeptCode(value))
-  @IsString()
-  @IsOptional()
-  @MaxLength(20)
-  @Matches(/^([A-Z0-9]+(?:-[A-Z0-9]+)*)?$/, {
-    message: "Код нь том үсэг, тоо болон зурааснаас бүрдэнэ (жишээ: DAG-DAA)",
-  })
-  code?: string;
 }
 
 export class UpdateDepartmentDto {

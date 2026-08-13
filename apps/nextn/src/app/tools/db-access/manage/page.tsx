@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
@@ -21,9 +21,9 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
-  Users,
   Database,
   AlertTriangle,
+  ArrowLeft,
 } from "lucide-react";
 
 interface AccessRequest {
@@ -102,21 +102,20 @@ const STATUS_CONFIG = {
   pending: {
     labelKey: "dbManageStatusPending",
     icon: Clock,
-    color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    color: "text-amber-400",
   },
   approved: {
     labelKey: "dbManageStatusApproved",
     icon: CheckCircle2,
-    color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    color: "text-emerald-400",
   },
   rejected: {
     labelKey: "dbManageStatusRejected",
     icon: XCircle,
-    color: "bg-red-500/20 text-red-400 border-red-500/30",
+    color: "text-red-400",
   },
 };
 
-/** Format DateTime as "YYYY.MM.DD HH:mm" (24h) */
 function fmt24(dateStr: string): string {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleString("mn-MN", {
@@ -138,7 +137,6 @@ export default function DbAccessManagePage() {
   const [, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Permission guard
   useEffect(() => {
     if (!user) return;
     const allowed =
@@ -150,16 +148,13 @@ export default function DbAccessManagePage() {
 
   type Tab = "pending" | "all" | "grants";
   const [tab, setTab] = useState<Tab>("pending");
-
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [allGrants, setAllGrants] = useState<ActiveGrant[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
-
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [cleaningChUser, setCleaningChUser] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -186,7 +181,7 @@ export default function DbAccessManagePage() {
         setLoading(false);
       }
     },
-    [toast],
+    [toast, t],
   );
 
   const loadAllGrants = useCallback(async () => {
@@ -195,6 +190,7 @@ export default function DbAccessManagePage() {
       const data = await dbAccessApi.getAllGrants();
       setAllGrants(data);
     } catch {
+      /* ignore */
     } finally {
       setLoading(false);
     }
@@ -309,28 +305,39 @@ export default function DbAccessManagePage() {
     <div className="min-h-screen bg-background">
       <ToolPageHeader
         href="/"
-        icon={
-          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
-            <ShieldCheck className="w-3.5 h-3.5 text-foreground" />
-          </div>
-        }
+        icon={<ShieldCheck className="w-4 h-4 text-emerald-500" />}
         title={t("toolDbGrantTitle")}
         rightContent={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              tab === "grants" ? loadAllGrants() : loadRequests(tab === "all")
-            }
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Link href="/tools/db-access">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                {t("toolDbRequestTitle")}
+              </Button>
+            </Link>
+            <button
+              type="button"
+              onClick={() =>
+                tab === "grants" ? loadAllGrants() : loadRequests(tab === "all")
+              }
+              disabled={loading}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
         }
       />
-      <div className="w-full space-y-6 p-4 md:px-6 md:py-6">
-        {/* Tabs */}
-        <div className="flex gap-0 border-b">
+
+      <div className="w-full px-4 md:px-6 py-6 space-y-4">
+        {/* Tabs — muted pills */}
+        <div className="flex flex-wrap gap-1.5">
           {(
             [
               { key: "pending" as Tab, label: t("dbManagePendingTab") },
@@ -341,119 +348,94 @@ export default function DbAccessManagePage() {
             <button
               key={tb.key}
               onClick={() => setTab(tb.key)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-2 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 tab === tb.key
-                  ? "border-violet-500 text-violet-400"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
               }`}
             >
               {tb.label}
               {tb.key === "pending" && pendingCount > 0 && (
-                <Badge
-                  variant="outline"
-                  className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs px-1.5 py-0"
-                >
+                <span className="ml-1.5 text-[10px] text-amber-400">
                   {pendingCount}
-                </Badge>
+                </span>
               )}
             </button>
           ))}
         </div>
 
-        {/*  PENDING / ALL tab  */}
         {(tab === "pending" || tab === "all") && (
           <>
-            {/* Pending count banner */}
-            {requests.some((r) => r.status === "pending") && (
-              <div className="flex gap-3 p-4 rounded-xl border bg-card items-center">
-                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-                <p className="text-sm">
-                  <span className="font-semibold text-amber-400">
-                    {pendingCount}
-                  </span>{" "}
-                  {t("dbManagePendingTab")}
-                </p>
-              </div>
-            )}
-
             {loading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : requests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
-                <CheckCircle2 className="h-10 w-10 opacity-20" />
-                <p className="font-medium">
+              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground/50">
+                <CheckCircle2 className="h-8 w-8 opacity-40" />
+                <p className="text-sm">
                   {tab === "pending"
                     ? t("dbManageNoPending")
                     : t("dbManageNoRequests")}
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-border/40 border border-border/40 rounded-xl overflow-hidden">
                 {requests.map((req) => {
                   const cfg = STATUS_CONFIG[req.status];
                   const StatusIcon = cfg.icon;
                   const expanded = expandedId === req.id;
                   return (
-                    <div
-                      key={req.id}
-                      className="rounded-xl border bg-card overflow-hidden"
-                    >
-                      {/* Row */}
+                    <div key={req.id} className="bg-card/30">
                       <div
-                        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/20 transition-colors"
-                        onClick={() => setExpandedId(expanded ? null : req.id)}
+                        className="flex items-center gap-3 px-3.5 py-3 cursor-pointer hover:bg-muted/20 transition-colors"
+                        onClick={() =>
+                          setExpandedId(expanded ? null : req.id)
+                        }
                       >
-                        <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0 text-xs font-bold text-violet-300">
+                        <div className="w-7 h-7 rounded-lg bg-muted/60 border border-border/40 flex items-center justify-center shrink-0 text-[11px] font-semibold text-muted-foreground">
                           {req.requesterName?.[0] ?? "?"}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm">
+                            <span className="font-semibold text-sm text-foreground">
                               {req.requesterName}
                             </span>
-                            <span className="text-xs text-muted-foreground">
-                              ({req.requesterUserId})
+                            <span className="text-[10px] text-muted-foreground">
+                              {req.requesterUserId}
                             </span>
-                            {req.tables.slice(0, 4).map((t) => (
+                            {req.tables.slice(0, 3).map((tbl) => (
                               <span
-                                key={t}
-                                className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded"
+                                key={tbl}
+                                className="text-[10px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded"
                               >
-                                {t}
+                                {tbl}
                               </span>
                             ))}
-                            {req.tables.length > 4 && (
-                              <span className="text-xs text-muted-foreground">
-                                +{req.tables.length - 4}
+                            {req.tables.length > 3 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                +{req.tables.length - 3}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {t("dbManageSentAt")}{" "}
-                            {new Date(req.requestTime).toLocaleString("mn-MN")}{" "}
-                            {t("dbManageValidUntil")}{" "}
-                            {new Date(req.validUntil).toLocaleDateString(
-                              "mn-MN",
-                            )}
+                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                            {t("dbManageSentAt")} {fmt24(req.requestTime)} ·{" "}
+                            {t("dbManageValidUntil")} {fmt24(req.validUntil)}
                           </p>
                         </div>
-                        <Badge
-                          variant="outline"
-                          className={`shrink-0 text-xs ${cfg.color}`}
+                        <span
+                          className={`flex items-center gap-1 text-[10px] font-medium shrink-0 ${cfg.color}`}
                         >
-                          <StatusIcon className="h-3 w-3 mr-1" />
+                          <StatusIcon className="h-3 w-3" />
                           {t(cfg.labelKey as TranslationKey)}
-                        </Badge>
+                        </span>
                         <button
-                          className="shrink-0 p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          className="shrink-0 p-1 rounded text-muted-foreground/50 hover:text-destructive transition-colors"
                           disabled={deletingId === req.id}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteRequest(req.id);
                           }}
-                          title={t("dbManageConfirmDelete")}
                         >
                           {deletingId === req.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -462,74 +444,73 @@ export default function DbAccessManagePage() {
                           )}
                         </button>
                         {expanded ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         )}
                       </div>
 
-                      {/* Expanded */}
                       {expanded && (
-                        <div className="px-4 pb-4 border-t bg-muted/5 space-y-3">
-                          <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="px-3.5 pb-3.5 pt-1 space-y-3 border-t border-border/30 bg-muted/10">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1.5 font-medium">
+                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
                                 {t("dbManageTables")}
                               </p>
                               <div className="flex flex-wrap gap-1">
-                                {req.tables.map((t) => (
+                                {req.tables.map((tbl) => (
                                   <span
-                                    key={t}
-                                    className="text-xs font-mono bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/20"
+                                    key={tbl}
+                                    className="text-[10px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
                                   >
-                                    {t}
+                                    {tbl}
                                   </span>
                                 ))}
                               </div>
                             </div>
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1.5 font-medium">
+                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
                                 {t("dbManageGrantType")}
                               </p>
                               <div className="flex gap-1">
                                 {req.accessTypes.map((a) => (
-                                  <Badge key={a} variant="secondary">
+                                  <span
+                                    key={a}
+                                    className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground"
+                                  >
                                     {a}
-                                  </Badge>
+                                  </span>
                                 ))}
                               </div>
                             </div>
                             {req.reason && (
                               <div className="sm:col-span-2">
-                                <p className="text-xs text-muted-foreground mb-1 font-medium">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                   {t("dbManageReasonLabel")}
                                 </p>
-                                <p className="text-sm italic text-muted-foreground bg-muted/50 rounded px-3 py-2">
-                                  "{req.reason}"
+                                <p className="text-xs text-muted-foreground italic">
+                                  “{req.reason}”
                                 </p>
                               </div>
                             )}
                             {req.reviewedByName && (
-                              <div className="sm:col-span-2 text-xs text-muted-foreground">
+                              <div className="sm:col-span-2 text-[10px] text-muted-foreground">
                                 {t("dbManageResolvedAt")}{" "}
                                 <span className="text-foreground">
                                   {req.reviewedByName}
                                 </span>
                                 {req.reviewNote && (
-                                  <span> "{req.reviewNote}"</span>
+                                  <span> “{req.reviewNote}”</span>
                                 )}
                               </div>
                             )}
                           </div>
 
-                          {/* Review panel */}
-                          {(req.status === "pending" ||
-                            req.status === "rejected") && (
-                            <div className="pt-1">
-                              {req.status ===
-                              "rejected" ? null : reviewingId === req.id ? (
+                          {req.status === "pending" && (
+                            <div>
+                              {reviewingId === req.id ? (
                                 <div className="space-y-2">
-                                  <Label className="text-xs">
+                                  <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                                     {t("dbManageDecisionNote")}
                                   </Label>
                                   <Textarea
@@ -541,11 +522,11 @@ export default function DbAccessManagePage() {
                                       setReviewNote(e.target.value)
                                     }
                                     rows={2}
-                                    className="bg-background resize-none text-sm"
+                                    className="bg-muted/60 border-border/50 text-xs resize-none focus-visible:ring-0 focus-visible:border-emerald-500/60"
                                   />
-                                  <div className="flex gap-2">
+                                  <div className="flex flex-wrap gap-2">
                                     <Button
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-foreground flex-1"
+                                      className="bg-emerald-600 hover:bg-emerald-500 text-foreground h-8 text-xs"
                                       size="sm"
                                       disabled={reviewLoading}
                                       onClick={() =>
@@ -562,7 +543,7 @@ export default function DbAccessManagePage() {
                                     <Button
                                       variant="destructive"
                                       size="sm"
-                                      className="flex-1"
+                                      className="h-8 text-xs"
                                       disabled={reviewLoading}
                                       onClick={() =>
                                         handleReview(req.id, "reject")
@@ -578,6 +559,7 @@ export default function DbAccessManagePage() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      className="h-8 text-xs"
                                       onClick={() => {
                                         setReviewingId(null);
                                         setReviewNote("");
@@ -585,55 +567,21 @@ export default function DbAccessManagePage() {
                                     >
                                       {t("back")}
                                     </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-destructive hover:bg-destructive/10 ml-auto"
-                                      disabled={deletingId === req.id}
-                                      onClick={() =>
-                                        handleDeleteRequest(req.id)
-                                      }
-                                    >
-                                      {deletingId === req.id ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                      ) : (
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      )}
-                                    </Button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    className="bg-violet-600 hover:bg-violet-500 text-foreground"
-                                    size="sm"
-                                    onClick={() => {
-                                      setReviewingId(req.id);
-                                      setReviewNote("");
-                                      setExpandedId(req.id);
-                                    }}
-                                  >
-                                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
-                                    {t("dbManageResolveBtn")}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-destructive hover:bg-destructive/10"
-                                    disabled={deletingId === req.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteRequest(req.id);
-                                    }}
-                                    title={t("dbManageConfirmDelete")}
-                                  >
-                                    {deletingId === req.id ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    )}
-                                  </Button>
-                                </div>
+                                <Button
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-foreground h-8 text-xs"
+                                  size="sm"
+                                  onClick={() => {
+                                    setReviewingId(req.id);
+                                    setReviewNote("");
+                                    setExpandedId(req.id);
+                                  }}
+                                >
+                                  <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                                  {t("dbManageResolveBtn")}
+                                </Button>
                               )}
                             </div>
                           )}
@@ -647,35 +595,30 @@ export default function DbAccessManagePage() {
           </>
         )}
 
-        {/*  GRANTS tab  */}
         {tab === "grants" && (
           <div className="space-y-4">
-            {/* Summary bar */}
             {!loading && allGrants.length > 0 && (
-              <div className="flex items-center gap-3 p-3 rounded-xl border bg-card text-sm">
-                <Users className="h-4 w-4 text-violet-400 shrink-0" />
-                <span className="flex-1 text-muted-foreground">
-                  {t("dbManageSummary")}{" "}
-                  <span className="font-semibold text-foreground">
-                    {allGrants.length}
-                  </span>{" "}
-                  {t("dbManageGrantUnit")},{" "}
-                  <span className="font-semibold text-foreground">
-                    {uniqueUsers.length}
-                  </span>{" "}
-                  {t("dbManageUserUnit")}
-                </span>
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t("dbManageSummary")}{" "}
+                <span className="text-foreground font-medium">
+                  {allGrants.length}
+                </span>{" "}
+                {t("dbManageGrantUnit")} ·{" "}
+                <span className="text-foreground font-medium">
+                  {uniqueUsers.length}
+                </span>{" "}
+                {t("dbManageUserUnit")}
+              </p>
             )}
 
             {loading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : allGrants.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
-                <Database className="h-10 w-10 opacity-20" />
-                <p className="font-medium">{t("dbManageNoPending")}</p>
+              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground/50">
+                <Database className="h-8 w-8 opacity-40" />
+                <p className="text-sm">{t("dbManageNoPending")}</p>
               </div>
             ) : (
               uniqueUsers.map((u) => {
@@ -683,103 +626,85 @@ export default function DbAccessManagePage() {
                 if (uGrants.length === 0) return null;
                 return (
                   <div key={u.id} className="space-y-2">
-                    {/* User header */}
-                    <div className="flex items-center gap-2 px-1">
-                      <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-300 shrink-0">
+                    <div className="flex items-center gap-2 px-0.5">
+                      <div className="w-6 h-6 rounded-md bg-muted/60 border border-border/40 flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
                         {u.name[0]}
                       </div>
                       <span className="font-semibold text-sm">{u.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({u.code})
+                      <span className="text-[10px] text-muted-foreground">
+                        {u.code}
                       </span>
-                      <Badge variant="secondary" className="text-xs ml-1">
+                      <span className="text-[10px] text-muted-foreground/60 ml-1">
                         {groupByRequest(uGrants).length}{" "}
                         {t("dbManageGrantUnit")}
-                      </Badge>
+                      </span>
                     </div>
 
-                    {/* Grants for this user — grouped by request */}
-                    {groupByRequest(uGrants).map((grp) => (
-                      <div
-                        key={grp.requestId}
-                        className="rounded-xl border bg-card p-4 flex items-start gap-3 ml-9"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                          <Database className="h-4 w-4 text-cyan-400" />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          {/* Table badges */}
-                          <div className="flex flex-wrap gap-1.5">
-                            {grp.tables.map((t) => (
-                              <span
-                                key={t}
-                                className="inline-flex items-center gap-1 text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded-md"
-                              >
-                                {t}
-                              </span>
-                            ))}
-                            {grp.accessTypes.map((a) => (
-                              <Badge
-                                key={a}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {a}
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                            <span>
-                              {t("dbManageSentAt")}{" "}
-                              <span className="text-foreground">
-                                {grp.grantedByName}
-                              </span>
-                            </span>
-                            <span suppressHydrationWarning>
-                              {fmt24(grp.grantedAt)}
-                            </span>
-                            <span suppressHydrationWarning>
-                              {t("dbManageValidUntil")}{" "}
-                              <span className="text-foreground">
-                                {fmt24(grp.validUntil)}
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-amber-500 hover:bg-amber-500/10 shrink-0 gap-1.5"
-                          disabled={cleaningChUser === grp.userUserId}
-                          onClick={() => handleCleanupCh(grp)}
-                          title={t("dbManageCleanError")}
+                    <div className="divide-y divide-border/40 border border-border/40 rounded-xl overflow-hidden">
+                      {groupByRequest(uGrants).map((grp) => (
+                        <div
+                          key={grp.requestId}
+                          className="px-3.5 py-3 flex items-start gap-3 bg-card/30"
                         >
-                          {cleaningChUser === grp.userUserId ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                          )}
-                          <span className="text-xs">CH Reset</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
-                          disabled={revokingId === grp.requestId}
-                          onClick={() => handleRevoke(grp)}
-                          title={t("dbManageConfirmDelete")}
-                        >
-                          {revokingId === grp.requestId ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                          <span className="text-xs">
-                            {t("dbManageRevokeBtn")}
-                          </span>
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="flex-1 min-w-0 space-y-1.5">
+                            <div className="flex flex-wrap gap-1">
+                              {grp.tables.map((tbl) => (
+                                <span
+                                  key={tbl}
+                                  className="text-[10px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
+                                >
+                                  {tbl}
+                                </span>
+                              ))}
+                              {grp.accessTypes.map((a) => (
+                                <span
+                                  key={a}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground"
+                                >
+                                  {a}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                              <span>
+                                {grp.grantedByName} · {fmt24(grp.grantedAt)}
+                              </span>
+                              <span suppressHydrationWarning>
+                                {t("dbManageValidUntil")} {fmt24(grp.validUntil)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              className="p-1.5 rounded-md text-amber-500/80 hover:bg-amber-500/10 transition-colors"
+                              disabled={cleaningChUser === grp.userUserId}
+                              onClick={() => handleCleanupCh(grp)}
+                              title="CH Reset"
+                            >
+                              {cleaningChUser === grp.userUserId ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="p-1.5 rounded-md text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              disabled={revokingId === grp.requestId}
+                              onClick={() => handleRevoke(grp)}
+                              title={t("dbManageRevokeBtn")}
+                            >
+                              {revokingId === grp.requestId ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })

@@ -112,7 +112,14 @@ def _new_ch_client() -> Any:
         compress=True,
         connect_timeout=10,
         send_receive_timeout=600,
-        settings={"readonly": 1},
+        # readonly=2 (not 1): both block INSERT/UPDATE/DELETE/DDL at the
+        # ClickHouse engine level, but readonly=1 also blocks ANY query-level
+        # settings change — clickhouse-connect routinely needs to set those
+        # internally, so readonly=1 broke ordinary complex SELECT queries
+        # (report scripts that used to work started failing with
+        # "Cannot modify ... setting in readonly mode"). readonly=2 keeps the
+        # same write protection without that side effect.
+        settings={"readonly": 2},
     )
 
 

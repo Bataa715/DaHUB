@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   tailanApi,
   getApiErrorMessage,
@@ -10,13 +10,12 @@ import { DocxBlobViewer } from "./DocxBlobViewer";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Real .docx preview ──────────────────────────────────────────────────────
-// Renders the ACTUAL generated .docx (via /tailan/preview) using docx-preview,
-// so what the user sees while editing is byte-for-byte the same document
-// they'll download — no more separate hand-drawn HTML "Word simulator" that
-// can drift out of sync with the real export.
+// Renders the ACTUAL generated .docx (via /tailan/preview) using docx-preview.
+// Typing үед хуучин preview-г хадгалж, зөвхөн debounce-ийн дараа silent шинэчилнэ
+// — «Ачааллаж байна» текст/цаас доошлохгүй.
 export function RealDocxPreview({
   payload,
-  debounceMs = 600,
+  debounceMs = 800,
 }: {
   payload: TailanReportPayload;
   debounceMs?: number;
@@ -26,26 +25,35 @@ export function RealDocxPreview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const payloadKey = JSON.stringify(payload);
+  const requestIdRef = useRef(0);
+  const hasBlobRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    const requestId = ++requestIdRef.current;
+    // Зөвхөн анхны удаа (blob байхгүй) loading=true — дахин generate layout-ыг бүү эвд
+    if (!hasBlobRef.current) setLoading(true);
+
     const timer = setTimeout(async () => {
       try {
         const b = await tailanApi.previewWord(payload);
-        if (cancelled) return;
+        if (cancelled || requestId !== requestIdRef.current) return;
         setBlob(b);
+        hasBlobRef.current = true;
         setError("");
       } catch (err: unknown) {
-        if (!cancelled) {
+        if (!cancelled && requestId === requestIdRef.current) {
           setError(
             getApiErrorMessage(err) || t("tailanRealPreviewGenerateError"),
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     }, debounceMs);
+
     return () => {
       cancelled = true;
       clearTimeout(timer);

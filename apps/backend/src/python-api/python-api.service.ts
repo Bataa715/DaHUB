@@ -89,25 +89,46 @@ export class PythonApiService implements OnModuleInit {
   }
 
   // [C-3] AES-256-GCM encryption for connectionConfig at rest in ClickHouse.
-  // Key derived from JWT_SECRET via SHA-256 — reuses an already-required secret
-  // so no extra env var is needed. Format: enc:v1:<base64(iv|tag|ciphertext)>
-  private readonly encKey: Buffer = (() => {
-    const secret = process.env.JWT_SECRET;
-    if (!secret || secret.length < 16) {
-      throw new Error(
-        "JWT_SECRET (>=16 chars) is required — it is reused for python-api config encryption",
-      );
-    }
+  // Format: enc:v1:<base64(iv|tag|ciphertext)>.
+  //
+  // Key management: a DEDICATED CONFIG_ENC_KEY env is used when present, so DB
+  // config secrets are no longer bound to the same secret that signs JWTs (a
+  // single-secret compromise previously exposed both). For backward
+  // compatibility the JWT_SECRET-derived key is kept as a decryption fallback:
+  //   • encryption always uses the PRIMARY key (encKeys[0])
+  //   • decryption tries every key until one authenticates (GCM tag verifies)
+  // So when CONFIG_ENC_KEY is newly introduced, existing rows still decrypt via
+  // the legacy JWT_SECRET key and are transparently re-encrypted with the new
+  // key on their next save. If CONFIG_ENC_KEY is unset, behaviour is identical
+  // to before (JWT_SECRET-derived key), so this change is zero-risk to deploy.
+  private static deriveKey(secret: string): Buffer {
     return createHash("sha256")
       .update("py-tool-cfg:" + secret)
       .digest();
+  }
+  private readonly encKeys: Buffer[] = (() => {
+    const keys: Buffer[] = [];
+    const dedicated = process.env.CONFIG_ENC_KEY;
+    if (dedicated && dedicated.length >= 16) {
+      keys.push(PythonApiService.deriveKey(dedicated));
+    }
+    const jwt = process.env.JWT_SECRET;
+    if (jwt && jwt.length >= 16 && jwt !== dedicated) {
+      keys.push(PythonApiService.deriveKey(jwt));
+    }
+    if (keys.length === 0) {
+      throw new Error(
+        "CONFIG_ENC_KEY or JWT_SECRET (>=16 chars) is required for python-api config encryption",
+      );
+    }
+    return keys;
   })();
 
   private encryptConfig(plain: string): string {
     if (!plain || plain === "{}") return plain;
     try {
       const iv = randomBytes(12);
-      const cipher = createCipheriv("aes-256-gcm", this.encKey, iv);
+      const cipher = createCipheriv("aes-256-gcm", this.encKeys[0], iv);
       const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
       const tag = cipher.getAuthTag();
       return "enc:v1:" + Buffer.concat([iv, tag, ct]).toString("base64");
@@ -123,22 +144,26 @@ export class PythonApiService implements OnModuleInit {
       // Backward-compat: legacy plaintext rows. Re-encrypted on next save.
       return value;
     }
-    try {
-      const buf = Buffer.from(value.slice("enc:v1:".length), "base64");
-      const iv = buf.subarray(0, 12);
-      const tag = buf.subarray(12, 28);
-      const ct = buf.subarray(28);
-      const decipher = createDecipheriv("aes-256-gcm", this.encKey, iv);
-      decipher.setAuthTag(tag);
-      return Buffer.concat([decipher.update(ct), decipher.final()]).toString(
-        "utf8",
-      );
-    } catch (e) {
-      this.logger.warn(
-        "connectionConfig decrypt failed — admin must re-save the tool config",
-      );
-      return "{}";
+    const buf = Buffer.from(value.slice("enc:v1:".length), "base64");
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const ct = buf.subarray(28);
+    // Try each key (primary first, then legacy fallback) until the GCM tag verifies.
+    for (const key of this.encKeys) {
+      try {
+        const decipher = createDecipheriv("aes-256-gcm", key, iv);
+        decipher.setAuthTag(tag);
+        return Buffer.concat([decipher.update(ct), decipher.final()]).toString(
+          "utf8",
+        );
+      } catch {
+        // wrong key — try the next
+      }
     }
+    this.logger.warn(
+      "connectionConfig decrypt failed with all keys — admin must re-save the tool config",
+    );
+    return "{}";
   }
 
   // ── Run log table ─────────────────────────────────────────────────────────

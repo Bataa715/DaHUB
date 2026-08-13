@@ -13,6 +13,11 @@ import { isTailanDeptHead } from "./utils/tailan-permissions.util";
  */
 @Injectable()
 export class TailanImagesService {
+  // [PERF] ensureImagesTable() is called from every upload/list/read/delete
+  // method (no OnModuleInit here) — this guard stops the CREATE/ALTER DDL
+  // from re-running on every request; only needs to happen once per process.
+  private tableEnsured = false;
+
   constructor(
     private readonly clickhouse: ClickHouseService,
     private readonly auditLog: AuditLogService,
@@ -37,6 +42,8 @@ export class TailanImagesService {
 
   // ─── Images table bootstrap (call once on module init) ─────────────────────
   async ensureImagesTable() {
+    if (this.tableEnsured) return;
+
     await this.clickhouse.exec(`
       CREATE TABLE IF NOT EXISTS tailan_images (
         id String,
@@ -50,12 +57,26 @@ export class TailanImagesService {
         uploadedAt DateTime DEFAULT now()
       ) ENGINE = MergeTree() ORDER BY (userId, year, quarter, id)
     `);
+    // Only mark ensured once CREATE TABLE succeeds — a transient failure here
+    // must retry on the next call, not silently skip table creation forever.
+    this.tableEnsured = true;
     // migrate: add imageData column if table was created with old dataBase64 schema
     // [SAFETY] DROP COLUMN dataBase64 cleanup хассан — энэ функц image
     // upload/унших болгонд дуудагддаг тул local/prod ижил DB-д эрсдэлтэй.
     try {
       await this.clickhouse.exec(
         `ALTER TABLE tailan_images ADD COLUMN IF NOT EXISTS imageData String DEFAULT ''`,
+      );
+    } catch {}
+
+    // [PERF] getImageData() looks up by `id` alone, which isn't prunable in
+    // the base ORDER BY — add an id-sorted projection for that lookup.
+    try {
+      await this.clickhouse.exec(
+        `ALTER TABLE tailan_images ADD PROJECTION IF NOT EXISTS proj_by_id (SELECT * ORDER BY id)`,
+      );
+      await this.clickhouse.exec(
+        `ALTER TABLE tailan_images MATERIALIZE PROJECTION proj_by_id`,
       );
     } catch {}
   }

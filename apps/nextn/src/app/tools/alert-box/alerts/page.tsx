@@ -27,6 +27,9 @@ import type { TooltipContentProps } from "recharts";
 import { useLanguage, type TranslationKey } from "@/contexts/LanguageContext";
 
 const ML_DASH_IDS = new Set([13, 14, 15, 16]);
+// Том жагсаалтыг (10000 хүртэл CIF) нэг дор бүгдийг render хийхээс сэргийлж,
+// эхэндээ ийм тоогоор л харуулаад "Load more"-оор алхам алхмаар нэмнэ.
+const ALERTS_PAGE_SIZE = 50;
 const ALERT_COLORS = [
   "#f97316",
   "#fb7185",
@@ -153,6 +156,9 @@ export default function AlertsPage() {
   const [data, setData] = useState<AlertData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Том жагсаалт (10000 хүртэл CIF) нэг дор renderлэхэд удаашрах тул
+  // "Load more"-оор алхам алхмаар харуулна.
+  const [visibleCount, setVisibleCount] = useState(ALERTS_PAGE_SIZE);
   const [expandedCif, setExpandedCif] = useState<string | null>(null);
   const [cifDetail, setCifDetail] = useState<CifDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -202,6 +208,7 @@ export default function AlertsPage() {
       try {
         const res = await abFetchAlerts(minDash, 10000, signal);
         setData(res);
+        setVisibleCount(ALERTS_PAGE_SIZE);
       } catch (e: unknown) {
         if (e instanceof Error && e.name === "AbortError") return;
         setError(getApiErrorMessage(e) || t("alertNoResult"));
@@ -345,13 +352,22 @@ export default function AlertsPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-golomt-400" />
             <span className="text-[12px] text-txt-dim ml-3">
-              12 Dashboard {t("alertLoading")}
+              {t("alertLoading")}
             </span>
           </div>
         )}
 
         {error && (
-          <p className="text-red-400 text-[12px] text-center py-8">{error}</p>
+          <div className="flex flex-col items-center gap-3 py-8">
+            <p className="text-red-400 text-[12px] text-center">{error}</p>
+            <button
+              onClick={() => loadAlerts()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-surface-border text-[11px] font-semibold text-txt hover:bg-surface-elevated transition-colors"
+            >
+              <RefreshCw size={12} />
+              {t("abAlertsRetryBtn")}
+            </button>
+          </div>
         )}
 
         {data && !loading && data.failedDashboards?.length > 0 && (
@@ -857,7 +873,7 @@ export default function AlertsPage() {
                   </div>
                 )}
 
-                {data.alerts.map((alert, idx) => (
+                {data.alerts.slice(0, visibleCount).map((alert, idx) => (
                   <div
                     key={alert.cif}
                     className="bg-surface-card rounded-xl border border-surface-border overflow-hidden"
@@ -1032,6 +1048,22 @@ export default function AlertsPage() {
                     )}
                   </div>
                 ))}
+
+                {visibleCount < data.alerts.length && (
+                  <div className="flex flex-col items-center gap-1.5 py-4">
+                    <button
+                      onClick={() =>
+                        setVisibleCount((c) => c + ALERTS_PAGE_SIZE)
+                      }
+                      className="px-5 py-2 rounded-lg bg-surface-card border border-surface-border text-[12px] font-semibold text-txt hover:bg-surface-elevated transition-colors"
+                    >
+                      {t("abAlertsLoadMoreBtn")}
+                    </button>
+                    <span className="text-[10px] text-txt-dim">
+                      {visibleCount} / {data.alerts.length}
+                    </span>
+                  </div>
+                )}
               </>
             )}
           </div>

@@ -444,24 +444,15 @@ export function useDepartmentReport() {
         quarter,
         sections as Record<string, unknown>,
       );
-      const blob = await tailanApi.generateDeptWord({
-        year,
-        quarter,
-        tasks: [],
-        sections: [],
-        otherEntries: [],
-        activities: [],
-        rawSections: sections as Record<string, unknown>,
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `tailan_${year}_Q${quarter}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast("DOCX файл амжилттай татагдлаа.");
+      // Татах файл = дэлгэц дээрх WordPreview (өнгөт хүснэгт гэх мэт) —
+      // backend generate-word биш (өөр/хоосон бүтэцтэй байсан).
+      const { downloadDeptWordFromPreview } = await import(
+        "../_exportWordPreview"
+      );
+      await downloadDeptWordFromPreview(year, quarter);
+      showToast("Word файл амжилттай татагдлаа.");
     } catch {
-      showToast("DOCX файл татахад алдаа гарлаа.", "error");
+      showToast("Word файл татахад алдаа гарлаа.", "error");
     }
   };
 

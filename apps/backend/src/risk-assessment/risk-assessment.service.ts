@@ -374,9 +374,12 @@ export class RiskAssessmentService implements OnModuleInit {
 
   /** riskbranch дахь өвөрмөц fetchedDate жагсаалт буцаана (YYYY-MM-DD форматаар) */
   async listRiskbranchDates(): Promise<string[]> {
+    // [PERF] FINAL хэрэггүй — DISTINCT нь давхардсан огноог аль хэдийн нэгтгэнэ,
+    // мөн бид зөвхөн ямар огноонууд орж ирсэнийг л мэдэхийг хүсэж байгаа тул
+    // мөр бүрийн хамгийн сүүлийн хувилбарыг merge хийх шаардлагагүй.
     const rows = await this.clickhouse.query<any>(
       `SELECT DISTINCT LEFT(fetchedDate, 10) AS d
-       FROM riskbranch FINAL
+       FROM riskbranch
        WHERE fetchedDate != ''
        ORDER BY d DESC
        LIMIT 90`,
@@ -413,9 +416,13 @@ export class RiskAssessmentService implements OnModuleInit {
     const d = String(fetchedDate).slice(0, 10);
 
     // 1. Сонгосон огноогоос <= хамгийн ойр бодит fetchedDate олно (fill-forward anchor)
+    // [PERF] FINAL хассан — MAX(огноо) нь ReplacingMergeTree-ийн давхардлыг
+    // цэгцлэхээс үл хамааран ижил үр дүн өгнө (олдсон огнооны олонлог өөрчлөгдөхгүй).
+    // FINAL нь бүх part-ийг унших үедээ merge хийдэг тул riskbranch шиг том
+    // хүснэгт дээр маш удаан ажилладаг байсан.
     const anchorRows = await this.clickhouse.query<any>(
       `SELECT MAX(LEFT(fetchedDate, 10)) AS maxDate
-       FROM riskbranch FINAL
+       FROM riskbranch
        WHERE LEFT(fetchedDate, 10) <= {d:String}
          AND fetchedDate != ''`,
       { d },
@@ -424,37 +431,54 @@ export class RiskAssessmentService implements OnModuleInit {
     if (!anchor) return { fetchedDate: d, rows: [], manualMap: {} };
 
     // 2. Anchor өдрийн SOLID-уудад зориулж (SOLID, SUBID) бүрт
-    //    anchor <= fetchedDate-ийн хамгийн сүүлийн RESULT авна
+    //    anchor <= fetchedDate-ийн хамгийн сүүлийн RESULT авна.
+    // [PERF] FINAL-гүйгээр ижил семантик: riskbranch нь
+    // ReplacingMergeTree(fetchedAt) тул хамгийн сүүлийн хувилбар = хамгийн их
+    // fetchedAt. "Эхлээд хамгийн сүүлийн огноо, дараа нь тухайн огнооны хамгийн
+    // сүүлд орж ирсэн (re-ingest) утга"-ыг сонгохын тулд эрэмбийн түлхүүрийг
+    // ТОГТМОЛ ӨРГӨНТЭЙ string болгон нийлүүлнэ:
+    //   LEFT(fetchedDate,10) → 'YYYY-MM-DD' (10 тэмдэгт)
+    //   toString(fetchedAt)  → 'YYYY-MM-DD HH:MM:SS' (19 тэмдэгт)
+    // → concat нь лексикографаар эхлээд огноо, дараа нь ingest хугацаагаар зөв
+    // эрэмбэлэгдэнэ. Зөвхөн эртний функц (LEFT/concat/toString/argMax-String)
+    // ашигласан тул ClickHouse 22.1 дээр найдвартай ажиллана (argMax-д tuple
+    // дамжуулах шинэ хэлбэрээс зайлсхийсэн).
     const rows = await this.clickhouse.query<any>(
       `SELECT
-         argMax(rowKey, fetchedDate)              AS rowKey,
-         'oracle'                                 AS rowType,
-         toString(argMax(fetchedAt, fetchedDate)) AS fetchedAt,
-         ''                                       AS pDate,
-         ''                                       AS pDateBeg,
+         argMax(rowKey, ord)              AS rowKey,
+         'oracle'                         AS rowType,
+         toString(argMax(fetchedAt, ord)) AS fetchedAt,
+         ''                               AS pDate,
+         ''                               AS pDateBeg,
          SOLID,
-         argMax(BRANCHNAME, fetchedDate)          AS BRANCHNAME,
-         argMax(STATUS, fetchedDate)              AS STATUS,
-         argMax(RESULT, fetchedDate)              AS RESULT,
-         argMax(RESULT_TYPE, fetchedDate)         AS RESULT_TYPE,
-         argMax(DESCRIPTION_TEXT, fetchedDate)    AS DESCRIPTION_TEXT,
-         argMax(P_DATEBEG, fetchedDate)           AS P_DATEBEG,
-         argMax(P_DATE, fetchedDate)              AS P_DATE,
-         argMax(ID, fetchedDate)                  AS ID,
+         argMax(BRANCHNAME, ord)          AS BRANCHNAME,
+         argMax(STATUS, ord)              AS STATUS,
+         argMax(RESULT, ord)              AS RESULT,
+         argMax(RESULT_TYPE, ord)         AS RESULT_TYPE,
+         argMax(DESCRIPTION_TEXT, ord)    AS DESCRIPTION_TEXT,
+         argMax(P_DATEBEG, ord)           AS P_DATEBEG,
+         argMax(P_DATE, ord)              AS P_DATE,
+         argMax(ID, ord)                  AS ID,
          SUBID,
-         argMax(OPERATION_TYPE, fetchedDate)      AS OPERATION_TYPE,
-         0                                        AS isManual,
-         ''                                       AS indicatorId,
-         NULL                                     AS indicatorValue,
-         LEFT(max(fetchedDate), 10)               AS sourceFetchedDate
-       FROM riskbranch FINAL
-       WHERE LEFT(fetchedDate, 10) <= {anchor:String}
-         AND SOLID IN (
-           SELECT SOLID FROM riskbranch FINAL
-           WHERE LEFT(fetchedDate, 10) = {anchor:String}
-         )
+         argMax(OPERATION_TYPE, ord)      AS OPERATION_TYPE,
+         0                                AS isManual,
+         ''                               AS indicatorId,
+         NULL                             AS indicatorValue,
+         LEFT(max(fetchedDate), 10)       AS sourceFetchedDate
+       FROM (
+         SELECT
+           *,
+           concat(LEFT(fetchedDate, 10), toString(fetchedAt)) AS ord
+         FROM riskbranch
+         WHERE LEFT(fetchedDate, 10) <= {anchor:String}
+           AND SOLID IN (
+             SELECT DISTINCT SOLID FROM riskbranch
+             WHERE LEFT(fetchedDate, 10) = {anchor:String}
+           )
+       )
        GROUP BY SOLID, SUBID
-       ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)`,
+       ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)
+       SETTINGS max_execution_time = 25`,
       { anchor },
     );
     // fetchedDate-г бодит anchor-оор буцаана (UI-д харуулах зорилгоор)

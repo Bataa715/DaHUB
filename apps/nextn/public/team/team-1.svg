@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" fill="none">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="55%" stop-color="#2d4a6f"/>
+      <stop offset="100%" stop-color="#3d5a80"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#243447"/>
+      <stop offset="100%" stop-color="#1a2533"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#sky)"/>
+  <rect y="420" width="1200" height="255" fill="url(#floor)"/>
+  <rect x="80" y="160" width="220" height="260" rx="8" fill="#4a6fa5" opacity="0.35"/>
+  <rect x="340" y="120" width="280" height="300" rx="8" fill="#5b8def" opacity="0.25"/>
+  <rect x="660" y="180" width="200" height="240" rx="8" fill="#7aa2f7" opacity="0.22"/>
+  <rect x="900" y="140" width="220" height="280" rx="8" fill="#4a6fa5" opacity="0.3"/>
+  <circle cx="200" cy="500" r="28" fill="#c5d4e8" opacity="0.55"/>
+  <circle cx="280" cy="510" r="24" fill="#a8bdd6" opacity="0.5"/>
+  <circle cx="520" cy="495" r="30" fill="#d0dced" opacity="0.55"/>
+  <circle cx="600" cy="505" r="26" fill="#b4c6de" opacity="0.5"/>
+  <circle cx="780" cy="500" r="28" fill="#c5d4e8" opacity="0.5"/>
+  <circle cx="960" cy="508" r="25" fill="#a8bdd6" opacity="0.45"/>
+  <text x="600" y="80" text-anchor="middle" fill="#e8eef6" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="600" opacity="0.7">>B>>4 0C48B � %0<B >;>=</text>
+</svg>

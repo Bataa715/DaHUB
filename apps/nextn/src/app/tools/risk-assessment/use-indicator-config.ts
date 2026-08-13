@@ -13,6 +13,7 @@ import {
   buildRowsBySubid,
   evaluateMultiSubidScale,
   collectMultiSubidSecondarySubids,
+  oracleDisplayRaw,
   type ScoreResult,
   type OracleValue,
   type BranchAggregate,
@@ -214,6 +215,7 @@ export function evaluateBranchDynamic(
     SUBID?: OracleValue;
     RESULT?: OracleValue;
     RESULT_TYPE?: OracleValue;
+    DESCRIPTION_TEXT?: OracleValue;
     sourceFetchedDate?: string;
   }[],
   manual: Record<string, number> | undefined,
@@ -252,7 +254,7 @@ export function evaluateBranchDynamic(
     );
     autoBySubid.set(sid, {
       score,
-      raw: r.RESULT == null ? "" : String(r.RESULT),
+      raw: oracleDisplayRaw(r),
       label,
       sourceFetchedDate: r.sourceFetchedDate
         ? String(r.sourceFetchedDate).slice(0, 10)

@@ -1,12 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
+// [PERF] server-side redirect — no client JS bundle needed just to bounce.
 export default function AdminPage() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace("/admin/tools");
-  }, [router]);
-  return null;
+  redirect("/admin/tools");
 }

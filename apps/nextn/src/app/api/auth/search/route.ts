@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerBackendUrl } from "@/lib/server-backend-url";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ users: [] });
   }
 
-  const backendUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL;
+  const backendUrl = getServerBackendUrl();
   if (!backendUrl) {
     return NextResponse.json({ users: [] }, { status: 500 });
   }

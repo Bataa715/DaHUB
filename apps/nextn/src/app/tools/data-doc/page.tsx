@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
-import Link from "next/link";
 import {
   Search,
   Database,
@@ -11,7 +10,6 @@ import {
   Check,
   Pencil,
   Loader2,
-  Code2,
 } from "lucide-react";
 import type { DatabaseSchema } from "@/lib/data-doc-types";
 import { getApiErrorMessage } from "@/lib/api";
@@ -60,14 +58,35 @@ export default function DataDocPage() {
   useEffect(() => {
     const ctrl = new AbortController();
     fetch("/api/schema", { signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((data: DatabaseSchema) => {
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(
+            (data && data.error) || "Схем ачаалахад алдаа гарлаа",
+          );
+        }
+        return data as DatabaseSchema;
+      })
+      .then((data) => {
         setSchema(data);
-        if (data.databases.length > 0) setSelectedDb(data.databases[0].name);
+        const firstDb = data.databases?.[0];
+        if (firstDb) {
+          setSelectedDb(firstDb.name);
+          const firstTable = firstDb.tables?.[0];
+          if (firstTable) setSelectedTable(firstTable.name);
+        } else {
+          setSaveError(
+            "Өгөгдлийн толь бичгийн файл олдсонгүй эсвэл хоосон байна.",
+          );
+        }
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return;
-        setSaveError("Схем ачаалахад алдаа гарлаа. Хуудас шинэчлэнэ үү.");
+        setSaveError(
+          err instanceof Error
+            ? err.message
+            : "Схем ачаалахад алдаа гарлаа. Хуудас шинэчлэнэ үү.",
+        );
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
@@ -152,7 +171,10 @@ export default function DataDocPage() {
 
   function selectDb(name: string) {
     setSelectedDb(name);
-    setSelectedTable("");
+    const firstTable = schema?.databases.find((db) => db.name === name)
+      ?.tables?.[0];
+    setSelectedTable(firstTable?.name ?? "");
+    setTableSearch("");
     setColSearch("");
     setFilter("all");
   }
@@ -186,21 +208,8 @@ export default function DataDocPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <ToolPageHeader
-        icon={
-          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md">
-            <Database className="w-3.5 h-3.5 text-foreground" />
-          </div>
-        }
+        icon={<Database className="w-4 h-4 text-cyan-500" />}
         title={t("toolDataDocTitle")}
-        rightContent={
-          <Link
-            href="/tools/data-doc/code"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-card hover:bg-muted border border-border rounded-lg text-foreground/80 transition-colors"
-          >
-            <Code2 className="w-3.5 h-3.5" />
-            {t("dataDocCodeLib")}
-          </Link>
-        }
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -354,8 +363,8 @@ export default function DataDocPage() {
                         }`}
                       >
                         {f === "all"
-                          ? t("dataDocFiltered")
-                          : filter === "described"
+                          ? t("dataDocFilterAll")
+                          : f === "described"
                             ? t("dataDocFiltered")
                             : t("dataDocUnfiltered")}
                       </button>

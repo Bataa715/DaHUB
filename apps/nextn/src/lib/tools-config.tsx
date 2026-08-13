@@ -110,6 +110,7 @@ export function getTools(t: (key: TranslationKey) => string): Tool[] {
     },
     {
       id: "risk_assessment",
+      matchIds: ["risk_assessment", "risk_assessment_report"],
       title: t("toolRiskAssessmentTitle"),
       description: t("toolRiskAssessmentDesc"),
       icon: ShieldAlert,

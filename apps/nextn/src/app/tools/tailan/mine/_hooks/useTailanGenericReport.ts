@@ -196,11 +196,14 @@ export function useTailanGenericReport(
     });
 
   // ── Dynamic (ad-hoc) sections ──────────────────────────────────────────────
-  const addDynSection = () =>
+  const addDynSection = () => {
+    const id = uid();
     setDynamicSections((prev) => [
       ...prev,
-      { _id: uid(), order: prev.length + 1, title: "Шинэ хэсэг", content: "" },
+      { _id: id, order: prev.length + 1, title: "Шинэ хэсэг", content: "" },
     ]);
+    return id;
+  };
   const removeDynSection = (id: string) =>
     setDynamicSections((prev) => prev.filter((s) => s._id !== id));
   const updateDynSection = (id: string, field: keyof DynSection, value: any) =>

@@ -321,7 +321,6 @@ function writeBranchSection(
 
   if (hasComp) {
     // Group header row
-    const gRow = ws.getRow(hdrRowNum);
     const groups: Array<{
       label: string;
       from: number;

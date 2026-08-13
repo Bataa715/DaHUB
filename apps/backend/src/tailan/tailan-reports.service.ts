@@ -62,12 +62,12 @@ export class TailanReportsService {
         year: dto.year,
         quarter: dto.quarter,
         status: dto.status ?? "draft",
-        // Legacy per-field columns are left at defaults for new saves — all
+        // Legacy per-field column left at default for new saves — all
         // section data now lives in sectionsDataJson (template-driven).
+        // (otherWork / teamActivitiesJson columns were dropped — never read
+        // anywhere, not even by the legacy fallback parser.)
         plannedTasksJson: "[]",
         dynamicSectionsJson: JSON.stringify(dto.dynamicSections ?? []),
-        otherWork: "",
-        teamActivitiesJson: "[]",
         extraDataJson: JSON.stringify({
           hiddenSections: dto.hiddenSections ?? [],
         }),

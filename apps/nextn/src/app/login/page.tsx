@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,7 +8,12 @@ import Cookies from "js-cookie";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DEPARTMENT_POSITIONS, DEPARTMENT_CODES } from "@/lib/constants";
+import {
+  DEPARTMENT_POSITIONS,
+  DEPARTMENT_CODES,
+  NO_DAG_PREFIX_DEPARTMENTS,
+  NO_DIRECTOR_DEPARTMENTS,
+} from "@/lib/constants";
 import { RegisterFlow } from "./_components/RegisterFlow";
 import { LoginFlow } from "./_components/LoginFlow";
 import {
@@ -47,11 +52,12 @@ export default function LoginPage() {
   // Login state
   const [loginStep, setLoginStep] = useState<LoginStep>("userId");
   const [checkedUser, setCheckedUser] = useState<UserCheckResult | null>(null);
-  const [userSuggestions, setUserSuggestions] = useState<
-    Array<{ userId: string; name: string; department: string }>
+  // Department → employee list (replaces the old free-text search)
+  const [loginDepartment, setLoginDepartment] = useState<string>("");
+  const [departmentEmployees, setDepartmentEmployees] = useState<
+    Array<{ userId: string; name: string; position?: string }>
   >([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
 
   // Common state
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +101,7 @@ export default function LoginPage() {
     }
   }, [selectedDepartment]);
 
-  // Backend buildUserId-тай ижил preview (захирал: .Name-DAG-CODE)
+  // Backend buildUserId-тай ижил preview
   useEffect(() => {
     if (selectedDepartment && enteredName) {
       const deptCode = DEPARTMENT_CODES[selectedDepartment] || "USR";
@@ -106,24 +112,33 @@ export default function LoginPage() {
         )
         .join("-")
         .replace(/\s+/g, "");
-      // DAA-д захирал байхгүй
-      if (selectedDepartment === "Дата анализын алба") {
-        setGeneratedUserId(`${deptCode}-${namePart}`);
+      const withDagPrefix = !NO_DAG_PREFIX_DEPARTMENTS.has(selectedDepartment);
+      const staffId = withDagPrefix
+        ? /^DAG-/i.test(deptCode)
+          ? `${deptCode}-${namePart}`
+          : `DAG-${deptCode}-${namePart}`
+        : `${deptCode}-${namePart}`;
+
+      // DAA / CHBA — захирал байхгүй
+      if (NO_DIRECTOR_DEPARTMENTS.has(selectedDepartment)) {
+        setGeneratedUserId(staffId);
+        return;
+      }
+
+      const isDirector =
+        selectedDepartment === "Удирдлага" ||
+        String(selectedPosition ?? "")
+          .toLowerCase()
+          .includes("захирал");
+      if (isDirector) {
+        if (!withDagPrefix) setGeneratedUserId(`.${namePart}-${deptCode}`);
+        else if (/^DAG-/i.test(deptCode))
+          setGeneratedUserId(`.${namePart}-${deptCode}`);
+        else if (/^DAG$/i.test(deptCode))
+          setGeneratedUserId(`.${namePart}-DAG`);
+        else setGeneratedUserId(`.${namePart}-DAG-${deptCode}`);
       } else {
-        const isDirector =
-          selectedDepartment === "Удирдлага" ||
-          String(selectedPosition ?? "")
-            .toLowerCase()
-            .includes("захирал");
-        if (isDirector) {
-          if (/^DAG-/i.test(deptCode))
-            setGeneratedUserId(`.${namePart}-${deptCode}`);
-          else if (/^DAG$/i.test(deptCode))
-            setGeneratedUserId(`.${namePart}-DAG`);
-          else setGeneratedUserId(`.${namePart}-DAG-${deptCode}`);
-        } else {
-          setGeneratedUserId(`DAG-${deptCode}-${namePart}`);
-        }
+        setGeneratedUserId(staffId);
       }
     } else {
       setGeneratedUserId("");
@@ -142,58 +157,65 @@ export default function LoginPage() {
   const getUserIdPrefix = () => {
     if (!selectedDepartment) return "";
     const deptCode = DEPARTMENT_CODES[selectedDepartment] || "USR";
-    if (selectedDepartment === "Дата анализын алба") return `${deptCode}-`;
+    const withDagPrefix = !NO_DAG_PREFIX_DEPARTMENTS.has(selectedDepartment);
+    if (NO_DIRECTOR_DEPARTMENTS.has(selectedDepartment)) {
+      if (!withDagPrefix) return `${deptCode}-`;
+      return /^DAG-/i.test(deptCode) ? `${deptCode}-` : `DAG-${deptCode}-`;
+    }
     const isDirector =
       selectedDepartment === "Удирдлага" ||
       String(selectedPosition ?? "")
         .toLowerCase()
         .includes("захирал");
     if (isDirector) return ".";
-    return `DAG-${deptCode}-`;
+    if (!withDagPrefix) return `${deptCode}-`;
+    return /^DAG-/i.test(deptCode) ? `${deptCode}-` : `DAG-${deptCode}-`;
   };
 
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const searchUsers = useCallback(async (query: string) => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    if (!query || query.length < 3) {
-      setUserSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-    setIsSearching(true);
-    searchDebounceRef.current = setTimeout(async () => {
+  // Department picked → fetch everyone in it so the user can find themselves
+  const handleSelectLoginDepartment = useCallback(
+    async (department: string) => {
+      setLoginDepartment(department);
+      loginForm.setValue("userId", "");
+      setDepartmentEmployees([]);
+      if (!department) return;
+      setIsLoadingEmployees(true);
       try {
         const response = await fetch(
-          `/api/auth/search?q=${encodeURIComponent(query)}`,
+          `/api/auth/by-department?department=${encodeURIComponent(department)}`,
         );
         if (response.status === 429) {
-          setUserSuggestions([]);
-          setShowSuggestions(false);
+          setDepartmentEmployees([]);
           return;
         }
         const data = await response.json();
-        if (data.users && data.users.length > 0) {
-          setUserSuggestions(data.users);
-          setShowSuggestions(true);
-        } else {
-          setUserSuggestions([]);
-          setShowSuggestions(false);
-        }
+        const users = Array.isArray(data.users) ? data.users : [];
+        const rank = DEPARTMENT_POSITIONS[department] ?? [];
+        const sorted = [...users].sort(
+          (
+            a: { name?: string; position?: string },
+            b: { name?: string; position?: string },
+          ) => {
+            const ra = rank.indexOf(String(a.position ?? "").trim());
+            const rb = rank.indexOf(String(b.position ?? "").trim());
+            const ia = ra === -1 ? rank.length : ra;
+            const ib = rb === -1 ? rank.length : rb;
+            if (ia !== ib) return ia - ib;
+            return String(a.name ?? "").localeCompare(
+              String(b.name ?? ""),
+              "mn",
+            );
+          },
+        );
+        setDepartmentEmployees(sorted);
       } catch {
-        setUserSuggestions([]);
-        setShowSuggestions(false);
+        setDepartmentEmployees([]);
       } finally {
-        setIsSearching(false);
+        setIsLoadingEmployees(false);
       }
-    }, 600);
-  }, []);
-
-  const handleSelectSuggestion = (userId: string) => {
-    loginForm.setValue("userId", userId);
-    setShowSuggestions(false);
-    setUserSuggestions([]);
-  };
+    },
+    [loginForm],
+  );
 
   const authFetchError = async (response: Response, fallback: string) => {
     if (response.status === 429) {
@@ -417,6 +439,8 @@ export default function LoginPage() {
     setCheckedUser(null);
     loginForm.reset();
     loginPasswordForm.reset();
+    setLoginDepartment("");
+    setDepartmentEmployees([]);
     setRegisterStep("info");
     setRegisteredUser(null);
     setGeneratedUserId("");
@@ -435,6 +459,8 @@ export default function LoginPage() {
     loginForm.reset();
     loginPasswordForm.reset();
     claimPasswordForm.reset();
+    setLoginDepartment("");
+    setDepartmentEmployees([]);
     setFlowType("login");
   };
 
@@ -476,9 +502,9 @@ export default function LoginPage() {
             claimPasswordForm={claimPasswordForm}
             loginStep={loginStep}
             checkedUser={checkedUser}
-            userSuggestions={userSuggestions}
-            showSuggestions={showSuggestions}
-            isSearching={isSearching}
+            loginDepartment={loginDepartment}
+            departmentEmployees={departmentEmployees}
+            isLoadingEmployees={isLoadingEmployees}
             isLoading={isLoading}
             showPassword={showPassword}
             showConfirmPassword={showConfirmPassword}
@@ -486,11 +512,9 @@ export default function LoginPage() {
             setShowPassword={setShowPassword}
             setShowConfirmPassword={setShowConfirmPassword}
             setForgotPasswordOpen={setForgotPasswordOpen}
-            setShowSuggestions={setShowSuggestions}
             passwordChecks={passwordChecks}
             allChecksPass={allChecksPass}
-            searchUsers={searchUsers}
-            handleSelectSuggestion={handleSelectSuggestion}
+            handleSelectLoginDepartment={handleSelectLoginDepartment}
             handleCheckUser={handleCheckUser}
             handleLogin={handleLogin}
             handleSetPassword={handleSetPassword}
