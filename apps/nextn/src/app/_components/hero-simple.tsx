@@ -44,7 +44,7 @@ function TeamGalleryCarousel({
       <div className="hero-profile-glow absolute -inset-2 rounded-2xl blur-md opacity-70" />
 
       <div className="hero-profile-frame relative rounded-xl p-[2px]">
-        <div className="hero-profile-surface relative aspect-[16/9] w-full overflow-hidden rounded-[0.7rem]">
+        <div className="hero-profile-surface relative aspect-[16/10] w-full overflow-hidden rounded-[0.7rem]">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={active.id}
@@ -228,7 +228,7 @@ export default function Hero() {
         ))}
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(22rem,36rem)] gap-8 lg:gap-12 items-center">
+      <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(28rem,44rem)] gap-8 lg:gap-10 items-center">
         <div className="space-y-6 min-w-0">
           <motion.div
             initial={{ opacity: 0, y: -12 }}
@@ -356,7 +356,7 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="hidden lg:flex flex-col items-stretch justify-center">
+        <div className="hidden lg:flex flex-col items-stretch justify-center min-w-0">
           <TeamGalleryCarousel
             slides={photos}
             idx={photoIdx}
