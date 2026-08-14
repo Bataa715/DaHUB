@@ -9,7 +9,7 @@ import { homepageEthicsApi, type EthicsSlide } from "@/lib/api";
 import { GolomtWatermark } from "@/components/GolomtWatermark";
 import { GolomtLogoMark } from "@/components/GolomtLogoMark";
 import { Quote } from "lucide-react";
-import { loadTeamGallery, type TeamGallerySlide } from "./team-gallery";
+import { DEFAULT_TEAM_SLIDES, type TeamGallerySlide } from "./team-gallery";
 
 const ethicsSerif = Cormorant_Garamond({
   subsets: ["cyrillic", "cyrillic-ext", "latin"],
@@ -24,11 +24,10 @@ const CAROUSEL_MS = 5000;
 function TeamGalleryCarousel({
   slides,
   idx,
-  direction,
 }: {
   slides: TeamGallerySlide[];
   idx: number;
-  direction: number;
+  direction?: number;
 }) {
   if (slides.length === 0) return null;
 
@@ -45,28 +44,25 @@ function TeamGalleryCarousel({
 
       <div className="hero-profile-frame relative rounded-xl p-[2px]">
         <div className="hero-profile-surface relative aspect-[16/10] w-full overflow-hidden rounded-[0.7rem]">
-          <AnimatePresence mode="wait" custom={direction}>
+          <AnimatePresence mode="wait">
             <motion.div
               key={active.id}
-              custom={direction}
-              initial={{ x: direction * 36, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: direction * -36, opacity: 0 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="absolute inset-0 bg-muted/40"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={active.src}
                 alt={active.alt}
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full object-contain object-center"
                 decoding="async"
                 draggable={false}
               />
             </motion.div>
           </AnimatePresence>
-
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/35 to-transparent" />
         </div>
       </div>
 
@@ -106,7 +102,7 @@ export default function Hero() {
 
   const [slides, setSlides] = useState<EthicsSlide[]>([]);
   const [slidesLoading, setSlidesLoading] = useState(true);
-  const [photos, setPhotos] = useState<TeamGallerySlide[]>([]);
+  const [photos] = useState<TeamGallerySlide[]>(DEFAULT_TEAM_SLIDES);
   // Нэг tick — ethics + зураг нэг зэрэг солигдоно
   const [tick, setTick] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -125,14 +121,6 @@ export default function Hero() {
       })
       .finally(() => {
         if (!cancelled) setSlidesLoading(false);
-      });
-
-    loadTeamGallery()
-      .then((slides) => {
-        if (!cancelled) setPhotos(slides);
-      })
-      .catch(() => {
-        if (!cancelled) setPhotos([]);
       });
 
     return () => {

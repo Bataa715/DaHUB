@@ -16,8 +16,6 @@ const ALLOWED_EXT = new Set([
   ".svg",
 ]);
 
-const MANIFEST_NAME = "manifest.json";
-
 export const TEAM_PUBLIC_DIR = path.join(process.cwd(), "public", "team");
 
 export function teamDir(): string {
@@ -49,7 +47,7 @@ export async function listTeamImages(): Promise<TeamGallerySlide[]> {
   const files = await fs.readdir(TEAM_PUBLIC_DIR);
   const withStat = await Promise.all(
     files
-      .filter((f) => f !== MANIFEST_NAME && isAllowedImageName(f))
+      .filter((f) => isAllowedImageName(f))
       .map(async (f) => {
         const st = await fs.stat(path.join(TEAM_PUBLIC_DIR, f));
         return { f, mtime: st.mtimeMs };
@@ -61,17 +59,7 @@ export async function listTeamImages(): Promise<TeamGallerySlide[]> {
     src: `/team/${encodeURIComponent(f)}`,
     alt: path.basename(f, path.extname(f)).replace(/[-_]+/g, " "),
   }));
-  await writeTeamManifest(slides.map((s) => s.id));
   return slides;
-}
-
-export async function writeTeamManifest(files: string[]): Promise<void> {
-  await fs.mkdir(TEAM_PUBLIC_DIR, { recursive: true });
-  await fs.writeFile(
-    path.join(TEAM_PUBLIC_DIR, MANIFEST_NAME),
-    `${JSON.stringify({ files }, null, 2)}\n`,
-    "utf8",
-  );
 }
 
 export async function uniqueTeamPath(filename: string): Promise<string> {

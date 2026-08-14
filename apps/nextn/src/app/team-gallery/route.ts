@@ -9,6 +9,20 @@ import {
   safeTeamFilename,
 } from "@/lib/team-gallery-fs";
 
+/** Жагсаалт — auth шаардахгүй, зураг `public/team`-аас. */
+export async function GET() {
+  const slides = await listTeamImages();
+  if (slides.length === 0) {
+    return NextResponse.json({
+      slides: [
+        { id: "Team1.png", src: "/team/Team1.png", alt: "Team 1" },
+        { id: "Team2.png", src: "/team/Team2.png", alt: "Team 2" },
+      ],
+    });
+  }
+  return NextResponse.json({ slides });
+}
+
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_MIME = new Set([
   "image/jpeg",
