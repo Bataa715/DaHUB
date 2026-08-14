@@ -23,7 +23,7 @@ export default function GlobalError({
           alignItems: "center",
           justifyContent: "center",
           fontFamily:
-            "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif",
+            "'Source Sans 3', ui-sans-serif, system-ui, 'Segoe UI', sans-serif",
           background: "#0d1017",
           color: "#e7ecf3",
         }}

@@ -11,13 +11,7 @@ export default {
     extend: {
       fontFamily: {
         body: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: [
-          "ui-monospace",
-          "Cascadia Code",
-          "Consolas",
-          "Menlo",
-          "monospace",
-        ],
+        mono: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
         background: "hsl(var(--background))",

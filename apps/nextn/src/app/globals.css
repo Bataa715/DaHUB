@@ -2,13 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Body font — Golos Text Variable (@fontsource-variable, weight 400–900,
-   кирилл-нативе). Mono зөвхөн code-д. */
+/* Body font — Source Sans 3 Variable (@fontsource-variable, 200–900). */
 :root {
-  --font-sans: "Golos Text Variable", "Golos Text", ui-sans-serif, system-ui, sans-serif;
-  --font-mono:
-    "JetBrains Mono Variable", ui-monospace, "Cascadia Code", Consolas, Menlo,
-    Monaco, monospace;
+  --font-sans: "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-mono: var(--font-sans);
 }
 
 @layer utilities {

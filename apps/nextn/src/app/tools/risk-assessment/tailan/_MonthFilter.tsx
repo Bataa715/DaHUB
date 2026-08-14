@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -75,9 +76,12 @@ type MonthFilterProps = {
   maxExclusive?: string;
   /** Энэ сараас хойшихыг харуулна (YYYY-MM, inclusive) */
   minInclusive?: string;
+  /** Нэмэлт YYYY-MM утгууд (жишээ нь дата орсон сарууд) */
+  extraOptions?: string[];
   placeholder?: string;
   ariaLabel?: string;
   allowClear?: boolean;
+  disabled?: boolean;
   /** Үндсэн сар — илүү тод харагдана */
   emphasis?: "primary" | "secondary";
 };
@@ -92,9 +96,11 @@ export default function MonthFilter({
   className,
   maxExclusive,
   minInclusive,
+  extraOptions,
   placeholder,
   ariaLabel,
   allowClear = true,
+  disabled = false,
   emphasis = "secondary",
 }: MonthFilterProps) {
   const { language, t } = useLanguage();
@@ -105,16 +111,23 @@ export default function MonthFilter({
     placeholder ?? (language === "mn" ? "ж: 2025 - 10 сар" : "e.g. 2025 - 10");
   const effectiveAriaLabel = ariaLabel ?? t("monthFilterAriaLabel");
   const options = useMemo(() => {
-    const all = buildMonthOptions(36);
-    return all.filter((k) => {
-      if (maxExclusive && !(k < maxExclusive)) return false;
-      if (minInclusive && k < minInclusive) return false;
-      return true;
-    });
-  }, [maxExclusive, minInclusive]);
+    const keys = new Set(buildMonthOptions(36));
+    for (const raw of extraOptions ?? []) {
+      const k = String(raw ?? "").slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(k)) keys.add(k);
+    }
+    return [...keys]
+      .filter((k) => {
+        if (maxExclusive && !(k < maxExclusive)) return false;
+        if (minInclusive && k < minInclusive) return false;
+        return true;
+      })
+      .sort((a, b) => b.localeCompare(a));
+  }, [maxExclusive, minInclusive, extraOptions]);
 
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value ? formatMonthMn(value) : "");
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const isPrimary = emphasis === "primary";
@@ -125,11 +138,31 @@ export default function MonthFilter({
 
   useEffect(() => {
     if (!open) return;
+    const updatePos = () => {
+      const el = rootRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuPos({
+        top: r.bottom + 4,
+        left: r.left,
+        width: Math.max(r.width, 176),
+      });
+    };
+    updatePos();
     const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (listRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -163,8 +196,59 @@ export default function MonthFilter({
     }
   };
 
+  const list = open ? (
+    <div
+      ref={listRef}
+      className="z-[80] rounded-md border border-border bg-popover shadow-md overflow-y-auto overscroll-contain"
+      style={{
+        position: "fixed",
+        top: menuPos.top,
+        left: menuPos.left,
+        width: menuPos.width,
+        maxHeight: "8.75rem",
+      }}
+      role="listbox"
+    >
+      {options.length === 0 ? (
+        <div className="px-2.5 h-7 flex items-center text-[11px] text-muted-foreground">
+          {t("monthFilterNoOptions")}
+        </div>
+      ) : (
+        options.map((key) => {
+          const active = key === value;
+          return (
+            <button
+              key={key}
+              type="button"
+              data-month={key}
+              role="option"
+              aria-selected={active}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(key);
+                setDraft(formatMonthMn(key));
+                setOpen(false);
+              }}
+              className={cn(
+                "w-full text-left px-2.5 h-7 text-[11px] font-medium truncate",
+                active
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                  : "text-foreground hover:bg-muted/60",
+              )}
+            >
+              {formatMonthMn(key)}
+            </button>
+          );
+        })
+      )}
+    </div>
+  ) : null;
+
   return (
-    <div ref={rootRef} className={cn("relative", className)}>
+    <div
+      ref={rootRef}
+      className={cn("relative", disabled && "pointer-events-none opacity-50", className)}
+    >
       <div
         className={cn(
           "flex items-center rounded-md overflow-hidden focus-within:ring-1",
@@ -177,6 +261,7 @@ export default function MonthFilter({
           type="text"
           value={draft}
           placeholder={effectivePlaceholder}
+          disabled={disabled}
           onChange={(e) => setDraft(e.target.value)}
           onFocus={() => setOpen(true)}
           onBlur={commitDraft}
@@ -241,47 +326,9 @@ export default function MonthFilter({
         </button>
       </div>
 
-      {open && (
-        <div
-          ref={listRef}
-          className="absolute z-40 left-0 top-[calc(100%+4px)] w-full min-w-[11rem] rounded-md border border-border bg-popover shadow-md overflow-y-auto overscroll-contain"
-          style={{ maxHeight: "8.75rem" }}
-          role="listbox"
-        >
-          {options.length === 0 ? (
-            <div className="px-2.5 h-7 flex items-center text-[11px] text-muted-foreground">
-              {t("monthFilterNoOptions")}
-            </div>
-          ) : (
-            options.map((key) => {
-              const active = key === value;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  data-month={key}
-                  role="option"
-                  aria-selected={active}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    onChange(key);
-                    setDraft(formatMonthMn(key));
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "w-full text-left px-2.5 h-7 text-[11px] font-medium truncate",
-                    active
-                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                      : "text-foreground hover:bg-muted/60",
-                  )}
-                >
-                  {formatMonthMn(key)}
-                </button>
-              );
-            })
-          )}
-        </div>
-      )}
+      {typeof document !== "undefined" && list
+        ? createPortal(list, document.body)
+        : null}
     </div>
   );
 }

@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { ThemeStyleInjector } from "@/components/ThemeStyleInjector";
-/** Golos Text (variable, weight 400–900) — кирилл-нативе, уншихад гоё & тод.
- *  Нэг variable файл бүх жинг (400/500/600/700 г.м.) агуулна. */
-import "@fontsource-variable/golos-text/wght.css";
-/** JetBrains Mono (variable) — тод тоо/ID/оноо/огноо/код-д accent. */
-import "@fontsource-variable/jetbrains-mono/wght.css";
+/** Source Sans 3 (variable, weight 200–900) — хуучин үндсэн фонт. */
+import "@fontsource-variable/source-sans-3/wght.css";
 import "./globals.css";
 import Providers from "./providers";
 

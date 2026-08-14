@@ -456,10 +456,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             <MonthFilter
               value={selectedMonth}
               onChange={loadMonth}
+              extraOptions={riskbranchDates.map(monthKeyFromDate)}
               emphasis="primary"
               allowClear={false}
-              ariaLabel="Сар сонгох"
-              className="w-[10rem]"
+              disabled={loadingDate}
+              ariaLabel={t("monthFilterAriaLabel")}
             />
 
             {/* Indicator Filter toggle */}
