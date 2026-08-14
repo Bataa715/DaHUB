@@ -9,7 +9,7 @@ import { homepageEthicsApi, type EthicsSlide } from "@/lib/api";
 import { GolomtWatermark } from "@/components/GolomtWatermark";
 import { GolomtLogoMark } from "@/components/GolomtLogoMark";
 import { Quote } from "lucide-react";
-import type { TeamGallerySlide } from "./team-gallery";
+import { loadTeamGallery, type TeamGallerySlide } from "./team-gallery";
 
 const ethicsSerif = Cormorant_Garamond({
   subsets: ["cyrillic", "cyrillic-ext", "latin"],
@@ -127,10 +127,9 @@ export default function Hero() {
         if (!cancelled) setSlidesLoading(false);
       });
 
-    fetch("/api/team-gallery", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { slides: [] }))
-      .then((data: { slides?: TeamGallerySlide[] }) => {
-        if (!cancelled) setPhotos(Array.isArray(data.slides) ? data.slides : []);
+    loadTeamGallery()
+      .then((slides) => {
+        if (!cancelled) setPhotos(slides);
       })
       .catch(() => {
         if (!cancelled) setPhotos([]);

@@ -109,7 +109,8 @@ export async function middleware(request: NextRequest) {
     !hasRefreshToken &&
     !isPublicRoute &&
     !isAdminRoute &&
-    !pathname.startsWith("/api/")
+    !pathname.startsWith("/api/") &&
+    !pathname.startsWith("/team-gallery")
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -170,6 +171,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|images|sounds|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)).*)",
+    "/((?!_next/static|_next/image|favicon.ico|images|sounds|team|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)).*)",
   ],
 };

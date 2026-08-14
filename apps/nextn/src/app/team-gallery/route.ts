@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
-import {
-  getApiAuth,
-  isSuperAdminPayload,
-} from "@/lib/api-auth";
+import { getApiAuth, isSuperAdminPayload } from "@/lib/api-auth";
 import {
   listTeamImages,
   teamDir,
@@ -21,17 +18,7 @@ const ALLOWED_MIME = new Set([
   "image/svg+xml",
 ]);
 
-/** Homepage carousel — нэвтэрсэн хэрэглэгч жагсаалт уншина. */
-export async function GET(req: NextRequest) {
-  const payload = await getApiAuth(req);
-  if (!payload) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const slides = await listTeamImages();
-  return NextResponse.json({ slides });
-}
-
-/** Superadmin л `public/team` руу зураг оруулна. */
+/** Superadmin л `public/team` руу зураг оруулна. `/api` биш — prod proxy Nest руу явуулахгүй. */
 export async function POST(req: NextRequest) {
   const payload = await getApiAuth(req);
   if (!isSuperAdminPayload(payload)) {

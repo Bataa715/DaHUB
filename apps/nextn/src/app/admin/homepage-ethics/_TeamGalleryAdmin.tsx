@@ -5,6 +5,7 @@ import { Loader2, Plus, Trash2, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getApiErrorMessage } from "@/lib/api";
+import { loadTeamGallery } from "@/app/_components/team-gallery";
 
 type Slide = { id: string; src: string; alt: string };
 
@@ -19,10 +20,8 @@ export function TeamGalleryAdmin() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/team-gallery", { credentials: "include" });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { slides?: Slide[] };
-      setSlides(Array.isArray(data.slides) ? data.slides : []);
+      const slides = await loadTeamGallery();
+      setSlides(slides);
     } catch (e: unknown) {
       toast({
         title: t("error"),
@@ -44,7 +43,7 @@ export function TeamGalleryAdmin() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("/api/team-gallery", {
+      const res = await fetch("/team-gallery", {
         method: "POST",
         body: form,
         credentials: "include",
@@ -70,7 +69,7 @@ export function TeamGalleryAdmin() {
     setBusyId(slide.id);
     try {
       const res = await fetch(
-        `/api/team-gallery/${encodeURIComponent(slide.id)}`,
+        `/team-gallery/${encodeURIComponent(slide.id)}`,
         { method: "DELETE", credentials: "include" },
       );
       if (!res.ok) throw new Error(await res.text());
