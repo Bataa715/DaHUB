@@ -57,76 +57,8 @@ async function getTokenPayload(token: string | undefined) {
   }
 }
 
-// [MED-4] Per-request nonce-based CSP for script-src, replacing the previous
-// static 'unsafe-inline' (which lets ANY injected inline <script> execute,
-// defeating CSP's protection against script-injection XSS). Next.js
-// automatically applies this nonce to its own injected script tags
-// (webpack runtime / hydration payload) once it sees the nonce in the CSP
-// header, so no changes are needed in individual pages/components.
-// 'unsafe-inline' is kept as a fallback token for pre-CSP3 browsers only —
-// per the CSP spec, browsers that understand nonces ignore 'unsafe-inline'
-// when a nonce is present, so this does not weaken protection in practice.
-/**
- * Backend-ийн origin (scheme://host:port). `NEXT_PUBLIC_API_URL` нь Next-ийн
- * build үед шатдаг тул CSP-д зөв backend хаяг орохын тулд prod build-ийг
- * ЗӨВ NEXT_PUBLIC_API_URL-тэйгээр хийх ёстой (жишээ https://dahub.golomtbank.local).
- * URL-ийн path/trailing slash-ийг гээж зөвхөн origin-ийг авна — CSP нь origin-оор
- * тааруулдаг тул. Хоосон/буруу бол хоосон string (CSP-д нэмэгдэхгүй).
- */
-function apiOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL;
-  if (!raw) return "";
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return raw;
-  }
-}
-
-function buildCsp(nonce: string): string {
-  const isDev = process.env.NODE_ENV === "development";
-  const api = apiOrigin();
-  const apiPart = api ? ` ${api}` : "";
-  return [
-    "default-src 'self'",
-    isDev
-      ? `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'`
-      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'`,
-    "style-src 'self' 'unsafe-inline'",
-    // Зураг: backend-ээс шууд ирэх <img> (болон blob/data) + гадаад CDN-ууд.
-    // Хатуу бичсэн localhost-ийн оронд бодит API origin-ийг ашиглана.
-    `img-src 'self' blob: data:${apiPart} https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pinimg.com https://api.dicebear.com https://cdn.simpleicons.org https://api.qrserver.com`,
-    "font-src 'self' data:",
-    // API/fetch хүсэлт: зөвхөн 'self' + backend origin (+ dev-д websocket).
-    `connect-src 'self'${apiPart}${isDev ? " ws://localhost:* wss://localhost:*" : ""} https://cdn.simpleicons.org`,
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-  ].join("; ");
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const nonce = crypto.randomUUID().replace(/-/g, "");
-  const csp = buildCsp(nonce);
-
-  // Forward the nonce to the app (readable via `headers()` in Server
-  // Components if a page ever needs to nonce its own inline script) and
-  // apply the same CSP as a response header so the browser enforces it.
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-  // [CSP FIX] Next.js өөрийн script тагуудад nonce тавихын тулд nonce-ийг
-  // REQUEST-ийн Content-Security-Policy header-ээс уншина. Өмнө нь зөвхөн
-  // response-д CSP тавьдаг байсан тул prod дээр ('strict-dynamic' идэвхтэй үед)
-  // Next-ийн scripts nonce авахгүй → бүгд блоклогдож "script-src violates CSP"
-  // алдаа гарч, апп ачаалагдахгүй байв. Энэ мөр түүнийг засна.
-  requestHeaders.set("Content-Security-Policy", csp);
-
-  const withCsp = <T extends NextResponse>(response: T): T => {
-    response.headers.set("Content-Security-Policy", csp);
-    return response;
-  };
 
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const isAdminRoute =
@@ -158,14 +90,14 @@ export async function middleware(request: NextRequest) {
       );
       response.cookies.delete("adminToken");
       response.cookies.delete("adminUser");
-      return withCsp(response);
+      return response;
     }
     // Certain admin sub-routes are superadmin-only
     const requiresSuperAdmin = SUPERADMIN_ROUTES.some((r) =>
       pathname.startsWith(r),
     );
     if (requiresSuperAdmin && adminPayload?.["isSuperAdmin"] !== true) {
-      return withCsp(NextResponse.redirect(new URL("/admin", request.url)));
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
   }
 
@@ -179,12 +111,12 @@ export async function middleware(request: NextRequest) {
     !isAdminRoute &&
     !pathname.startsWith("/api/")
   ) {
-    return withCsp(NextResponse.redirect(new URL("/login", request.url)));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Legacy tools grid — sidebar is primary nav
   if (pathname === "/tools") {
-    return withCsp(NextResponse.redirect(new URL("/", request.url)));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   //  Tool route permission check
@@ -219,7 +151,7 @@ export async function middleware(request: NextRequest) {
         if (!hasAccess) {
           // "/tools" grid is no longer the primary nav surface (sidebar is) —
           // send unauthorized tool visits back to the home page instead.
-          return withCsp(NextResponse.redirect(new URL("/", request.url)));
+          return NextResponse.redirect(new URL("/", request.url));
         }
       }
     }
@@ -227,13 +159,13 @@ export async function middleware(request: NextRequest) {
 
   //  Redirect already-authenticated users away from login pages
   if (pathname === "/login" && isUserAuth) {
-    return withCsp(NextResponse.redirect(new URL("/", request.url)));
+    return NextResponse.redirect(new URL("/", request.url));
   }
   if (pathname === "/admin/login" && isAdminAuth) {
-    return withCsp(NextResponse.redirect(new URL("/admin", request.url)));
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
-  return withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
+  return NextResponse.next();
 }
 
 export const config = {

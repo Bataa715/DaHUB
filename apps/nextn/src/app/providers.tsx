@@ -10,10 +10,8 @@ import { themes, defaultThemeName } from "@/lib/themes";
 
 export default function Providers({
   children,
-  nonce,
 }: {
   children: React.ReactNode;
-  nonce?: string;
 }) {
   return (
     <ThemeProvider
@@ -22,7 +20,6 @@ export default function Providers({
       themes={themes.map((t) => t.name)}
       enableSystem={false}
       disableTransitionOnChange
-      nonce={nonce}
     >
       <ErrorBoundary>
         <AuthProvider>

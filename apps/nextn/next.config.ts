@@ -31,11 +31,6 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
-          // [MED-4] Content-Security-Policy is now generated per-request in
-          // middleware.ts with a random nonce for script-src (replacing the
-          // static 'unsafe-inline' below) — see middleware.ts for the actual
-          // policy. Keeping it here too would just create a duplicate/looser
-          // policy, so it has been removed from this static header list.
         ],
       },
     ];

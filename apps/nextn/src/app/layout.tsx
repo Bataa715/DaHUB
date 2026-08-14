@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { ThemeStyleInjector } from "@/components/ThemeStyleInjector";
 /** Source Sans 3 (variable, weight 200–900) — хуучин үндсэн фонт. */
 import "@fontsource-variable/source-sans-3/wght.css";
@@ -29,13 +28,11 @@ export const viewport = {
   maximumScale: 5,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-
   return (
     <html lang="mn" suppressHydrationWarning>
       <head>
@@ -43,7 +40,7 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://cdn.simpleicons.org" />
       </head>
       <body className="min-h-screen bg-background font-body antialiased">
-        <Providers nonce={nonce}>{children}</Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
