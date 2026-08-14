@@ -20,7 +20,7 @@ const ethicsSerif = Cormorant_Garamond({
 
 const CAROUSEL_MS = 5000;
 
-/** Landscape хамт олны зураг — эцэгээс ирсэн sync index */
+/** Landscape хамт олны зураг — бүх dest-ийг нэг удаа ачаална, солиход дахин татахгүй */
 function TeamGalleryCarousel({
   slides,
   idx,
@@ -29,9 +29,28 @@ function TeamGalleryCarousel({
   idx: number;
   direction?: number;
 }) {
-  if (slides.length === 0) return null;
+  const [ready, setReady] = useState<Record<string, boolean>>({});
+  const [shown, setShown] = useState(0);
 
-  const active = slides[idx % slides.length] ?? slides[0];
+  useEffect(() => {
+    if (slides.length === 0) return;
+    for (const s of slides) {
+      const im = new window.Image();
+      im.decoding = "sync";
+      im.onload = () => {
+        setReady((prev) => (prev[s.id] ? prev : { ...prev, [s.id]: true }));
+      };
+      im.src = s.src;
+    }
+  }, [slides]);
+
+  const target = slides.length ? idx % slides.length : 0;
+  useEffect(() => {
+    const id = slides[target]?.id;
+    if (id && ready[id]) setShown(target);
+  }, [target, ready, slides]);
+
+  if (slides.length === 0) return null;
 
   return (
     <motion.div
@@ -43,26 +62,27 @@ function TeamGalleryCarousel({
       <div className="hero-profile-glow absolute -inset-2 rounded-2xl blur-md opacity-70" />
 
       <div className="hero-profile-frame relative rounded-xl p-[2px]">
-        <div className="hero-profile-surface relative aspect-[16/10] w-full overflow-hidden rounded-[0.7rem]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-              className="absolute inset-0 bg-muted/40"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={active.src}
-                alt={active.alt}
-                className="h-full w-full object-contain object-center"
-                decoding="async"
-                draggable={false}
-              />
-            </motion.div>
-          </AnimatePresence>
+        <div className="hero-profile-surface relative aspect-[16/10] w-full overflow-hidden rounded-[0.7rem] bg-muted/30">
+          {slides.map((s, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={s.id}
+              src={s.src}
+              alt={s.alt}
+              draggable={false}
+              decoding="async"
+              loading="eager"
+              fetchPriority={i === 0 ? "high" : "low"}
+              onLoad={() =>
+                setReady((prev) =>
+                  prev[s.id] ? prev : { ...prev, [s.id]: true },
+                )
+              }
+              className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500 ${
+                i === shown && ready[s.id] ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          ))}
         </div>
       </div>
 
@@ -72,9 +92,7 @@ function TeamGalleryCarousel({
             <span
               key={s.id}
               className={`h-1 rounded-full transition-all ${
-                i === idx % slides.length
-                  ? "w-4 bg-foreground/70"
-                  : "w-1.5 bg-foreground/25"
+                i === shown ? "w-4 bg-foreground/70" : "w-1.5 bg-foreground/25"
               }`}
             />
           ))}

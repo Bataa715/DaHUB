@@ -1,6 +1,5 @@
 /**
- * Нүүр хуудсын хамт олны зураг — лого шиг `public/team/*.png`.
- * JSON/API жагсаалт ашиглахгүй (prod дээр /team/manifest 404 гардаг).
+ * Нүүр хуудсын хамт олны зураг — лого шиг `public/team`.
  */
 export type TeamGallerySlide = {
   id: string;
@@ -9,8 +8,8 @@ export type TeamGallerySlide = {
 };
 
 export const DEFAULT_TEAM_SLIDES: TeamGallerySlide[] = [
-  { id: "Team1.png", src: "/team/Team1.png", alt: "Team 1" },
-  { id: "Team2.png", src: "/team/Team2.png", alt: "Team 2" },
+  { id: "Team1.jpg", src: "/team/Team1.jpg", alt: "Team 1" },
+  { id: "Team2.jpg", src: "/team/Team2.jpg", alt: "Team 2" },
 ];
 
 /** Админ нэмсэн зураг байвал `/team-gallery`-аас авна, үгүй бол public/team. */

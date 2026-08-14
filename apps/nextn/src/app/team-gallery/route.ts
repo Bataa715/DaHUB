@@ -15,8 +15,8 @@ export async function GET() {
   if (slides.length === 0) {
     return NextResponse.json({
       slides: [
-        { id: "Team1.png", src: "/team/Team1.png", alt: "Team 1" },
-        { id: "Team2.png", src: "/team/Team2.png", alt: "Team 2" },
+        { id: "Team1.jpg", src: "/team/Team1.jpg", alt: "Team 1" },
+        { id: "Team2.jpg", src: "/team/Team2.jpg", alt: "Team 2" },
       ],
     });
   }
