@@ -422,11 +422,12 @@ export default function ReportView({
   const [sortKey, setSortKey] = useState<number>(1);
   const [tableLayout, setTableLayout] = useState<TableLayout>("unified");
 
-  /** Holds + catalog бэлэн болохоос өмнө table зурвал буруу total → дараа нь эрэмбэ «үсрэх» */
+  /** Holds/catalog хүлээлгүй хүснэгтийг харуулна — сар солиход бүү нуу. */
   const scoringReady = holdsLoaded && dynamicConfig.loaded;
   const scoringReadyOnce = useRef(false);
   if (scoringReady) scoringReadyOnce.current = true;
-  const showScoredTable = scoringReady || scoringReadyOnce.current;
+  const showScoredTable =
+    scoredRows.length > 0 && (scoringReady || scoringReadyOnce.current);
 
   const sortedFiltered = useMemo(() => {
     const bySolid = (a: BranchAggregate, b: BranchAggregate) => {
@@ -649,14 +650,7 @@ export default function ReportView({
         </div>
       </div>
 
-      {!showScoredTable ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <Loader2 className="w-7 h-7 animate-spin text-emerald-500" />
-          <p className="text-sm text-muted-foreground">
-            {t("raReportViewTablePreparing")}
-          </p>
-        </div>
-      ) : tableLayout === "unified" ? (
+      {!showScoredTable ? null : tableLayout === "unified" ? (
         <ReportTable
           title={t("raReportViewUnifiedTitle")}
           rows={sortedFiltered}

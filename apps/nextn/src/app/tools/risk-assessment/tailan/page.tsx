@@ -879,28 +879,11 @@ export default function RiskReportsPage() {
         ) : showReportTable ? (
           <div
             className={cn(
-              "relative w-full min-w-0 transition-[opacity,filter] duration-300 ease-out",
-              isRefreshing
-                ? "opacity-55 pointer-events-none"
-                : "opacity-100",
+              "relative w-full min-w-0",
+              isRefreshing && "pointer-events-none",
             )}
           >
-            {isRefreshing && (
-              <div className="absolute inset-x-0 top-3 z-10 flex justify-center pointer-events-none">
-                <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/95 px-3 py-1 shadow-sm backdrop-blur-sm">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("raTailanPageRefreshing")}
-                  </span>
-                </div>
-              </div>
-            )}
             <ReportView
-              key={
-                filterMode === "month"
-                  ? `m:${filterMonth}:${compareMonth}:${monthAnchorDate}`
-                  : `q:${selectedReportId}:${comparisonReportId}`
-              }
               scoredRows={primaryScoredRows}
               riskFilter={riskFilter}
               setRiskFilter={setRiskFilter}

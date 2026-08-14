@@ -250,10 +250,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
     const abort = new AbortController();
     loadAbortRef.current = abort;
 
-    setRows([]);
-    setFetchedDate(date);
-    setJudgements({});
-    setJudgementComments({});
+    // Хуучин хүснэгтийг бүү нуу — шинэ оноо ирэхэд мөрүүдээ шинэчилнэ.
     setLoadingDate(true);
     setErrorMsg(null);
     try {
@@ -261,14 +258,15 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       const res = await riskApi.getRiskbranch(date);
       if (abort.signal.aborted) return;
       const actualDate = res.fetchedDate || date;
-      setFetchedDate(actualDate);
       const [judgeList, allJudge] = await Promise.all([
         riskApi.listJudgements(actualDate),
         riskApi.listJudgements(),
       ]);
       if (abort.signal.aborted) return;
-      setRows(res.rows ?? []);
-      const solids = oracleSolidsFromRows(res.rows ?? []);
+      const nextRows = res.rows ?? [];
+      setFetchedDate(actualDate);
+      setRows(nextRows);
+      const solids = oracleSolidsFromRows(nextRows);
       const { scores: jmap, comments: cmap } = judgementsFromListForBranches(
         judgeList,
         solids,
@@ -459,7 +457,6 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               extraOptions={riskbranchDates.map(monthKeyFromDate)}
               emphasis="primary"
               allowClear={false}
-              disabled={loadingDate}
               ariaLabel={t("monthFilterAriaLabel")}
             />
 
@@ -532,7 +529,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           </div>
         )}
 
-        {loading || (loadingDate && !hasData) ? (
+        {loading && !hasData ? (
           <ReportSkeleton rows={10} />
         ) : monthHasNoData ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
@@ -576,22 +573,24 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
                 onClose={() => setFilterOpen(false)}
               />
             )}
-            <ReportView
-              scoredRows={scoredRows}
-              riskFilter={riskFilter}
-              setRiskFilter={setRiskFilter}
-              pDate={fetchedDate}
-              dataReferenceDate={selectedDate}
-              initialManualMap={manualMap}
-              saveIndicatorFn={handleManualSave}
-              externalJudgements={judgements}
-              externalJudgementComments={judgementComments}
-              onJudgementChange={onJudgementSave}
-              onJudgementCommentSave={onJudgementCommentSave}
-              previousJudgements={prevJudgements}
-              hideComparison={true}
-              hideUnevaluatedInDetail={true}
-            />
+            <div className={loadingDate ? "pointer-events-none" : undefined}>
+              <ReportView
+                scoredRows={scoredRows}
+                riskFilter={riskFilter}
+                setRiskFilter={setRiskFilter}
+                pDate={fetchedDate}
+                dataReferenceDate={selectedDate}
+                initialManualMap={manualMap}
+                saveIndicatorFn={handleManualSave}
+                externalJudgements={judgements}
+                externalJudgementComments={judgementComments}
+                onJudgementChange={onJudgementSave}
+                onJudgementCommentSave={onJudgementCommentSave}
+                previousJudgements={prevJudgements}
+                hideComparison={true}
+                hideUnevaluatedInDetail={true}
+              />
+            </div>
           </>
         )}
       </div>
