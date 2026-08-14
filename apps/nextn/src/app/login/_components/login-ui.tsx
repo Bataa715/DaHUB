@@ -7,20 +7,12 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 export function LoginBrandHeader() {
   return (
     <div className="flex flex-col items-center mb-6 text-center">
-      <motion.h1
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.5 }}
-        className="login-brand-title text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-transparent"
-      >
-        DaHUB
-      </motion.h1>
-
+      {/* [UI] "DaHUB" текст хасагдсан — зөвхөн зөөлөн brand зураас үлдээв. */}
       <motion.div
         initial={{ width: 0, opacity: 0 }}
         animate={{ width: 40, opacity: 1 }}
-        transition={{ delay: 0.35, duration: 0.6, ease: "easeOut" }}
-        className="h-[3px] mt-4 rounded-full bg-gradient-to-r from-primary/40 via-primary to-primary/40"
+        transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
+        className="h-[3px] rounded-full bg-gradient-to-r from-primary/40 via-primary to-primary/40"
       />
     </div>
   );
@@ -52,6 +44,51 @@ export function LoginAmbientBackground() {
   );
 }
 
+/**
+ * Login/Register хуудсын split бүтэц:
+ *  - Зүүн тал: Голомт банкны зураг (desktop-д давамгай, өргөн дэлгэцэнд ~80%).
+ *  - Баруун тал: тогтмол өргөнтэй форм самбар.
+ *  Жижиг дэлгэцэнд (< lg) зураг нуугдаж, форм бүтэн өргөнөөр гарна.
+ */
+export function LoginSplitShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="login-page h-dvh max-h-dvh overflow-hidden flex items-center justify-center relative p-3 sm:p-4 lg:p-5">
+      <LoginAmbientBackground />
+
+      {/* Viewport-д багтах карт — хуудас скроллгүй; скролл зөвхөн ажилтны жагсаалтад. */}
+      <div className="relative z-10 w-full max-w-[1500px] h-[calc(100dvh-1.5rem)] sm:h-[calc(100dvh-2rem)] lg:h-[calc(100dvh-2.5rem)] max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] lg:max-h-[calc(100dvh-2.5rem)] min-h-0 flex rounded-3xl overflow-hidden border border-border shadow-premium-xl bg-card">
+        {/* Зүүн — зураг (60%), desktop */}
+        <div className="hidden lg:block relative w-3/5 self-stretch min-h-0">
+          <Image
+            src="/Login.jpg"
+            alt="Голомт банк"
+            fill
+            priority
+            quality={95}
+            sizes="(min-width:1024px) 60vw, 0px"
+            className="object-cover"
+          />
+          {/* Зураг ↔ форм хоорондын нарийн хуваах шугам */}
+          <div className="absolute inset-y-0 right-0 w-px bg-border" />
+        </div>
+
+        {/* Баруун — форм (40%). Панел өндрөөс хэтрэхгүй. */}
+        <div className="relative w-full lg:w-2/5 min-h-0 flex items-center justify-center px-6 sm:px-8 py-6 bg-background overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="relative z-10 w-full max-w-md max-h-full min-h-0"
+          >
+            <LoginBrandHeader />
+            {children}
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function LoginCard({
   children,
   className = "",
@@ -64,9 +101,9 @@ export function LoginCard({
       initial={{ opacity: 0, y: 24, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-      className={`login-card-border relative p-[1.5px] rounded-3xl shadow-premium-xl ${className}`}
+      className={`login-card-border relative p-[1.5px] rounded-3xl shadow-premium-xl max-h-full min-h-0 ${className}`}
     >
-      <div className="login-card-inner relative bg-card rounded-[22px] p-8 overflow-hidden">
+      <div className="login-card-inner relative bg-card rounded-[22px] p-6 sm:p-8 overflow-hidden max-h-full">
         {/* Дотор талын дээд ирмэгт нарийн highlight шугам — "шил" мэт мэдрэмж */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
         {children}

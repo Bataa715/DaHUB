@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -58,6 +58,12 @@ export default function LoginPage() {
     Array<{ userId: string; name: string; position?: string }>
   >([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  // [PERF/429] Хэлтэс тус бүрийн ажилтны жагсаалтыг session дотор нэг л удаа
+  // татна. Хэлтсүүдийг дахин дахин сонгоход network хийхгүй — энэ нь login
+  // хуудсан дээрх 429 (Too Many Requests)-ийн гол шалтгааныг арилгана.
+  const deptEmployeesCache = useRef<
+    Map<string, Array<{ userId: string; name: string; position?: string }>>
+  >(new Map());
 
   // Common state
   const [isLoading, setIsLoading] = useState(false);
@@ -177,8 +183,18 @@ export default function LoginPage() {
     async (department: string) => {
       setLoginDepartment(department);
       loginForm.setValue("userId", "");
+      if (!department) {
+        setDepartmentEmployees([]);
+        return;
+      }
+      // Cache hit — session дотор аль хэдийн татсан бол network хийхгүй.
+      const cached = deptEmployeesCache.current.get(department);
+      if (cached) {
+        setDepartmentEmployees(cached);
+        setIsLoadingEmployees(false);
+        return;
+      }
       setDepartmentEmployees([]);
-      if (!department) return;
       setIsLoadingEmployees(true);
       try {
         const response = await fetch(
@@ -190,16 +206,23 @@ export default function LoginPage() {
         }
         const data = await response.json();
         const users = Array.isArray(data.users) ? data.users : [];
-        const rank = DEPARTMENT_POSITIONS[department] ?? [];
+        // Албан тушаалын эрэмбэ (1. захирал → 2. ахлах → 3. аудитор). Position
+        // string-ийг DB-д том/жижиг үсэг, зайгаар бага зэрэг зөрж болзошгүй тул
+        // NORMALIZE (жижиг үсэг + trim) хийж харьцуулна — ингэснээр эрэмбэ
+        // найдвартай ажиллана.
+        const norm = (s?: string) => String(s ?? "").toLowerCase().trim();
+        const rank = (DEPARTMENT_POSITIONS[department] ?? []).map(norm);
+        const rankOf = (pos?: string) => {
+          const idx = rank.indexOf(norm(pos));
+          return idx === -1 ? rank.length : idx;
+        };
         const sorted = [...users].sort(
           (
             a: { name?: string; position?: string },
             b: { name?: string; position?: string },
           ) => {
-            const ra = rank.indexOf(String(a.position ?? "").trim());
-            const rb = rank.indexOf(String(b.position ?? "").trim());
-            const ia = ra === -1 ? rank.length : ra;
-            const ib = rb === -1 ? rank.length : rb;
+            const ia = rankOf(a.position);
+            const ib = rankOf(b.position);
             if (ia !== ib) return ia - ib;
             return String(a.name ?? "").localeCompare(
               String(b.name ?? ""),
@@ -207,6 +230,7 @@ export default function LoginPage() {
             );
           },
         );
+        deptEmployeesCache.current.set(department, sorted);
         setDepartmentEmployees(sorted);
       } catch {
         setDepartmentEmployees([]);

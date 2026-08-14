@@ -31,8 +31,7 @@ import {
 import { DEPARTMENTS } from "@/lib/constants";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  LoginBrandHeader,
-  LoginAmbientBackground,
+  LoginSplitShell,
   LoginCard,
   LoginStepLogo,
   LoginSubmitButton,
@@ -77,16 +76,7 @@ export function RegisterFlow({
   const labelClass = loginLabelClass;
 
   return (
-    <div className="login-page min-h-screen flex items-center justify-center relative overflow-hidden">
-      <LoginAmbientBackground />
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 w-full max-w-md px-6 py-8"
-      >
-        <LoginBrandHeader />
-
+    <LoginSplitShell>
         <LoginCard>
           {showBack && (
             <motion.button
@@ -337,7 +327,6 @@ export function RegisterFlow({
             </div>
           )}
         </LoginCard>
-      </motion.div>
-    </div>
+    </LoginSplitShell>
   );
 }

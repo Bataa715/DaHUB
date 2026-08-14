@@ -15,7 +15,7 @@ interface DepartmentUser {
   name: string;
   position?: string;
   isActive?: boolean;
-  profileImage?: string | null;
+  hasProfileImage?: boolean;
 }
 
 interface DepartmentData {
@@ -109,22 +109,27 @@ function EmployeeCard({
 }) {
   const { t } = useLanguage();
   const color = getColor(member.name);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div
-      className={`w-44 flex-shrink-0 rounded-2xl border-2 ${color.border} ${color.bg} p-4 flex flex-col items-center gap-3 text-center transition-all duration-300 shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 ${
+      className={`w-36 flex-shrink-0 rounded-2xl border-2 ${color.border} ${color.bg} p-3 flex flex-col items-center gap-2.5 text-center transition-all duration-300 shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 ${
         isSelf ? "ring-2 ring-blue-500/30" : ""
       }`}
     >
-      {member.profileImage ? (
+      {member.hasProfileImage && !imgError ? (
+        // Аватарыг lazy + кэштэйгээр backend-ээс татна (base64-ийг жагсаалтад
+        // оруулахгүй). Алдаа гарвал initials руу шилжинэ.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={member.profileImage}
+          src={`/api/users/${member.id}/avatar`}
           alt={member.name}
-          className="w-20 h-20 rounded-full object-cover ring-2 ring-border"
+          loading="lazy"
+          onError={() => setImgError(true)}
+          className="w-16 h-16 rounded-full object-cover ring-2 ring-border"
         />
       ) : (
-        <div className="w-20 h-20 rounded-full bg-background border-2 border-zinc-400 dark:border-zinc-600 flex items-center justify-center text-foreground font-black text-xl">
+        <div className="w-16 h-16 rounded-full bg-background border-2 border-zinc-400 dark:border-zinc-600 flex items-center justify-center text-foreground font-black text-xl">
           {getInitials(member.name)}
         </div>
       )}
@@ -269,40 +274,44 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-10">
-          <div className="w-11 h-11 rounded-2xl bg-foreground/5 border border-border flex items-center justify-center shadow-premium ring-hairline">
+    <div className="h-full min-h-0 flex flex-col bg-background">
+      {/* Гарчиг — тогтмол дээд хэсэг (скролл болохгүй) */}
+      <div className="shrink-0 w-full max-w-6xl mx-auto px-6 pt-8 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-foreground/5 border border-border flex items-center justify-center shadow-premium ring-hairline">
             <Users className="w-5 h-5 text-foreground/70" />
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 mb-0.5">
               {t("navEmployees")}
             </p>
-            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
               {t("navEmployees")}
             </h1>
           </div>
         </div>
+      </div>
 
-        {/* Department rows */}
-        {departments.length > 0 ? (
-          <div className="space-y-10">
-            {departments.map((dept) => (
-              <DepartmentRow
-                key={dept.id}
-                dept={dept}
-                currentUserId={currentUserId}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border py-16 flex flex-col items-center gap-3 text-muted-foreground">
-            <Users className="w-8 h-8" />
-            <p className="text-sm">{t("noEmployees")}</p>
-          </div>
-        )}
+      {/* Ажилтны хэсэг — ЗӨВХӨН энэ хэсэг дотроо скролл болно */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="w-full max-w-6xl mx-auto px-6 pb-8">
+          {departments.length > 0 ? (
+            <div className="space-y-6">
+              {departments.map((dept) => (
+                <DepartmentRow
+                  key={dept.id}
+                  dept={dept}
+                  currentUserId={currentUserId}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border py-16 flex flex-col items-center gap-3 text-muted-foreground">
+              <Users className="w-8 h-8" />
+              <p className="text-sm">{t("noEmployees")}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

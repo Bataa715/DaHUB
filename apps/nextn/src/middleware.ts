@@ -5,8 +5,21 @@ import { jwtVerify } from "jose";
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = ["/login", "/admin/login"];
 
-// Admin routes that additionally require isSuperAdmin
-const SUPERADMIN_ROUTES = ["/admin/admins", "/admin/reports"];
+// Admin routes that additionally require isSuperAdmin.
+// [ACCESS] A plain admin is intentionally limited to tool-permission granting
+// (/admin/tools) and changing their own password (/admin/change-password);
+// every other admin surface (user management, registrations, knowledge,
+// departments, homepage ethics, admin management, reports) is superadmin-only.
+const SUPERADMIN_ROUTES = [
+  "/admin/admins",
+  "/admin/reports",
+  "/admin/users",
+  "/admin/registrations",
+  "/admin/medleg",
+  "/admin/departments",
+  "/admin/homepage-ethics",
+  "/admin/log",
+];
 
 // Tool routes → required allowedTools id (any one is enough). isAdmin always passes.
 const TOOL_GUARDS: Record<string, string[]> = {
@@ -53,20 +66,39 @@ async function getTokenPayload(token: string | undefined) {
 // 'unsafe-inline' is kept as a fallback token for pre-CSP3 browsers only —
 // per the CSP spec, browsers that understand nonces ignore 'unsafe-inline'
 // when a nonce is present, so this does not weaken protection in practice.
+/**
+ * Backend-ийн origin (scheme://host:port). `NEXT_PUBLIC_API_URL` нь Next-ийн
+ * build үед шатдаг тул CSP-д зөв backend хаяг орохын тулд prod build-ийг
+ * ЗӨВ NEXT_PUBLIC_API_URL-тэйгээр хийх ёстой (жишээ https://dahub.golomtbank.local).
+ * URL-ийн path/trailing slash-ийг гээж зөвхөн origin-ийг авна — CSP нь origin-оор
+ * тааруулдаг тул. Хоосон/буруу бол хоосон string (CSP-д нэмэгдэхгүй).
+ */
+function apiOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL;
+  if (!raw) return "";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw;
+  }
+}
+
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === "development";
+  const api = apiOrigin();
+  const apiPart = api ? ` ${api}` : "";
   return [
     "default-src 'self'",
     isDev
       ? `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'`
       : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' blob: data: http://localhost:3001 https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pinimg.com https://api.dicebear.com https://cdn.simpleicons.org https://api.qrserver.com",
+    // Зураг: backend-ээс шууд ирэх <img> (болон blob/data) + гадаад CDN-ууд.
+    // Хатуу бичсэн localhost-ийн оронд бодит API origin-ийг ашиглана.
+    `img-src 'self' blob: data:${apiPart} https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pinimg.com https://api.dicebear.com https://cdn.simpleicons.org https://api.qrserver.com`,
     "font-src 'self' data:",
-    "connect-src 'self' " +
-      (process.env.NEXT_PUBLIC_API_URL ?? "") +
-      (isDev ? " ws://localhost:* wss://localhost:*" : "") +
-      " https://cdn.simpleicons.org",
+    // API/fetch хүсэлт: зөвхөн 'self' + backend origin (+ dev-д websocket).
+    `connect-src 'self'${apiPart}${isDev ? " ws://localhost:* wss://localhost:*" : ""} https://cdn.simpleicons.org`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -84,6 +116,12 @@ export async function middleware(request: NextRequest) {
   // apply the same CSP as a response header so the browser enforces it.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  // [CSP FIX] Next.js өөрийн script тагуудад nonce тавихын тулд nonce-ийг
+  // REQUEST-ийн Content-Security-Policy header-ээс уншина. Өмнө нь зөвхөн
+  // response-д CSP тавьдаг байсан тул prod дээр ('strict-dynamic' идэвхтэй үед)
+  // Next-ийн scripts nonce авахгүй → бүгд блоклогдож "script-src violates CSP"
+  // алдаа гарч, апп ачаалагдахгүй байв. Энэ мөр түүнийг засна.
+  requestHeaders.set("Content-Security-Policy", csp);
 
   const withCsp = <T extends NextResponse>(response: T): T => {
     response.headers.set("Content-Security-Policy", csp);

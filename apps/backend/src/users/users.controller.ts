@@ -8,9 +8,13 @@ import {
   Query,
   UseGuards,
   Request,
+  Res,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from "@nestjs/common";
+import { Response } from "express";
+import { createHash } from "crypto";
 import { UsersService } from "./users.service";
 import { SkipThrottle } from "@nestjs/throttler";
 import {
@@ -92,6 +96,14 @@ export class UsersController {
       return this.usersService.update(id, { profileImage });
     }
 
+    // [ACCESS] Managing OTHER users is superadmin-only — a plain admin is
+    // limited to tool-permission granting and their own profile/password.
+    if (!isSelf && !isSuperAdmin) {
+      throw new ForbiddenException(
+        "Бусад хэрэглэгчийг удирдахыг зөвхөн супер админ хийх боломжтой",
+      );
+    }
+
     if (updateUserDto.departmentId !== undefined && !isSuperAdmin) {
       throw new ForbiddenException(
         "Хэрэглэгчийн хэлтэс солихыг зөвхөн супер админ хийх боломжтой",
@@ -101,17 +113,56 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
-  /** Admin: update which tools a user may access */
+  /** [PERF] Хэрэглэгчийн профайл зургийг BINARY-аар үйлчилнэ (base64-ийг
+   *  жагсаалт болгонд оруулахын оронд). Хөтч зургийг lazy татаж, ETag/Cache-
+   *  Control-оор кэшилдэг тул employee directory зэрэг олон аватартай хуудас
+   *  хурдан болно. Нэвтэрсэн дурын хэрэглэгч харна. */
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/avatar")
+  async getAvatar(
+    @Param("id") id: string,
+    @Request() req: AuthenticatedRequest & { headers: Record<string, string> },
+    @Res() res: Response,
+  ) {
+    const dataUri = await this.usersService.getProfileImage(id);
+    if (!dataUri) throw new NotFoundException("Зураг олдсонгүй");
+    const m = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(dataUri);
+    if (!m) throw new NotFoundException("Зураг олдсонгүй");
+
+    // ETag — агуулга өөрчлөгдөөгүй бол 304 буцаана (дата дамжуулахгүй).
+    const etag = `"${createHash("sha1").update(dataUri).digest("hex")}"`;
+    if (req.headers["if-none-match"] === etag) {
+      res.status(304).end();
+      return;
+    }
+    res.set("Content-Type", m[1]);
+    res.set("Cache-Control", "private, max-age=86400");
+    res.set("ETag", etag);
+    res.send(Buffer.from(m[2], "base64"));
+  }
+
+  /** Admin: update which tools a user may access. A plain admin is limited to
+   *  the tools within their own grantableTools scope (set by a superadmin);
+   *  the service enforces this — see UsersService.updateTools. */
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(":id/tools")
-  updateTools(@Param("id") id: string, @Body() body: UpdateToolsDto) {
+  updateTools(
+    @Param("id") id: string,
+    @Body() body: UpdateToolsDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     const tools = body.allowedTools;
     if (!Array.isArray(tools)) {
       throw new BadRequestException("allowedTools тооц байна");
     }
     // B-8: Strip any tool IDs not in the explicit whitelist (handles legacy IDs gracefully)
     const sanitized = tools.filter((t) => VALID_TOOLS_SET.has(t));
-    return this.usersService.updateTools(id, sanitized);
+    return this.usersService.updateTools(id, sanitized, {
+      isSuperAdmin: !!req.user.isSuperAdmin,
+      grantableTools: Array.isArray(req.user.grantableTools)
+        ? (req.user.grantableTools as string[])
+        : [],
+    });
   }
 
   /** SuperAdmin only: promote or demote admin role */
@@ -146,7 +197,7 @@ export class UsersController {
 
   /** Admin: reset a user's password (SuperAdmin required if target is an admin) */
   @SkipThrottle()
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch(":id/reset-password")
   async resetPassword(
     @Param("id") id: string,
@@ -183,7 +234,7 @@ export class UsersController {
   }
 
   /** Admin: clear a user's persistent brute-force lockout (5 wrong passwords) */
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch(":id/unlock")
   async unlock(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     try {
@@ -234,7 +285,7 @@ export class UsersController {
   }
 
   /** Admin: delete a user (SuperAdmin required if target is an admin) */
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Delete(":id")
   async remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     try {

@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Pencil, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { TeamGalleryAdmin } from "./_TeamGalleryAdmin";
 
 export default function HomepageEthicsAdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -255,6 +256,8 @@ export default function HomepageEthicsAdminPage() {
             ))}
           </div>
         )}
+
+        <TeamGalleryAdmin />
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

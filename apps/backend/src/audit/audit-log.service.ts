@@ -121,6 +121,23 @@ export class AuditLogService {
     }));
   }
 
+  /** Нэвтрэх оролдлогын лог (brute-force хяналт) — нэгдсэн Log таб харуулна. */
+  async getLoginAttempts(limit = 200) {
+    const lim = Math.min(Math.max(Number(limit) || 200, 1), 1000);
+    const rows = await this.clickhouse.query<any>(
+      `SELECT lockKey, toString(attemptedAt) AS attemptedAt, success
+       FROM login_attempts
+       ORDER BY attemptedAt DESC
+       LIMIT {limit:UInt32}`,
+      { limit: lim },
+    );
+    return rows.map((r) => ({
+      lockKey: String(r.lockKey ?? ""),
+      attemptedAt: String(r.attemptedAt ?? ""),
+      success: Number(r.success) === 1,
+    }));
+  }
+
   /**
    * Get audit logs summary/statistics
    */

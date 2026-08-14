@@ -17,7 +17,7 @@ import { Response } from "express";
 import { MedlegService } from "./medleg.service";
 import { CreateMedlegDto, UpdateMedlegDto } from "./dto/medleg.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
 
@@ -47,7 +47,7 @@ export class MedlegController {
   // ── Admin management (view/edit/delete ANY post, incl. unpublished) ──────
   // Тусдаа "admin/" замд байрлуулснаар доорх ердийн :id route-уудтай зэрэг
   // байх ба эзэмшигчийн шалгалтгүй — зөвхөн AdminGuard-аар хамгаалагдана.
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Get("admin/all")
   async findAllAdmin(@Query("page") page = 1, @Query("limit") limit = 200) {
     const take = Math.min(Number(limit), 500);
@@ -55,7 +55,7 @@ export class MedlegController {
     return this.medlegService.findAllAdmin(take, skip);
   }
 
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch("admin/:id")
   async updateAsAdmin(
     @Param("id") id: string,
@@ -87,7 +87,7 @@ export class MedlegController {
     }
   }
 
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Delete("admin/:id")
   async removeAsAdmin(
     @Param("id") id: string,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usersApi, departmentsApi } from "@/lib/api";
+import { DEPARTMENT_POSITIONS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -101,6 +102,7 @@ export default function UsersPage() {
     null,
   );
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
+  const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [isSavingDept, setIsSavingDept] = useState(false);
 
   const [changingUserIdId, setChangingUserIdId] = useState<string | null>(null);
@@ -151,20 +153,50 @@ export default function UsersPage() {
     } catch {}
   };
 
+  // [PERF] Засвар бүрийн дараа БҮХ хэрэглэгчийн жагсаалтыг дахин татахын оронд
+  // зөвхөн тухайн хэрэглэгчийн мөрийг local-оор шинэчилнэ — үйлдэл шууд
+  // мэдрэгдэж, prod дахь сүлжээний нэмэлт round-trip арилна ("засвар удаж
+  // орно / refresh laga" шинжийг засна).
+  const patchUserLocal = (id: string, changes: Partial<UserData>) =>
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...changes } : u)));
+
   const handleChangeDept = (userData: UserData) => {
     if (!user?.isSuperAdmin) return;
     const current = departments.find((d) => d.name === userData.department);
     setSelectedDeptId(current?.id ?? "");
+    setSelectedPosition(userData.position ?? "");
     setChangingDeptUserId(userData.id);
+  };
+
+  /** Хэлтэс солиход тухайн хэлтэст тохирох мэргэжлээр default-ыг тааруулна. */
+  const handleSelectDept = (deptId: string) => {
+    setSelectedDeptId(deptId);
+    const deptName = departments.find((d) => d.id === deptId)?.name ?? "";
+    const positions = DEPARTMENT_POSITIONS[deptName] ?? [];
+    if (!positions.includes(selectedPosition)) {
+      setSelectedPosition(positions[0] ?? "");
+    }
   };
 
   const handleSaveDept = async (userId: string) => {
     if (!user?.isSuperAdmin || !selectedDeptId) return;
     setIsSavingDept(true);
     try {
-      await usersApi.update(userId, { departmentId: selectedDeptId });
+      await usersApi.update(userId, {
+        departmentId: selectedDeptId,
+        ...(selectedPosition ? { position: selectedPosition } : {}),
+      });
       toast({ title: t("success"), description: t("admUsersDeptChangedDesc") });
+      const deptName =
+        departments.find((d) => d.id === selectedDeptId)?.name ?? "";
+      patchUserLocal(userId, {
+        department: deptName,
+        departmentId: selectedDeptId,
+        ...(selectedPosition ? { position: selectedPosition } : {}),
+      });
       setChangingDeptUserId(null);
+      // Хэлтэс солиход server userId-г дахин үүсгэдэг тул түүнийг зөвхөн энэ
+      // тохиолдолд арын дэвсгэрт (хөнгөн payload) шинэчилнэ.
       loadUsers();
     } catch {
       toast({
@@ -183,8 +215,9 @@ export default function UsersPage() {
     try {
       await usersApi.delete(deleteUser.id);
       toast({ title: t("success"), description: t("admUsersDeletedDesc") });
+      const deletedId = deleteUser.id;
+      setUsers((prev) => prev.filter((u) => u.id !== deletedId));
       setDeleteUser(null);
-      loadUsers();
     } catch {
       toast({
         title: t("error"),
@@ -205,8 +238,8 @@ export default function UsersPage() {
         title: t("success"),
         description: t("admUsersIdChangedDesc"),
       });
+      patchUserLocal(changingUserIdId, { userId: editUserId.trim() });
       setChangingUserIdId(null);
-      loadUsers();
     } catch (error) {
       let message = t("admUsersIdChangeError");
       if (axios.isAxiosError(error))
@@ -230,8 +263,8 @@ export default function UsersPage() {
         title: t("success"),
         description: t("admUsersNameChangedDesc"),
       });
+      patchUserLocal(changingNameId, { name: editName.trim() });
       setChangingNameId(null);
-      loadUsers();
     } catch (error) {
       let message = t("admUsersNameChangeError");
       if (axios.isAxiosError(error))
@@ -254,7 +287,7 @@ export default function UsersPage() {
         title: t("success"),
         description: `${userData.name} ${t("admUsersUnlockedDescSuffix")}`,
       });
-      loadUsers();
+      patchUserLocal(userData.id, { isLocked: false, failedLoginCount: 0 });
     } catch (error) {
       let message = t("admUsersUnlockError");
       if (axios.isAxiosError(error))
@@ -277,6 +310,11 @@ export default function UsersPage() {
       toast({
         title: t("admUsersPasswordResetTitle"),
         description: `${resetPasswordUser.name} ${t("admUsersPasswordResetDescSuffix")}`,
+      });
+      // Нууц үг сэргээхэд server түгжээг цэвэрлэдэг — local-оор тусгана.
+      patchUserLocal(resetPasswordUser.id, {
+        isLocked: false,
+        failedLoginCount: 0,
       });
       setResetPasswordUser(null);
       setNewPassword("");
@@ -452,10 +490,10 @@ export default function UsersPage() {
                   </span>
                   {user?.isSuperAdmin &&
                   changingDeptUserId === userData.id ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <Select
                         value={selectedDeptId}
-                        onValueChange={setSelectedDeptId}
+                        onValueChange={handleSelectDept}
                       >
                         <SelectTrigger className="h-7 bg-muted border-border text-foreground text-xs">
                           <SelectValue placeholder={t("admUsersSelectPlaceholder")} />
@@ -472,6 +510,37 @@ export default function UsersPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {/* Мэргэжил — сонгосон хэлтэст тохирох жагсаалт */}
+                      {(() => {
+                        const deptName =
+                          departments.find((d) => d.id === selectedDeptId)
+                            ?.name ?? "";
+                        const positions = DEPARTMENT_POSITIONS[deptName] ?? [];
+                        if (positions.length === 0) return null;
+                        return (
+                          <Select
+                            value={selectedPosition}
+                            onValueChange={setSelectedPosition}
+                          >
+                            <SelectTrigger className="h-7 bg-muted border-border text-foreground text-xs">
+                              <SelectValue
+                                placeholder={t("regFlowLabelPosition")}
+                              />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border-border">
+                              {positions.map((p) => (
+                                <SelectItem
+                                  key={p}
+                                  value={p}
+                                  className="text-foreground/80 text-xs"
+                                >
+                                  {p}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                       <button
                         disabled={isSavingDept || !selectedDeptId}
                         onClick={() => handleSaveDept(userData.id)}

@@ -31,8 +31,19 @@ export class UsersService {
 
   async findAll(limit = 1000, offset = 0, excludeAdmins = false) {
     const adminFilter = excludeAdmins ? `WHERE ${webVisibleUserSql("u")}` : "";
+    // [PERF] profileImage-ийг (base64 data URI, нэг бүр 7MB хүртэл) жагсаалтад
+    // буцаахгүй. Хэрэглэгчийн жагсаалт (admin) аль нь ч зураг харуулдаггүй мөртлөө
+    // өмнө нь `SELECT u.*` бүх хэрэглэгчийн бүтэн зургийг татдаг байсан — хэдэн
+    // арван MB payload болж prod дээр хуудсыг маш удаан болгодог байв (localhost
+    // дээр мэдрэгддэггүй). Оронд нь hasProfileImage туг л буцаана; бодит зураг
+    // хэрэгтэй бол /users/:id-ээр нэг бүрчлэн авна. Тодорхой багана сонгосон нь
+    // мөн password зэрэг ашиглагдаагүй талбарыг татахаас сэргийлнэ.
     const users = await this.clickhouse.query<any>(
-      `SELECT u.*, d.name as departmentName
+      `SELECT u.id, u.userId, u.name, u.position, u.departmentId,
+              u.isAdmin, u.isSuperAdmin, u.isActive, u.allowedTools,
+              u.lastLoginAt, u.createdAt, u.isLocked, u.failedLoginCount,
+              if(u.profileImage != '', 1, 0) AS hasProfileImage,
+              d.name AS departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        ${adminFilter}
        ORDER BY u.createdAt DESC
@@ -45,7 +56,7 @@ export class UsersService {
       userId: user.userId,
       name: user.name,
       position: user.position,
-      profileImage: user.profileImage,
+      hasProfileImage: !!Number(user.hasProfileImage),
       department: user.departmentName,
       departmentId: user.departmentId,
       isAdmin: !!user.isAdmin,
@@ -57,6 +68,18 @@ export class UsersService {
       isLocked: !!user.isLocked,
       failedLoginCount: Number(user.failedLoginCount) || 0,
     }));
+  }
+
+  /** [PERF] Зөвхөн profileImage-ийг (base64 data URI) авах хөнгөн query —
+   *  avatar endpoint нэг хэрэглэгчийн зургийг binary болгож үйлчлэхэд ашиглана.
+   *  Жагсаалтын query-үүд зургийг татдаггүй болсон (hasProfileImage л буцаана). */
+  async getProfileImage(id: string): Promise<string | null> {
+    const rows = await this.clickhouse.query<{ profileImage?: string }>(
+      "SELECT profileImage FROM users WHERE id = {id:String} LIMIT 1",
+      { id },
+    );
+    const img = rows[0]?.profileImage;
+    return img && String(img).startsWith("data:") ? String(img) : null;
   }
 
   async findOne(id: string) {
@@ -318,7 +341,11 @@ export class UsersService {
     return { message: "Хэрэглэгчийг амжилттай устгалаа" };
   }
 
-  async updateTools(id: string, allowedTools: string[]) {
+  async updateTools(
+    id: string,
+    requestedTools: string[],
+    caller: { isSuperAdmin: boolean; grantableTools: string[] },
+  ) {
     const users = await this.clickhouse.query<any>(
       "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
@@ -334,8 +361,24 @@ export class UsersService {
       );
     }
 
+    // [ACCESS] Энгийн (super биш) admin нь зөвхөн ӨӨРИЙН grantableTools (super
+    // admin-ий тохируулсан) доторх tool-ыг олгож/хасаж чадна. Scope-оос гадуурх
+    // tool-ыг зорилтот хэрэглэгч аль хэдийн эзэмшсэн бол ХЭВЭЭР хадгална — sub
+    // admin эрхгүй tool-оо олгож ч чадахгүй, өөр admin-ий олгосон tool-ыг ч
+    // хасаж чадахгүй. Super admin бүрэн хяналттай.
+    const existing = safeParseTools(users[0].allowedTools);
+    let finalTools: string[];
+    if (caller.isSuperAdmin) {
+      finalTools = requestedTools;
+    } else {
+      const grantable = new Set(caller.grantableTools ?? []);
+      const preserved = existing.filter((t) => !grantable.has(t));
+      const withinScope = requestedTools.filter((t) => grantable.has(t));
+      finalTools = Array.from(new Set([...preserved, ...withinScope]));
+    }
+
     await this.replaceUser(id, users[0], {
-      allowedTools: JSON.stringify(allowedTools),
+      allowedTools: JSON.stringify(finalTools),
     });
 
     const updated = await this.clickhouse.query<any>(

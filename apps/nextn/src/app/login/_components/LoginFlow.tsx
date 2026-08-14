@@ -37,8 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PasswordStrengthBox } from "./PasswordStrengthBox";
 import {
-  LoginBrandHeader,
-  LoginAmbientBackground,
+  LoginSplitShell,
   LoginCard,
   LoginStepLogo,
   LoginSubmitButton,
@@ -86,6 +85,17 @@ interface LoginFlowProps {
   onSwitch: () => void;
 }
 
+/** Товч дээр харуулах КОД (логик нь бүтэн нэрээ хэвээр ашиглана; hover-т бүтэн
+ *  нэр гарна) — 6 хэлтэс нэг эгнээнд шахагдахгүй цэвэрхэн багтаана. */
+const DEPT_CODE: Record<string, string> = {
+  Удирдлага: "DAG",
+  "Бизнесийн аудитын хэлтэс": "DAG-BAH",
+  "Эрсдэл, комплаенс, санхүүгийн аудитын хэлтэс": "DAG-EKSAH",
+  "Мэдээллийн технологийн аудитын хэлтэс": "DAG-MTAH",
+  "Дата анализын алба": "DAG-DAA",
+  "Чанарын баталгаажуулалтын алба": "CHBA",
+};
+
 export function LoginFlow({
   loginForm,
   loginPasswordForm,
@@ -120,16 +130,7 @@ export function LoginFlow({
     "absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors";
 
   return (
-    <div className="login-page min-h-screen flex items-center justify-center relative overflow-hidden">
-      <LoginAmbientBackground />
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 w-full max-w-md px-6 py-8"
-      >
-        <LoginBrandHeader />
-
+    <LoginSplitShell>
         <LoginCard>
           {showBack && (
             <motion.button
@@ -170,22 +171,25 @@ export function LoginFlow({
                         <Building2 className="w-4 h-4 text-primary" />
                         {t("regFlowLabelDept")}
                       </label>
-                      <div className="grid grid-cols-3 gap-2">
+                      {/* [UI] Бүх 6 хэлтэс НЭГ эгнээнд (6 багана), scroll-гүй. */}
+                      <div className="grid grid-cols-6 gap-1.5">
                         {LOGIN_DEPARTMENT_ORDER.map((dept) => {
                           const active = loginDepartment === dept;
                           return (
                             <button
                               key={dept}
                               type="button"
+                              title={dept}
                               onClick={() => handleSelectLoginDepartment(dept)}
                               aria-pressed={active}
-                              className={`flex items-center justify-center text-center min-h-[72px] px-2 py-2.5 rounded-2xl border text-[11px] leading-tight font-semibold transition-all duration-200 active:scale-[0.97] ${
+                              aria-label={dept}
+                              className={`flex items-center justify-center text-center min-h-[46px] px-0.5 py-1.5 rounded-xl border text-[10px] font-mono font-semibold whitespace-nowrap transition-all duration-200 active:scale-[0.97] ${
                                 active
                                   ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
                                   : "bg-muted/50 border-border/80 text-foreground hover:border-primary/40 hover:bg-muted hover:shadow-sm"
                               }`}
                             >
-                              {dept}
+                              {DEPT_CODE[dept] ?? dept}
                             </button>
                           );
                         })}
@@ -205,23 +209,32 @@ export function LoginFlow({
                             <div
                               role="listbox"
                               aria-label={t("loginLabelEmployee")}
-                              className="rounded-2xl border border-border/80 bg-muted/30 overflow-hidden"
+                              className="rounded-2xl border border-border/80 bg-muted/30 overflow-hidden h-[180px] flex flex-col"
                             >
                               {!loginDepartment ? (
-                                <p className="px-4 py-3 text-sm text-muted-foreground">
+                                <p className="flex-1 flex items-center justify-center px-4 text-sm text-muted-foreground text-center">
                                   {t("regFlowPlaceholderSelectDeptFirst")}
                                 </p>
                               ) : isLoadingEmployees ? (
-                                <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  {t("loginPlaceholderLoadingEmployees")}
+                                // [UI] Текст/спиннергүй minimal skeleton — ачаалж
+                                // байгаа нь мэдэгдэхээргүй, зөөлөн.
+                                <div
+                                  className="p-1.5 space-y-1 flex-1"
+                                  aria-hidden="true"
+                                >
+                                  {[0, 1, 2, 3].map((i) => (
+                                    <div key={i} className="px-3 py-2.5">
+                                      <div className="h-3.5 w-1/2 rounded bg-foreground/[0.08] animate-pulse" />
+                                      <div className="h-2.5 w-1/3 rounded bg-foreground/[0.05] animate-pulse mt-1.5" />
+                                    </div>
+                                  ))}
                                 </div>
                               ) : departmentEmployees.length === 0 ? (
-                                <p className="px-4 py-3 text-sm text-muted-foreground">
+                                <p className="flex-1 flex items-center justify-center px-4 text-sm text-muted-foreground text-center">
                                   {t("loginPlaceholderNoEmployees")}
                                 </p>
                               ) : (
-                                <div className="max-h-56 overflow-y-auto p-1.5 space-y-1">
+                                <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
                                   {departmentEmployees.map((user) => {
                                     const selected =
                                       field.value === user.userId;
@@ -537,7 +550,6 @@ export function LoginFlow({
             </div>
           )}
         </LoginCard>
-      </motion.div>
 
       <AlertDialog
         open={forgotPasswordOpen}
@@ -579,6 +591,6 @@ export function LoginFlow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </LoginSplitShell>
   );
 }

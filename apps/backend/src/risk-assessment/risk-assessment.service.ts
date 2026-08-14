@@ -430,19 +430,14 @@ export class RiskAssessmentService implements OnModuleInit {
     const anchor: string = anchorRows[0]?.maxDate ?? "";
     if (!anchor) return { fetchedDate: d, rows: [], manualMap: {} };
 
-    // 2. Anchor өдрийн SOLID-уудад зориулж (SOLID, SUBID) бүрт
-    //    anchor <= fetchedDate-ийн хамгийн сүүлийн RESULT авна.
-    // [PERF] FINAL-гүйгээр ижил семантик: riskbranch нь
-    // ReplacingMergeTree(fetchedAt) тул хамгийн сүүлийн хувилбар = хамгийн их
-    // fetchedAt. "Эхлээд хамгийн сүүлийн огноо, дараа нь тухайн огнооны хамгийн
-    // сүүлд орж ирсэн (re-ingest) утга"-ыг сонгохын тулд эрэмбийн түлхүүрийг
-    // ТОГТМОЛ ӨРГӨНТЭЙ string болгон нийлүүлнэ:
-    //   LEFT(fetchedDate,10) → 'YYYY-MM-DD' (10 тэмдэгт)
-    //   toString(fetchedAt)  → 'YYYY-MM-DD HH:MM:SS' (19 тэмдэгт)
-    // → concat нь лексикографаар эхлээд огноо, дараа нь ingest хугацаагаар зөв
-    // эрэмбэлэгдэнэ. Зөвхөн эртний функц (LEFT/concat/toString/argMax-String)
-    // ашигласан тул ClickHouse 22.1 дээр найдвартай ажиллана (argMax-д tuple
-    // дамжуулах шинэ хэлбэрээс зайлсхийсэн).
+    // 2. ЗӨВХӨН anchor огнооны датаг авна (`=`, өмнөх `<=` fill-forward биш).
+    // [PERF] riskbranch дахь fetchedDate бүр нь тухайн үеийн БҮРЭН snapshot
+    // (Oracle-оос бүх салбар сард нэг удаа бүрэн ордог) тул нэг огнооны дата
+    // өөрөө бүрэн — өмнөх сар руу мөр тус бүрээр fill-forward хийх шаардлагагүй.
+    // `= anchor` нь зөвхөн НЭГ өдрийн мөрийг л скан хийдэг тул `<= anchor` (бүх
+    // өмнөх сарууд)-аас хамаагүй хурдан. Тухайн огноо дотор дахин ingest хийсэн
+    // давхардлыг argMax(col, ord)-оор (ord = огноо+fetchedAt) хамгийн сүүлийн
+    // хувилбараар шийднэ. Илүүц SOLID IN дэд-query-г хассан.
     const rows = await this.clickhouse.query<any>(
       `SELECT
          argMax(rowKey, ord)              AS rowKey,
@@ -470,11 +465,7 @@ export class RiskAssessmentService implements OnModuleInit {
            *,
            concat(LEFT(fetchedDate, 10), toString(fetchedAt)) AS ord
          FROM riskbranch
-         WHERE LEFT(fetchedDate, 10) <= {anchor:String}
-           AND SOLID IN (
-             SELECT DISTINCT SOLID FROM riskbranch
-             WHERE LEFT(fetchedDate, 10) = {anchor:String}
-           )
+         WHERE LEFT(fetchedDate, 10) = {anchor:String}
        )
        GROUP BY SOLID, SUBID
        ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)

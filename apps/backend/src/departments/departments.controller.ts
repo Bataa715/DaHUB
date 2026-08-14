@@ -12,7 +12,7 @@ import {
 import { DepartmentsService } from "./departments.service";
 import { UpdateDepartmentDto } from "./dto/department.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
 
@@ -31,7 +31,7 @@ export class DepartmentsController {
     return this.departmentsService.findAll();
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Patch(":id")
   async update(
     @Param("id") id: string,
@@ -66,7 +66,7 @@ export class DepartmentsController {
     }
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Delete(":id")
   async remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     try {

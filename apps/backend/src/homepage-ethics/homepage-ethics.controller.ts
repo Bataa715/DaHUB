@@ -12,7 +12,7 @@ import {
   Header,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { AuditLogService } from "../audit/audit-log.service";
 import { HomepageEthicsService } from "./homepage-ethics.service";
@@ -39,7 +39,7 @@ export class HomepageEthicsController {
     return this.svc.list(true);
   }
 
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Post()
   async create(
     @Body() dto: CreateEthicsSlideDto,
@@ -68,7 +68,7 @@ export class HomepageEthicsController {
     }
   }
 
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch(":id")
   async update(
     @Param("id") id: string,
@@ -100,7 +100,7 @@ export class HomepageEthicsController {
     }
   }
 
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(

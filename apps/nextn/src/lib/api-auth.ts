@@ -50,6 +50,11 @@ export function isAdminPayload(payload: JWTPayload | null): boolean {
   );
 }
 
+export function isSuperAdminPayload(payload: JWTPayload | null): boolean {
+  if (!payload) return false;
+  return payload["isSuperAdmin"] === true || payload["isSuperAdmin"] === 1;
+}
+
 /** JWT claim-д array эсвэл JSON string хэлбэрээр ирж болно. */
 export function parseAllowedTools(raw: unknown): string[] {
   if (!raw) return [];

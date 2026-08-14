@@ -654,11 +654,8 @@ export default function AdminReportsPage() {
               label: t("admReportsTabPermissions"),
               Icon: KeyRound,
             },
-            {
-              id: "logs" as const,
-              label: t("admReportsTabLogs"),
-              Icon: History,
-            },
+            // [LOG] Лог үзэх нь нэгдсэн /admin/log хуудас руу шилжсэн тул энд
+            // "logs" табыг харуулахгүй (доорх контент/төлөв unreachable болно).
           ].map(({ id, label, Icon }) => (
             <button
               key={id}

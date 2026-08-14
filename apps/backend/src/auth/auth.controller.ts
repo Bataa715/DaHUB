@@ -26,7 +26,7 @@ import {
   ReviewRegistrationDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
-import { AdminGuard } from "./guards/admin.guard";
+import { SuperAdminGuard } from "./guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 
 @Controller("auth")
@@ -124,15 +124,16 @@ export class AuthController {
     return this.authService.registerUser(registerUserDto);
   }
 
-  // Admin: list registration requests (?status=pending|approved|rejected)
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  // [ACCESS] Registrations are superadmin-only (a plain admin is limited to
+  // tool-permission granting + own password).
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Get("registration-requests")
   async getRegistrationRequests(@Query("status") status?: string) {
     return this.authService.getRegistrationRequests(status);
   }
 
-  // Admin: approve or reject a pending registration request
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  // Approve or reject a pending registration request — superadmin-only.
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch("registration-requests/:id")
   async reviewRegistration(
     @Param("id") id: string,
@@ -263,8 +264,17 @@ export class AuthController {
   // [SEC] Public (pre-auth) department→employee list for the login page.
   // Same enumeration posture as `search`: no admins, active/claimable only.
   // `position` is returned so the client can rank Захирал → Ахлах → Аудитор.
+  //
+  // [PERF/429] This endpoint is reached via the Next.js proxy route
+  // (/api/auth/by-department → server-side fetch), so the backend sees EVERY
+  // user's request as coming from ONE IP (the Next server). A tight per-IP
+  // throttle therefore acts as a single GLOBAL limit shared by all users on the
+  // login page — with many staff behind the same corporate NAT it tripped 429
+  // almost immediately. The real fix is client-side caching (each user fetches
+  // each department at most once) + a browser Cache-Control on the proxy route;
+  // the limit here is just a generous abuse ceiling for a cheap, public read.
   @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Throttle({ default: { limit: 300, ttl: 60000 } })
   @Get("by-department")
   async listUsersByDepartment(@Query("department") department: string) {
     return this.authService.listUsersByDepartment(department);

@@ -818,6 +818,24 @@ export class AuthService {
   async registerUser(registerUserDto: RegisterUserDto) {
     const { department, position, name } = registerUserDto;
 
+    // [ACCESS] "Удирдлага" (Газрын захирал) нэг л хүн байна — хэрэв тухайн
+    // хэлтэст идэвхтэй эсвэл баталгаажаагүй (PENDING) хэрэглэгч аль хэдийн байвал
+    // дахин бүртгэхийг хориглоно.
+    if (department === "Удирдлага") {
+      const leaders = await this.clickhouse.query<any>(
+        `SELECT count() AS cnt
+         FROM users u LEFT JOIN departments d ON u.departmentId = d.id
+         WHERE d.name = {name:String}
+           AND (u.isActive = 1 OR u.password LIKE 'PENDING:%')`,
+        { name: department },
+      );
+      if (Number(leaders[0]?.cnt ?? 0) > 0) {
+        throw new ConflictException(
+          "Удирдлага (Газрын захирал) аль хэдийн бүртгэлтэй тул дахин бүртгэх боломжгүй.",
+        );
+      }
+    }
+
     // Хэлтсийн динамик prefix кодыг DB-аас уншина (employeeCount-г өсгөхгүйгээр)
     const deptRows = await this.clickhouse.query<any>(
       "SELECT code FROM departments WHERE name = {name:String} LIMIT 1",

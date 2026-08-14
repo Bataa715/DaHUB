@@ -16,6 +16,7 @@ import {
   LogOut,
   ScrollText,
   BookOpen,
+  FileClock,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
@@ -30,31 +31,37 @@ const OTHER_LINKS: {
     href: "/admin/users",
     labelKey: "admLayoutNavUsers",
     icon: Users,
-    superOnly: false,
+    superOnly: true,
   },
   {
     href: "/admin/registrations",
     labelKey: "admLayoutNavRegistrations",
     icon: UserPlus,
-    superOnly: false,
+    superOnly: true,
   },
   {
     href: "/admin/homepage-ethics",
     labelKey: "admLayoutNavEthics",
     icon: ScrollText,
-    superOnly: false,
+    superOnly: true,
   },
   {
     href: "/admin/departments",
     labelKey: "admDeptPageTitle",
     icon: Building2,
-    superOnly: false,
+    superOnly: true,
   },
   {
     href: "/admin/medleg",
     labelKey: "admMedlegPageTitle",
     icon: BookOpen,
-    superOnly: false,
+    superOnly: true,
+  },
+  {
+    href: "/admin/log",
+    labelKey: "admLayoutNavLog",
+    icon: FileClock,
+    superOnly: true,
   },
   {
     href: "/admin/admins",
@@ -80,7 +87,9 @@ function AdminSidebar() {
   const isTools = pathname.startsWith("/admin/tools");
 
   useEffect(() => {
-    if (!user?.isAdmin) return;
+    // Registrations нь одоо super-only — энгийн admin-д pending badge-ийн
+    // хүсэлт хийхгүй (илүүц дуудлагаас сэргийлнэ).
+    if (!user?.isSuperAdmin) return;
     let cancelled = false;
     registrationRequestsApi
       .list("pending")

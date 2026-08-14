@@ -28,7 +28,11 @@ import {
 } from "../use-indicator-config";
 import ReportView from "../report-view";
 import ReportSkeleton from "../_report-view/report-skeleton";
+import MonthFilter, { formatMonthMn } from "../tailan/_MonthFilter";
 import IndicatorFilterPanel from "./_IndicatorFilterPanel";
+
+/** YYYY-MM-DD → YYYY-MM */
+const monthKeyFromDate = (d: string) => String(d ?? "").slice(0, 7);
 import type { ManualMap } from "../indicator-catalog";
 import {
   judgementsFromListForBranches,
@@ -98,6 +102,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const [rows, setRows] = useState<RiskCurrentRow[]>([]);
   const [fetchedDate, setFetchedDate] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  // [UI] Дата сард нэг удаа ордог тул өдрөөр биш САРААР сонгоно (tailan шиг).
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [riskbranchDates, setRiskbranchDates] = useState<string[]>([]);
+  const riskbranchDatesRef = useRef<string[]>([]);
+  riskbranchDatesRef.current = riskbranchDates;
   const [lockedDate, setLockedDate] = useState<string | null>(null);
   const [judgements, setJudgements] = useState<Record<string, number>>({});
   const [judgementComments, setJudgementComments] = useState<
@@ -134,6 +143,11 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
   const hasData = rows.some((r) => r.rowType === "oracle");
   const isLocked = lockedDate !== null && lockedDate === fetchedDate;
+  // Сонгосон сард riskbranch дата ороогүй эсэх (дата ирсэн жагсаалтаас шалгана)
+  const monthHasNoData =
+    !!selectedMonth &&
+    riskbranchDates.length > 0 &&
+    !riskbranchDates.some((d) => monthKeyFromDate(d) === selectedMonth);
 
   const handleManualSave = useCallback(
     (branchId: string, indicatorId: string, value: number) => {
@@ -170,6 +184,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         if (cancelled) return;
         setLockedDate(ld);
         setManualMap(manualData || {});
+        setRiskbranchDates(dates);
 
         const targetDate =
           ld ??
@@ -187,6 +202,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
         if (targetDate) {
           setSelectedDate(targetDate);
+          setSelectedMonth(monthKeyFromDate(targetDate));
           // Backend fill-forward: res.fetchedDate нь бодит anchor (хамгийн ойрын data)
           const res = await riskApi.getRiskbranch(targetDate);
           if (cancelled) return;
@@ -278,6 +294,34 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
       if (!abort.signal.aborted) setLoadingDate(false);
     }
   }, []);
+
+  // Сар сонгоход тухайн сарын бодит дата (fetchedDate) байвал түүнийг ачаална.
+  // Дата ороогүй бол хуучин сар руу fill-forward ХИЙХГҮЙ — "дата байхгүй" гэж
+  // харуулна (дата сард нэг удаа ордог тул сарын нарийвчлал хангалттай).
+  const loadMonth = useCallback(
+    (monthKey: string) => {
+      setSelectedMonth(monthKey);
+      if (!monthKey) return;
+      const datesInMonth = riskbranchDatesRef.current.filter(
+        (d) => monthKeyFromDate(d) === monthKey,
+      );
+      if (datesInMonth.length === 0) {
+        loadAbortRef.current?.abort();
+        setRows([]);
+        setFetchedDate("");
+        setSelectedDate("");
+        setJudgements({});
+        setJudgementComments({});
+        setLoadingDate(false);
+        setErrorMsg(null);
+        return;
+      }
+      const latest = [...datesInMonth].sort().pop() as string;
+      setSelectedDate(latest);
+      loadDate(latest);
+    },
+    [loadDate],
+  );
 
   // Lock / Unlock Date
   const toggleLock = useCallback(async () => {
@@ -408,20 +452,15 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
               {t("admRiskIndMethodologyLabel")}
             </Link>
 
-            {/* Date Picker */}
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  const d = e.target.value;
-                  setSelectedDate(d);
-                  if (d) loadDate(d);
-                }}
-                disabled={loadingDate}
-                className="h-7 px-2 rounded-md border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-medium disabled:opacity-40 outline-none cursor-pointer"
-              />
-            </div>
+            {/* Сарын сонголт — дата сард нэг удаа ордог тул өдрөөр биш сараар */}
+            <MonthFilter
+              value={selectedMonth}
+              onChange={loadMonth}
+              emphasis="primary"
+              allowClear={false}
+              ariaLabel="Сар сонгох"
+              className="w-[10rem]"
+            />
 
             {/* Indicator Filter toggle */}
             {hasData && (
@@ -494,6 +533,18 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
 
         {loading || (loadingDate && !hasData) ? (
           <ReportSkeleton rows={10} />
+        ) : monthHasNoData ? (
+          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+            <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
+              <Activity className="w-6 h-6 text-muted-foreground/60" />
+            </div>
+            <div className="text-sm font-semibold text-muted-foreground">
+              {formatMonthMn(selectedMonth)}-д дата ороогүй байна
+            </div>
+            <div className="text-xs text-muted-foreground/60 mt-1">
+              Тухайн сарын дата хараахан ороогүй байна. Өөр сар сонгоно уу.
+            </div>
+          </div>
         ) : !hasData ? (
           <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">

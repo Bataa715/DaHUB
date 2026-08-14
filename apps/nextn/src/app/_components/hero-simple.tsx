@@ -1,25 +1,35 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { Cormorant_Garamond } from "next/font/google";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect } from "react";
 import { homepageEthicsApi, type EthicsSlide } from "@/lib/api";
 import { GolomtWatermark } from "@/components/GolomtWatermark";
 import { GolomtLogoMark } from "@/components/GolomtLogoMark";
-import { TEAM_GALLERY_SLIDES } from "./team-gallery";
+import { Quote } from "lucide-react";
+import type { TeamGallerySlide } from "./team-gallery";
+
+const ethicsSerif = Cormorant_Garamond({
+  subsets: ["cyrillic", "cyrillic-ext", "latin"],
+  weight: ["500", "600", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
 
 const CAROUSEL_MS = 5000;
 
 /** Landscape хамт олны зураг — эцэгээс ирсэн sync index */
 function TeamGalleryCarousel({
+  slides,
   idx,
   direction,
 }: {
+  slides: TeamGallerySlide[];
   idx: number;
   direction: number;
 }) {
-  const slides = TEAM_GALLERY_SLIDES;
   if (slides.length === 0) return null;
 
   const active = slides[idx % slides.length] ?? slides[0];
@@ -29,7 +39,7 @@ function TeamGalleryCarousel({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 200, damping: 22, delay: 0.12 }}
-      className="relative w-full max-w-[22rem] sm:max-w-[26rem]"
+      className="relative w-full"
     >
       <div className="hero-profile-glow absolute -inset-2 rounded-2xl blur-md opacity-70" />
 
@@ -96,6 +106,7 @@ export default function Hero() {
 
   const [slides, setSlides] = useState<EthicsSlide[]>([]);
   const [slidesLoading, setSlidesLoading] = useState(true);
+  const [photos, setPhotos] = useState<TeamGallerySlide[]>([]);
   // Нэг tick — ethics + зураг нэг зэрэг солигдоно
   const [tick, setTick] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -115,12 +126,22 @@ export default function Hero() {
       .finally(() => {
         if (!cancelled) setSlidesLoading(false);
       });
+
+    fetch("/api/team-gallery", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { slides: [] }))
+      .then((data: { slides?: TeamGallerySlide[] }) => {
+        if (!cancelled) setPhotos(Array.isArray(data.slides) ? data.slides : []);
+      })
+      .catch(() => {
+        if (!cancelled) setPhotos([]);
+      });
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const photoCount = TEAM_GALLERY_SLIDES.length;
+  const photoCount = photos.length;
   const canAdvance = slides.length > 1 || photoCount > 1;
 
   useEffect(() => {
@@ -207,28 +228,42 @@ export default function Hero() {
         ))}
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(16rem,26rem)] gap-8 lg:gap-10 items-center">
-        <div className="space-y-5 min-w-0">
+      <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(22rem,36rem)] gap-8 lg:gap-12 items-center">
+        <div className="space-y-6 min-w-0">
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground leading-[1.08]">
+            <h1
+              className={`${ethicsSerif.className} text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.08]`}
+            >
               {user?.name || t("admReportsColUser")}
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground font-medium">
-              {user?.position && <span>{user.position} · </span>}
-              {user?.department || t("internalAuditDept")}
-            </p>
+            <div className="mt-3 h-px w-14 bg-gradient-to-r from-primary via-violet-500 to-cyan-500" />
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              {user?.position ? (
+                <span className="text-[13px] sm:text-sm font-semibold tracking-wide text-foreground/90">
+                  {user.position}
+                </span>
+              ) : null}
+              {user?.position && user?.department ? (
+                <span className="hidden sm:inline h-3.5 w-px bg-border" />
+              ) : null}
+              <span className="text-[13px] sm:text-sm tracking-wide text-muted-foreground">
+                {user?.department || t("internalAuditDept")}
+              </span>
+            </div>
           </motion.div>
 
           {slidesLoading ? (
-            <div className="relative max-w-md animate-pulse">
-              <div className="h-2 w-28 rounded bg-muted-foreground/15 mb-2" />
-              <div className="rounded-xl border border-border bg-card/70 p-3 min-h-[64px] shadow-premium ring-hairline space-y-1.5">
-                <div className="h-2.5 w-3/4 rounded bg-muted-foreground/15" />
-                <div className="h-2.5 w-full rounded bg-muted-foreground/10" />
+            <div className="relative max-w-lg animate-pulse">
+              <div className="rounded-xl p-[2px] bg-border/60">
+                <div className="h-[8.5rem] rounded-[0.7rem] bg-card/70 p-4 space-y-2">
+                  <div className="h-3 w-1/3 rounded bg-muted-foreground/15" />
+                  <div className="h-3 w-full rounded bg-muted-foreground/10" />
+                  <div className="h-3 w-5/6 rounded bg-muted-foreground/10" />
+                </div>
               </div>
             </div>
           ) : (
@@ -237,43 +272,96 @@ export default function Hero() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                className="relative max-w-md"
+                className="relative max-w-lg"
               >
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/55 mb-1.5">
-                  {t("heroSimpleEthicsCodeLabel")}
-                </p>
-                <div className="relative overflow-hidden rounded-xl border border-border bg-card/70 backdrop-blur-sm px-3.5 py-3 min-h-[64px] max-h-[88px] shadow-premium ring-hairline">
-                  <AnimatePresence mode="wait" custom={direction}>
-                    <motion.div
-                      key={active.id}
-                      custom={direction}
-                      initial={{ x: direction * 28, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: direction * -28, opacity: 0 }}
-                      transition={{ duration: 0.35, ease: "easeInOut" }}
-                      className="absolute inset-x-3.5 inset-y-3"
-                    >
-                      <p className="text-[12px] text-foreground/80 leading-snug font-medium line-clamp-3">
-                        <span className="font-bold text-foreground">
+                <div className="hero-profile-glow absolute -inset-2 rounded-2xl blur-md opacity-50 pointer-events-none" />
+                <div className="hero-profile-frame relative rounded-xl p-[2px]">
+                  <div className="hero-profile-surface relative h-[8.5rem] overflow-hidden rounded-[0.7rem] px-5 py-3.5 pl-6">
+                    <div
+                      className="absolute left-0 inset-y-3 w-[3px] rounded-full bg-gradient-to-b from-primary via-violet-500 to-cyan-500"
+                      aria-hidden
+                    />
+                    <Quote
+                      className="absolute top-3 right-3.5 h-5 w-5 text-primary/15 rotate-180"
+                      aria-hidden
+                    />
+
+                    <AnimatePresence mode="wait" custom={direction}>
+                      <motion.div
+                        key={active.id}
+                        custom={direction}
+                        initial={{ x: direction * 24, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: direction * -24, opacity: 0 }}
+                        transition={{ duration: 0.35, ease: "easeInOut" }}
+                        className="absolute inset-x-5 inset-y-3.5 left-6 right-10"
+                      >
+                        <p
+                          className={`${ethicsSerif.className} text-[0.95rem] font-semibold italic leading-snug tracking-wide text-primary line-clamp-1`}
+                        >
                           {active.title}
-                        </span>
-                        {" – "}
-                        {active.body}
-                      </p>
-                    </motion.div>
-                  </AnimatePresence>
+                        </p>
+                        <p
+                          className={`${ethicsSerif.className} mt-1.5 text-[0.9rem] font-medium leading-relaxed text-foreground/90 line-clamp-3`}
+                        >
+                          {active.body}
+                        </p>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    <motion.div
+                      key={`bar-${active.id}`}
+                      className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-primary via-violet-500 to-cyan-500"
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{
+                        duration: CAROUSEL_MS / 1000,
+                        ease: "linear",
+                      }}
+                    />
+                  </div>
                 </div>
+
+                {slides.length > 1 && (
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {slides.map((s, i) => (
+                        <span
+                          key={s.id}
+                          className={`h-1 rounded-full transition-all ${
+                            i === ethicsIdx
+                              ? "w-4 bg-primary"
+                              : "w-1.5 bg-foreground/20"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="ml-auto text-[10px] font-mono tabular-nums text-muted-foreground/70">
+                      {String(ethicsIdx + 1).padStart(2, "0")}
+                      <span className="text-muted-foreground/40"> / </span>
+                      {String(slides.length).padStart(2, "0")}
+                    </span>
+                  </div>
+                )}
               </motion.div>
             )
           )}
 
           <div className="lg:hidden pt-1">
-            <TeamGalleryCarousel idx={photoIdx} direction={direction} />
+            <TeamGalleryCarousel
+              slides={photos}
+              idx={photoIdx}
+              direction={direction}
+            />
           </div>
         </div>
 
         <div className="hidden lg:flex flex-col items-stretch justify-center">
-          <TeamGalleryCarousel idx={photoIdx} direction={direction} />
+          <TeamGalleryCarousel
+            slides={photos}
+            idx={photoIdx}
+            direction={direction}
+          />
         </div>
       </div>
     </div>
