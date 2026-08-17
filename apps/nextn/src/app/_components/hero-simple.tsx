@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { Cormorant_Garamond } from "next/font/google";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -20,7 +21,7 @@ const ethicsSerif = Cormorant_Garamond({
 
 const CAROUSEL_MS = 5000;
 
-/** Landscape хамт олны зураг — бүх dest-ийг нэг удаа ачаална, солиход дахин татахгүй */
+/** JPG-уудыг нэг удаа ачаална — солиход дахин татахгүй, бүтэн гарсны дараа солино */
 function TeamGalleryCarousel({
   slides,
   idx,
@@ -32,17 +33,9 @@ function TeamGalleryCarousel({
   const [ready, setReady] = useState<Record<string, boolean>>({});
   const [shown, setShown] = useState(0);
 
-  useEffect(() => {
-    if (slides.length === 0) return;
-    for (const s of slides) {
-      const im = new window.Image();
-      im.decoding = "sync";
-      im.onload = () => {
-        setReady((prev) => (prev[s.id] ? prev : { ...prev, [s.id]: true }));
-      };
-      im.src = s.src;
-    }
-  }, [slides]);
+  // [PERF] Гараар `new Image()` preload хийхгүй — next/image өөрөө оптимизаци
+  // (display хэмжээнд WebP + Cache-Control) хийж, priority-гоор эхний зургийг
+  // урьдчилан ачаална. ready-г рендэрлэсэн зургийн onLoad-оос авна.
 
   const target = slides.length ? idx % slides.length : 0;
   useEffect(() => {
@@ -64,21 +57,21 @@ function TeamGalleryCarousel({
       <div className="hero-profile-frame relative rounded-xl p-[2px]">
         <div className="hero-profile-surface relative aspect-[16/10] w-full overflow-hidden rounded-[0.7rem] bg-muted/30">
           {slides.map((s, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               key={s.id}
               src={s.src}
               alt={s.alt}
+              fill
+              priority={i === 0}
+              sizes="(min-width: 1024px) 620px, 92vw"
+              quality={78}
               draggable={false}
-              decoding="async"
-              loading="eager"
-              fetchPriority={i === 0 ? "high" : "low"}
               onLoad={() =>
                 setReady((prev) =>
                   prev[s.id] ? prev : { ...prev, [s.id]: true },
                 )
               }
-              className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500 ${
+              className={`object-cover object-center transition-opacity duration-500 ${
                 i === shown && ready[s.id] ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -172,6 +165,8 @@ export default function Hero() {
 
   return (
     <div className="relative flex-1 flex flex-col justify-center overflow-hidden select-none">
+      {/* [PERF] Raw JPG preload хассан — next/image (priority) нь оптимизацилсан
+          зургийг өөрөө preload хийдэг; давхар татахаас сэргийлнэ. */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden

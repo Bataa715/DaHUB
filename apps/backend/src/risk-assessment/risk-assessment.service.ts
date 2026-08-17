@@ -33,6 +33,13 @@ export interface RiskCurrentRow {
   sourceFetchedDate?: string;
 }
 
+/** YYYY-MM-DD + n days (UTC). Used for ClickHouse prefix-range filters. */
+function addDaysYmd(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, (m || 1) - 1, (d || 1) + days));
+  return dt.toISOString().slice(0, 10);
+}
+
 export interface RiskHistoryEntry {
   id: string;
   name: string;
@@ -377,14 +384,24 @@ export class RiskAssessmentService implements OnModuleInit {
     // [PERF] FINAL хэрэггүй — DISTINCT нь давхардсан огноог аль хэдийн нэгтгэнэ,
     // мөн бид зөвхөн ямар огноонууд орж ирсэнийг л мэдэхийг хүсэж байгаа тул
     // мөр бүрийн хамгийн сүүлийн хувилбарыг merge хийх шаардлагагүй.
-    const rows = await this.clickhouse.query<any>(
-      `SELECT DISTINCT LEFT(fetchedDate, 10) AS d
+    const rows = await this.clickhouse.query<{ d: string }>(
+      `SELECT fetchedDate AS d
        FROM riskbranch
        WHERE fetchedDate != ''
-       ORDER BY d DESC
-       LIMIT 90`,
+       GROUP BY fetchedDate
+       ORDER BY fetchedDate DESC
+       LIMIT 200`,
     );
-    return rows.map((r: any) => String(r.d));
+    const seen = new Set<string>();
+    const dates: string[] = [];
+    for (const r of rows) {
+      const day = String(r.d).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || seen.has(day)) continue;
+      seen.add(day);
+      dates.push(day);
+      if (dates.length >= 90) break;
+    }
+    return dates;
   }
 
   /** riskbranch-ийн хамгийн сүүлийн fetchedDate-ийн өгөгдөл */
@@ -414,30 +431,41 @@ export class RiskAssessmentService implements OnModuleInit {
   }> {
     // Огноог YYYY-MM-DD форматад normalize хийнэ
     const d = String(fetchedDate).slice(0, 10);
+    const dNext = addDaysYmd(d, 1);
 
-    // 1. Сонгосон огноогоос <= хамгийн ойр бодит fetchedDate олно (fill-forward anchor)
-    // [PERF] FINAL хассан — MAX(огноо) нь ReplacingMergeTree-ийн давхардлыг
-    // цэгцлэхээс үл хамааран ижил үр дүн өгнө (олдсон огнооны олонлог өөрчлөгдөхгүй).
-    // FINAL нь бүх part-ийг унших үедээ merge хийдэг тул riskbranch шиг том
-    // хүснэгт дээр маш удаан ажилладаг байсан.
-    const anchorRows = await this.clickhouse.query<any>(
-      `SELECT MAX(LEFT(fetchedDate, 10)) AS maxDate
+    // 1. Сонгосон өдөр өөрөө байвал түүнийг ашиглана. Байхгүй бол ORDER BY
+    // fetchedDate DESC LIMIT 1 — PK prefix (fetchedDate, rowKey) ашиглана.
+    // LEFT(fetchedDate,10) <= d нь индекс алгасаж бүх хүснэгтийг скан хийдэг
+    // байсан тул prod дээр socket hang up / ECONNRESET → HTTP 500 гардаг байсан.
+    const exact = await this.clickhouse.query<{ ok: number }>(
+      `SELECT 1 AS ok
        FROM riskbranch
-       WHERE LEFT(fetchedDate, 10) <= {d:String}
-         AND fetchedDate != ''`,
-      { d },
+       WHERE fetchedDate >= {d:String} AND fetchedDate < {dNext:String}
+       LIMIT 1`,
+      { d, dNext },
     );
-    const anchor: string = anchorRows[0]?.maxDate ?? "";
+    let anchor = exact.length > 0 ? d : "";
+    if (!anchor) {
+      const prev = await this.clickhouse.query<{ maxDate: string }>(
+        `SELECT LEFT(fetchedDate, 10) AS maxDate
+         FROM riskbranch
+         WHERE fetchedDate != '' AND fetchedDate < {d:String}
+         ORDER BY fetchedDate DESC
+         LIMIT 1`,
+        { d },
+      );
+      anchor = prev[0]?.maxDate ?? "";
+    }
     if (!anchor) return { fetchedDate: d, rows: [], manualMap: {} };
+
+    const anchorNext = addDaysYmd(anchor, 1);
 
     // 2. ЗӨВХӨН anchor огнооны датаг авна (`=`, өмнөх `<=` fill-forward биш).
     // [PERF] riskbranch дахь fetchedDate бүр нь тухайн үеийн БҮРЭН snapshot
     // (Oracle-оос бүх салбар сард нэг удаа бүрэн ордог) тул нэг огнооны дата
     // өөрөө бүрэн — өмнөх сар руу мөр тус бүрээр fill-forward хийх шаардлагагүй.
-    // `= anchor` нь зөвхөн НЭГ өдрийн мөрийг л скан хийдэг тул `<= anchor` (бүх
-    // өмнөх сарууд)-аас хамаагүй хурдан. Тухайн огноо дотор дахин ingest хийсэн
-    // давхардлыг argMax(col, ord)-оор (ord = огноо+fetchedAt) хамгийн сүүлийн
-    // хувилбараар шийднэ. Илүүц SOLID IN дэд-query-г хассан.
+    // fetchedDate range нь PK prefix ашиглана. Тухайн огноо дотор дахин ingest
+    // хийсэн давхардлыг argMax(col, ord)-оор шийднэ.
     const rows = await this.clickhouse.query<any>(
       `SELECT
          argMax(rowKey, ord)              AS rowKey,
@@ -462,15 +490,17 @@ export class RiskAssessmentService implements OnModuleInit {
          LEFT(max(fetchedDate), 10)       AS sourceFetchedDate
        FROM (
          SELECT
-           *,
+           rowKey, fetchedDate, fetchedAt, SOLID, BRANCHNAME, STATUS, RESULT,
+           RESULT_TYPE, DESCRIPTION_TEXT, P_DATEBEG, P_DATE, ID, SUBID,
+           OPERATION_TYPE,
            concat(LEFT(fetchedDate, 10), toString(fetchedAt)) AS ord
          FROM riskbranch
-         WHERE LEFT(fetchedDate, 10) = {anchor:String}
+         WHERE fetchedDate >= {anchor:String} AND fetchedDate < {anchorNext:String}
        )
        GROUP BY SOLID, SUBID
        ORDER BY BRANCHNAME, toUInt32OrZero(SUBID)
-       SETTINGS max_execution_time = 25`,
-      { anchor },
+       SETTINGS max_execution_time = 55`,
+      { anchor, anchorNext },
     );
     // fetchedDate-г бодит anchor-оор буцаана (UI-д харуулах зорилгоор)
     return { fetchedDate: anchor, rows, manualMap: {} };

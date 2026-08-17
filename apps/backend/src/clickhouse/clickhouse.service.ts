@@ -11,10 +11,28 @@ import { randomUUID } from "crypto";
 export const nowCH = (): string =>
   new Date().toISOString().slice(0, 19).replace("T", " ");
 
+function isRetriableChError(error: unknown): boolean {
+  const e = error as { message?: string; code?: string; type?: string };
+  const msg = `${e?.message || ""} ${e?.code || ""} ${e?.type || ""}`;
+  return (
+    msg.includes("ECONNRESET") ||
+    msg.includes("socket hang up") ||
+    msg.includes("EPIPE") ||
+    msg.includes("ECONNREFUSED") ||
+    e?.code === "ECONNRESET"
+  );
+}
+
 @Injectable()
 export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   private client: ClickHouseClient;
   private aclClient: ClickHouseClient;
+  private runtimeOpts: {
+    url: string;
+    username: string;
+    password: string;
+    database: string;
+  } | null = null;
   private readonly logger = new Logger(ClickHouseService.name);
 
   async onModuleInit() {
@@ -46,8 +64,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         url: host,
         username: adminUser,
         password: adminPass,
-        request_timeout: 30000,
+        request_timeout: 60_000,
         compression: { request: true, response: true },
+        keep_alive: { enabled: true, idle_socket_ttl: 2_500 },
       } as const;
 
       // Connect without a database first — a fresh server has no audit_db yet.
@@ -81,15 +100,14 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         );
       }
       const runtimePass = process.env.CLICKHOUSE_PASSWORD || "";
-      await this.client.close();
-      this.client = createClient({
+      this.runtimeOpts = {
         url: host,
         username: runtimeUser,
         password: runtimePass,
         database,
-        request_timeout: 30000,
-        compression: { request: true, response: true },
-      });
+      };
+      await this.client.close();
+      this.client = this.createRuntimeClient();
       this.logger.log(
         `Runtime client switched to "${runtimeUser}" (limited privileges)`,
       );
@@ -112,41 +130,86 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private createRuntimeClient(): ClickHouseClient {
+    if (!this.runtimeOpts) {
+      throw new Error("ClickHouse runtime client is not configured");
+    }
+    return createClient({
+      ...this.runtimeOpts,
+      request_timeout: 60_000,
+      compression: { request: true, response: true },
+      keep_alive: { enabled: true, idle_socket_ttl: 2_500 },
+    });
+  }
+
+  private async recreateRuntimeClient(): Promise<void> {
+    if (!this.runtimeOpts) return;
+    try {
+      await this.client.close();
+    } catch {
+      // stale socket — ignore
+    }
+    this.client = this.createRuntimeClient();
+    this.aclClient = this.client;
+    this.logger.warn("ClickHouse client recreated after dropped connection");
+  }
+
   /**
    * Execute a SELECT query and return rows
    */
   async query<T = Record<string, unknown>>(
     query: string,
     params?: Record<string, unknown>,
+    retries = 1,
   ): Promise<T[]> {
-    try {
-      const result = await this.client.query({
-        query,
-        query_params: params,
-      });
-      const data = (await result.json()) as { data: T[] };
-      return data.data;
-    } catch (error: unknown) {
-      const msg = (error as Error)?.message || String(error);
-      this.logger.error(`ClickHouse query error: ${msg}`);
-      throw error;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const result = await this.client.query({
+          query,
+          query_params: params,
+        });
+        const data = (await result.json()) as { data: T[] };
+        return data.data;
+      } catch (error: unknown) {
+        const msg = (error as Error)?.message || String(error);
+        if (isRetriableChError(error) && attempt < retries) {
+          this.logger.warn(`ClickHouse query retrying after: ${msg}`);
+          await this.recreateRuntimeClient();
+          await new Promise((r) => setTimeout(r, 400));
+          continue;
+        }
+        this.logger.error(`ClickHouse query error: ${msg}`);
+        throw error;
+      }
     }
+    return [];
   }
 
   /**
    * Insert data
    */
-  async insert(table: string, data: Record<string, unknown>[]) {
-    try {
-      await this.client.insert({
-        table,
-        values: data,
-        format: "JSONEachRow",
-      });
-    } catch (error: unknown) {
-      const msg = (error as Error)?.message || String(error);
-      this.logger.error(`ClickHouse insert error (${table}): ${msg}`);
-      throw error;
+  async insert(table: string, data: Record<string, unknown>[], retries = 1) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await this.client.insert({
+          table,
+          values: data,
+          format: "JSONEachRow",
+        });
+        return;
+      } catch (error: unknown) {
+        const msg = (error as Error)?.message || String(error);
+        if (isRetriableChError(error) && attempt < retries) {
+          this.logger.warn(
+            `ClickHouse insert retrying (${table}) after: ${msg}`,
+          );
+          await this.recreateRuntimeClient();
+          await new Promise((r) => setTimeout(r, 400));
+          continue;
+        }
+        this.logger.error(`ClickHouse insert error (${table}): ${msg}`);
+        throw error;
+      }
     }
   }
 
@@ -196,12 +259,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           stack?: string;
         };
         const msg = e?.message || e?.type || String(error);
-        const isRetriable =
-          msg.includes("ECONNRESET") ||
-          msg.includes("socket hang up") ||
-          e?.code === "ECONNRESET";
-        if (isRetriable && attempt < retries) {
+        if (isRetriableChError(error) && attempt < retries) {
           this.logger.warn(`ClickHouse command retrying after: ${msg}`);
+          await this.recreateRuntimeClient();
           await new Promise((r) => setTimeout(r, 500));
           continue;
         }
