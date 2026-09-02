@@ -1,9 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Activity, Users2, ChevronRight } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
+import { RelatedPartyTool } from "./_RelatedPartyTool";
 
 interface MonitorCard {
   id: string;
@@ -19,7 +22,7 @@ const MONITOR_CARDS: MonitorCard[] = [
     id: "related-party-transactions",
     titleKey: "monBoxRelatedPartyTitle",
     icon: Users2,
-    href: "/tools/monitoring-box/related-party-transactions",
+    href: "/tools/monitoring-box?tool=related-party",
     accent: "orange",
     status: "live",
   },
@@ -35,7 +38,7 @@ const ACCENT = {
   },
 } as const;
 
-export default function MonitoringBoxPage() {
+function MonitoringBoxHome() {
   const { t } = useLanguage();
   return (
     <div className="bg-background text-foreground">
@@ -100,5 +103,21 @@ export default function MonitoringBoxPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function MonitoringBoxView() {
+  const searchParams = useSearchParams();
+  if (searchParams.get("tool") === "related-party") {
+    return <RelatedPartyTool />;
+  }
+  return <MonitoringBoxHome />;
+}
+
+export default function MonitoringBoxPage() {
+  return (
+    <Suspense>
+      <MonitoringBoxView />
+    </Suspense>
   );
 }

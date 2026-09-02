@@ -1145,7 +1145,11 @@ export const monitoringApi = {
   findRelatedPartyTransactions: async (
     req: RelatedPartyRequest,
   ): Promise<RelatedPartyResult> => {
-    const res = await api.post("/monitoring/related-party-transactions", req, {
+    // Same-origin Next BFF (`/monitoring-rpt`) — prod `/api/*` Nest рүү явдаг
+    // тул `/monitoring/...` 404 болдог байсан. Absolute URL ашиглаж axios
+    // instance-ийн Nest baseURL дээр наалдахаас сэргийлнэ.
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const res = await api.post(`${origin}/monitoring-rpt`, req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;

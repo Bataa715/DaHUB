@@ -1,0 +1,85 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getApiAuth, hasToolAccess } from "@/lib/api-auth";
+import { getServerBackendUrl } from "@/lib/server-backend-url";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 180;
+
+/**
+ * Related-party search BFF — `/api` биш тул prod reverse-proxy Nest руу
+ * шууд шидэхгүй (sanamsargui `/api/export-sample` 403/404-тай ижил ангилал).
+ * Next.js сервер INTERNAL/NEXT_PUBLIC API URL-аар backend-ийн
+ * POST /monitoring/related-party-transactions руу дамжуулна.
+ */
+export async function POST(req: NextRequest) {
+  const auth = await getApiAuth(req);
+  if (!auth) {
+    return NextResponse.json(
+      { message: "Нэвтрэх шаардлагатай" },
+      { status: 401 },
+    );
+  }
+  if (!hasToolAccess(auth, ["monitoring_box"])) {
+    return NextResponse.json(
+      { message: "Энэ хэрэгслийг ашиглах эрх байхгүй" },
+      { status: 403 },
+    );
+  }
+
+  const backendUrl = getServerBackendUrl();
+  if (!backendUrl) {
+    return NextResponse.json(
+      { message: "Серверийн алдаа гарлаа" },
+      { status: 500 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ message: "Хүсэлт буруу байна" }, { status: 400 });
+  }
+
+  const cookie = req.headers.get("cookie") ?? "";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 180_000);
+
+  try {
+    const upstream = await fetch(
+      `${backendUrl}/monitoring/related-party-transactions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Cookie: cookie,
+        },
+        body: JSON.stringify(body),
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    );
+
+    const text = await upstream.text();
+    let data: unknown = text;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text || "Хайсан мэдээлэл олдсонгүй" };
+    }
+    return NextResponse.json(data, { status: upstream.status });
+  } catch (err) {
+    const aborted = (err as Error)?.name === "AbortError";
+    console.error(
+      "[monitoring-rpt] upstream fetch failed:",
+      (err as Error)?.message,
+    );
+    return NextResponse.json(
+      { message: aborted ? "Хүсэлт хугацаа хэтэрлээ" : "Серверийн алдаа гарлаа" },
+      { status: aborted ? 504 : 502 },
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}

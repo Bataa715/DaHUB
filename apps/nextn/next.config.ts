@@ -55,6 +55,16 @@ const nextConfig: NextConfig = {
         destination: "/knowledge",
         permanent: true,
       },
+      {
+        source: "/tools/monitoring-box/related-party-transactions",
+        destination: "/tools/monitoring-box?tool=related-party",
+        permanent: false,
+      },
+      {
+        source: "/tools/monitoring-box/related-party-transactions/",
+        destination: "/tools/monitoring-box?tool=related-party",
+        permanent: false,
+      },
     ];
   },
   images: {
