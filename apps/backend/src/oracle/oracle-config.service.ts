@@ -53,7 +53,9 @@ type ChainRow = {
   is_active: number;
 };
 
-const IDENT_RE = /^[A-Z_][A-Z0-9_.]*$/i;
+// [AUDIT] Дээд тал нь нэг цэг (SCHEMA.TABLE) — олон цэг хэрэггүй бөгөөд
+// injection гадаргууг багасгана.
+const IDENT_RE = /^[A-Z_][A-Z0-9_]*(\.[A-Z_][A-Z0-9_]*)?$/i;
 const FROM_CLAUSE_SQL_KEYWORDS = new Set([
   "JOIN",
   "INNER",
@@ -362,7 +364,7 @@ export class OracleConfigService implements OnModuleInit {
   }
 
   private rowToDashboard(r: DashboardRow): OracleDashboardConfig {
-    return {
+    const dash: OracleDashboardConfig = {
       id: Number(r.id),
       name: String(r.name),
       tableName: String(r.table_name),
@@ -372,6 +374,23 @@ export class OracleConfigService implements OnModuleInit {
       amountColumn: r.amount_column ? String(r.amount_column) : null,
       enabled: Number(r.enabled) === 1,
     };
+    // [AUDIT] Унших үеийн давхар шалгалт — DB-д шууд бичсэн (CRUD validation
+    // тойрсон) мөр SQL-д орохоос сэргийлнэ. Буруу бол идэвхгүй болгоно.
+    try {
+      this.validateIdentifier("tableName", dash.tableName);
+      this.validateIdentifier("cifColumn", dash.cifColumn);
+      if (dash.dateColumn)
+        this.validateIdentifier("dateColumn", dash.dateColumn);
+      if (dash.amountColumn)
+        this.validateIdentifier("amountColumn", dash.amountColumn);
+      if (dash.fromClause) this.validateFromClause(dash.fromClause);
+    } catch {
+      this.logger.error(
+        `Dashboard id=${dash.id} identifier шалгалтад унасан тул идэвхгүй боллоо`,
+      );
+      dash.enabled = false;
+    }
+    return dash;
   }
 
   private rowToChain(r: ChainRow): EventChainConfig {

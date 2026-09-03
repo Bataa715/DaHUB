@@ -65,6 +65,23 @@ export function getApiErrorMessage(e: unknown): string {
   return String(e);
 }
 
+/**
+ * [AUDIT] Session дуусахад шууд location.replace хийхийн оронд cancelable
+ * event илгээнэ — хадгалаагүй ажилтай хуудас (тайлан бичих г.м)
+ * `auth:session-expired` дээр `preventDefault()` дуудаж redirect-ийг зогсоон
+ * re-login modal үзүүлэх боломжтой. Хэн ч барихгүй бол login руу шилжинэ.
+ */
+function redirectToLogin(isAdmin: boolean): void {
+  if (typeof window === "undefined") return;
+  const loginPath = isAdmin ? "/admin/login" : "/login";
+  if (window.location.pathname.startsWith(loginPath)) return;
+  const ev = new CustomEvent("auth:session-expired", { cancelable: true });
+  const proceed = window.dispatchEvent(ev); // false = preventDefault() дуудсан
+  if (proceed) {
+    window.location.replace(loginPath);
+  }
+}
+
 // Response interceptor — silent token refresh on 401
 api.interceptors.response.use(
   (response) => response,
@@ -105,26 +122,14 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch {
           Cookies.remove(userKey);
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("auth:session-expired"));
-            const loginPath = isAdmin ? "/admin/login" : "/login";
-            if (!window.location.pathname.startsWith(loginPath)) {
-              window.location.replace(loginPath);
-            }
-          }
+          redirectToLogin(isAdmin);
         }
       }
     }
 
     if (error.response?.status === 401) {
       Cookies.remove(userKey);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("auth:session-expired"));
-        const loginPath = isAdmin ? "/admin/login" : "/login";
-        if (!window.location.pathname.startsWith(loginPath)) {
-          window.location.replace(loginPath);
-        }
-      }
+      redirectToLogin(isAdmin);
     }
 
     // Network error (backend unreachable) — don't clear session (may be temporary)
@@ -1133,6 +1138,8 @@ export interface RelatedPartyResult {
   accounts: MatchedAccountRow[];
   transactions: RelatedPartyTxRow[];
   summary: RelatedPartySummaryRow[];
+  /** Сервер мөрийн таазаа давсан тул үр дүн тайрагдсан. */
+  truncated?: boolean;
 }
 
 export interface RelatedPartyRequest {

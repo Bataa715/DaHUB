@@ -31,6 +31,27 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
+          {
+            // [AUDIT] Эхлээд Report-Only горимд нэвтрүүлж, console дээр
+            // зөрчил ажиглаад дараа нь Content-Security-Policy болгож хатууруулна.
+            key: "Content-Security-Policy-Report-Only",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://api.dicebear.com https://api.qrserver.com https://cdn.simpleicons.org",
+              "font-src 'self' data:",
+              "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001",
+              "frame-ancestors 'none'",
+              "object-src 'none'",
+              "base-uri 'self'",
+            ].join("; "),
+          },
+          {
+            key: "Permissions-Policy",
+            value:
+              "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+          },
         ],
       },
     ];
@@ -79,30 +100,8 @@ const nextConfig: NextConfig = {
         port: "3001",
         pathname: "/**",
       },
-      {
-        protocol: "https",
-        hostname: "placehold.co",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "picsum.photos",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "i.pinimg.com",
-        port: "",
-        pathname: "/**",
-      },
+      // [AUDIT] placehold.co / unsplash / picsum / pinimg хасагдсан —
+      // demo контентын үлдэгдэл байсан ба image proxy-г гадны host руу нээдэг.
       {
         protocol: "https",
         hostname: "api.dicebear.com",

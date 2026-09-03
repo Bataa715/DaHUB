@@ -68,9 +68,32 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
    * оролдоно — нууц үг буруу үед 12 удаа биш 1 удаа л fail болж account
    * lock-д хүрэхээс сэргийлнэ. authFailed бол Oracle-д хандалгүй шууд алдаа шиднэ.
    */
+  // [AUDIT] Startup дээр auth бус шалтгаанаар (сүлжээ, DB restart) pool
+  // үүсээгүй бол дараагийн хүсэлт дээр lazy дахин оролдоно — өмнө нь
+  // backend restart хийтэл бүх Oracle функц 503 үлддэг байсан.
+  // 60 секундын cooldown-оор давтамжийг хязгаарлана.
+  private lastReconnectAttempt = 0;
+  private static readonly RECONNECT_COOLDOWN_MS = 60_000;
+
+  private async tryLazyReconnect(): Promise<void> {
+    const user = process.env.ORACLE_USER;
+    const password = process.env.ORACLE_PASSWORD;
+    const connectString = process.env.ORACLE_CONNECT_STRING;
+    if (!user || !password || !connectString) return;
+    const now = Date.now();
+    if (now - this.lastReconnectAttempt < OracleService.RECONNECT_COOLDOWN_MS)
+      return;
+    this.lastReconnectAttempt = now;
+    this.logger.log("Oracle pool байхгүй — lazy reconnect оролдож байна...");
+    await this.initPool(user, password, connectString);
+  }
+
   private async ensureHealthy(): Promise<void> {
     if (this.authFailed) {
       throw new Error(OracleService.AUTH_FAIL_MESSAGE);
+    }
+    if (!this.pool) {
+      await this.tryLazyReconnect();
     }
     if (!this.pool) {
       throw new Error("Oracle холболт тохируулагдаагүй байна");

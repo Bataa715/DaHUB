@@ -18,6 +18,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  // [AUDIT] Path traversal хамгаалалт — "..%2F" маягийн id proxy-г backend-ийн
+  // өөр endpoint руу чиглүүлж чаддаг байсан.
+  if (!/^[\w-]+$/.test(id)) {
+    return new NextResponse(null, { status: 400 });
+  }
   // Хүчинтэй cookie сонгох — expired adminToken байхад user token ашиглана
   const candidates = [
     req.cookies.get("adminToken")?.value,
@@ -51,7 +56,7 @@ export async function GET(
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${backendUrl}/medleg/${id}/image`, {
+    upstream = await fetch(`${backendUrl}/medleg/${encodeURIComponent(id)}/image`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });

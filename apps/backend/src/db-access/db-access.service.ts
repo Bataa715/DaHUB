@@ -38,25 +38,41 @@ export class DbAccessService {
   private readonly logger = new Logger(DbAccessService.name);
 
   // [SEC-5] AES-256-GCM encryption-at-rest for ClickHouse user passwords
-  // stored in access_grants.chPassword. Key derived from JWT_SECRET so no
-  // extra env var is required. Format: enc:v1:<base64(iv|tag|ciphertext)>.
+  // stored in access_grants.chPassword. Format: enc:v1:<base64(iv|tag|ciphertext)>.
   // Old plaintext rows are still readable (auto-detected by missing prefix).
-  private readonly encKey: Buffer = (() => {
-    const secret = process.env.JWT_SECRET;
-    if (!secret || secret.length < 16) {
-      throw new Error(
-        "JWT_SECRET (>=16 chars) is required for chPassword encryption-at-rest",
-      );
-    }
+  //
+  // [AUDIT] Multi-key: python-api.service-тэй ижил загвараар тусгай
+  // CONFIG_ENC_KEY/CREDENTIAL_ENCRYPTION_KEY-г нэн тэргүүнд ашиглаж,
+  // JWT_SECRET-ээс гарсан түлхүүрийг унших fallback болгож үлдээнэ —
+  // ингэснээр JWT_SECRET солиход хуучин мөрүүд уншигдсаар байна.
+  private static deriveKey(secret: string): Buffer {
     return createHash("sha256")
       .update("db-access:ch-pwd:" + secret)
       .digest();
+  }
+  private readonly encKeys: Buffer[] = (() => {
+    const keys: Buffer[] = [];
+    const dedicated =
+      process.env.CONFIG_ENC_KEY || process.env.CREDENTIAL_ENCRYPTION_KEY;
+    if (dedicated && dedicated.length >= 16) {
+      keys.push(DbAccessService.deriveKey(dedicated));
+    }
+    const jwt = process.env.JWT_SECRET;
+    if (jwt && jwt.length >= 16 && jwt !== dedicated) {
+      keys.push(DbAccessService.deriveKey(jwt));
+    }
+    if (keys.length === 0) {
+      throw new Error(
+        "CONFIG_ENC_KEY or JWT_SECRET (>=16 chars) is required for chPassword encryption-at-rest",
+      );
+    }
+    return keys;
   })();
 
   private encryptPwd(plain: string): string {
     if (!plain) return "";
     const iv = randomBytes(12);
-    const cipher = createCipheriv("aes-256-gcm", this.encKey, iv);
+    const cipher = createCipheriv("aes-256-gcm", this.encKeys[0], iv);
     const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
     const tag = cipher.getAuthTag();
     return "enc:v1:" + Buffer.concat([iv, tag, ct]).toString("base64");
@@ -65,19 +81,22 @@ export class DbAccessService {
   private decryptPwd(stored: string | null | undefined): string {
     if (!stored) return "";
     if (!stored.startsWith("enc:v1:")) return stored; // legacy plaintext
-    try {
-      const buf = Buffer.from(stored.slice("enc:v1:".length), "base64");
-      const iv = buf.subarray(0, 12);
-      const tag = buf.subarray(12, 28);
-      const ct = buf.subarray(28);
-      const decipher = createDecipheriv("aes-256-gcm", this.encKey, iv);
-      decipher.setAuthTag(tag);
-      const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
-      return pt.toString("utf8");
-    } catch (e) {
-      this.logger.error("chPassword decrypt failed", e);
-      return "";
+    const buf = Buffer.from(stored.slice("enc:v1:".length), "base64");
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const ct = buf.subarray(28);
+    for (const key of this.encKeys) {
+      try {
+        const decipher = createDecipheriv("aes-256-gcm", key, iv);
+        decipher.setAuthTag(tag);
+        const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
+        return pt.toString("utf8");
+      } catch {
+        // GCM tag таараагүй — дараагийн түлхүүрээр оролдоно
+      }
     }
+    this.logger.error("chPassword decrypt failed (no key matched)");
+    return "";
   }
 
   constructor(

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
-import { getApiAuth, isSuperAdminPayload } from "@/lib/api-auth";
+import {
+  getApiAuth,
+  isSameOriginRequest,
+  isSuperAdminPayload,
+} from "@/lib/api-auth";
 import {
   listTeamImages,
   teamDir,
@@ -24,16 +28,19 @@ export async function GET() {
 }
 
 const MAX_BYTES = 8 * 1024 * 1024;
+// [AUDIT] SVG хасагдсан — script агуулж болох тул same-origin stored XSS эрсдэлтэй
 const ALLOWED_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
-  "image/svg+xml",
 ]);
 
 /** Superadmin л `public/team` руу зураг оруулна. `/api` биш — prod proxy Nest руу явуулахгүй. */
 export async function POST(req: NextRequest) {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const payload = await getApiAuth(req);
   if (!isSuperAdminPayload(payload)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

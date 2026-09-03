@@ -33,13 +33,18 @@ export class HealthController {
         db: "ok",
       };
     } catch (error: any) {
+      // [AUDIT] error.message-д ClickHouse host/user/query орж болзошгүй тул
+      // клиентэд статик хариу өгч, дэлгэрэнгүйг зөвхөн лог руу бичнэ.
+      console.error(
+        "[health] ClickHouse unreachable:",
+        error?.message ?? String(error),
+      );
       throw new HttpException(
         {
           status: "error",
           timestamp,
           service: "internal-audit-backend",
           db: "unreachable",
-          message: error?.message ?? String(error),
         },
         HttpStatus.SERVICE_UNAVAILABLE,
       );

@@ -1,7 +1,11 @@
 import { parseSchema, getMdPath } from "@/lib/schema-parser";
 import { NextResponse } from "next/server";
 import fs from "fs";
-import { getApiAuth, hasToolAccess } from "@/lib/api-auth";
+import {
+  getApiAuth,
+  hasToolAccess,
+  isSameOriginRequest,
+} from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +39,12 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json(
+      { error: "Энэ үйлдлийг гүйцэтгэх эрх байхгүй" },
+      { status: 403 },
+    );
+  }
   const auth = await getApiAuth(req);
   if (!auth) {
     return NextResponse.json(

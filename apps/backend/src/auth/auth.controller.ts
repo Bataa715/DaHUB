@@ -52,10 +52,13 @@ export class AuthController {
     const tokenName = isAdmin ? "adminToken" : "token";
     const refreshName = isAdmin ? "adminRefreshToken" : "refreshToken";
 
+    // [SEC/CSRF] sameSite="lax" бүх горимд — frontend/backend нэг сайт дээр
+    // (reverse proxy ард) ажилладаг тул "none" шаардлагагүй бөгөөд "none" нь
+    // гадны сайтын form POST-д cookie хавсаргаж CSRF гарц нээдэг байсан.
     const cookieOptions: CookieOptions = {
       httpOnly: true,
       secure: cookieSecure,
-      sameSite: cookieSecure ? "none" : "lax",
+      sameSite: "lax",
       path: "/",
     };
 
@@ -86,7 +89,7 @@ export class AuthController {
     const opts: CookieOptions = {
       httpOnly: true,
       secure: cookieSecure,
-      sameSite: cookieSecure ? "none" : "lax",
+      sameSite: "lax",
       path: "/",
     };
 
@@ -110,7 +113,10 @@ export class AuthController {
   }
 
   // Check if user exists
+  // [AUDIT] 10/мин — default 120/мин нь ажилтдын лавлахыг скриптээр
+  // enumerate хийхэд хангалттай байсан.
   @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post("check-user")
   async checkUser(@Body() checkUserDto: CheckUserDto) {
     return this.authService.checkUser(checkUserDto);

@@ -21,12 +21,22 @@ function validateProductionEnv() {
     "CLICKHOUSE_PASSWORD",
     "JWT_SECRET",
     "CORS_ORIGINS",
+    // [SEC] Python сервис рүү код илгээдэг тул түлхүүргүй ажиллахыг хориглоно
+    "PYTHON_API_KEY",
+    // [SEC] production дээр cookie-ийн secure горимыг ил тод сонгосон байх ёстой
+    "COOKIE_SECURE",
   ];
   const missing = required.filter((k) => !process.env[k]);
   if (!hasPython) missing.unshift("PYTHON_SERVICE_URL (or PYTHON_API_URL)");
   if (missing.length > 0) {
     throw new Error(
       `Production startup blocked: missing required environment variables: ${missing.join(", ")}`,
+    );
+  }
+  if (process.env.COOKIE_SECURE !== "true") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[SEC] WARNING: COOKIE_SECURE is not 'true' in production — auth cookies will be sent over plain HTTP.",
     );
   }
   // Warn if any of them still point at localhost (deployment misconfig)

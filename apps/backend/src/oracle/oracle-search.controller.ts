@@ -449,10 +449,9 @@ export class OracleSearchController {
     await this.config.reloadFromClickHouse();
 
     const minDashboards = Math.max(2, parseInt(minDash) || 2);
-    // NOTE: this only truncates the final sorted list, not the Oracle-side
-    // aggregation (unbounded either way) — no safe ceiling to enforce here
-    // without risking dropped alerts, so leave it as the caller requests.
-    const limit = Math.max(parseInt(limitStr) || 10000, 1);
+    // [AUDIT] Дээд тааз — limit=99999999 маягийн дуудлага Node санах ойг
+    // дүүргэхээс сэргийлнэ. 10000-аас олон alert-ийг UI-д харуулах хэрэглээ байхгүй.
+    const limit = Math.min(Math.max(parseInt(limitStr) || 10000, 1), 10000);
 
     // If a specific CIF is requested, search only for that CIF across all dashboards
     const safeCifFilter = cifFilter

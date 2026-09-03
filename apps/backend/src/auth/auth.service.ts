@@ -367,15 +367,27 @@ export class AuthService {
     return dept;
   }
 
-  // [SEC] Persistent account lockout — distinct from the 15-min auto-expiring
+  // [SEC] Account lockout — distinct from the 15-min auto-expiring
   // IP-scoped lockout in guardLogin() above. That one only slows down a
   // single attacking IP; this one locks the ACCOUNT itself after 5 wrong
-  // passwords (from any IP) and stays locked until an admin explicitly
-  // clears it (UsersService.unlockUser) or the user completes a password
-  // reset/claim flow. Uses ForbiddenException (not UnauthorizedException) so
-  // the outer catch blocks — which only recordFailedLogin() on
-  // UnauthorizedException — don't also feed the IP-scoped counter here.
+  // passwords (from any IP).
+  //
+  // [AUDIT] Хугацаагүй түгжээ нь unauthenticated DoS гарц байсан (хэн ч 5
+  // хүсэлтээр дурын ажилтныг, тэр байтугай superadmin-ийг түгжинэ) — одоо
+  // LOCK_DURATION_MS дараа автоматаар тайлагдана. Админ гараар түгжээ
+  // тайлбал (UsersService.unlockUser) хугацаа хүлээлгүй нээгдэнэ.
   private readonly MAX_FAILED_LOGINS = 5;
+  private readonly LOCK_DURATION_MS = 30 * 60 * 1000; // 30 минут
+
+  /** Түгжээ хүчинтэй хэвээр байгаа эсэх (30 мин дотор). */
+  private isLockActive(user: any): boolean {
+    if (Number(user.isLocked) !== 1) return false;
+    const lockedAt = Date.parse(String(user.lockedAt ?? "") + "Z");
+    // lockedAt байхгүй/уншигдахгүй хуучин мөр — түгжээг хүчинтэйд тооцно
+    // (админ unlock хийсээр тайлагдана).
+    if (isNaN(lockedAt) || lockedAt <= 0) return true;
+    return Date.now() - lockedAt < this.LOCK_DURATION_MS;
+  }
 
   private async registerFailedPasswordAttempt(user: any): Promise<void> {
     const nextCount = Number(user.failedLoginCount ?? 0) + 1;
@@ -389,12 +401,13 @@ export class AuthService {
           buildUsersTableRow(user, {
             failedLoginCount: nextCount,
             isLocked: willLock ? 1 : Number(user.isLocked) || 0,
+            ...(willLock ? { lockedAt: nowCH() } : {}),
           }),
         ],
       );
       if (willLock) {
         this.logger.warn(
-          `Account locked after ${nextCount} failed password attempts: userId=${user.userId}`,
+          `Account locked (30 min) after ${nextCount} failed password attempts: userId=${user.userId}`,
         );
       }
     } catch (err) {
@@ -435,10 +448,30 @@ export class AuthService {
       );
     }
     if (Number(user.isLocked) === 1) {
-      this.logger.warn(`Login blocked — account locked [${logContext}]`);
-      throw new ForbiddenException(
-        "Таны бүртгэл хэт олон удаа буруу нууц үг оруулсны улмаас түгжигдсэн байна. Админд хандана уу.",
+      if (this.isLockActive(user)) {
+        this.logger.warn(`Login blocked — account locked [${logContext}]`);
+        throw new ForbiddenException(
+          "Таны бүртгэл хэт олон удаа буруу нууц үг оруулсны улмаас түр түгжигдсэн байна. 30 минутын дараа дахин оролдоно уу.",
+        );
+      }
+      // [AUDIT] 30 минут өнгөрсөн — түгжээг автоматаар тайлж үргэлжлүүлнэ
+      this.logger.log(
+        `Account lock expired, auto-unlocking: userId=${user.userId}`,
       );
+      await this.clickhouse.replaceRows(
+        "users",
+        "id = {id:String}",
+        { id: user.id },
+        [
+          buildUsersTableRow(user, {
+            isLocked: 0,
+            failedLoginCount: 0,
+            lockedAt: "1970-01-01 00:00:00",
+          }),
+        ],
+      );
+      user.isLocked = 0;
+      user.failedLoginCount = 0;
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -702,7 +735,10 @@ export class AuthService {
 
   async searchUsersByUserId(query: string, adminOnly: boolean = false) {
     if (!query || query.length < 3) return { users: [] };
-    const pattern = `%${query}%`;
+    // [AUDIT] LIKE wildcard escape — "%%%" маягийн query бүх хэрэглэгчийг
+    // таарч enumeration хаалтыг тойрдог байсан.
+    const escaped = query.replace(/[\\%_]/g, "\\$&");
+    const pattern = `%${escaped}%`;
     // If adminOnly is true, show only admins. Otherwise, hide admins from search.
     const adminFilter = adminOnly
       ? "AND u.isAdmin = 1"

@@ -59,7 +59,13 @@ export interface RelatedPartyResult {
   accounts: MatchedAccountRow[];
   transactions: RelatedPartyTxRow[];
   summary: RelatedPartySummaryRow[];
+  /** [AUDIT] Мөрийн тааз (MAX_TX_ROWS) давсан тул үр дүн тайрагдсан. */
+  truncated?: boolean;
 }
+
+// [AUDIT] Node санах ой руу ачаалах мөрийн дээд хязгаар — том CIF хос,
+// урт хугацааны query OOM үүсгэхээс сэргийлнэ.
+const MAX_TX_ROWS = 50_000;
 
 // ─── Monitoring Box: "Харилцсан гүйлгээ" (related-party transactions) ─────────
 // Given a set of CIF/FORACID identifiers, finds direct internal transactions
@@ -239,12 +245,16 @@ export class MonitoringService {
       WHERE d.H_ACID != c.H_ACID
         AND d.P_CIF_ID != c.P_CIF_ID
       ORDER BY TRAN_DATE, TRAN_ID, FROM_CIF, TO_CIF, TRAN_AMOUNT
+      LIMIT ${MAX_TX_ROWS + 1}
       `,
       { cifIds: customerIds, startDate: dto.startDate, endDate: dto.endDate },
     );
 
+    const truncated = transactions.length > MAX_TX_ROWS;
+    if (truncated) transactions.length = MAX_TX_ROWS;
+
     const summary = this.buildSummary(transactions);
-    return { accounts, transactions, summary };
+    return { accounts, transactions, summary, truncated };
   }
 
   private buildSummary(

@@ -664,6 +664,11 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       await this.exec(
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS failedLoginCount UInt16 DEFAULT 0`,
       ).catch(() => {});
+      // 1d) users.lockedAt — [AUDIT] түгжээ хугацаатай болсон (30 мин дараа
+      // автоматаар тайлагдана); хэзээ түгжигдсэнийг хадгална.
+      await this.exec(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS lockedAt DateTime DEFAULT toDateTime(0)`,
+      ).catch(() => {});
 
       // 1b) tailan_reports.sectionsDataJson — template-driven generic section
       // storage (Tailan dynamic template refactor). Old per-field JSON columns

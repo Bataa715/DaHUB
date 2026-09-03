@@ -147,6 +147,7 @@ export function buildUsersTableRow(
     // successful login) clears these.
     isLocked: Number(existing.isLocked) || 0,
     failedLoginCount: Number(existing.failedLoginCount) || 0,
+    lockedAt: existing.lockedAt ?? "1970-01-01 00:00:00",
     lastLoginAt: existing.lastLoginAt ?? null,
     createdAt: existing.createdAt,
     updatedAt: nowCH(),

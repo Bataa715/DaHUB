@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getApiAuth, hasToolAccess } from "@/lib/api-auth";
+import {
+  getApiAuth,
+  hasToolAccess,
+  isSameOriginRequest,
+} from "@/lib/api-auth";
 import { getServerBackendUrl } from "@/lib/server-backend-url";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +16,12 @@ export const maxDuration = 180;
  * POST /monitoring/related-party-transactions руу дамжуулна.
  */
 export async function POST(req: NextRequest) {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json(
+      { message: "Энэ үйлдлийг гүйцэтгэх эрх байхгүй" },
+      { status: 403 },
+    );
+  }
   const auth = await getApiAuth(req);
   if (!auth) {
     return NextResponse.json(

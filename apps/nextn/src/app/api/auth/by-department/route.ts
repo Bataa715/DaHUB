@@ -26,9 +26,13 @@ export async function GET(req: NextRequest) {
     // page) doesn't re-hit the backend — this is the main relief for the 429
     // storm and for slow first loads (e.g. Incognito). Errors (incl. 429) are
     // never cached so they can recover immediately.
+    // [AUDIT] private — ажилтдын жагсаалтыг завсрын proxy кэшлэхээс сэргийлнэ
     const headers =
       res.status === 200
-        ? { "Cache-Control": "public, max-age=180, stale-while-revalidate=300" }
+        ? {
+            "Cache-Control":
+              "private, max-age=180, stale-while-revalidate=300",
+          }
         : { "Cache-Control": "no-store" };
     return NextResponse.json(data, { status: res.status, headers });
   } catch {

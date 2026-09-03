@@ -19,6 +19,11 @@ const SUPERADMIN_ROUTES = [
   "/admin/departments",
   "/admin/homepage-ethics",
   "/admin/log",
+  // [AUDIT] Эрсдэлийн жин, тайлангийн загвар, Oracle dashboard тохиргоо —
+  // аудитын үр дүнд шууд нөлөөлдөг тул superadmin-only.
+  "/admin/alert-box",
+  "/admin/risk-indicators",
+  "/admin/tailan-templates",
 ];
 
 // Tool routes → required allowedTools id (any one is enough). isAdmin always passes.
@@ -26,6 +31,9 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/db-access/manage": ["db_access_granter"],
   "/tools/db-access": ["db_access_requester"],
   "/tools/tailan/department": ["tailan_dept_head"],
+  // [AUDIT] dept-view нь хэлтсийн бүх гишүүний тайланг харуулдаг тул
+  // dept_head эрх шаардана (өмнө нь ерөнхий /tools/tailan guard-д таардаг байсан).
+  "/tools/tailan/dept-view": ["tailan_dept_head"],
   "/tools/tailan/mine": ["tailan", "tailan_dept_head"],
   "/tools/tailan": ["tailan", "tailan_dept_head"],
   "/tools/sanamsargui-tuuwer": ["sanamsargui-tuuwer"],
@@ -51,6 +59,27 @@ async function getTokenPayload(token: string | undefined) {
   try {
     const secret = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secret);
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * [AUDIT] Хугацаа нь дууссан ч гарын үсэг нь хүчинтэй токеноос claims уншина.
+ * Refresh-token-only үед tool эрхийн шалгалтыг алгасахгүйн тулд ашиглана —
+ * гарын үсгийг шалгадаг тул хуурамч токеноор эрх өсгөх боломжгүй.
+ */
+async function getStaleTokenPayload(token: string | undefined) {
+  if (!token) return null;
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) return null;
+  try {
+    const secret = new TextEncoder().encode(jwtSecret);
+    const { payload } = await jwtVerify(token, secret, {
+      // refresh token-ий 3 цагийн амьдрах хугацааг хамарна
+      clockTolerance: 3 * 60 * 60,
+    });
     return payload;
   } catch {
     return null;
@@ -122,7 +151,19 @@ export async function middleware(request: NextRequest) {
   }
 
   //  Tool route permission check
-  if (isUserAuth && pathname.startsWith("/tools/")) {
+  // [AUDIT] Токен хугацаа дууссан ч refreshToken-той нэвтэрч буй үед
+  // (silent refresh pass-through) эрхийн шалгалтыг алгасахгүй — хуучирсан
+  // токеноос гарын үсэг шалгасан claims-ийг ашиглана.
+  const toolCheckPayload =
+    userPayload ??
+    (hasRefreshToken && pathname.startsWith("/tools/")
+      ? await getStaleTokenPayload(userToken)
+      : null);
+  if (
+    toolCheckPayload &&
+    !toolCheckPayload["isAdmin"] &&
+    pathname.startsWith("/tools/")
+  ) {
     // Find the most-specific matching guard (longest prefix)
     const matchedPath = Object.keys(TOOL_GUARDS)
       .filter((p) => pathname === p || pathname.startsWith(p + "/"))
@@ -131,14 +172,14 @@ export async function middleware(request: NextRequest) {
     if (matchedPath) {
       const requiredTools = TOOL_GUARDS[matchedPath];
       const isSuper =
-        userPayload!["isAdmin"] === true ||
-        userPayload!["isAdmin"] === 1 ||
-        userPayload!["isSuperAdmin"] === true ||
-        userPayload!["isSuperAdmin"] === 1;
+        toolCheckPayload["isAdmin"] === true ||
+        toolCheckPayload["isAdmin"] === 1 ||
+        toolCheckPayload["isSuperAdmin"] === true ||
+        toolCheckPayload["isSuperAdmin"] === 1;
 
       if (!isSuper) {
         // JWT claim array эсвэл JSON string байж болно
-        const rawTools = userPayload!["allowedTools"];
+        const rawTools = toolCheckPayload["allowedTools"];
         let userTools: string[] = [];
         if (Array.isArray(rawTools)) userTools = rawTools.map(String);
         else if (typeof rawTools === "string") {

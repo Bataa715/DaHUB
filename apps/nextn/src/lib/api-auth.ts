@@ -84,6 +84,26 @@ export function hasToolAccess(
   return toolIds.some((t) => allowed.includes(t));
 }
 
+/**
+ * [AUDIT/CSRF] Mutation (non-GET) route handler-т дуудаж cross-site хүсэлтийг
+ * татгалзана. Origin header байгаа бөгөөд өөрийн host-той таарахгүй бол —
+ * эсвэл Sec-Fetch-Site: cross-site бол — false буцаана. Origin байхгүй
+ * (curl, server-to-server) хүсэлтийг cookie auth давхар хамгаалдаг тул нэвтэрнэ.
+ */
+export function isSameOriginRequest(req: Request): boolean {
+  const secFetchSite = req.headers.get("sec-fetch-site");
+  if (secFetchSite === "cross-site") return false;
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (!host) return true;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 function readCookie(cookieHeader: string, name: string): string | undefined {
   const match = cookieHeader
     .split(";")

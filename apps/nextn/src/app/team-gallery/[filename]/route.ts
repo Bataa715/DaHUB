@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
-import { getApiAuth, isSuperAdminPayload } from "@/lib/api-auth";
+import {
+  getApiAuth,
+  isSameOriginRequest,
+  isSuperAdminPayload,
+} from "@/lib/api-auth";
 import {
   isAllowedImageName,
   listTeamImages,
@@ -12,6 +16,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ filename: string }> },
 ) {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const payload = await getApiAuth(req);
   if (!isSuperAdminPayload(payload)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

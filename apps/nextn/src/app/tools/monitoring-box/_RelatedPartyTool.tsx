@@ -27,13 +27,21 @@ import { cn } from "@/lib/utils";
 
 type ResultTab = "summary" | "accounts" | "transactions";
 
+// [AUDIT] toISOString() нь UTC тул UTC+8 бүсэд өглөө 08:00-аас өмнө "өчигдөр"
+// буцааж сүүлийн өдрийн гүйлгээг алгасдаг байсан — локал огноо ашиглана.
+function fmtLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return fmtLocalDate(new Date());
 }
 function monthsAgo(n: number) {
   const d = new Date();
   d.setMonth(d.getMonth() - n);
-  return d.toISOString().slice(0, 10);
+  return fmtLocalDate(d);
 }
 
 function fmtAmount(n: number): string {

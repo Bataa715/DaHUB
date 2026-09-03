@@ -49,6 +49,7 @@ export class PythonApiService implements OnModuleInit {
     process.env.PYTHON_API_URL ??
     "http://127.0.0.1:8001";
 
+  // [AUDIT] production дээр main.ts-ийн validateProductionEnv() заавал шаарддаг
   private readonly pythonApiKey = process.env.PYTHON_API_KEY ?? "";
 
   // Keep-alive agent — холболт бүрт шинэ TCP handshake хийхгүй тул
@@ -108,7 +109,10 @@ export class PythonApiService implements OnModuleInit {
   }
   private readonly encKeys: Buffer[] = (() => {
     const keys: Buffer[] = [];
-    const dedicated = process.env.CONFIG_ENC_KEY;
+    // [AUDIT] .env-д CREDENTIAL_ENCRYPTION_KEY нэрээр өгөгдсөн байхад код
+    // CONFIG_ENC_KEY л уншдаг байсан — хоёуланг нь дэмжинэ.
+    const dedicated =
+      process.env.CONFIG_ENC_KEY || process.env.CREDENTIAL_ENCRYPTION_KEY;
     if (dedicated && dedicated.length >= 16) {
       keys.push(PythonApiService.deriveKey(dedicated));
     }
@@ -567,8 +571,11 @@ export class PythonApiService implements OnModuleInit {
       ? (require("https") as typeof http)
       : http;
 
-    // [M-2] Том тайлан хязгааргүй ажиллах боломжтой. 0 = no timeout.
-    const reqTimeoutMs = 0;
+    // [AUDIT] Хязгааргүй (0) байсныг 30 минутын дээд хязгаартай болгосон —
+    // гацсан Python run socket + санах ойг үүрд барихаас сэргийлнэ.
+    const reqTimeoutMs = 30 * 60 * 1000;
+    // [AUDIT] Хариуны дээд хэмжээ — асар том/алдаатай export heap дүүргэхээс сэргийлнэ
+    const maxResponseBytes = 200 * 1024 * 1024; // 200MB
 
     return new Promise((resolve, reject) => {
       const req = transport.request(
@@ -586,7 +593,19 @@ export class PythonApiService implements OnModuleInit {
         },
         (res) => {
           const chunks: Buffer[] = [];
-          res.on("data", (c: Buffer) => chunks.push(c));
+          let received = 0;
+          res.on("data", (c: Buffer) => {
+            received += c.length;
+            if (received > maxResponseBytes) {
+              req.destroy(
+                new Error(
+                  `Python сервисийн хариу ${maxResponseBytes} байтаас хэтэрлээ`,
+                ),
+              );
+              return;
+            }
+            chunks.push(c);
+          });
           res.on("end", () => {
             const buf = Buffer.concat(chunks);
             if ((res.statusCode ?? 0) === 200) {
