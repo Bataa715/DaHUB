@@ -1,9 +1,22 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL: string = process.env.NEXT_PUBLIC_API_URL ?? "";
 if (!API_URL) {
   throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
+}
+
+/**
+ * Local Nest (`:3001`) has no `/api` prefix. Prod reverse-proxy sends
+ * `/api/*` to Nest; `/monitoring/*` on the public host hits Next → 404.
+ */
+function monitoringPath(path: string): string {
+  const base = API_URL.replace(/\/$/, "");
+  const alreadyOnNest =
+    base === "/api" ||
+    base.endsWith("/api") ||
+    /localhost|127\.0\.0\.1|:3001/i.test(base);
+  return alreadyOnNest ? path : `/api${path}`;
 }
 
 // [PERF] fails fast instead of hanging forever; slow endpoints (docx/report
@@ -1152,9 +1165,11 @@ export const monitoringApi = {
   findRelatedPartyTransactions: async (
     req: RelatedPartyRequest,
   ): Promise<RelatedPartyResult> => {
-    const res = await api.post("/monitoring/related-party-transactions", req, {
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.post(
+      monitoringPath("/monitoring/related-party-transactions"),
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
     return res.data;
   },
 };
@@ -1313,10 +1328,11 @@ export const expenseMonitoringApi = {
     req: ExpenseOverviewRequest,
     signal?: AbortSignal,
   ): Promise<ExpenseOverviewResult> => {
-    const res = await api.post("/monitoring/expense-overview", req, {
-      timeout: TIMEOUT_LONG,
-      signal,
-    });
+    const res = await api.post(
+      monitoringPath("/monitoring/expense-overview"),
+      req,
+      { timeout: TIMEOUT_LONG, signal },
+    );
     return res.data;
   },
 
@@ -1325,27 +1341,33 @@ export const expenseMonitoringApi = {
     startDate: string;
     endDate: string;
   }): Promise<{ rows: ExpensePaymentRequestRow[]; truncated?: boolean }> => {
-    const res = await api.post("/monitoring/expense-payment-requests", req, {
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.post(
+      monitoringPath("/monitoring/expense-payment-requests"),
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
     return res.data;
   },
 
   getAttachmentsByInvoice: async (req: {
     invoiceId: string;
   }): Promise<{ rows: ExpenseAttachmentRow[] }> => {
-    const res = await api.post("/monitoring/expense-attachments", req, {
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.post(
+      monitoringPath("/monitoring/expense-attachments"),
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
     return res.data;
   },
 
   getBudgetChangesByBookNumber: async (req: {
     bookNumber: string;
   }): Promise<{ rows: ExpenseBudgetChangeRow[] }> => {
-    const res = await api.post("/monitoring/expense-budget-changes", req, {
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.post(
+      monitoringPath("/monitoring/expense-budget-changes"),
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
     return res.data;
   },
 
@@ -1356,9 +1378,11 @@ export const expenseMonitoringApi = {
     contractTotalAmount?: number;
     status?: ExpenseVerificationStatus;
   }): Promise<ExpenseVerificationRow> => {
-    const res = await api.post("/monitoring/expense-verification", req, {
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.post(
+      monitoringPath("/monitoring/expense-verification"),
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
     return res.data;
   },
 
@@ -1366,19 +1390,24 @@ export const expenseMonitoringApi = {
     startDate: string;
     endDate: string;
   }): Promise<ExpenseTotalResult> => {
-    const res = await api.post("/monitoring/expense-total", req, {
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.post(
+      monitoringPath("/monitoring/expense-total"),
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
     return res.data;
   },
 
   listVerificationTypes: async (
     activeOnly = false,
   ): Promise<ExpenseVerificationTypeRow[]> => {
-    const res = await api.get("/monitoring/expense-verification-types", {
-      params: { activeOnly: activeOnly ? "1" : "0" },
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.get(
+      monitoringPath("/monitoring/expense-verification-types"),
+      {
+        params: { activeOnly: activeOnly ? "1" : "0" },
+        timeout: TIMEOUT_LONG,
+      },
+    );
     return res.data;
   },
 
@@ -1386,7 +1415,7 @@ export const expenseMonitoringApi = {
     name: string,
   ): Promise<ExpenseVerificationTypeRow> => {
     const res = await api.post(
-      "/monitoring/expense-verification-types",
+      monitoringPath("/monitoring/expense-verification-types"),
       { name },
       { timeout: TIMEOUT_LONG },
     );
@@ -1398,7 +1427,9 @@ export const expenseMonitoringApi = {
     patch: { name?: string; isActive?: boolean },
   ): Promise<ExpenseVerificationTypeRow> => {
     const res = await api.patch(
-      `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
+      monitoringPath(
+        `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
+      ),
       patch,
       { timeout: TIMEOUT_LONG },
     );
@@ -1407,7 +1438,9 @@ export const expenseMonitoringApi = {
 
   deleteVerificationType: async (id: string): Promise<{ success: true }> => {
     const res = await api.delete(
-      `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
+      monitoringPath(
+        `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
+      ),
       { timeout: TIMEOUT_LONG },
     );
     return res.data;
