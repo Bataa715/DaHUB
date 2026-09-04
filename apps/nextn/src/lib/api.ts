@@ -1152,11 +1152,7 @@ export const monitoringApi = {
   findRelatedPartyTransactions: async (
     req: RelatedPartyRequest,
   ): Promise<RelatedPartyResult> => {
-    // Same-origin Next BFF (`/monitoring-rpt`) — prod `/api/*` Nest рүү явдаг
-    // тул `/monitoring/...` 404 болдог байсан. Absolute URL ашиглаж axios
-    // instance-ийн Nest baseURL дээр наалдахаас сэргийлнэ.
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const res = await api.post(`${origin}/bff/monitoring-rpt`, req, {
+    const res = await api.post("/monitoring/related-party-transactions", req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;
@@ -1312,21 +1308,15 @@ export interface ExpenseBudgetChangeRow {
   purpose: string;
 }
 
-function expenseBffOrigin(): string {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}/bff`;
-}
-
 export const expenseMonitoringApi = {
   getOverview: async (
     req: ExpenseOverviewRequest,
     signal?: AbortSignal,
   ): Promise<ExpenseOverviewResult> => {
-    const res = await api.post(
-      `${expenseBffOrigin()}/monitoring-expense-overview`,
-      req,
-      { timeout: TIMEOUT_LONG, signal },
-    );
+    const res = await api.post("/monitoring/expense-overview", req, {
+      timeout: TIMEOUT_LONG,
+      signal,
+    });
     return res.data;
   },
 
@@ -1335,33 +1325,27 @@ export const expenseMonitoringApi = {
     startDate: string;
     endDate: string;
   }): Promise<{ rows: ExpensePaymentRequestRow[]; truncated?: boolean }> => {
-    const res = await api.post(
-      `${expenseBffOrigin()}/monitoring-expense-payment-requests`,
-      req,
-      { timeout: TIMEOUT_LONG },
-    );
+    const res = await api.post("/monitoring/expense-payment-requests", req, {
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 
   getAttachmentsByInvoice: async (req: {
     invoiceId: string;
   }): Promise<{ rows: ExpenseAttachmentRow[] }> => {
-    const res = await api.post(
-      `${expenseBffOrigin()}/monitoring-expense-attachments`,
-      req,
-      { timeout: TIMEOUT_LONG },
-    );
+    const res = await api.post("/monitoring/expense-attachments", req, {
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 
   getBudgetChangesByBookNumber: async (req: {
     bookNumber: string;
   }): Promise<{ rows: ExpenseBudgetChangeRow[] }> => {
-    const res = await api.post(
-      `${expenseBffOrigin()}/monitoring-expense-budget-changes`,
-      req,
-      { timeout: TIMEOUT_LONG },
-    );
+    const res = await api.post("/monitoring/expense-budget-changes", req, {
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 
@@ -1372,11 +1356,9 @@ export const expenseMonitoringApi = {
     contractTotalAmount?: number;
     status?: ExpenseVerificationStatus;
   }): Promise<ExpenseVerificationRow> => {
-    const res = await api.post(
-      `${expenseBffOrigin()}/monitoring-expense-verification`,
-      req,
-      { timeout: TIMEOUT_LONG },
-    );
+    const res = await api.post("/monitoring/expense-verification", req, {
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 
@@ -1384,27 +1366,27 @@ export const expenseMonitoringApi = {
     startDate: string;
     endDate: string;
   }): Promise<ExpenseTotalResult> => {
-    const res = await api.post(
-      `${expenseBffOrigin()}/monitoring-expense-total`,
-      req,
-      { timeout: TIMEOUT_LONG },
-    );
+    const res = await api.post("/monitoring/expense-total", req, {
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 
   listVerificationTypes: async (
     activeOnly = false,
   ): Promise<ExpenseVerificationTypeRow[]> => {
-    const res = await api.get(
-      `${expenseBffOrigin()}/monitoring-expense-verification-types`,
-      { params: { activeOnly: activeOnly ? "1" : "0" }, timeout: TIMEOUT_LONG },
-    );
+    const res = await api.get("/monitoring/expense-verification-types", {
+      params: { activeOnly: activeOnly ? "1" : "0" },
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 
-  createVerificationType: async (name: string): Promise<ExpenseVerificationTypeRow> => {
+  createVerificationType: async (
+    name: string,
+  ): Promise<ExpenseVerificationTypeRow> => {
     const res = await api.post(
-      `${expenseBffOrigin()}/monitoring-expense-verification-types`,
+      "/monitoring/expense-verification-types",
       { name },
       { timeout: TIMEOUT_LONG },
     );
@@ -1416,7 +1398,7 @@ export const expenseMonitoringApi = {
     patch: { name?: string; isActive?: boolean },
   ): Promise<ExpenseVerificationTypeRow> => {
     const res = await api.patch(
-      `${expenseBffOrigin()}/monitoring-expense-verification-types/${encodeURIComponent(id)}`,
+      `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
       patch,
       { timeout: TIMEOUT_LONG },
     );
@@ -1425,7 +1407,7 @@ export const expenseMonitoringApi = {
 
   deleteVerificationType: async (id: string): Promise<{ success: true }> => {
     const res = await api.delete(
-      `${expenseBffOrigin()}/monitoring-expense-verification-types/${encodeURIComponent(id)}`,
+      `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
       { timeout: TIMEOUT_LONG },
     );
     return res.data;
