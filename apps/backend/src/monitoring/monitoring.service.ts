@@ -1,6 +1,22 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { randomUUID } from "crypto";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
-import { RelatedPartyTransactionsDto } from "./dto/monitoring.dto";
+import {
+  RelatedPartyTransactionsDto,
+  ExpenseOverviewDto,
+  ExpensePaymentRequestsDto,
+  ExpenseAttachmentsDto,
+  ExpenseBudgetChangesDto,
+  ExpenseVerificationDto,
+  ExpenseTotalDto,
+  CreateVerificationTypeDto,
+  UpdateVerificationTypeDto,
+} from "./dto/monitoring.dto";
+import { nowCH } from "../clickhouse/clickhouse.service";
 
 export interface MatchedAccountRow {
   CIF_ID: string;
@@ -66,6 +82,160 @@ export interface RelatedPartyResult {
 // [AUDIT] Node санах ой руу ачаалах мөрийн дээд хязгаар — том CIF хос,
 // урт хугацааны query OOM үүсгэхээс сэргийлнэ.
 const MAX_TX_ROWS = 50_000;
+
+// ─── Monitoring Box: "Зардлын хяналт" (expense monitoring) ────────────────
+export interface ExpenseQualifyingCustomer {
+  customer_code: string;
+  customer_name: string;
+  total_debit: number;
+}
+
+export interface ExpenseTxRow {
+  load_date: string;
+  book_date: string;
+  customer_code: string;
+  customer_name: string;
+  account_name: string;
+  account_code: string;
+  currency_code: string;
+  debit_amount: number;
+  description: string;
+  book_number: string;
+  department_code: string;
+  department_name: string;
+  co_a_group_code: string;
+  co_a_group_name: string;
+  recievable_type_code: string;
+  recievable_type_name: string;
+  has_payment_request: 0 | 1;
+  has_verification: 0 | 1;
+  verification_type: string;
+  contract_total_amount: number;
+  verification_status: string;
+  comment: string;
+  /** Хамгийн сүүлийн холбогдох budget мөрийн description (эсвэл "" —
+   *  төлбөрийн хүсэлтгүй бол ч, төлбөрийн хүсэлттэй ч budget мөргүй бол ч ""). */
+  budget_type: string;
+}
+
+export interface ExpenseVerificationRow {
+  bookNumber: string;
+  comment: string;
+  verificationType: string;
+  contractTotalAmount: number;
+  status: string;
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: string;
+}
+
+export interface ExpenseVerificationTypeRow {
+  id: string;
+  name: string;
+  isActive: 0 | 1;
+}
+
+export interface ExpenseOverviewResult {
+  qualifyingCustomers: ExpenseQualifyingCustomer[];
+  transactions: ExpenseTxRow[];
+  truncated?: boolean;
+}
+
+export interface ExpenseTotalTxRow {
+  load_date: string;
+  book_date: string;
+  customer_code: string;
+  customer_name: string;
+  account_name: string;
+  account_code: string;
+  currency_code: string;
+  debit_amount: number;
+  description: string;
+  book_number: string;
+  department_code: string;
+  department_name: string;
+  co_a_group_code: string;
+  co_a_group_name: string;
+  recievable_type_code: string;
+  recievable_type_name: string;
+}
+
+export interface ExpenseGroupBreakdown {
+  code: string;
+  name: string;
+  count: number;
+  total: number;
+}
+
+export interface ExpenseTotalResult {
+  transactions: ExpenseTotalTxRow[];
+  byGlGroup: ExpenseGroupBreakdown[];
+  byReceivableType: ExpenseGroupBreakdown[];
+  totalAmount: number;
+  truncated?: boolean;
+}
+
+export interface ExpensePaymentRequestRow {
+  load_date: string;
+  invoice_id: string;
+  description: string;
+  request_date: string;
+  employee_name: string;
+  sol_id: string;
+  employee_code: string;
+  department_name: string;
+  book_number: string;
+  request_amount: number;
+  book_date: string;
+  account_number: string;
+  bank_name: string;
+  customer_code: string;
+  customer_name: string;
+  currency_code: string;
+  gl_number: string;
+  tender_method_name: string;
+  info_name: string;
+  purpose: string;
+}
+
+export interface ExpenseAttachmentRow {
+  invoice_id: string;
+  book_number: string;
+  customer_code: string;
+  customer_name: string;
+  content_id: string;
+  file_name: string;
+  file_extension: string;
+  physical_path: string;
+  full_url: string;
+}
+
+export interface ExpenseBudgetChangeRow {
+  load_date: string;
+  book_date: string;
+  book_number: string;
+  employee_name: string;
+  sol_id: string;
+  employee_code: string;
+  department_name: string;
+  request_amount: number;
+  description: string;
+  total_amount: number;
+  to_activity_name: string;
+  from_activity_name: string;
+  from_activity_dtl_name: string;
+  to_activity_dtl_name: string;
+  amount: number;
+  related_book_number: string;
+  from_employee_name: string;
+  purpose: string;
+}
+
+const MAX_EXPENSE_TX_ROWS = 20_000;
+const MAX_EXPENSE_TOTAL_ROWS = 30_000;
+const MAX_EXPENSE_DRILLDOWN_ROWS = 5_000;
+const MAX_EXPENSE_SIDE_ROWS = 1_000;
+const DEFAULT_MIN_AMOUNT = 50_000_000;
 
 // ─── Monitoring Box: "Харилцсан гүйлгээ" (related-party transactions) ─────────
 // Given a set of CIF/FORACID identifiers, finds direct internal transactions
@@ -284,5 +454,340 @@ export class MonitoringService {
         a.TO_CIF.localeCompare(b.TO_CIF) ||
         a.CURRENCY.localeCompare(b.CURRENCY),
     );
+  }
+
+  // ── Expense monitoring (Зардлын хяналт) ─────────────────────────────────
+  async getExpenseOverview(
+    dto: ExpenseOverviewDto,
+  ): Promise<ExpenseOverviewResult> {
+    this.assertValidRange(dto.startDate, dto.endDate);
+    const minAmount = dto.minAmount ?? DEFAULT_MIN_AMOUNT;
+
+    const qualifyingCustomers =
+      await this.clickhouse.query<ExpenseQualifyingCustomer>(
+        `
+        SELECT
+          customer_code,
+          any(customer_name) AS customer_name,
+          sum(debit_amount)  AS total_debit
+        FROM avlaga
+        WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+        GROUP BY customer_code
+        HAVING {minAmount:Float64} <= 0 OR total_debit >= {minAmount:Float64}
+        ORDER BY total_debit DESC
+        `,
+        { startDate: dto.startDate, endDate: dto.endDate, minAmount },
+      );
+
+    if (qualifyingCustomers.length === 0) {
+      return { qualifyingCustomers: [], transactions: [] };
+    }
+
+    const customerCodes = qualifyingCustomers.map((c) => c.customer_code);
+
+    // [SEC] LEFT JOIN дэд query дотор DISTINCT gl_number ашиглана — үгүй бол
+    // нэг book_number-тэй харгалзах tulbur мөр олон байвал avlaga мөрүүд
+    // давхардаж (fan out) жагсаалт болон тоолол хоёуланг гажуудуулна.
+    const transactions = await this.clickhouse.query<ExpenseTxRow>(
+      `
+      SELECT
+        a.load_date, a.book_date, a.customer_code, a.customer_name,
+        a.account_name, a.account_code, a.currency_code, a.debit_amount,
+        a.description, a.book_number, a.department_code, a.department_name,
+        a.CO_A_GROUP_CODE AS co_a_group_code, a.CO_A_GROUP_NAME AS co_a_group_name,
+        a.RECIEVABLE_TYPE_CODE AS recievable_type_code,
+        a.RECIEVABLE_TYPE_NAME AS recievable_type_name,
+        (t.gl_number != '') AS has_payment_request,
+        (v.bookNumber != '') AS has_verification,
+        ifNull(v.verificationType, '') AS verification_type,
+        ifNull(v.contractTotalAmount, 0) AS contract_total_amount,
+        ifNull(v.status, '') AS verification_status,
+        ifNull(v.comment, '') AS comment
+      FROM avlaga a
+      LEFT JOIN (
+        SELECT DISTINCT gl_number FROM tulbur WHERE gl_number != ''
+      ) t ON t.gl_number = a.book_number
+      LEFT JOIN avlaga_verifications v FINAL ON v.bookNumber = a.book_number
+      WHERE a.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+        AND a.customer_code IN {customerCodes:Array(String)}
+      ORDER BY a.debit_amount DESC
+      LIMIT ${MAX_EXPENSE_TX_ROWS + 1}
+      `,
+      { startDate: dto.startDate, endDate: dto.endDate, customerCodes },
+    );
+
+    const truncated = transactions.length > MAX_EXPENSE_TX_ROWS;
+    if (truncated) transactions.length = MAX_EXPENSE_TX_ROWS;
+
+    // [CONFIRMED RULE] "Төсөвтэй" ("has budget") := "has payment request" —
+    // тодорхой асуугдаж давхар баталгаажсан бизнес дүрэм: төлбөрийн хүсэлттэй
+    // ч холбогдох budget мөр байхгүй авлага ч Төсөвтэй тоонд орно.
+    //
+    // "Төсвийн төрөл" barchart-ын ангилалд зориулж — төлбөрийн хүсэлттэй
+    // (book_number) бүрийн хамгийн сүүлийн (book_date-ээр) холбогдох budget
+    // мөрийн description-г нэг query-ээр татна ("budgets давхардаж байгаа тул
+    // сүүлийнхийг авна" — argMax).
+    const bookNumbersWithRequest = transactions
+      .filter((tx) => tx.has_payment_request)
+      .map((tx) => tx.book_number);
+
+    const budgetTypeByBookNumber = new Map<string, string>();
+    if (bookNumbersWithRequest.length > 0) {
+      const budgetTypes = await this.clickhouse.query<{
+        book_number: string;
+        budget_type: string;
+      }>(
+        `
+        SELECT
+          t.gl_number AS book_number,
+          argMax(b.description, b.book_date) AS budget_type
+        FROM tulbur t
+        INNER JOIN budget b ON b.related_book_number = t.book_number
+        WHERE t.gl_number IN {bookNumbers:Array(String)}
+        GROUP BY t.gl_number
+        `,
+        { bookNumbers: bookNumbersWithRequest },
+      );
+      for (const row of budgetTypes) {
+        budgetTypeByBookNumber.set(row.book_number, row.budget_type);
+      }
+    }
+    for (const tx of transactions) {
+      tx.budget_type = budgetTypeByBookNumber.get(tx.book_number) ?? "";
+    }
+
+    return { qualifyingCustomers, transactions, truncated };
+  }
+
+  async findPaymentRequestsByCustomer(
+    dto: ExpensePaymentRequestsDto,
+  ): Promise<{ rows: ExpensePaymentRequestRow[]; truncated?: boolean }> {
+    this.assertValidRange(dto.startDate, dto.endDate);
+    const rows = await this.clickhouse.query<ExpensePaymentRequestRow>(
+      `
+      SELECT
+        load_date, invoice_id, description, request_date, employee_name,
+        sol_id, employee_code, department_name, book_number, request_amount,
+        book_date, account_number, bank_name, customer_code, customer_name,
+        currency_code, gl_number, tender_method_name, info_name, purpose
+      FROM tulbur
+      WHERE customer_code = {customerCode:String}
+        AND book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+      ORDER BY book_date DESC, request_amount DESC
+      LIMIT ${MAX_EXPENSE_DRILLDOWN_ROWS + 1}
+      `,
+      {
+        customerCode: dto.customerCode,
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+      },
+    );
+    const truncated = rows.length > MAX_EXPENSE_DRILLDOWN_ROWS;
+    if (truncated) rows.length = MAX_EXPENSE_DRILLDOWN_ROWS;
+    return { rows, truncated };
+  }
+
+  async findAttachmentsByInvoice(
+    dto: ExpenseAttachmentsDto,
+  ): Promise<{ rows: ExpenseAttachmentRow[] }> {
+    const rows = await this.clickhouse.query<ExpenseAttachmentRow>(
+      `
+      SELECT invoice_id, book_number, customer_code, customer_name,
+        content_id, file_name, file_extension, physical_path, full_url
+      FROM havsralt
+      WHERE invoice_id = {invoiceId:String}
+      ORDER BY file_name
+      LIMIT ${MAX_EXPENSE_SIDE_ROWS}
+      `,
+      { invoiceId: dto.invoiceId },
+    );
+    return { rows };
+  }
+
+  async findBudgetChangesByBookNumber(
+    dto: ExpenseBudgetChangesDto,
+  ): Promise<{ rows: ExpenseBudgetChangeRow[] }> {
+    const rows = await this.clickhouse.query<ExpenseBudgetChangeRow>(
+      `
+      SELECT load_date, book_date, book_number, employee_name, sol_id,
+        employee_code, department_name, request_amount, description,
+        total_amount, to_activity_name, from_activity_name,
+        from_activity_dtl_name, to_activity_dtl_name, amount,
+        related_book_number, from_employee_name, purpose
+      FROM budget
+      WHERE related_book_number = {bookNumber:String}
+      ORDER BY book_date DESC
+      LIMIT ${MAX_EXPENSE_SIDE_ROWS}
+      `,
+      { bookNumber: dto.bookNumber },
+    );
+    return { rows };
+  }
+
+  /** "Нийт зардал" — харилцагч/босго-гүй, зөвхөн сонгосон хугацааны бүх avlaga
+   *  мөр. Ерөнхий дэвтэр (CO_A_GROUP) болон авлагын төрлөөр (RECIEVABLE_TYPE)
+   *  задаргааг тусдаа SQL GROUP BY-аар тооцоолно (жагсаалтын LIMIT-ээс үл
+   *  хамааран нийт өгөгдөл дээр үнэн зөв байх учиртай). */
+  async getExpenseTotal(dto: ExpenseTotalDto): Promise<ExpenseTotalResult> {
+    this.assertValidRange(dto.startDate, dto.endDate);
+    const params = { startDate: dto.startDate, endDate: dto.endDate };
+
+    const [transactions, byGlGroup, byReceivableType] = await Promise.all([
+      this.clickhouse.query<ExpenseTotalTxRow>(
+        `
+        SELECT load_date, book_date, customer_code, customer_name,
+          account_name, account_code, currency_code, debit_amount,
+          description, book_number, department_code, department_name,
+          CO_A_GROUP_CODE AS co_a_group_code, CO_A_GROUP_NAME AS co_a_group_name,
+          RECIEVABLE_TYPE_CODE AS recievable_type_code,
+          RECIEVABLE_TYPE_NAME AS recievable_type_name
+        FROM avlaga
+        WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+        ORDER BY debit_amount DESC
+        LIMIT ${MAX_EXPENSE_TOTAL_ROWS + 1}
+        `,
+        params,
+      ),
+      this.clickhouse.query<ExpenseGroupBreakdown>(
+        `
+        SELECT CO_A_GROUP_CODE AS code, any(CO_A_GROUP_NAME) AS name,
+          count() AS count, sum(debit_amount) AS total
+        FROM avlaga
+        WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+        GROUP BY CO_A_GROUP_CODE
+        ORDER BY total DESC
+        `,
+        params,
+      ),
+      this.clickhouse.query<ExpenseGroupBreakdown>(
+        `
+        SELECT RECIEVABLE_TYPE_CODE AS code, any(RECIEVABLE_TYPE_NAME) AS name,
+          count() AS count, sum(debit_amount) AS total
+        FROM avlaga
+        WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+        GROUP BY RECIEVABLE_TYPE_CODE
+        ORDER BY total DESC
+        `,
+        params,
+      ),
+    ]);
+
+    const truncated = transactions.length > MAX_EXPENSE_TOTAL_ROWS;
+    if (truncated) transactions.length = MAX_EXPENSE_TOTAL_ROWS;
+
+    const totalAmount = byGlGroup.reduce((sum, g) => sum + g.total, 0);
+
+    return { transactions, byGlGroup, byReceivableType, totalAmount, truncated };
+  }
+
+  // ── Verification types (admin-managed) ──────────────────────────────────
+  async listVerificationTypes(
+    activeOnly: boolean,
+  ): Promise<ExpenseVerificationTypeRow[]> {
+    return this.clickhouse.query<ExpenseVerificationTypeRow>(
+      `SELECT id, name, isActive FROM expense_verification_types FINAL
+       ${activeOnly ? "WHERE isActive = 1" : ""}
+       ORDER BY name`,
+    );
+  }
+
+  async createVerificationType(
+    dto: CreateVerificationTypeDto,
+  ): Promise<ExpenseVerificationTypeRow> {
+    const name = dto.name.trim();
+    if (!name) {
+      throw new BadRequestException("Төрлийн нэр хоосон байж болохгүй");
+    }
+    const id = randomUUID();
+    const now = nowCH();
+    await this.clickhouse.insert("expense_verification_types", [
+      { id, name, isActive: 1, createdAt: now, updatedAt: now },
+    ]);
+    return { id, name, isActive: 1 };
+  }
+
+  async updateVerificationType(
+    id: string,
+    dto: UpdateVerificationTypeDto,
+  ): Promise<ExpenseVerificationTypeRow> {
+    const existing = await this.clickhouse.query<
+      ExpenseVerificationTypeRow & { createdAt: string }
+    >(
+      `SELECT * FROM expense_verification_types FINAL WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    const current = existing[0];
+    if (!current) {
+      throw new NotFoundException("Төрөл олдсонгүй");
+    }
+    const name =
+      dto.name !== undefined ? dto.name.trim() || current.name : current.name;
+    const isActive: 0 | 1 =
+      dto.isActive !== undefined ? (dto.isActive ? 1 : 0) : current.isActive;
+
+    await this.clickhouse.insert("expense_verification_types", [
+      {
+        id,
+        name,
+        isActive,
+        createdAt: current.createdAt,
+        updatedAt: nowCH(),
+      },
+    ]);
+    return { id, name, isActive };
+  }
+
+  async deleteVerificationType(id: string): Promise<{ success: true }> {
+    await this.clickhouse.exec(
+      `ALTER TABLE expense_verification_types DELETE WHERE id = {id:String}`,
+      { id },
+    );
+    return { success: true };
+  }
+
+  /** Баталгаажуулалтын дэлгэц (тайлбар/төрөл/гэрээний дүн/статус) — тус
+   *  тусдаа тохируулах боломжтой, ирсэн талбаруудыг л шинэчилнэ. Тухайн
+   *  book_number-д одоо байгаа мөрийг уншиж, ирээгүй талбаруудыг хэвээр
+   *  үлдээгээд ReplacingMergeTree-д дахин insert хийнэ. */
+  async upsertVerification(
+    dto: ExpenseVerificationDto,
+    user: { userId: string; name: string },
+  ): Promise<ExpenseVerificationRow> {
+    if (
+      dto.comment === undefined &&
+      dto.verificationType === undefined &&
+      dto.contractTotalAmount === undefined &&
+      dto.status === undefined
+    ) {
+      throw new BadRequestException(
+        "Тайлбар, төрөл, гэрээний дүн, статусын аль нэгийг дамжуулна уу",
+      );
+    }
+
+    const existing = await this.clickhouse.query<ExpenseVerificationRow>(
+      `SELECT * FROM avlaga_verifications FINAL WHERE bookNumber = {bookNumber:String} LIMIT 1`,
+      { bookNumber: dto.bookNumber },
+    );
+    const current = existing[0];
+
+    const row: ExpenseVerificationRow = {
+      bookNumber: dto.bookNumber,
+      comment: dto.comment !== undefined ? dto.comment : (current?.comment ?? ""),
+      verificationType:
+        dto.verificationType !== undefined
+          ? dto.verificationType
+          : (current?.verificationType ?? ""),
+      contractTotalAmount:
+        dto.contractTotalAmount !== undefined
+          ? dto.contractTotalAmount
+          : (current?.contractTotalAmount ?? 0),
+      status: dto.status !== undefined ? dto.status : (current?.status ?? ""),
+      updatedBy: user.userId,
+      updatedByName: user.name,
+      updatedAt: nowCH(),
+    };
+
+    await this.clickhouse.insert("avlaga_verifications", [{ ...row }]);
+    return row;
   }
 }

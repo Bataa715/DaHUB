@@ -3,10 +3,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Activity, Users2, ChevronRight } from "lucide-react";
+import { Activity, Users2, Wallet, ChevronRight } from "lucide-react";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 import { RelatedPartyTool } from "./_RelatedPartyTool";
+import { ExpenseMonitoringTool } from "./_ExpenseMonitoringTool";
 
 interface MonitorCard {
   id: string;
@@ -26,6 +27,14 @@ const MONITOR_CARDS: MonitorCard[] = [
     accent: "orange",
     status: "live",
   },
+  {
+    id: "expense-monitoring",
+    titleKey: "monBoxExpenseTitle",
+    icon: Wallet,
+    href: "/tools/monitoring-box?tool=expense-monitoring",
+    accent: "blue",
+    status: "live",
+  },
 ];
 
 const ACCENT = {
@@ -35,6 +44,13 @@ const ACCENT = {
     hoverBorder: "hover:border-orange-500/40",
     hoverChevron: "group-hover:text-orange-500",
     open: "text-orange-600 dark:text-orange-400",
+  },
+  blue: {
+    iconWrap: "bg-sky-500/10 border-sky-500/20",
+    icon: "text-sky-500",
+    hoverBorder: "hover:border-sky-500/40",
+    hoverChevron: "group-hover:text-sky-500",
+    open: "text-sky-600 dark:text-sky-400",
   },
 } as const;
 
@@ -108,8 +124,12 @@ function MonitoringBoxHome() {
 
 function MonitoringBoxView() {
   const searchParams = useSearchParams();
-  if (searchParams.get("tool") === "related-party") {
+  const tool = searchParams.get("tool");
+  if (tool === "related-party") {
     return <RelatedPartyTool />;
+  }
+  if (tool === "expense-monitoring") {
+    return <ExpenseMonitoringTool />;
   }
   return <MonitoringBoxHome />;
 }

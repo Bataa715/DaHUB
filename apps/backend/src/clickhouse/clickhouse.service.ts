@@ -614,6 +614,38 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         TTL attemptedAt + INTERVAL 1 DAY
       `);
 
+      // Create avlaga_verifications table — Зардлын хяналт: аудиторын тайлбар,
+      // төрөл (expense_verification_types-ээс), гэрээний нийт дүн, статус —
+      // avlaga.book_number-ээр (1 гүйлгээ = 1 мөр). Мөр байгаа эсэх өөрөө
+      // "баталгаажсан" төлөвийг илэрхийлнэ (тусгай boolean багана хэрэггүй).
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS avlaga_verifications (
+          bookNumber String,
+          comment String DEFAULT '',
+          verificationType String DEFAULT '',
+          contractTotalAmount Float64 DEFAULT 0,
+          status String DEFAULT '',
+          updatedBy String DEFAULT '',
+          updatedByName String DEFAULT '',
+          updatedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY bookNumber
+      `);
+
+      // Create expense_verification_types table — Зардлын хяналтын
+      // Баталгаажуулалт дэлгэц дэх "Төрөл" сонголтын жагсаалт, зөвхөн admin
+      // тохируулна (see MonitoringService.listVerificationTypes etc.).
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS expense_verification_types (
+          id String,
+          name String,
+          isActive UInt8 DEFAULT 1,
+          createdAt DateTime DEFAULT now(),
+          updatedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY id
+      `);
+
       // Create dept_bsc_reports table (department BSC/ТҮЗ quarterly reports)
       await this.exec(`
         CREATE TABLE IF NOT EXISTS dept_bsc_reports (
@@ -867,7 +899,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.logger.log(
-        "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts)",
+        "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts, avlaga_verifications, expense_verification_types)",
       );
     } catch (error: any) {
       this.logger.error(`Schema initialization failed: ${error.message}`);

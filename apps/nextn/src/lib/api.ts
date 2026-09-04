@@ -1163,6 +1163,278 @@ export const monitoringApi = {
   },
 };
 
+// ── Monitoring Box: Expense monitoring (Зардлын хяналт) ────────────────────
+export interface ExpenseQualifyingCustomer {
+  customer_code: string;
+  customer_name: string;
+  total_debit: number;
+}
+
+export type ExpenseVerificationStatus = "normal" | "questionable" | "attention";
+
+export interface ExpenseTxRow {
+  load_date: string;
+  book_date: string;
+  customer_code: string;
+  customer_name: string;
+  account_name: string;
+  account_code: string;
+  currency_code: string;
+  debit_amount: number;
+  description: string;
+  book_number: string;
+  department_code: string;
+  department_name: string;
+  co_a_group_code: string;
+  co_a_group_name: string;
+  recievable_type_code: string;
+  recievable_type_name: string;
+  has_payment_request: 0 | 1;
+  has_verification: 0 | 1;
+  verification_type: string;
+  contract_total_amount: number;
+  verification_status: string;
+  comment: string;
+  budget_type: string;
+}
+
+export interface ExpenseVerificationRow {
+  bookNumber: string;
+  comment: string;
+  verificationType: string;
+  contractTotalAmount: number;
+  status: string;
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: string;
+}
+
+export interface ExpenseVerificationTypeRow {
+  id: string;
+  name: string;
+  isActive: 0 | 1;
+}
+
+export interface ExpenseOverviewResult {
+  qualifyingCustomers: ExpenseQualifyingCustomer[];
+  transactions: ExpenseTxRow[];
+  truncated?: boolean;
+}
+
+export interface ExpenseTotalTxRow {
+  load_date: string;
+  book_date: string;
+  customer_code: string;
+  customer_name: string;
+  account_name: string;
+  account_code: string;
+  currency_code: string;
+  debit_amount: number;
+  description: string;
+  book_number: string;
+  department_code: string;
+  department_name: string;
+  co_a_group_code: string;
+  co_a_group_name: string;
+  recievable_type_code: string;
+  recievable_type_name: string;
+}
+
+export interface ExpenseGroupBreakdown {
+  code: string;
+  name: string;
+  count: number;
+  total: number;
+}
+
+export interface ExpenseTotalResult {
+  transactions: ExpenseTotalTxRow[];
+  byGlGroup: ExpenseGroupBreakdown[];
+  byReceivableType: ExpenseGroupBreakdown[];
+  totalAmount: number;
+  truncated?: boolean;
+}
+
+export interface ExpenseOverviewRequest {
+  startDate: string;
+  endDate: string;
+  minAmount?: number;
+}
+
+export interface ExpensePaymentRequestRow {
+  load_date: string;
+  invoice_id: string;
+  description: string;
+  request_date: string;
+  employee_name: string;
+  sol_id: string;
+  employee_code: string;
+  department_name: string;
+  book_number: string;
+  request_amount: number;
+  book_date: string;
+  account_number: string;
+  bank_name: string;
+  customer_code: string;
+  customer_name: string;
+  currency_code: string;
+  gl_number: string;
+  tender_method_name: string;
+  info_name: string;
+  purpose: string;
+}
+
+export interface ExpenseAttachmentRow {
+  invoice_id: string;
+  book_number: string;
+  customer_code: string;
+  customer_name: string;
+  content_id: string;
+  file_name: string;
+  file_extension: string;
+  physical_path: string;
+  full_url: string;
+}
+
+export interface ExpenseBudgetChangeRow {
+  load_date: string;
+  book_date: string;
+  book_number: string;
+  employee_name: string;
+  sol_id: string;
+  employee_code: string;
+  department_name: string;
+  request_amount: number;
+  description: string;
+  total_amount: number;
+  to_activity_name: string;
+  from_activity_name: string;
+  from_activity_dtl_name: string;
+  to_activity_dtl_name: string;
+  amount: number;
+  related_book_number: string;
+  from_employee_name: string;
+  purpose: string;
+}
+
+function expenseBffOrigin(): string {
+  return typeof window !== "undefined" ? window.location.origin : "";
+}
+
+export const expenseMonitoringApi = {
+  getOverview: async (
+    req: ExpenseOverviewRequest,
+  ): Promise<ExpenseOverviewResult> => {
+    const res = await api.post(
+      `${expenseBffOrigin()}/monitoring-expense-overview`,
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  getPaymentRequestsByCustomer: async (req: {
+    customerCode: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<{ rows: ExpensePaymentRequestRow[]; truncated?: boolean }> => {
+    const res = await api.post(
+      `${expenseBffOrigin()}/monitoring-expense-payment-requests`,
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  getAttachmentsByInvoice: async (req: {
+    invoiceId: string;
+  }): Promise<{ rows: ExpenseAttachmentRow[] }> => {
+    const res = await api.post(
+      `${expenseBffOrigin()}/monitoring-expense-attachments`,
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  getBudgetChangesByBookNumber: async (req: {
+    bookNumber: string;
+  }): Promise<{ rows: ExpenseBudgetChangeRow[] }> => {
+    const res = await api.post(
+      `${expenseBffOrigin()}/monitoring-expense-budget-changes`,
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  upsertVerification: async (req: {
+    bookNumber: string;
+    comment?: string;
+    verificationType?: string;
+    contractTotalAmount?: number;
+    status?: ExpenseVerificationStatus;
+  }): Promise<ExpenseVerificationRow> => {
+    const res = await api.post(
+      `${expenseBffOrigin()}/monitoring-expense-verification`,
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  getTotal: async (req: {
+    startDate: string;
+    endDate: string;
+  }): Promise<ExpenseTotalResult> => {
+    const res = await api.post(
+      `${expenseBffOrigin()}/monitoring-expense-total`,
+      req,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  listVerificationTypes: async (
+    activeOnly = false,
+  ): Promise<ExpenseVerificationTypeRow[]> => {
+    const res = await api.get(
+      `${expenseBffOrigin()}/monitoring-expense-verification-types`,
+      { params: { activeOnly: activeOnly ? "1" : "0" }, timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  createVerificationType: async (name: string): Promise<ExpenseVerificationTypeRow> => {
+    const res = await api.post(
+      `${expenseBffOrigin()}/monitoring-expense-verification-types`,
+      { name },
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  updateVerificationType: async (
+    id: string,
+    patch: { name?: string; isActive?: boolean },
+  ): Promise<ExpenseVerificationTypeRow> => {
+    const res = await api.patch(
+      `${expenseBffOrigin()}/monitoring-expense-verification-types/${encodeURIComponent(id)}`,
+      patch,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  deleteVerificationType: async (id: string): Promise<{ success: true }> => {
+    const res = await api.delete(
+      `${expenseBffOrigin()}/monitoring-expense-verification-types/${encodeURIComponent(id)}`,
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+};
+
 // ── Tailan templates (admin: template builder) ──────────────────────────────
 export type TailanSectionType = "richtext" | "taskList" | "table";
 export type TailanTemplateScope = "employee" | "department";
