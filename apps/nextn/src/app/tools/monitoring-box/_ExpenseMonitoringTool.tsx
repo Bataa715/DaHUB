@@ -18,6 +18,8 @@ import {
   PieChart,
   Users2,
   List,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -92,6 +94,49 @@ function fmtAmount(n: number): string {
   );
 }
 
+function rowSearchHaystack(tx: {
+  book_date?: string;
+  customer_code?: string;
+  customer_name?: string;
+  account_code?: string;
+  account_name?: string;
+  currency_code?: string;
+  debit_amount?: number;
+  description?: string;
+  department_name?: string;
+  co_a_group_code?: string;
+  co_a_group_name?: string;
+  recievable_type_code?: string;
+  recievable_type_name?: string;
+  book_number?: string;
+  verification_type?: string;
+  verification_status?: string;
+  contract_total_amount?: number;
+}): string {
+  return [
+    tx.book_date,
+    tx.customer_code,
+    tx.customer_name,
+    tx.account_code,
+    tx.account_name,
+    tx.currency_code,
+    tx.debit_amount,
+    fmtAmount(Number(tx.debit_amount) || 0),
+    tx.description,
+    tx.department_name,
+    tx.co_a_group_code,
+    tx.co_a_group_name,
+    tx.recievable_type_code,
+    tx.recievable_type_name,
+    tx.book_number,
+    tx.verification_type,
+    tx.verification_status,
+    tx.contract_total_amount,
+  ]
+    .map((v) => String(v ?? "").toLowerCase())
+    .join(" ");
+}
+
 const STATUS_META: Record<
   string,
   { labelKey: TranslationKey; dot: string; text: string }
@@ -146,6 +191,10 @@ export function ExpenseMonitoringTool() {
   // [REVIEW/PERF] Хэдэн мөр DOM-д зурагдсан бэ (incremental render)
   const [visibleTxCount, setVisibleTxCount] = useState(TX_PAGE);
   const [visibleTotalCount, setVisibleTotalCount] = useState(TX_PAGE);
+  const [tableSearchDraft, setTableSearchDraft] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
+  const [totalSearchDraft, setTotalSearchDraft] = useState("");
+  const [totalSearch, setTotalSearch] = useState("");
 
   // Drill-down dialog (payment requests for one transaction's customer)
   const [selectedTx, setSelectedTx] = useState<ExpenseTxRow | null>(null);
@@ -357,6 +406,8 @@ export function ExpenseMonitoringTool() {
       );
       setResult(res);
       setVisibleTxCount(TX_PAGE);
+      setTableSearch("");
+      setTableSearchDraft("");
     } catch (e) {
       if ((e as { code?: string })?.code === "ERR_CANCELED") return;
       const msg = getApiErrorMessage(e);
@@ -384,6 +435,8 @@ export function ExpenseMonitoringTool() {
     setTotalLoading(true);
     setTotalError(null);
     setVisibleTotalCount(TX_PAGE);
+    setTotalSearch("");
+    setTotalSearchDraft("");
     try {
       const res = await expenseMonitoringApi.getTotal({ startDate, endDate });
       setTotalResult(res);
@@ -509,6 +562,34 @@ export function ExpenseMonitoringTool() {
       .sort((a, b) => b.value - a.value);
   }, [result, t]);
 
+  const filteredTx = useMemo(() => {
+    if (!result) return [];
+    const q = tableSearch.trim().toLowerCase();
+    if (!q) return result.transactions;
+    return result.transactions.filter((tx) =>
+      rowSearchHaystack(tx).includes(q),
+    );
+  }, [result, tableSearch]);
+
+  const filteredTotalTx = useMemo(() => {
+    if (!totalResult) return [];
+    const q = totalSearch.trim().toLowerCase();
+    if (!q) return totalResult.transactions;
+    return totalResult.transactions.filter((tx) =>
+      rowSearchHaystack(tx).includes(q),
+    );
+  }, [totalResult, totalSearch]);
+
+  function applyTableSearch() {
+    setTableSearch(tableSearchDraft);
+    setVisibleTxCount(TX_PAGE);
+  }
+
+  function applyTotalSearch() {
+    setTotalSearch(totalSearchDraft);
+    setVisibleTotalCount(TX_PAGE);
+  }
+
   if (totalOpen) {
     return (
       <div className="bg-background text-foreground min-h-screen">
@@ -565,11 +646,47 @@ export function ExpenseMonitoringTool() {
               </div>
 
               <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
-                <ExpenseTxTable
-                  rows={totalResult.transactions.slice(0, visibleTotalCount)}
-                  stickyHeader
-                />
-                {visibleTotalCount < totalResult.transactions.length && (
+                <div className="flex flex-wrap items-end gap-2 px-4 py-2.5 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
+                  <div className="w-[240px]">
+                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      {t("monExpTableSearchLabel")}
+                    </label>
+                    <Input
+                      value={totalSearchDraft}
+                      onChange={(e) => setTotalSearchDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") applyTotalSearch();
+                      }}
+                      placeholder={t("monExpTableSearchPlaceholder")}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={applyTotalSearch}
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    {t("monRptSearchBtn")}
+                  </Button>
+                  {totalSearch && (
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      {filteredTotalTx.length}/{totalResult.transactions.length}
+                    </span>
+                  )}
+                </div>
+                {filteredTotalTx.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    {t("monExpTableSearchEmpty")}
+                  </p>
+                ) : (
+                  <ExpenseTxTable
+                    rows={filteredTotalTx}
+                    visibleCount={visibleTotalCount}
+                    stickyHeader
+                  />
+                )}
+                {visibleTotalCount < filteredTotalTx.length && (
                   <div className="border-t border-border px-3 py-2">
                     <Button
                       variant="ghost"
@@ -577,15 +694,12 @@ export function ExpenseMonitoringTool() {
                       className="w-full h-8 text-xs"
                       onClick={() =>
                         setVisibleTotalCount((n) =>
-                          Math.min(
-                            n + TX_PAGE_STEP,
-                            totalResult.transactions.length,
-                          ),
+                            Math.min(n + TX_PAGE_STEP, filteredTotalTx.length),
                         )
                       }
                     >
                       {t("monExpShowMore")} ({visibleTotalCount}/
-                      {totalResult.transactions.length})
+                      {filteredTotalTx.length})
                     </Button>
                   </div>
                 )}
@@ -605,12 +719,11 @@ export function ExpenseMonitoringTool() {
         title={t("monBoxExpenseTitle")}
       />
 
-      <div className="w-full px-4 md:px-6 py-5 space-y-5">
-        {/* Filters */}
-        <div className="rounded-sm border border-border bg-card p-4 shadow-premium ring-hairline">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="w-[150px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+      <div className="sticky top-14 z-[19] w-full min-w-0 border-b border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl shadow-premium">
+        <div className="px-4 md:px-6 py-2.5 flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="w-[138px]">
+              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                 {t("tailan_startDateLabel")}
               </label>
               <Input
@@ -618,11 +731,11 @@ export function ExpenseMonitoringTool() {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 disabled={loading}
-                className="text-sm h-9"
+                className="text-sm h-8"
               />
             </div>
-            <div className="w-[150px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+            <div className="w-[138px]">
+              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                 {t("tailan_endDateLabel")}
               </label>
               <Input
@@ -630,11 +743,11 @@ export function ExpenseMonitoringTool() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 disabled={loading}
-                className="text-sm h-9"
+                className="text-sm h-8"
               />
             </div>
-            <div className="w-[190px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+            <div className="w-[160px]">
+              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                 {t("monExpMinAmountLabel")}
               </label>
               <Input
@@ -644,29 +757,66 @@ export function ExpenseMonitoringTool() {
                 value={minAmount}
                 onChange={(e) => setMinAmount(Number(e.target.value) || 0)}
                 disabled={loading}
-                className="text-sm h-9"
+                className="text-sm h-8"
               />
             </div>
-
-            <Button onClick={handleSearch} disabled={loading} className="gap-2 h-9">
+            <Button
+              onClick={handleSearch}
+              disabled={loading}
+              className="gap-1.5 h-8"
+            >
               {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Search className="w-4 h-4" />
+                <Search className="w-3.5 h-3.5" />
               )}
               {t("monRptSearchBtn")}
             </Button>
-
             <Button
               variant="outline"
               onClick={openTotalDialog}
-              className="gap-2 h-9"
+              className="gap-1.5 h-8"
             >
-              <PieChart className="w-4 h-4" />
+              <PieChart className="w-3.5 h-3.5" />
               {t("monExpTotalBtn")}
             </Button>
           </div>
+          <div className="hidden sm:block w-px self-stretch min-h-[36px] bg-border/80" />
+          <div className="flex flex-wrap items-end gap-2 sm:ml-auto">
+            <div className="w-[240px]">
+              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                {t("monExpTableSearchLabel")}
+              </label>
+              <Input
+                value={tableSearchDraft}
+                onChange={(e) => setTableSearchDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") applyTableSearch();
+                }}
+                placeholder={t("monExpTableSearchPlaceholder")}
+                className="text-sm h-8"
+                disabled={!result}
+              />
+            </div>
+            <Button
+              variant="secondary"
+              className="h-8 gap-1.5"
+              onClick={applyTableSearch}
+              disabled={!result}
+            >
+              <Search className="w-3.5 h-3.5" />
+              {t("monRptSearchBtn")}
+            </Button>
+            {tableSearch && result && (
+              <span className="pb-1.5 text-[11px] text-muted-foreground tabular-nums">
+                {filteredTx.length}/{result.transactions.length}
+              </span>
+            )}
+          </div>
         </div>
+      </div>
+
+      <div className="w-full px-4 md:px-6 py-5 space-y-5">
 
         {error && (
           <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-sm text-destructive">
@@ -750,13 +900,20 @@ export function ExpenseMonitoringTool() {
                 </div>
 
                 <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
-                  <ExpenseTxTable
-                    rows={result.transactions.slice(0, visibleTxCount)}
-                    showVerification
-                    onBookClick={openDrilldown}
-                    onVerifyClick={openVerificationDialog}
-                  />
-                  {visibleTxCount < result.transactions.length && (
+                  {filteredTx.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                      {t("monExpTableSearchEmpty")}
+                    </p>
+                  ) : (
+                    <ExpenseTxTable
+                      rows={filteredTx}
+                      visibleCount={visibleTxCount}
+                      showVerification
+                      onBookClick={openDrilldown}
+                      onVerifyClick={openVerificationDialog}
+                    />
+                  )}
+                  {visibleTxCount < filteredTx.length && (
                     <div className="border-t border-border px-3 py-2">
                       <Button
                         variant="ghost"
@@ -764,15 +921,12 @@ export function ExpenseMonitoringTool() {
                         className="w-full h-8 text-xs"
                         onClick={() =>
                           setVisibleTxCount((n) =>
-                            Math.min(
-                              n + TX_PAGE_STEP,
-                              result.transactions.length,
-                            ),
+                            Math.min(n + TX_PAGE_STEP, filteredTx.length),
                           )
                         }
                       >
                         {t("monExpShowMore")} ({visibleTxCount}/
-                        {result.transactions.length})
+                        {filteredTx.length})
                       </Button>
                     </div>
                   )}
@@ -1262,7 +1416,101 @@ type ExpColDef = {
   align: "left" | "right";
   defaultWidth: number;
   minWidth: number;
+  bg: string;
+  line: string;
 };
+
+const COL_TONE: Record<ExpColKey, { bg: string; line: string }> = {
+  date: {
+    bg: "bg-sky-500/[0.08]",
+    line: "border-r-2 border-sky-500/40",
+  },
+  customer: {
+    bg: "bg-violet-500/[0.08]",
+    line: "border-r-2 border-violet-500/40",
+  },
+  account: {
+    bg: "bg-cyan-500/[0.08]",
+    line: "border-r-2 border-cyan-500/40",
+  },
+  amount: {
+    bg: "bg-emerald-500/[0.08]",
+    line: "border-r-2 border-emerald-500/40",
+  },
+  description: {
+    bg: "bg-amber-500/[0.08]",
+    line: "border-r-2 border-amber-500/40",
+  },
+  department: {
+    bg: "bg-orange-500/[0.08]",
+    line: "border-r-2 border-orange-500/40",
+  },
+  gl: {
+    bg: "bg-indigo-500/[0.08]",
+    line: "border-r-2 border-indigo-500/40",
+  },
+  receivable: {
+    bg: "bg-fuchsia-500/[0.08]",
+    line: "border-r-2 border-fuchsia-500/40",
+  },
+  book: {
+    bg: "bg-lime-500/[0.08]",
+    line: "border-r-2 border-lime-500/40",
+  },
+  verification: {
+    bg: "bg-rose-500/[0.08]",
+    line: "border-r-2 border-rose-500/40",
+  },
+};
+
+function colSortValue(
+  tx: {
+    book_date?: string;
+    customer_code?: string;
+    customer_name?: string;
+    account_code?: string;
+    account_name?: string;
+    debit_amount?: number;
+    description?: string;
+    department_name?: string;
+    co_a_group_code?: string;
+    co_a_group_name?: string;
+    recievable_type_code?: string;
+    recievable_type_name?: string;
+    book_number?: string;
+    verification_type?: string;
+    verification_status?: string;
+    contract_total_amount?: number;
+  },
+  key: ExpColKey,
+): string | number {
+  switch (key) {
+    case "date":
+      return tx.book_date || "";
+    case "customer":
+      return (tx.customer_name || tx.customer_code || "").toLowerCase();
+    case "account":
+      return (tx.account_name || tx.account_code || "").toLowerCase();
+    case "amount":
+      return Number(tx.debit_amount) || 0;
+    case "description":
+      return (tx.description || "").toLowerCase();
+    case "department":
+      return (tx.department_name || "").toLowerCase();
+    case "gl":
+      return (tx.co_a_group_name || tx.co_a_group_code || "").toLowerCase();
+    case "receivable":
+      return (
+        tx.recievable_type_name ||
+        tx.recievable_type_code ||
+        ""
+      ).toLowerCase();
+    case "book":
+      return tx.book_number || "";
+    case "verification":
+      return (tx.verification_type || tx.verification_status || "").toLowerCase();
+  }
+}
 
 const EXP_WIDTHS_KEY = "dahub.expense-tx-col-widths";
 
@@ -1291,6 +1539,7 @@ function payRequestClass(tx: {
 
 function ExpenseTxTable({
   rows,
+  visibleCount,
   showVerification = false,
   stickyHeader = false,
   onBookClick,
@@ -1326,6 +1575,7 @@ function ExpenseTxTable({
         >
       >
   >;
+  visibleCount?: number;
   showVerification?: boolean;
   stickyHeader?: boolean;
   onBookClick?: (tx: ExpenseTxRow) => void;
@@ -1340,6 +1590,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 96,
         minWidth: 72,
+        ...COL_TONE.date,
       },
       {
         key: "customer",
@@ -1347,6 +1598,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 160,
         minWidth: 100,
+        ...COL_TONE.customer,
       },
       {
         key: "account",
@@ -1354,6 +1606,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 140,
         minWidth: 90,
+        ...COL_TONE.account,
       },
       {
         key: "amount",
@@ -1361,6 +1614,7 @@ function ExpenseTxTable({
         align: "right",
         defaultWidth: 120,
         minWidth: 88,
+        ...COL_TONE.amount,
       },
       {
         key: "description",
@@ -1368,6 +1622,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 200,
         minWidth: 110,
+        ...COL_TONE.description,
       },
       {
         key: "department",
@@ -1375,6 +1630,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 140,
         minWidth: 90,
+        ...COL_TONE.department,
       },
       {
         key: "gl",
@@ -1382,6 +1638,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 150,
         minWidth: 90,
+        ...COL_TONE.gl,
       },
       {
         key: "receivable",
@@ -1389,6 +1646,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 150,
         minWidth: 90,
+        ...COL_TONE.receivable,
       },
       {
         key: "book",
@@ -1396,6 +1654,7 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 130,
         minWidth: 88,
+        ...COL_TONE.book,
       },
     ];
     if (showVerification) {
@@ -1405,15 +1664,57 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 160,
         minWidth: 100,
+        ...COL_TONE.verification,
       });
     }
     return all;
   }, [showVerification, t]);
 
   const [widths, setWidths] = useState<Partial<Record<ExpColKey, number>>>({});
+  const [sort, setSort] = useState<{ key: ExpColKey; dir: "asc" | "desc" } | null>(
+    null,
+  );
   useEffect(() => {
     setWidths(readExpStoredWidths());
   }, []);
+
+  const toggleSort = useCallback((key: ExpColKey) => {
+    setSort((prev) => {
+      if (prev?.key !== key) {
+        return { key, dir: key === "amount" ? "desc" : "asc" };
+      }
+      if (key === "amount") {
+        return prev.dir === "desc" ? { key, dir: "asc" } : null;
+      }
+      return prev.dir === "asc" ? { key, dir: "desc" } : null;
+    });
+  }, []);
+
+  const displayedRows = useMemo(() => {
+    const sorted = sort
+      ? [...rows].sort((a, b) => {
+          const av = colSortValue(a, sort.key);
+          const bv = colSortValue(b, sort.key);
+          let cmp = 0;
+          if (typeof av === "number" && typeof bv === "number") {
+            cmp = av - bv;
+          } else {
+            cmp = String(av).localeCompare(String(bv), "mn", {
+              numeric: true,
+              sensitivity: "base",
+            });
+          }
+          if (cmp === 0 && sort.key === "verification") {
+            cmp =
+              (Number(a.contract_total_amount) || 0) -
+              (Number(b.contract_total_amount) || 0);
+          }
+          return sort.dir === "asc" ? cmp : -cmp;
+        })
+      : rows;
+    return visibleCount != null ? sorted.slice(0, visibleCount) : sorted;
+  }, [rows, sort, visibleCount]);
+
 
   const widthOf = useCallback(
     (col: ExpColDef) => widths[col.key] ?? col.defaultWidth,
@@ -1474,7 +1775,11 @@ function ExpenseTxTable({
           </span>
         </div>
       )}
-      <div className="overflow-x-auto">
+      <div
+        className={
+          stickyHeader ? "max-h-[calc(100vh-8rem)] overflow-auto" : "overflow-x-auto"
+        }
+      >
         <table
           className="text-sm border-collapse"
           style={{
@@ -1488,37 +1793,59 @@ function ExpenseTxTable({
               <col key={col.key} style={{ width: widthOf(col) }} />
             ))}
           </colgroup>
-          <thead
-            className={
-              stickyHeader
-                ? "sticky top-14 z-10 bg-background"
-                : "bg-background"
-            }
-          >
+          <thead>
             <tr>
               {cols.map((col) => (
                 <th
                   key={col.key}
+                  aria-sort={
+                    sort?.key === col.key
+                      ? sort.dir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                  onClick={() => toggleSort(col.key)}
                   className={cn(
-                    "relative px-2 py-2.5 text-xs font-bold text-foreground bg-background select-none border-b border-border",
+                    "relative px-2 py-2.5 text-xs font-bold text-foreground select-none border-b border-border cursor-pointer hover:bg-muted/50 group bg-card",
+                    stickyHeader && "sticky top-0 z-[1]",
+                    col.line,
                     col.align === "right" ? "text-right" : "text-left",
                   )}
                 >
-                  <span className="truncate block font-bold">{col.label}</span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-0.5 min-w-0",
+                      col.align === "right" ? "justify-end" : "justify-start",
+                    )}
+                  >
+                    <span className="truncate font-bold whitespace-nowrap">
+                      {col.label}
+                    </span>
+                    {sort?.key === col.key ? (
+                      sort.dir === "asc" ? (
+                        <ChevronUp className="w-3 h-3 shrink-0 opacity-80" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 shrink-0 opacity-80" />
+                      )
+                    ) : (
+                      <ChevronDown className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-30" />
+                    )}
+                  </span>
                   <span
                     role="separator"
                     aria-orientation="vertical"
                     onMouseDown={(e) => onResizeStart(e, col)}
-                    className="absolute top-0 -right-0.5 w-2 h-full cursor-col-resize z-10 group flex justify-center"
+                    className="absolute top-0 right-0 w-2 h-full cursor-col-resize z-10 group/resize flex justify-end"
                   >
-                    <span className="w-px h-full bg-transparent group-hover:bg-foreground/30" />
+                    <span className="w-px h-full bg-transparent group-hover/resize:bg-foreground/30" />
                   </span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((tx, i) => {
+            {displayedRows.map((tx, i) => {
               const statusMeta = STATUS_META[tx.verification_status ?? ""];
               const payTitle = Number(tx.has_payment_request)
                 ? t("monExpPayMatch")
@@ -1533,31 +1860,58 @@ function ExpenseTxTable({
                     tx.has_verification && "bg-sky-500/5",
                   )}
                 >
-                  <Td>{tx.book_date || "—"}</Td>
-                  <Td>
+                  <Td className={cn(COL_TONE.date.bg, COL_TONE.date.line)}>
+                    {tx.book_date || "—"}
+                  </Td>
+                  <Td className={cn(COL_TONE.customer.bg, COL_TONE.customer.line)}>
                     <CellPair code={tx.customer_code} name={tx.customer_name} />
                   </Td>
-                  <Td>
+                  <Td className={cn(COL_TONE.account.bg, COL_TONE.account.line)}>
                     <CellPair code={tx.account_code} name={tx.account_name} />
                   </Td>
-                  <Td className="text-right font-semibold tabular-nums">
+                  <Td
+                    className={cn(
+                      "text-right font-semibold tabular-nums",
+                      COL_TONE.amount.bg,
+                      COL_TONE.amount.line,
+                    )}
+                  >
                     {fmtAmount(tx.debit_amount)} {tx.currency_code}
                   </Td>
-                  <Td>{tx.description || "—"}</Td>
-                  <Td>{tx.department_name || "—"}</Td>
-                  <Td>
+                  <Td
+                    className={cn(
+                      COL_TONE.description.bg,
+                      COL_TONE.description.line,
+                    )}
+                  >
+                    {tx.description || "—"}
+                  </Td>
+                  <Td
+                    className={cn(
+                      COL_TONE.department.bg,
+                      COL_TONE.department.line,
+                    )}
+                  >
+                    {tx.department_name || "—"}
+                  </Td>
+                  <Td className={cn(COL_TONE.gl.bg, COL_TONE.gl.line)}>
                     <CellPair
                       code={tx.co_a_group_code}
                       name={tx.co_a_group_name}
                     />
                   </Td>
-                  <Td>
+                  <Td
+                    className={cn(
+                      COL_TONE.receivable.bg,
+                      COL_TONE.receivable.line,
+                    )}
+                  >
                     <CellPair
                       code={tx.recievable_type_code}
                       name={tx.recievable_type_name}
                     />
                   </Td>
-                  <Td>
+                  <Td className={cn(COL_TONE.book.bg, COL_TONE.book.line)}>
                     {onBookClick ? (
                       <button
                         type="button"
@@ -1579,7 +1933,12 @@ function ExpenseTxTable({
                     )}
                   </Td>
                   {showVerification && (
-                    <Td>
+                    <Td
+                      className={cn(
+                        COL_TONE.verification.bg,
+                        COL_TONE.verification.line,
+                      )}
+                    >
                       <div>{tx.verification_type || "—"}</div>
                       <div className="tabular-nums text-muted-foreground">
                         {tx.contract_total_amount
