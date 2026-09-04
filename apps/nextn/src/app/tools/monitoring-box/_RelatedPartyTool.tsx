@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
 
 type ResultTab = "summary" | "accounts" | "transactions";
 
+const TX_PAGE = 200;
+const TX_PAGE_STEP = 500;
+
 // [AUDIT] toISOString() нь UTC тул UTC+8 бүсэд өглөө 08:00-аас өмнө "өчигдөр"
 // буцааж сүүлийн өдрийн гүйлгээг алгасдаг байсан — локал огноо ашиглана.
 function fmtLocalDate(d: Date): string {
@@ -63,6 +66,7 @@ export function RelatedPartyTool() {
   const [result, setResult] = useState<RelatedPartyResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ResultTab>("summary");
+  const [visibleTxCount, setVisibleTxCount] = useState(TX_PAGE);
 
   function addCifTokens(raw: string) {
     const tokens = raw
@@ -119,6 +123,7 @@ export function RelatedPartyTool() {
         endDate,
       });
       setResult(res);
+      setVisibleTxCount(TX_PAGE);
       setActiveTab(
         res.summary.length > 0
           ? "summary"
@@ -382,6 +387,13 @@ export function RelatedPartyTool() {
               )}
             </div>
 
+            {result.truncated && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                {t("monExpTruncatedWarning")}
+              </div>
+            )}
+
             {/* ── Tabs ──────────────────────────────────────────────── */}
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-1 px-2 pt-2 border-b border-border overflow-x-auto scrollbar-none">
@@ -486,6 +498,7 @@ export function RelatedPartyTool() {
                   result.transactions.length === 0 ? (
                     <EmptyTab message={t("monRptNoTxDesc")} />
                   ) : (
+                    <div>
                     <TableScroll maxHeight="480px">
                       <table className="w-full text-xs">
                         <thead>
@@ -502,9 +515,11 @@ export function RelatedPartyTool() {
                           </tr>
                         </thead>
                         <tbody>
-                          {result.transactions.map((tx, i) => (
+                          {result.transactions
+                            .slice(0, visibleTxCount)
+                            .map((tx, i) => (
                             <tr
-                              key={i}
+                              key={`${tx.TRAN_ID}-${tx.FROM_CIF}-${tx.TO_CIF}-${i}`}
                               className="border-b border-border/30 hover:bg-muted/30 align-top"
                             >
                               <Td>{tx.TRAN_DATE}</Td>
@@ -537,6 +552,27 @@ export function RelatedPartyTool() {
                         </tbody>
                       </table>
                     </TableScroll>
+                    {visibleTxCount < result.transactions.length && (
+                      <div className="border-t border-border px-3 py-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          onClick={() =>
+                            setVisibleTxCount((n) =>
+                              Math.min(
+                                n + TX_PAGE_STEP,
+                                result.transactions.length,
+                              ),
+                            )
+                          }
+                        >
+                          {t("monExpShowMore")} ({visibleTxCount}/
+                          {result.transactions.length})
+                        </Button>
+                      </div>
+                    )}
+                    </div>
                   )
                 )}
               </div>

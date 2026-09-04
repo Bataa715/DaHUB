@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getApiAuth } from "@/lib/api-auth";
 import { getServerBackendUrl } from "@/lib/server-backend-url";
 
 /**
@@ -23,29 +24,9 @@ export async function GET(
   if (!/^[\w-]+$/.test(id)) {
     return new NextResponse(null, { status: 400 });
   }
-  // Хүчинтэй cookie сонгох — expired adminToken байхад user token ашиглана
-  const candidates = [
-    req.cookies.get("adminToken")?.value,
-    req.cookies.get("token")?.value,
-  ].filter((t): t is string => !!t);
-  if (candidates.length === 0) {
+  const auth = await getApiAuth(req);
+  if (!auth) {
     return new NextResponse(null, { status: 401 });
-  }
-  const now = Math.floor(Date.now() / 1000);
-  let token = candidates[0];
-  for (const t of candidates) {
-    try {
-      const payloadPart = t.split(".")[1];
-      if (!payloadPart) continue;
-      const json = atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/"));
-      const payload = JSON.parse(json) as { exp?: number };
-      if (typeof payload.exp === "number" && payload.exp > now) {
-        token = t;
-        break;
-      }
-    } catch {
-      /* next */
-    }
   }
 
   const backendUrl = getServerBackendUrl();
@@ -57,7 +38,7 @@ export async function GET(
   let upstream: Response;
   try {
     upstream = await fetch(`${backendUrl}/medleg/${encodeURIComponent(id)}/image`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Cookie: req.headers.get("cookie") ?? "" },
       cache: "no-store",
     });
   } catch (err) {

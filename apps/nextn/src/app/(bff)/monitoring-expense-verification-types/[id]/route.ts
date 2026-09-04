@@ -113,6 +113,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  if (!/^[\w-]+$/.test(id)) {
+    return NextResponse.json(
+      { message: "Хүсэлт буруу байна" },
+      { status: 400 },
+    );
+  }
   return proxy(req, id, "PATCH");
 }
 
@@ -121,5 +127,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  if (!/^[\w-]+$/.test(id)) {
+    return NextResponse.json(
+      { message: "Хүсэлт буруу байна" },
+      { status: 400 },
+    );
+  }
   return proxy(req, id, "DELETE");
 }

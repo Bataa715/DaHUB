@@ -204,6 +204,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   async query<T = Record<string, any>>(
     sql: string,
     params: any[] | Record<string, any> = [],
+    options?: { maxRows?: number },
   ): Promise<T[]> {
     // Эхлээд SQL comment-уудыг арилгана: -- мөрийн төгсгөл хүртэл, /* ... */ блок
     const noComments = sql
@@ -249,11 +250,16 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    const maxRows = Math.min(
+      Math.max(options?.maxRows ?? 10_000, 1),
+      50_000,
+    );
     const conn = await this.acquire();
     try {
       const result = await conn.execute(sql, params as any, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
-        fetchArraySize: 1000,
+        fetchArraySize: Math.min(1000, maxRows),
+        maxRows,
       });
       return (result.rows || []) as T[];
     } finally {

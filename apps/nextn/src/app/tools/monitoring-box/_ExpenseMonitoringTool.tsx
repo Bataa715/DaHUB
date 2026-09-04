@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -62,6 +62,12 @@ import {
 } from "@/lib/api";
 
 const DEFAULT_MIN_AMOUNT = 50_000_000;
+
+// [REVIEW/PERF] Сервер 20-30 мянган мөр буцааж болдог — бүгдийг зэрэг DOM-д
+// зурвал browser царцана. Эхэндээ TX_PAGE мөр зурж, "Цааш үзэх" товчоор
+// нэмж зурна (өгөгдөл бүрэн санах ойд байгаа тул KPI/график бүрэн хэвээр).
+const TX_PAGE = 200;
+const TX_PAGE_STEP = 500;
 
 // [AUDIT] toISOString() нь UTC тул UTC+8 бүсэд огноо буруу шилждэг —
 // _RelatedPartyTool.tsx-тэй ижил локал огнооны туслах функцүүд.
@@ -128,7 +134,8 @@ export function ExpenseMonitoringTool() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const { user } = useAuth();
-  const isAdmin = !!user?.isAdmin;
+  const isAdmin = !!user?.isAdmin || !!user?.isSuperAdmin;
+  const searchAbort = useRef<AbortController | null>(null);
 
   const [startDate, setStartDate] = useState(monthsAgo(1));
   const [endDate, setEndDate] = useState(today());
@@ -136,6 +143,9 @@ export function ExpenseMonitoringTool() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExpenseOverviewResult | null>(null);
+  // [REVIEW/PERF] Хэдэн мөр DOM-д зурагдсан бэ (incremental render)
+  const [visibleTxCount, setVisibleTxCount] = useState(TX_PAGE);
+  const [visibleTotalCount, setVisibleTotalCount] = useState(TX_PAGE);
 
   // Drill-down dialog (payment requests for one transaction's customer)
   const [selectedTx, setSelectedTx] = useState<ExpenseTxRow | null>(null);
@@ -335,16 +345,20 @@ export function ExpenseMonitoringTool() {
       });
       return;
     }
+    searchAbort.current?.abort();
+    const ac = new AbortController();
+    searchAbort.current = ac;
     setLoading(true);
     setError(null);
     try {
-      const res = await expenseMonitoringApi.getOverview({
-        startDate,
-        endDate,
-        minAmount,
-      });
+      const res = await expenseMonitoringApi.getOverview(
+        { startDate, endDate, minAmount },
+        ac.signal,
+      );
       setResult(res);
+      setVisibleTxCount(TX_PAGE);
     } catch (e) {
+      if ((e as { code?: string })?.code === "ERR_CANCELED") return;
       const msg = getApiErrorMessage(e);
       setError(msg);
       toast({
@@ -353,15 +367,23 @@ export function ExpenseMonitoringTool() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (searchAbort.current === ac) setLoading(false);
     }
   }
 
   async function openTotalDialog() {
+    if (!startDate || !endDate) {
+      toast({
+        title: t("monRptDateMissingTitle"),
+        description: t("monRptDateMissingDesc"),
+        variant: "destructive",
+      });
+      return;
+    }
     setTotalOpen(true);
-    if (!startDate || !endDate) return;
     setTotalLoading(true);
     setTotalError(null);
+    setVisibleTotalCount(TX_PAGE);
     try {
       const res = await expenseMonitoringApi.getTotal({ startDate, endDate });
       setTotalResult(res);
@@ -587,7 +609,7 @@ export function ExpenseMonitoringTool() {
               <StatCard
                 icon={Wallet}
                 label={t("monExpQualifyingCustomers")}
-                value={String(result.qualifyingCustomers.length)}
+                value={String(Number(result.qualifyingCount) || 0)}
                 tint="text-sky-500 bg-sky-500/10 border-sky-500/20"
               />
               <StatCard
@@ -599,12 +621,7 @@ export function ExpenseMonitoringTool() {
               <StatCard
                 icon={Wallet}
                 label={t("monExpTotalDebit")}
-                value={`₮${fmtAmount(
-                  result.qualifyingCustomers.reduce(
-                    (sum, c) => sum + c.total_debit,
-                    0,
-                  ),
-                )}`}
+                value={`₮${fmtAmount(Number(result.qualifyingTotalDebit) || 0)}`}
                 tint="text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
               />
             </div>
@@ -616,7 +633,7 @@ export function ExpenseMonitoringTool() {
               </div>
             )}
 
-            {result.qualifyingCustomers.length === 0 ? (
+            {Number(result.qualifyingCount) === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
                 <p className="text-sm font-medium text-foreground">
                   {t("monExpNoQualifyingCustomers")}
@@ -687,11 +704,13 @@ export function ExpenseMonitoringTool() {
                         </tr>
                       </thead>
                       <tbody>
-                        {result.transactions.map((tx, i) => {
+                        {result.transactions
+                          .slice(0, visibleTxCount)
+                          .map((tx, i) => {
                           const statusMeta = STATUS_META[tx.verification_status];
                           return (
                             <tr
-                              key={i}
+                              key={`${tx.book_number}-${tx.customer_code}-${i}`}
                               className={cn(
                                 "border-b border-border/30 hover:bg-muted/30 align-top",
                                 tx.has_verification && "bg-emerald-500/5",
@@ -776,6 +795,26 @@ export function ExpenseMonitoringTool() {
                       </tbody>
                     </table>
                   </TableScroll>
+                  {visibleTxCount < result.transactions.length && (
+                    <div className="border-t border-border px-3 py-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-8 text-xs"
+                        onClick={() =>
+                          setVisibleTxCount((n) =>
+                            Math.min(
+                              n + TX_PAGE_STEP,
+                              result.transactions.length,
+                            ),
+                          )
+                        }
+                      >
+                        {t("monExpShowMore")} ({visibleTxCount}/
+                        {result.transactions.length})
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1293,9 +1332,11 @@ export function ExpenseMonitoringTool() {
                       </tr>
                     </thead>
                     <tbody>
-                      {totalResult.transactions.map((tx, i) => (
+                      {totalResult.transactions
+                        .slice(0, visibleTotalCount)
+                        .map((tx, i) => (
                         <tr
-                          key={i}
+                          key={`${tx.book_number}-${tx.customer_code}-${i}`}
                           className="border-b border-border/30 hover:bg-muted/30 align-top"
                         >
                           <Td>{tx.book_date}</Td>
@@ -1335,6 +1376,26 @@ export function ExpenseMonitoringTool() {
                     </tbody>
                   </table>
                 </TableScroll>
+                {visibleTotalCount < totalResult.transactions.length && (
+                  <div className="border-t border-border px-3 py-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-8 text-xs"
+                      onClick={() =>
+                        setVisibleTotalCount((n) =>
+                          Math.min(
+                            n + TX_PAGE_STEP,
+                            totalResult.transactions.length,
+                          ),
+                        )
+                      }
+                    >
+                      {t("monExpShowMore")} ({visibleTotalCount}/
+                      {totalResult.transactions.length})
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}

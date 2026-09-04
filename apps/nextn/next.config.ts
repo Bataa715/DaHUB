@@ -32,22 +32,6 @@ const nextConfig: NextConfig = {
             value: "max-age=31536000; includeSubDomains",
           },
           {
-            // [AUDIT] Эхлээд Report-Only горимд нэвтрүүлж, console дээр
-            // зөрчил ажиглаад дараа нь Content-Security-Policy болгож хатууруулна.
-            key: "Content-Security-Policy-Report-Only",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://api.dicebear.com https://api.qrserver.com https://cdn.simpleicons.org",
-              "font-src 'self' data:",
-              "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001",
-              "frame-ancestors 'none'",
-              "object-src 'none'",
-              "base-uri 'self'",
-            ].join("; "),
-          },
-          {
             key: "Permissions-Policy",
             value:
               "camera=(), microphone=(), geolocation=(), payment=(), usb=()",

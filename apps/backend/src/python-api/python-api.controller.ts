@@ -17,7 +17,7 @@ import {
   Header,
 } from "@nestjs/common";
 import { Response } from "express";
-import { SkipThrottle, Throttle } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
@@ -217,7 +217,7 @@ export class PythonApiController {
   /** Editor: хадгалаагүй кодыг шууд тест ажиллуулах (эхний 50 мөр) */
   @Post("admin/preview-code")
   @UseGuards(AdminGuard)
-  @SkipThrottle()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   previewCode(@Body() body: PreviewCodeDto) {
     return this.service.previewCode(body);
   }

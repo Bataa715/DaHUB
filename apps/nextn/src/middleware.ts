@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
@@ -140,6 +140,7 @@ export async function middleware(request: NextRequest) {
     !isAdminRoute &&
     !pathname.startsWith("/api/") &&
     !pathname.startsWith("/monitoring-rpt") &&
+    !pathname.startsWith("/monitoring-expense-") &&
     !pathname.startsWith("/team-gallery")
   ) {
     return NextResponse.redirect(new URL("/login", request.url));

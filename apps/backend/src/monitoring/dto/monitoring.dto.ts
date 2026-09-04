@@ -1,3 +1,4 @@
+import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -9,6 +10,8 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  MaxLength,
   Min,
 } from "class-validator";
 
@@ -45,14 +48,17 @@ export class ExpenseOverviewDto {
   endDate: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber({}, { message: "Доод дүн тоо байх ёстой" })
   @Min(0, { message: "Доод дүн 0-ээс бага байж болохгүй" })
+  @Max(1_000_000_000_000, { message: "Доод дүн хэт өндөр байна" })
   minAmount?: number;
 }
 
 export class ExpensePaymentRequestsDto {
   @IsString()
   @IsNotEmpty({ message: "Харилцагчийн код заавал шаардлагатай" })
+  @MaxLength(64, { message: "Харилцагчийн код хэт урт байна" })
   customerCode: string;
 
   @IsDateString({}, { message: "Эхлэх огноо буруу байна" })
@@ -65,31 +71,38 @@ export class ExpensePaymentRequestsDto {
 export class ExpenseAttachmentsDto {
   @IsString()
   @IsNotEmpty({ message: "Invoice ID заавал шаардлагатай" })
+  @MaxLength(128, { message: "Invoice ID хэт урт байна" })
   invoiceId: string;
 }
 
 export class ExpenseBudgetChangesDto {
   @IsString()
   @IsNotEmpty({ message: "Баримтын дугаар заавал шаардлагатай" })
+  @MaxLength(64, { message: "Баримтын дугаар хэт урт байна" })
   bookNumber: string;
 }
 
 export class ExpenseVerificationDto {
   @IsString()
   @IsNotEmpty({ message: "Баримтын дугаар заавал шаардлагатай" })
+  @MaxLength(64, { message: "Баримтын дугаар хэт урт байна" })
   bookNumber: string;
 
   @IsOptional()
   @IsString({ message: "Тайлбар текст байх ёстой" })
+  @MaxLength(4000, { message: "Тайлбар хэт урт байна" })
   comment?: string;
 
   @IsOptional()
   @IsString({ message: "Төрөл текст байх ёстой" })
+  @MaxLength(120, { message: "Төрлийн нэр хэт урт байна" })
   verificationType?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber({}, { message: "Гэрээний нийт дүн тоо байх ёстой" })
   @Min(0, { message: "Гэрээний нийт дүн 0-ээс бага байж болохгүй" })
+  @Max(1_000_000_000_000, { message: "Гэрээний нийт дүн хэт өндөр байна" })
   contractTotalAmount?: number;
 
   @IsOptional()
@@ -110,12 +123,14 @@ export class ExpenseTotalDto {
 export class CreateVerificationTypeDto {
   @IsString()
   @IsNotEmpty({ message: "Төрлийн нэр заавал шаардлагатай" })
+  @MaxLength(120, { message: "Төрлийн нэр хэт урт байна" })
   name: string;
 }
 
 export class UpdateVerificationTypeDto {
   @IsOptional()
   @IsString({ message: "Төрлийн нэр текст байх ёстой" })
+  @MaxLength(120, { message: "Төрлийн нэр хэт урт байна" })
   name?: string;
 
   @IsOptional()

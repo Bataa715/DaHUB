@@ -136,7 +136,9 @@ export interface ExpenseVerificationTypeRow {
 }
 
 export interface ExpenseOverviewResult {
-  qualifyingCustomers: ExpenseQualifyingCustomer[];
+  /** KPI — бүх тэнцсэн харилцагчийн тоо (жагсаалт илгээдэггүй). */
+  qualifyingCount: number;
+  qualifyingTotalDebit: number;
   transactions: ExpenseTxRow[];
   truncated?: boolean;
 }
@@ -206,7 +208,6 @@ export interface ExpenseAttachmentRow {
   content_id: string;
   file_name: string;
   file_extension: string;
-  physical_path: string;
   full_url: string;
 }
 
@@ -232,7 +233,7 @@ export interface ExpenseBudgetChangeRow {
 }
 
 const MAX_EXPENSE_TX_ROWS = 20_000;
-const MAX_EXPENSE_TOTAL_ROWS = 30_000;
+const MAX_EXPENSE_TOTAL_ROWS = 10_000;
 const MAX_EXPENSE_DRILLDOWN_ROWS = 5_000;
 const MAX_EXPENSE_SIDE_ROWS = 1_000;
 const DEFAULT_MIN_AMOUNT = 50_000_000;
@@ -462,101 +463,115 @@ export class MonitoringService {
   ): Promise<ExpenseOverviewResult> {
     this.assertValidRange(dto.startDate, dto.endDate);
     const minAmount = dto.minAmount ?? DEFAULT_MIN_AMOUNT;
+    const params = {
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      minAmount,
+    };
 
-    const qualifyingCustomers =
-      await this.clickhouse.query<ExpenseQualifyingCustomer>(
-        `
-        SELECT
-          customer_code,
-          any(customer_name) AS customer_name,
-          sum(debit_amount)  AS total_debit
+    const qualifyingCte = `
+      qualifying AS (
+        SELECT customer_code, sum(debit_amount) AS total_debit
         FROM avlaga
         WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
         GROUP BY customer_code
         HAVING {minAmount:Float64} <= 0 OR total_debit >= {minAmount:Float64}
-        ORDER BY total_debit DESC
+      )`;
+
+    const [statsRows, transactions] = await Promise.all([
+      this.clickhouse.query<{
+        qualifyingCount: number;
+        qualifyingTotalDebit: number;
+      }>(
+        `
+        WITH ${qualifyingCte}
+        SELECT
+          count() AS qualifyingCount,
+          ifNull(sum(total_debit), 0) AS qualifyingTotalDebit
+        FROM qualifying
         `,
-        { startDate: dto.startDate, endDate: dto.endDate, minAmount },
-      );
+        params,
+      ),
+      // Төсвийн төрөл + баталгаажуулалтыг нэг query-д нэгтгэсэн (өмнө нь
+      // 3 дахь round-trip + 20к book_number массив + FINAL JOIN байсан).
+      // tulbur/budget-ийг зөвхөн тухайн хугацааны book_number-уудаар шүүнэ.
+      this.clickhouse.query<ExpenseTxRow>(
+        `
+        WITH
+        ${qualifyingCte},
+        scoped_books AS (
+          SELECT DISTINCT a.book_number
+          FROM avlaga a
+          INNER JOIN qualifying q ON q.customer_code = a.customer_code
+          WHERE a.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+            AND a.book_number != ''
+        )
+        SELECT
+          a.load_date, a.book_date, a.customer_code, a.customer_name,
+          a.account_name, a.account_code, a.currency_code, a.debit_amount,
+          a.description, a.book_number, a.department_code, a.department_name,
+          a.CO_A_GROUP_CODE AS co_a_group_code, a.CO_A_GROUP_NAME AS co_a_group_name,
+          a.RECIEVABLE_TYPE_CODE AS recievable_type_code,
+          a.RECIEVABLE_TYPE_NAME AS recievable_type_name,
+          (ifNull(t.gl_number, '') != '') AS has_payment_request,
+          (ifNull(v.bookNumber, '') != '') AS has_verification,
+          ifNull(v.verificationType, '') AS verification_type,
+          ifNull(v.contractTotalAmount, 0) AS contract_total_amount,
+          ifNull(v.status, '') AS verification_status,
+          ifNull(v.comment, '') AS comment,
+          if(ifNull(t.gl_number, '') = '', '', ifNull(bt.budget_type, '')) AS budget_type
+        FROM avlaga a
+        INNER JOIN qualifying q ON q.customer_code = a.customer_code
+        LEFT JOIN (
+          SELECT DISTINCT gl_number
+          FROM tulbur
+          WHERE gl_number IN (SELECT book_number FROM scoped_books)
+        ) t ON t.gl_number = a.book_number
+        LEFT JOIN (
+          SELECT
+            t2.gl_number AS book_number,
+            argMax(b.description, b.book_date) AS budget_type
+          FROM tulbur t2
+          INNER JOIN budget b ON b.related_book_number = t2.book_number
+          WHERE t2.gl_number IN (SELECT book_number FROM scoped_books)
+          GROUP BY t2.gl_number
+        ) bt ON bt.book_number = a.book_number
+        LEFT JOIN (
+          SELECT
+            bookNumber,
+            argMax(verificationType, updatedAt) AS verificationType,
+            argMax(contractTotalAmount, updatedAt) AS contractTotalAmount,
+            argMax(status, updatedAt) AS status,
+            argMax(comment, updatedAt) AS comment
+          FROM avlaga_verifications
+          GROUP BY bookNumber
+        ) v ON v.bookNumber = a.book_number
+        WHERE a.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+        ORDER BY a.debit_amount DESC
+        LIMIT ${MAX_EXPENSE_TX_ROWS + 1}
+        `,
+        params,
+      ),
+    ]);
 
-    if (qualifyingCustomers.length === 0) {
-      return { qualifyingCustomers: [], transactions: [] };
-    }
-
-    const customerCodes = qualifyingCustomers.map((c) => c.customer_code);
-
-    // [SEC] LEFT JOIN дэд query дотор DISTINCT gl_number ашиглана — үгүй бол
-    // нэг book_number-тэй харгалзах tulbur мөр олон байвал avlaga мөрүүд
-    // давхардаж (fan out) жагсаалт болон тоолол хоёуланг гажуудуулна.
-    const transactions = await this.clickhouse.query<ExpenseTxRow>(
-      `
-      SELECT
-        a.load_date, a.book_date, a.customer_code, a.customer_name,
-        a.account_name, a.account_code, a.currency_code, a.debit_amount,
-        a.description, a.book_number, a.department_code, a.department_name,
-        a.CO_A_GROUP_CODE AS co_a_group_code, a.CO_A_GROUP_NAME AS co_a_group_name,
-        a.RECIEVABLE_TYPE_CODE AS recievable_type_code,
-        a.RECIEVABLE_TYPE_NAME AS recievable_type_name,
-        (t.gl_number != '') AS has_payment_request,
-        (v.bookNumber != '') AS has_verification,
-        ifNull(v.verificationType, '') AS verification_type,
-        ifNull(v.contractTotalAmount, 0) AS contract_total_amount,
-        ifNull(v.status, '') AS verification_status,
-        ifNull(v.comment, '') AS comment
-      FROM avlaga a
-      LEFT JOIN (
-        SELECT DISTINCT gl_number FROM tulbur WHERE gl_number != ''
-      ) t ON t.gl_number = a.book_number
-      LEFT JOIN avlaga_verifications v FINAL ON v.bookNumber = a.book_number
-      WHERE a.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
-        AND a.customer_code IN {customerCodes:Array(String)}
-      ORDER BY a.debit_amount DESC
-      LIMIT ${MAX_EXPENSE_TX_ROWS + 1}
-      `,
-      { startDate: dto.startDate, endDate: dto.endDate, customerCodes },
+    const qualifyingCount = Number(statsRows[0]?.qualifyingCount ?? 0);
+    const qualifyingTotalDebit = Number(
+      statsRows[0]?.qualifyingTotalDebit ?? 0,
     );
+
+    if (qualifyingCount === 0) {
+      return { qualifyingCount: 0, qualifyingTotalDebit: 0, transactions: [] };
+    }
 
     const truncated = transactions.length > MAX_EXPENSE_TX_ROWS;
     if (truncated) transactions.length = MAX_EXPENSE_TX_ROWS;
 
-    // [CONFIRMED RULE] "Төсөвтэй" ("has budget") := "has payment request" —
-    // тодорхой асуугдаж давхар баталгаажсан бизнес дүрэм: төлбөрийн хүсэлттэй
-    // ч холбогдох budget мөр байхгүй авлага ч Төсөвтэй тоонд орно.
-    //
-    // "Төсвийн төрөл" barchart-ын ангилалд зориулж — төлбөрийн хүсэлттэй
-    // (book_number) бүрийн хамгийн сүүлийн (book_date-ээр) холбогдох budget
-    // мөрийн description-г нэг query-ээр татна ("budgets давхардаж байгаа тул
-    // сүүлийнхийг авна" — argMax).
-    const bookNumbersWithRequest = transactions
-      .filter((tx) => tx.has_payment_request)
-      .map((tx) => tx.book_number);
-
-    const budgetTypeByBookNumber = new Map<string, string>();
-    if (bookNumbersWithRequest.length > 0) {
-      const budgetTypes = await this.clickhouse.query<{
-        book_number: string;
-        budget_type: string;
-      }>(
-        `
-        SELECT
-          t.gl_number AS book_number,
-          argMax(b.description, b.book_date) AS budget_type
-        FROM tulbur t
-        INNER JOIN budget b ON b.related_book_number = t.book_number
-        WHERE t.gl_number IN {bookNumbers:Array(String)}
-        GROUP BY t.gl_number
-        `,
-        { bookNumbers: bookNumbersWithRequest },
-      );
-      for (const row of budgetTypes) {
-        budgetTypeByBookNumber.set(row.book_number, row.budget_type);
-      }
-    }
-    for (const tx of transactions) {
-      tx.budget_type = budgetTypeByBookNumber.get(tx.book_number) ?? "";
-    }
-
-    return { qualifyingCustomers, transactions, truncated };
+    return {
+      qualifyingCount,
+      qualifyingTotalDebit,
+      transactions,
+      truncated,
+    };
   }
 
   async findPaymentRequestsByCustomer(
@@ -593,7 +608,7 @@ export class MonitoringService {
     const rows = await this.clickhouse.query<ExpenseAttachmentRow>(
       `
       SELECT invoice_id, book_number, customer_code, customer_name,
-        content_id, file_name, file_extension, physical_path, full_url
+        content_id, file_name, file_extension, full_url
       FROM havsralt
       WHERE invoice_id = {invoiceId:String}
       ORDER BY file_name
@@ -687,7 +702,8 @@ export class MonitoringService {
     return this.clickhouse.query<ExpenseVerificationTypeRow>(
       `SELECT id, name, isActive FROM expense_verification_types FINAL
        ${activeOnly ? "WHERE isActive = 1" : ""}
-       ORDER BY name`,
+       ORDER BY name
+       LIMIT 500`,
     );
   }
 
@@ -697,6 +713,14 @@ export class MonitoringService {
     const name = dto.name.trim();
     if (!name) {
       throw new BadRequestException("Төрлийн нэр хоосон байж болохгүй");
+    }
+    const dup = await this.clickhouse.query<{ id: string }>(
+      `SELECT id FROM expense_verification_types FINAL
+       WHERE name = {name:String} LIMIT 1`,
+      { name },
+    );
+    if (dup[0]) {
+      throw new BadRequestException("Ийм нэртэй төрөл аль хэдийн байна");
     }
     const id = randomUUID();
     const now = nowCH();
@@ -738,6 +762,13 @@ export class MonitoringService {
   }
 
   async deleteVerificationType(id: string): Promise<{ success: true }> {
+    const existing = await this.clickhouse.query<{ id: string }>(
+      `SELECT id FROM expense_verification_types FINAL WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    if (!existing[0]) {
+      throw new NotFoundException("Төрөл олдсонгүй");
+    }
     await this.clickhouse.exec(
       `ALTER TABLE expense_verification_types DELETE WHERE id = {id:String}`,
       { id },

@@ -365,12 +365,14 @@ export class OracleSearchController {
       throw new HttpException("CIF дугаар буруу байна", HttpStatus.BAD_REQUEST);
 
     const dashboards = this.config.getEnabledDashboards();
+    const CIF_SEARCH_ROW_CAP = 1_000;
     const results: {
       dashboardId: number;
       dashboardName: string;
       table: string;
       matchCount: number;
       totalAmount: number;
+      truncated?: boolean;
       rows: Record<string, unknown>[];
     }[] = [];
 
@@ -388,9 +390,14 @@ export class OracleSearchController {
           sql += ` AND ${dash.dateColumn} <= TO_DATE(:dto, 'YYYY-MM-DD')`;
           params.push(dateTo.substring(0, 10));
         }
+        sql += ` AND ROWNUM <= ${CIF_SEARCH_ROW_CAP + 1}`;
 
-        const rows = await this.oracle.query(sql, params);
+        const rows = await this.oracle.query(sql, params, {
+          maxRows: CIF_SEARCH_ROW_CAP + 1,
+        });
         if (rows.length > 0) {
+          const truncated = rows.length > CIF_SEARCH_ROW_CAP;
+          if (truncated) rows.length = CIF_SEARCH_ROW_CAP;
           const totalAmount = dash.amountColumn
             ? rows.reduce(
                 (s, r) =>
@@ -406,6 +413,7 @@ export class OracleSearchController {
             table: dash.tableName,
             matchCount: rows.length,
             totalAmount,
+            truncated,
             rows: rows as Record<string, unknown>[],
           };
         }

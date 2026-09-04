@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getApiAuth } from "@/lib/api-auth";
 import { getServerBackendUrl } from "@/lib/server-backend-url";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,12 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await getApiAuth(req);
+  if (!auth) return new NextResponse(null, { status: 401 });
+
   const { id } = await params;
+  if (!/^[\w-]+$/.test(id)) return new NextResponse(null, { status: 400 });
+
   const backendUrl = getServerBackendUrl();
   if (!backendUrl) return new NextResponse(null, { status: 500 });
 

@@ -72,13 +72,16 @@ export function LoginSplitShell({ children }: { children: ReactNode }) {
           <div className="absolute inset-y-0 right-0 w-px bg-border" />
         </div>
 
-        {/* Баруун — форм (40%). Панел өндрөөс хэтрэхгүй. */}
-        <div className="relative w-full lg:w-2/5 min-h-0 flex items-center justify-center px-6 sm:px-8 py-6 bg-background overflow-hidden">
+        {/* Баруун — форм (40%). Нам өндөртэй дэлгэцэнд (жижиг notebook)
+            контент багтахгүй үед панел дотроо скроллддог. `items-center`-ийн
+            оронд child дээр `my-auto` — flex-центрлэсэн контент хэтрэхэд дээд
+            тал нь хэрчигддэг сонгодог асуудлаас сэргийлнэ. */}
+        <div className="relative w-full lg:w-2/5 min-h-0 flex justify-center px-6 sm:px-8 py-6 bg-background overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="relative z-10 w-full max-w-md max-h-full min-h-0"
+            className="relative z-10 w-full max-w-md my-auto"
           >
             <LoginBrandHeader />
             {children}
@@ -101,9 +104,10 @@ export function LoginCard({
       initial={{ opacity: 0, y: 24, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-      className={`login-card-border relative p-[1.5px] rounded-3xl shadow-premium-xl max-h-full min-h-0 ${className}`}
+      className={`login-card-border relative p-[1.5px] rounded-3xl shadow-premium-xl ${className}`}
     >
-      <div className="login-card-inner relative bg-card rounded-[22px] p-6 sm:p-8 overflow-hidden max-h-full">
+      {/* max-h хязгаар хассан — жижиг дэлгэцэнд карт ургаж, гадна панел скроллдоно */}
+      <div className="login-card-inner relative bg-card rounded-[22px] p-6 sm:p-8 overflow-hidden">
         {/* Дотор талын дээд ирмэгт нарийн highlight шугам — "шил" мэт мэдрэмж */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
         {children}

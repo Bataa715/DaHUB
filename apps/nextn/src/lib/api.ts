@@ -1164,12 +1164,6 @@ export const monitoringApi = {
 };
 
 // ── Monitoring Box: Expense monitoring (Зардлын хяналт) ────────────────────
-export interface ExpenseQualifyingCustomer {
-  customer_code: string;
-  customer_name: string;
-  total_debit: number;
-}
-
 export type ExpenseVerificationStatus = "normal" | "questionable" | "attention";
 
 export interface ExpenseTxRow {
@@ -1216,7 +1210,8 @@ export interface ExpenseVerificationTypeRow {
 }
 
 export interface ExpenseOverviewResult {
-  qualifyingCustomers: ExpenseQualifyingCustomer[];
+  qualifyingCount: number;
+  qualifyingTotalDebit: number;
   transactions: ExpenseTxRow[];
   truncated?: boolean;
 }
@@ -1292,7 +1287,6 @@ export interface ExpenseAttachmentRow {
   content_id: string;
   file_name: string;
   file_extension: string;
-  physical_path: string;
   full_url: string;
 }
 
@@ -1324,11 +1318,12 @@ function expenseBffOrigin(): string {
 export const expenseMonitoringApi = {
   getOverview: async (
     req: ExpenseOverviewRequest,
+    signal?: AbortSignal,
   ): Promise<ExpenseOverviewResult> => {
     const res = await api.post(
       `${expenseBffOrigin()}/monitoring-expense-overview`,
       req,
-      { timeout: TIMEOUT_LONG },
+      { timeout: TIMEOUT_LONG, signal },
     );
     return res.data;
   },

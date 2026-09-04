@@ -1227,6 +1227,7 @@ export const translations = {
     monExpTotalDebit: "Нийт дүн",
     monExpTruncatedWarning:
       "Үр дүн тайрагдсан — хугацааны хүрээгээ багасгана уу",
+    monExpShowMore: "Цааш үзэх",
     monExpChartTitle: "Төсвийн төрөл",
     monExpChartNoBudget: "Төсөвгүй",
     monExpChartUnspecified: "Тодорхойгүй",
@@ -2929,6 +2930,7 @@ export const translations = {
     monExpTotalDebit: "Total amount",
     monExpTruncatedWarning:
       "Results were truncated — narrow the date range",
+    monExpShowMore: "Show more",
     monExpChartTitle: "Budget type",
     monExpChartNoBudget: "No budget",
     monExpChartUnspecified: "Unspecified",
