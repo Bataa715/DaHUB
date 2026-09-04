@@ -238,6 +238,16 @@ const MAX_EXPENSE_DRILLDOWN_ROWS = 5_000;
 const MAX_EXPENSE_SIDE_ROWS = 1_000;
 const DEFAULT_MIN_AMOUNT = 50_000_000;
 
+/** ClickHouse JSON often serializes UInt64/Float64 as strings — coerce for charts. */
+function toBreakdown(rows: ExpenseGroupBreakdown[]): ExpenseGroupBreakdown[] {
+  return rows.map((r) => ({
+    code: r.code == null ? "" : String(r.code),
+    name: r.name == null ? "" : String(r.name),
+    count: Number(r.count) || 0,
+    total: Number(r.total) || 0,
+  }));
+}
+
 // ─── Monitoring Box: "Харилцсан гүйлгээ" (related-party transactions) ─────────
 // Given a set of CIF/FORACID identifiers, finds direct internal transactions
 // between any two of them within a date range — flags potential related-party
@@ -510,9 +520,9 @@ export class MonitoringService {
           a.load_date, a.book_date, a.customer_code, a.customer_name,
           a.account_name, a.account_code, a.currency_code, a.debit_amount,
           a.description, a.book_number, a.department_code, a.department_name,
-          a.CO_A_GROUP_CODE AS co_a_group_code, a.CO_A_GROUP_NAME AS co_a_group_name,
-          a.RECIEVABLE_TYPE_CODE AS recievable_type_code,
-          a.RECIEVABLE_TYPE_NAME AS recievable_type_name,
+          a.co_a_group_code, a.co_a_group_name,
+          a.receivable_type_code AS recievable_type_code,
+          a.receivable_type_name AS recievable_type_name,
           (ifNull(t.gl_number, '') != '') AS has_payment_request,
           (ifNull(v.bookNumber, '') != '') AS has_verification,
           ifNull(v.verificationType, '') AS verification_type,
@@ -523,18 +533,19 @@ export class MonitoringService {
         FROM avlaga a
         INNER JOIN qualifying q ON q.customer_code = a.customer_code
         LEFT JOIN (
-          SELECT DISTINCT gl_number
+          SELECT DISTINCT ifNull(gl_number, '') AS gl_number
           FROM tulbur
-          WHERE gl_number IN (SELECT book_number FROM scoped_books)
+          WHERE ifNull(gl_number, '') IN (SELECT book_number FROM scoped_books)
         ) t ON t.gl_number = a.book_number
         LEFT JOIN (
           SELECT
-            t2.gl_number AS book_number,
-            argMax(b.description, b.book_date) AS budget_type
+            ifNull(t2.gl_number, '') AS book_number,
+            argMax(ifNull(b.description, ''), b.book_date) AS budget_type
           FROM tulbur t2
-          INNER JOIN budget b ON b.related_book_number = t2.book_number
-          WHERE t2.gl_number IN (SELECT book_number FROM scoped_books)
-          GROUP BY t2.gl_number
+          INNER JOIN budget b
+            ON ifNull(b.related_book_number, '') = t2.book_number
+          WHERE ifNull(t2.gl_number, '') IN (SELECT book_number FROM scoped_books)
+          GROUP BY ifNull(t2.gl_number, '')
         ) bt ON bt.book_number = a.book_number
         LEFT JOIN (
           SELECT
@@ -581,12 +592,28 @@ export class MonitoringService {
     const rows = await this.clickhouse.query<ExpensePaymentRequestRow>(
       `
       SELECT
-        load_date, invoice_id, description, request_date, employee_name,
-        sol_id, employee_code, department_name, book_number, request_amount,
-        book_date, account_number, bank_name, customer_code, customer_name,
-        currency_code, gl_number, tender_method_name, info_name, purpose
+        toString(load_date) AS load_date,
+        toString(toInt64(invoice_id)) AS invoice_id,
+        ifNull(description, '') AS description,
+        ifNull(toString(request_date), '') AS request_date,
+        ifNull(employee_name, '') AS employee_name,
+        ifNull(sol_id, '') AS sol_id,
+        ifNull(employee_code, '') AS employee_code,
+        ifNull(department_name, '') AS department_name,
+        book_number,
+        ifNull(request_amount, 0) AS request_amount,
+        toString(book_date) AS book_date,
+        ifNull(account_number, '') AS account_number,
+        ifNull(bank_name, '') AS bank_name,
+        ifNull(customer_code, '') AS customer_code,
+        ifNull(customer_name, '') AS customer_name,
+        ifNull(currency_code, '') AS currency_code,
+        ifNull(gl_number, '') AS gl_number,
+        ifNull(tender_method_name, '') AS tender_method_name,
+        ifNull(info_name, '') AS info_name,
+        ifNull(purpose, '') AS purpose
       FROM tulbur
-      WHERE customer_code = {customerCode:String}
+      WHERE ifNull(customer_code, '') = {customerCode:String}
         AND book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
       ORDER BY book_date DESC, request_amount DESC
       LIMIT ${MAX_EXPENSE_DRILLDOWN_ROWS + 1}
@@ -607,10 +634,17 @@ export class MonitoringService {
   ): Promise<{ rows: ExpenseAttachmentRow[] }> {
     const rows = await this.clickhouse.query<ExpenseAttachmentRow>(
       `
-      SELECT invoice_id, book_number, customer_code, customer_name,
-        content_id, file_name, file_extension, full_url
+      SELECT
+        toString(toInt64(invoice_id)) AS invoice_id,
+        ifNull(book_number, '') AS book_number,
+        ifNull(customer_code, '') AS customer_code,
+        ifNull(customer_name, '') AS customer_name,
+        if(isNull(content_id), '', toString(toInt64(content_id))) AS content_id,
+        ifNull(file_name, '') AS file_name,
+        ifNull(file_extension, '') AS file_extension,
+        ifNull(full_url, '') AS full_url
       FROM havsralt
-      WHERE invoice_id = {invoiceId:String}
+      WHERE toInt64(invoice_id) = toInt64OrZero({invoiceId:String})
       ORDER BY file_name
       LIMIT ${MAX_EXPENSE_SIDE_ROWS}
       `,
@@ -624,13 +658,27 @@ export class MonitoringService {
   ): Promise<{ rows: ExpenseBudgetChangeRow[] }> {
     const rows = await this.clickhouse.query<ExpenseBudgetChangeRow>(
       `
-      SELECT load_date, book_date, book_number, employee_name, sol_id,
-        employee_code, department_name, request_amount, description,
-        total_amount, to_activity_name, from_activity_name,
-        from_activity_dtl_name, to_activity_dtl_name, amount,
-        related_book_number, from_employee_name, purpose
+      SELECT
+        toString(load_date) AS load_date,
+        toString(book_date) AS book_date,
+        book_number,
+        ifNull(employee_name, '') AS employee_name,
+        ifNull(sol_id, '') AS sol_id,
+        ifNull(employee_code, '') AS employee_code,
+        ifNull(department_name, '') AS department_name,
+        ifNull(request_amount, 0) AS request_amount,
+        ifNull(description, '') AS description,
+        ifNull(total_amount, 0) AS total_amount,
+        ifNull(to_activity_name, '') AS to_activity_name,
+        ifNull(from_activity_name, '') AS from_activity_name,
+        ifNull(from_activity_dtl_name, '') AS from_activity_dtl_name,
+        ifNull(to_activity_dtl_name, '') AS to_activity_dtl_name,
+        ifNull(amount, 0) AS amount,
+        ifNull(related_book_number, '') AS related_book_number,
+        ifNull(from_employee_name, '') AS from_employee_name,
+        ifNull(purpose, '') AS purpose
       FROM budget
-      WHERE related_book_number = {bookNumber:String}
+      WHERE ifNull(related_book_number, '') = {bookNumber:String}
       ORDER BY book_date DESC
       LIMIT ${MAX_EXPENSE_SIDE_ROWS}
       `,
@@ -640,7 +688,7 @@ export class MonitoringService {
   }
 
   /** "Нийт зардал" — харилцагч/босго-гүй, зөвхөн сонгосон хугацааны бүх avlaga
-   *  мөр. Ерөнхий дэвтэр (CO_A_GROUP) болон авлагын төрлөөр (RECIEVABLE_TYPE)
+   *  мөр. Ерөнхий дэвтэр (co_a_group) болон авлагын төрлөөр (receivable_type)
    *  задаргааг тусдаа SQL GROUP BY-аар тооцоолно (жагсаалтын LIMIT-ээс үл
    *  хамааран нийт өгөгдөл дээр үнэн зөв байх учиртай). */
   async getExpenseTotal(dto: ExpenseTotalDto): Promise<ExpenseTotalResult> {
@@ -653,9 +701,9 @@ export class MonitoringService {
         SELECT load_date, book_date, customer_code, customer_name,
           account_name, account_code, currency_code, debit_amount,
           description, book_number, department_code, department_name,
-          CO_A_GROUP_CODE AS co_a_group_code, CO_A_GROUP_NAME AS co_a_group_name,
-          RECIEVABLE_TYPE_CODE AS recievable_type_code,
-          RECIEVABLE_TYPE_NAME AS recievable_type_name
+          co_a_group_code, co_a_group_name,
+          receivable_type_code AS recievable_type_code,
+          receivable_type_name AS recievable_type_name
         FROM avlaga
         WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
         ORDER BY debit_amount DESC
@@ -665,22 +713,28 @@ export class MonitoringService {
       ),
       this.clickhouse.query<ExpenseGroupBreakdown>(
         `
-        SELECT CO_A_GROUP_CODE AS code, any(CO_A_GROUP_NAME) AS name,
-          count() AS count, sum(debit_amount) AS total
+        SELECT
+          co_a_group_code AS code,
+          co_a_group_name AS name,
+          toUInt64(count()) AS count,
+          sum(debit_amount) AS total
         FROM avlaga
         WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
-        GROUP BY CO_A_GROUP_CODE
+        GROUP BY co_a_group_code, co_a_group_name
         ORDER BY total DESC
         `,
         params,
       ),
       this.clickhouse.query<ExpenseGroupBreakdown>(
         `
-        SELECT RECIEVABLE_TYPE_CODE AS code, any(RECIEVABLE_TYPE_NAME) AS name,
-          count() AS count, sum(debit_amount) AS total
+        SELECT
+          receivable_type_code AS code,
+          receivable_type_name AS name,
+          toUInt64(count()) AS count,
+          sum(debit_amount) AS total
         FROM avlaga
         WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
-        GROUP BY RECIEVABLE_TYPE_CODE
+        GROUP BY receivable_type_code, receivable_type_name
         ORDER BY total DESC
         `,
         params,
@@ -690,9 +744,17 @@ export class MonitoringService {
     const truncated = transactions.length > MAX_EXPENSE_TOTAL_ROWS;
     if (truncated) transactions.length = MAX_EXPENSE_TOTAL_ROWS;
 
-    const totalAmount = byGlGroup.reduce((sum, g) => sum + g.total, 0);
+    const glGroups = toBreakdown(byGlGroup);
+    const recTypes = toBreakdown(byReceivableType);
+    const totalAmount = glGroups.reduce((sum, g) => sum + g.total, 0);
 
-    return { transactions, byGlGroup, byReceivableType, totalAmount, truncated };
+    return {
+      transactions,
+      byGlGroup: glGroups,
+      byReceivableType: recTypes,
+      totalAmount,
+      truncated,
+    };
   }
 
   // ── Verification types (admin-managed) ──────────────────────────────────

@@ -637,7 +637,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // IF NOT EXISTS юу ч өөрчлөхгүй.
       await this.exec(`
         CREATE TABLE IF NOT EXISTS avlaga (
-          load_date DateTime DEFAULT now(),
+          load_date Date,
           book_date Date,
           customer_code String,
           customer_name String DEFAULT '',
@@ -649,77 +649,82 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           book_number String DEFAULT '',
           department_code String DEFAULT '',
           department_name String DEFAULT '',
-          CO_A_GROUP_CODE String DEFAULT '',
-          CO_A_GROUP_NAME String DEFAULT '',
-          RECIEVABLE_TYPE_CODE String DEFAULT '',
-          RECIEVABLE_TYPE_NAME String DEFAULT ''
+          inserted_at DateTime DEFAULT now(),
+          co_a_group_code String DEFAULT '',
+          co_a_group_name String DEFAULT '',
+          receivable_type_code String DEFAULT '',
+          receivable_type_name String DEFAULT ''
         ) ENGINE = MergeTree()
         ORDER BY (book_date, customer_code, book_number)
       `);
 
       await this.exec(`
         CREATE TABLE IF NOT EXISTS tulbur (
-          load_date DateTime DEFAULT now(),
-          invoice_id String,
-          description String DEFAULT '',
-          request_date Date DEFAULT toDate(0),
-          employee_name String DEFAULT '',
-          sol_id String DEFAULT '',
-          employee_code String DEFAULT '',
-          department_name String DEFAULT '',
-          book_number String DEFAULT '',
-          request_amount Float64 DEFAULT 0,
+          load_date Date,
+          invoice_id Float64,
+          description Nullable(String),
+          request_date Nullable(Date),
+          employee_name Nullable(String),
+          sol_id Nullable(String),
+          employee_code Nullable(String),
+          department_name Nullable(String),
+          book_number String,
+          request_amount Nullable(Float64),
           book_date Date,
-          account_number String DEFAULT '',
-          bank_name String DEFAULT '',
-          customer_code String DEFAULT '',
-          customer_name String DEFAULT '',
-          currency_code String DEFAULT '',
-          gl_number String DEFAULT '',
-          tender_method_name String DEFAULT '',
-          info_name String DEFAULT '',
-          purpose String DEFAULT ''
+          account_number Nullable(String),
+          bank_name Nullable(String),
+          customer_code Nullable(String),
+          customer_name Nullable(String),
+          currency_code Nullable(String),
+          gl_number Nullable(String),
+          tender_method_name Nullable(String),
+          info_name Nullable(String),
+          purpose Nullable(String),
+          inserted_at DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (book_date, customer_code, invoice_id)
+        ORDER BY (book_date, invoice_id)
       `);
 
       await this.exec(`
         CREATE TABLE IF NOT EXISTS budget (
-          load_date DateTime DEFAULT now(),
+          load_date Date,
           book_date Date,
-          book_number String DEFAULT '',
-          employee_name String DEFAULT '',
-          sol_id String DEFAULT '',
-          employee_code String DEFAULT '',
-          department_name String DEFAULT '',
-          request_amount Float64 DEFAULT 0,
-          description String DEFAULT '',
-          total_amount Float64 DEFAULT 0,
-          to_activity_name String DEFAULT '',
-          from_activity_name String DEFAULT '',
-          from_activity_dtl_name String DEFAULT '',
-          to_activity_dtl_name String DEFAULT '',
-          amount Float64 DEFAULT 0,
-          related_book_number String,
-          from_employee_name String DEFAULT '',
-          purpose String DEFAULT ''
+          book_number String,
+          employee_name Nullable(String),
+          sol_id Nullable(String),
+          employee_code Nullable(String),
+          department_name Nullable(String),
+          request_amount Nullable(Float64),
+          description Nullable(String),
+          total_amount Nullable(Float64),
+          to_activity_name Nullable(String),
+          to_activity_dtl_name Nullable(String),
+          from_activity_name Nullable(String),
+          from_activity_dtl_name Nullable(String),
+          amount Nullable(Float64),
+          related_book_number Nullable(String),
+          from_employee_name Nullable(String),
+          purpose Nullable(String),
+          inserted_at DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (related_book_number, book_date)
+        ORDER BY (book_date, book_number)
       `);
 
       await this.exec(`
         CREATE TABLE IF NOT EXISTS havsralt (
-          invoice_id String,
-          book_number String DEFAULT '',
-          customer_code String DEFAULT '',
-          customer_name String DEFAULT '',
-          content_id String DEFAULT '',
-          file_name String DEFAULT '',
-          file_extension String DEFAULT '',
-          physical_path String DEFAULT '',
-          full_url String DEFAULT ''
+          load_date Date,
+          invoice_id Float64,
+          book_number Nullable(String),
+          customer_code Nullable(String),
+          customer_name Nullable(String),
+          content_id Nullable(Float64),
+          file_name Nullable(String),
+          file_extension Nullable(String),
+          physical_path Nullable(String),
+          full_url Nullable(String),
+          inserted_at DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (invoice_id, file_name)
+        ORDER BY invoice_id
       `);
 
       // Create expense_verification_types table — Зардлын хяналтын

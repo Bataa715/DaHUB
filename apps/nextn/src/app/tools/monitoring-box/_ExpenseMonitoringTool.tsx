@@ -2,16 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 import {
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
   Wallet,
   Search,
   Loader2,
@@ -517,7 +507,7 @@ export function ExpenseMonitoringTool() {
         title={t("monBoxExpenseTitle")}
       />
 
-      <div className="w-full px-4 md:px-6 py-5 space-y-5 max-w-6xl">
+      <div className="w-full px-4 md:px-6 py-5 space-y-5">
         {/* Filters */}
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex flex-wrap items-end gap-3">
@@ -640,51 +630,18 @@ export function ExpenseMonitoringTool() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4">
-                {/* Left: budget-type chart */}
+              <div className="space-y-4">
                 <div className="rounded-xl border border-border bg-card p-4">
                   <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                     {t("monExpChartTitle")}
                   </div>
-                  <div style={{ height: Math.max(200, chartData.length * 44) }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={chartData}
-                        layout="vertical"
-                        margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
-                      >
-                        <CartesianGrid
-                          horizontal={false}
-                          stroke="currentColor"
-                          className="text-border"
-                        />
-                        <XAxis type="number" hide allowDecimals={false} />
-                        <YAxis
-                          type="category"
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          width={130}
-                          tick={{ fontSize: 11, fill: "currentColor" }}
-                          className="text-muted-foreground"
-                        />
-                        <Tooltip
-                          cursor={{ fill: "currentColor", opacity: 0.05 }}
-                        />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={28}>
-                          {chartData.map((d) => (
-                            <Cell key={d.name} fill={d.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <BudgetTypeTable data={chartData} />
                 </div>
 
-                {/* Right: transaction list */}
+                {/* Transaction list — full width, cells wrap so values stay visible */}
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
-                  <TableScroll maxHeight="560px">
-                    <table className="w-full text-xs">
+                  <TableScroll maxHeight="70vh">
+                    <table className="text-xs border-collapse min-w-max w-full">
                       <thead>
                         <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
                           <Th>{t("tailan_dateLabel")}</Th>
@@ -716,31 +673,35 @@ export function ExpenseMonitoringTool() {
                                 tx.has_verification && "bg-emerald-500/5",
                               )}
                             >
-                              <Td>{tx.book_date}</Td>
-                              <Td>
+                              <Td nowrap>{tx.book_date}</Td>
+                              <Td className="min-w-[180px] max-w-[280px]">
                                 <div className="font-mono">{tx.customer_code}</div>
                                 <div className="text-muted-foreground">
                                   {tx.customer_name}
                                 </div>
                               </Td>
-                              <Td>
+                              <Td className="min-w-[140px] max-w-[220px]">
                                 <div className="font-mono">{tx.account_code}</div>
                                 <div className="text-muted-foreground">
                                   {tx.account_name}
                                 </div>
                               </Td>
-                              <Td className="text-right font-semibold tabular-nums whitespace-nowrap">
+                              <Td className="text-right font-semibold tabular-nums" nowrap>
                                 {fmtAmount(tx.debit_amount)} {tx.currency_code}
                               </Td>
-                              <Td>{tx.description}</Td>
-                              <Td>{tx.department_name}</Td>
-                              <Td>
+                              <Td className="min-w-[220px] max-w-[360px]">
+                                {tx.description}
+                              </Td>
+                              <Td className="min-w-[140px] max-w-[220px]">
+                                {tx.department_name}
+                              </Td>
+                              <Td className="min-w-[160px] max-w-[260px]">
                                 <div className="font-mono">{tx.co_a_group_code}</div>
                                 <div className="text-muted-foreground">
                                   {tx.co_a_group_name}
                                 </div>
                               </Td>
-                              <Td>
+                              <Td className="min-w-[180px] max-w-[280px]">
                                 <div className="font-mono">
                                   {tx.recievable_type_code}
                                 </div>
@@ -748,7 +709,7 @@ export function ExpenseMonitoringTool() {
                                   {tx.recievable_type_name}
                                 </div>
                               </Td>
-                              <Td>
+                              <Td nowrap>
                                 <button
                                   type="button"
                                   onClick={() => openDrilldown(tx)}
@@ -757,8 +718,8 @@ export function ExpenseMonitoringTool() {
                                   {tx.book_number}
                                 </button>
                               </Td>
-                              <Td>{tx.verification_type || "—"}</Td>
-                              <Td className="text-right tabular-nums whitespace-nowrap">
+                              <Td className="min-w-[120px]">{tx.verification_type || "—"}</Td>
+                              <Td className="text-right tabular-nums" nowrap>
                                 {tx.contract_total_amount
                                   ? `₮${fmtAmount(tx.contract_total_amount)}`
                                   : "—"}
@@ -829,7 +790,7 @@ export function ExpenseMonitoringTool() {
           if (!open) closeDrilldown();
         }}
       >
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[min(960px,96vw)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("monExpDialogTitle")}</DialogTitle>
           </DialogHeader>
@@ -881,8 +842,8 @@ export function ExpenseMonitoringTool() {
             <div className="space-y-3">
               {drillRows.map((row, i) => {
                 const matched = row.gl_number === selectedTx?.book_number;
-                const attachKey = row.invoice_id;
-                const budgetKey = row.book_number;
+                const attachKey = String(row.invoice_id ?? "");
+                const budgetKey = String(row.book_number ?? "");
                 const attachState = attachSections[attachKey];
                 const budgetState = budgetSections[budgetKey];
                 return (
@@ -1270,7 +1231,7 @@ export function ExpenseMonitoringTool() {
 
       {/* "Нийт зардал" — no customer/threshold filter */}
       <Dialog open={totalOpen} onOpenChange={setTotalOpen}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[min(1440px,96vw)] max-h-[90vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>{t("monExpTotalDialogTitle")}</DialogTitle>
           </DialogHeader>
@@ -1305,20 +1266,20 @@ export function ExpenseMonitoringTool() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <GroupBreakdownChart
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <BreakdownTable
                   title={t("monExpByGlGroupTitle")}
                   data={totalResult.byGlGroup}
                 />
-                <GroupBreakdownChart
+                <BreakdownTable
                   title={t("monExpByReceivableTypeTitle")}
                   data={totalResult.byReceivableType}
                 />
               </div>
 
               <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <TableScroll maxHeight="420px">
-                  <table className="w-full text-xs">
+                <TableScroll maxHeight="50vh">
+                  <table className="text-xs border-collapse min-w-max w-full">
                     <thead>
                       <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
                         <Th>{t("tailan_dateLabel")}</Th>
@@ -1339,31 +1300,35 @@ export function ExpenseMonitoringTool() {
                           key={`${tx.book_number}-${tx.customer_code}-${i}`}
                           className="border-b border-border/30 hover:bg-muted/30 align-top"
                         >
-                          <Td>{tx.book_date}</Td>
-                          <Td>
+                          <Td nowrap>{tx.book_date}</Td>
+                          <Td className="min-w-[180px] max-w-[280px]">
                             <div className="font-mono">{tx.customer_code}</div>
                             <div className="text-muted-foreground">
                               {tx.customer_name}
                             </div>
                           </Td>
-                          <Td>
+                          <Td className="min-w-[140px] max-w-[220px]">
                             <div className="font-mono">{tx.account_code}</div>
                             <div className="text-muted-foreground">
                               {tx.account_name}
                             </div>
                           </Td>
-                          <Td className="text-right font-semibold tabular-nums whitespace-nowrap">
+                          <Td className="text-right font-semibold tabular-nums" nowrap>
                             {fmtAmount(tx.debit_amount)} {tx.currency_code}
                           </Td>
-                          <Td>{tx.description}</Td>
-                          <Td>{tx.department_name}</Td>
-                          <Td>
+                          <Td className="min-w-[220px] max-w-[360px]">
+                            {tx.description}
+                          </Td>
+                          <Td className="min-w-[140px] max-w-[220px]">
+                            {tx.department_name}
+                          </Td>
+                          <Td className="min-w-[160px] max-w-[260px]">
                             <div className="font-mono">{tx.co_a_group_code}</div>
                             <div className="text-muted-foreground">
                               {tx.co_a_group_name}
                             </div>
                           </Td>
-                          <Td>
+                          <Td className="min-w-[180px] max-w-[280px]">
                             <div className="font-mono">
                               {tx.recievable_type_code}
                             </div>
@@ -1405,54 +1370,124 @@ export function ExpenseMonitoringTool() {
   );
 }
 
-function GroupBreakdownChart({
+function BudgetTypeTable({
+  data,
+}: {
+  data: { name: string; value: number; fill: string }[];
+}) {
+  const { t } = useLanguage();
+  const max = Math.max(...data.map((d) => Number(d.value) || 0), 1);
+  if (data.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4">
+        {t("monExpBreakdownEmpty")}
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs min-w-[420px]">
+        <thead>
+          <tr className="text-left text-muted-foreground border-b border-border">
+            <Th>{t("monExpChartTitle")}</Th>
+            <Th className="text-right">{t("monExpColCount")}</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => {
+            const value = Number(d.value) || 0;
+            return (
+              <tr key={d.name} className="border-b border-border/40 align-top">
+                <Td className="min-w-[200px]">
+                  <div>{d.name || "—"}</div>
+                  <div className="h-1.5 rounded-full bg-muted mt-1.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.max(2, (value / max) * 100)}%`,
+                        background: d.fill,
+                      }}
+                    />
+                  </div>
+                </Td>
+                <Td className="text-right tabular-nums font-semibold" nowrap>
+                  {fmtAmount(value)}
+                </Td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BreakdownTable({
   title,
   data,
 }: {
   title: string;
   data: { code: string; name: string; count: number; total: number }[];
 }) {
-  const chartData = data.map((d, i) => ({
-    name: d.name || d.code || "—",
-    value: d.total,
-    fill: CHART_COLORS[i % CHART_COLORS.length],
+  const { t } = useLanguage();
+  const rows = data.map((d) => ({
+    code: d.code?.trim() || "—",
+    name: d.name?.trim() || "—",
+    count: Number(d.count) || 0,
+    total: Number(d.total) || 0,
   }));
+  const max = Math.max(...rows.map((r) => r.total), 1);
+
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
         {title}
       </div>
-      <div style={{ height: Math.max(180, chartData.length * 40) }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            layout="vertical"
-            margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
-          >
-            <CartesianGrid
-              horizontal={false}
-              stroke="currentColor"
-              className="text-border"
-            />
-            <XAxis type="number" hide />
-            <YAxis
-              type="category"
-              dataKey="name"
-              axisLine={false}
-              tickLine={false}
-              width={120}
-              tick={{ fontSize: 11, fill: "currentColor" }}
-              className="text-muted-foreground"
-            />
-            <Tooltip cursor={{ fill: "currentColor", opacity: 0.05 }} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
-              {chartData.map((d) => (
-                <Cell key={d.name} fill={d.fill} />
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4">
+          {t("monExpBreakdownEmpty")}
+        </p>
+      ) : (
+        <div className="overflow-x-auto max-h-[360px]">
+          <table className="w-full text-xs min-w-[480px]">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
+                <Th>{t("monExpColCode")}</Th>
+                <Th>{t("monExpColName")}</Th>
+                <Th className="text-right">{t("monExpColCount")}</Th>
+                <Th className="text-right">{t("monExpColAmount")}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr
+                  key={`${r.code}-${r.name}-${i}`}
+                  className="border-b border-border/40 align-top"
+                >
+                  <Td className="font-mono min-w-[72px]">{r.code}</Td>
+                  <Td className="min-w-[180px] max-w-[320px]">{r.name}</Td>
+                  <Td className="text-right tabular-nums" nowrap>
+                    {fmtAmount(r.count)}
+                  </Td>
+                  <Td className="min-w-[140px]">
+                    <div className="text-right font-semibold tabular-nums">
+                      ₮{fmtAmount(r.total)}
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted mt-1 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-sky-500"
+                        style={{
+                          width: `${Math.max(2, (r.total / max) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </Td>
+                </tr>
               ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -1461,7 +1496,9 @@ function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       {label && <div className="text-muted-foreground">{label}</div>}
-      <div className="text-foreground truncate">{value || "—"}</div>
+      <div className="text-foreground whitespace-pre-wrap break-words">
+        {value || "—"}
+      </div>
     </div>
   );
 }
@@ -1488,10 +1525,10 @@ function StatCard({
         <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0">
-        <div className="text-lg font-semibold tabular-nums leading-none mb-1 truncate">
+        <div className="text-lg font-semibold tabular-nums leading-none mb-1 break-words">
           {value}
         </div>
-        <div className="text-xs text-muted-foreground truncate">{label}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
       </div>
     </div>
   );
@@ -1505,7 +1542,10 @@ function TableScroll({
   maxHeight?: string;
 }) {
   return (
-    <div className="overflow-auto" style={{ maxHeight: maxHeight ?? "320px" }}>
+    <div
+      className="overflow-auto"
+      style={{ maxHeight: maxHeight ?? "320px" }}
+    >
       {children}
     </div>
   );
@@ -1530,9 +1570,21 @@ function Th({
 function Td({
   children,
   className = "",
+  nowrap = false,
 }: {
   children: React.ReactNode;
   className?: string;
+  nowrap?: boolean;
 }) {
-  return <td className={`px-3 py-2 ${className}`}>{children}</td>;
+  return (
+    <td
+      className={cn(
+        "px-3 py-2 align-top",
+        nowrap ? "whitespace-nowrap" : "whitespace-normal break-words",
+        className,
+      )}
+    >
+      {children}
+    </td>
+  );
 }
