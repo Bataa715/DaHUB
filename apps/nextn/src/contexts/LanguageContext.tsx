@@ -1243,7 +1243,7 @@ export const translations = {
     monExpColBookNumber: "Төлбөрийн хүсэлт",
     monExpPayMatch: "Төлбөрийн хүсэлттэй",
     monExpPayGuess: "Таамаг (харилцагчаар)",
-    monExpPayNone: "Хүсэлт олдсонгүй",
+    monExpPayNone: "Төлбөрийн хүсэлтгүй",
     monExpColDepartment: "Хэлтэс",
     monExpColGlGroup: "Ерөнхий дэвтэр",
     monExpColReceivableType: "Авлагын төрөл",

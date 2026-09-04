@@ -109,6 +109,7 @@ function rowSearchHaystack(tx: {
   recievable_type_code?: string;
   recievable_type_name?: string;
   book_number?: string;
+  has_payment_request?: 0 | 1;
   verification_type?: string;
   verification_status?: string;
   contract_total_amount?: number;
@@ -129,6 +130,9 @@ function rowSearchHaystack(tx: {
     tx.recievable_type_code,
     tx.recievable_type_name,
     tx.book_number,
+    Number(tx.has_payment_request)
+      ? "төлбөрийн хүсэлттэй has payment request"
+      : "төлбөрийн хүсэлтгүй no payment request",
     tx.verification_type,
     tx.verification_status,
     tx.contract_total_amount,
@@ -1416,51 +1420,6 @@ type ExpColDef = {
   align: "left" | "right";
   defaultWidth: number;
   minWidth: number;
-  bg: string;
-  line: string;
-};
-
-const COL_TONE: Record<ExpColKey, { bg: string; line: string }> = {
-  date: {
-    bg: "bg-sky-500/[0.08]",
-    line: "border-r-2 border-sky-500/40",
-  },
-  customer: {
-    bg: "bg-violet-500/[0.08]",
-    line: "border-r-2 border-violet-500/40",
-  },
-  account: {
-    bg: "bg-cyan-500/[0.08]",
-    line: "border-r-2 border-cyan-500/40",
-  },
-  amount: {
-    bg: "bg-emerald-500/[0.08]",
-    line: "border-r-2 border-emerald-500/40",
-  },
-  description: {
-    bg: "bg-amber-500/[0.08]",
-    line: "border-r-2 border-amber-500/40",
-  },
-  department: {
-    bg: "bg-orange-500/[0.08]",
-    line: "border-r-2 border-orange-500/40",
-  },
-  gl: {
-    bg: "bg-indigo-500/[0.08]",
-    line: "border-r-2 border-indigo-500/40",
-  },
-  receivable: {
-    bg: "bg-fuchsia-500/[0.08]",
-    line: "border-r-2 border-fuchsia-500/40",
-  },
-  book: {
-    bg: "bg-lime-500/[0.08]",
-    line: "border-r-2 border-lime-500/40",
-  },
-  verification: {
-    bg: "bg-rose-500/[0.08]",
-    line: "border-r-2 border-rose-500/40",
-  },
 };
 
 function colSortValue(
@@ -1478,6 +1437,7 @@ function colSortValue(
     recievable_type_code?: string;
     recievable_type_name?: string;
     book_number?: string;
+    has_payment_request?: 0 | 1;
     verification_type?: string;
     verification_status?: string;
     contract_total_amount?: number;
@@ -1506,7 +1466,7 @@ function colSortValue(
         ""
       ).toLowerCase();
     case "book":
-      return tx.book_number || "";
+      return Number(tx.has_payment_request) || 0;
     case "verification":
       return (tx.verification_type || tx.verification_status || "").toLowerCase();
   }
@@ -1524,17 +1484,11 @@ function readExpStoredWidths(): Partial<Record<ExpColKey, number>> {
   }
 }
 
-function payRequestClass(tx: {
-  has_payment_request?: 0 | 1;
-  has_customer_payment_request?: 0 | 1;
-}): string {
+function payRequestClass(tx: { has_payment_request?: 0 | 1 }): string {
   if (Number(tx.has_payment_request)) {
     return "text-emerald-600 dark:text-emerald-400 font-semibold";
   }
-  if (Number(tx.has_customer_payment_request)) {
-    return "text-foreground";
-  }
-  return "text-amber-600 dark:text-amber-400";
+  return "text-foreground";
 }
 
 function ExpenseTxTable({
@@ -1590,7 +1544,6 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 96,
         minWidth: 72,
-        ...COL_TONE.date,
       },
       {
         key: "customer",
@@ -1598,7 +1551,6 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 160,
         minWidth: 100,
-        ...COL_TONE.customer,
       },
       {
         key: "account",
@@ -1606,7 +1558,6 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 140,
         minWidth: 90,
-        ...COL_TONE.account,
       },
       {
         key: "amount",
@@ -1614,7 +1565,6 @@ function ExpenseTxTable({
         align: "right",
         defaultWidth: 120,
         minWidth: 88,
-        ...COL_TONE.amount,
       },
       {
         key: "description",
@@ -1622,7 +1572,6 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 200,
         minWidth: 110,
-        ...COL_TONE.description,
       },
       {
         key: "department",
@@ -1630,7 +1579,6 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 140,
         minWidth: 90,
-        ...COL_TONE.department,
       },
       {
         key: "gl",
@@ -1638,7 +1586,6 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 150,
         minWidth: 90,
-        ...COL_TONE.gl,
       },
       {
         key: "receivable",
@@ -1646,15 +1593,13 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 150,
         minWidth: 90,
-        ...COL_TONE.receivable,
       },
       {
         key: "book",
         label: t("monExpColBookNumber"),
         align: "left",
-        defaultWidth: 130,
-        minWidth: 88,
-        ...COL_TONE.book,
+        defaultWidth: 168,
+        minWidth: 120,
       },
     ];
     if (showVerification) {
@@ -1664,7 +1609,6 @@ function ExpenseTxTable({
         align: "left",
         defaultWidth: 160,
         minWidth: 100,
-        ...COL_TONE.verification,
       });
     }
     return all;
@@ -1681,9 +1625,9 @@ function ExpenseTxTable({
   const toggleSort = useCallback((key: ExpColKey) => {
     setSort((prev) => {
       if (prev?.key !== key) {
-        return { key, dir: key === "amount" ? "desc" : "asc" };
+        return { key, dir: key === "amount" || key === "book" ? "desc" : "asc" };
       }
-      if (key === "amount") {
+      if (key === "amount" || key === "book") {
         return prev.dir === "desc" ? { key, dir: "asc" } : null;
       }
       return prev.dir === "asc" ? { key, dir: "desc" } : null;
@@ -1756,25 +1700,6 @@ function ExpenseTxTable({
 
   return (
     <div>
-      {onBookClick && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-[10px] border-b border-border text-muted-foreground bg-gradient-to-r from-muted/40 to-muted/20">
-          <span className="text-xs font-semibold text-foreground mr-2">
-            {t("monExpColBookNumber")}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            {t("monExpPayMatch")}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-foreground" />
-            {t("monExpPayGuess")}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            {t("monExpPayNone")}
-          </span>
-        </div>
-      )}
       <div
         className={
           stickyHeader ? "max-h-[calc(100vh-8rem)] overflow-auto" : "overflow-x-auto"
@@ -1795,7 +1720,7 @@ function ExpenseTxTable({
           </colgroup>
           <thead>
             <tr>
-              {cols.map((col) => (
+              {cols.map((col, i) => (
                 <th
                   key={col.key}
                   aria-sort={
@@ -1809,7 +1734,7 @@ function ExpenseTxTable({
                   className={cn(
                     "relative px-2 py-2.5 text-xs font-bold text-foreground select-none border-b border-border cursor-pointer hover:bg-muted/50 group bg-card",
                     stickyHeader && "sticky top-0 z-[1]",
-                    col.line,
+                    i < cols.length - 1 && "border-r border-border",
                     col.align === "right" ? "text-right" : "text-left",
                   )}
                 >
@@ -1849,96 +1774,62 @@ function ExpenseTxTable({
               const statusMeta = STATUS_META[tx.verification_status ?? ""];
               const payTitle = Number(tx.has_payment_request)
                 ? t("monExpPayMatch")
-                : Number(tx.has_customer_payment_request)
-                  ? t("monExpPayGuess")
-                  : t("monExpPayNone");
+                : t("monExpPayNone");
+              const cellLine = "border-r border-border";
               return (
                 <tr
                   key={`${tx.book_number}-${tx.customer_code}-${i}`}
-                  className={cn(
-                    "border-t border-border hover:bg-accent/10",
-                    tx.has_verification && "bg-sky-500/5",
-                  )}
+                  className="border-t border-border hover:bg-muted/40"
                 >
-                  <Td className={cn(COL_TONE.date.bg, COL_TONE.date.line)}>
+                  <Td className={cellLine}>
                     {tx.book_date || "—"}
                   </Td>
-                  <Td className={cn(COL_TONE.customer.bg, COL_TONE.customer.line)}>
+                  <Td className={cellLine}>
                     <CellPair code={tx.customer_code} name={tx.customer_name} />
                   </Td>
-                  <Td className={cn(COL_TONE.account.bg, COL_TONE.account.line)}>
+                  <Td className={cellLine}>
                     <CellPair code={tx.account_code} name={tx.account_name} />
                   </Td>
-                  <Td
-                    className={cn(
-                      "text-right font-semibold tabular-nums",
-                      COL_TONE.amount.bg,
-                      COL_TONE.amount.line,
-                    )}
-                  >
+                  <Td className={cn("text-right font-semibold tabular-nums", cellLine)}>
                     {fmtAmount(tx.debit_amount)} {tx.currency_code}
                   </Td>
-                  <Td
-                    className={cn(
-                      COL_TONE.description.bg,
-                      COL_TONE.description.line,
-                    )}
-                  >
+                  <Td className={cellLine}>
                     {tx.description || "—"}
                   </Td>
-                  <Td
-                    className={cn(
-                      COL_TONE.department.bg,
-                      COL_TONE.department.line,
-                    )}
-                  >
+                  <Td className={cellLine}>
                     {tx.department_name || "—"}
                   </Td>
-                  <Td className={cn(COL_TONE.gl.bg, COL_TONE.gl.line)}>
+                  <Td className={cellLine}>
                     <CellPair
                       code={tx.co_a_group_code}
                       name={tx.co_a_group_name}
                     />
                   </Td>
-                  <Td
-                    className={cn(
-                      COL_TONE.receivable.bg,
-                      COL_TONE.receivable.line,
-                    )}
-                  >
+                  <Td className={cellLine}>
                     <CellPair
                       code={tx.recievable_type_code}
                       name={tx.recievable_type_name}
                     />
                   </Td>
-                  <Td className={cn(COL_TONE.book.bg, COL_TONE.book.line)}>
+                  <Td className={showVerification ? cellLine : undefined}>
                     {onBookClick ? (
                       <button
                         type="button"
                         onClick={() => onBookClick(tx as ExpenseTxRow)}
-                        title={payTitle}
+                        title={tx.book_number || payTitle}
                         className={cn(
-                          "font-mono hover:underline break-all text-left",
+                          "hover:underline text-left",
                           payRequestClass(tx),
                         )}
                       >
-                        {tx.book_number || "—"}
+                        {payTitle}
                       </button>
                     ) : (
-                      <span
-                        className={cn("font-mono break-all", payRequestClass(tx))}
-                      >
-                        {tx.book_number || "—"}
-                      </span>
+                      <span className={payRequestClass(tx)}>{payTitle}</span>
                     )}
                   </Td>
                   {showVerification && (
-                    <Td
-                      className={cn(
-                        COL_TONE.verification.bg,
-                        COL_TONE.verification.line,
-                      )}
-                    >
+                    <Td>
                       <div>{tx.verification_type || "—"}</div>
                       <div className="tabular-nums text-muted-foreground">
                         {tx.contract_total_amount
@@ -2099,71 +1990,88 @@ function BreakdownTable({
   data: { code: string; name: string; count: number; total: number }[];
 }) {
   const { t } = useLanguage();
-  const rows = data.map((d) => ({
-    code: d.code?.trim() || "—",
-    name: d.name?.trim() || "—",
-    count: Number(d.count) || 0,
-    total: Number(d.total) || 0,
-  }));
-  const max = Math.max(...rows.map((r) => r.total), 1);
+  const rows = useMemo(() => {
+    const mapped = data.map((d) => ({
+      code: d.code?.trim() || "—",
+      name: d.name?.trim() || "—",
+      count: Number(d.count) || 0,
+      total: Number(d.total) || 0,
+    }));
+    mapped.sort((a, b) => b.total - a.total);
+    return mapped;
+  }, [data]);
+  const totalCount = rows.reduce((s, r) => s + r.count, 0);
+  const totalAmount = rows.reduce((s, r) => s + r.total, 0);
+  const grand = totalAmount || 1;
 
   return (
-    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
-      <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
-        <div className="text-sm font-semibold text-foreground">{title}</div>
+    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline flex flex-col min-h-0">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <span className="text-[11px] tabular-nums text-muted-foreground">
+          {rows.length}
+        </span>
       </div>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
           {t("monExpBreakdownEmpty")}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse min-w-[480px]">
-            <thead>
-              <tr>
-                <Th className="text-xs font-bold text-foreground bg-background border-b border-border">
-                  {t("monExpColCode")}
-                </Th>
-                <Th className="text-xs font-bold text-foreground bg-background border-b border-border">
-                  {t("monExpColName")}
-                </Th>
-                <Th className="text-right text-xs font-bold text-foreground bg-background border-b border-border">
-                  {t("monExpColCount")}
-                </Th>
-                <Th className="text-right text-xs font-bold text-foreground bg-background border-b border-border">
-                  {t("monExpColAmount")}
-                </Th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr
-                  key={`${r.code}-${r.name}-${i}`}
-                  className="border-t border-border hover:bg-accent/10"
-                >
-                  <Td className="font-mono font-semibold">{r.code}</Td>
-                  <Td>{r.name}</Td>
-                  <Td className="text-right tabular-nums font-semibold" nowrap>
-                    {fmtAmount(r.count)}
-                  </Td>
-                  <Td>
-                    <div className="text-right font-semibold tabular-nums">
-                      ₮{fmtAmount(r.total)}
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted mt-1 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-sky-500"
-                        style={{
-                          width: `${Math.max(2, (r.total / max) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </Td>
+        <>
+          <div className="overflow-auto max-h-[min(360px,50vh)]">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-[1] bg-card text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 border-b border-border">
+                    {t("monExpColName")}
+                  </th>
+                  <th className="sticky top-0 z-[1] bg-card text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 border-b border-border">
+                    {t("monExpColCount")}
+                  </th>
+                  <th className="sticky top-0 z-[1] bg-card text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 border-b border-border">
+                    {t("monExpColAmount")}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr
+                    key={`${r.code}-${r.name}-${i}`}
+                    className="border-t border-border hover:bg-muted/40"
+                  >
+                    <td className="px-3 py-2 align-top min-w-0">
+                      <div className="font-medium text-foreground break-words">
+                        {r.name}
+                      </div>
+                      <div className="font-mono text-[11px] text-muted-foreground break-all">
+                        {r.code}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 align-top text-right tabular-nums whitespace-nowrap text-foreground">
+                      {fmtAmount(r.count)}
+                    </td>
+                    <td className="px-3 py-2 align-top text-right whitespace-nowrap">
+                      <div className="font-medium tabular-nums text-foreground">
+                        ₮{fmtAmount(r.total)}
+                      </div>
+                      <div className="text-[11px] tabular-nums text-muted-foreground">
+                        {((r.total / grand) * 100).toFixed(1)}%
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-border px-3 py-2 flex items-center justify-between gap-3 bg-muted/20">
+            <span className="text-xs text-muted-foreground">
+              {t("monExpTotalDebit")}
+            </span>
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {fmtAmount(totalCount)} · ₮{fmtAmount(totalAmount)}
+            </span>
+          </div>
+        </>
       )}
     </div>
   );

@@ -63,8 +63,8 @@ function TeamGalleryCarousel({
               alt={s.alt}
               fill
               priority={i === 0}
-              sizes="(min-width: 1024px) 620px, 92vw"
-              quality={78}
+              sizes="(min-width: 1024px) 704px, 100vw"
+              quality={95}
               draggable={false}
               onLoad={() =>
                 setReady((prev) =>
