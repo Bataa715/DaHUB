@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   Wallet,
   Search,
@@ -1222,6 +1223,51 @@ function CellPair({ code, name }: { code?: string; name?: string }) {
   );
 }
 
+type ExpColKey =
+  | "date"
+  | "customer"
+  | "account"
+  | "amount"
+  | "description"
+  | "department"
+  | "gl"
+  | "receivable"
+  | "book"
+  | "verification";
+
+type ExpColDef = {
+  key: ExpColKey;
+  label: string;
+  align: "left" | "right";
+  defaultWidth: number;
+  minWidth: number;
+};
+
+const EXP_WIDTHS_KEY = "dahub.expense-tx-col-widths";
+
+function readExpStoredWidths(): Partial<Record<ExpColKey, number>> {
+  try {
+    const raw = localStorage.getItem(EXP_WIDTHS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Partial<Record<ExpColKey, number>>;
+  } catch {
+    return {};
+  }
+}
+
+function payRequestClass(tx: {
+  has_payment_request?: 0 | 1;
+  has_customer_payment_request?: 0 | 1;
+}): string {
+  if (Number(tx.has_payment_request)) {
+    return "text-emerald-600 dark:text-emerald-400 font-semibold";
+  }
+  if (Number(tx.has_customer_payment_request)) {
+    return "text-foreground";
+  }
+  return "text-amber-600 dark:text-amber-400";
+}
+
 function ExpenseTxTable({
   rows,
   showVerification = false,
@@ -1254,6 +1300,8 @@ function ExpenseTxTable({
           | "contract_total_amount"
           | "verification_status"
           | "has_verification"
+          | "has_payment_request"
+          | "has_customer_payment_request"
         >
       >
   >;
@@ -1263,119 +1311,291 @@ function ExpenseTxTable({
   onVerifyClick?: (tx: ExpenseTxRow) => void;
 }) {
   const { t } = useLanguage();
+  const cols = useMemo<ExpColDef[]>(() => {
+    const all: ExpColDef[] = [
+      {
+        key: "date",
+        label: t("tailan_dateLabel"),
+        align: "left",
+        defaultWidth: 96,
+        minWidth: 72,
+      },
+      {
+        key: "customer",
+        label: t("monExpColCustomer"),
+        align: "left",
+        defaultWidth: 160,
+        minWidth: 100,
+      },
+      {
+        key: "account",
+        label: t("monExpColAccount"),
+        align: "left",
+        defaultWidth: 140,
+        minWidth: 90,
+      },
+      {
+        key: "amount",
+        label: t("monExpColAmount"),
+        align: "right",
+        defaultWidth: 120,
+        minWidth: 88,
+      },
+      {
+        key: "description",
+        label: t("monExpColDescription"),
+        align: "left",
+        defaultWidth: 200,
+        minWidth: 110,
+      },
+      {
+        key: "department",
+        label: t("monExpColDepartment"),
+        align: "left",
+        defaultWidth: 140,
+        minWidth: 90,
+      },
+      {
+        key: "gl",
+        label: t("monExpColGlGroup"),
+        align: "left",
+        defaultWidth: 150,
+        minWidth: 90,
+      },
+      {
+        key: "receivable",
+        label: t("monExpColReceivableType"),
+        align: "left",
+        defaultWidth: 150,
+        minWidth: 90,
+      },
+      {
+        key: "book",
+        label: t("monExpColBookNumber"),
+        align: "left",
+        defaultWidth: 130,
+        minWidth: 88,
+      },
+    ];
+    if (showVerification) {
+      all.push({
+        key: "verification",
+        label: `${t("monExpColVerType")} / ${t("monExpColContractAmount")}`,
+        align: "left",
+        defaultWidth: 160,
+        minWidth: 100,
+      });
+    }
+    return all;
+  }, [showVerification, t]);
+
+  const [widths, setWidths] = useState<Partial<Record<ExpColKey, number>>>({});
+  useEffect(() => {
+    setWidths(readExpStoredWidths());
+  }, []);
+
+  const widthOf = useCallback(
+    (col: ExpColDef) => widths[col.key] ?? col.defaultWidth,
+    [widths],
+  );
+
+  const onResizeStart = useCallback(
+    (e: ReactMouseEvent, col: ExpColDef) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startW = widthOf(col);
+      const onMove = (ev: MouseEvent) => {
+        const next = Math.max(col.minWidth, startW + (ev.clientX - startX));
+        setWidths((prev) => ({ ...prev, [col.key]: next }));
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        setWidths((prev) => {
+          const merged = { ...prev };
+          try {
+            localStorage.setItem(EXP_WIDTHS_KEY, JSON.stringify(merged));
+          } catch {
+            /* ignore */
+          }
+          return merged;
+        });
+      };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [widthOf],
+  );
+
   return (
-    <table className="w-full table-fixed text-[11px] leading-snug">
-      <thead
-        className={
-          stickyHeader
-            ? "sticky top-14 z-10 bg-card shadow-[0_1px_0_0_hsl(var(--border))]"
-            : undefined
-        }
-      >
-        <tr className="text-left text-muted-foreground border-b border-border">
-          <Th className="w-[8%]">{t("tailan_dateLabel")}</Th>
-          <Th className="w-[12%]">{t("monExpColCustomer")}</Th>
-          <Th className="w-[11%]">{t("monExpColAccount")}</Th>
-          <Th className="w-[9%] text-right">{t("monExpColAmount")}</Th>
-          <Th className="w-[14%]">{t("monExpColDescription")}</Th>
-          <Th className="w-[10%]">{t("monExpColDepartment")}</Th>
-          <Th className="w-[11%]">{t("monExpColGlGroup")}</Th>
-          <Th className="w-[11%]">{t("monExpColReceivableType")}</Th>
-          <Th className="w-[8%]">{t("monExpColBookNumber")}</Th>
-          {showVerification && (
-            <Th className="w-[12%]">
-              {t("monExpColVerType")} / {t("monExpColContractAmount")}
-            </Th>
-          )}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((tx, i) => {
-          const statusMeta = STATUS_META[tx.verification_status ?? ""];
-          return (
-            <tr
-              key={`${tx.book_number}-${tx.customer_code}-${i}`}
-              className={cn(
-                "border-b border-border/30 hover:bg-muted/30 align-top",
-                tx.has_verification && "bg-emerald-500/5",
-              )}
-            >
-              <Td>{tx.book_date || "—"}</Td>
-              <Td>
-                <CellPair code={tx.customer_code} name={tx.customer_name} />
-              </Td>
-              <Td>
-                <CellPair code={tx.account_code} name={tx.account_name} />
-              </Td>
-              <Td className="text-right font-semibold tabular-nums">
-                {fmtAmount(tx.debit_amount)} {tx.currency_code}
-              </Td>
-              <Td>{tx.description || "—"}</Td>
-              <Td>{tx.department_name || "—"}</Td>
-              <Td>
-                <CellPair code={tx.co_a_group_code} name={tx.co_a_group_name} />
-              </Td>
-              <Td>
-                <CellPair
-                  code={tx.recievable_type_code}
-                  name={tx.recievable_type_name}
-                />
-              </Td>
-              <Td>
-                {onBookClick ? (
-                  <button
-                    type="button"
-                    onClick={() => onBookClick(tx as ExpenseTxRow)}
-                    className="font-mono text-sky-600 dark:text-sky-400 hover:underline break-all text-left"
+    <div>
+      {onBookClick && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-[10px] border-b border-border text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            {t("monExpPayMatch")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-foreground" />
+            {t("monExpPayGuess")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            {t("monExpPayNone")}
+          </span>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table
+          className="text-[11px] leading-snug border-collapse"
+          style={{
+            tableLayout: "fixed",
+            width: "max-content",
+            minWidth: "100%",
+          }}
+        >
+          <colgroup>
+            {cols.map((col) => (
+              <col key={col.key} style={{ width: widthOf(col) }} />
+            ))}
+          </colgroup>
+          <thead
+            className={
+              stickyHeader
+                ? "sticky top-14 z-10 bg-card shadow-[0_1px_0_0_hsl(var(--border))]"
+                : "bg-card"
+            }
+          >
+            <tr className="text-muted-foreground border-b border-border">
+              {cols.map((col) => (
+                <th
+                  key={col.key}
+                  className={cn(
+                    "relative px-2 py-2 font-medium select-none bg-card whitespace-normal break-words",
+                    col.align === "right" ? "text-right" : "text-left",
+                  )}
+                >
+                  {col.label}
+                  <span
+                    role="separator"
+                    aria-orientation="vertical"
+                    onMouseDown={(e) => onResizeStart(e, col)}
+                    className="absolute top-0 -right-0.5 w-2 h-full cursor-col-resize z-10 group flex justify-center"
                   >
-                    {tx.book_number || "—"}
-                  </button>
-                ) : (
-                  <span className="font-mono break-all">
-                    {tx.book_number || "—"}
+                    <span className="w-px h-full bg-transparent group-hover:bg-foreground/30" />
                   </span>
-                )}
-              </Td>
-              {showVerification && (
-                <Td>
-                  <div>{tx.verification_type || "—"}</div>
-                  <div className="tabular-nums text-muted-foreground">
-                    {tx.contract_total_amount
-                      ? `₮${fmtAmount(tx.contract_total_amount)}`
-                      : "—"}
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span
-                      className={cn(
-                        "inline-block w-2 h-2 rounded-full shrink-0",
-                        statusMeta?.dot ?? "bg-muted-foreground/30",
-                      )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((tx, i) => {
+              const statusMeta = STATUS_META[tx.verification_status ?? ""];
+              const payTitle = Number(tx.has_payment_request)
+                ? t("monExpPayMatch")
+                : Number(tx.has_customer_payment_request)
+                  ? t("monExpPayGuess")
+                  : t("monExpPayNone");
+              return (
+                <tr
+                  key={`${tx.book_number}-${tx.customer_code}-${i}`}
+                  className={cn(
+                    "border-b border-border/30 hover:bg-muted/30 align-top",
+                    tx.has_verification && "bg-emerald-500/5",
+                  )}
+                >
+                  <Td>{tx.book_date || "—"}</Td>
+                  <Td>
+                    <CellPair code={tx.customer_code} name={tx.customer_name} />
+                  </Td>
+                  <Td>
+                    <CellPair code={tx.account_code} name={tx.account_name} />
+                  </Td>
+                  <Td className="text-right font-semibold tabular-nums">
+                    {fmtAmount(tx.debit_amount)} {tx.currency_code}
+                  </Td>
+                  <Td>{tx.description || "—"}</Td>
+                  <Td>{tx.department_name || "—"}</Td>
+                  <Td>
+                    <CellPair
+                      code={tx.co_a_group_code}
+                      name={tx.co_a_group_name}
                     />
-                    <span
-                      className={cn(
-                        statusMeta?.text ?? "text-muted-foreground",
-                      )}
-                    >
-                      {statusMeta ? t(statusMeta.labelKey) : "—"}
-                    </span>
-                    {onVerifyClick && (
+                  </Td>
+                  <Td>
+                    <CellPair
+                      code={tx.recievable_type_code}
+                      name={tx.recievable_type_name}
+                    />
+                  </Td>
+                  <Td>
+                    {onBookClick ? (
                       <button
                         type="button"
-                        onClick={() => onVerifyClick(tx as ExpenseTxRow)}
-                        className="text-muted-foreground hover:text-foreground"
-                        title={t("monExpVerificationDialogTitle")}
+                        onClick={() => onBookClick(tx as ExpenseTxRow)}
+                        title={payTitle}
+                        className={cn(
+                          "font-mono hover:underline break-all text-left",
+                          payRequestClass(tx),
+                        )}
                       >
-                        <Pencil className="w-3 h-3" />
+                        {tx.book_number || "—"}
                       </button>
+                    ) : (
+                      <span
+                        className={cn("font-mono break-all", payRequestClass(tx))}
+                      >
+                        {tx.book_number || "—"}
+                      </span>
                     )}
-                  </div>
-                </Td>
-              )}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                  </Td>
+                  {showVerification && (
+                    <Td>
+                      <div>{tx.verification_type || "—"}</div>
+                      <div className="tabular-nums text-muted-foreground">
+                        {tx.contract_total_amount
+                          ? `₮${fmtAmount(tx.contract_total_amount)}`
+                          : "—"}
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span
+                          className={cn(
+                            "inline-block w-2 h-2 rounded-full shrink-0",
+                            statusMeta?.dot ?? "bg-muted-foreground/30",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            statusMeta?.text ?? "text-muted-foreground",
+                          )}
+                        >
+                          {statusMeta ? t(statusMeta.labelKey) : "—"}
+                        </span>
+                        {onVerifyClick && (
+                          <button
+                            type="button"
+                            onClick={() => onVerifyClick(tx as ExpenseTxRow)}
+                            className="text-muted-foreground hover:text-foreground"
+                            title={t("monExpVerificationDialogTitle")}
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </Td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

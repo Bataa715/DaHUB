@@ -1184,6 +1184,7 @@ export interface ExpenseTxRow {
   recievable_type_code: string;
   recievable_type_name: string;
   has_payment_request: 0 | 1;
+  has_customer_payment_request: 0 | 1;
   has_verification: 0 | 1;
   verification_type: string;
   contract_total_amount: number;

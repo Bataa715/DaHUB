@@ -108,6 +108,8 @@ export interface ExpenseTxRow {
   recievable_type_code: string;
   recievable_type_name: string;
   has_payment_request: 0 | 1;
+  /** Харилцагчид тухайн хугацаанд ямар нэг tulbur мөр байгаа (шууд book_number тааралдаагүй ч). */
+  has_customer_payment_request: 0 | 1;
   has_verification: 0 | 1;
   verification_type: string;
   contract_total_amount: number;
@@ -517,36 +519,53 @@ export class MonitoringService {
             AND a.book_number != ''
         )
         SELECT
-          a.load_date, a.book_date, a.customer_code, a.customer_name,
-          a.account_name, a.account_code, a.currency_code, a.debit_amount,
-          a.description, a.book_number, a.department_code, a.department_name,
-          a.co_a_group_code, a.co_a_group_name,
+          toString(a.load_date) AS load_date,
+          toString(a.book_date) AS book_date,
+          a.customer_code AS customer_code,
+          a.customer_name AS customer_name,
+          a.account_name AS account_name,
+          a.account_code AS account_code,
+          a.currency_code AS currency_code,
+          a.debit_amount AS debit_amount,
+          a.description AS description,
+          a.book_number AS book_number,
+          a.department_code AS department_code,
+          a.department_name AS department_name,
+          a.co_a_group_code AS co_a_group_code,
+          a.co_a_group_name AS co_a_group_name,
           a.receivable_type_code AS recievable_type_code,
           a.receivable_type_name AS recievable_type_name,
           (ifNull(t.gl_number, '') != '') AS has_payment_request,
+          (ifNull(tc.pay_customer, '') != '') AS has_customer_payment_request,
           (ifNull(v.bookNumber, '') != '') AS has_verification,
           ifNull(v.verificationType, '') AS verification_type,
           ifNull(v.contractTotalAmount, 0) AS contract_total_amount,
           ifNull(v.status, '') AS verification_status,
           ifNull(v.comment, '') AS comment,
           if(ifNull(t.gl_number, '') = '', '', ifNull(bt.budget_type, '')) AS budget_type
-        FROM avlaga a
-        INNER JOIN qualifying q ON q.customer_code = a.customer_code
+        FROM avlaga AS a
+        INNER JOIN qualifying AS q ON q.customer_code = a.customer_code
         LEFT JOIN (
           SELECT DISTINCT ifNull(gl_number, '') AS gl_number
           FROM tulbur
           WHERE ifNull(gl_number, '') IN (SELECT book_number FROM scoped_books)
-        ) t ON t.gl_number = a.book_number
+        ) AS t ON t.gl_number = a.book_number
+        LEFT JOIN (
+          SELECT DISTINCT ifNull(customer_code, '') AS pay_customer
+          FROM tulbur
+          WHERE tulbur.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+            AND ifNull(customer_code, '') != ''
+        ) AS tc ON tc.pay_customer = a.customer_code
         LEFT JOIN (
           SELECT
-            ifNull(t2.gl_number, '') AS book_number,
+            ifNull(t2.gl_number, '') AS pay_book_number,
             argMax(ifNull(b.description, ''), b.book_date) AS budget_type
-          FROM tulbur t2
-          INNER JOIN budget b
+          FROM tulbur AS t2
+          INNER JOIN budget AS b
             ON ifNull(b.related_book_number, '') = t2.book_number
           WHERE ifNull(t2.gl_number, '') IN (SELECT book_number FROM scoped_books)
           GROUP BY ifNull(t2.gl_number, '')
-        ) bt ON bt.book_number = a.book_number
+        ) AS bt ON bt.pay_book_number = a.book_number
         LEFT JOIN (
           SELECT
             bookNumber,
@@ -556,7 +575,7 @@ export class MonitoringService {
             argMax(comment, updatedAt) AS comment
           FROM avlaga_verifications
           GROUP BY bookNumber
-        ) v ON v.bookNumber = a.book_number
+        ) AS v ON v.bookNumber = a.book_number
         WHERE a.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
         ORDER BY a.debit_amount DESC
         LIMIT ${MAX_EXPENSE_TX_ROWS + 1}
@@ -593,14 +612,14 @@ export class MonitoringService {
       `
       SELECT
         toString(load_date) AS load_date,
-        toString(toInt64(invoice_id)) AS invoice_id,
+        toString(invoice_id) AS invoice_id,
         ifNull(description, '') AS description,
         ifNull(toString(request_date), '') AS request_date,
         ifNull(employee_name, '') AS employee_name,
         ifNull(sol_id, '') AS sol_id,
         ifNull(employee_code, '') AS employee_code,
         ifNull(department_name, '') AS department_name,
-        book_number,
+        book_number AS book_number,
         ifNull(request_amount, 0) AS request_amount,
         toString(book_date) AS book_date,
         ifNull(account_number, '') AS account_number,
@@ -613,9 +632,9 @@ export class MonitoringService {
         ifNull(info_name, '') AS info_name,
         ifNull(purpose, '') AS purpose
       FROM tulbur
-      WHERE ifNull(customer_code, '') = {customerCode:String}
-        AND book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
-      ORDER BY book_date DESC, request_amount DESC
+      WHERE tulbur.customer_code = {customerCode:String}
+        AND tulbur.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+      ORDER BY tulbur.book_date DESC, ifNull(tulbur.request_amount, 0) DESC
       LIMIT ${MAX_EXPENSE_DRILLDOWN_ROWS + 1}
       `,
       {
@@ -635,17 +654,17 @@ export class MonitoringService {
     const rows = await this.clickhouse.query<ExpenseAttachmentRow>(
       `
       SELECT
-        toString(toInt64(invoice_id)) AS invoice_id,
-        ifNull(book_number, '') AS book_number,
-        ifNull(customer_code, '') AS customer_code,
-        ifNull(customer_name, '') AS customer_name,
-        if(isNull(content_id), '', toString(toInt64(content_id))) AS content_id,
-        ifNull(file_name, '') AS file_name,
-        ifNull(file_extension, '') AS file_extension,
-        ifNull(full_url, '') AS full_url
+        toString(havsralt.invoice_id) AS invoice_id,
+        ifNull(havsralt.book_number, '') AS book_number,
+        ifNull(havsralt.customer_code, '') AS customer_code,
+        ifNull(havsralt.customer_name, '') AS customer_name,
+        ifNull(toString(havsralt.content_id), '') AS content_id,
+        ifNull(havsralt.file_name, '') AS file_name,
+        ifNull(havsralt.file_extension, '') AS file_extension,
+        ifNull(havsralt.full_url, '') AS full_url
       FROM havsralt
-      WHERE toInt64(invoice_id) = toInt64OrZero({invoiceId:String})
-      ORDER BY file_name
+      WHERE havsralt.invoice_id = toFloat64OrZero({invoiceId:String})
+      ORDER BY havsralt.file_name
       LIMIT ${MAX_EXPENSE_SIDE_ROWS}
       `,
       { invoiceId: dto.invoiceId },
@@ -678,8 +697,8 @@ export class MonitoringService {
         ifNull(from_employee_name, '') AS from_employee_name,
         ifNull(purpose, '') AS purpose
       FROM budget
-      WHERE ifNull(related_book_number, '') = {bookNumber:String}
-      ORDER BY book_date DESC
+      WHERE budget.related_book_number = {bookNumber:String}
+      ORDER BY budget.book_date DESC
       LIMIT ${MAX_EXPENSE_SIDE_ROWS}
       `,
       { bookNumber: dto.bookNumber },
