@@ -139,8 +139,7 @@ export async function middleware(request: NextRequest) {
     !isPublicRoute &&
     !isAdminRoute &&
     !pathname.startsWith("/api/") &&
-    !pathname.startsWith("/monitoring-rpt") &&
-    !pathname.startsWith("/monitoring-expense-") &&
+    !pathname.startsWith("/bff") &&
     !pathname.startsWith("/team-gallery")
   ) {
     return NextResponse.redirect(new URL("/login", request.url));

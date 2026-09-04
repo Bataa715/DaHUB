@@ -1156,7 +1156,7 @@ export const monitoringApi = {
     // тул `/monitoring/...` 404 болдог байсан. Absolute URL ашиглаж axios
     // instance-ийн Nest baseURL дээр наалдахаас сэргийлнэ.
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const res = await api.post(`${origin}/monitoring-rpt`, req, {
+    const res = await api.post(`${origin}/bff/monitoring-rpt`, req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;
@@ -1313,7 +1313,8 @@ export interface ExpenseBudgetChangeRow {
 }
 
 function expenseBffOrigin(): string {
-  return typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/bff`;
 }
 
 export const expenseMonitoringApi = {
