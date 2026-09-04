@@ -1223,6 +1223,7 @@ export const translations = {
     // Monitoring Box - Expense monitoring page
     monExpMinAmountLabel: "Доод дүн (₮)",
     monExpQualifyingCustomers: "Босго давсан харилцагч",
+    monExpKpiTitle: "Үзүүлэлт",
     monExpListedTxCount: "Гүйлгээний тоо",
     monExpTotalDebit: "Нийт дүн",
     monExpTruncatedWarning:
@@ -2933,6 +2934,7 @@ export const translations = {
     // Monitoring Box - Expense monitoring page
     monExpMinAmountLabel: "Minimum amount (₮)",
     monExpQualifyingCustomers: "Customers over threshold",
+    monExpKpiTitle: "Summary",
     monExpListedTxCount: "Transaction count",
     monExpTotalDebit: "Total amount",
     monExpTruncatedWarning:
