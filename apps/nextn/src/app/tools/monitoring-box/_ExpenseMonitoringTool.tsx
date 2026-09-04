@@ -56,8 +56,8 @@ const DEFAULT_MIN_AMOUNT = 50_000_000;
 // [REVIEW/PERF] Сервер 20-30 мянган мөр буцааж болдог — бүгдийг зэрэг DOM-д
 // зурвал browser царцана. Эхэндээ TX_PAGE мөр зурж, "Цааш үзэх" товчоор
 // нэмж зурна (өгөгдөл бүрэн санах ойд байгаа тул KPI/график бүрэн хэвээр).
-const TX_PAGE = 200;
-const TX_PAGE_STEP = 500;
+const TX_PAGE = 50;
+const TX_PAGE_STEP = 50;
 
 // [AUDIT] toISOString() нь UTC тул UTC+8 бүсэд огноо буруу шилждэг —
 // _RelatedPartyTool.tsx-тэй ижил локал огнооны туслах функцүүд.
@@ -499,6 +499,94 @@ export function ExpenseMonitoringTool() {
       .sort((a, b) => b.value - a.value);
   }, [result, t]);
 
+  if (totalOpen) {
+    return (
+      <div className="bg-background text-foreground min-h-screen">
+        <ToolPageHeader
+          onBack={() => setTotalOpen(false)}
+          icon={<PieChart className="w-4 h-4 text-sky-500" />}
+          title={t("monExpTotalDialogTitle")}
+          rightContent={
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {startDate} – {endDate}
+            </span>
+          }
+        />
+        <div className="w-full px-4 md:px-6 py-5 space-y-5">
+          {totalLoading && (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t("loading")}
+            </div>
+          )}
+
+          {totalError && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-sm text-destructive">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              {totalError}
+            </div>
+          )}
+
+          {!totalLoading && !totalError && totalResult && (
+            <>
+              <StatCard
+                icon={Wallet}
+                label={t("monExpTotalDebit")}
+                value={`₮${fmtAmount(totalResult.totalAmount)}`}
+                tint="text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+              />
+
+              {totalResult.truncated && (
+                <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  {t("monExpTruncatedWarning")}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <BreakdownTable
+                  title={t("monExpByGlGroupTitle")}
+                  data={totalResult.byGlGroup}
+                />
+                <BreakdownTable
+                  title={t("monExpByReceivableTypeTitle")}
+                  data={totalResult.byReceivableType}
+                />
+              </div>
+
+              <div className="rounded-xl border border-border bg-card">
+                <ExpenseTxTable
+                  rows={totalResult.transactions.slice(0, visibleTotalCount)}
+                  stickyHeader
+                />
+                {visibleTotalCount < totalResult.transactions.length && (
+                  <div className="border-t border-border px-3 py-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-8 text-xs"
+                      onClick={() =>
+                        setVisibleTotalCount((n) =>
+                          Math.min(
+                            n + TX_PAGE_STEP,
+                            totalResult.transactions.length,
+                          ),
+                        )
+                      }
+                    >
+                      {t("monExpShowMore")} ({visibleTotalCount}/
+                      {totalResult.transactions.length})
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-background text-foreground min-h-screen">
       <ToolPageHeader
@@ -638,124 +726,14 @@ export function ExpenseMonitoringTool() {
                   <BudgetTypeTable data={chartData} />
                 </div>
 
-                {/* Transaction list — full width, cells wrap so values stay visible */}
+                {/* Transaction list — viewport width, values wrap in-cell (no side-scroll) */}
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
-                  <TableScroll maxHeight="70vh">
-                    <table className="text-xs border-collapse min-w-max w-full">
-                      <thead>
-                        <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
-                          <Th>{t("tailan_dateLabel")}</Th>
-                          <Th>{t("monExpColCustomer")}</Th>
-                          <Th>{t("monExpColAccount")}</Th>
-                          <Th className="text-right">{t("monExpColAmount")}</Th>
-                          <Th>{t("monExpColDescription")}</Th>
-                          <Th>{t("monExpColDepartment")}</Th>
-                          <Th>{t("monExpColGlGroup")}</Th>
-                          <Th>{t("monExpColReceivableType")}</Th>
-                          <Th>{t("monExpColBookNumber")}</Th>
-                          <Th>{t("monExpColVerType")}</Th>
-                          <Th className="text-right">
-                            {t("monExpColContractAmount")}
-                          </Th>
-                          <Th>{t("monExpColStatus")}</Th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.transactions
-                          .slice(0, visibleTxCount)
-                          .map((tx, i) => {
-                          const statusMeta = STATUS_META[tx.verification_status];
-                          return (
-                            <tr
-                              key={`${tx.book_number}-${tx.customer_code}-${i}`}
-                              className={cn(
-                                "border-b border-border/30 hover:bg-muted/30 align-top",
-                                tx.has_verification && "bg-emerald-500/5",
-                              )}
-                            >
-                              <Td nowrap>{tx.book_date}</Td>
-                              <Td className="min-w-[180px] max-w-[280px]">
-                                <div className="font-mono">{tx.customer_code}</div>
-                                <div className="text-muted-foreground">
-                                  {tx.customer_name}
-                                </div>
-                              </Td>
-                              <Td className="min-w-[140px] max-w-[220px]">
-                                <div className="font-mono">{tx.account_code}</div>
-                                <div className="text-muted-foreground">
-                                  {tx.account_name}
-                                </div>
-                              </Td>
-                              <Td className="text-right font-semibold tabular-nums" nowrap>
-                                {fmtAmount(tx.debit_amount)} {tx.currency_code}
-                              </Td>
-                              <Td className="min-w-[220px] max-w-[360px]">
-                                {tx.description}
-                              </Td>
-                              <Td className="min-w-[140px] max-w-[220px]">
-                                {tx.department_name}
-                              </Td>
-                              <Td className="min-w-[160px] max-w-[260px]">
-                                <div className="font-mono">{tx.co_a_group_code}</div>
-                                <div className="text-muted-foreground">
-                                  {tx.co_a_group_name}
-                                </div>
-                              </Td>
-                              <Td className="min-w-[180px] max-w-[280px]">
-                                <div className="font-mono">
-                                  {tx.recievable_type_code}
-                                </div>
-                                <div className="text-muted-foreground">
-                                  {tx.recievable_type_name}
-                                </div>
-                              </Td>
-                              <Td nowrap>
-                                <button
-                                  type="button"
-                                  onClick={() => openDrilldown(tx)}
-                                  className="font-mono text-sky-600 dark:text-sky-400 hover:underline"
-                                >
-                                  {tx.book_number}
-                                </button>
-                              </Td>
-                              <Td className="min-w-[120px]">{tx.verification_type || "—"}</Td>
-                              <Td className="text-right tabular-nums" nowrap>
-                                {tx.contract_total_amount
-                                  ? `₮${fmtAmount(tx.contract_total_amount)}`
-                                  : "—"}
-                              </Td>
-                              <Td>
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className={cn(
-                                      "inline-block w-2 h-2 rounded-full shrink-0",
-                                      statusMeta?.dot ?? "bg-muted-foreground/30",
-                                    )}
-                                  />
-                                  <span
-                                    className={cn(
-                                      "whitespace-nowrap",
-                                      statusMeta?.text ?? "text-muted-foreground",
-                                    )}
-                                  >
-                                    {statusMeta ? t(statusMeta.labelKey) : "—"}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => openVerificationDialog(tx)}
-                                    className="ml-0.5 text-muted-foreground hover:text-foreground"
-                                    title={t("monExpVerificationDialogTitle")}
-                                  >
-                                    <Pencil className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </Td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </TableScroll>
+                  <ExpenseTxTable
+                    rows={result.transactions.slice(0, visibleTxCount)}
+                    showVerification
+                    onBookClick={openDrilldown}
+                    onVerifyClick={openVerificationDialog}
+                  />
                   {visibleTxCount < result.transactions.length && (
                     <div className="border-t border-border px-3 py-2">
                       <Button
@@ -1228,145 +1206,176 @@ export function ExpenseMonitoringTool() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* "Нийт зардал" — no customer/threshold filter */}
-      <Dialog open={totalOpen} onOpenChange={setTotalOpen}>
-        <DialogContent className="max-w-[min(1440px,96vw)] max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>{t("monExpTotalDialogTitle")}</DialogTitle>
-          </DialogHeader>
-
-          {totalLoading && (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t("loading")}
-            </div>
-          )}
-
-          {totalError && (
-            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-sm text-destructive">
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              {totalError}
-            </div>
-          )}
-
-          {!totalLoading && !totalError && totalResult && (
-            <div className="space-y-4">
-              <StatCard
-                icon={Wallet}
-                label={t("monExpTotalDebit")}
-                value={`₮${fmtAmount(totalResult.totalAmount)}`}
-                tint="text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
-              />
-
-              {totalResult.truncated && (
-                <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-600 dark:text-amber-400">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  {t("monExpTruncatedWarning")}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <BreakdownTable
-                  title={t("monExpByGlGroupTitle")}
-                  data={totalResult.byGlGroup}
-                />
-                <BreakdownTable
-                  title={t("monExpByReceivableTypeTitle")}
-                  data={totalResult.byReceivableType}
-                />
-              </div>
-
-              <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <TableScroll maxHeight="50vh">
-                  <table className="text-xs border-collapse min-w-max w-full">
-                    <thead>
-                      <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
-                        <Th>{t("tailan_dateLabel")}</Th>
-                        <Th>{t("monExpColCustomer")}</Th>
-                        <Th>{t("monExpColAccount")}</Th>
-                        <Th className="text-right">{t("monExpColAmount")}</Th>
-                        <Th>{t("monExpColDescription")}</Th>
-                        <Th>{t("monExpColDepartment")}</Th>
-                        <Th>{t("monExpColGlGroup")}</Th>
-                        <Th>{t("monExpColReceivableType")}</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {totalResult.transactions
-                        .slice(0, visibleTotalCount)
-                        .map((tx, i) => (
-                        <tr
-                          key={`${tx.book_number}-${tx.customer_code}-${i}`}
-                          className="border-b border-border/30 hover:bg-muted/30 align-top"
-                        >
-                          <Td nowrap>{tx.book_date}</Td>
-                          <Td className="min-w-[180px] max-w-[280px]">
-                            <div className="font-mono">{tx.customer_code}</div>
-                            <div className="text-muted-foreground">
-                              {tx.customer_name}
-                            </div>
-                          </Td>
-                          <Td className="min-w-[140px] max-w-[220px]">
-                            <div className="font-mono">{tx.account_code}</div>
-                            <div className="text-muted-foreground">
-                              {tx.account_name}
-                            </div>
-                          </Td>
-                          <Td className="text-right font-semibold tabular-nums" nowrap>
-                            {fmtAmount(tx.debit_amount)} {tx.currency_code}
-                          </Td>
-                          <Td className="min-w-[220px] max-w-[360px]">
-                            {tx.description}
-                          </Td>
-                          <Td className="min-w-[140px] max-w-[220px]">
-                            {tx.department_name}
-                          </Td>
-                          <Td className="min-w-[160px] max-w-[260px]">
-                            <div className="font-mono">{tx.co_a_group_code}</div>
-                            <div className="text-muted-foreground">
-                              {tx.co_a_group_name}
-                            </div>
-                          </Td>
-                          <Td className="min-w-[180px] max-w-[280px]">
-                            <div className="font-mono">
-                              {tx.recievable_type_code}
-                            </div>
-                            <div className="text-muted-foreground">
-                              {tx.recievable_type_name}
-                            </div>
-                          </Td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </TableScroll>
-                {visibleTotalCount < totalResult.transactions.length && (
-                  <div className="border-t border-border px-3 py-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full h-8 text-xs"
-                      onClick={() =>
-                        setVisibleTotalCount((n) =>
-                          Math.min(
-                            n + TX_PAGE_STEP,
-                            totalResult.transactions.length,
-                          ),
-                        )
-                      }
-                    >
-                      {t("monExpShowMore")} ({visibleTotalCount}/
-                      {totalResult.transactions.length})
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
+  );
+}
+
+function CellPair({ code, name }: { code?: string; name?: string }) {
+  const c = (code ?? "").trim();
+  const n = (name ?? "").trim();
+  if (!c && !n) return <span className="text-muted-foreground">—</span>;
+  return (
+    <div className="min-w-0">
+      {c ? <div className="font-mono break-all">{c}</div> : null}
+      {n ? <div className="text-muted-foreground break-words">{n}</div> : null}
+    </div>
+  );
+}
+
+function ExpenseTxTable({
+  rows,
+  showVerification = false,
+  stickyHeader = false,
+  onBookClick,
+  onVerifyClick,
+}: {
+  rows: Array<
+    Pick<
+      ExpenseTxRow,
+      | "book_date"
+      | "customer_code"
+      | "customer_name"
+      | "account_code"
+      | "account_name"
+      | "currency_code"
+      | "debit_amount"
+      | "description"
+      | "department_name"
+      | "co_a_group_code"
+      | "co_a_group_name"
+      | "recievable_type_code"
+      | "recievable_type_name"
+      | "book_number"
+    > &
+      Partial<
+        Pick<
+          ExpenseTxRow,
+          | "verification_type"
+          | "contract_total_amount"
+          | "verification_status"
+          | "has_verification"
+        >
+      >
+  >;
+  showVerification?: boolean;
+  stickyHeader?: boolean;
+  onBookClick?: (tx: ExpenseTxRow) => void;
+  onVerifyClick?: (tx: ExpenseTxRow) => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <table className="w-full table-fixed text-[11px] leading-snug">
+      <thead
+        className={
+          stickyHeader
+            ? "sticky top-14 z-10 bg-card shadow-[0_1px_0_0_hsl(var(--border))]"
+            : undefined
+        }
+      >
+        <tr className="text-left text-muted-foreground border-b border-border">
+          <Th className="w-[8%]">{t("tailan_dateLabel")}</Th>
+          <Th className="w-[12%]">{t("monExpColCustomer")}</Th>
+          <Th className="w-[11%]">{t("monExpColAccount")}</Th>
+          <Th className="w-[9%] text-right">{t("monExpColAmount")}</Th>
+          <Th className="w-[14%]">{t("monExpColDescription")}</Th>
+          <Th className="w-[10%]">{t("monExpColDepartment")}</Th>
+          <Th className="w-[11%]">{t("monExpColGlGroup")}</Th>
+          <Th className="w-[11%]">{t("monExpColReceivableType")}</Th>
+          <Th className="w-[8%]">{t("monExpColBookNumber")}</Th>
+          {showVerification && (
+            <Th className="w-[12%]">
+              {t("monExpColVerType")} / {t("monExpColContractAmount")}
+            </Th>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((tx, i) => {
+          const statusMeta = STATUS_META[tx.verification_status ?? ""];
+          return (
+            <tr
+              key={`${tx.book_number}-${tx.customer_code}-${i}`}
+              className={cn(
+                "border-b border-border/30 hover:bg-muted/30 align-top",
+                tx.has_verification && "bg-emerald-500/5",
+              )}
+            >
+              <Td>{tx.book_date || "—"}</Td>
+              <Td>
+                <CellPair code={tx.customer_code} name={tx.customer_name} />
+              </Td>
+              <Td>
+                <CellPair code={tx.account_code} name={tx.account_name} />
+              </Td>
+              <Td className="text-right font-semibold tabular-nums">
+                {fmtAmount(tx.debit_amount)} {tx.currency_code}
+              </Td>
+              <Td>{tx.description || "—"}</Td>
+              <Td>{tx.department_name || "—"}</Td>
+              <Td>
+                <CellPair code={tx.co_a_group_code} name={tx.co_a_group_name} />
+              </Td>
+              <Td>
+                <CellPair
+                  code={tx.recievable_type_code}
+                  name={tx.recievable_type_name}
+                />
+              </Td>
+              <Td>
+                {onBookClick ? (
+                  <button
+                    type="button"
+                    onClick={() => onBookClick(tx as ExpenseTxRow)}
+                    className="font-mono text-sky-600 dark:text-sky-400 hover:underline break-all text-left"
+                  >
+                    {tx.book_number || "—"}
+                  </button>
+                ) : (
+                  <span className="font-mono break-all">
+                    {tx.book_number || "—"}
+                  </span>
+                )}
+              </Td>
+              {showVerification && (
+                <Td>
+                  <div>{tx.verification_type || "—"}</div>
+                  <div className="tabular-nums text-muted-foreground">
+                    {tx.contract_total_amount
+                      ? `₮${fmtAmount(tx.contract_total_amount)}`
+                      : "—"}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span
+                      className={cn(
+                        "inline-block w-2 h-2 rounded-full shrink-0",
+                        statusMeta?.dot ?? "bg-muted-foreground/30",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        statusMeta?.text ?? "text-muted-foreground",
+                      )}
+                    >
+                      {statusMeta ? t(statusMeta.labelKey) : "—"}
+                    </span>
+                    {onVerifyClick && (
+                      <button
+                        type="button"
+                        onClick={() => onVerifyClick(tx as ExpenseTxRow)}
+                        className="text-muted-foreground hover:text-foreground"
+                        title={t("monExpVerificationDialogTitle")}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </Td>
+              )}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
@@ -1448,7 +1457,7 @@ function BreakdownTable({
           {t("monExpBreakdownEmpty")}
         </p>
       ) : (
-        <div className="overflow-x-auto max-h-[360px]">
+        <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[480px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
@@ -1534,23 +1543,6 @@ function StatCard({
   );
 }
 
-function TableScroll({
-  children,
-  maxHeight,
-}: {
-  children: React.ReactNode;
-  maxHeight?: string;
-}) {
-  return (
-    <div
-      className="overflow-auto"
-      style={{ maxHeight: maxHeight ?? "320px" }}
-    >
-      {children}
-    </div>
-  );
-}
-
 function Th({
   children,
   className = "",
@@ -1560,7 +1552,7 @@ function Th({
 }) {
   return (
     <th
-      className={`px-3 py-2 font-medium whitespace-nowrap bg-card ${className}`}
+      className={`px-2 py-2 font-medium text-left align-bottom whitespace-normal break-words bg-card ${className}`}
     >
       {children}
     </th>
@@ -1579,7 +1571,7 @@ function Td({
   return (
     <td
       className={cn(
-        "px-3 py-2 align-top",
+        "px-2 py-1.5 align-top",
         nowrap ? "whitespace-nowrap" : "whitespace-normal break-words",
         className,
       )}
