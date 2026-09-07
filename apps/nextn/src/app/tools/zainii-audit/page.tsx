@@ -23,7 +23,7 @@ const MONITOR_CARDS: MonitorCard[] = [
     id: "related-party-transactions",
     titleKey: "monBoxRelatedPartyTitle",
     icon: Users2,
-    href: "/tools/monitoring-box?tool=related-party",
+    href: "/tools/zainii-audit?tool=related-party",
     accent: "orange",
     status: "live",
   },
@@ -31,7 +31,7 @@ const MONITOR_CARDS: MonitorCard[] = [
     id: "expense-monitoring",
     titleKey: "monBoxExpenseTitle",
     icon: Wallet,
-    href: "/tools/monitoring-box?tool=expense-monitoring",
+    href: "/tools/zainii-audit?tool=expense-monitoring",
     accent: "blue",
     status: "live",
   },
@@ -68,7 +68,8 @@ function MonitoringBoxHome() {
           {MONITOR_CARDS.map((card) => {
             const Icon = card.icon;
             const disabled = card.status === "soon";
-            const a = ACCENT[card.accent as keyof typeof ACCENT] ?? ACCENT.orange;
+            const a =
+              ACCENT[card.accent as keyof typeof ACCENT] ?? ACCENT.orange;
 
             const CardInner = (
               <div

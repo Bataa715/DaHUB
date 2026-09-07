@@ -100,7 +100,7 @@ export const translations = {
     toolRiskAssessmentReportTitle: "Эрсдэлийн үнэлгээ — Тайлан",
     toolReportsTitle: "Тайлан татах",
     toolReportsDesc: "Дотоод хэрэглээний тайлан татах хэрэгсэл",
-    toolMonitoringBoxTitle: "Monitoring Box",
+    toolMonitoringBoxTitle: "Зайны аудит",
     toolMonitoringBoxDesc:
       "Continuous auditing — эрсдэлтэй гүйлгээ, харилцсан данс зэргийг тасралтгүй хянах монитор картууд",
 
@@ -1212,13 +1212,13 @@ export const translations = {
     abSidebarNotifications: "Мэдэгдэл",
     abSidebarHighRisk: "өндөр эрсдэл",
     abSidebarNoNotifications: "Мэдэгдэл байхгүй",
-    // Monitoring Box - Overview page
+    // Зайны аудит - Overview page
     monBoxRelatedPartyTitle: "Харилцсан гүйлгээ",
     monBoxRelatedPartyDesc:
       "Хэдэн ч тооны CIF/FORACID-ыг сонгож, тэдгээрийн хооронд шууд хийгдсэн дотоод гүйлгээг өгөгдсөн хугацааны хүрээнд илрүүлж, нэгтгэн харуулна.",
     monBoxComingSoon: "Тун удахгүй",
     monBoxExpenseTitle: "Зардлын хяналт",
-    // Monitoring Box - Expense monitoring page
+    // Зайны аудит - Expense monitoring page
     monExpMinAmountLabel: "Доод дүн (₮)",
     monExpQualifyingCustomers: "Босго давсан харилцагч",
     monExpKpiTitle: "Хураангуй",
@@ -1297,7 +1297,7 @@ export const translations = {
     monExpBudgetColTotalAmount: "Нийт дүн",
     monExpBudgetColFromEmployee: "Шилжүүлсэн ажилтан",
     monExpBudgetColDescription: "Тайлбар",
-    // Monitoring Box - Related party transactions page
+    // Зайны аудит - Related party transactions page
     monRptCifMissingTitle: "CIF дугаар дутуу",
     monRptCifMissingDesc: "Хамгийн багадаа 2 CIF/FORACID оруулна уу.",
     monRptDateMissingTitle: "Огноо дутуу",
@@ -1820,7 +1820,7 @@ export const translations = {
     toolReportsTitle: "Reports",
     toolReportsDesc:
       "Download SQL and Python reports from a single unified tool",
-    toolMonitoringBoxTitle: "Monitoring Box",
+    toolMonitoringBoxTitle: "Remote Audit",
     toolMonitoringBoxDesc:
       "Continuous auditing — cards for monitoring related-party transactions, risky accounts, and more",
 
@@ -2931,13 +2931,13 @@ export const translations = {
     abSidebarNotifications: "Notifications",
     abSidebarHighRisk: "high risk",
     abSidebarNoNotifications: "No notifications",
-    // Monitoring Box - Overview page
+    // Зайны аудит - Overview page
     monBoxRelatedPartyTitle: "Related party transactions",
     monBoxRelatedPartyDesc:
       "Select any number of CIF/FORACID numbers to detect and summarize direct internal transactions between them within a given date range.",
     monBoxComingSoon: "Coming soon",
     monBoxExpenseTitle: "Expense monitoring",
-    // Monitoring Box - Expense monitoring page
+    // Зайны аудит - Expense monitoring page
     monExpMinAmountLabel: "Minimum amount (₮)",
     monExpQualifyingCustomers: "Customers over threshold",
     monExpKpiTitle: "Summary",
@@ -3015,7 +3015,7 @@ export const translations = {
     monExpBudgetColTotalAmount: "Total amount",
     monExpBudgetColFromEmployee: "Transferred by",
     monExpBudgetColDescription: "Description",
-    // Monitoring Box - Related party transactions page
+    // Зайны аудит - Related party transactions page
     monRptCifMissingTitle: "Missing CIF number",
     monRptCifMissingDesc: "Enter at least 2 CIF/FORACID numbers.",
     monRptDateMissingTitle: "Missing date",

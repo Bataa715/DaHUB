@@ -718,7 +718,7 @@ export function ExpenseMonitoringTool() {
   return (
     <div className="bg-background text-foreground min-h-screen">
       <ToolPageHeader
-        href="/tools/monitoring-box"
+        href="/tools/zainii-audit"
         icon={<Wallet className="w-4 h-4 text-sky-500" />}
         title={t("monBoxExpenseTitle")}
       />

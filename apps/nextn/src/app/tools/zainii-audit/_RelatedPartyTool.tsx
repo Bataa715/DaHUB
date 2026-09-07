@@ -201,7 +201,7 @@ export function RelatedPartyTool() {
   return (
     <div className="bg-background text-foreground min-h-screen">
       <ToolPageHeader
-        href="/tools/monitoring-box"
+        href="/tools/zainii-audit"
         icon={<Users2 className="w-4 h-4 text-orange-500" />}
         title={t("monBoxRelatedPartyTitle")}
         rightContent={

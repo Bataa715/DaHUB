@@ -29,8 +29,19 @@ import {
 } from "./dto/monitoring.dto";
 
 @UseGuards(JwtAuthGuard, ToolGuard)
+// [AUDIT] Эрхийн ID нь `monitoring_box` ХЭВЭЭР — энэ утга users.allowedTools
+// баганад хадгалагддаг тул сольвол хэрэглэгч бүрийн эрх чимээгүй алдагдана.
+// Зөвхөн HTTP зам болон харагдах нэр өөрчлөгдсөн.
 @RequireTools("monitoring_box")
-@Controller("monitoring")
+// [AUDIT] Зам `monitoring` → `zainii-audit`.
+//
+// `/monitoring` нь дэд бүтцийн ертөнцөд түгээмэл "эзэнтэй" зам (Grafana,
+// Prometheus, Zabbix зэрэг ихэвчлэн тэнд суудаг). 2026-07-22-аас 08-13 хүртэл
+// prod дээр `/monitoring/*` асуудалгүй ажиллаж байгаад, 09-02 гэхэд 404 өгч
+// эхэлсэн — аппын код огт өөрчлөгдөөгүй байхад. Өөрөөр хэлбэл reverse-proxy
+// дээр энэ замыг өөр систем булаасан. Аппд өвөрмөц нэр өгснөөр дахин
+// мөргөлдөхөөс бүрмөсөн сэргийлнэ.
+@Controller("zainii-audit")
 export class MonitoringController {
   constructor(private readonly monitoring: MonitoringService) {}
 

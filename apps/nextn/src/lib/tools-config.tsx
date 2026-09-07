@@ -124,7 +124,7 @@ export function getTools(t: (key: TranslationKey) => string): Tool[] {
       title: t("toolMonitoringBoxTitle"),
       description: t("toolMonitoringBoxDesc"),
       icon: Activity,
-      href: "/tools/monitoring-box",
+      href: "/tools/zainii-audit",
       gradient: "from-orange-500 to-red-500",
       glow: "shadow-orange-500/20 group-hover:shadow-orange-500/40",
       tag: "Audit",

@@ -46,7 +46,7 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],
   "/tools/reports": ["reports"],
-  "/tools/monitoring-box": ["monitoring_box"],
+  "/tools/zainii-audit": ["monitoring_box"],
 };
 
 async function getTokenPayload(token: string | undefined) {

@@ -83,7 +83,7 @@ export interface RelatedPartyResult {
 // урт хугацааны query OOM үүсгэхээс сэргийлнэ.
 const MAX_TX_ROWS = 50_000;
 
-// ─── Monitoring Box: "Зардлын хяналт" (expense monitoring) ────────────────
+// ─── Зайны аудит: "Зардлын хяналт" (expense monitoring) ────────────────
 export interface ExpenseQualifyingCustomer {
   customer_code: string;
   customer_name: string;
@@ -250,7 +250,7 @@ function toBreakdown(rows: ExpenseGroupBreakdown[]): ExpenseGroupBreakdown[] {
   }));
 }
 
-// ─── Monitoring Box: "Харилцсан гүйлгээ" (related-party transactions) ─────────
+// ─── Зайны аудит: "Харилцсан гүйлгээ" (related-party transactions) ─────────
 // Given a set of CIF/FORACID identifiers, finds direct internal transactions
 // between any two of them within a date range — flags potential related-party
 // / self-dealing activity for continuous auditing.

@@ -1080,7 +1080,7 @@ export const homepageEthicsApi = {
   },
 };
 
-// ── Monitoring Box (continuous auditing monitor cards) ──────────────────────
+// ── Зайны аудит (continuous auditing monitor cards) ──────────────────────
 export interface MatchedAccountRow {
   CIF_ID: string;
   FORACID: string;
@@ -1152,14 +1152,18 @@ export const monitoringApi = {
   findRelatedPartyTransactions: async (
     req: RelatedPartyRequest,
   ): Promise<RelatedPartyResult> => {
-    const res = await api.post("/monitoring/related-party-transactions", req, {
-      timeout: TIMEOUT_LONG,
-    });
+    const res = await api.post(
+      "/zainii-audit/related-party-transactions",
+      req,
+      {
+        timeout: TIMEOUT_LONG,
+      },
+    );
     return res.data;
   },
 };
 
-// ── Monitoring Box: Expense monitoring (Зардлын хяналт) ────────────────────
+// ── Зайны аудит: Expense monitoring (Зардлын хяналт) ────────────────────
 export type ExpenseVerificationStatus = "normal" | "questionable" | "attention";
 
 export interface ExpenseTxRow {
@@ -1313,7 +1317,7 @@ export const expenseMonitoringApi = {
     req: ExpenseOverviewRequest,
     signal?: AbortSignal,
   ): Promise<ExpenseOverviewResult> => {
-    const res = await api.post("/monitoring/expense-overview", req, {
+    const res = await api.post("/zainii-audit/expense-overview", req, {
       timeout: TIMEOUT_LONG,
       signal,
     });
@@ -1325,7 +1329,7 @@ export const expenseMonitoringApi = {
     startDate: string;
     endDate: string;
   }): Promise<{ rows: ExpensePaymentRequestRow[]; truncated?: boolean }> => {
-    const res = await api.post("/monitoring/expense-payment-requests", req, {
+    const res = await api.post("/zainii-audit/expense-payment-requests", req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;
@@ -1334,7 +1338,7 @@ export const expenseMonitoringApi = {
   getAttachmentsByInvoice: async (req: {
     invoiceId: string;
   }): Promise<{ rows: ExpenseAttachmentRow[] }> => {
-    const res = await api.post("/monitoring/expense-attachments", req, {
+    const res = await api.post("/zainii-audit/expense-attachments", req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;
@@ -1343,7 +1347,7 @@ export const expenseMonitoringApi = {
   getBudgetChangesByBookNumber: async (req: {
     bookNumber: string;
   }): Promise<{ rows: ExpenseBudgetChangeRow[] }> => {
-    const res = await api.post("/monitoring/expense-budget-changes", req, {
+    const res = await api.post("/zainii-audit/expense-budget-changes", req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;
@@ -1356,7 +1360,7 @@ export const expenseMonitoringApi = {
     contractTotalAmount?: number;
     status?: ExpenseVerificationStatus;
   }): Promise<ExpenseVerificationRow> => {
-    const res = await api.post("/monitoring/expense-verification", req, {
+    const res = await api.post("/zainii-audit/expense-verification", req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;
@@ -1366,7 +1370,7 @@ export const expenseMonitoringApi = {
     startDate: string;
     endDate: string;
   }): Promise<ExpenseTotalResult> => {
-    const res = await api.post("/monitoring/expense-total", req, {
+    const res = await api.post("/zainii-audit/expense-total", req, {
       timeout: TIMEOUT_LONG,
     });
     return res.data;
@@ -1375,7 +1379,7 @@ export const expenseMonitoringApi = {
   listVerificationTypes: async (
     activeOnly = false,
   ): Promise<ExpenseVerificationTypeRow[]> => {
-    const res = await api.get("/monitoring/expense-verification-types", {
+    const res = await api.get("/zainii-audit/expense-verification-types", {
       params: { activeOnly: activeOnly ? "1" : "0" },
       timeout: TIMEOUT_LONG,
     });
@@ -1386,7 +1390,7 @@ export const expenseMonitoringApi = {
     name: string,
   ): Promise<ExpenseVerificationTypeRow> => {
     const res = await api.post(
-      "/monitoring/expense-verification-types",
+      "/zainii-audit/expense-verification-types",
       { name },
       { timeout: TIMEOUT_LONG },
     );
@@ -1398,7 +1402,7 @@ export const expenseMonitoringApi = {
     patch: { name?: string; isActive?: boolean },
   ): Promise<ExpenseVerificationTypeRow> => {
     const res = await api.patch(
-      `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
+      `/zainii-audit/expense-verification-types/${encodeURIComponent(id)}`,
       patch,
       { timeout: TIMEOUT_LONG },
     );
@@ -1407,7 +1411,7 @@ export const expenseMonitoringApi = {
 
   deleteVerificationType: async (id: string): Promise<{ success: true }> => {
     const res = await api.delete(
-      `/monitoring/expense-verification-types/${encodeURIComponent(id)}`,
+      `/zainii-audit/expense-verification-types/${encodeURIComponent(id)}`,
       { timeout: TIMEOUT_LONG },
     );
     return res.data;
@@ -1632,13 +1636,9 @@ export const knowledgeApi = {
    * `/medleg/:id/image` → index 0
    * `/medleg/:id/images/2` → index 2
    */
-  parseImageRef: (
-    path?: string,
-  ): { id: string; index: number } | null => {
+  parseImageRef: (path?: string): { id: string; index: number } | null => {
     if (!path) return null;
-    const multi = path.match(
-      /\/(?:medleg|knowledge)\/([^/]+)\/images\/(\d+)/,
-    );
+    const multi = path.match(/\/(?:medleg|knowledge)\/([^/]+)\/images\/(\d+)/);
     if (multi) return { id: multi[1], index: Number(multi[2]) };
     const single = path.match(/\/(?:medleg|knowledge)\/([^/]+)\/image$/);
     if (single) return { id: single[1], index: 0 };

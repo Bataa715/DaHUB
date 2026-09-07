@@ -65,13 +65,26 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/tools/monitoring-box/related-party-transactions",
-        destination: "/tools/monitoring-box?tool=related-party",
+        source: "/tools/zainii-audit/related-party-transactions",
+        destination: "/tools/zainii-audit?tool=related-party",
         permanent: false,
       },
       {
-        source: "/tools/monitoring-box/related-party-transactions/",
-        destination: "/tools/monitoring-box?tool=related-party",
+        source: "/tools/zainii-audit/related-party-transactions/",
+        destination: "/tools/zainii-audit?tool=related-party",
+        permanent: false,
+      },
+      // [AUDIT] "Monitoring Box" → "Зайны аудит" болж нэр/зам солигдсон.
+      // Хуучин холбоос хадгалсан, bookmark хийсэн хэрэглэгчдийг шилжүүлнэ.
+      // `:path*` нь дэд замуудыг ч хамарна.
+      {
+        source: "/tools/monitoring-box",
+        destination: "/tools/zainii-audit",
+        permanent: false,
+      },
+      {
+        source: "/tools/monitoring-box/:path*",
+        destination: "/tools/zainii-audit/:path*",
         permanent: false,
       },
     ];
