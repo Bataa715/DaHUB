@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Trace files from monorepo root so standalone includes node_modules
   outputFileTracingRoot: path.join(__dirname, "../../"),
+  // [AUDIT] Өгөгдлийн толь бичиг (data-doc tool) нь Data/Database_Dictionary.md-ийг
+  // ажиллах үед `fs`-ээр уншдаг. Next нь статик import-ыг л мөрддөг тул энэ файл
+  // standalone гаралтад ОРДОГГҮЙ байсан — үүнээс болж prod дээр tool хоосон
+  // жагсаалт харуулж "ажиллахгүй" байв. Энд ил зааж савлуулна.
+  outputFileTracingIncludes: {
+    "/api/schema": ["../../Data/**"],
+  },
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
@@ -42,9 +49,6 @@ const nextConfig: NextConfig = {
   },
   typescript: {
     ignoreBuildErrors: false,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
   // Skip trailing slash redirect for cleaner URLs
   skipTrailingSlashRedirect: true,

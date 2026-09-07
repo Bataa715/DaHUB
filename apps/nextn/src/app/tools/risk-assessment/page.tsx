@@ -19,7 +19,7 @@ export default function RiskAssessmentPage() {
   // [SEC] "Эрсдэлийн үнэлгээ хийх" (edit) and "Тайлан" (read-only report) are
   // now separately grantable tools (risk_assessment / risk_assessment_report)
   // — hide whichever card the user doesn't actually have access to, instead
-  // of letting them click through and bounce off the middleware redirect.
+  // of letting them click through and bounce off the proxy redirect.
   const isAdmin = !!user?.isAdmin || !!user?.isSuperAdmin;
   const allowedTools = user?.allowedTools ?? [];
   const canDoAssessment = isAdmin || allowedTools.includes("risk_assessment");

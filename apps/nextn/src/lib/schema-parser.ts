@@ -16,42 +16,71 @@ const DB_COLORS: Record<string, string> = {
 const MD_BASENAME = "Database_Dictionary.md";
 
 /**
- * Өгөгдлийн толь бичгийн MD файлын замыг олно.
- * Docker (/app), nx workspace root, apps/nextn cwd — бүгдийг туршина.
- * MD_FILE_PATH харьцангуй байвал cwd + нэмэлт candidate-уудаас хайна
- * (nx serve үед cwd=/app/apps/nextn байж болно).
+ * Build-д савлагдсан толь бичгийн боломжит байрлалууд.
+ *
+ * ⚠️ `output: "standalone"` үед энэ файл ӨӨРӨӨ орж ирдэггүй — Next нь зөвхөн
+ * статикаар import хийсэн зүйлийг мөрддөг бол энэ нь ажиллах үед `fs`-ээр
+ * уншигддаг. Тиймээс `next.config.ts`-д `outputFileTracingIncludes` заасан
+ * бөгөөд Data/ хавтас standalone гаралтын ҮНДЭС дээр буудаг
+ * (`.next/standalone/Data/...`), server нь `.next/standalone/apps/nextn`-ээс
+ * ажилладаг тул доорх "../.." хувилбар түүнд таарна.
  */
-export function getMdPath(): string {
+function bundledCandidates(): string[] {
   const cwd = process.cwd();
-  const configured = process.env.MD_FILE_PATH?.trim();
-
-  const candidates: string[] = [];
-
-  if (configured) {
-    if (path.isAbsolute(configured)) {
-      candidates.push(configured);
-    } else {
-      candidates.push(path.resolve(cwd, configured));
-      // Docker monorepo: файл /app/Data дээр, cwd apps/nextn байж болно
-      candidates.push(path.resolve(cwd, "..", "..", configured));
-      candidates.push(path.resolve(cwd, "..", configured));
-      candidates.push(path.resolve("/app", configured));
-    }
-  }
-
-  candidates.push(
+  return [
     path.join(cwd, "Data", MD_BASENAME),
     path.join(cwd, "..", "Data", MD_BASENAME),
     path.join(cwd, "..", "..", "Data", MD_BASENAME),
+    path.join(cwd, "..", "..", "..", "Data", MD_BASENAME),
     path.join("/app", "Data", MD_BASENAME),
+  ].map((p) => path.resolve(/*turbopackIgnore: true*/ p));
+}
+
+/** MD_FILE_PATH-ийг үнэмлэхүй зам болгож хөрвүүлнэ (тохируулаагүй бол null). */
+function configuredPath(): string | null {
+  const configured = process.env.MD_FILE_PATH?.trim();
+  if (!configured) return null;
+  return path.isAbsolute(configured)
+    ? path.resolve(/*turbopackIgnore: true*/ configured)
+    : path.resolve(/*turbopackIgnore: true*/ process.cwd(), configured);
+}
+
+/**
+ * Өгөгдлийн толь бичгийн MD файлын замыг олно.
+ *
+ * MD_FILE_PATH заасан бол ТЭР нь эрхэм — уг зам нь байнгын хадгалалт
+ * (volume) дээр байрлах ёстой, эс бөгөөс tool-оос хийсэн засвар дараагийн
+ * deploy дээр устана. Тэр файл хараахан байхгүй бол савлагдсан хувилбараас
+ * НЭГ УДАА хуулж эхлүүлнэ (seed) — ингэснээр ops-д гар ажиллагаа шаардахгүй.
+ */
+export function getMdPath(): string {
+  const configured = configuredPath();
+  const bundled = bundledCandidates().find((p) =>
+    fs.existsSync(/*turbopackIgnore: true*/ p),
   );
 
-  for (const candidate of candidates) {
-    const resolved = path.resolve(candidate);
-    if (fs.existsSync(resolved)) return resolved;
+  if (configured) {
+    if (fs.existsSync(/*turbopackIgnore: true*/ configured)) return configured;
+    // Байнгын зам хоосон байна — савлагдсан хувилбараас нэг удаа үрждүүлнэ.
+    if (bundled) {
+      try {
+        fs.mkdirSync(/*turbopackIgnore: true*/ path.dirname(configured), {
+          recursive: true,
+        });
+        fs.copyFileSync(/*turbopackIgnore: true*/ bundled, configured);
+        return configured;
+      } catch {
+        // Бичих эрхгүй / read-only FS — уншихад савлагдсан хувилбар руу ухарна.
+        return bundled;
+      }
+    }
+    return configured;
   }
 
-  return path.resolve(candidates[0] ?? path.join(cwd, "Data", MD_BASENAME));
+  return (
+    bundled ??
+    path.resolve(/*turbopackIgnore: true*/ process.cwd(), "Data", MD_BASENAME)
+  );
 }
 
 export function parseSchema(): DatabaseSchema {
@@ -59,7 +88,7 @@ export function parseSchema(): DatabaseSchema {
 
   let content: string;
   try {
-    content = fs.readFileSync(mdPath, "utf-8");
+    content = fs.readFileSync(/*turbopackIgnore: true*/ mdPath, "utf-8");
   } catch {
     return {
       databases: [],

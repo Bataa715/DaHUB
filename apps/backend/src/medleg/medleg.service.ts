@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
+import { assertRealImage } from "../common/utils/image-signature";
 import { CreateMedlegDto, UpdateMedlegDto } from "./dto/medleg.dto";
 import { randomUUID } from "crypto";
 import sanitizeHtml from "sanitize-html";
@@ -66,8 +67,7 @@ const TOP_PUBLISHERS_CACHE_TTL_MS = 60_000;
 
 @Injectable()
 export class MedlegService {
-  private topPublishersCache: { data: unknown; loadedAt: number } | null =
-    null;
+  private topPublishersCache: { data: unknown; loadedAt: number } | null = null;
 
   constructor(private clickhouse: ClickHouseService) {}
 
@@ -96,6 +96,9 @@ export class MedlegService {
         "Зургийн хэмжээ хэт их байна (дээд тал 5MB)",
       );
     }
+    // [AUDIT] `data:image/...` угтвар нь клиентээс ирдэг тул түүнд итгэхгүй —
+    // decode хийж байтын гарын үсгээр бодит төрлийг шалгана.
+    assertRealImage(Buffer.from(imageData, "base64"), imageMime);
     return { imageData, imageMime };
   }
 
@@ -397,9 +400,7 @@ export class MedlegService {
       id: row.id,
       title: dto.title !== undefined ? dto.title : row.title,
       content:
-        dto.content !== undefined
-          ? sanitizeRichText(dto.content)
-          : row.content,
+        dto.content !== undefined ? sanitizeRichText(dto.content) : row.content,
       category: dto.category !== undefined ? dto.category : row.category,
       imageUrl: imageData,
       imageMime,
@@ -416,12 +417,9 @@ export class MedlegService {
       updatedAt: nowCH(),
     };
 
-    await this.clickhouse.replaceRows(
-      "medleg",
-      "id = {id:String}",
-      { id },
-      [nextRow],
-    );
+    await this.clickhouse.replaceRows("medleg", "id = {id:String}", { id }, [
+      nextRow,
+    ]);
 
     return { id, message: "Мэдлэг амжилттай шинэчлэгдлээ" };
   }

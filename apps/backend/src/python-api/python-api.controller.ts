@@ -19,7 +19,7 @@ import {
 import { Response } from "express";
 import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 import { PythonApiService } from "./python-api.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
@@ -46,13 +46,13 @@ export class PythonApiController {
   // ── Admin CRUD ─────────────────────────────────────────────────────────────
 
   @Get("admin/tools")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   getAllTools() {
     return this.service.getAllTools();
   }
 
   @Post("admin/tools")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @HttpCode(HttpStatus.CREATED)
   async createTool(
     @Body() dto: CreatePythonToolDto,
@@ -83,7 +83,7 @@ export class PythonApiController {
   }
 
   @Patch("admin/tools/:id")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   async updateTool(
     @Param("id") id: string,
     @Body() dto: UpdatePythonToolDto,
@@ -115,7 +115,7 @@ export class PythonApiController {
   }
 
   @Patch("admin/tools/:id/toggle")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   async toggleTool(
     @Param("id") id: string,
     @Body() body: ToggleToolDto,
@@ -147,7 +147,7 @@ export class PythonApiController {
   }
 
   @Delete("admin/tools/:id")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   async deleteTool(
     @Param("id") id: string,
     @Request() req: AuthenticatedRequest,
@@ -179,7 +179,7 @@ export class PythonApiController {
 
   // [SORT] Persist user-side display order — body: { ids: string[] }
   @Post("admin/tools/reorder")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async reorderTools(
     @Body() body: ReorderToolsDto,
@@ -209,34 +209,37 @@ export class PythonApiController {
 
   /** Editor: кодыг ажиллуулахгүйгээр шалгах */
   @Post("admin/validate-code")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   validateCode(@Body() body: ValidateCodeDto) {
     return this.service.validateCode(body.code);
   }
 
   /** Editor: хадгалаагүй кодыг шууд тест ажиллуулах (эхний 50 мөр) */
   @Post("admin/preview-code")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   previewCode(@Body() body: PreviewCodeDto) {
     return this.service.previewCode(body);
   }
 
   @Get("admin/run-logs")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   getRunLogs(@Query("limit") limit?: string) {
     return this.service.getRunLogs(limit ? Math.min(Number(limit), 1000) : 200);
   }
 
   @Get("admin/permissions")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   getAllPermissions() {
     return this.service.getAllPermissions();
   }
 
   @Post("admin/permissions")
-  @UseGuards(AdminGuard)
-  async grantPermission(@Body() body: GrantPermissionDto, @Request() req: AuthenticatedRequest) {
+  @UseGuards(SuperAdminGuard)
+  async grantPermission(
+    @Body() body: GrantPermissionDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
       await this.service.grantPermission(
         body.userId,
@@ -267,7 +270,7 @@ export class PythonApiController {
   }
 
   @Delete("admin/permissions")
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   async revokePermission(
     @Body() body: RevokePermissionDto,
     @Request() req: AuthenticatedRequest,
@@ -374,7 +377,10 @@ export class PythonApiController {
   /** POST /python-api/preview — эхний 50 мөрийг JSON-оор буцаана */
   @Post("preview")
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async previewTool(@Body() dto: RunToolDto, @Request() req: AuthenticatedRequest) {
+  async previewTool(
+    @Body() dto: RunToolDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     if (!dto.toolId) throw new BadRequestException("toolId шаардлагатай");
     // ── Permission check ──────────────────────────────────────────────────
     if (!req.user?.isAdmin) {

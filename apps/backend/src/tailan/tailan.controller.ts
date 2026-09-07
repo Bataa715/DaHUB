@@ -31,6 +31,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
+import { assertRealImage } from "../common/utils/image-signature";
 
 @Controller("tailan")
 @UseGuards(JwtAuthGuard, ToolGuard)
@@ -260,6 +261,10 @@ export class TailanController {
     if (!file) {
       throw new BadRequestException("Файл заавал шаардлагатай");
     }
+    // [AUDIT] fileFilter нь КЛИЕНТИЙН зарласан Content-Type-ыг л шалгадаг —
+    // халдагч дурын агуулгыг "image/png" гэж зарлаж болно. Байтын гарын
+    // үсгээр агуулгыг өөрийг нь баталгаажуулна.
+    assertRealImage(file.buffer, file.mimetype);
     return this.tailanImages.saveImage(
       req.user.id,
       req.user.departmentId ?? "",

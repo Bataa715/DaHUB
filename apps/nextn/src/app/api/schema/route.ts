@@ -1,16 +1,12 @@
 import { parseSchema, getMdPath } from "@/lib/schema-parser";
 import { NextResponse } from "next/server";
 import fs from "fs";
-import {
-  getApiAuth,
-  hasToolAccess,
-  isSameOriginRequest,
-} from "@/lib/api-auth";
+import { getApiAuth, hasToolAccess, isSameOriginRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 // ⚠️ Энэ route нь backend руу proxy хийдэггүй, локал файлаас DB схем уншиж/бичдэг
-// тул `middleware.ts`-ийн (/api/* redirect-ээс хасдаг) хамгаалалт дээр найдаж
+// тул `proxy.ts`-ийн (/api/* redirect-ээс хасдаг) хамгаалалт дээр найдаж
 // болохгүй — доор нэвтрэлтийг өөрөө шалгана.
 export async function GET(req: Request) {
   const auth = await getApiAuth(req);
@@ -79,7 +75,7 @@ export async function PATCH(req: Request) {
 
     let content: string;
     try {
-      content = fs.readFileSync(mdPath, "utf8");
+      content = fs.readFileSync(/*turbopackIgnore: true*/ mdPath, "utf8");
     } catch {
       return NextResponse.json({ error: "MD файл олдсонгүй" }, { status: 404 });
     }
@@ -117,7 +113,7 @@ export async function PATCH(req: Request) {
     const newSection = section.replace(colRegex, `$1${safeDesc} $2`);
     const newContent =
       content.slice(0, sectionStart) + newSection + content.slice(sectionEnd);
-    fs.writeFileSync(mdPath, newContent, "utf8");
+    fs.writeFileSync(/*turbopackIgnore: true*/ mdPath, newContent, "utf8");
 
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {

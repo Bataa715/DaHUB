@@ -21,16 +21,17 @@ import { HomepageEthicsModule } from "./homepage-ethics/homepage-ethics.module";
 import { MonitoringModule } from "./monitoring/monitoring.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
+import { validateEnv } from "./config/env.validation";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      validate: (config) => {
-        // Additional validation can be added here
-        return config;
-      },
+      // [AUDIT] Өмнө нь энэ нь `return config` гэсэн хоосон stub байсан —
+      // ямар ч шалгалт хийдэггүй байв. Одоо main.ts-тэй ижил, цор ганц
+      // эх сурвалжтай баталгаажуулалтыг ажиллуулна.
+      validate: validateEnv,
     }),
     ThrottlerModule.forRoot([
       {

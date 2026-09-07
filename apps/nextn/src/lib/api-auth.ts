@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 /**
  * Route Handler (`app/api/**`) дотор ашиглах JWT баталгаажуулалт.
- * `middleware.ts` нь `/api/*` замуудыг эргэн шилжилтээс (redirect) хасдаг тул
+ * `proxy.ts` нь `/api/*` замуудыг эргэн шилжилтээс (redirect) хасдаг тул
  * DB/файлтай шууд харьцдаг API route бүр өөрөө нэвтрэлтээ шалгах ёстой.
  *
  * ⚠️ Зөвхөн cookie байгаа эсэхийг шалгах нь хангалтгүй — HttpOnly нь зөвхөн
@@ -71,7 +71,7 @@ export function parseAllowedTools(raw: unknown): string[] {
 }
 
 /**
- * `middleware.ts`-ийн TOOL_GUARDS-тай ижил дүрэм: админ/супер админ бол
+ * `proxy.ts`-ийн TOOL_GUARDS-тай ижил дүрэм: админ/супер админ бол
  * үргэлж эрхтэй, эсрэг тохиолдолд `allowedTools`-д заасан tool id байгаа эсэхийг шалгана.
  */
 export function hasToolAccess(

@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { AuditLogService } from "../audit/audit-log.service";
 import { TailanTemplateService } from "./tailan-template.service";
@@ -25,7 +25,7 @@ export class TailanTemplateController {
   ) {}
 
   /** Admin: list all templates (optionally filtered by scope) for the builder UI. */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Get()
   list(@Query("scope") scope?: TailanTemplateScope) {
     return this.svc.list(scope);
@@ -40,7 +40,7 @@ export class TailanTemplateController {
     return this.svc.getActive(departmentId, scope);
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Post()
   async upsert(
     @Body() dto: UpsertTailanTemplateDto,
@@ -70,12 +70,9 @@ export class TailanTemplateController {
     }
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Delete(":id")
-  async remove(
-    @Param("id") id: string,
-    @CurrentUser() user: { id: string },
-  ) {
+  async remove(@Param("id") id: string, @CurrentUser() user: { id: string }) {
     try {
       const result = await this.svc.delete(id);
       await this.auditLogService.log({

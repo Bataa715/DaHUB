@@ -7,53 +7,14 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import compression from "compression";
 import { randomUUID } from "crypto";
+import { validateEnv } from "./config/env.validation";
 
-// [SEC-3] Validate required env vars for external services in production.
-// Prevents silent fallback to localhost (which could leak data to wrong host
-// or fail mysteriously) when deployed without proper configuration.
+// [SEC-3] Орчны хувьсагчийн шалгалт — NestFactory.create()-аас ӨМНӨ ажиллана
+// (ямар нэг DB/HTTP холболт үүсгэхээс нааш буруу тохиргоог барих).
+// Логик нь config/env.validation.ts-д ЦОР ГАНЦ хувилбараар байрлана —
+// app.module.ts-ийн ConfigModule.validate мөн адилыг дуудна.
 function validateProductionEnv() {
-  if (process.env.NODE_ENV !== "production") return;
-  // PYTHON_SERVICE_URL or PYTHON_API_URL (accepts either of the two names)
-  const hasPython =
-    !!process.env.PYTHON_SERVICE_URL || !!process.env.PYTHON_API_URL;
-  const required = [
-    "CLICKHOUSE_HOST",
-    "CLICKHOUSE_PASSWORD",
-    "JWT_SECRET",
-    "CORS_ORIGINS",
-    // [SEC] Python сервис рүү код илгээдэг тул түлхүүргүй ажиллахыг хориглоно
-    "PYTHON_API_KEY",
-    // [SEC] production дээр cookie-ийн secure горимыг ил тод сонгосон байх ёстой
-    "COOKIE_SECURE",
-  ];
-  const missing = required.filter((k) => !process.env[k]);
-  if (!hasPython) missing.unshift("PYTHON_SERVICE_URL (or PYTHON_API_URL)");
-  if (missing.length > 0) {
-    throw new Error(
-      `Production startup blocked: missing required environment variables: ${missing.join(", ")}`,
-    );
-  }
-  if (process.env.COOKIE_SECURE !== "true") {
-    // eslint-disable-next-line no-console
-    console.warn(
-      "[SEC] WARNING: COOKIE_SECURE is not 'true' in production — auth cookies will be sent over plain HTTP.",
-    );
-  }
-  // Warn if any of them still point at localhost (deployment misconfig)
-  const localish = /(localhost|127\.0\.0\.1)/i;
-  for (const key of [
-    "PYTHON_SERVICE_URL",
-    "PYTHON_API_URL",
-    "CLICKHOUSE_HOST",
-  ]) {
-    const v = process.env[key];
-    if (v && localish.test(v)) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[SEC-3] WARNING: ${key} contains localhost in production: ${v}`,
-      );
-    }
-  }
+  validateEnv(process.env as Record<string, unknown>);
 }
 
 async function bootstrap() {

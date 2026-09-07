@@ -17,7 +17,7 @@ import {
 import { OracleService } from "./oracle.service";
 import { OracleConfigService } from "./oracle-config.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { AuditLogService } from "../audit/audit-log.service";
@@ -40,10 +40,7 @@ const SUMMARIES_CACHE_TTL_MS = 20_000;
 @Controller("oracle/search")
 export class OracleSearchController {
   private readonly logger = new Logger(OracleSearchController.name);
-  private alertsCache = new Map<
-    string,
-    { data: unknown; loadedAt: number }
-  >();
+  private alertsCache = new Map<string, { data: unknown; loadedAt: number }>();
   private summariesCache: { data: unknown; loadedAt: number } | null = null;
 
   constructor(
@@ -89,7 +86,7 @@ export class OracleSearchController {
   // ─── Admin config (dashboards + event chains) ───────────────────────────────
 
   /** GET /oracle/search/admin/dashboards — бүх dashboard-ийн бүрэн тохиргоо (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Get("admin/dashboards")
   async adminGetDashboards() {
     await this.config.reloadFromClickHouse(true);
@@ -97,7 +94,7 @@ export class OracleSearchController {
   }
 
   /** POST /oracle/search/admin/dashboards — шинэ dashboard (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Post("admin/dashboards")
   async adminCreateDashboard(
     @Body() body: CreateDashboardDto,
@@ -123,7 +120,7 @@ export class OracleSearchController {
   }
 
   /** PUT /oracle/search/admin/dashboards/:id — dashboard засах (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Put("admin/dashboards/:id")
   async adminReplaceDashboard(
     @Param("id") id: string,
@@ -151,7 +148,7 @@ export class OracleSearchController {
   }
 
   /** DELETE /oracle/search/admin/dashboards/:id — dashboard устгах (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Delete("admin/dashboards/:id")
   async adminDeleteDashboard(
     @Param("id") id: string,
@@ -177,7 +174,7 @@ export class OracleSearchController {
   }
 
   /** PATCH /oracle/search/admin/dashboards/:id — dashboard идэвхтэй эсэхийг өөрчлөх (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Patch("admin/dashboards/:id")
   async adminUpdateDashboard(
     @Param("id") id: string,
@@ -189,10 +186,15 @@ export class OracleSearchController {
         Number(id),
         body.enabled,
       );
-      await this.logAdminAction(req, "oracle_dashboard_set_enabled", "success", {
-        targetId: id,
-        enabled: body.enabled,
-      });
+      await this.logAdminAction(
+        req,
+        "oracle_dashboard_set_enabled",
+        "success",
+        {
+          targetId: id,
+          enabled: body.enabled,
+        },
+      );
       return result;
     } catch (err) {
       await this.logAdminAction(
@@ -208,7 +210,7 @@ export class OracleSearchController {
   }
 
   /** GET /oracle/search/admin/chains — бүх event chain-ийн бүрэн тохиргоо (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Get("admin/chains")
   async adminGetChains() {
     await this.config.reloadFromClickHouse(true);
@@ -216,7 +218,7 @@ export class OracleSearchController {
   }
 
   /** POST /oracle/search/admin/chains — шинэ event chain (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Post("admin/chains")
   async adminCreateChain(
     @Body() body: CreateChainDto,
@@ -242,7 +244,7 @@ export class OracleSearchController {
   }
 
   /** PUT /oracle/search/admin/chains/:id — event chain засах (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Put("admin/chains/:id")
   async adminReplaceChain(
     @Param("id") id: string,
@@ -270,7 +272,7 @@ export class OracleSearchController {
   }
 
   /** DELETE /oracle/search/admin/chains/:id — event chain устгах (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Delete("admin/chains/:id")
   async adminDeleteChain(
     @Param("id") id: string,
@@ -296,7 +298,7 @@ export class OracleSearchController {
   }
 
   /** PATCH /oracle/search/admin/chains/:id — event chain идэвхтэй эсэхийг өөрчлөх (admin) */
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Patch("admin/chains/:id")
   async adminUpdateChain(
     @Param("id") id: string,

@@ -10,6 +10,10 @@ import { AuthService } from "../auth/auth.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import * as bcrypt from "bcryptjs";
 import { VALID_TOOLS_SET } from "../common/constants/tools";
+import { assertRealImage } from "../common/utils/image-signature";
+
+/** `data:image/<төрөл>;base64,<өгөгдөл>` угтварыг задлана. */
+const IMAGE_DATA_URI_RE = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i;
 import {
   buildUserId,
   buildUsersTableRow,
@@ -137,12 +141,9 @@ export class UsersService {
     existing: Record<string, any>,
     overrides: Record<string, unknown> = {},
   ) {
-    await this.clickhouse.replaceRows(
-      "users",
-      "id = {id:String}",
-      { id },
-      [buildUsersTableRow(existing, overrides)],
-    );
+    await this.clickhouse.replaceRows("users", "id = {id:String}", { id }, [
+      buildUsersTableRow(existing, overrides),
+    ]);
     // Bust the auth-layer validateUser cache so any change (deactivation, tools,
     // admin role, password/lock) takes effect on the user's very next request.
     this.authService.invalidateUserValidation(id);
@@ -251,6 +252,16 @@ export class UsersService {
         throw new BadRequestException(
           "Профайл зургийн хэмжээ хэт их байна (дээд тал нь 5MB)",
         );
+      }
+      // [AUDIT] DTO-ийн @Matches нь ЗАРЛАСАН `data:image/...` угтварыг л
+      // шалгадаг — агуулга нь ямар ч байж болно. Хоосон утга нь зургийг
+      // устгах гэсэн үг тул түүнийг алгасна.
+      if (updateUserDto.profileImage !== "") {
+        const m = IMAGE_DATA_URI_RE.exec(updateUserDto.profileImage);
+        if (!m) {
+          throw new BadRequestException("Профайл зургийн формат буруу байна");
+        }
+        assertRealImage(Buffer.from(m[2], "base64"), m[1]);
       }
     }
 

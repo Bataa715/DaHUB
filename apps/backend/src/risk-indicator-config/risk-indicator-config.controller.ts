@@ -12,7 +12,7 @@ import {
   Header,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { AuditLogService } from "../audit/audit-log.service";
 import {
@@ -36,7 +36,7 @@ export class RiskIndicatorConfigController {
     return this.svc.listIndicators();
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Post()
   async create(
     @Body()
@@ -75,7 +75,7 @@ export class RiskIndicatorConfigController {
     }
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Patch(":id")
   async update(
     @Param("id") id: string,
@@ -110,7 +110,7 @@ export class RiskIndicatorConfigController {
     }
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
