@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleInit,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
@@ -15,7 +17,8 @@ import {
   ExpenseTotalDto,
   CreateVerificationTypeDto,
   UpdateVerificationTypeDto,
-} from "./dto/monitoring.dto";
+  UpdateZainiiAuditSettingsDto,
+} from "./dto/zainii-audit.dto";
 import { nowCH } from "../clickhouse/clickhouse.service";
 
 export interface MatchedAccountRow {
@@ -83,7 +86,7 @@ export interface RelatedPartyResult {
 // урт хугацааны query OOM үүсгэхээс сэргийлнэ.
 const MAX_TX_ROWS = 50_000;
 
-// ─── Зайны аудит: "Зардлын хяналт" (expense monitoring) ────────────────
+// ─── Зайны аудит: "Зардлын хяналт" ─────────────────────────────────────
 export interface ExpenseQualifyingCustomer {
   customer_code: string;
   customer_name: string;
@@ -254,9 +257,27 @@ function toBreakdown(rows: ExpenseGroupBreakdown[]): ExpenseGroupBreakdown[] {
 // Given a set of CIF/FORACID identifiers, finds direct internal transactions
 // between any two of them within a date range — flags potential related-party
 // / self-dealing activity for continuous auditing.
+export interface ZainiiAuditSettings {
+  /** Зардлын хяналтын "доод дүн" шүүлтүүрийн анхдагч утга (₮) */
+  defaultMinAmount: number;
+  /** Хайлтын анхдагч хугацаа — өнөөдрөөс хойш хэдэн ХОНОГ ухрахыг заана */
+  defaultDaysBack: number;
+}
+
+export const ZAINII_AUDIT_SETTING_DEFAULTS: ZainiiAuditSettings = {
+  defaultMinAmount: 50_000_000,
+  defaultDaysBack: 7,
+};
+
 @Injectable()
-export class MonitoringService {
+export class ZainiiAuditService implements OnModuleInit {
+  private readonly logger = new Logger(ZainiiAuditService.name);
+
   constructor(private readonly clickhouse: ClickHouseService) {}
+
+  async onModuleInit() {
+    await this.ensureSettingsTable();
+  }
 
   private normalizeCustomerIds(customerIds: string[]): string[] {
     const cleaned = Array.from(
@@ -469,7 +490,7 @@ export class MonitoringService {
     );
   }
 
-  // ── Expense monitoring (Зардлын хяналт) ─────────────────────────────────
+  // ── Зардлын хяналт ──────────────────────────────────────────────────────
   async getExpenseOverview(
     dto: ExpenseOverviewDto,
   ): Promise<ExpenseOverviewResult> {
@@ -884,7 +905,8 @@ export class MonitoringService {
 
     const row: ExpenseVerificationRow = {
       bookNumber: dto.bookNumber,
-      comment: dto.comment !== undefined ? dto.comment : (current?.comment ?? ""),
+      comment:
+        dto.comment !== undefined ? dto.comment : (current?.comment ?? ""),
       verificationType:
         dto.verificationType !== undefined
           ? dto.verificationType
@@ -901,5 +923,92 @@ export class MonitoringService {
 
     await this.clickhouse.insert("avlaga_verifications", [{ ...row }]);
     return row;
+  }
+
+  // ── Зайны аудитын анхдагч тохиргоо (админаас удирдана) ──────────────────
+  //
+  // Өмнө нь `DEFAULT_MIN_AMOUNT = 50_000_000` нь frontend-д хатуу бичээстэй
+  // байсан тул өөрчлөхийн тулд дахин build/deploy хийх шаардлагатай байв.
+  // Одоо админ хуудаснаас тохируулна; хэрэглэгч tool дотроо түр өөрчилж болно.
+
+  private async ensureSettingsTable() {
+    try {
+      await this.clickhouse.exec(`
+        CREATE TABLE IF NOT EXISTS zainii_audit_settings (
+          key       String,
+          value     String,
+          updatedBy String DEFAULT '',
+          updatedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(updatedAt)
+          ORDER BY key
+      `);
+    } catch (e) {
+      this.logger.error("zainii_audit_settings таблиц үүсгэхэд алдаа:", e);
+    }
+  }
+
+  async getSettings(): Promise<ZainiiAuditSettings> {
+    let rows: { key: string; value: string }[] = [];
+    try {
+      rows = await this.clickhouse.query<{ key: string; value: string }>(
+        `SELECT key, value FROM zainii_audit_settings FINAL LIMIT 100`,
+      );
+    } catch (e) {
+      // Хүснэгт хараахан үүсээгүй / DB түр боломжгүй — анхдагчаар үргэлжилнэ.
+      this.logger.warn(`zainii_audit_settings уншиж чадсангүй: ${String(e)}`);
+    }
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+
+    /**
+     * Хадгалсан утгыг тоо болгоно; аль ч алхамд эргэлзээтэй бол анхдагч руу.
+     *
+     * ⚠️ `Number("")` нь 0 буцаадаг тул хоосон мөрийг ЗААВАЛ эхлээд шүүх
+     * ёстой — эс бөгөөс `defaultDaysBack` нь 0 болж, хайлтын эхлэх огноо
+     * өнөөдөр болж, дэлгэц хоосон гарна.
+     */
+    const num = (key: keyof ZainiiAuditSettings, min: number): number => {
+      const fallback = ZAINII_AUDIT_SETTING_DEFAULTS[key];
+      const raw = map.get(key);
+      if (raw === undefined || raw.trim() === "") return fallback;
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || parsed < min) return fallback;
+      return parsed;
+    };
+    return {
+      // Доод дүн 0 байж болно (= шүүлтүүргүй); хугацаа дор хаяж 1 хоног.
+      defaultMinAmount: num("defaultMinAmount", 0),
+      defaultDaysBack: num("defaultDaysBack", 1),
+    };
+  }
+
+  async updateSettings(
+    dto: UpdateZainiiAuditSettingsDto,
+    user: { userId: string },
+  ): Promise<ZainiiAuditSettings> {
+    const rows: {
+      key: string;
+      value: string;
+      updatedBy: string;
+      updatedAt: string;
+    }[] = [];
+    const at = nowCH();
+
+    const put = (key: keyof ZainiiAuditSettings, value?: number) => {
+      if (value === undefined) return;
+      rows.push({
+        key,
+        value: String(value),
+        updatedBy: user.userId,
+        updatedAt: at,
+      });
+    };
+    put("defaultMinAmount", dto.defaultMinAmount);
+    put("defaultDaysBack", dto.defaultDaysBack);
+
+    if (rows.length === 0) {
+      throw new BadRequestException("Өөрчлөх утга заагаагүй байна");
+    }
+    await this.clickhouse.insert("zainii_audit_settings", rows);
+    return this.getSettings();
   }
 }

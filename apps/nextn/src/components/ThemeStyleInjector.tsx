@@ -90,7 +90,7 @@ function buildCSS(): string {
 export function ThemeStyleInjector() {
   return (
     <style
-      // eslint-disable-next-line react/no-danger
+       
       dangerouslySetInnerHTML={{ __html: buildCSS() }}
       data-theme-tokens="true"
     />

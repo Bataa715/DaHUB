@@ -26,7 +26,9 @@ describe("sniffImageMime", () => {
   });
 
   it("зураг биш агуулгад null буцаана", () => {
-    expect(sniffImageMime(Buffer.from("<?php system($_GET[0]); ?>"))).toBeNull();
+    expect(
+      sniffImageMime(Buffer.from("<?php system($_GET[0]); ?>")),
+    ).toBeNull();
     expect(sniffImageMime(Buffer.from("<script>alert(1)</script>"))).toBeNull();
     // MZ — Windows гүйцэтгэх файл
     expect(sniffImageMime(withHeader([0x4d, 0x5a]))).toBeNull();
@@ -56,7 +58,9 @@ describe("assertRealImage", () => {
   });
 
   it("жинхэнэ зураг ч зарласан төрөлтэйгээ зөрвөл татгалзана", () => {
-    expect(() => assertRealImage(PNG, "image/gif")).toThrow(BadRequestException);
+    expect(() => assertRealImage(PNG, "image/gif")).toThrow(
+      BadRequestException,
+    );
   });
 
   it("зарласан төрөлгүй үед зөвхөн зураг мөн эсэхийг шалгана", () => {

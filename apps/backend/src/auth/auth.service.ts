@@ -31,6 +31,7 @@ import {
   RefreshTokenDto,
   ReviewRegistrationDto,
 } from "./dto/auth.dto";
+import { errMessage } from "../common/utils/error-message";
 
 // [LOW-1] buildUserId and safeParseTools imported from src/common/utils/user-utils.ts
 
@@ -626,7 +627,7 @@ export class AuthService {
         accessToken,
         refreshToken,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof UnauthorizedException) {
         await this.recordFailedLogin(lockKey); // [CRIT-2] async
       }
@@ -636,7 +637,7 @@ export class AuthService {
         resource: "auth",
         method: "loginById",
         status: "failure",
-        errorMessage: error.message,
+        errorMessage: errMessage(error),
         metadata: { userId },
       });
       throw error;
@@ -686,7 +687,7 @@ export class AuthService {
         accessToken,
         refreshToken,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof UnauthorizedException) {
         await this.recordFailedLogin(lockKey); // [CRIT-2] async
       }
@@ -696,7 +697,7 @@ export class AuthService {
         resource: "auth",
         method: "adminLogin",
         status: "failure",
-        errorMessage: error.message,
+        errorMessage: errMessage(error),
         metadata: { username },
       });
       throw error;
@@ -810,7 +811,10 @@ export class AuthService {
         { userId },
       );
       const registrationStatus = reqRows[0]?.status as string | undefined;
-      if (registrationStatus === "pending" || registrationStatus === "rejected") {
+      if (
+        registrationStatus === "pending" ||
+        registrationStatus === "rejected"
+      ) {
         return { exists: false, hasPassword: false, registrationStatus };
       }
       return { exists: false, hasPassword: false };

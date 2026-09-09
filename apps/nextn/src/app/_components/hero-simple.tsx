@@ -282,7 +282,7 @@ export default function Hero() {
                       aria-hidden
                     />
                     <Quote
-                      className="absolute top-3 right-3.5 h-5 w-5 text-primary/15 rotate-180"
+                      className="absolute top-3 right-3.5 h-5 w-5 text-primary/25 rotate-180"
                       aria-hidden
                     />
 
@@ -302,7 +302,7 @@ export default function Hero() {
                           {active.title}
                         </p>
                         <p
-                          className={`${ethicsSerif.className} mt-1.5 text-[0.9rem] font-medium leading-relaxed text-foreground/90 line-clamp-3`}
+                          className={`${ethicsSerif.className} mt-1.5 text-[0.95rem] font-semibold leading-relaxed text-foreground line-clamp-3`}
                         >
                           {active.body}
                         </p>

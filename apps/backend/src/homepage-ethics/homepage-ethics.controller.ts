@@ -20,6 +20,7 @@ import {
   CreateEthicsSlideDto,
   UpdateEthicsSlideDto,
 } from "./dto/homepage-ethics.dto";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("homepage-ethics")
 export class HomepageEthicsController {
@@ -55,14 +56,14 @@ export class HomepageEthicsController {
         status: "success",
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "homepage_ethics_create",
         resource: "homepage_ethics",
         method: "create",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
       });
       throw error;
     }
@@ -86,14 +87,14 @@ export class HomepageEthicsController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "homepage_ethics_update",
         resource: "homepage_ethics",
         method: "update",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -103,10 +104,7 @@ export class HomepageEthicsController {
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(
-    @Param("id") id: string,
-    @CurrentUser() user: { id: string },
-  ) {
+  async remove(@Param("id") id: string, @CurrentUser() user: { id: string }) {
     try {
       await this.svc.remove(id, user.id);
       await this.auditLogService.log({
@@ -117,14 +115,14 @@ export class HomepageEthicsController {
         status: "success",
         metadata: { targetId: id },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "homepage_ethics_delete",
         resource: "homepage_ethics",
         method: "delete",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;

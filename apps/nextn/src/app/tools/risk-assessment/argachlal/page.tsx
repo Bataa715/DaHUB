@@ -83,7 +83,7 @@ export default function ArgachlalPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("monRptSearchBtn")}
+            placeholder={t("zaRptSearchBtn")}
             className="w-full h-8 pl-8 pr-3 rounded-lg bg-foreground/5 border border-border/50 text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
         </div>

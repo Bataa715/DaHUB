@@ -15,6 +15,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("departments")
 @UseGuards(JwtAuthGuard)
@@ -52,14 +53,14 @@ export class DepartmentsController {
         metadata: { targetId: id, ...updateDepartmentDto },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "department_update",
         resource: "departments",
         method: "update",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -80,14 +81,14 @@ export class DepartmentsController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "department_delete",
         resource: "departments",
         method: "delete",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;

@@ -157,7 +157,7 @@ function SearchContent() {
               ) : (
                 <Search size={14} />
               )}
-              {t("monRptSearchBtn")}
+              {t("zaRptSearchBtn")}
             </button>
           </div>
           {error && <p className="text-red-400 text-[11px] mt-2">{error}</p>}

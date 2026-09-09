@@ -15,6 +15,7 @@ import { AuditLogService } from "../audit/audit-log.service";
 import { TailanTemplateService } from "./tailan-template.service";
 import { UpsertTailanTemplateDto } from "./dto/tailan-template.dto";
 import { TailanTemplateScope } from "./tailan-template.types";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("tailan-templates")
 @UseGuards(JwtAuthGuard)
@@ -57,14 +58,14 @@ export class TailanTemplateController {
         metadata: { targetId: (dto as any)?.id, scope: (dto as any)?.scope },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "tailan_template_upsert",
         resource: "tailan_templates",
         method: "upsert",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
       });
       throw error;
     }
@@ -84,14 +85,14 @@ export class TailanTemplateController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "tailan_template_delete",
         resource: "tailan_templates",
         method: "delete",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;

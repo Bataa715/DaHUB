@@ -21,6 +21,7 @@ import {
   RevokeGrantDto,
 } from "./dto/db-access.dto";
 import { AuthenticatedUser } from "../common/types/authenticated-request";
+import { errMessage } from "../common/utils/error-message";
 
 // Databases exposed to auditors
 const ALLOWED_DATABASES = ["FINACLE", "ERP", "CARDZONE", "EBANK"];
@@ -219,9 +220,9 @@ export class DbAccessService {
           this.logger.log(
             `[CH ACL] Pre-revoked overlapping grants for requestId=${requestId} user=${requesterUserId}`,
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
           this.logger.warn(
-            `[CH ACL] Pre-revoke failed for requestId=${requestId}: ${err?.message}`,
+            `[CH ACL] Pre-revoke failed for requestId=${requestId}: ${errMessage(err)}`,
           );
         }
 
@@ -445,10 +446,10 @@ export class DbAccessService {
           requesterUserId: req.requesterUserId,
           password: sharedPassword,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         chSetupFailed = true;
         this.logger.error(
-          `[CH ACL] setupUserAndRole FAILED for user=${req.requesterUserId}: ${err?.message}. ` +
+          `[CH ACL] setupUserAndRole FAILED for user=${req.requesterUserId}: ${errMessage(err)}. ` +
             `Grant DB rows will be written but CH access may be broken. ` +
             `Admin should use the CH cleanup endpoint to reset.`,
         );
@@ -591,8 +592,8 @@ export class DbAccessService {
         `[CH ACL] Revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
           `table=${grant.tableName} userDropped=${result.userDropped}`,
       );
-    } catch (err: any) {
-      chRevokeError = err?.message ?? String(err);
+    } catch (err: unknown) {
+      chRevokeError = errMessage(err);
       this.logger.error(
         `[CH ACL] CH SQL revoke FAILED for grant=${grantId}: ${chRevokeError}. ` +
           `Grant is NOT being marked inactive — retry or use the CH cleanup endpoint.`,
@@ -678,8 +679,8 @@ export class DbAccessService {
         `[CH ACL] Self-revoked: user=${grant.userUserId} requestId=${grant.requestId} ` +
           `table=${grant.tableName} userDropped=${result.userDropped}`,
       );
-    } catch (err: any) {
-      chRevokeError = err?.message ?? String(err);
+    } catch (err: unknown) {
+      chRevokeError = errMessage(err);
       this.logger.error(
         `[CH ACL] CH SQL self-revoke FAILED for grant=${grantId}: ${chRevokeError}. ` +
           `Grant is NOT being marked inactive — retry or use the CH cleanup endpoint.`,

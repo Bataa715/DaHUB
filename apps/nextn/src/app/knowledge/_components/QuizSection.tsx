@@ -15,9 +15,16 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Clock,
   ListChecks,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface QuizQuestion {
   id: string;
@@ -72,7 +79,8 @@ const AVATAR_COLORS = [
 ];
 function avatarGrad(name: string) {
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  for (let i = 0; i < name.length; i++)
+    h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 function initials(name: string) {
@@ -102,7 +110,9 @@ function CreateQuizDialog({
   const { t } = useLanguage();
   const { toast } = useToast();
   const [title, setTitle] = useState("");
-  const [questions, setQuestions] = useState<QuizQuestionInput[]>([emptyQuestion()]);
+  const [questions, setQuestions] = useState<QuizQuestionInput[]>([
+    emptyQuestion(),
+  ]);
   const [saving, setSaving] = useState(false);
 
   const updateQuestionText = (qi: number, val: string) =>
@@ -141,7 +151,8 @@ function CreateQuizDialog({
         return {
           ...q,
           options: nextOptions,
-          correctIndex: q.correctIndex >= nextOptions.length ? 0 : q.correctIndex,
+          correctIndex:
+            q.correctIndex >= nextOptions.length ? 0 : q.correctIndex,
         };
       }),
     );
@@ -344,6 +355,9 @@ function QuizCard({
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
+  // Карт дээр дарж дэлгэрэнгүйг диалогоор нээнэ — жагсаалт нь бүх
+  // асуултыг задлан харуулснаас болж хэт урт болдог байсан.
+  const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selections, setSelections] = useState<Record<string, number>>({});
   const [showResults, setShowResults] = useState(false);
@@ -370,6 +384,7 @@ function QuizCard({
       }));
       const timeTakenMs = Math.max(0, Date.now() - startedAtRef.current);
       await quizApi.answer(quiz.id, answers, timeTakenMs);
+      setOpen(false);
       onAnswered();
     } catch {
       toast({
@@ -413,13 +428,37 @@ function QuizCard({
     }
   };
 
+  const scoreBadge = answered ? (
+    <span
+      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold shrink-0 ${
+        quiz.myAttempt!.correctCount === quiz.myAttempt!.totalQuestions
+          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {quiz.myAttempt!.correctCount}/{quiz.myAttempt!.totalQuestions}
+    </span>
+  ) : null;
+
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-premium overflow-hidden">
-      <div className="p-4 space-y-4">
+    <>
+      {/* ── Хураангуй карт — дарж дэлгэрэнгүйг нээнэ ─────────────────── */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        className="group rounded-2xl border border-border bg-card shadow-premium p-4 cursor-pointer transition-all hover:border-violet-500/40 hover:shadow-premium-lg hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGrad(quiz.authorName)} flex items-center justify-center text-white text-[11px] font-bold shrink-0`}
+              className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGrad(quiz.authorName)} flex items-center justify-center text-white text-[11px] font-bold shrink-0`}
             >
               {initials(quiz.authorName)}
             </div>
@@ -427,7 +466,7 @@ function QuizCard({
               <p className="text-[11px] text-muted-foreground truncate">
                 {t("quizByLabel")} {quiz.authorName}
               </p>
-              <h3 className="text-foreground font-bold text-sm leading-snug">
+              <h3 className="text-foreground font-bold text-sm leading-snug truncate">
                 {quiz.title}
               </h3>
               <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -436,20 +475,13 @@ function QuizCard({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {answered && (
-              <span
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold ${
-                  quiz.myAttempt!.correctCount === quiz.myAttempt!.totalQuestions
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {quiz.myAttempt!.correctCount}/{quiz.myAttempt!.totalQuestions}
-              </span>
-            )}
+            {scoreBadge}
             {canDelete && (
               <button
-                onClick={handleDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDelete();
+                }}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -458,162 +490,202 @@ function QuizCard({
           </div>
         </div>
 
-        <div className="space-y-4">
-          {quiz.questions.map((q, qi) => (
-            <div key={q.id} className="space-y-1.5">
-              <p className="text-foreground text-sm font-semibold">
-                {qi + 1}. {q.question}
-              </p>
-              <div className="space-y-1.5">
-                {q.options.map((opt, i) => {
-                  const isMine = selections[q.id] === i;
-                  const isCorrectOpt = q.correctIndex === i;
-                  let cls =
-                    "border-border hover:border-violet-300 dark:hover:border-violet-700 hover:bg-muted/50";
-                  if (answered) {
-                    if (isCorrectOpt)
-                      cls = "border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
-                    else if (isMine)
-                      cls = "border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-400";
-                    else cls = "border-border/60 opacity-60";
-                  } else if (isMine) {
-                    cls = "border-violet-500/70 bg-violet-500/10 text-violet-700 dark:text-violet-300";
-                  }
-                  return (
-                    <button
-                      key={i}
-                      onClick={() =>
-                        !answered &&
-                        setSelections((prev) => ({ ...prev, [q.id]: i }))
-                      }
-                      disabled={answered}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-sm font-medium text-left transition-all ${cls} ${
-                        answered ? "cursor-default" : "cursor-pointer"
-                      }`}
-                    >
-                      <span className="truncate">{opt}</span>
-                      <span className="flex items-center gap-1.5 shrink-0">
-                        {answered && isCorrectOpt && (
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        )}
-                        {answered && isMine && !isCorrectOpt && (
-                          <X className="w-3.5 h-3.5 text-red-500" />
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {!answered && (
-          <button
-            onClick={handleSubmitAll}
-            disabled={!allSelected || submitting}
-            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-40"
-          >
-            {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            {t("quizSubmitQuizBtn")}
-          </button>
-        )}
-
-        {answered && (
-          <div
-            className={`flex items-center gap-1.5 text-xs font-semibold ${
-              quiz.myAttempt!.correctCount === quiz.myAttempt!.totalQuestions
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-foreground/80"
-            }`}
-          >
-            <ListChecks className="w-3.5 h-3.5" />
-            {quiz.myAttempt!.correctCount}/{quiz.myAttempt!.totalQuestions}{" "}
-            {t("quizCorrectCountLabel")} · {fmtSec(quiz.myAttempt!.timeTakenMs)}
-            {t("quizTimeSecLabel")}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t border-border/60">
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1">
+        <div className="flex items-center justify-between gap-3 pt-3 mt-3 border-t border-border/60">
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground min-w-0">
+            <span className="flex items-center gap-1 shrink-0">
               <Users className="w-3 h-3" /> {quiz.answerCount}{" "}
               {t("quizParticipantsLabel")}
             </span>
             {quiz.avgScorePercent != null && (
-              <span>
+              <span className="shrink-0">
                 {quiz.avgScorePercent}% {t("quizAvgScoreLabel")}
               </span>
             )}
           </div>
-          {canViewResults && (
-            <button
-              onClick={toggleResults}
-              className="flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline"
-            >
-              {showResults ? t("quizHideResultsBtn") : t("quizViewResultsBtn")}
-              {showResults ? (
-                <ChevronUp className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
+          <span className="flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-400 shrink-0">
+            {answered ? t("quizViewResultsBtn") : t("quizSubmitQuizBtn")}
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </span>
         </div>
       </div>
 
-      {canViewResults && showResults && (
-        <div className="border-t border-border bg-muted/20 px-4 py-3 space-y-2">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            {t("quizResultsTitle")}
-          </p>
-          {loadingResults ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      {/* ── Дэлгэрэнгүй — асуулт хариулах диалог ──────────────────────── */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-left pr-6">{quiz.title}</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex items-center gap-2.5 -mt-1 pb-1">
+            <div
+              className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGrad(quiz.authorName)} flex items-center justify-center text-white text-[11px] font-bold shrink-0`}
+            >
+              {initials(quiz.authorName)}
             </div>
-          ) : !results || results.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-3">
-              {t("quizResultsEmpty")}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {results.map((r) => (
-                <div
-                  key={r.userId}
-                  className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs"
-                >
-                  <span className="w-5 text-center text-muted-foreground shrink-0">
-                    {r.rank}
-                  </span>
-                  <span
-                    className={`w-6 h-6 rounded-full bg-gradient-to-br ${avatarGrad(r.userName)} flex items-center justify-center text-white text-[9px] font-bold shrink-0`}
-                  >
-                    {initials(r.userName)}
-                  </span>
-                  <span className="flex-1 min-w-0 truncate font-medium text-foreground">
-                    {r.userName}
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground shrink-0">
-                    <Clock className="w-3 h-3" />
-                    {fmtSec(r.timeTakenMs)}
-                    {t("quizTimeSecLabel")}
-                  </span>
-                  <span
-                    className={`font-bold shrink-0 ${
-                      r.correctCount === r.totalQuestions
-                        ? "text-emerald-500"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {r.correctCount}/{r.totalQuestions}
-                  </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] text-muted-foreground truncate">
+                {t("quizByLabel")} {quiz.authorName}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {quiz.questionCount} {t("quizQuestionCountLabel")} ·{" "}
+                {quiz.answerCount} {t("quizParticipantsLabel")}
+              </p>
+            </div>
+            {scoreBadge}
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-4">
+              {quiz.questions.map((q, qi) => (
+                <div key={q.id} className="space-y-1.5">
+                  <p className="text-foreground text-sm font-semibold">
+                    {qi + 1}. {q.question}
+                  </p>
+                  <div className="space-y-1.5">
+                    {q.options.map((opt, i) => {
+                      const isMine = selections[q.id] === i;
+                      const isCorrectOpt = q.correctIndex === i;
+                      let cls =
+                        "border-border hover:border-violet-300 dark:hover:border-violet-700 hover:bg-muted/50";
+                      if (answered) {
+                        if (isCorrectOpt)
+                          cls =
+                            "border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+                        else if (isMine)
+                          cls =
+                            "border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-400";
+                        else cls = "border-border/60 opacity-60";
+                      } else if (isMine) {
+                        cls =
+                          "border-violet-500/70 bg-violet-500/10 text-violet-700 dark:text-violet-300";
+                      }
+                      return (
+                        <button
+                          key={i}
+                          onClick={() =>
+                            !answered &&
+                            setSelections((prev) => ({ ...prev, [q.id]: i }))
+                          }
+                          disabled={answered}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-sm font-medium text-left transition-all ${cls} ${
+                            answered ? "cursor-default" : "cursor-pointer"
+                          }`}
+                        >
+                          <span className="truncate">{opt}</span>
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            {answered && isCorrectOpt && (
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                            )}
+                            {answered && isMine && !isCorrectOpt && (
+                              <X className="w-3.5 h-3.5 text-red-500" />
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
+            {!answered && (
+              <button
+                onClick={handleSubmitAll}
+                disabled={!allSelected || submitting}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-40"
+              >
+                {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {t("quizSubmitQuizBtn")}
+              </button>
+            )}
+
+            {answered && (
+              <div
+                className={`flex items-center gap-1.5 text-xs font-semibold ${
+                  quiz.myAttempt!.correctCount ===
+                  quiz.myAttempt!.totalQuestions
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-foreground/80"
+                }`}
+              >
+                <ListChecks className="w-3.5 h-3.5" />
+                {quiz.myAttempt!.correctCount}/{quiz.myAttempt!.totalQuestions}{" "}
+                {t("quizCorrectCountLabel")} ·{" "}
+                {fmtSec(quiz.myAttempt!.timeTakenMs)}
+                {t("quizTimeSecLabel")}
+              </div>
+            )}
+
+            {canViewResults && (
+              <button
+                onClick={toggleResults}
+                className="flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+              >
+                {showResults
+                  ? t("quizHideResultsBtn")
+                  : t("quizViewResultsBtn")}
+                {showResults ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+          </div>
+
+          {canViewResults && showResults && (
+            <div className="border-t border-border bg-muted/20 px-4 py-3 space-y-2">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                {t("quizResultsTitle")}
+              </p>
+              {loadingResults ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : !results || results.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">
+                  {t("quizResultsEmpty")}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {results.map((r) => (
+                    <div
+                      key={r.userId}
+                      className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs"
+                    >
+                      <span className="w-5 text-center text-muted-foreground shrink-0">
+                        {r.rank}
+                      </span>
+                      <span
+                        className={`w-6 h-6 rounded-full bg-gradient-to-br ${avatarGrad(r.userName)} flex items-center justify-center text-white text-[9px] font-bold shrink-0`}
+                      >
+                        {initials(r.userName)}
+                      </span>
+                      <span className="flex-1 min-w-0 truncate font-medium text-foreground">
+                        {r.userName}
+                      </span>
+                      <span className="flex items-center gap-1 text-muted-foreground shrink-0">
+                        <Clock className="w-3 h-3" />
+                        {fmtSec(r.timeTakenMs)}
+                        {t("quizTimeSecLabel")}
+                      </span>
+                      <span
+                        className={`font-bold shrink-0 ${
+                          r.correctCount === r.totalQuestions
+                            ? "text-emerald-500"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {r.correctCount}/{r.totalQuestions}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -730,7 +802,12 @@ export function QuizSection() {
         ) : (
           <div className="space-y-3">
             {quizzes.map((q) => (
-              <QuizCard key={q.id} quiz={q} onAnswered={load} onDeleted={load} />
+              <QuizCard
+                key={q.id}
+                quiz={q}
+                onAnswered={load}
+                onDeleted={load}
+              />
             ))}
           </div>
         )}
@@ -741,7 +818,10 @@ export function QuizSection() {
       </div>
 
       {showCreate && (
-        <CreateQuizDialog onClose={() => setShowCreate(false)} onCreated={load} />
+        <CreateQuizDialog
+          onClose={() => setShowCreate(false)}
+          onCreated={load}
+        />
       )}
     </div>
   );

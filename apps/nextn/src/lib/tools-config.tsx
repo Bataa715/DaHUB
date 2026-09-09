@@ -120,9 +120,11 @@ export function getTools(t: (key: TranslationKey) => string): Tool[] {
       tag: "Risk",
     },
     {
-      id: "monitoring_box",
-      title: t("toolMonitoringBoxTitle"),
-      description: t("toolMonitoringBoxDesc"),
+      id: "zainii_audit",
+      // Аль нэг дэд эрх байхад л цэсэнд харагдана.
+      matchIds: ["zainii_audit_rpt", "zainii_audit_expense"],
+      title: t("toolZainiiAuditTitle"),
+      description: t("toolZainiiAuditDesc"),
       icon: Activity,
       href: "/tools/zainii-audit",
       gradient: "from-orange-500 to-red-500",

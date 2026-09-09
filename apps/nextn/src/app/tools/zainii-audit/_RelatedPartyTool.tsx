@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  monitoringApi,
+  zainiiAuditRptApi,
   getApiErrorMessage,
   RelatedPartyResult,
 } from "@/lib/api";
@@ -99,16 +99,16 @@ export function RelatedPartyTool() {
 
     if (finalIds.length < 2) {
       toast({
-        title: t("monRptCifMissingTitle"),
-        description: t("monRptCifMissingDesc"),
+        title: t("zaRptCifMissingTitle"),
+        description: t("zaRptCifMissingDesc"),
         variant: "destructive",
       });
       return;
     }
     if (!startDate || !endDate) {
       toast({
-        title: t("monRptDateMissingTitle"),
-        description: t("monRptDateMissingDesc"),
+        title: t("zaRptDateMissingTitle"),
+        description: t("zaRptDateMissingDesc"),
         variant: "destructive",
       });
       return;
@@ -117,7 +117,7 @@ export function RelatedPartyTool() {
     setLoading(true);
     setError(null);
     try {
-      const res = await monitoringApi.findRelatedPartyTransactions({
+      const res = await zainiiAuditRptApi.findRelatedPartyTransactions({
         customerIds: finalIds,
         startDate,
         endDate,
@@ -133,8 +133,8 @@ export function RelatedPartyTool() {
       );
       if (res.transactions.length === 0) {
         toast({
-          title: t("monRptNoTxTitle"),
-          description: t("monRptNoTxDesc"),
+          title: t("zaRptNoTxTitle"),
+          description: t("zaRptNoTxDesc"),
         });
       }
     } catch (e) {
@@ -157,7 +157,7 @@ export function RelatedPartyTool() {
       await downloadRelatedPartyWorkbook(result, startDate, endDate);
     } catch (e) {
       toast({
-        title: t("monRptDownloadErrorTitle"),
+        title: t("zaRptDownloadErrorTitle"),
         description: getApiErrorMessage(e),
         variant: "destructive",
       });
@@ -182,17 +182,17 @@ export function RelatedPartyTool() {
       ? [
           {
             id: "summary",
-            labelKey: "monRptTabSummary",
+            labelKey: "zaRptTabSummary",
             count: result.summary.length,
           },
           {
             id: "accounts",
-            labelKey: "monRptTabAccounts",
+            labelKey: "zaRptTabAccounts",
             count: result.accounts.length,
           },
           {
             id: "transactions",
-            labelKey: "monRptTabTransactions",
+            labelKey: "zaRptTabTransactions",
             count: result.transactions.length,
           },
         ]
@@ -203,7 +203,7 @@ export function RelatedPartyTool() {
       <ToolPageHeader
         href="/tools/zainii-audit"
         icon={<Users2 className="w-4 h-4 text-orange-500" />}
-        title={t("monBoxRelatedPartyTitle")}
+        title={t("zaBoxRelatedPartyTitle")}
         rightContent={
           canExport ? (
             <Button
@@ -230,7 +230,7 @@ export function RelatedPartyTool() {
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[220px]">
               <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                {t("monRptCifListLabel")}
+                {t("zaRptCifListLabel")}
               </label>
               {cifIds.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2">
@@ -267,7 +267,7 @@ export function RelatedPartyTool() {
                   }
                 }}
                 onBlur={() => cifInput.trim() && addCifTokens(cifInput)}
-                placeholder={t("monRptCifPlaceholder")}
+                placeholder={t("zaRptCifPlaceholder")}
                 disabled={loading}
                 className="text-sm h-9"
               />
@@ -308,7 +308,7 @@ export function RelatedPartyTool() {
               ) : (
                 <Search className="w-4 h-4" />
               )}
-              {t("monRptSearchBtn")}
+              {t("zaRptSearchBtn")}
             </Button>
           </div>
         </div>
@@ -323,12 +323,12 @@ export function RelatedPartyTool() {
         {!result && !loading && !error && (
           <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
             <p className="text-sm font-medium text-foreground mb-3">
-              {t("monRptEmptyState")}
+              {t("zaRptEmptyState")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-              <span>1. {t("monRptEmptyHint1")}</span>
+              <span>1. {t("zaRptEmptyHint1")}</span>
               <span className="hidden sm:inline text-border">·</span>
-              <span>2. {t("monRptEmptyHint2")}</span>
+              <span>2. {t("zaRptEmptyHint2")}</span>
             </div>
           </div>
         )}
@@ -346,13 +346,13 @@ export function RelatedPartyTool() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <StatCard
                 icon={Users2}
-                label={t("monRptMatchedAccounts")}
+                label={t("zaRptMatchedAccounts")}
                 value={result.accounts.length}
                 tint="text-sky-500 bg-sky-500/10 border-sky-500/20"
               />
               <StatCard
                 icon={ArrowRightLeft}
-                label={t("monRptFoundTx")}
+                label={t("zaRptFoundTx")}
                 value={result.transactions.length}
                 tint={
                   result.transactions.length > 0
@@ -366,7 +366,7 @@ export function RelatedPartyTool() {
                     <span className="w-8 h-8 rounded-lg border border-border bg-muted/50 flex items-center justify-center shrink-0">
                       <Wallet className="w-4 h-4 text-muted-foreground" />
                     </span>
-                    {t("monRptTotalByCurrency")}
+                    {t("zaRptTotalByCurrency")}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {totalsByCurrency.map(([ccy, amt]) => (
@@ -390,7 +390,7 @@ export function RelatedPartyTool() {
             {result.truncated && (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                {t("monExpTruncatedWarning")}
+                {t("zaExpTruncatedWarning")}
               </div>
             )}
 
@@ -418,9 +418,9 @@ export function RelatedPartyTool() {
               </div>
 
               <div className="p-3">
-                {activeTab === "summary" && (
-                  result.summary.length === 0 ? (
-                    <EmptyTab message={t("monRptNoTxDesc")} />
+                {activeTab === "summary" &&
+                  (result.summary.length === 0 ? (
+                    <EmptyTab message={t("zaRptNoTxDesc")} />
                   ) : (
                     <TableScroll>
                       <table className="w-full text-sm">
@@ -428,12 +428,12 @@ export function RelatedPartyTool() {
                           <tr className="text-left text-xs text-muted-foreground border-b border-border sticky top-0 bg-card">
                             <Th>FROM_CIF</Th>
                             <Th>TO_CIF</Th>
-                            <Th>{t("monRptColCurrency")}</Th>
+                            <Th>{t("zaRptColCurrency")}</Th>
                             <Th className="text-right">
-                              {t("monRptColTotalAmount")}
+                              {t("zaRptColTotalAmount")}
                             </Th>
                             <Th className="text-right">
-                              {t("monRptColTxCount")}
+                              {t("zaRptColTxCount")}
                             </Th>
                           </tr>
                         </thead>
@@ -457,21 +457,20 @@ export function RelatedPartyTool() {
                         </tbody>
                       </table>
                     </TableScroll>
-                  )
-                )}
+                  ))}
 
-                {activeTab === "accounts" && (
-                  result.accounts.length === 0 ? (
-                    <EmptyTab message={t("monRptNoTxDesc")} />
+                {activeTab === "accounts" &&
+                  (result.accounts.length === 0 ? (
+                    <EmptyTab message={t("zaRptNoTxDesc")} />
                   ) : (
                     <TableScroll maxHeight="360px">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-left text-xs text-muted-foreground border-b border-border sticky top-0 bg-card">
                             <Th>CIF</Th>
-                            <Th>{t("monRptColAccount")}</Th>
+                            <Th>{t("zaRptColAccount")}</Th>
                             <Th>ACID</Th>
-                            <Th>{t("monRptColName")}</Th>
+                            <Th>{t("zaRptColName")}</Th>
                           </tr>
                         </thead>
                         <tbody>
@@ -491,90 +490,88 @@ export function RelatedPartyTool() {
                         </tbody>
                       </table>
                     </TableScroll>
-                  )
-                )}
+                  ))}
 
-                {activeTab === "transactions" && (
-                  result.transactions.length === 0 ? (
-                    <EmptyTab message={t("monRptNoTxDesc")} />
+                {activeTab === "transactions" &&
+                  (result.transactions.length === 0 ? (
+                    <EmptyTab message={t("zaRptNoTxDesc")} />
                   ) : (
                     <div>
-                    <TableScroll maxHeight="480px">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
-                            <Th>{t("tailan_dateLabel")}</Th>
-                            <Th>{t("monRptColTxAmount")}</Th>
-                            <Th>{t("monRptColCurrency")}</Th>
-                            <Th>{t("monRptColFrom")}</Th>
-                            <Th>{t("monRptColTo")}</Th>
-                            <Th>{t("monRptColChannel")}</Th>
-                            <Th>{t("monRptColBank")}</Th>
-                            <Th>{t("monRptColSourceSol")}</Th>
-                            <Th>{t("monRptColParticular")}</Th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {result.transactions
-                            .slice(0, visibleTxCount)
-                            .map((tx, i) => (
-                            <tr
-                              key={`${tx.TRAN_ID}-${tx.FROM_CIF}-${tx.TO_CIF}-${i}`}
-                              className="border-b border-border/30 hover:bg-muted/30 align-top"
-                            >
-                              <Td>{tx.TRAN_DATE}</Td>
-                              <Td className="font-semibold whitespace-nowrap tabular-nums">
-                                {fmtAmount(tx.TRAN_AMOUNT)}
-                              </Td>
-                              <Td>{tx.CURRENCY}</Td>
-                              <Td>
-                                <div className="font-mono">
-                                  {tx.FROM_CIF} / {tx.FROM_ACCOUNT}
-                                </div>
-                                <div className="text-muted-foreground">
-                                  {tx.FROM_NAME}
-                                </div>
-                              </Td>
-                              <Td>
-                                <div className="font-mono">
-                                  {tx.TO_CIF} / {tx.TO_ACCOUNT}
-                                </div>
-                                <div className="text-muted-foreground">
-                                  {tx.TO_NAME}
-                                </div>
-                              </Td>
-                              <Td>{tx.CHANNEL_ID}</Td>
-                              <Td>{tx.BANK}</Td>
-                              <Td>{tx.DTH_INIT_SOL_ID}</Td>
-                              <Td>{tx.DEBIT_PARTICULAR}</Td>
+                      <TableScroll maxHeight="480px">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-muted-foreground border-b border-border sticky top-0 bg-card">
+                              <Th>{t("tailan_dateLabel")}</Th>
+                              <Th>{t("zaRptColTxAmount")}</Th>
+                              <Th>{t("zaRptColCurrency")}</Th>
+                              <Th>{t("zaRptColFrom")}</Th>
+                              <Th>{t("zaRptColTo")}</Th>
+                              <Th>{t("zaRptColChannel")}</Th>
+                              <Th>{t("zaRptColBank")}</Th>
+                              <Th>{t("zaRptColSourceSol")}</Th>
+                              <Th>{t("zaRptColParticular")}</Th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </TableScroll>
-                    {visibleTxCount < result.transactions.length && (
-                      <div className="border-t border-border px-3 py-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full h-8 text-xs"
-                          onClick={() =>
-                            setVisibleTxCount((n) =>
-                              Math.min(
-                                n + TX_PAGE_STEP,
-                                result.transactions.length,
-                              ),
-                            )
-                          }
-                        >
-                          {t("monExpShowMore")} ({visibleTxCount}/
-                          {result.transactions.length})
-                        </Button>
-                      </div>
-                    )}
+                          </thead>
+                          <tbody>
+                            {result.transactions
+                              .slice(0, visibleTxCount)
+                              .map((tx, i) => (
+                                <tr
+                                  key={`${tx.TRAN_ID}-${tx.FROM_CIF}-${tx.TO_CIF}-${i}`}
+                                  className="border-b border-border/30 hover:bg-muted/30 align-top"
+                                >
+                                  <Td>{tx.TRAN_DATE}</Td>
+                                  <Td className="font-semibold whitespace-nowrap tabular-nums">
+                                    {fmtAmount(tx.TRAN_AMOUNT)}
+                                  </Td>
+                                  <Td>{tx.CURRENCY}</Td>
+                                  <Td>
+                                    <div className="font-mono">
+                                      {tx.FROM_CIF} / {tx.FROM_ACCOUNT}
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                      {tx.FROM_NAME}
+                                    </div>
+                                  </Td>
+                                  <Td>
+                                    <div className="font-mono">
+                                      {tx.TO_CIF} / {tx.TO_ACCOUNT}
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                      {tx.TO_NAME}
+                                    </div>
+                                  </Td>
+                                  <Td>{tx.CHANNEL_ID}</Td>
+                                  <Td>{tx.BANK}</Td>
+                                  <Td>{tx.DTH_INIT_SOL_ID}</Td>
+                                  <Td>{tx.DEBIT_PARTICULAR}</Td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </TableScroll>
+                      {visibleTxCount < result.transactions.length && (
+                        <div className="border-t border-border px-3 py-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full h-8 text-xs"
+                            onClick={() =>
+                              setVisibleTxCount((n) =>
+                                Math.min(
+                                  n + TX_PAGE_STEP,
+                                  result.transactions.length,
+                                ),
+                              )
+                            }
+                          >
+                            {t("zaExpShowMore")} ({visibleTxCount}/
+                            {result.transactions.length})
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )
-                )}
+                  ))}
               </div>
             </div>
           </>

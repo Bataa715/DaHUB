@@ -39,7 +39,7 @@ export class RelatedPartyTransactionsDto {
   endDate: string;
 }
 
-// ─── Expense monitoring (Зардлын хяналт) ────────────────────────────────────
+// ─── Зардлын хяналт ─────────────────────────────────────────────────────────
 export class ExpenseOverviewDto {
   @IsDateString({}, { message: "Эхлэх огноо буруу байна" })
   startDate: string;
@@ -136,4 +136,22 @@ export class UpdateVerificationTypeDto {
   @IsOptional()
   @IsBoolean({ message: "Идэвхтэй эсэх утга буруу байна" })
   isActive?: boolean;
+}
+
+/**
+ * Зайны аудитын анхдагч тохиргоо (зөвхөн супер админ).
+ * Хэсэгчилсэн шинэчлэлт — заагаагүй талбар хэвээр үлдэнэ.
+ */
+export class UpdateZainiiAuditSettingsDto {
+  @IsOptional()
+  @IsNumber({}, { message: "Доод дүн тоо байх ёстой" })
+  @Min(0, { message: "Доод дүн сөрөг байж болохгүй" })
+  @Max(1_000_000_000_000, { message: "Доод дүн хэт их байна" })
+  defaultMinAmount?: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: "Хугацаа тоо байх ёстой" })
+  @Min(1, { message: "Хугацаа дор хаяж 1 хоног байх ёстой" })
+  @Max(3650, { message: "Хугацаа хэт урт байна (дээд тал нь 3650 хоног)" })
+  defaultDaysBack?: number;
 }

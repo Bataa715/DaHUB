@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { createClient, ClickHouseClient } from "@clickhouse/client";
 import { randomUUID } from "crypto";
+import { errMessage } from "../common/utils/error-message";
 
 /** Returns current UTC timestamp in ClickHouse DateTime string format (YYYY-MM-DD HH:MM:SS). */
 export const nowCH = (): string =>
@@ -280,8 +281,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     const client = this.aclClient ?? this.client;
     try {
       await client.command({ query: sql, query_params: params });
-    } catch (error: any) {
-      const msg = error?.message || error?.type || String(error);
+    } catch (error: unknown) {
+      const msg = errMessage(error);
       this.logger.error(`ClickHouse ACL command error: ${msg}`);
       throw error;
     }
@@ -729,7 +730,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
 
       // Create expense_verification_types table — Зардлын хяналтын
       // Баталгаажуулалт дэлгэц дэх "Төрөл" сонголтын жагсаалт, зөвхөн admin
-      // тохируулна (see MonitoringService.listVerificationTypes etc.).
+      // тохируулна (see ZainiiAuditService.listVerificationTypes etc.).
       await this.exec(`
         CREATE TABLE IF NOT EXISTS expense_verification_types (
           id String,
@@ -927,12 +928,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
          WHERE (isAdmin = 1 OR isSuperAdmin = 1) AND departmentId != ''`,
       );
       for (const u of adminWithDept) {
-        await this.replaceRows(
-          "users",
-          "id = {id:String}",
-          { id: u.id },
-          [{ ...u, departmentId: "", updatedAt: nowCH() }],
-        ).catch((e) =>
+        await this.replaceRows("users", "id = {id:String}", { id: u.id }, [
+          { ...u, departmentId: "", updatedAt: nowCH() },
+        ]).catch((e) =>
           this.logger.warn(
             `Admin dept clear skipped: ${e instanceof Error ? e.message : e}`,
           ),
@@ -949,12 +947,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
            AND password NOT LIKE 'PENDING:%'`,
       );
       for (const u of inactiveReady) {
-        await this.replaceRows(
-          "users",
-          "id = {id:String}",
-          { id: u.id },
-          [{ ...u, isActive: 1, updatedAt: nowCH() }],
-        ).catch((e) =>
+        await this.replaceRows("users", "id = {id:String}", { id: u.id }, [
+          { ...u, isActive: 1, updatedAt: nowCH() },
+        ]).catch((e) =>
           this.logger.warn(
             `Activate user skipped: ${e instanceof Error ? e.message : e}`,
           ),
@@ -975,8 +970,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       if (canProvisionUsers) {
         try {
           await this.provisionServiceUsers();
-        } catch (provisionErr: any) {
-          const msg = provisionErr?.message || String(provisionErr);
+        } catch (provisionErr: unknown) {
+          const msg = errMessage(provisionErr);
           if (
             msg.includes("ACCESS_STORAGE_READONLY") ||
             msg.includes("users_xml") ||
@@ -996,8 +991,8 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(
         "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts, avlaga, tulbur, budget, havsralt, avlaga_verifications, expense_verification_types)",
       );
-    } catch (error: any) {
-      this.logger.error(`Schema initialization failed: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(`Schema initialization failed: ${errMessage(error)}`);
       throw error;
     }
   }

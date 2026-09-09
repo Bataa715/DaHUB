@@ -18,7 +18,7 @@ import { PythonApiModule } from "./python-api/python-api.module";
 import { RiskAssessmentModule } from "./risk-assessment/risk-assessment.module";
 import { RiskIndicatorConfigModule } from "./risk-indicator-config/risk-indicator-config.module";
 import { HomepageEthicsModule } from "./homepage-ethics/homepage-ethics.module";
-import { MonitoringModule } from "./monitoring/monitoring.module";
+import { ZainiiAuditModule } from "./zainii-audit/zainii-audit.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 import { validateEnv } from "./config/env.validation";
@@ -59,7 +59,7 @@ import { validateEnv } from "./config/env.validation";
     RiskAssessmentModule,
     RiskIndicatorConfigModule,
     HomepageEthicsModule,
-    MonitoringModule,
+    ZainiiAuditModule,
   ],
   controllers: [HealthController],
   providers: [

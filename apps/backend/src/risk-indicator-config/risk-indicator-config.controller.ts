@@ -19,6 +19,7 @@ import {
   RiskIndicatorConfigService,
   IndicatorConfig,
 } from "./risk-indicator-config.service";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("risk-indicator-config")
 @UseGuards(JwtAuthGuard)
@@ -62,14 +63,14 @@ export class RiskIndicatorConfigController {
         metadata: { name: (dto as any)?.name, group: (dto as any)?.group },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "risk_indicator_config_create",
         resource: "risk_indicator_config",
         method: "create",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
       });
       throw error;
     }
@@ -96,14 +97,14 @@ export class RiskIndicatorConfigController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "risk_indicator_config_update",
         resource: "risk_indicator_config",
         method: "update",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -127,14 +128,14 @@ export class RiskIndicatorConfigController {
         status: "success",
         metadata: { targetId: id },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: user.id,
         action: "risk_indicator_config_delete",
         resource: "risk_indicator_config",
         method: "delete",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;

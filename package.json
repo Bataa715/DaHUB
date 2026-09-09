@@ -11,11 +11,15 @@
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css}\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css}\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --root apps/backend",
+    "test": "npm run test:backend && npm run test:frontend",
     "test:watch": "vitest --root apps/backend",
     "test:cov": "vitest run --coverage --root apps/backend",
     "nx:graph": "nx graph",
-    "nx:affected": "nx affected:build"
+    "nx:affected": "nx affected:build",
+    "lint": "eslint apps/nextn/src apps/backend/src",
+    "lint:fix": "eslint apps/nextn/src apps/backend/src --fix",
+    "test:backend": "vitest run --root apps/backend",
+    "test:frontend": "vitest run --root apps/nextn"
   },
   "dependencies": {
     "@fontsource-variable/source-sans-3": "^5.3.0",
@@ -54,6 +58,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@nx/next": "23.2.0",
     "@nx/workspace": "23.2.0",
     "@swc-node/register": "^1.11.1",
@@ -65,6 +70,8 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.10.0",
+    "eslint-config-next": "16.3.4",
     "nx": "23.2.0",
     "postcss": "^8.5.28",
     "prettier": "^3.9.6",

@@ -197,8 +197,8 @@ export class UsersService {
     const existing = users[0];
     const isPrivileged = !!existing.isAdmin || !!existing.isSuperAdmin;
 
-    let nextName = updateUserDto.name ?? existing.name;
-    let nextPosition =
+    const nextName = updateUserDto.name ?? existing.name;
+    const nextPosition =
       updateUserDto.position !== undefined
         ? updateUserDto.position
         : (existing.position ?? "");
@@ -206,15 +206,15 @@ export class UsersService {
       updateUserDto.userId !== undefined
         ? updateUserDto.userId
         : existing.userId;
-    let nextDepartmentId =
+    const nextDepartmentId =
       updateUserDto.departmentId !== undefined
         ? updateUserDto.departmentId
         : (existing.departmentId ?? "");
-    let nextProfileImage =
+    const nextProfileImage =
       updateUserDto.profileImage !== undefined
         ? updateUserDto.profileImage
         : (existing.profileImage ?? "");
-    let nextAllowedTools =
+    const nextAllowedTools =
       updateUserDto.allowedTools !== undefined
         ? JSON.stringify(updateUserDto.allowedTools)
         : typeof existing.allowedTools === "string"

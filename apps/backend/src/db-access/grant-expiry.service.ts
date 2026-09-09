@@ -10,6 +10,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { ClickHouseAccessService } from "./clickhouse-access.service";
 import { AuditLogService } from "../audit/audit-log.service";
+import { errMessage } from "../common/utils/error-message";
 
 @Injectable()
 export class GrantExpiryService {
@@ -78,10 +79,10 @@ export class GrantExpiryService {
           `[expiry] ✓ grant=${grant.id} user=${grant.userUserId} ` +
             `table=${grant.tableName} userDropped=${result.userDropped}`,
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.logger.error(
           `[expiry] Failed to revoke expired grant=${grant.id} user=${grant.userUserId} ` +
-            `table=${grant.tableName} — will retry next run: ${err?.message}`,
+            `table=${grant.tableName} — will retry next run: ${errMessage(err)}`,
         );
         // Surface in the audit log too so a stuck revoke (repeated failures)
         // is discoverable outside of application logs.
@@ -92,7 +93,7 @@ export class GrantExpiryService {
             resource: "access_grants",
             method: "expireGrants",
             status: "failure",
-            errorMessage: err?.message ?? String(err),
+            errorMessage: errMessage(err),
             metadata: {
               grantId: grant.id,
               userUserId: grant.userUserId,

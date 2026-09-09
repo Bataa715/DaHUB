@@ -115,7 +115,6 @@ export function validateEnv<T extends Record<string, unknown>>(config: T): T {
   const { errors, warnings } = collectEnvIssues(config);
 
   for (const w of warnings) {
-    // eslint-disable-next-line no-console
     console.warn(`[env] WARNING: ${w}`);
   }
 

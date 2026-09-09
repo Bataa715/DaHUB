@@ -34,6 +34,7 @@ import {
   GrantPermissionDto,
   RevokePermissionDto,
 } from "./dto/python-api.dto";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("python-api")
 @UseGuards(JwtAuthGuard)
@@ -69,14 +70,14 @@ export class PythonApiController {
         metadata: { name: (dto as any)?.name },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "python_tool_create",
         resource: "python_api_tools",
         method: "create",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
       });
       throw error;
     }
@@ -100,14 +101,14 @@ export class PythonApiController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "python_tool_update",
         resource: "python_api_tools",
         method: "update",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -132,14 +133,14 @@ export class PythonApiController {
         metadata: { targetId: id, isActive: body.isActive },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "python_tool_toggle",
         resource: "python_api_tools",
         method: "toggle",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -163,14 +164,14 @@ export class PythonApiController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "python_tool_delete",
         resource: "python_api_tools",
         method: "delete",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -194,14 +195,14 @@ export class PythonApiController {
         method: "reorder",
         status: "success",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "python_tool_reorder",
         resource: "python_api_tools",
         method: "reorder",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
       });
       throw error;
     }
@@ -255,14 +256,14 @@ export class PythonApiController {
         metadata: { targetUserId: body.userId, templateId: body.templateId },
       });
       return { ok: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "python_tool_permission_grant",
         resource: "python_api_permissions",
         method: "grant",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetUserId: body.userId, templateId: body.templateId },
       });
       throw error;
@@ -286,14 +287,14 @@ export class PythonApiController {
         metadata: { targetUserId: body.userId, templateId: body.templateId },
       });
       return { ok: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "python_tool_permission_revoke",
         resource: "python_api_permissions",
         method: "revoke",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetUserId: body.userId, templateId: body.templateId },
       });
       throw error;

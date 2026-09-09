@@ -7,6 +7,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import * as http from "http";
+import * as https from "https";
 import {
   randomUUID,
   randomBytes,
@@ -59,7 +60,7 @@ export class PythonApiService implements OnModuleInit {
     maxSockets: 16,
     keepAliveMsecs: 30000,
   });
-  private readonly httpsAgent = new (require("https") as typeof http).Agent({
+  private readonly httpsAgent = new https.Agent({
     keepAlive: true,
     maxSockets: 16,
     keepAliveMsecs: 30000,
@@ -568,7 +569,7 @@ export class PythonApiService implements OnModuleInit {
     const url = new URL(path, this.pythonServiceUrl);
     const isHttps = url.protocol === "https:";
     const transport: typeof http = isHttps
-      ? (require("https") as typeof http)
+      ? (https as unknown as typeof http)
       : http;
 
     // [AUDIT] Хязгааргүй (0) байсныг 30 минутын дээд хязгаартай болгосон —

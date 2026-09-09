@@ -1148,7 +1148,7 @@ export interface RelatedPartyRequest {
   endDate: string;
 }
 
-export const monitoringApi = {
+export const zainiiAuditRptApi = {
   findRelatedPartyTransactions: async (
     req: RelatedPartyRequest,
   ): Promise<RelatedPartyResult> => {
@@ -1312,7 +1312,15 @@ export interface ExpenseBudgetChangeRow {
   purpose: string;
 }
 
-export const expenseMonitoringApi = {
+/** Зайны аудитын анхдагч тохиргоо — админ хуудаснаас өөрчилнө. */
+export interface ZainiiAuditSettings {
+  /** Зардлын хяналтын "доод дүн" шүүлтүүрийн анхдагч утга (₮) */
+  defaultMinAmount: number;
+  /** Хайлтын анхдагч хугацаа — хэдэн ХОНОГ ухрахыг заана */
+  defaultDaysBack: number;
+}
+
+export const zainiiAuditExpenseApi = {
   getOverview: async (
     req: ExpenseOverviewRequest,
     signal?: AbortSignal,
@@ -1406,6 +1414,19 @@ export const expenseMonitoringApi = {
       patch,
       { timeout: TIMEOUT_LONG },
     );
+    return res.data;
+  },
+
+  // ── Анхдагч тохиргоо (админ хуудаснаас удирдана) ──────────────────────
+  getSettings: async (): Promise<ZainiiAuditSettings> => {
+    const res = await api.get("/zainii-audit/settings");
+    return res.data;
+  },
+
+  updateSettings: async (
+    patch: Partial<ZainiiAuditSettings>,
+  ): Promise<ZainiiAuditSettings> => {
+    const res = await api.patch("/zainii-audit/settings", patch);
     return res.data;
   },
 

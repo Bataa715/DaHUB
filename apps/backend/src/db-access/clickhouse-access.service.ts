@@ -21,6 +21,7 @@ import {
 } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { randomBytes } from "crypto";
+import { errMessage } from "../common/utils/error-message";
 
 // ─── Whitelist ───────────────────────────────────────────────────────────────
 
@@ -240,9 +241,9 @@ export class ClickHouseAccessService {
         this.logger.debug(
           `[exec] ✓ revoke select on ${tableName} from role ${role}`,
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.logger.warn(
-          `[revoke] Could not revoke select on ${tableName} from ${role}: ${err?.message}`,
+          `[revoke] Could not revoke select on ${tableName} from ${role}: ${errMessage(err)}`,
         );
       }
 
@@ -267,9 +268,9 @@ export class ClickHouseAccessService {
         `REVOKE ${this.q(role)} FROM ${this.q(username)}`,
       );
       this.logger.debug(`[exec] ✓ revoke role ${role} from ${username}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.logger.warn(
-        `[revoke] Could not revoke role ${role} from ${username}: ${err?.message}`,
+        `[revoke] Could not revoke role ${role} from ${username}: ${errMessage(err)}`,
       );
     }
 
@@ -363,9 +364,9 @@ export class ClickHouseAccessService {
         this.logger.log(
           `[cleanup] Dropped orphaned role ${role} for user ${username}`,
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.logger.warn(
-          `[cleanup] Could not drop role ${role}: ${err?.message}`,
+          `[cleanup] Could not drop role ${role}: ${errMessage(err)}`,
         );
       }
     }
@@ -380,9 +381,9 @@ export class ClickHouseAccessService {
         );
         userDropped = true;
         this.logger.log(`[cleanup] Dropped CH user ${username}`);
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.logger.warn(
-          `[cleanup] Could not drop CH user ${username}: ${err?.message}`,
+          `[cleanup] Could not drop CH user ${username}: ${errMessage(err)}`,
         );
       }
     }
@@ -564,12 +565,12 @@ export class ClickHouseAccessService {
     try {
       await this.clickhouse.execAcl(sql);
       this.logger.debug(`[exec] ✓ ${description}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `[exec] ✗ ${description} — ${error?.message ?? "unknown error"}`,
+        `[exec] ✗ ${description} — ${errMessage(error) ?? "unknown error"}`,
       );
       throw new InternalServerErrorException(
-        `ClickHouse access control error during "${description}": ${error?.message}`,
+        `ClickHouse access control error during "${description}": ${errMessage(error)}`,
       );
     }
   }

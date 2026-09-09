@@ -1,5 +1,6 @@
 import { Controller, Get, HttpException, HttpStatus } from "@nestjs/common";
 import { ClickHouseService } from "./clickhouse/clickhouse.service";
+import { errMessage } from "./common/utils/error-message";
 
 @Controller()
 export class HealthController {
@@ -32,13 +33,10 @@ export class HealthController {
         service: "internal-audit-backend",
         db: "ok",
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // [AUDIT] error.message-д ClickHouse host/user/query орж болзошгүй тул
       // клиентэд статик хариу өгч, дэлгэрэнгүйг зөвхөн лог руу бичнэ.
-      console.error(
-        "[health] ClickHouse unreachable:",
-        error?.message ?? String(error),
-      );
+      console.error("[health] ClickHouse unreachable:", errMessage(error));
       throw new HttpException(
         {
           status: "error",

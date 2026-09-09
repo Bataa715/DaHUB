@@ -20,6 +20,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("medleg")
 export class MedlegController {
@@ -73,14 +74,14 @@ export class MedlegController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "medleg_admin_update",
         resource: "medleg",
         method: "update",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -104,14 +105,14 @@ export class MedlegController {
         metadata: { targetId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "medleg_admin_delete",
         resource: "medleg",
         method: "delete",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id },
       });
       throw error;
@@ -218,10 +219,7 @@ export class MedlegController {
 
   @UseGuards(JwtAuthGuard)
   @Delete(":id/comments/:commentId")
-  async deleteComment(
-    @Param("commentId") commentId: string,
-    @Request() req,
-  ) {
+  async deleteComment(@Param("commentId") commentId: string, @Request() req) {
     return this.medlegService.deleteComment(commentId, req.user.id);
   }
 }

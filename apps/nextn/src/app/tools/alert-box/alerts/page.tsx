@@ -300,7 +300,7 @@ export default function AlertsPage() {
       top10,
       reversedTop10,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [data]);
 
   const getSeverityColor = (count: number) => {

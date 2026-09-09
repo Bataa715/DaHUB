@@ -18,7 +18,16 @@ export const VALID_TOOLS = [
   "reports",
   "risk_assessment",
   "risk_assessment_report",
-  "monitoring_box",
+  // ── Зайны аудит ────────────────────────────────────────────────────────
+  // Дэд хэрэгсэл тус бүрд тусдаа эрх — хоёуланг нь олгож болно.
+  //   zainii_audit_rpt     → Харилцсан гүйлгээ
+  //   zainii_audit_expense → Зардлын хяналт
+  //
+  // ⚠️ Хуучин нэгдсэн `monitoring_box` эрхийг БҮРМӨСӨН хассан. Тэр эрхтэй
+  // байсан хэрэглэгчдэд дээрх хоёрын аль хэрэгтэйг нь дахин олгоно
+  // (/admin/tools эсвэл /admin/zainii-audit).
+  "zainii_audit_rpt",
+  "zainii_audit_expense",
 ] as const;
 
 /** O(1) lookup — use this for runtime `.has()` checks */

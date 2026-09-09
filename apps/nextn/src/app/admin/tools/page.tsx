@@ -148,17 +148,25 @@ const TOOL_GROUPS: ToolGroup[] = [
     adminLabelKey: "admToolsPageSettingsArrow",
     variants: [
       { id: "risk_assessment", labelKey: "toolRiskAssessmentTitle" },
-      { id: "risk_assessment_report", labelKey: "toolRiskAssessmentReportTitle" },
+      {
+        id: "risk_assessment_report",
+        labelKey: "toolRiskAssessmentReportTitle",
+      },
     ],
   },
   {
-    id: "monitoring_box",
-    nameKey: "toolMonitoringBoxTitle",
-    descKey: "admToolsPageMonitoringDesc",
+    id: "zainii_audit",
+    nameKey: "toolZainiiAuditTitle",
+    descKey: "admToolsPageZainiiAuditDesc",
     icon: Activity,
     color: "from-orange-500 to-red-500",
     gradient: "bg-gradient-to-br from-orange-500/20 to-red-500/20",
-    variants: [{ id: "monitoring_box", labelKey: "toolMonitoringBoxTitle" }],
+    adminPath: "/admin/zainii-audit",
+    adminLabelKey: "admToolsPageSettingsArrow",
+    variants: [
+      { id: "zainii_audit_rpt", labelKey: "zaBoxRelatedPartyTitle" },
+      { id: "zainii_audit_expense", labelKey: "zaBoxExpenseTitle" },
+    ],
   },
 ];
 
@@ -626,7 +634,9 @@ export default function AdminToolsPage() {
       <Sheet open={!!selectedGroup} onOpenChange={() => setSelectedGroup(null)}>
         <SheetContent className="w-full sm:max-w-md bg-background border-border p-0 flex flex-col">
           <SheetTitle className="sr-only">
-            {selectedGroup ? t(selectedGroup.nameKey) : t("admReportsManageAccessTitle")}
+            {selectedGroup
+              ? t(selectedGroup.nameKey)
+              : t("admReportsManageAccessTitle")}
           </SheetTitle>
           {selectedGroup && activeVariant && (
             <>

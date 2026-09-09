@@ -29,6 +29,7 @@ import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
 import { VALID_TOOLS_SET } from "../common/constants/tools";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("users")
 export class UsersController {
@@ -219,14 +220,14 @@ export class UsersController {
         metadata: { targetUserId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "password_reset_by_admin",
         resource: "users",
         method: "resetPassword",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetUserId: id },
       });
       throw error;
@@ -251,14 +252,14 @@ export class UsersController {
         metadata: { targetUserId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "user_unlock",
         resource: "users",
         method: "unlock",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetUserId: id },
       });
       throw error;
@@ -302,14 +303,14 @@ export class UsersController {
         metadata: { targetUserId: id },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user?.id,
         action: "user_delete",
         resource: "users",
         method: "remove",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetUserId: id },
       });
       throw error;

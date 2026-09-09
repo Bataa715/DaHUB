@@ -29,6 +29,7 @@ import {
   CreateChainDto,
   ReplaceChainDto,
 } from "./dto/oracle-search.dto";
+import { errMessage } from "../common/utils/error-message";
 
 // [PERF] short-TTL cache for getAlerts/getDashboardSummaries — both fan out
 // an expensive full-table GROUP BY per dashboard on every call.
@@ -726,13 +727,13 @@ export class OracleSearchController {
         CNT: number;
         TOTAL_AMT: number;
       }>(sql, params);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // [SEC] AllExceptionsFilter currently masks this behind a generic
       // 422 message, but don't rely on that alone — never construct a
       // payload that embeds the raw SQL/table/schema internals, in case
       // the filter is ever changed or this gets rethrown as user-facing.
       this.logger.warn(
-        `Oracle query failed for dashboard ${dash.id} (${dash.tableName}): ${err?.message ?? err}`,
+        `Oracle query failed for dashboard ${dash.id} (${dash.tableName}): ${errMessage(err) ?? err}`,
       );
       throw new HttpException(
         "Тайлан татахад алдаа гарлаа. Дахин оролдоно уу.",

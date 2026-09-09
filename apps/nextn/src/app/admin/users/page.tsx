@@ -721,7 +721,8 @@ export default function UsersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("admUsersDeleteDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              "{deleteUser?.name}" {t("admUsersDeleteConfirmSuffix")}
+              &ldquo;{deleteUser?.name}&rdquo;{" "}
+              {t("admUsersDeleteConfirmSuffix")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

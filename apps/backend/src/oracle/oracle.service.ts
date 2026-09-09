@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from "@nestjs/common";
 import * as oracledb from "oracledb";
+import { errMessage } from "../common/utils/error-message";
 
 @Injectable()
 export class OracleService implements OnModuleInit, OnModuleDestroy {
@@ -169,17 +170,22 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       });
       this.healthy = false; // шинэ pool — эхний query-д дахин probe хийнэ
       this.logger.log(`Oracle pool connected → ${connectString}`);
-    } catch (err: any) {
-      const code = err?.errorNum || 0;
+    } catch (err: unknown) {
+      // oracledb-ийн алдаа ORA дугаарыг `errorNum` талбараар өгдөг —
+      // `unknown`-оос төрөл-аюулгүйгээр задална.
+      const code =
+        typeof err === "object" && err !== null
+          ? Number((err as { errorNum?: unknown }).errorNum) || 0
+          : 0;
       if (OracleService.AUTH_ERROR_CODES.includes(code)) {
         this.authFailed = true;
         this.logger.error(
-          `Oracle auth error (ORA-${code}): ${err.message}. ` +
+          `Oracle auth error (ORA-${code}): ${errMessage(err)}. ` +
             `Дахин оролдохгүй — account lock-аас хамгаалж байна. ` +
             `.env файлд ORACLE_USER/ORACLE_PASSWORD шалгана уу.`,
         );
       } else {
-        this.logger.error(`Oracle pool creation failed: ${err.message}`);
+        this.logger.error(`Oracle pool creation failed: ${errMessage(err)}`);
       }
       this.pool = null;
     }
@@ -250,10 +256,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    const maxRows = Math.min(
-      Math.max(options?.maxRows ?? 10_000, 1),
-      50_000,
-    );
+    const maxRows = Math.min(Math.max(options?.maxRows ?? 10_000, 1), 50_000);
     const conn = await this.acquire();
     try {
       const result = await conn.execute(sql, params as any, {

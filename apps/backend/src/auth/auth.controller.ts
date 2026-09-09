@@ -28,6 +28,7 @@ import {
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { SuperAdminGuard } from "./guards/super-admin.guard";
 import { AuditLogService } from "../audit/audit-log.service";
+import { errMessage } from "../common/utils/error-message";
 
 @Controller("auth")
 export class AuthController {
@@ -161,14 +162,14 @@ export class AuthController {
         metadata: { targetId: id, decision: dto.action },
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.auditLogService.log({
         userId: req.user.id as string,
         action: "registration_review",
         resource: "registration_requests",
         method: "update",
         status: "failure",
-        errorMessage: error?.message ?? String(error),
+        errorMessage: errMessage(error),
         metadata: { targetId: id, decision: dto?.action },
       });
       throw error;

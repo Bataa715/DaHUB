@@ -24,6 +24,9 @@ const SUPERADMIN_ROUTES = [
   "/admin/alert-box",
   "/admin/risk-indicators",
   "/admin/tailan-templates",
+  // [AUDIT] Зайны аудитын баталгаажуулалтын төрөл + анхдагч тохиргоо нь
+  // аудитын үр дүнд шууд нөлөөлдөг тул superadmin-only.
+  "/admin/zainii-audit",
 ];
 
 // Tool routes → required allowedTools id (any one is enough). isAdmin always passes.
@@ -46,7 +49,9 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],
   "/tools/reports": ["reports"],
-  "/tools/zainii-audit": ["monitoring_box"],
+  // Зайны аудит: аль нэг дэд эрх байвал хуудас нээгдэнэ; дотор нь ямар
+  // карт харагдахыг page.tsx эрхийн дагуу шүүнэ.
+  "/tools/zainii-audit": ["zainii_audit_rpt", "zainii_audit_expense"],
 };
 
 async function getTokenPayload(token: string | undefined) {
