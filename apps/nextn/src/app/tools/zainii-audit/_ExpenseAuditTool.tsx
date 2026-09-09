@@ -78,6 +78,10 @@ const DEFAULT_DAYS_BACK = 7;
 const TX_PAGE = 50;
 const TX_PAGE_STEP = 50;
 
+// Шүүлтүүр өөрчлөгдөөд дахин хайх хүртэлх хүлээлт. Огноо/дүнг шивж байхад
+// завсрын утга бүрээр хүнд query явуулахгүйн тулд.
+const AUTO_SEARCH_DEBOUNCE_MS = 600;
+
 // [AUDIT] toISOString() нь UTC тул UTC+8 бүсэд огноо буруу шилждэг —
 // _RelatedPartyTool.tsx-тэй ижил локал огнооны туслах функцүүд.
 function fmtLocalDate(d: Date): string {
@@ -228,17 +232,37 @@ export function ExpenseAuditTool() {
     };
   }, []);
 
-  // Анхдагч утга бэлэн болмогц АВТОМАТААР нэг удаа хайна — хэрэглэгч
-  // "Хайх" товч дарах шаардлагагүй. Дээрх setState-ууд нэг render-т
-  // багцлагдсан тул энэ effect ажиллах үед state аль хэдийн шинэ утгатай.
+  // [FIX] Өмнө нь энэ effect зөвхөн mount дээр НЭГ удаа хайдаг байсан тул
+  // хэрэглэгч эхлэх огноог сольсон ч жагсаалт хуучин хэвээр үлдэж "шүүлтүүр
+  // ажиллахгүй байна" гэсэн мэдрэмж төрүүлдэг байв. Одоо шүүлтүүр
+  // (огноо / доод дүн) өөрчлөгдөх БҮРД автоматаар дахин татна: анхны
+  // ачаалалт шууд, дараагийнх нь debounce-оор.
+  const filterKey = `${startDate}|${endDate}|${minAmount}`;
+  const appliedFilterRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!bootstrapped) return;
-    void handleSearch();
+    if (appliedFilterRef.current === filterKey) return;
+    const isFirst = appliedFilterRef.current === null;
+    const timer = setTimeout(
+      () => {
+        void handleSearch();
+      },
+      isFirst ? 0 : AUTO_SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootstrapped]);
+  }, [bootstrapped, filterKey]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExpenseOverviewResult | null>(null);
+  // Одоо дэлгэц дээр харагдаж буй өгөгдлийг ЯГ ямар шүүлтүүр гаргасныг
+  // хадгална — "шүүлтүүр ажилласан уу?" гэсэн эргэлзээг арилгана.
+  const [appliedFilter, setAppliedFilter] = useState<{
+    startDate: string;
+    endDate: string;
+    minAmount: number;
+  } | null>(null);
   // [REVIEW/PERF] Хэдэн мөр DOM-д зурагдсан бэ (incremental render)
   const [visibleTxCount, setVisibleTxCount] = useState(TX_PAGE);
   const [visibleTotalCount, setVisibleTotalCount] = useState(TX_PAGE);
@@ -285,6 +309,28 @@ export function ExpenseAuditTool() {
   const [totalResult, setTotalResult] = useState<ExpenseTotalResult | null>(
     null,
   );
+
+  // "Нийт зардал" нээлттэй байхад огноо солиход мөн адил автоматаар татна.
+  // Хаагдахад ref-ийг цэвэрлэнэ — дараагийн удаа нээхэд шинээр татагдана.
+  const totalFilterKey = `${startDate}|${endDate}`;
+  const appliedTotalRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!totalOpen) {
+      appliedTotalRef.current = null;
+      return;
+    }
+    if (appliedTotalRef.current === totalFilterKey) return;
+    const isFirst = appliedTotalRef.current === null;
+    const timer = setTimeout(
+      () => {
+        void loadTotal();
+      },
+      isFirst ? 0 : AUTO_SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalOpen, totalFilterKey]);
 
   function patchTransaction(bookNumber: string, patch: Partial<ExpenseTxRow>) {
     setResult((prev) =>
@@ -364,6 +410,9 @@ export function ExpenseAuditTool() {
       });
       return;
     }
+    // "Хайх" товчоор гараар дуудсан үед ч тэмдэглэнэ — дараа нь авто-effect
+    // ижил шүүлтүүрээр давхар query явуулахгүй.
+    appliedFilterRef.current = `${startDate}|${endDate}|${minAmount}`;
     searchAbort.current?.abort();
     const ac = new AbortController();
     searchAbort.current = ac;
@@ -375,6 +424,7 @@ export function ExpenseAuditTool() {
         ac.signal,
       );
       setResult(res);
+      setAppliedFilter({ startDate, endDate, minAmount });
       setVisibleTxCount(TX_PAGE);
       setTableSearch("");
       setTableSearchDraft("");
@@ -392,7 +442,9 @@ export function ExpenseAuditTool() {
     }
   }
 
-  async function openTotalDialog() {
+  /** "Нийт зардал"-ын өгөгдлийг татна (нээх үйлдлээс ТУСДАА — ингэснээр
+   *  огноо солиход дахин татах боломжтой). */
+  async function loadTotal() {
     if (!startDate || !endDate) {
       toast({
         title: t("zaRptDateMissingTitle"),
@@ -401,7 +453,7 @@ export function ExpenseAuditTool() {
       });
       return;
     }
-    setTotalOpen(true);
+    appliedTotalRef.current = `${startDate}|${endDate}`;
     setTotalLoading(true);
     setTotalError(null);
     setVisibleTotalCount(TX_PAGE);
@@ -415,6 +467,10 @@ export function ExpenseAuditTool() {
     } finally {
       setTotalLoading(false);
     }
+  }
+
+  function openTotalDialog() {
+    setTotalOpen(true);
   }
 
   function closeDrilldown() {
@@ -671,7 +727,7 @@ export function ExpenseAuditTool() {
                 />
               </div>
               <Button
-                onClick={openTotalDialog}
+                onClick={() => void loadTotal()}
                 disabled={totalLoading}
                 className="gap-1.5 h-8"
               >
@@ -948,6 +1004,20 @@ export function ExpenseAuditTool() {
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
             {t("loading")}
+          </div>
+        )}
+
+        {result && appliedFilter && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-muted/40 px-2 py-0.5 font-medium text-foreground">
+              {appliedFilter.startDate} → {appliedFilter.endDate}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-muted/40 px-2 py-0.5">
+              {t("zaExpMinAmountLabel")}: ₮{fmtAmount(appliedFilter.minAmount)}
+            </span>
+            <span>
+              {t("zaExpListedTxCount")}: {result.transactions.length}
+            </span>
           </div>
         )}
 
