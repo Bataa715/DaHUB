@@ -82,7 +82,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(database)) {
         throw new Error(`Invalid CLICKHOUSE_DATABASE: ${database}`);
       }
-      await this.exec(`CREATE DATABASE IF NOT EXISTS ${database}`);
+      await this.ensureDatabase(database);
       await this.client.close();
       this.client = createClient({ ...clientOpts, database });
 
@@ -308,14 +308,82 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Database байгаа эсэхийг баталгаажуулна.
+   *
+   * Прод дээр database-г DBA урьдчилж үүсгэдэг бөгөөд апп-ын ClickHouse
+   * дансанд `CREATE DATABASE` эрх ОЛГОХГҮЙ байх нь зөв практик. Тиймээс
+   * эрх байхгүй үед энэ функц унахгүй — database нь аль хэдийн байгаа эсэхийг
+   * шалгаад үргэлжилнэ. Үнэхээр байхгүй бол юу хийхийг зааж өгсөн
+   * ойлгомжтой алдаа шиднэ (ACCESS_DENIED stack trace биш).
+   *
+   * Ямар ч тохиргоо (env) шаардахгүй: эрхтэй орчинд үүсгэнэ, эрхгүй орчинд
+   * чимээгүй үргэлжилнэ. Хүснэгтүүд аль ч тохиолдолд audit_db дотор үүснэ.
+   */
+  private async ensureDatabase(database: string): Promise<void> {
+    try {
+      await this.exec(
+        `CREATE DATABASE IF NOT EXISTS ${database}`,
+        undefined,
+        1,
+        true,
+      );
+      return;
+    } catch (error: unknown) {
+      const msg = errMessage(error);
+      const denied =
+        msg.includes("ACCESS_DENIED") || msg.includes("Not enough privileges");
+      if (!denied) throw error;
+
+      if (await this.databaseExists(database)) {
+        this.logger.log(
+          `"${database}" database аль хэдийн байгаа — CREATE DATABASE эрх ` +
+            `байхгүй нь прод орчинд ХЭВИЙН. Схем үүсгэх рүү үргэлжилнэ.`,
+        );
+        return;
+      }
+
+      const user = process.env.CLICKHOUSE_USER ?? "<user>";
+      throw new Error(
+        `ClickHouse "${database}" database БАЙХГҮЙ бөгөөд "${user}" хэрэглэгчид ` +
+          `үүсгэх эрх алга. DBA-аар дараахыг ажиллуулна уу:
+` +
+          `  CREATE DATABASE ${database};
+` +
+          `  GRANT SELECT, INSERT, ALTER, CREATE TABLE, OPTIMIZE ON ${database}.* TO ${user};`,
+      );
+    }
+  }
+
+  /**
+   * `system.databases` нь эрхээр шүүгддэг тул хэрэглэгчийн харж чадах
+   * database-үүд л буцна. Уншиж чадахгүй бол шийдэж чадахгүй учраас
+   * "байгаа" гэж үзнэ — үнэхээр байхгүй бол дараагийн CREATE TABLE
+   * ойлгомжтой унана.
+   */
+  private async databaseExists(database: string): Promise<boolean> {
+    try {
+      const rows = await this.query<{ c: string }>(
+        `SELECT count() AS c FROM system.databases WHERE name = {db:String}`,
+        { db: database },
+      );
+      return Number(rows?.[0]?.c ?? 0) > 0;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
    * Initialize database schema
    */
   private async initializeSchema() {
     this.logger.log("Initializing ClickHouse schema...");
 
     try {
-      // Create database if not exists
-      await this.exec(`CREATE DATABASE IF NOT EXISTS audit_db`);
+      // [FIX] Энд байсан `CREATE DATABASE IF NOT EXISTS audit_db` хасагдсан:
+      //   (1) onModuleInit-д ensureDatabase() аль хэдийн үүнийг хийсэн,
+      //   (2) энэ нь CLICKHOUSE_DATABASE-г үл тоон "audit_db"-г хатуу бичсэн,
+      //   (3) прод дээр апп-ын дансанд CREATE DATABASE эрх ӨГӨХГҮЙ нь зөв тул
+      //       давхар дуудалт нь ACCESS_DENIED өгч startup-ыг унагааж байв.
 
       // Create departments table
       await this.exec(`
@@ -1049,12 +1117,22 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       1,
       true,
     );
+    // [SAFETY] Өмнө нь `ON *.*` байсан — энэ нь ЯМАР Ч database үүсгэх эрх
+    // өгдөг байв. audit_db-ээр хязгаарлав; апп өөр DB үүсгэдэггүй.
     await this.exec(
-      `GRANT CREATE DATABASE ON *.* TO audit_app`,
+      `GRANT CREATE DATABASE ON audit_db.* TO audit_app`,
       undefined,
       1,
       true,
     );
+    await this.exec(
+      `REVOKE CREATE DATABASE ON *.* FROM audit_app`,
+      undefined,
+      1,
+      true,
+    ).catch(() => {
+      /* олгогдоогүй байж болно */
+    });
     await this.exec(
       `GRANT CREATE TABLE, DROP TABLE, ALTER ON audit_db.* TO audit_app`,
       undefined,

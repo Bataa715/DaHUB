@@ -1234,6 +1234,8 @@ export interface ExpenseTotalTxRow {
   co_a_group_name: string;
   recievable_type_code: string;
   recievable_type_name: string;
+  has_payment_request: 0 | 1;
+  has_customer_payment_request: 0 | 1;
 }
 
 export interface ExpenseGroupBreakdown {

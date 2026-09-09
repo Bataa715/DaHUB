@@ -165,6 +165,10 @@ export interface ExpenseTotalTxRow {
   co_a_group_name: string;
   recievable_type_code: string;
   recievable_type_name: string;
+  /** Зардлын хяналттай ЯГ ИЖИЛ логик — эс тэгвээс нэг гүйлгээ хоёр
+   *  дэлгэц дээр өөр төлөвтэй харагдана. */
+  has_payment_request: 0 | 1;
+  has_customer_payment_request: 0 | 1;
 }
 
 export interface ExpenseGroupBreakdown {
@@ -738,15 +742,45 @@ export class ZainiiAuditService implements OnModuleInit {
     const [transactions, byGlGroup, byReceivableType] = await Promise.all([
       this.clickhouse.query<ExpenseTotalTxRow>(
         `
-        SELECT load_date, book_date, customer_code, customer_name,
-          account_name, account_code, currency_code, debit_amount,
-          description, book_number, department_code, department_name,
-          co_a_group_code, co_a_group_name,
-          receivable_type_code AS recievable_type_code,
-          receivable_type_name AS recievable_type_name
-        FROM avlaga
-        WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
-        ORDER BY debit_amount DESC
+        -- [FIX] Төлбөрийн хүсэлтийн төлөв нь Зардлын хяналттай ижил байх
+        -- ёстой. Өмнө нь энэ query-д JOIN огт байгаагүй тул "Нийт зардал"
+        -- дээр БҮХ мөр "Төлбөрийн хүсэлтгүй" гэж улаанаар харагддаг байв.
+        -- JOIN-ууд нь getExpenseOverview-тэй ЯГ ижил хамрах хүрээтэй.
+        WITH
+        scoped_books AS (
+          SELECT DISTINCT book_number
+          FROM avlaga
+          WHERE book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+            AND book_number != ''
+        ),
+        pay_books AS (
+          SELECT DISTINCT ifNull(gl_number, '') AS gl_number
+          FROM tulbur
+          WHERE ifNull(gl_number, '') IN (SELECT book_number FROM scoped_books)
+        ),
+        pay_customers AS (
+          SELECT DISTINCT ifNull(customer_code, '') AS pay_customer
+          FROM tulbur
+          WHERE tulbur.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+            AND ifNull(customer_code, '') != ''
+        )
+        SELECT a.load_date AS load_date, a.book_date AS book_date,
+          a.customer_code AS customer_code, a.customer_name AS customer_name,
+          a.account_name AS account_name, a.account_code AS account_code,
+          a.currency_code AS currency_code, a.debit_amount AS debit_amount,
+          a.description AS description, a.book_number AS book_number,
+          a.department_code AS department_code, a.department_name AS department_name,
+          a.co_a_group_code AS co_a_group_code,
+          a.co_a_group_name AS co_a_group_name,
+          a.receivable_type_code AS recievable_type_code,
+          a.receivable_type_name AS recievable_type_name,
+          (ifNull(t.gl_number, '') != '') AS has_payment_request,
+          (ifNull(tc.pay_customer, '') != '') AS has_customer_payment_request
+        FROM avlaga AS a
+        LEFT JOIN pay_books AS t ON t.gl_number = a.book_number
+        LEFT JOIN pay_customers AS tc ON tc.pay_customer = a.customer_code
+        WHERE a.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
+        ORDER BY a.debit_amount DESC
         LIMIT ${MAX_EXPENSE_TOTAL_ROWS + 1}
         `,
         params,
