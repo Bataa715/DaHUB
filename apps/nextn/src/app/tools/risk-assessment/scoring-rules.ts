@@ -144,11 +144,6 @@ export function collectMultiSubidSecondarySubids(
   return out;
 }
 
-export type ResolvedSubidIndicator = {
-  indicator: { subid: string; score_scale: string; group: number };
-  source?: MultiSubidSource;
-};
-
 /** Oracle мөрөөс indicator олох (гол болон нэмэлт SUBID) */
 export function resolveIndicatorForSubid<
   T extends {
@@ -482,26 +477,6 @@ export function computeScoreDynamic(
 ): { score: ScoreResult; label: string | null } {
   const scale = parseScoreScale(scaleJson);
   return computeScoreFromScale(scale, result, resultType);
-}
-
-/** UI-д харагдах өнгө. */
-export function scoreColorClass(score: ScoreResult): string {
-  if (score === 5) return "bg-red-500/15 text-red-600 border-red-500/30";
-  if (score === 4)
-    return "bg-orange-500/15 text-orange-600 border-orange-500/30";
-  if (score === 3) return "bg-amber-500/15 text-amber-600 border-amber-500/30";
-  if (score === 2) return "bg-lime-500/15 text-lime-700 border-lime-500/30";
-  if (score === 1)
-    return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
-  if (score === 0 || score === "Үнэлэхгүй")
-    return "bg-muted/20 text-muted-foreground/70 border-border/30";
-  return "bg-transparent text-muted-foreground border-transparent";
-}
-
-export function scoreDisplay(score: ScoreResult): string {
-  if (score == null) return "—";
-  if (score === "Үнэлэхгүй") return "Ү";
-  return String(score);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

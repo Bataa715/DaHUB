@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import api, { pythonToolApi } from "@/lib/api";
+import { pythonToolApi, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, ScrollText, ShieldAlert, Terminal, RefreshCw } from "lucide-react";
 
@@ -25,8 +25,15 @@ interface LoginRow {
 }
 interface RunRow {
   id: string;
+  userId: string;
   userName: string;
   toolName: string;
+  kind?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  filtersJson?: string;
+  errorMessage?: string;
   ranAt: string;
 }
 
@@ -43,24 +50,24 @@ export default function AdminLogPage() {
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [logins, setLogins] = useState<LoginRow[]>([]);
   const [runs, setRuns] = useState<RunRow[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async (which: LogTab) => {
     setLoading(true);
+    setLoadError(null);
     try {
       if (which === "audit") {
-        const r = await api.get("/audit-logs", { params: { limit: 300 } });
-        setAudit(Array.isArray(r.data) ? r.data : []);
+        const data = await pythonToolApi.adminGetAuditLogs(300);
+        setAudit(Array.isArray(data) ? data : []);
       } else if (which === "login") {
-        const r = await api.get("/audit-logs/login-attempts", {
-          params: { limit: 300 },
-        });
-        setLogins(Array.isArray(r.data) ? r.data : []);
+        const data = await pythonToolApi.adminGetLoginAttempts(300);
+        setLogins(Array.isArray(data) ? data : []);
       } else {
         const data = await pythonToolApi.adminGetRunLogs(300);
         setRuns(Array.isArray(data) ? (data as RunRow[]) : []);
       }
-    } catch {
-      /* хоосон үлдээнэ */
+    } catch (e: unknown) {
+      setLoadError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -118,6 +125,10 @@ export default function AdminLogPage() {
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
+      ) : loadError ? (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-8 text-center text-sm text-red-600 dark:text-red-400">
+          {loadError}
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           {tab === "audit" && <AuditTable rows={audit} />}
@@ -167,11 +178,30 @@ function AuditTable({ rows }: { rows: AuditRow[] }) {
                 {r.status}
               </span>
             </td>
-            <td className={`${td} text-muted-foreground max-w-[320px] truncate`}>
-              {r.errorMessage ||
-                (r.metadata && Object.keys(r.metadata).length
-                  ? JSON.stringify(r.metadata)
-                  : "—")}
+            <td className={`${td} text-muted-foreground max-w-[360px]`}>
+              {r.errorMessage ? (
+                <span>{r.errorMessage}</span>
+              ) : r.metadata && Object.keys(r.metadata).length ? (
+                <span className="break-all">
+                  {typeof r.metadata.toolName === "string"
+                    ? `${r.metadata.toolName}${
+                        r.metadata.startDate
+                          ? ` · ${r.metadata.startDate}${
+                              r.metadata.endDate
+                                ? `–${r.metadata.endDate}`
+                                : ""
+                            }`
+                          : ""
+                      }${
+                        r.metadata.userName
+                          ? ` · ${String(r.metadata.userName)}`
+                          : ""
+                      }`
+                    : JSON.stringify(r.metadata)}
+                </span>
+              ) : (
+                "—"
+              )}
             </td>
           </tr>
         ))}
@@ -223,14 +253,46 @@ function RunTable({ rows }: { rows: RunRow[] }) {
           <th className={th}>Огноо</th>
           <th className={th}>Хэрэглэгч</th>
           <th className={th}>Тайлан</th>
+          <th className={th}>Төрөл</th>
+          <th className={th}>Хугацаа</th>
+          <th className={th}>Төлөв</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => (
           <tr key={r.id} className="hover:bg-muted/20">
             <td className={`${td} whitespace-nowrap font-mono`}>{r.ranAt}</td>
-            <td className={td}>{r.userName || "—"}</td>
+            <td className={td}>
+              {r.userName || r.userId || "—"}
+              {r.userName && r.userId ? (
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  {r.userId}
+                </div>
+              ) : null}
+            </td>
             <td className={td}>{r.toolName || "—"}</td>
+            <td className={td}>{r.kind === "preview" ? "Preview" : "Таталт"}</td>
+            <td className={`${td} font-mono whitespace-nowrap`}>
+              {r.startDate || r.endDate
+                ? `${r.startDate || "—"}${r.endDate ? ` → ${r.endDate}` : ""}`
+                : "—"}
+            </td>
+            <td className={td}>
+              <span
+                className={
+                  r.status === "failure"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+                }
+              >
+                {r.status === "failure" ? "Амжилтгүй" : "Амжилттай"}
+              </span>
+              {r.errorMessage ? (
+                <div className="text-[10px] text-muted-foreground max-w-[240px] truncate">
+                  {r.errorMessage}
+                </div>
+              ) : null}
+            </td>
           </tr>
         ))}
       </tbody>

@@ -5,7 +5,6 @@ import {
   OnModuleDestroy,
 } from "@nestjs/common";
 import { createClient, ClickHouseClient } from "@clickhouse/client";
-import { randomUUID } from "crypto";
 import { errMessage } from "../common/utils/error-message";
 
 /** Returns current UTC timestamp in ClickHouse DateTime string format (YYYY-MM-DD HH:MM:SS). */
@@ -652,26 +651,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
-      // Create tailan_reports table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS tailan_reports (
-          id String,
-          userId String,
-          userName String,
-          departmentId String DEFAULT '',
-          year UInt16,
-          quarter UInt8,
-          status String DEFAULT 'draft',
-          plannedTasksJson String DEFAULT '[]',
-          dynamicSectionsJson String DEFAULT '[]',
-          extraDataJson String DEFAULT '{}',
-          submittedAt DateTime DEFAULT '1970-01-01 00:00:00',
-          createdAt DateTime DEFAULT now(),
-          updatedAt DateTime DEFAULT now()
-        ) ENGINE = ReplacingMergeTree(updatedAt)
-        ORDER BY (userId, year, quarter)
-      `);
-
       // Create login_attempts table for brute-force protection
       await this.exec(`
         CREATE TABLE IF NOT EXISTS login_attempts (
@@ -810,19 +789,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
-      // Create dept_bsc_reports table (department BSC/ТҮЗ quarterly reports)
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS dept_bsc_reports (
-          departmentId String,
-          year UInt16,
-          quarter UInt8,
-          sectionsJson String DEFAULT '{}',
-          savedByName String DEFAULT '',
-          updatedAt DateTime DEFAULT now()
-        ) ENGINE = ReplacingMergeTree(updatedAt)
-        ORDER BY (departmentId, year, quarter)
-      `);
-
       // Homepage ethics carousel (Аудиторын ёс зүйн код)
       await this.exec(`
         CREATE TABLE IF NOT EXISTS homepage_ethics_slides (
@@ -864,13 +830,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // автоматаар тайлагдана); хэзээ түгжигдсэнийг хадгална.
       await this.exec(
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS lockedAt DateTime DEFAULT toDateTime(0)`,
-      ).catch(() => {});
-
-      // 1b) tailan_reports.sectionsDataJson — template-driven generic section
-      // storage (Tailan dynamic template refactor). Old per-field JSON columns
-      // above are kept read-only for backward compat with pre-refactor rows.
-      await this.exec(
-        `ALTER TABLE tailan_reports ADD COLUMN IF NOT EXISTS sectionsDataJson String DEFAULT ''`,
       ).catch(() => {});
 
       // 1e) medleg_quiz_answers — quiz-ийг нэг асуулттай → олон асуулттай
@@ -920,10 +879,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ["medleg", "imageUrl", "String"],
         ["medleg", "imagesJson", "String DEFAULT '[]'"],
         ["medleg", "content", "String"],
-        ["tailan_images", "imageData", "String DEFAULT ''"],
-        ["tailan_reports", "plannedTasksJson", "String DEFAULT '[]'"],
-        ["tailan_reports", "dynamicSectionsJson", "String DEFAULT '[]'"],
-        ["tailan_reports", "extraDataJson", "String DEFAULT '{}'"],
         ["risk_assessment_history", "rowsJson", "String DEFAULT '[]'"],
       ];
       for (const [table, column, type] of codecColumns) {
@@ -937,7 +892,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
 
       // 5) [PERF] Point-lookup query-д зориулсан нэмэлт PROJECTION-ууд (үндсэн
       // ORDER BY хэвээрээ). [SAFETY] ReplacingMergeTree+FINAL table-д (access_
-      // requests/grants, tailan_reports) зориудаар алгассан — PROJECTION+FINAL
+      // requests/grants) зориудаар алгассан — PROJECTION+FINAL
       // хослол зарим ClickHouse хувилбарт эрсдэлтэй. Бүгд idempotent, алдаа
       // гарвал (хуучин хувилбар projection дэмжихгүй гэх мэт) чимээгүй өнгөрнө.
       const projections: [string, string, string][] = [
@@ -1057,7 +1012,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.logger.log(
-        "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, tailan_reports, dept_bsc_reports, login_attempts, avlaga, tulbur, budget, havsralt, avlaga_verifications, expense_verification_types)",
+        "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, login_attempts, avlaga, tulbur, budget, havsralt, avlaga_verifications, expense_verification_types)",
       );
     } catch (error: unknown) {
       this.logger.error(`Schema initialization failed: ${errMessage(error)}`);
@@ -1201,10 +1156,4 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  /**
-   * Helper: Generate UUID (crypto.randomUUID — collision-safe)
-   */
-  uuid(): string {
-    return randomUUID();
-  }
 }

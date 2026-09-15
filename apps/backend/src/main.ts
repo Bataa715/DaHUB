@@ -90,8 +90,6 @@ async function bootstrap() {
   // [M-5] Reduced /users from 10mb to 6mb (profile image limit is 5MB after base64 overhead)
   app.use("/users", express.json({ limit: "6mb" }));
   app.use("/users", express.urlencoded({ limit: "6mb", extended: true }));
-  app.use("/tailan", express.json({ limit: "10mb" }));
-  app.use("/tailan", express.urlencoded({ limit: "10mb", extended: true }));
   app.use("/medleg", express.json({ limit: "25mb" }));
   app.use("/medleg", express.urlencoded({ limit: "25mb", extended: true }));
   // Tight default limit for all other endpoints

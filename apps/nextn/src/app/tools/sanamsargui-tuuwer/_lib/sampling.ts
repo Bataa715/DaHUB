@@ -74,14 +74,6 @@ export function normalizeFilterValue(value: unknown): string {
   return str.length ? str : "(хоосон)";
 }
 
-export function sampleWithReplacement(
-  total: number,
-  k: number,
-  rng: Rng = Math.random,
-): number[] {
-  return Array.from({ length: k }, () => Math.floor(rng() * total) + 1);
-}
-
 export function sampleWithoutReplacement(
   total: number,
   k: number,

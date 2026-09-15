@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -25,6 +26,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Table2,
 } from "lucide-react";
 import { DESIGN_LABEL_KEYS, type DesignType } from "./_lib/sampling";
 import { useSampling } from "./_hooks/useSampling";
@@ -59,6 +61,16 @@ export default function SanamsarguiTuuwerPage() {
           </div>
         }
         title={t("sampleTitle")}
+        rightContent={
+          // Pivot нь тусдаа tool байхаа больж, энэ хэрэгслийн дэд хуудас болсон
+          // (`sanamsargui-tuuwer` эрхээр нээгдэнэ).
+          <Button asChild variant="outline" size="sm" className="h-8 gap-1.5">
+            <Link href="/tools/sanamsargui-tuuwer/pivot">
+              <Table2 className="w-3.5 h-3.5" />
+              {t("toolPivotTitle")}
+            </Link>
+          </Button>
+        }
       />
 
       <div className="w-full px-4 md:px-6 py-6 space-y-4">

@@ -168,13 +168,6 @@ export function SidebarNavItems({
 
       {!!user && (
         <>
-          {!collapsed && (
-            <div className="mt-3 mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/50">
-              {t("navTools")}
-            </div>
-          )}
-          {collapsed && <div className="my-2 mx-2 h-px bg-border/60" />}
-
           {authLoading || isLoading ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50 stroke-[1.75]" />

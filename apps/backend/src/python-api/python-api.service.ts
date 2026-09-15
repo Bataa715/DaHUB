@@ -16,6 +16,7 @@ import {
   createHash,
 } from "crypto";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
+import { AuditLogService } from "../audit/audit-log.service";
 import {
   CreatePythonToolDto,
   UpdatePythonToolDto,
@@ -66,7 +67,10 @@ export class PythonApiService implements OnModuleInit {
     keepAliveMsecs: 30000,
   });
 
-  constructor(private clickhouse: ClickHouseService) {}
+  constructor(
+    private clickhouse: ClickHouseService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   async onModuleInit() {
     await this.ensureTable();
@@ -182,35 +186,125 @@ export class PythonApiService implements OnModuleInit {
           userName     String DEFAULT '',
           toolId       String,
           toolName     String DEFAULT '',
+          kind         String DEFAULT 'run',
+          status       String DEFAULT 'success',
+          startDate    String DEFAULT '',
+          endDate      String DEFAULT '',
+          filtersJson  String DEFAULT '{}',
+          errorMessage String DEFAULT '',
           ranAt        DateTime DEFAULT now()
         ) ENGINE = MergeTree()
           ORDER BY (ranAt, userId)
       `);
+      // CREATE IF NOT EXISTS хуучин хүснэгтийг өөрчилдөггүй — баганыг self-heal.
+      const extra: [string, string][] = [
+        ["userName", "String DEFAULT ''"],
+        ["toolName", "String DEFAULT ''"],
+        ["kind", "String DEFAULT 'run'"],
+        ["status", "String DEFAULT 'success'"],
+        ["startDate", "String DEFAULT ''"],
+        ["endDate", "String DEFAULT ''"],
+        ["filtersJson", "String DEFAULT '{}'"],
+        ["errorMessage", "String DEFAULT ''"],
+      ];
+      for (const [col, type] of extra) {
+        await this.clickhouse
+          .exec(
+            `ALTER TABLE python_api_run_logs ADD COLUMN IF NOT EXISTS ${col} ${type}`,
+            undefined,
+            1,
+            true,
+          )
+          .catch(() => {});
+      }
     } catch (e) {
       this.logger.error("python_api_run_logs табли үүсгэхэд алдаа:", e);
     }
   }
 
-  async logRun(
-    userId: string,
-    userName: string,
-    toolId: string,
-    toolName: string,
-  ) {
+  /**
+   * Тайлан татах/preview-ийг python_api_run_logs + audit_logs хоёрт бүрэн бичнэ.
+   * Хоосон мөр (зөвхөн toolName) үлдэхгүйн тулд огноо, шүүлтүүр, төлөв, нэрийг хамт хадгална.
+   */
+  async logRun(entry: {
+    userId: string;
+    userName: string;
+    loginId?: string;
+    toolId: string;
+    toolName: string;
+    kind?: "run" | "preview";
+    status?: "success" | "failure";
+    startDate?: string;
+    endDate?: string;
+    filters?: Record<string, string>;
+    errorMessage?: string;
+  }) {
+    const kind = entry.kind ?? "run";
+    const status = entry.status ?? "success";
+    const startDate = entry.startDate ?? "";
+    const endDate = entry.endDate ?? "";
+    let filtersJson = "{}";
+    try {
+      const raw = JSON.stringify(entry.filters ?? {});
+      filtersJson = raw.length > 4000 ? raw.slice(0, 4000) : raw;
+    } catch {
+      filtersJson = "{}";
+    }
+    const errorMessage = (entry.errorMessage ?? "").slice(0, 1000);
+    const actorId = entry.loginId || entry.userId;
+
     try {
       await this.clickhouse.insert("python_api_run_logs", [
         {
           id: randomUUID(),
-          userId,
-          userName,
-          toolId,
-          toolName,
+          userId: actorId,
+          userName: entry.userName,
+          toolId: entry.toolId,
+          toolName: entry.toolName,
+          kind,
+          status,
+          startDate,
+          endDate,
+          filtersJson,
+          errorMessage,
           ranAt: nowCH(),
         },
       ]);
     } catch (e) {
-      this.logger.warn("Лог бичихэд алдаа:", e);
+      // Хуучин схемд шинэ багана байхгүй бол суурь багануудаар дахин оролдоно.
+      this.logger.warn("Лог бичихэд алдаа, хуучин баганаар дахин оролдож байна:", e);
+      try {
+        await this.clickhouse.insert("python_api_run_logs", [
+          {
+            id: randomUUID(),
+            userId: actorId,
+            userName: entry.userName,
+            toolId: entry.toolId,
+            toolName: entry.toolName,
+            ranAt: nowCH(),
+          },
+        ]);
+      } catch (e2) {
+        this.logger.warn("Лог бичихэд алдаа:", e2);
+      }
     }
+
+    await this.auditLog.log({
+      userId: actorId,
+      action: kind === "preview" ? "python_report_preview" : "python_report_run",
+      resource: "python_api_tools",
+      resourceId: entry.toolId,
+      method: kind === "preview" ? "PREVIEW" : "RUN",
+      status,
+      errorMessage: errorMessage || undefined,
+      metadata: {
+        userName: entry.userName,
+        toolName: entry.toolName,
+        startDate,
+        endDate,
+        filters: entry.filters ?? {},
+      },
+    });
   }
 
   async getRunLogs(limit = 200): Promise<
@@ -220,15 +314,35 @@ export class PythonApiService implements OnModuleInit {
       userName: string;
       toolId: string;
       toolName: string;
+      kind: string;
+      status: string;
+      startDate: string;
+      endDate: string;
+      filtersJson: string;
+      errorMessage: string;
       ranAt: string;
     }[]
   > {
     return this.clickhouse.query<any>(
-      `SELECT id, userId, userName, toolId, toolName, ranAt
-       FROM python_api_run_logs
+      `SELECT * FROM python_api_run_logs
        ORDER BY ranAt DESC
        LIMIT {limit:UInt32}`,
       { limit },
+    ).then((rows) =>
+      rows.map((r) => ({
+        id: String(r.id ?? ""),
+        userId: String(r.userId ?? ""),
+        userName: String(r.userName ?? ""),
+        toolId: String(r.toolId ?? ""),
+        toolName: String(r.toolName ?? ""),
+        kind: String(r.kind ?? "run"),
+        status: String(r.status ?? "success"),
+        startDate: String(r.startDate ?? ""),
+        endDate: String(r.endDate ?? ""),
+        filtersJson: String(r.filtersJson ?? "{}"),
+        errorMessage: String(r.errorMessage ?? ""),
+        ranAt: String(r.ranAt ?? ""),
+      })),
     );
   }
 
@@ -681,7 +795,12 @@ export class PythonApiService implements OnModuleInit {
 
   async runTool(
     dto: RunToolDto,
-    caller?: { userId: string; userName: string; isAdmin: boolean },
+    caller?: {
+      userId: string;
+      userName: string;
+      loginId?: string;
+      isAdmin: boolean;
+    },
     signal?: AbortSignal,
   ): Promise<{ buffer: Buffer; fileName: string; contentType: string }> {
     const tool = await this.getToolById(dto.toolId);
@@ -702,19 +821,39 @@ export class PythonApiService implements OnModuleInit {
       connectionConfig = undefined;
     }
 
-    const buffer = await this.callFastApi(
-      "/run-tool",
-      {
-        code: tool.pythonCode,
-        connection_type: tool.connectionType ?? "clickhouse",
-        connection_config: connectionConfig,
-        start_date: dto.startDate ?? null,
-        end_date: dto.endDate ?? dto.startDate ?? null,
-        filters: dto.filters ?? {},
-        output_format: tool.outputFormat ?? "excel",
-      },
-      signal,
-    );
+    let buffer: Buffer;
+    try {
+      buffer = await this.callFastApi(
+        "/run-tool",
+        {
+          code: tool.pythonCode,
+          connection_type: tool.connectionType ?? "clickhouse",
+          connection_config: connectionConfig,
+          start_date: dto.startDate ?? null,
+          end_date: dto.endDate ?? dto.startDate ?? null,
+          filters: dto.filters ?? {},
+          output_format: tool.outputFormat ?? "excel",
+        },
+        signal,
+      );
+    } catch (e) {
+      if (caller?.userId) {
+        await this.logRun({
+          userId: caller.userId,
+          userName: caller.userName,
+          loginId: caller.loginId,
+          toolId: tool.id,
+          toolName: tool.name,
+          kind: "run",
+          status: "failure",
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+          filters: dto.filters,
+          errorMessage: e instanceof Error ? e.message : String(e),
+        });
+      }
+      throw e;
+    }
 
     const date = new Date().toISOString().slice(0, 10);
     const ext = tool.outputFormat === "csv" ? "csv" : "xlsx";
@@ -724,9 +863,19 @@ export class PythonApiService implements OnModuleInit {
       csv: "text/csv; charset=utf-8",
     };
 
-    // ── Audit log ─────────────────────────────────────────────────────────────
     if (caller?.userId) {
-      void this.logRun(caller.userId, caller.userName, tool.id, tool.name);
+      await this.logRun({
+        userId: caller.userId,
+        userName: caller.userName,
+        loginId: caller.loginId,
+        toolId: tool.id,
+        toolName: tool.name,
+        kind: "run",
+        status: "success",
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+        filters: dto.filters,
+      });
     }
 
     return {
@@ -781,7 +930,10 @@ export class PythonApiService implements OnModuleInit {
     return JSON.parse(buf.toString("utf-8"));
   }
 
-  async previewTool(dto: RunToolDto): Promise<{
+  async previewTool(
+    dto: RunToolDto,
+    caller?: { userId: string; userName: string; loginId?: string },
+  ): Promise<{
     columns: string[];
     rows: any[][];
     totalCount: number;
@@ -800,22 +952,54 @@ export class PythonApiService implements OnModuleInit {
       connectionConfig = undefined;
     }
 
-    const buf = await this.callFastApi("/preview-tool", {
-      code: tool.pythonCode,
-      connection_type: tool.connectionType ?? "clickhouse",
-      connection_config: connectionConfig,
-      start_date: dto.startDate ?? null,
-      end_date: dto.endDate ?? dto.startDate ?? null,
-      filters: dto.filters ?? {},
-      output_format: tool.outputFormat ?? "excel",
-      preview_limit: 50,
-    });
-
-    return JSON.parse(buf.toString("utf-8")) as {
-      columns: string[];
-      rows: any[][];
-      totalCount: number;
-      cacheKey?: string;
-    };
+    try {
+      const buf = await this.callFastApi("/preview-tool", {
+        code: tool.pythonCode,
+        connection_type: tool.connectionType ?? "clickhouse",
+        connection_config: connectionConfig,
+        start_date: dto.startDate ?? null,
+        end_date: dto.endDate ?? dto.startDate ?? null,
+        filters: dto.filters ?? {},
+        output_format: tool.outputFormat ?? "excel",
+        preview_limit: 50,
+      });
+      if (caller?.userId) {
+        await this.logRun({
+          userId: caller.userId,
+          userName: caller.userName,
+          loginId: caller.loginId,
+          toolId: tool.id,
+          toolName: tool.name,
+          kind: "preview",
+          status: "success",
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+          filters: dto.filters,
+        });
+      }
+      return JSON.parse(buf.toString("utf-8")) as {
+        columns: string[];
+        rows: any[][];
+        totalCount: number;
+        cacheKey?: string;
+      };
+    } catch (e) {
+      if (caller?.userId) {
+        await this.logRun({
+          userId: caller.userId,
+          userName: caller.userName,
+          loginId: caller.loginId,
+          toolId: tool.id,
+          toolName: tool.name,
+          kind: "preview",
+          status: "failure",
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+          filters: dto.filters,
+          errorMessage: e instanceof Error ? e.message : String(e),
+        });
+      }
+      throw e;
+    }
   }
 }

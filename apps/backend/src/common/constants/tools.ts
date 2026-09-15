@@ -5,16 +5,20 @@
  * Add new tools here — the change automatically propagates to both places.
  */
 export const VALID_TOOLS = [
-  "tailan",
-  "tailan_dept_head",
   "db_access_requester",
   "db_access_granter",
-  "pivot",
+  // ⚠️ Хассан эрхүүд:
+  //   `tailan`,
+  //   `tailan_dept_head` → Улирлын тайлан хэрэгсэл устгагдсан
+  //   `pivot`            → Санамсаргүй түүвэрт нэгтгэгдсэн (`sanamsargui-tuuwer`-ээр нээгдэнэ)
+  //   `data_doc`         → Өгөгдлийн толь бичиг устгагдсан
+  //   `excel_report`,
+  //   `python_api_tools` → хэзээ ч эрх болгож шалгагддаггүй байсан (тайлангийн
+  //                        хандалтыг `reports` + excel_report_permissions хүснэгт хянадаг)
+  // allowedTools-д үлдсэн хуучин утгыг дараагийн удаа эрх хадгалахад
+  // UsersController автоматаар шүүж хаяна.
   "sanamsargui-tuuwer",
-  "excel_report",
-  "data_doc",
   "alert_box",
-  "python_api_tools",
   "reports",
   "risk_assessment",
   "risk_assessment_report",

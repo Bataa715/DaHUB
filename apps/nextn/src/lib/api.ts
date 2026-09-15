@@ -171,25 +171,6 @@ export const authApi = {
     const response = await api.get("/auth/me");
     return response.data;
   },
-
-  // [N-2] No arg needed — browser sends HttpOnly refreshToken cookie automatically
-  refreshToken: async () => {
-    const response = await api.post("/auth/refresh", {});
-    return response.data;
-  },
-
-  logout: async () => {
-    const response = await api.post("/auth/logout");
-    return response.data;
-  },
-
-  changePassword: async (currentPassword: string, newPassword: string) => {
-    const response = await api.post("/auth/change-password", {
-      currentPassword,
-      newPassword,
-    });
-    return response.data;
-  },
 };
 
 // Registration requests (admin approval workflow) APIs
@@ -300,154 +281,6 @@ export const departmentsApi = {
     return response.data;
   },
 };
-// Tailan (Quarterly Report) APIs
-export interface TailanReportPayload {
-  year: number;
-  quarter: number;
-  sections: Record<string, unknown>;
-  dynamicSections?: { order: number; title: string; content?: string }[];
-  hiddenSections?: string[];
-  status?: "draft" | "submitted";
-}
-
-export const tailanApi = {
-  getRole: async () => {
-    const response = await api.get("/tailan/role");
-    return response.data as { isDeptHead: boolean };
-  },
-
-  saveDraft: async (data: TailanReportPayload) => {
-    const response = await api.post("/tailan/save", data);
-    return response.data;
-  },
-
-  // ─── Live "real docx" preview from unsaved editor state ─────────────────
-  previewWord: async (data: TailanReportPayload): Promise<Blob> => {
-    const response = await api.post("/tailan/preview", data, {
-      responseType: "blob",
-      timeout: TIMEOUT_LONG,
-    });
-    return response.data as Blob;
-  },
-
-  submitReport: async (year: number, quarter: number) => {
-    const response = await api.post("/tailan/submit", { year, quarter });
-    return response.data;
-  },
-
-  getMyReport: async (year: number, quarter: number) => {
-    const response = await api.get(`/tailan/my/${year}/${quarter}`);
-    return response.data;
-  },
-
-  downloadMyWord: async (
-    year: number,
-    quarter: number,
-    displayName?: string,
-  ): Promise<Blob> => {
-    const params = displayName ? { name: displayName } : {};
-    const response = await api.get(`/tailan/my/${year}/${quarter}/word`, {
-      responseType: "blob",
-      params,
-    });
-    return response.data as Blob;
-  },
-
-  getDeptReports: async (year: number, quarter: number) => {
-    const response = await api.get(`/tailan/dept/${year}/${quarter}`);
-    return response.data;
-  },
-
-  getDeptOverview: async (year: number, quarter: number) => {
-    const response = await api.get(`/tailan/dept/${year}/${quarter}/overview`);
-    return response.data;
-  },
-
-  viewDeptMemberWord: async (
-    userId: string,
-    year: number,
-    quarter: number,
-  ): Promise<Blob> => {
-    const response = await api.get(
-      `/tailan/dept/member/${encodeURIComponent(userId)}/${year}/${quarter}/word`,
-      { responseType: "blob" },
-    );
-    return response.data as Blob;
-  },
-
-  generateDeptWord: async (data: {
-    year: number;
-    quarter: number;
-    tasks: unknown[];
-    sections: unknown[];
-    otherEntries: unknown[];
-    activities: unknown[];
-    rawSections?: Record<string, unknown>;
-  }): Promise<Blob> => {
-    const response = await api.post("/tailan/dept/generate-word", data, {
-      responseType: "blob",
-      timeout: TIMEOUT_LONG,
-    });
-    return response.data as Blob;
-  },
-
-  // Image methods
-  uploadImage: async (year: number, quarter: number, file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("year", String(year));
-    formData.append("quarter", String(quarter));
-    const response = await api.post("/tailan/images", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return response.data;
-  },
-
-  getImages: async (year: number, quarter: number) => {
-    const response = await api.get(`/tailan/images/my/${year}/${quarter}`);
-    return response.data as {
-      id: string;
-      filename: string;
-      mimeType: string;
-      uploadedAt: string;
-    }[];
-  },
-
-  fetchImageDataUrl: async (id: string): Promise<string> => {
-    const response = await api.get(`/tailan/images/${id}/data`, {
-      responseType: "blob",
-    });
-    return URL.createObjectURL(response.data as Blob);
-  },
-
-  deleteImage: async (id: string) => {
-    await api.delete(`/tailan/images/${id}`);
-  },
-
-  // ─── Department BSC (ТҮЗ) report ────────────────────────────────────────
-  saveDeptBsc: async (
-    year: number,
-    quarter: number,
-    sections: Record<string, unknown>,
-  ) => {
-    const response = await api.post("/tailan/dept-bsc", {
-      year,
-      quarter,
-      sections,
-    });
-    return response.data as { ok: boolean; message: string };
-  },
-
-  getDeptBsc: async (year: number, quarter: number) => {
-    const response = await api.get(`/tailan/dept-bsc/${year}/${quarter}`);
-    return response.data as {
-      sections: Record<string, unknown>;
-      savedByName: string;
-      updatedAt: string;
-    } | null;
-  },
-};
-
 // DB Access APIs
 export const dbAccessApi = {
   // Tables
@@ -748,10 +581,46 @@ export const pythonToolApi = {
       userName: string;
       toolId: string;
       toolName: string;
+      kind?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      filtersJson?: string;
+      errorMessage?: string;
       ranAt: string;
     }[]
   > => {
     const res = await api.get(`/python-api/admin/run-logs?limit=${limit}`);
+    return res.data;
+  },
+
+  adminGetAuditLogs: async (
+    limit = 300,
+  ): Promise<
+    {
+      id: string;
+      userId: string;
+      action: string;
+      resource: string;
+      resourceId?: string;
+      status: string;
+      errorMessage?: string;
+      metadata?: Record<string, unknown>;
+      createdAt: string;
+    }[]
+  > => {
+    const res = await api.get("/python-api/admin/audit-logs", {
+      params: { limit },
+    });
+    return res.data;
+  },
+
+  adminGetLoginAttempts: async (
+    limit = 300,
+  ): Promise<{ lockKey: string; attemptedAt: string; success: boolean }[]> => {
+    const res = await api.get("/python-api/admin/login-attempts", {
+      params: { limit },
+    });
     return res.data;
   },
 };
@@ -954,43 +823,7 @@ export const riskApi = {
   }): Promise<void> => {
     await api.put(`/risk-assessment/holds`, body);
   },
-
-  // ── ETL pre-computed branch scores ────────────────────────────────────────
-
-  /** ETL-аас тооцоолсон оноог ClickHouse-с авах */
-  getBranchScores: async (date?: string): Promise<BranchScore[]> => {
-    const res = await api.get(`/risk-assessment/branch-scores`, {
-      params: date ? { date } : {},
-    });
-    return res.data ?? [];
-  },
-
-  /** ETL-аас тооцоолсон оноог ClickHouse-д хадгалах */
-  upsertBranchScores: async (
-    fetchDate: string,
-    scores: Omit<BranchScore, "fetchDate">[],
-  ): Promise<void> => {
-    await api.post(`/risk-assessment/branch-scores`, { fetchDate, scores });
-  },
 };
-
-// ── ETL pre-computed branch scores ──────────────────────────────────────────
-
-export interface BranchScore {
-  fetchDate: string;
-  branchId: string;
-  branchName: string;
-  solid: string;
-  rating: string;
-  region: string;
-  s1: number | null;
-  s2: number | null;
-  s3: number | null;
-  s4: number;
-  j: number;
-  total: number | null;
-  level: string;
-}
 
 // ── Risk Indicator Config API ─────────────────────────────────────────────────
 
@@ -1438,97 +1271,6 @@ export const zainiiAuditExpenseApi = {
       { timeout: TIMEOUT_LONG },
     );
     return res.data;
-  },
-};
-
-// ── Tailan templates (admin: template builder) ──────────────────────────────
-export type TailanSectionType = "richtext" | "taskList" | "table";
-export type TailanTemplateScope = "employee" | "department";
-
-export interface TailanTableColumnDef {
-  key: string;
-  label: string;
-  width?: number;
-  align?: "left" | "center" | "right";
-  richtext?: boolean;
-  numeric?: boolean;
-}
-
-export interface TailanTaskListConfig {
-  showCompletion?: boolean;
-  showPeriod?: boolean;
-  showDescription?: boolean;
-  showImages?: boolean;
-  showAverage?: boolean;
-  titleLabel?: string;
-  completionLabel?: string;
-  periodLabel?: string;
-  descriptionLabel?: string;
-}
-
-export interface TailanTableConfig {
-  columns: TailanTableColumnDef[];
-  averageColumnKey?: string;
-  showImages?: boolean;
-}
-
-export interface TailanSectionDef {
-  key: string;
-  titleMn: string;
-  titleEn?: string;
-  subtitleMn?: string;
-  headingLevel: "main" | "sub";
-  type: TailanSectionType;
-  order: number;
-  orientation?: "portrait" | "landscape";
-  defaultHidden?: boolean;
-  taskList?: TailanTaskListConfig;
-  table?: TailanTableConfig;
-}
-
-export interface TailanTemplate {
-  id: string;
-  departmentId: string;
-  scope: TailanTemplateScope;
-  name: string;
-  sections: TailanSectionDef[];
-  isActive: 0 | 1;
-  updatedBy: string;
-  seq: number;
-  updatedAt: string;
-}
-
-export const DEFAULT_TAILAN_DEPARTMENT_ID = "default";
-
-export const tailanTemplateApi = {
-  list: async (scope?: TailanTemplateScope): Promise<TailanTemplate[]> => {
-    const res = await api.get("/tailan-templates", { params: { scope } });
-    return res.data;
-  },
-
-  getActive: async (
-    departmentId: string | undefined,
-    scope: TailanTemplateScope,
-  ): Promise<TailanTemplate> => {
-    const res = await api.get("/tailan-templates/active", {
-      params: { departmentId, scope },
-    });
-    return res.data;
-  },
-
-  upsert: async (dto: {
-    id?: string;
-    departmentId: string;
-    scope: TailanTemplateScope;
-    name: string;
-    sections: TailanSectionDef[];
-  }): Promise<TailanTemplate> => {
-    const res = await api.post("/tailan-templates", dto);
-    return res.data;
-  },
-
-  remove: async (id: string): Promise<void> => {
-    await api.delete(`/tailan-templates/${id}`);
   },
 };
 

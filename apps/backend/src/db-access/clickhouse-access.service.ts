@@ -20,7 +20,6 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
-import { randomBytes } from "crypto";
 import { errMessage } from "../common/utils/error-message";
 
 // ─── Whitelist ───────────────────────────────────────────────────────────────
@@ -38,22 +37,6 @@ const ALLOWED_DATABASES = new Set<string>([
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface ApproveAccessOptions {
-  /** UUID of the access_requests row – becomes part of the role name */
-  requestId: string;
-  /** The requester's login userId stored in audit_db.users (e.g. "B.Batmunkh") */
-  requesterUserId: string;
-  /** Fully-qualified table to grant (e.g. "FINACLE.HTD") */
-  tableName: string;
-  /**
-   * Optional pre-generated password to reuse.
-   * Supply this when approving multiple tables in one request so all grants
-   * share a single password and the user's CH password is not overwritten
-   * on every iteration.
-   */
-  password?: string;
-}
-
 export interface RevokeAccessOptions {
   /** Same UUID used during approval */
   requestId: string;
@@ -64,15 +47,6 @@ export interface RevokeAccessOptions {
    * If omitted, the entire role is dropped (full revocation).
    */
   tableName?: string;
-}
-
-export interface GrantVerification {
-  username: string;
-  role: string;
-  grants: string[];
-  hasSelectOnTable: boolean;
-  /** Newly generated (or reset) ClickHouse password. Always present after approval. */
-  generatedPassword: string;
 }
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -152,62 +126,6 @@ export class ClickHouseAccessService {
       `grant select on ${tableName} to ${role}`,
     );
     this.logger.log(`[grant] ✓ ${tableName} → ${role}`);
-  }
-
-  /**
-   * Legacy single-table approval (kept for backwards compat / single-table requests).
-   * For multi-table requests use setupUserAndRole + grantTableToRole instead.
-   */
-  async approveAccess(opts: ApproveAccessOptions): Promise<GrantVerification> {
-    const { requestId, requesterUserId, tableName, password } = opts;
-
-    this.assertValidTable(tableName);
-    const username = this.sanitizeIdentifier(requesterUserId);
-    const role = this.buildRoleName(requestId);
-    const [db, table] = tableName.split(".");
-
-    this.logger.log(
-      `[approve] requestId=${requestId} user=${username} table=${tableName} role=${role}`,
-    );
-
-    // Always set the password so the stored value always matches CH
-    const generatedPassword: string =
-      password ?? randomBytes(12).toString("hex");
-    const userExists = await this.clickhouseUserExists(username);
-    if (!userExists) {
-      await this.execSafe(
-        `CREATE USER ${this.q(username)} IDENTIFIED WITH sha256_password BY ${this.literal(generatedPassword)}`,
-        `create user ${username}`,
-      );
-    } else {
-      await this.execSafe(
-        `ALTER USER ${this.q(username)} IDENTIFIED WITH sha256_password BY ${this.literal(generatedPassword)}`,
-        `update password for ${username}`,
-      );
-    }
-
-    await this.execSafe(
-      `CREATE ROLE IF NOT EXISTS ${this.q(role)}`,
-      `create role ${role}`,
-    );
-    await this.execSafe(
-      `GRANT SELECT ON ${this.q(db)}.${this.q(table)} TO ${this.q(role)}`,
-      `grant select on ${tableName}`,
-    );
-    await this.execSafe(
-      `GRANT ${this.q(role)} TO ${this.q(username)}`,
-      `grant role to user`,
-    );
-    await this.execSafe(
-      `ALTER USER ${this.q(username)} DEFAULT ROLE ALL`,
-      `default role all`,
-    );
-
-    const verification = await this.verifyGrants(username, role, tableName);
-    this.logger.log(
-      `[approve] ✓ user=${username} hasSelect=${verification.hasSelectOnTable}`,
-    );
-    return { ...verification, generatedPassword };
   }
 
   /**
@@ -299,14 +217,6 @@ export class ClickHouseAccessService {
     }
 
     return { userDropped };
-  }
-
-  /**
-   * Return SHOW GRANTS output for an existing ClickHouse user (for debugging / UI).
-   */
-  async showGrantsForUser(requesterUserId: string): Promise<string[]> {
-    const username = this.sanitizeIdentifier(requesterUserId);
-    return this.fetchGrants(username);
   }
 
   /**
@@ -533,28 +443,6 @@ export class ClickHouseAccessService {
         })
         .filter(Boolean);
     }
-  }
-
-  /**
-   * Verify that the expected SELECT grant exists after approval.
-   */
-  private async verifyGrants(
-    username: string,
-    role: string,
-    tableName: string,
-  ): Promise<Omit<GrantVerification, "generatedPassword">> {
-    const grants = await this.fetchGrants(username);
-
-    // Check for the SELECT grant on the target table
-    const [db, table] = tableName.split(".");
-    const hasSelectOnTable = grants.some(
-      (g) =>
-        g.toUpperCase().includes("SELECT") &&
-        g.includes(db) &&
-        g.includes(table),
-    );
-
-    return { username, role, grants, hasSelectOnTable };
   }
 
   /**
