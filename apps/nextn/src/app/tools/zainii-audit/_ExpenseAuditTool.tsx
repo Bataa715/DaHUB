@@ -2503,6 +2503,7 @@ function ExpenseTxTable({
           <tbody>
             {displayedRows.map((tx, i) => {
               const statusMeta = STATUS_META[tx.verification_status ?? ""];
+              const cellLine = "border-r border-border";
               return (
                 <tr
                   key={`${tx.book_number}-${tx.customer_code}-${i}`}

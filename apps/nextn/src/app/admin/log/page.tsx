@@ -59,12 +59,12 @@ export default function AdminLogPage() {
   return (
     <div className="min-h-screen bg-background">
       <AdminPageHeader
-        icon={<ScrollText className="w-4 h-4 text-blue-400" />}
+        icon={<ScrollText className="w-4 h-4 text-blue-500" />}
         title="Систем лог"
         rightContent={
           <button
             onClick={() => load(tab)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-white/10 text-xs font-semibold text-white hover:bg-white/20"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-muted"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Шинэчлэх
           </button>
