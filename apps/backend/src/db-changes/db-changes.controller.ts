@@ -4,47 +4,48 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { AuditLogService } from "../audit/audit-log.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
 import { errMessage } from "../common/utils/error-message";
-import { NegativeNewsService } from "./negative-news.service";
+import { DbChangesService } from "./db-changes.service";
 import {
-  ImportNegativeNewsDto,
-  NegativeNewsAiDto,
-  NegativeNewsDashboardDto,
-} from "./dto/negative-news.dto";
+  DbChangesRangeDto,
+  DbChangesRecordsDto,
+  ImportDbChangesDto,
+  ReviewDbChangeDto,
+} from "./dto/db-changes.dto";
 
 @UseGuards(JwtAuthGuard, ToolGuard)
-// Бүртгэл оруулах (хэрэгсэл) ба үр дүн харах (дашбоард) нь тусдаа эрх.
-@RequireTools("negative_news_upload", "negative_news_dashboard")
-// ⚠️ Шинэ prefix — prod nginx дээр `location /negative-news/` нэмэх шаардлагатай.
-@Controller("negative-news")
-export class NegativeNewsController {
+// Оруулах + хянах (хэрэгсэл) ба үр дүн харах (дашбоард) нь тусдаа эрх.
+@RequireTools("db_changes_upload", "db_changes_dashboard")
+// ⚠️ Шинэ prefix — prod nginx дээр `location /db-changes/` нэмэх шаардлагатай.
+@Controller("db-changes")
+export class DbChangesController {
   constructor(
-    private readonly negativeNews: NegativeNewsService,
+    private readonly dbChanges: DbChangesService,
     private readonly auditLog: AuditLogService,
   ) {}
 
-  @RequireTools("negative_news_upload")
+  @RequireTools("db_changes_upload")
   @Post("import")
   async importRows(
-    @Body() dto: ImportNegativeNewsDto,
+    @Body() dto: ImportDbChangesDto,
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      const result = await this.negativeNews.importRows(dto, req.user);
+      const result = await this.dbChanges.importRows(dto, req.user);
       await this.auditLog.log({
         userId: req.user.id,
         action: "create",
-        resource: "negative_news",
+        resource: "db_changes",
         resourceId: result.batchId,
         method: "POST",
         status: "success",
@@ -61,7 +62,7 @@ export class NegativeNewsController {
       await this.auditLog.log({
         userId: req.user.id,
         action: "create",
-        resource: "negative_news",
+        resource: "db_changes",
         resourceId: dto.batchId ?? "",
         method: "POST",
         status: "failure",
@@ -72,24 +73,24 @@ export class NegativeNewsController {
     }
   }
 
-  @RequireTools("negative_news_upload")
+  @RequireTools("db_changes_upload")
   @Get("batches")
   listBatches() {
-    return this.negativeNews.listBatches();
+    return this.dbChanges.listBatches();
   }
 
-  @RequireTools("negative_news_upload")
+  @RequireTools("db_changes_upload")
   @Delete("batches/:batchId")
   async deleteBatch(
     @Param("batchId") batchId: string,
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      const result = await this.negativeNews.deleteBatch(batchId);
+      const result = await this.dbChanges.deleteBatch(batchId);
       await this.auditLog.log({
         userId: req.user.id,
         action: "delete",
-        resource: "negative_news_batch",
+        resource: "db_changes_batch",
         resourceId: batchId,
         method: "DELETE",
         status: "success",
@@ -100,7 +101,7 @@ export class NegativeNewsController {
       await this.auditLog.log({
         userId: req.user.id,
         action: "delete",
-        resource: "negative_news_batch",
+        resource: "db_changes_batch",
         resourceId: batchId,
         method: "DELETE",
         status: "failure",
@@ -110,54 +111,48 @@ export class NegativeNewsController {
     }
   }
 
-  @RequireTools("negative_news_dashboard")
-  @Post("dashboard")
-  dashboard(@Body() dto: NegativeNewsDashboardDto) {
-    return this.negativeNews.dashboard(dto);
+  @RequireTools("db_changes_upload")
+  @Post("records")
+  records(@Body() dto: DbChangesRecordsDto) {
+    return this.dbChanges.records(dto);
   }
 
-  // [SEC] Мэдээний агуулга гадны AI (Together) руу илгээгдэнэ — хүсэлт бүрийг
-  // audit log-д бичиж, зардал хязгаарлахын тулд минутад 5 удаа.
-  @RequireTools("negative_news_dashboard")
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @Post("ai-insights")
-  async aiInsights(
-    @Body() dto: NegativeNewsAiDto,
+  @RequireTools("db_changes_upload")
+  @Patch("records/:rowHash/review")
+  async review(
+    @Param("rowHash") rowHash: string,
+    @Body() dto: ReviewDbChangeDto,
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      const result = await this.negativeNews.aiInsights(dto);
+      const result = await this.dbChanges.review(rowHash, dto, req.user);
       await this.auditLog.log({
         userId: req.user.id,
-        action: "external_ai_request",
-        resource: "negative_news",
-        method: "POST",
+        action: "update",
+        resource: "db_change_review",
+        resourceId: rowHash,
+        method: "PATCH",
         status: "success",
-        metadata: {
-          provider: "together",
-          model: result.model,
-          newsCount: result.newsCount,
-          bank: result.bank,
-          startDate: dto.startDate,
-          endDate: dto.endDate,
-        },
+        metadata: { flagged: dto.flagged },
       });
       return result;
     } catch (error: unknown) {
       await this.auditLog.log({
         userId: req.user.id,
-        action: "external_ai_request",
-        resource: "negative_news",
-        method: "POST",
+        action: "update",
+        resource: "db_change_review",
+        resourceId: rowHash,
+        method: "PATCH",
         status: "failure",
         errorMessage: errMessage(error),
-        metadata: {
-          provider: "together",
-          startDate: dto.startDate,
-          endDate: dto.endDate,
-        },
       });
       throw error;
     }
+  }
+
+  @RequireTools("db_changes_dashboard")
+  @Post("dashboard")
+  dashboard(@Body() dto: DbChangesRangeDto) {
+    return this.dbChanges.dashboard(dto);
   }
 }

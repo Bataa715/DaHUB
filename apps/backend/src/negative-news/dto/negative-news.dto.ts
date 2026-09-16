@@ -89,3 +89,11 @@ export class NegativeNewsDashboardDto {
   @MaxLength(200, { message: "Хайлтын үг хэт урт байна" })
   search?: string;
 }
+
+/** AI шинжилгээ — дашбоардын шүүлтүүр + хэрэглэгчийн даалгавар (хоосон бол анхдагч). */
+export class NegativeNewsAiDto extends NegativeNewsDashboardDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500, { message: "Даалгавар хэт урт байна" })
+  instruction?: string;
+}

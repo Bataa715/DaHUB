@@ -18,6 +18,7 @@ import { HomepageEthicsModule } from "./homepage-ethics/homepage-ethics.module";
 import { ZainiiAuditModule } from "./zainii-audit/zainii-audit.module";
 import { NetworkAnalysisModule } from "./network-analysis/network-analysis.module";
 import { NegativeNewsModule } from "./negative-news/negative-news.module";
+import { DbChangesModule } from "./db-changes/db-changes.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 import { validateEnv } from "./config/env.validation";
@@ -58,6 +59,7 @@ import { validateEnv } from "./config/env.validation";
     ZainiiAuditModule,
     NetworkAnalysisModule,
     NegativeNewsModule,
+    DbChangesModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -54,6 +54,9 @@ const TOOL_GUARDS: Record<string, string[]> = {
   // Сөрөг мэдээ — бүртгэл оруулах (хэрэгсэл) ба дашбоард тусдаа эрхтэй
   "/tools/negative-news/dashboard": ["negative_news_dashboard"],
   "/tools/negative-news": ["negative_news_upload"],
+  // Өгөгдлийн сангийн өөрчлөлт — оруулах/хянах (хэрэгсэл) ба дашбоард тусдаа эрхтэй
+  "/tools/db-changes/dashboard": ["db_changes_dashboard"],
+  "/tools/db-changes": ["db_changes_upload"],
 };
 
 async function getTokenPayload(token: string | undefined) {

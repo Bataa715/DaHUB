@@ -9,20 +9,22 @@ import {
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import {
   ImportNegativeNewsDto,
+  NegativeNewsAiDto,
   NegativeNewsDashboardDto,
 } from "./dto/negative-news.dto";
 import {
   GOLOMT_BANK,
-  clusterSimilarNews,
+  buildAiMessage,
+  buildAiPrompt,
   isValidIsoDate,
   newsRowKey,
   normalizeNewsRow,
+  parseAiLines,
 } from "./negative-news.logic";
+import { NegativeNewsAiService } from "./negative-news-ai.service";
 
 const MAX_SCAN_ROWS = 20_000;
 const MAX_LIST_ROWS = 500;
-/** Ижил утгатай мэдээ бүлэглэх нь O(n²) — сүүлийн мэдээнүүдээр хязгаарлана */
-const MAX_SIMILAR_INPUT = 500;
 const MAX_RANGE_DAYS = 366;
 
 type User = { userId: string; name: string };
@@ -74,7 +76,10 @@ const countDesc = (values: string[]) =>
 export class NegativeNewsService implements OnModuleInit {
   private readonly logger = new Logger(NegativeNewsService.name);
 
-  constructor(private readonly clickhouse: ClickHouseService) {}
+  constructor(
+    private readonly clickhouse: ClickHouseService,
+    private readonly ai: NegativeNewsAiService,
+  ) {}
 
   async onModuleInit() {
     const ddl = [
@@ -266,7 +271,8 @@ export class NegativeNewsService implements OnModuleInit {
 
   // ─── Дашбоард ────────────────────────────────────────────────────────────
 
-  async dashboard(dto: NegativeNewsDashboardDto) {
+  /** Хугацаа + шүүлтүүрээр мэдээ уншина — дашбоард ба AI шинжилгээ хоёулаа ашиглана. */
+  private async loadFiltered(dto: NegativeNewsDashboardDto) {
     const start = dto.startDate.slice(0, 10);
     const end = dto.endDate.slice(0, 10);
     const startMs = Date.parse(`${start}T00:00:00Z`);
@@ -298,6 +304,12 @@ export class NegativeNewsService implements OnModuleInit {
         (!dto.category || r.category === dto.category) &&
         (!search || r.content.toLowerCase().includes(search)),
     );
+    return { startMs, endMs, inRange, filtered, truncated };
+  }
+
+  async dashboard(dto: NegativeNewsDashboardDto) {
+    const { startMs, endMs, inRange, filtered, truncated } =
+      await this.loadFiltered(dto);
 
     // Өдөр бүрийн тоо — мэдээгүй өдрийг 0-ээр бөглөнө (график тасрахгүй)
     const perDay = new Map<string, number>();
@@ -308,17 +320,6 @@ export class NegativeNewsService implements OnModuleInit {
       const date = new Date(t).toISOString().slice(0, 10);
       daily.push({ date, count: perDay.get(date) ?? 0 });
     }
-
-    // Эх скрипт шиг Голомт банкны мэдээнээс; банк сонгосон бол тэр банкны мэдээнээс
-    const similarBase = (
-      dto.bank ? filtered : filtered.filter((r) => r.bank === GOLOMT_BANK)
-    ).slice(0, MAX_SIMILAR_INPUT);
-    const similar = clusterSimilarNews(similarBase).map((c) => ({
-      size: c.size,
-      representative: c.representative,
-      dates: [...new Set(c.members.map((m) => m.newsDate))].sort(),
-      channels: [...new Set(c.members.map((m) => m.channel))].sort(),
-    }));
 
     const distinct = (values: string[]) =>
       [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -334,7 +335,6 @@ export class NegativeNewsService implements OnModuleInit {
       byChannel: countDesc(filtered.map((r) => r.channel)),
       byBank: countDesc(filtered.map((r) => r.bank)),
       byCategory: countDesc(filtered.map((r) => r.category)),
-      similar,
       items: filtered.slice(0, MAX_LIST_ROWS),
       matched: filtered.length,
       options: {
@@ -343,6 +343,34 @@ export class NegativeNewsService implements OnModuleInit {
         categories: distinct(inRange.map((r) => r.category)),
       },
       truncated,
+    };
+  }
+
+  /**
+   * Эх скрипт шиг: Голомт банкны (банк сонгосон бол тэр банкны) мэдээний агуулгыг
+   * даалгаврын хамт Together AI руу илгээж, хариуг мөр мөрөөр буцаана.
+   */
+  async aiInsights(dto: NegativeNewsAiDto) {
+    const { filtered } = await this.loadFiltered(dto);
+    const base = dto.bank
+      ? filtered
+      : filtered.filter((r) => r.bank === GOLOMT_BANK);
+    if (base.length === 0) {
+      throw new BadRequestException("Шинжлэх мэдээ алга байна");
+    }
+
+    const { message, used } = buildAiMessage(
+      base.map((r) => r.content),
+      buildAiPrompt(dto.instruction),
+    );
+    const text = await this.ai.complete(message);
+
+    return {
+      lines: parseAiLines(text),
+      newsCount: used,
+      candidateCount: base.length,
+      model: this.ai.model,
+      bank: dto.bank || GOLOMT_BANK,
     };
   }
 }

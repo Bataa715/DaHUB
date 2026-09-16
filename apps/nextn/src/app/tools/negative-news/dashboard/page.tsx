@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  AlertTriangle,
-  Layers,
-  Loader2,
-  Newspaper,
-  Search,
-} from "lucide-react";
+import { AlertTriangle, Loader2, Newspaper, Search } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -44,6 +38,7 @@ import {
   type NegativeNewsDashboardResult,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { AiInsightsPanel } from "./_AiInsightsPanel";
 
 const selectClass = cn(
   toolFieldClass,
@@ -343,43 +338,11 @@ export default function NegativeNewsDashboardPage() {
               ))}
             </div>
 
-            <ToolPanel>
-              <ToolPanelHeader
-                icon={Layers}
-                title={t("nnSimilarTitle")}
-                description={t("nnSimilarHint")}
-              />
-              {data.similar.length === 0 ? (
-                <ToolEmpty title={t("nnSimilarEmpty")} className="py-10" />
-              ) : (
-                <ToolPanelBody className="grid gap-3 md:grid-cols-2">
-                  {data.similar.map((c) => (
-                    <div
-                      key={c.representative.rowHash}
-                      className="rounded-xl border border-border bg-muted/30 p-4"
-                    >
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400">
-                          {c.size} {t("nnSimilarCount")}
-                        </span>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {c.dates[0]}
-                          {c.dates.length > 1
-                            ? ` — ${c.dates[c.dates.length - 1]}`
-                            : ""}
-                        </span>
-                      </div>
-                      <p className="line-clamp-3 text-sm text-foreground">
-                        {c.representative.content}
-                      </p>
-                      <p className="mt-2 truncate text-xs text-muted-foreground">
-                        {c.channels.join(" · ")}
-                      </p>
-                    </div>
-                  ))}
-                </ToolPanelBody>
-              )}
-            </ToolPanel>
+            <AiInsightsPanel
+              // Шүүлтүүр солигдвол хуучин AI хариу өөр мэдээнд хамаарна — шинээр эхлүүлнэ
+              key={JSON.stringify(applied)}
+              filters={applied}
+            />
 
             <ToolPanel>
               <ToolPanelHeader

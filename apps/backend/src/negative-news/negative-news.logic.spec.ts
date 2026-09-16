@@ -1,13 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
+  AI_DEFAULT_PROMPT,
+  AI_MAX_NEWS,
   GOLOMT_BANK,
-  clusterSimilarNews,
+  buildAiMessage,
+  buildAiPrompt,
   isValidIsoDate,
-  jaccard,
   newsRowKey,
   normalizeNewsRow,
+  parseAiLines,
   titleCase,
-  tokenize,
 } from "./negative-news.logic";
 
 describe("titleCase", () => {
@@ -53,50 +55,52 @@ describe("isValidIsoDate", () => {
   });
 });
 
-describe("tokenize / jaccard", () => {
-  it("цэг таслал, богино болон түгээмэл үгийг хасна", () => {
-    expect([...tokenize("Банк нь ба ЗЭЭЛ, зээл!")]).toEqual(["банк", "зээл"]);
+describe("buildAiPrompt", () => {
+  it("даалгаваргүй бол анхдагч", () => {
+    expect(buildAiPrompt("")).toBe(AI_DEFAULT_PROMPT);
+    expect(buildAiPrompt("   ")).toBe(AI_DEFAULT_PROMPT);
+    expect(buildAiPrompt(undefined)).toBe(AI_DEFAULT_PROMPT);
   });
 
-  it("jaccard", () => {
-    expect(jaccard(new Set(["а1а", "б2б"]), new Set(["а1а", "б2б"]))).toBe(1);
-    expect(jaccard(new Set(["ааа"]), new Set(["ббб"]))).toBe(0);
-    expect(jaccard(new Set(), new Set(["ааа"]))).toBe(0);
+  it("эх хуудасны загварт яг ижлээр оруулна (төгсгөлийн цэгийг давхардуулахгүй)", () => {
+    expect(
+      buildAiPrompt("хамгийн их утга давхцаж буй 5 өөр мэдээг харуулаарай."),
+    ).toBe(
+      "Дээрх утгуудыг мэдээ гэж нэрлэе. Дээрх мэдээнүүдээс хамгийн их утга давхцаж буй 5 өөр мэдээг харуулаарай. Ингэхдээ юуг ч битгий өөрчлөөрэй. Мөн сонгосон мэдээнүүдээс өөр зүйл нэмж хэлэх шаардлагагүй, зөвхөн сонгосон мэдээнүүдийг харуулаарай.",
+    );
   });
 });
 
-describe("clusterSimilarNews", () => {
-  const n = (id: number, content: string) => ({ id, content });
-
-  it("ойролцоо мэдээг нэг бүлэгт, хэмжээгээр буурахаар", () => {
-    const items = [
-      n(1, "Картын гүйлгээ амжилтгүй болж харилцагчид гомдол гаргалаа"),
-      n(2, "Харилцагчид картын гүйлгээ амжилтгүй болсон гэж гомдол гаргалаа"),
-      n(
-        3,
-        "Картын гүйлгээ дахин амжилтгүй болж харилцагчид гомдоллов гаргалаа",
-      ),
-      n(4, "Салбарын дараалал хэт урт байна үйлчилгээ удаан"),
-      n(5, "Салбарын дараалал урт, үйлчилгээ удаан байна"),
-      n(6, "Шинэ аппликейшн гарлаа"),
-    ];
-    const clusters = clusterSimilarNews(items);
-    expect(clusters.map((c) => c.size)).toEqual([3, 2]);
-    expect(clusters[0].members.map((m) => m.id).sort()).toEqual([1, 2, 3]);
-    expect(clusters[1].members.map((m) => m.id).sort()).toEqual([4, 5]);
+describe("buildAiMessage", () => {
+  it("мэдээнүүдийг хоёр мөр завсартай, төгсгөлд даалгавар", () => {
+    const { message, used } = buildAiMessage(
+      [" А мэдээ ", "", "Б мэдээ"],
+      "Даалгавар",
+    );
+    expect(message).toBe("А мэдээ\n\nБ мэдээ\n\nДаалгавар");
+    expect(used).toBe(2);
   });
 
-  it("давхцалгүй бол бүлэг үүсэхгүй", () => {
-    expect(clusterSimilarNews([n(1, "ааа ббб"), n(2, "ввв ггг")])).toEqual([]);
+  it("мэдээний тооны хязгаар", () => {
+    const many = Array.from(
+      { length: AI_MAX_NEWS + 50 },
+      (_, i) => `мэдээ ${i}`,
+    );
+    expect(buildAiMessage(many, "x").used).toBe(AI_MAX_NEWS);
   });
 
-  it("limit-ээр хязгаарлана", () => {
-    const items = Array.from({ length: 8 }, (_, i) => [
-      n(i * 10, `сэдэв${i} мэдээ давтагдсан агуулга`),
-      n(i * 10 + 1, `сэдэв${i} мэдээ давтагдсан агуулга`),
-    ]).flat();
-    expect(
-      clusterSimilarNews(items, { threshold: 0.9, limit: 3 }),
-    ).toHaveLength(3);
+  it("тэмдэгтийн хязгаар — гэхдээ эхний мэдээ заавал орно", () => {
+    const huge = "а".repeat(40_000);
+    expect(buildAiMessage([huge, "дараагийн"], "x").used).toBe(1);
+  });
+});
+
+describe("parseAiLines", () => {
+  it("хоосон мөрийг хасаж, зайг цэвэрлэнэ", () => {
+    expect(parseAiLines("1. Эхний\n\n  2. Хоёр  \n")).toEqual([
+      "1. Эхний",
+      "2. Хоёр",
+    ]);
+    expect(parseAiLines(undefined)).toEqual([]);
   });
 });

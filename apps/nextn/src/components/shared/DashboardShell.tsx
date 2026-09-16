@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 import {
   BellDot,
+  Database,
   Home,
   Network,
   Newspaper,
@@ -35,6 +36,7 @@ const DASHBOARD_ROUTE_PREFIXES = [
   "/tools/zainii-audit/expense",
   "/tools/network-analysis",
   "/tools/negative-news/dashboard",
+  "/tools/db-changes/dashboard",
 ];
 
 export const isDashboardRoute = (pathname: string) =>
@@ -93,6 +95,14 @@ export function getDashboardNav(
       gradient: "from-rose-500 to-pink-600",
       accessIds: ["negative_news_dashboard"],
       match: "/tools/negative-news/dashboard",
+    },
+    {
+      href: "/tools/db-changes/dashboard",
+      label: t("dbcDashboardTitle"),
+      icon: Database,
+      gradient: "from-violet-500 to-purple-600",
+      accessIds: ["db_changes_dashboard"],
+      match: "/tools/db-changes/dashboard",
     },
   ];
 }

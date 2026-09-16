@@ -90,6 +90,17 @@ export function getTools(t: (key: TranslationKey) => string): Tool[] {
       section: "tool",
     },
     {
+      // Өгөгдлийн сангийн өөрчлөлт — audit trail оруулах, бичлэг хянах
+      id: "db_changes_upload",
+      title: t("dbcToolTitle"),
+      icon: Database,
+      href: "/tools/db-changes",
+      gradient: "from-violet-500 to-purple-600",
+      glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
+      tag: "Audit",
+      section: "tool",
+    },
+    {
       // Салбарын аудит — эрхийн id нь хуучин "reports" хэвээр (DB өгөгдөл).
       id: "reports",
       matchIds: ["reports"],
@@ -152,6 +163,17 @@ export function getTools(t: (key: TranslationKey) => string): Tool[] {
       href: "/tools/negative-news/dashboard",
       gradient: "from-rose-500 to-pink-600",
       glow: "shadow-rose-500/20 group-hover:shadow-rose-500/40",
+      tag: "Audit",
+      section: "dashboard",
+    },
+    {
+      // Өгөгдлийн сангийн өөрчлөлтийн шинжилгээ
+      id: "db_changes_dashboard",
+      title: t("dbcDashboardTitle"),
+      icon: Database,
+      href: "/tools/db-changes/dashboard",
+      gradient: "from-violet-500 to-purple-600",
+      glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
       tag: "Audit",
       section: "dashboard",
     },

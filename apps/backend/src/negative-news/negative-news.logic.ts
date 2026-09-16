@@ -1,10 +1,8 @@
 /**
  * Сөрөг мэдээ — цэвэр функцүүд (DB-гүй, тестлэгдэнэ).
  *
- * Эх сурвалж: өмнөх "Сөрөг мэдээний анализ" скрипт. Тэнд Голомт банкны мэдээний
- * агуулгыг гадны AI үйлчилгээ рүү илгээж "ойролцоо утгатай мэдээ"-г сонгуулдаг
- * байсан. [SEC] Банкны мэдээлэл гадагш гарах тул тэр аргыг ХЭРЭГЛЭХГҮЙ — оронд нь
- * үгийн давхцлаар (Jaccard) дотооддоо бүлэглэнэ: ижил оролт → үргэлж ижил үр дүн.
+ * Эх сурвалж: өмнөх "Сөрөг мэдээний анализ" систем (Projects/sorog medee) —
+ * `app_v2.py`, `prototype_v11_image_fix.py`, `templates/uploud.html`.
  */
 
 /** Голомт банкны нэр — `titleCase`-ээр нормчилсны дараах хэлбэр */
@@ -62,123 +60,60 @@ export function isValidIsoDate(value: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
-// ─── Ижил утгатай мэдээ бүлэглэх ───────────────────────────────────────────
+// ─── AI шинжилгээ (Together) ───────────────────────────────────────────────
 
-/** Утга илэрхийлэхгүй түгээмэл үгс — давхцал тооцохдоо хасна */
-const STOPWORDS = new Set([
-  "ба",
-  "болон",
-  "нь",
-  "энэ",
-  "тэр",
-  "гэж",
-  "юм",
-  "байна",
-  "байгаа",
-  "бол",
-  "хийх",
-  "дээр",
-  "мөн",
-  "их",
-  "бүр",
-  "гэсэн",
-  "шиг",
-  "бөгөөд",
-  "байсан",
-  "гэх",
-  "одоо",
-  "талаар",
-  "тухай",
-  "хүртэл",
-  "зэрэг",
-  "бусад",
-  "гэдэг",
-  "the",
-  "and",
-  "for",
-  "with",
-  "that",
-  "this",
-  "from",
-]);
+/** Даалгавар өгөөгүй үеийн анхдагч (эх скриптийн `static/text.txt` байхгүй үеийнх) */
+export const AI_DEFAULT_PROMPT =
+  "Дээрх мэдээнүүдээс хоорондоо хамгийн ойролцоо утгатай 5 мэдээг ялгаж өгөөч.";
 
-export function tokenize(content: string): Set<string> {
-  const words = (content ?? "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
-  return new Set(words);
-}
+/** Эх хуудасны "Санал болгох аргууд" товчнууд */
+export const AI_SUGGESTED_INSTRUCTIONS = [
+  "хоорондоо хамгийн ойролцоо утгатай буюу ерөнхий утга давхардсан 5 мэдээг ялгаж өгөөч",
+  "хамгийн их утга давхцаж буй 5 өөр мэдээг харуулаарай",
+] as const;
 
-export function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) return 0;
-  let inter = 0;
-  const [small, large] = a.size <= b.size ? [a, b] : [b, a];
-  for (const w of small) if (large.has(w)) inter++;
-  return inter / (a.size + b.size - inter);
-}
+/** Нэг хүсэлтэд илгээх дээд хэмжээ — зардал, контекстийн хязгаараас хамгаална */
+export const AI_MAX_NEWS = 200;
+export const AI_MAX_CHARS = 30_000;
 
-export interface SimilarNewsCluster<T> {
-  /** Бүлгийг төлөөлөх мэдээ — бусадтайгаа хамгийн олон холбоотой нь */
-  representative: T;
-  size: number;
-  members: T[];
+/**
+ * Хэрэглэгчийн даалгаврыг эх хуудасны (`uploud.html`) загварт яг ижлээр оруулна.
+ * Хоосон бол анхдагч даалгавар.
+ */
+export function buildAiPrompt(instruction?: string | null): string {
+  const text = (instruction ?? "").trim().replace(/[.\s]+$/, "");
+  if (!text) return AI_DEFAULT_PROMPT;
+  return `Дээрх утгуудыг мэдээ гэж нэрлэе. Дээрх мэдээнүүдээс ${text}. Ингэхдээ юуг ч битгий өөрчлөөрэй. Мөн сонгосон мэдээнүүдээс өөр зүйл нэмж хэлэх шаардлагагүй, зөвхөн сонгосон мэдээнүүдийг харуулаарай.`;
 }
 
 /**
- * Ойролцоо утгатай мэдээг бүлэглэнэ (union-find). Зөвхөн 2+ мэдээтэй бүлэг,
- * хэмжээгээр буурахаар. O(n²) тул дуудагч тал `n`-ийг хязгаарлана.
+ * Эх скрипттэй адил: мэдээнүүдийг хоёр мөр завсартай нийлүүлээд, төгсгөлд нь
+ * даалгавар. Хязгаар хэтэрвэл үлдсэн мэдээг орхино (`used` — орсон тоо).
  */
-export function clusterSimilarNews<T extends { content: string }>(
-  items: T[],
-  opts: { threshold?: number; limit?: number } = {},
-): SimilarNewsCluster<T>[] {
-  const threshold = opts.threshold ?? 0.35;
-  const limit = opts.limit ?? 5;
-  const tokens = items.map((i) => tokenize(i.content));
-  const parent = items.map((_, i) => i);
-  const links = items.map(() => 0);
-
-  const find = (i: number): number => {
-    while (parent[i] !== i) {
-      parent[i] = parent[parent[i]];
-      i = parent[i];
-    }
-    return i;
-  };
-
-  for (let i = 0; i < items.length; i++) {
-    for (let j = i + 1; j < items.length; j++) {
-      if (jaccard(tokens[i], tokens[j]) >= threshold) {
-        links[i]++;
-        links[j]++;
-        const ri = find(i);
-        const rj = find(j);
-        if (ri !== rj) parent[rj] = ri;
-      }
-    }
+export function buildAiMessage(
+  contents: string[],
+  prompt: string,
+): { message: string; used: number } {
+  const picked: string[] = [];
+  let chars = 0;
+  for (const raw of contents) {
+    const content = raw.trim();
+    if (!content) continue;
+    if (picked.length >= AI_MAX_NEWS) break;
+    if (picked.length > 0 && chars + content.length > AI_MAX_CHARS) break;
+    picked.push(content);
+    chars += content.length + 2;
   }
+  return {
+    message: `${picked.join("\n\n")}\n\n${prompt}`,
+    used: picked.length,
+  };
+}
 
-  const groups = new Map<number, number[]>();
-  items.forEach((_, i) => {
-    const root = find(i);
-    groups.set(root, [...(groups.get(root) ?? []), i]);
-  });
-
-  return [...groups.values()]
-    .filter((idx) => idx.length >= 2)
-    .map((idx) => {
-      const rep = idx.reduce(
-        (best, i) => (links[i] > links[best] ? i : best),
-        idx[0],
-      );
-      return {
-        representative: items[rep],
-        size: idx.length,
-        members: idx.map((i) => items[i]),
-      };
-    })
-    .sort((a, b) => b.size - a.size)
-    .slice(0, limit);
+/** AI-ийн хариуг мөр мөрөөр — хоосон мөрийг хасна (эх скриптийн хүснэгттэй адил). */
+export function parseAiLines(text: string | null | undefined): string[] {
+  return (text ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 }

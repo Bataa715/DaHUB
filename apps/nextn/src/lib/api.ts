@@ -56,13 +56,24 @@ export function refreshSession(): Promise<{ data?: { user?: unknown } }> {
  */
 export function getApiErrorMessage(e: unknown): string {
   if (axios.isAxiosError(e)) {
-    return (
-      (e.response?.data as { message?: string } | undefined)?.message ??
-      e.message
-    );
+    return getApiResponseMessage(e) ?? e.message;
   }
   if (e instanceof Error) return e.message;
   return String(e);
+}
+
+/**
+ * Зөвхөн серверийн буцаасан мессеж (Nest: `message`, Next route: `error`).
+ * Байхгүй бол undefined — дуудагч өөрийн ойлгомжтой fallback-ийг харуулна.
+ */
+export function getApiResponseMessage(e: unknown): string | undefined {
+  if (!axios.isAxiosError(e)) return undefined;
+  const data = e.response?.data as
+    | { message?: unknown; error?: unknown }
+    | undefined;
+  if (typeof data?.message === "string") return data.message;
+  if (typeof data?.error === "string") return data.error;
+  return undefined;
 }
 
 /**
@@ -172,6 +183,142 @@ export const authApi = {
     return response.data;
   },
 };
+
+// ─── Нэвтрэхээс өмнөх / сесс хаах дуудлагууд ───────────────────────────────
+// [AUTH] 401-ийн silent-refresh interceptor-гүй тусдаа client. Буруу нууц үгийн
+// 401 нь "сесс дууссан" гэсэн үг БИШ — refresh оролдож login руу шидэх ёсгүй.
+// Logout ч мөн interceptor-оос гадуур явна (refresh-logout гогцооноос сэргийлнэ).
+const publicApi = axios.create({
+  baseURL: API_URL,
+  timeout: TIMEOUT_DEFAULT,
+  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+});
+
+// Next-ийн өөрийн route handler-ууд (app/api/**, app/team-gallery) — ижил origin.
+const sameOriginApi = axios.create({
+  timeout: TIMEOUT_DEFAULT,
+  withCredentials: true,
+});
+
+/** Алдааны HTTP статус (сүлжээний алдаа бол undefined) */
+export function getApiErrorStatus(e: unknown): number | undefined {
+  return axios.isAxiosError(e) ? e.response?.status : undefined;
+}
+
+export interface AuthUserCheckResult {
+  exists: boolean;
+  hasPassword: boolean;
+  userId: string | null;
+  name?: string | null;
+  isActive?: boolean;
+  needsPasswordSetup?: boolean;
+  registrationStatus?: "pending" | "rejected";
+}
+
+export interface DepartmentEmployee {
+  userId: string;
+  name: string;
+  position?: string;
+}
+
+export const publicAuthApi = {
+  register: async (
+    body: Record<string, unknown>,
+  ): Promise<{ userId: string; name: string }> => {
+    const res = await publicApi.post("/auth/register", body);
+    return res.data;
+  },
+
+  checkUser: async (body: {
+    userId: string;
+  }): Promise<AuthUserCheckResult> => {
+    const res = await publicApi.post("/auth/check-user", body);
+    return res.data;
+  },
+
+  /** Backend token cookie-г HttpOnly-гаар тавина; хариунд зөвхөн user */
+  setPassword: async (body: {
+    userId: string;
+    password: string;
+    claimToken: string;
+  }): Promise<{ user: unknown }> => {
+    const res = await publicApi.post("/auth/set-password", body);
+    return res.data;
+  },
+
+  loginById: async (body: {
+    userId: string;
+    password: string;
+  }): Promise<{ user: unknown }> => {
+    const res = await publicApi.post("/auth/login-by-id", body);
+    return res.data;
+  },
+
+  /** Best-effort — HttpOnly token cookie-г сервер цэвэрлэнэ */
+  logout: async (): Promise<void> => {
+    await publicApi.post("/auth/logout", {});
+  },
+
+  /** Login хуудасны хэлтсийн ажилтны жагсаалт (Next proxy route-оор) */
+  listByDepartment: async (
+    department: string,
+  ): Promise<DepartmentEmployee[]> => {
+    const res = await sameOriginApi.get("/api/auth/by-department", {
+      params: { department },
+    });
+    return Array.isArray(res.data?.users) ? res.data.users : [];
+  },
+};
+
+// ─── Нүүр хуудасны хамт олны зураг (Next route handler: app/team-gallery) ──
+export interface TeamGallerySlide {
+  id: string;
+  src: string;
+  alt: string;
+}
+
+export const teamGalleryApi = {
+  list: async (): Promise<TeamGallerySlide[]> => {
+    const res = await sameOriginApi.get("/team-gallery", {
+      headers: { "Cache-Control": "no-store" },
+    });
+    return Array.isArray(res.data?.slides) ? res.data.slides : [];
+  },
+
+  upload: async (file: File): Promise<TeamGallerySlide[]> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await sameOriginApi.post("/team-gallery", form);
+    return Array.isArray(res.data?.slides) ? res.data.slides : [];
+  },
+
+  remove: async (id: string): Promise<TeamGallerySlide[]> => {
+    const res = await sameOriginApi.delete(
+      `/team-gallery/${encodeURIComponent(id)}`,
+    );
+    return Array.isArray(res.data?.slides) ? res.data.slides : [];
+  },
+};
+
+/**
+ * Хуудас хаагдах (beforeunload) үед хадгалаагүй гарын утгуудыг илгээнэ.
+ * axios `keepalive` дэмждэггүй тул native fetch — хуудас хаагдсан ч хүсэлт
+ * дуусна. Fire-and-forget: хариуг хүлээхгүй. Token нь HttpOnly cookie-гоор явна.
+ */
+export function flushManualIndicatorsOnUnload(payloads: unknown[]): void {
+  for (const p of payloads) {
+    fetch(`${API_URL}/risk-assessment/manual-indicators`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+      keepalive: true,
+    }).catch(() => {
+      /* intentional: keepalive fire-and-forget on beforeunload */
+    });
+  }
+}
 
 // Registration requests (admin approval workflow) APIs
 export const registrationRequestsApi = {
@@ -1521,16 +1668,25 @@ export interface NegativeNewsDashboardResult {
   byChannel: { name: string; count: number }[];
   byBank: { name: string; count: number }[];
   byCategory: { name: string; count: number }[];
-  similar: {
-    size: number;
-    representative: NegativeNewsItem;
-    dates: string[];
-    channels: string[];
-  }[];
   items: NegativeNewsItem[];
   matched: number;
   options: { banks: string[]; channels: string[]; categories: string[] };
   truncated: boolean;
+}
+
+/** AI шинжилгээ — дашбоардын шүүлтүүр + даалгавар (хоосон бол анхдагч) */
+export interface NegativeNewsAiRequest extends NegativeNewsDashboardRequest {
+  instruction?: string;
+}
+
+export interface NegativeNewsAiResult {
+  lines: string[];
+  /** AI руу илгээсэн мэдээний тоо */
+  newsCount: number;
+  /** Шүүлтүүрт таарсан (хязгаараас өмнөх) мэдээний тоо */
+  candidateCount: number;
+  model: string;
+  bank: string;
 }
 
 export const negativeNewsApi = {
@@ -1560,11 +1716,169 @@ export const negativeNewsApi = {
     return res.data;
   },
 
+  aiInsights: async (
+    req: NegativeNewsAiRequest,
+  ): Promise<NegativeNewsAiResult> => {
+    const res = await api.post("/negative-news/ai-insights", req, {
+      timeout: TIMEOUT_LONG,
+    });
+    return res.data;
+  },
+
   dashboard: async (
     req: NegativeNewsDashboardRequest,
     signal?: AbortSignal,
   ): Promise<NegativeNewsDashboardResult> => {
     const res = await api.post("/negative-news/dashboard", req, {
+      timeout: TIMEOUT_LONG,
+      signal,
+    });
+    return res.data;
+  },
+};
+
+// ─── Өгөгдлийн сангийн өөрчлөлт (Oracle audit trail) ──────────────────────
+export interface DbChangeRowInput {
+  /** YYYY-MM-DD HH:MM:SS */
+  actionTime: string;
+  username: string;
+  machine: string;
+  action: string;
+  owner: string;
+  objectName: string;
+  domain: string;
+  sqlText: string;
+  sourceDescription: string;
+  jira: string;
+}
+
+export type DbChangeImportResult = NegativeNewsImportResult;
+
+export interface DbChangeBatch {
+  batchId: string;
+  fileName: string;
+  sheetName: string;
+  rowCount: number;
+  newRows: number;
+  duplicateRows: number;
+  skippedRows: number;
+  minTime: string;
+  maxTime: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+}
+
+export interface DbChangeRecord extends DbChangeRowInput {
+  rowHash: string;
+  systemType: string;
+  sqlCommand: string;
+  flagged: boolean;
+  note: string;
+  reviewedByName: string;
+  reviewedAt: string;
+}
+
+export interface DbChangesRangeRequest {
+  startDate: string;
+  endDate: string;
+  systemType?: string;
+}
+
+export interface DbChangesRecordsRequest extends DbChangesRangeRequest {
+  sqlCommand?: string;
+  username?: string;
+  search?: string;
+  flaggedOnly?: boolean;
+}
+
+export interface DbChangesRecordsResult {
+  items: DbChangeRecord[];
+  truncated: boolean;
+  usernames: string[];
+}
+
+export interface DbChangeReviewResult {
+  rowHash: string;
+  flagged: boolean;
+  note: string;
+  reviewedByName: string;
+  reviewedAt: string;
+}
+
+type DbChangeCount = { name: string; count: number };
+
+export interface DbChangesDashboardResult {
+  stats: {
+    total: number;
+    users: number;
+    objects: number;
+    flagged: number;
+    drops: number;
+  };
+  bySystem: DbChangeCount[];
+  byCommand: DbChangeCount[];
+  domainsBySystem: DbChangeCount[];
+  topUsers: DbChangeCount[];
+  actionsBySystem: { systemType: string; action: string; count: number }[];
+  daily: { date: string; count: number }[];
+  flagged: DbChangeRecord[];
+}
+
+export const dbChangesApi = {
+  importRows: async (body: {
+    batchId?: string;
+    fileName: string;
+    sheetName?: string;
+    rows: DbChangeRowInput[];
+  }): Promise<DbChangeImportResult> => {
+    const res = await api.post("/db-changes/import", body, {
+      timeout: TIMEOUT_LONG,
+    });
+    return res.data;
+  },
+
+  listBatches: async (): Promise<DbChangeBatch[]> => {
+    const res = await api.get("/db-changes/batches");
+    return res.data;
+  },
+
+  deleteBatch: async (
+    batchId: string,
+  ): Promise<{ batchId: string; deletedRows: number }> => {
+    const res = await api.delete(
+      `/db-changes/batches/${encodeURIComponent(batchId)}`,
+    );
+    return res.data;
+  },
+
+  records: async (
+    req: DbChangesRecordsRequest,
+    signal?: AbortSignal,
+  ): Promise<DbChangesRecordsResult> => {
+    const res = await api.post("/db-changes/records", req, {
+      timeout: TIMEOUT_LONG,
+      signal,
+    });
+    return res.data;
+  },
+
+  review: async (
+    rowHash: string,
+    body: { flagged: boolean; note: string },
+  ): Promise<DbChangeReviewResult> => {
+    const res = await api.patch(
+      `/db-changes/records/${encodeURIComponent(rowHash)}/review`,
+      body,
+    );
+    return res.data;
+  },
+
+  dashboard: async (
+    req: DbChangesRangeRequest,
+    signal?: AbortSignal,
+  ): Promise<DbChangesDashboardResult> => {
+    const res = await api.post("/db-changes/dashboard", req, {
       timeout: TIMEOUT_LONG,
       signal,
     });

@@ -48,6 +48,11 @@ export const VALID_TOOLS = [
   //   negative_news_dashboard → Шинжилгээний дашбоард
   "negative_news_upload",
   "negative_news_dashboard",
+  // ── Өгөгдлийн сангийн өөрчлөлт (Oracle audit trail) ──────────────────────
+  //   db_changes_upload    → Excel оруулах, бичлэг хянаж тэмдэглэх (Хэрэгсэл)
+  //   db_changes_dashboard → Шинжилгээний дашбоард
+  "db_changes_upload",
+  "db_changes_dashboard",
 ] as const;
 
 /** O(1) lookup — use this for runtime `.has()` checks */
