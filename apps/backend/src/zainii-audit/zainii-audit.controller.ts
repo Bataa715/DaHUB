@@ -8,13 +8,16 @@ import {
   Post,
   Query,
   Request,
+  Res,
   UseGuards,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { ZainiiAuditService } from "./zainii-audit.service";
+import { ZainiiAuditDocxService } from "./zainii-audit-docx.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
 import {
   RelatedPartyTransactionsDto,
@@ -27,6 +30,8 @@ import {
   CreateVerificationTypeDto,
   UpdateVerificationTypeDto,
   UpdateZainiiAuditSettingsDto,
+  GenerateExpenseReportDto,
+  ExpenseRelationsDto,
 } from "./dto/zainii-audit.dto";
 
 @UseGuards(JwtAuthGuard, ToolGuard)
@@ -43,7 +48,10 @@ import {
 // мөргөлдөхөөс бүрмөсөн сэргийлнэ.
 @Controller("zainii-audit")
 export class ZainiiAuditController {
-  constructor(private readonly zainiiAudit: ZainiiAuditService) {}
+  constructor(
+    private readonly zainiiAudit: ZainiiAuditService,
+    private readonly zainiiAuditDocx: ZainiiAuditDocxService,
+  ) {}
 
   @RequireTools("zainii_audit_rpt")
   @Post("related-party-transactions")
@@ -91,6 +99,35 @@ export class ZainiiAuditController {
   @Post("expense-total")
   getExpenseTotal(@Body() dto: ExpenseTotalDto) {
     return this.zainiiAudit.getExpenseTotal(dto);
+  }
+
+  // ── Хамааралтай / Холбоотой (hamaaral / holbootoi lookup) ───────────────
+  @RequireTools("zainii_audit_expense")
+  @Post("expense-relations")
+  getExpenseRelations(@Body() dto: ExpenseRelationsDto) {
+    return this.zainiiAudit.getExpenseRelations(dto);
+  }
+
+  // ── Word тайлан ───────────────────────────────────────────────────────
+  @RequireTools("zainii_audit_expense")
+  @Post("expense-report-docx")
+  async downloadExpenseReport(
+    @Body() dto: GenerateExpenseReportDto,
+    @Res() res: Response,
+  ) {
+    const data = await this.zainiiAudit.getExpenseReportData(dto);
+    const buffer = await this.zainiiAuditDocx.buildExpenseReportDocx(data);
+    const filename = encodeURIComponent(
+      `Гүйлгээний-анализын-тайлан-${dto.reportNumber}.docx`,
+    );
+    res.set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "Content-Disposition": `attachment; filename*=UTF-8''${filename}`,
+      "Content-Length": buffer.length,
+      "Cache-Control": "no-store",
+    });
+    res.end(buffer);
   }
 
   // ── Verification types (admin-managed reference list) ───────────────────

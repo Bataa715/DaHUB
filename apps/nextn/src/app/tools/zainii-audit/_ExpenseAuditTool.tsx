@@ -20,6 +20,10 @@ import {
   ChevronUp,
   ChevronDown,
   FileSpreadsheet,
+  FileText,
+  Eye,
+  ShieldAlert,
+  Link2,
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -66,6 +70,7 @@ import {
   ExpenseVerificationStatus,
   ExpenseTotalResult,
   ExpenseTotalTxRow,
+  HamaaralRow,
 } from "@/lib/api";
 
 const DEFAULT_MIN_AMOUNT = 50_000_000;
@@ -291,6 +296,9 @@ export function ExpenseAuditTool() {
   const [verComment, setVerComment] = useState("");
   const [verType, setVerType] = useState("");
   const [verContractAmount, setVerContractAmount] = useState(0);
+  const [verContractDate, setVerContractDate] = useState("");
+  const [verContractNumber, setVerContractNumber] = useState("");
+  const [verRemainingAmount, setVerRemainingAmount] = useState(0);
   const [verStatus, setVerStatus] = useState<ExpenseVerificationStatus | "">(
     "",
   );
@@ -367,6 +375,9 @@ export function ExpenseAuditTool() {
     setVerComment(tx.comment);
     setVerType(tx.verification_type);
     setVerContractAmount(tx.contract_total_amount);
+    setVerContractDate(tx.contract_date || "");
+    setVerContractNumber(tx.contract_number || "");
+    setVerRemainingAmount(tx.remaining_amount || 0);
     setVerStatus((tx.verification_status as ExpenseVerificationStatus) || "");
     void loadVerificationTypes();
   }
@@ -380,12 +391,18 @@ export function ExpenseAuditTool() {
         comment: verComment,
         verificationType: verType,
         contractTotalAmount: verContractAmount,
+        contractDate: verContractDate || undefined,
+        contractNumber: verContractNumber || undefined,
+        remainingAmount: verRemainingAmount,
         status: verStatus || undefined,
       });
       patchTransaction(verificationDialogTx.book_number, {
         comment: row.comment,
         verification_type: row.verificationType,
         contract_total_amount: row.contractTotalAmount,
+        contract_date: row.contractDate,
+        contract_number: row.contractNumber,
+        remaining_amount: row.remainingAmount,
         verification_status: row.status,
         has_verification: 1,
       });
@@ -609,6 +626,104 @@ export function ExpenseAuditTool() {
   }, [totalResult, totalSearch, totalMinAmount]);
 
   const [exporting, setExporting] = useState(false);
+
+  // ── Word тайлан (Гүйлгээний анализын тайлан) татах диалог ────────────────
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportNumber, setReportNumber] = useState("");
+  const [reportConclusion, setReportConclusion] = useState("");
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  async function downloadReport() {
+    if (!reportNumber.trim()) {
+      toast({
+        title: t("errorBoundaryTitle"),
+        description: t("zaExpReportNumberRequired"),
+        variant: "destructive",
+      });
+      return;
+    }
+    setDownloadingReport(true);
+    try {
+      const blob = await zainiiAuditExpenseApi.downloadExpenseReportDocx({
+        startDate,
+        endDate,
+        minAmount,
+        reportNumber: reportNumber.trim(),
+        conclusionText: reportConclusion,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Гүйлгээний-анализын-тайлан-${reportNumber.trim()}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setReportDialogOpen(false);
+    } catch (e) {
+      toast({
+        title: t("errorBoundaryTitle"),
+        description: getApiErrorMessage(e),
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
+
+  // ── Хамааралтай / Холбоотой (hamaaral / holbootoi) ───────────────────────
+  // "Дэлгэрэнгүй харах" асаах үед л дэлгэц дээрх мөрүүдийн харилцагчийн
+  // кодоор нэг удаа batch татна — мөр бүрт тусад нь дуудахгүй.
+  const [showRelations, setShowRelations] = useState(false);
+  const [relationsMap, setRelationsMap] = useState<
+    Record<string, HamaaralRow[]>
+  >({});
+  const [holbootoiSet, setHolbootoiSet] = useState<Set<string>>(new Set());
+  const [relationsLoading, setRelationsLoading] = useState(false);
+  const fetchedRelationCodes = useRef<Set<string>>(new Set());
+
+  const loadRelationsFor = useCallback(
+    async (codes: string[]) => {
+      const toFetch = Array.from(new Set(codes)).filter(
+        (c) => c && !fetchedRelationCodes.current.has(c),
+      );
+      if (toFetch.length === 0) return;
+      toFetch.forEach((c) => fetchedRelationCodes.current.add(c));
+      setRelationsLoading(true);
+      try {
+        const CHUNK = 1000;
+        for (let i = 0; i < toFetch.length; i += CHUNK) {
+          const chunk = toFetch.slice(i, i + CHUNK);
+          const res = await zainiiAuditExpenseApi.getExpenseRelations(chunk);
+          setRelationsMap((prev) => ({ ...prev, ...res.hamaaral }));
+          setHolbootoiSet((prev) => {
+            const next = new Set(prev);
+            res.holbootoi.forEach((c) => next.add(c));
+            return next;
+          });
+        }
+      } catch (e) {
+        toast({
+          title: t("errorBoundaryTitle"),
+          description: getApiErrorMessage(e),
+          variant: "destructive",
+        });
+      } finally {
+        setRelationsLoading(false);
+      }
+    },
+    [toast, t],
+  );
+
+  useEffect(() => {
+    if (!showRelations || !result) return;
+    void loadRelationsFor(result.transactions.map((tx) => tx.customer_code));
+  }, [showRelations, result, loadRelationsFor]);
+
+  useEffect(() => {
+    if (!showRelations || !totalOpen || !totalResult) return;
+    void loadRelationsFor(
+      totalResult.transactions.map((tx) => tx.customer_code),
+    );
+  }, [showRelations, totalOpen, totalResult, loadRelationsFor]);
 
   async function exportOverview() {
     if (exporting || filteredTx.length === 0) return;
@@ -839,6 +954,9 @@ export function ExpenseAuditTool() {
                     rows={filteredTotalTx}
                     visibleCount={visibleTotalCount}
                     stickyHeader
+                    showRelations={showRelations}
+                    relationsMap={relationsMap}
+                    holbootoiSet={holbootoiSet}
                   />
                 )}
                 {visibleTotalCount < filteredTotalTx.length && (
@@ -947,6 +1065,28 @@ export function ExpenseAuditTool() {
                 <FileSpreadsheet className="w-3.5 h-3.5" />
               )}
               {exporting ? t("zaExpExporting") : t("zaExpExportBtn")}
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-1.5 h-8"
+              onClick={() => setReportDialogOpen(true)}
+              disabled={loading || filteredTx.length === 0}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {t("zaExpReportBtn")}
+            </Button>
+            <Button
+              variant={showRelations ? "secondary" : "outline"}
+              className="gap-1.5 h-8"
+              onClick={() => setShowRelations((v) => !v)}
+              disabled={!result}
+            >
+              {relationsLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
+              {t("zaExpShowRelationsBtn")}
             </Button>
           </div>
           <div className="hidden sm:block w-px self-stretch min-h-[36px] bg-border/80" />
@@ -1092,6 +1232,9 @@ export function ExpenseAuditTool() {
                       showVerification
                       onBookClick={openDrilldown}
                       onVerifyClick={openVerificationDialog}
+                      showRelations={showRelations}
+                      relationsMap={relationsMap}
+                      holbootoiSet={holbootoiSet}
                     />
                   )}
                   {visibleTxCount < filteredTx.length && (
@@ -1454,8 +1597,8 @@ export function ExpenseAuditTool() {
               </div>
             </div>
 
-            {/* ── Төрөл + Гэрээний дүн зэрэгцээ ─────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* ── Төрөл + Гэрээний огноо + Гэрээний дүн ─────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -1493,6 +1636,18 @@ export function ExpenseAuditTool() {
 
               <div>
                 <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  {t("zaExpContractDateLabel")}
+                </label>
+                <Input
+                  type="date"
+                  value={verContractDate}
+                  onChange={(e) => setVerContractDate(e.target.value)}
+                  disabled={savingVerification}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                   {t("zaExpContractAmountLabel")}
                 </label>
                 <Input
@@ -1514,6 +1669,38 @@ export function ExpenseAuditTool() {
                     actual={verificationDialogTx.debit_amount}
                   />
                 )}
+              </div>
+            </div>
+
+            {/* ── Гэрээний дугаар + Үлдэгдэл төлбөр ─────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  {t("zaExpContractNumberLabel")}
+                </label>
+                <Input
+                  value={verContractNumber}
+                  onChange={(e) => setVerContractNumber(e.target.value)}
+                  disabled={savingVerification}
+                  placeholder={t("zaExpContractNumberPlaceholder")}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  {t("zaExpRemainingAmountLabel")}
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={1_000_000}
+                  value={verRemainingAmount}
+                  onChange={(e) =>
+                    setVerRemainingAmount(Number(e.target.value) || 0)
+                  }
+                  disabled={savingVerification}
+                  className="tabular-nums"
+                />
               </div>
             </div>
 
@@ -1544,6 +1731,63 @@ export function ExpenseAuditTool() {
                 <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
               )}
               {t("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Word тайлан (Гүйлгээний анализын тайлан) татах диалог */}
+      <Dialog
+        open={reportDialogOpen}
+        onOpenChange={(open) => {
+          if (!downloadingReport) setReportDialogOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-600" />
+              {t("zaExpReportDialogTitle")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                {t("zaExpReportNumberLabel")}
+              </label>
+              <Input
+                value={reportNumber}
+                onChange={(e) => setReportNumber(e.target.value)}
+                disabled={downloadingReport}
+                placeholder={t("zaExpReportNumberPlaceholder")}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                {t("zaExpConclusionLabel")}
+              </label>
+              <Textarea
+                value={reportConclusion}
+                onChange={(e) => setReportConclusion(e.target.value)}
+                rows={10}
+                disabled={downloadingReport}
+                placeholder={t("zaExpConclusionPlaceholder")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReportDialogOpen(false)}
+              disabled={downloadingReport}
+            >
+              {t("cancel")}
+            </Button>
+            <Button onClick={() => void downloadReport()} disabled={downloadingReport}>
+              {downloadingReport && (
+                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+              )}
+              {t("zaExpReportDownloadBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1667,7 +1911,9 @@ type ExpColKey =
   | "gl"
   | "receivable"
   | "book"
-  | "verification";
+  | "verification"
+  | "related"
+  | "connected";
 
 type ExpColDef = {
   key: ExpColKey;
@@ -1728,6 +1974,9 @@ function colSortValue(
         tx.verification_status ||
         ""
       ).toLowerCase();
+    case "related":
+    case "connected":
+      return (tx.customer_code || "").toLowerCase();
   }
 }
 
@@ -1827,6 +2076,122 @@ function PayRequestBadge({
   );
 }
 
+/**
+ * Хамааралтай баганын 3 төлөв: "cif" hamaaral хүснэгтэд олдоогүй бол
+ * саарал, олдоод empid бөглөгдсөн (банкны ажилтантай холбоотой) бол улаан,
+ * олдоод ажилтан биш бол ногоон.
+ */
+type RelatedState = "employee" | "related" | "none";
+
+function relatedState(rows: HamaaralRow[] | undefined): RelatedState {
+  if (!rows || rows.length === 0) return "none";
+  return rows.some((r) => (r.empid ?? "").trim() !== "")
+    ? "employee"
+    : "related";
+}
+
+const RELATED_BADGE: Record<
+  RelatedState,
+  { cls: string; labelKey: TranslationKey }
+> = {
+  employee: {
+    cls: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-400",
+    labelKey: "zaExpRelatedEmployee",
+  },
+  related: {
+    cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    labelKey: "zaExpRelatedYes",
+  },
+  none: {
+    cls: "border-border bg-muted/30 text-muted-foreground",
+    labelKey: "zaExpRelatedNo",
+  },
+};
+
+function HamaaralBadge({
+  rows,
+  onClick,
+}: {
+  rows: HamaaralRow[] | undefined;
+  onClick?: () => void;
+}) {
+  const { t } = useLanguage();
+  const state = relatedState(rows);
+  const meta = RELATED_BADGE[state];
+  const content = (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+        meta.cls,
+      )}
+    >
+      <ShieldAlert className="w-3 h-3 shrink-0" />
+      {t(meta.labelKey)}
+    </span>
+  );
+  if (state === "none" || !onClick) {
+    return content;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left hover:opacity-80 transition-opacity"
+    >
+      {content}
+    </button>
+  );
+}
+
+/** "Хамааралтай" баганын дэлгэрэнгүй (hamaaral мөрүүд) жижиг диалог. */
+function HamaaralDetailDialog({
+  customerCode,
+  rows,
+  onClose,
+}: {
+  customerCode: string | null;
+  rows: HamaaralRow[];
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <Dialog open={customerCode != null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-rose-500" />
+            {t("zaExpRelatedDialogTitle")} — {customerCode}
+          </DialogTitle>
+        </DialogHeader>
+        {rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {t("zaExpDialogNoMatch")}
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {rows.map((r, i) => (
+              <div
+                key={i}
+                className="rounded-lg border border-border/60 px-3 py-2.5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs"
+              >
+                <Field label={t("zaExpRelatedColCif")} value={r.cif} />
+                <Field label={t("zaExpRelatedColCifName")} value={r.cifname} />
+                <Field label={t("zaExpRelatedColEmpId")} value={r.empid || "—"} />
+                <Field
+                  label={t("zaExpRelatedColEmpName")}
+                  value={r.empname || "—"}
+                />
+                <Field label={t("zaExpRelatedColType")} value={r.typename} />
+                <Field label={t("zaExpRelatedColStatus")} value={r.status} />
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ExpenseTxTable({
   rows,
   visibleCount,
@@ -1834,6 +2199,9 @@ function ExpenseTxTable({
   stickyHeader = false,
   onBookClick,
   onVerifyClick,
+  showRelations = false,
+  relationsMap = {},
+  holbootoiSet = new Set(),
 }: {
   rows: Array<
     Pick<
@@ -1870,8 +2238,14 @@ function ExpenseTxTable({
   stickyHeader?: boolean;
   onBookClick?: (tx: ExpenseTxRow) => void;
   onVerifyClick?: (tx: ExpenseTxRow) => void;
+  showRelations?: boolean;
+  relationsMap?: Record<string, HamaaralRow[]>;
+  holbootoiSet?: Set<string>;
 }) {
   const { t } = useLanguage();
+  const [hamaaralDialogCustomer, setHamaaralDialogCustomer] = useState<
+    string | null
+  >(null);
   const cols = useMemo<ExpColDef[]>(() => {
     const all: ExpColDef[] = [
       {
@@ -1947,8 +2321,26 @@ function ExpenseTxTable({
         minWidth: 100,
       });
     }
+    if (showRelations) {
+      all.push(
+        {
+          key: "related",
+          label: t("zaExpColRelated"),
+          align: "left",
+          defaultWidth: 130,
+          minWidth: 100,
+        },
+        {
+          key: "connected",
+          label: t("zaExpColConnected"),
+          align: "left",
+          defaultWidth: 90,
+          minWidth: 70,
+        },
+      );
+    }
     return all;
-  }, [showVerification, t]);
+  }, [showVerification, showRelations, t]);
 
   const [widths, setWidths] = useState<Partial<Record<ExpColKey, number>>>({});
   const [sort, setSort] = useState<{
@@ -2148,7 +2540,11 @@ function ExpenseTxTable({
                       name={tx.recievable_type_name}
                     />
                   </Td>
-                  <Td className={showVerification ? cellLine : undefined}>
+                  <Td
+                    className={
+                      showVerification || showRelations ? cellLine : undefined
+                    }
+                  >
                     <PayRequestBadge
                       state={payState(tx)}
                       title={tx.book_number}
@@ -2160,7 +2556,7 @@ function ExpenseTxTable({
                     />
                   </Td>
                   {showVerification && (
-                    <Td>
+                    <Td className={showRelations ? cellLine : undefined}>
                       <div>{tx.verification_type || "—"}</div>
                       <div className="tabular-nums text-muted-foreground">
                         {tx.contract_total_amount
@@ -2194,12 +2590,42 @@ function ExpenseTxTable({
                       </div>
                     </Td>
                   )}
+                  {showRelations && (
+                    <>
+                      <Td className={cellLine}>
+                        <HamaaralBadge
+                          rows={relationsMap[tx.customer_code]}
+                          onClick={() =>
+                            setHamaaralDialogCustomer(tx.customer_code)
+                          }
+                        />
+                      </Td>
+                      <Td>
+                        {holbootoiSet.has(tx.customer_code) ? (
+                          <Link2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </Td>
+                    </>
+                  )}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      {showRelations && (
+        <HamaaralDetailDialog
+          customerCode={hamaaralDialogCustomer}
+          rows={
+            hamaaralDialogCustomer
+              ? (relationsMap[hamaaralDialogCustomer] ?? [])
+              : []
+          }
+          onClose={() => setHamaaralDialogCustomer(null)}
+        />
+      )}
     </div>
   );
 }

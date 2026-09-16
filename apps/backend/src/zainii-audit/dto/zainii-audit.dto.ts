@@ -106,6 +106,22 @@ export class ExpenseVerificationDto {
   contractTotalAmount?: number;
 
   @IsOptional()
+  @IsDateString({}, { message: "Гэрээний огноо буруу байна" })
+  contractDate?: string;
+
+  @IsOptional()
+  @IsString({ message: "Гэрээний дугаар текст байх ёстой" })
+  @MaxLength(64, { message: "Гэрээний дугаар хэт урт байна" })
+  contractNumber?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: "Үлдэгдэл төлбөр тоо байх ёстой" })
+  @Min(0, { message: "Үлдэгдэл төлбөр 0-ээс бага байж болохгүй" })
+  @Max(1_000_000_000_000, { message: "Үлдэгдэл төлбөр хэт өндөр байна" })
+  remainingAmount?: number;
+
+  @IsOptional()
   @IsIn(EXPENSE_VERIFICATION_STATUSES, {
     message: "Статус буруу байна",
   })
@@ -154,4 +170,41 @@ export class UpdateZainiiAuditSettingsDto {
   @Min(1, { message: "Хугацаа дор хаяж 1 хоног байх ёстой" })
   @Max(3650, { message: "Хугацаа хэт урт байна (дээд тал нь 3650 хоног)" })
   defaultDaysBack?: number;
+}
+
+// ─── Зардлын хяналтын Word тайлан ───────────────────────────────────────────
+export class GenerateExpenseReportDto {
+  @IsDateString({}, { message: "Эхлэх огноо буруу байна" })
+  startDate: string;
+
+  @IsDateString({}, { message: "Дуусах огноо буруу байна" })
+  endDate: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: "Доод дүн тоо байх ёстой" })
+  @Min(0, { message: "Доод дүн 0-ээс бага байж болохгүй" })
+  @Max(1_000_000_000_000, { message: "Доод дүн хэт өндөр байна" })
+  minAmount?: number;
+
+  @IsString()
+  @IsNotEmpty({ message: "Тайлангийн дугаар заавал шаардлагатай" })
+  @MaxLength(64, { message: "Тайлангийн дугаар хэт урт байна" })
+  reportNumber: string;
+
+  @IsOptional()
+  @IsString({ message: "Дүгнэлт текст байх ёстой" })
+  @MaxLength(4000, { message: "Дүгнэлт хэт урт байна" })
+  conclusionText?: string;
+}
+
+// ─── Хамааралтай / Холбоотой харилцагчийн шалгалт ──────────────────────────
+export class ExpenseRelationsDto {
+  @IsArray()
+  @ArrayMinSize(1, { message: "Хамгийн багадаа 1 харилцагчийн код шаардлагатай" })
+  @ArrayMaxSize(1000, {
+    message: "Хамгийн ихдээ 1000 харилцагчийн код зэрэг шалгах боломжтой",
+  })
+  @IsString({ each: true })
+  customerCodes: string[];
 }
