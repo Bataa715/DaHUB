@@ -4,7 +4,6 @@
   "description": "Internal Audit Backend API Server with NestJS",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -20,7 +19,6 @@
     "@nestjs/platform-express": "^11.2.5",
     "@nestjs/schedule": "^6.1.3",
     "@nestjs/throttler": "^6.5.0",
-    "@types/cookie-parser": "^1.4.10",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
@@ -38,12 +36,11 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.2",
     "@types/passport-jwt": "^4.0.1",
     "@types/sanitize-html": "^2.16.1",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3"
   },
   "overrides": {
