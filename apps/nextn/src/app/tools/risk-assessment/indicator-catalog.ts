@@ -10,8 +10,6 @@
  * оруулах шаардлагатай (UI-д "Гар" товчин дотор input харагдана).
  */
 
-import { type OracleValue } from "./scoring-rules";
-
 export type CatalogGroup = 1 | 2 | 3 | 4 | 5;
 
 export interface CatalogIndicator {
@@ -343,22 +341,6 @@ export const INDICATOR_CATALOG: CatalogIndicator[] = [
   },
 ];
 
-export const CATALOG_BY_GROUP: Record<CatalogGroup, CatalogIndicator[]> = {
-  1: INDICATOR_CATALOG.filter((i) => i.group === 1),
-  2: INDICATOR_CATALOG.filter((i) => i.group === 2),
-  3: INDICATOR_CATALOG.filter((i) => i.group === 3),
-  4: INDICATOR_CATALOG.filter((i) => i.group === 4),
-  5: INDICATOR_CATALOG.filter((i) => i.group === 5),
-};
-
-export const GROUP_LABEL: Record<CatalogGroup, string> = {
-  1: "Score 1",
-  2: "Score 2",
-  3: "Score 3",
-  4: "Score 4",
-  5: "S5-Judgement Score",
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Манай auto / manual blendтэй тооцооны функц
 // ─────────────────────────────────────────────────────────────────────────────
@@ -366,40 +348,3 @@ export const GROUP_LABEL: Record<CatalogGroup, string> = {
 export type ManualMap = Record<string, Record<string, number>>;
 // Salbar bүрийн manual оруулсан утга:
 // manual[branchId]["s1-001"] = 3.5 ...
-
-export interface BranchInputRow {
-  SOLID?: OracleValue;
-  BRANCHID?: OracleValue;
-  BRANCHNAME?: OracleValue;
-  SUBID?: OracleValue;
-  RESULT?: OracleValue;
-  RESULT_TYPE?: OracleValue;
-}
-
-export interface IndicatorValue {
-  indicator: CatalogIndicator;
-  /** Эцсийн тооцоонд орох оноо (manual override > auto) */
-  score: number | null;
-  /** Гарал үүсэл */
-  source: "manual" | "auto" | "none";
-  /** Auto тооцооны үед үндсэн RESULT, label */
-  autoRaw?: string;
-  autoLabel?: string | null;
-}
-
-export interface BranchCatalogResult {
-  branchId: string;
-  /** Бүлэг тус бүрийн жигнэсэн дундаж (нийт жинд харьцуулсан) */
-  groupScores: Record<CatalogGroup, number | null>;
-  /** Үзүүлэлт тус бүрийн дэлгэрэнгүй */
-  values: Record<string, IndicatorValue>;
-}
-
-/** Автомат биш (гараар оруулах) үзүүлэлтийн тоо бүлэг тус бүрд */
-export const MANUAL_COUNT_BY_GROUP: Record<CatalogGroup, number> = {
-  1: CATALOG_BY_GROUP[1].filter((i) => i.autoSubid == null).length,
-  2: CATALOG_BY_GROUP[2].filter((i) => i.autoSubid == null).length,
-  3: CATALOG_BY_GROUP[3].filter((i) => i.autoSubid == null).length,
-  4: CATALOG_BY_GROUP[4].filter((i) => i.autoSubid == null).length,
-  5: CATALOG_BY_GROUP[5].filter((i) => i.autoSubid == null).length,
-};

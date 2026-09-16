@@ -24,15 +24,14 @@ import { usersApi } from "@/lib/api";
 import { isRegularAppUser } from "@/lib/utils";
 import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 
+// Супер админ туслах админд олгож болох эрхүүд — backend-ийн VALID_TOOLS-тэй
+// яг таарна (тэнд байхгүй id-г backend хадгалахдаа шүүж хаядаг).
 const ALL_TOOLS: { id: string; name: string; nameKey?: TranslationKey }[] = [
-  { id: "todo", name: "Todo" },
-  { id: "chess", name: "Оюуны спорт", nameKey: "admAdminsToolChess" },
   {
     id: "sanamsargui-tuuwer",
     name: "Санамсаргүй түүвэр",
     nameKey: "toolSampleTitle",
   },
-  { id: "pivot", name: "Pivot" },
   {
     id: "db_access_requester",
     name: "Эрх хүсэгч",
@@ -43,28 +42,8 @@ const ALL_TOOLS: { id: string; name: string; nameKey?: TranslationKey }[] = [
     name: "Эрх олгогч",
     nameKey: "admAdminsToolAccessGranter",
   },
-  {
-    id: "tailan",
-    name: "Улирлын тайлан (ажилтан)",
-    nameKey: "admAdminsToolTailanEmployee",
-  },
-  {
-    id: "tailan_dept_head",
-    name: "Улирлын тайлан (ахлагч)",
-    nameKey: "admAdminsToolTailanManager",
-  },
-  { id: "english", name: "Англи үгс", nameKey: "admAdminsToolEnglishWords" },
-  {
-    id: "excel_report",
-    name: "Excel тайлан",
-    nameKey: "admAdminsToolExcelReport",
-  },
-  {
-    id: "data_doc",
-    name: "Өгөгдлийн толь бичиг",
-    nameKey: "toolDataDocTitle",
-  },
-  { id: "alert_box", name: "Alert Box" },
+  { id: "reports", name: "Тайлан татах", nameKey: "toolReportsTitle" },
+  { id: "alert_box", name: "Alert Box", nameKey: "toolAlertBoxTitle" },
   {
     id: "risk_assessment",
     name: "Салбарын эрсдэлийн үнэлгээ",
@@ -74,6 +53,16 @@ const ALL_TOOLS: { id: string; name: string; nameKey?: TranslationKey }[] = [
     id: "risk_assessment_report",
     name: "Эрсдэлийн үнэлгээ — Тайлан",
     nameKey: "toolRiskAssessmentReportTitle",
+  },
+  {
+    id: "zainii_audit_rpt",
+    name: "Харилцсан гүйлгээ",
+    nameKey: "zaBoxRelatedPartyTitle",
+  },
+  {
+    id: "zainii_audit_expense",
+    name: "Зардлын хяналт",
+    nameKey: "zaBoxExpenseTitle",
   },
 ];
 

@@ -21,8 +21,6 @@ import {
   Shield,
   Wrench,
   Dice6,
-  Table2,
-  FileText,
   Database,
   FileSpreadsheet,
   BellDot,
@@ -49,8 +47,19 @@ interface ToolVariant {
   labelKey: TranslationKey;
 }
 
+// Админ хуудсанд картуудыг бүлэглэх ангилал: хяналт/мониторингийн самбарууд
+// ("dashboard") ба ажил гүйцэтгэх хэрэгслүүд ("tool"). Зөвхөн UI бүлэглэл —
+// эрхийн id (variants) болон backend-ийн VALID_TOOLS-д нөлөөлөхгүй.
+type ToolCategory = "dashboard" | "tool";
+
+const TOOL_CATEGORIES: { id: ToolCategory; labelKey: TranslationKey }[] = [
+  { id: "dashboard", labelKey: "admToolsPageCategoryDashboard" },
+  { id: "tool", labelKey: "admToolsPageCategoryTools" },
+];
+
 interface ToolGroup {
   id: string;
+  category: ToolCategory;
   nameKey: TranslationKey;
   descKey: TranslationKey;
   icon: React.ComponentType<any>;
@@ -64,6 +73,7 @@ interface ToolGroup {
 const TOOL_GROUPS: ToolGroup[] = [
   {
     id: "sanamsargui-tuuwer",
+    category: "tool",
     nameKey: "toolSampleTitle",
     descKey: "admToolsPageSampleDesc",
     icon: Dice6,
@@ -72,16 +82,8 @@ const TOOL_GROUPS: ToolGroup[] = [
     variants: [{ id: "sanamsargui-tuuwer", labelKey: "toolSampleTitle" }],
   },
   {
-    id: "pivot",
-    nameKey: "toolPivotTitle",
-    descKey: "admToolsPagePivotDesc",
-    icon: Table2,
-    color: "from-cyan-500 to-teal-500",
-    gradient: "bg-gradient-to-br from-cyan-500/20 to-teal-500/20",
-    variants: [{ id: "pivot", labelKey: "toolPivotTitle" }],
-  },
-  {
     id: "db_access",
+    category: "tool",
     nameKey: "admToolsPageDbAccessGroupName",
     descKey: "admToolsPageDbAccessGroupDesc",
     icon: Database,
@@ -93,21 +95,8 @@ const TOOL_GROUPS: ToolGroup[] = [
     ],
   },
   {
-    id: "tailan",
-    nameKey: "admToolsPageTailanGroupName",
-    descKey: "admToolsPageTailanGroupDesc",
-    icon: FileText,
-    color: "from-blue-500 to-violet-500",
-    gradient: "bg-gradient-to-br from-blue-500/20 to-violet-500/20",
-    adminPath: "/admin/tailan-templates",
-    adminLabelKey: "admToolsPageTemplateArrow",
-    variants: [
-      { id: "tailan", labelKey: "admAdminsToolTailanEmployee" },
-      { id: "tailan_dept_head", labelKey: "admToolsPageTailanDeptHeadName" },
-    ],
-  },
-  {
     id: "reports",
+    category: "tool",
     nameKey: "toolReportsTitle",
     descKey: "admToolsPageReportsDesc",
     icon: FileSpreadsheet,
@@ -118,16 +107,8 @@ const TOOL_GROUPS: ToolGroup[] = [
     variants: [{ id: "reports", labelKey: "toolReportsTitle" }],
   },
   {
-    id: "data_doc",
-    nameKey: "toolDataDocTitle",
-    descKey: "admToolsPageDataDocDesc",
-    icon: Database,
-    color: "from-teal-500 to-cyan-500",
-    gradient: "bg-gradient-to-br from-teal-500/20 to-cyan-500/20",
-    variants: [{ id: "data_doc", labelKey: "toolDataDocTitle" }],
-  },
-  {
     id: "alert_box",
+    category: "dashboard",
     nameKey: "toolAlertBoxTitle",
     descKey: "admToolsPageAlertBoxDesc",
     icon: BellDot,
@@ -139,6 +120,7 @@ const TOOL_GROUPS: ToolGroup[] = [
   },
   {
     id: "risk_assessment",
+    category: "dashboard",
     nameKey: "admToolsPageRiskGroupName",
     descKey: "admToolsPageRiskGroupDesc",
     icon: ShieldAlert,
@@ -156,6 +138,7 @@ const TOOL_GROUPS: ToolGroup[] = [
   },
   {
     id: "zainii_audit",
+    category: "dashboard",
     nameKey: "toolZainiiAuditTitle",
     descKey: "admToolsPageZainiiAuditDesc",
     icon: Activity,
@@ -570,64 +553,83 @@ export default function AdminToolsPage() {
           ))}
         </div>
 
-        {/* Tool Cards */}
-        <div>
-          <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {visibleGroups.map((group) => {
-              const usersWithAccess = getUsersWithAnyVariant(group);
-              const pct =
-                users.length > 0
-                  ? Math.round((usersWithAccess.length / users.length) * 100)
-                  : 0;
-              return (
-                <button
-                  key={group.id}
-                  onClick={() => handleGroupSelect(group)}
-                  className="group text-left bg-background border-2 border-border hover:border-border rounded-xl p-3 flex flex-col gap-3 hover:-translate-y-0.5 transition-all duration-300"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground leading-snug whitespace-normal break-words">
-                      {t(group.nameKey)}
-                    </p>
-                    {group.variants.length > 1 && (
-                      <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                        {group.variants.length} {t("admToolsPageScenarioUnit")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="mt-auto">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground/60">
-                        {usersWithAccess.length} {t("admToolsPageUserUnit")}
-                      </span>
-                      {group.adminPath ? (
-                        <Link
-                          href={group.adminPath}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {group.adminLabelKey
-                            ? t(group.adminLabelKey)
-                            : t("admToolsPageSettingsArrow")}
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/40">
-                          {pct}%
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 h-0.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-muted-foreground/60 transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Tool Cards — ангиллаар: Dashboard / Хэрэгсэл */}
+        {TOOL_CATEGORIES.map((category) => {
+          const groups = visibleGroups.filter(
+            (g) => g.category === category.id,
+          );
+          if (groups.length === 0) return null;
+          return (
+            <section key={category.id} className="space-y-3">
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-sm font-semibold text-foreground">
+                  {t(category.labelKey)}
+                </h2>
+                <span className="text-xs text-muted-foreground/60">
+                  {groups.length}
+                </span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {groups.map((group) => {
+                  const usersWithAccess = getUsersWithAnyVariant(group);
+                  const pct =
+                    users.length > 0
+                      ? Math.round(
+                          (usersWithAccess.length / users.length) * 100,
+                        )
+                      : 0;
+                  return (
+                    <button
+                      key={group.id}
+                      onClick={() => handleGroupSelect(group)}
+                      className="group text-left bg-background border-2 border-border hover:border-border rounded-xl p-3 flex flex-col gap-3 hover:-translate-y-0.5 transition-all duration-300"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-foreground leading-snug whitespace-normal break-words">
+                          {t(group.nameKey)}
+                        </p>
+                        {group.variants.length > 1 && (
+                          <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                            {group.variants.length}{" "}
+                            {t("admToolsPageScenarioUnit")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="mt-auto">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground/60">
+                            {usersWithAccess.length} {t("admToolsPageUserUnit")}
+                          </span>
+                          {group.adminPath ? (
+                            <Link
+                              href={group.adminPath}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {group.adminLabelKey
+                                ? t(group.adminLabelKey)
+                                : t("admToolsPageSettingsArrow")}
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40">
+                              {pct}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 h-0.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-muted-foreground/60 transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
       {/* Tool Detail Sheet */}

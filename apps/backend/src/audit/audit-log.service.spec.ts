@@ -60,10 +60,14 @@ describe("AuditLogService.getLogs", () => {
     (ctx.clickhouse.query as Mock).mockResolvedValue([
       { id: "1", action: "x", metadata: '{"targetId":"u9"}' },
       { id: "2", action: "y", metadata: "" },
+      { id: "3", action: "z", metadata: "not-json" },
+      { id: "4", action: "w", metadata: { already: true } },
     ]);
     const res = await ctx.svc.getLogs({});
     expect(res[0].metadata).toEqual({ targetId: "u9" });
     expect(res[1].metadata).toEqual({});
+    expect(res[2].metadata).toEqual({ raw: "not-json" });
+    expect(res[3].metadata).toEqual({ already: true });
   });
 
   it("clamps limit to 1000 max", async () => {

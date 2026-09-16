@@ -1,8 +1,6 @@
 import type { TranslationKey } from "@/contexts/LanguageContext";
 import {
   Dice6,
-  Table2,
-  FileText,
   FileSpreadsheet,
   Database,
   BellDot,
@@ -22,7 +20,7 @@ export interface Tool {
   matchIds?: string[]; // if set, tool is visible if user has ANY of these tool ids
 }
 
-// Shared tool catalog — used by the Sidebar (main nav) and the legacy /tools grid page.
+// Shared tool catalog — used by the Sidebar (main nav).
 // Keep this the single source of truth for tool metadata (icon, route, access id).
 export function getTools(t: (key: TranslationKey) => string): Tool[] {
   return [
@@ -35,27 +33,6 @@ export function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-violet-500 to-indigo-500",
       glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
       tag: "Audit",
-    },
-    {
-      id: "pivot",
-      title: t("toolPivotTitle"),
-      description: t("toolPivotDesc"),
-      icon: Table2,
-      href: "/tools/pivot",
-      gradient: "from-cyan-500 to-blue-500",
-      glow: "shadow-cyan-500/20 group-hover:shadow-cyan-500/40",
-      tag: "Analysis",
-    },
-    {
-      id: "tailan",
-      matchIds: ["tailan", "tailan_dept_head"],
-      title: t("toolReportTitle"),
-      description: t("toolReportDesc"),
-      icon: FileText,
-      href: "/tools/tailan",
-      gradient: "from-violet-500 to-purple-500",
-      glow: "shadow-violet-500/20 group-hover:shadow-violet-500/40",
-      tag: "Report",
     },
     {
       id: "db_access_requester",
@@ -87,16 +64,6 @@ export function getTools(t: (key: TranslationKey) => string): Tool[] {
       gradient: "from-emerald-500 to-violet-500",
       glow: "shadow-emerald-500/20 group-hover:shadow-emerald-500/40",
       tag: "Report",
-    },
-    {
-      id: "data_doc",
-      title: t("toolDataDocTitle"),
-      description: t("toolDataDocDesc"),
-      icon: Database,
-      href: "/tools/data-doc",
-      gradient: "from-teal-500 to-cyan-500",
-      glow: "shadow-teal-500/20 group-hover:shadow-teal-500/40",
-      tag: "Data",
     },
     {
       id: "alert_box",

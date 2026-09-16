@@ -29,13 +29,13 @@ export class AuditLogService {
       await this.clickhouse.insert("audit_logs", [
         {
           id: randomUUID(),
-          userId: entry.userId,
-          action: entry.action,
-          resource: entry.resource,
-          resourceId: entry.resourceId || "",
-          method: entry.method,
-          status: entry.status,
-          errorMessage: entry.errorMessage || "",
+          userId: String(entry.userId ?? ""),
+          action: String(entry.action ?? ""),
+          resource: String(entry.resource ?? ""),
+          resourceId: String(entry.resourceId ?? ""),
+          method: String(entry.method ?? ""),
+          status: String(entry.status ?? ""),
+          errorMessage: String(entry.errorMessage ?? ""),
           metadata: entry.metadata ? JSON.stringify(entry.metadata) : "",
           createdAt: now,
         },
@@ -115,10 +115,24 @@ export class AuditLogService {
 
     const logs = await this.clickhouse.query<any>(query, params);
 
-    return logs.map((log) => ({
-      ...log,
-      metadata: log.metadata ? JSON.parse(log.metadata) : {},
-    }));
+    return logs.map((log) => {
+      let metadata: Record<string, unknown> = {};
+      const raw = log.metadata;
+      if (raw && typeof raw === "object") {
+        metadata = raw as Record<string, unknown>;
+      } else if (typeof raw === "string" && raw.trim()) {
+        try {
+          const parsed = JSON.parse(raw);
+          metadata =
+            parsed && typeof parsed === "object"
+              ? (parsed as Record<string, unknown>)
+              : { value: parsed };
+        } catch {
+          metadata = { raw };
+        }
+      }
+      return { ...log, metadata };
+    });
   }
 
   /** Нэвтрэх оролдлогын лог (brute-force хяналт) — нэгдсэн Log таб харуулна. */
@@ -136,43 +150,4 @@ export class AuditLogService {
       attemptedAt: String(r.attemptedAt ?? ""),
       success: Number(r.success) === 1,
     }));
-  }
-
-  /**
-   * Get audit logs summary/statistics
-   */
-  async getStats(filters: { startDate?: Date; endDate?: Date }) {
-    const conditions: string[] = ["1=1"];
-    const params: Record<string, any> = {};
-
-    if (filters.startDate) {
-      conditions.push("createdAt >= {startDate:DateTime}");
-      params.startDate = filters.startDate
-        .toISOString()
-        .slice(0, 19)
-        .replace("T", " ");
-    }
-
-    if (filters.endDate) {
-      conditions.push("createdAt <= {endDate:DateTime}");
-      params.endDate = filters.endDate
-        .toISOString()
-        .slice(0, 19)
-        .replace("T", " ");
-    }
-
-    const query = `
-      SELECT 
-        action,
-        resource,
-        status,
-        count() as count
-      FROM audit_logs 
-      WHERE ${conditions.join(" AND ")}
-      GROUP BY action, resource, status
-      ORDER BY count DESC
-    `;
-
-    return await this.clickhouse.query<any>(query, params);
-  }
-}
+  }}

@@ -229,6 +229,34 @@ export class PythonApiController {
     return this.service.getRunLogs(limit ? Math.min(Number(limit), 1000) : 200);
   }
 
+  // [ROUTE] Prod reverse-proxy `/audit-logs` Nest рүү явуулдаггүй (404) —
+  // ажилладаг `/python-api/admin/*` дээр унших endpoint нэмэв.
+  @Get("admin/audit-logs")
+  @UseGuards(SuperAdminGuard)
+  listAuditLogs(
+    @Query("limit") limit?: string,
+    @Query("action") action?: string,
+    @Query("status") status?: string,
+    @Query("resource") resource?: string,
+    @Query("userId") userId?: string,
+  ) {
+    return this.auditLogService.getLogs({
+      limit: limit ? Number(limit) : 200,
+      action: action || undefined,
+      status: status || undefined,
+      resource: resource || undefined,
+      userId: userId || undefined,
+    });
+  }
+
+  @Get("admin/login-attempts")
+  @UseGuards(SuperAdminGuard)
+  listLoginAttempts(@Query("limit") limit?: string) {
+    return this.auditLogService.getLoginAttempts(
+      limit ? Number(limit) : 200,
+    );
+  }
+
   @Get("admin/permissions")
   @UseGuards(SuperAdminGuard)
   getAllPermissions() {
@@ -337,6 +365,7 @@ export class PythonApiController {
     const caller = req.user
       ? {
           userId: req.user.id as string,
+          loginId: (req.user.userId ?? "") as string,
           userName: (req.user.name ?? req.user.userId ?? "") as string,
           isAdmin: !!req.user.isAdmin,
         }
@@ -392,6 +421,15 @@ export class PythonApiController {
       if (!allowed)
         throw new ForbiddenException("Энэ тайлан ашиглах эрхгүй байна");
     }
-    return this.service.previewTool(dto);
+    return this.service.previewTool(
+      dto,
+      req.user
+        ? {
+            userId: req.user.id,
+            loginId: req.user.userId ?? "",
+            userName: req.user.name ?? req.user.userId ?? "",
+          }
+        : undefined,
+    );
   }
 }

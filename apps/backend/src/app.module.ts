@@ -11,8 +11,6 @@ import { MedlegModule } from "./medleg/medleg.module";
 import { QuizModule } from "./quiz/quiz.module";
 import { AuditLogModule } from "./audit/audit-log.module";
 import { DbAccessModule } from "./db-access/db-access.module";
-import { TailanModule } from "./tailan/tailan.module";
-import { TailanTemplateModule } from "./tailan-template/tailan-template.module";
 import { OracleModule } from "./oracle/oracle.module";
 import { PythonApiModule } from "./python-api/python-api.module";
 import { RiskAssessmentModule } from "./risk-assessment/risk-assessment.module";
@@ -52,8 +50,6 @@ import { validateEnv } from "./config/env.validation";
     QuizModule,
     MedlegModule,
     DbAccessModule,
-    TailanModule,
-    TailanTemplateModule,
     OracleModule,
     PythonApiModule,
     RiskAssessmentModule,

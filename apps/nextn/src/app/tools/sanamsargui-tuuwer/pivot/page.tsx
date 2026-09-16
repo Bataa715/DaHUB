@@ -370,6 +370,7 @@ export default function PivotPage() {
             <Table2 className="w-3.5 h-3.5 text-foreground" />
           </div>
         }
+        href="/tools/sanamsargui-tuuwer"
         title={t("pivotTitle")}
       />
 

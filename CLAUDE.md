@@ -45,7 +45,6 @@ apps/
       common/       constants (tools, departments), utils, filters, types
       config/       env.validation.ts, configuration.ts
     python/main.py  Python API tool-уудыг ажиллуулах sandbox runner
-    scripts/        Гараар ажиллуулах SQL/скриптүүд
   nextn/            Next.js 16 (App Router) + React 19 frontend
     src/
       app/          Маршрутууд (§5.1)
@@ -154,8 +153,9 @@ await this.clickhouse.query(`SELECT * FROM users WHERE id = '${id}'`);
 
 ### 3.4 ReplacingMergeTree — ХАМГИЙН ТҮГЭЭМЭЛ АЛДАА
 
-`users`, `tailan_reports`, `access_grants`, `medleg_quizzes` гэх мэт олон
-хүснэгт `ReplacingMergeTree(updatedAt)` engine-тэй. Энэ нь:
+`users`, `access_grants`, `medleg_quizzes`, `avlaga_verifications` гэх мэт олон
+хүснэгт `ReplacingMergeTree(<хувилбарын багана>)` engine-тэй (ихэвчлэн
+`updatedAt`, `access_grants` дээр `grantedAt`). Энэ нь:
 
 - **Шинэчлэх = бүтэн мөрийг дахин insert хийх.** Хэрэв зөвхөн 2 талбар
   явуулбал үлдсэн бүх багана **хоосон утгаар дарагдана**.
@@ -444,7 +444,7 @@ const result = await zainiiAuditRptApi.findRelatedPartyTransactions(req);
 
 ## 7. Өгөгдлийн сангийн зохион байгуулалт
 
-- **`audit_db`** — аппын өөрийн бааз (users, tailan_reports, medleg, risk_*, …).
+- **`audit_db`** — аппын өөрийн бааз (users, medleg, access_*, risk_*, …).
   Апп бичдэг, уншдаг.
 - **`FINACLE`, `ERP`, `EBANK`, `CARDZONE`** — эх банкны системүүдээс хуулагдсан
   бааз. **Зөвхөн уншина.** Эдгээрт хэзээ ч INSERT/ALTER бүү хий.

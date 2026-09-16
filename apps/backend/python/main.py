@@ -156,15 +156,17 @@ def _ora_connect_one(sub_cfg: dict, label: str = "") -> Any:
     tag = f" [{label}]" if label else ""
 
     try:
-        import cx_Oracle  # type: ignore[import]
-        dsn = sub_cfg.get("dsn") or cx_Oracle.makedsn(host, port, service_name=svc)
-        conn = cx_Oracle.connect(user=user, password=password, dsn=dsn)
+        # [AUDIT] cx_Oracle нь deprecated бөгөөд Python 3.13-д суухгүй болсон тул
+        # түүний албан ёсны залгамжлагч python-oracledb-г ашиглана (ижил API).
+        import oracledb  # type: ignore[import]
+        dsn = sub_cfg.get("dsn") or oracledb.makedsn(host, port, service_name=svc)
+        conn = oracledb.connect(user=user, password=password, dsn=dsn)
         logger.info("Oracle{} холбогдлоо ({}/{})", tag, host, svc)
         return conn
     except ImportError:
         raise HTTPException(
             status_code=502,
-            detail=f"Oracle{tag}: cx_Oracle суулгаагүй байна. pip install cx_Oracle",
+            detail=f"Oracle{tag}: python-oracledb суулгаагүй байна. pip install oracledb",
         )
     except Exception as exc:
         raise HTTPException(
@@ -375,9 +377,12 @@ def _make_cache_key(payload: dict[str, Any]) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        import cx_Oracle  # type: ignore[import]
+        # Instant Client-ийг ачаалснаар python-oracledb "thick" горимд ажиллана —
+        # cx_Oracle-ийн өмнөх зан төлөвтэй ижил (хуучин Oracle хувилбар, native
+        # encryption зэрэгт шаардлагатай). Холболт үүсэхээс ӨМНӨ дуудагдах ёстой.
+        import oracledb  # type: ignore[import]
         lib_dir = os.environ.get("ORACLE_CLIENT_LIB", r"D:\ORACLE\instantclient_21_13")
-        cx_Oracle.init_oracle_client(lib_dir=lib_dir)
+        oracledb.init_oracle_client(lib_dir=lib_dir)
         logger.info("Oracle Instant Client ачааллаа ({})", lib_dir)
     except Exception as exc:
         logger.warning("Oracle Instant Client ачаалж чадсангүй: {}", exc)

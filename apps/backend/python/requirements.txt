@@ -1,36 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Python runner хамаарал — 2026-09-15-нд аудит хийж шинэчилсэн.
+#
+# Доод хязгаар = pip-audit-аар эмзэг сан 0 гэж шалгаж, main.py-г smoke test-ээр
+# туршсан хувилбар. Дээд хязгаар = дараагийн MAJOR хувилбар (эвдэх өөрчлөлт
+# гэнэт орж ирэхээс сэргийлнэ). Major шинэчлэлтийг гараар, туршиж хийнэ.
+#
+# ⚠️ DB-д хадгалагдсан тайлангийн Python код (python_api_tools.pythonCode) эдгээр
+#    сангуудыг шууд ашиглаж болно — pandas 2→3 гэх мэт major шилжилтийн дараа
+#    тайлан бүрийг /admin/reports-оос урьдчилан харж шалгана.
+# ─────────────────────────────────────────────────────────────────────────────
+
 # FastAPI сервис
-fastapi>=0.111.0
-uvicorn[standard]>=0.29.0
-python-dotenv>=1.0.0
+fastapi>=0.141.1,<1
+uvicorn[standard]>=0.53.0,<1
+python-dotenv>=1.2.3,<2
 
 # ClickHouse
-clickhouse-connect>=0.7.0
-clickhouse-driver>=0.2.7
+clickhouse-connect>=1.8.0,<2
+clickhouse-driver>=0.2.11,<0.3
 
 # Excel / Data
-pandas>=2.2.0
-numpy>=1.26.0
-openpyxl>=3.1.0
-xlsxwriter>=3.2.0
-xlrd>=2.0.1
-pyarrow>=15.0.0
+pandas>=3.0.5,<4
+numpy>=2.5.3,<3
+openpyxl>=3.1.5,<4
+xlsxwriter>=3.2.9,<4
+xlrd>=2.0.2,<3
+pyarrow>=25.0.1
 
-# Тооцоо / ML (хэрэгцээтэй бол)
-scipy>=1.13.0
-scikit-learn>=1.4.0
-statsmodels>=0.14.0
-matplotlib>=3.8.0
-seaborn>=0.13.0
-plotly>=5.20.0
-xgboost>=2.0.0
-lightgbm>=4.3.0
+# Тооцоо / ML (DB-д хадгалагдсан тайлангийн код ашиглаж болно)
+scipy>=1.18.1,<2
+scikit-learn>=1.9.1,<2
+statsmodels>=0.15.0,<0.16
+matplotlib>=3.11.2,<4
+seaborn>=0.13.2,<0.14
+plotly>=7.0.0,<8
+xgboost>=3.4.1,<4
+lightgbm>=4.7.0,<5
 
 # Хэрэгслүүд
-tqdm>=4.66.0
-loguru>=0.7.0
-requests>=2.31.0
-sqlalchemy>=2.0.0
+tqdm>=4.70.1,<5
+loguru>=0.7.3,<0.8
+requests>=2.34.2,<3
+sqlalchemy>=2.0.53,<3
 
-# Oracle
-oracledb>=2.0.0
-cx_Oracle>=8.3.0
+# Oracle — python-oracledb (cx_Oracle-ийн залгамжлагч; cx_Oracle deprecated,
+# Python 3.13-д суухгүй). Он-сараар хувилбарладаг тул дээд хязгааргүй.
+oracledb>=26.0.0

@@ -19,11 +19,10 @@ const SUPERADMIN_ROUTES = [
   "/admin/departments",
   "/admin/homepage-ethics",
   "/admin/log",
-  // [AUDIT] Эрсдэлийн жин, тайлангийн загвар, Oracle dashboard тохиргоо —
+  // [AUDIT] Эрсдэлийн жин, Oracle dashboard тохиргоо —
   // аудитын үр дүнд шууд нөлөөлдөг тул superadmin-only.
   "/admin/alert-box",
   "/admin/risk-indicators",
-  "/admin/tailan-templates",
   // [AUDIT] Зайны аудитын баталгаажуулалтын төрөл + анхдагч тохиргоо нь
   // аудитын үр дүнд шууд нөлөөлдөг тул superadmin-only.
   "/admin/zainii-audit",
@@ -33,20 +32,14 @@ const SUPERADMIN_ROUTES = [
 const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/db-access/manage": ["db_access_granter"],
   "/tools/db-access": ["db_access_requester"],
-  "/tools/tailan/department": ["tailan_dept_head"],
-  // [AUDIT] dept-view нь хэлтсийн бүх гишүүний тайланг харуулдаг тул
-  // dept_head эрх шаардана (өмнө нь ерөнхий /tools/tailan guard-д таардаг байсан).
-  "/tools/tailan/dept-view": ["tailan_dept_head"],
-  "/tools/tailan/mine": ["tailan", "tailan_dept_head"],
-  "/tools/tailan": ["tailan", "tailan_dept_head"],
+  // Pivot нь түүврийн дэд хуудас (/tools/sanamsargui-tuuwer/pivot) тул энэ
+  // prefix guard-аар хамгаалагдана — тусдаа "pivot" эрх байхгүй болсон.
   "/tools/sanamsargui-tuuwer": ["sanamsargui-tuuwer"],
-  "/tools/pivot": ["pivot"],
   // "Эрсдэлийн үнэлгээ хийх" (edit/judgement) vs "Тайлан" (read-only report +
   // export) are split tools — the base path accepts either (landing page has
   // both cards), but /work is overridden below to require edit access only.
   "/tools/risk-assessment/work": ["risk_assessment"],
   "/tools/risk-assessment": ["risk_assessment", "risk_assessment_report"],
-  "/tools/data-doc": ["data_doc"],
   "/tools/alert-box": ["alert_box"],
   "/tools/reports": ["reports"],
   // Зайны аудит: аль нэг дэд эрх байвал хуудас нээгдэнэ; дотор нь ямар

@@ -7,13 +7,6 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Trace files from monorepo root so standalone includes node_modules
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  // [AUDIT] Өгөгдлийн толь бичиг (data-doc tool) нь Data/Database_Dictionary.md-ийг
-  // ажиллах үед `fs`-ээр уншдаг. Next нь статик import-ыг л мөрддөг тул энэ файл
-  // standalone гаралтад ОРДОГГҮЙ байсан — үүнээс болж prod дээр tool хоосон
-  // жагсаалт харуулж "ажиллахгүй" байв. Энд ил зааж савлуулна.
-  outputFileTracingIncludes: {
-    "/api/schema": ["../../Data/**"],
-  },
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
@@ -63,6 +56,12 @@ const nextConfig: NextConfig = {
         source: "/medleg",
         destination: "/knowledge",
         permanent: true,
+      },
+      // Pivot тусдаа tool байхаа больж Санамсаргүй түүврийн дэд хуудас болсон.
+      {
+        source: "/tools/pivot",
+        destination: "/tools/sanamsargui-tuuwer/pivot",
+        permanent: false,
       },
       {
         source: "/tools/zainii-audit/related-party-transactions",
