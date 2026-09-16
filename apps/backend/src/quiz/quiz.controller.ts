@@ -15,6 +15,8 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
+import { AuditLogService } from "../audit/audit-log.service";
+import { errMessage } from "../common/utils/error-message";
 
 // [ROUTE ORDER] Энэ controller-ийг QuizModule нь app.module.ts дотор
 // MedlegModule-ээс ӨМНӨ import хийсэн байх ёстой — MedlegController-т
@@ -24,7 +26,41 @@ import { AuthenticatedRequest } from "../common/types/authenticated-request";
 // бүртгэгдсэн literal замууд эрх дээгүүр байна.
 @Controller("medleg/quiz")
 export class QuizController {
-  constructor(private quizService: QuizService) {}
+  constructor(
+    private quizService: QuizService,
+    private auditLog: AuditLogService,
+  ) {}
+
+  // [AUDIT] Quiz үүсгэх/устгах нь агуулгын төлөв өөрчилдөг — лог үлдээнэ.
+  private async audited<T>(
+    req: AuthenticatedRequest,
+    action: string,
+    resourceId: string,
+    method: string,
+    run: () => Promise<T>,
+    metadata?: Record<string, unknown>,
+  ): Promise<T> {
+    const base = {
+      userId: req.user.id,
+      action,
+      resource: "medleg_quiz",
+      resourceId,
+      method,
+      ...(metadata ? { metadata } : {}),
+    };
+    try {
+      const result = await run();
+      await this.auditLog.log({ ...base, status: "success" });
+      return result;
+    } catch (error: unknown) {
+      await this.auditLog.log({
+        ...base,
+        status: "failure",
+        errorMessage: errMessage(error),
+      });
+      throw error;
+    }
+  }
 
   // Quiz үүсгэхэд тусдаа эрх — бөглөх нь бүх ажилтанд нээлттэй.
   @UseGuards(JwtAuthGuard, ToolGuard, ThrottlerGuard)
@@ -35,7 +71,15 @@ export class QuizController {
     @Body() dto: CreateQuizDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.quizService.create(dto, req.user.id);
+    const result = await this.audited(
+      req,
+      "quiz_create",
+      "",
+      "POST",
+      () => this.quizService.create(dto, req.user.id),
+      { title: dto.title },
+    );
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -70,6 +114,8 @@ export class QuizController {
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
   async remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
-    return this.quizService.remove(id, req.user.id, !!req.user.isAdmin);
+    return this.audited(req, "quiz_delete", id, "DELETE", () =>
+      this.quizService.remove(id, req.user.id, !!req.user.isAdmin),
+    );
   }
 }

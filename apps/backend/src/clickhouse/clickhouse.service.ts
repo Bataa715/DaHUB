@@ -276,7 +276,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   /**
    * Execute ACL DDL (CREATE USER, GRANT, DROP USER, etc.) using the dedicated ACL client.
    */
-  async execAcl(sql: string, params?: Record<string, any>): Promise<void> {
+  async execAcl(sql: string, params?: Record<string, unknown>): Promise<void> {
     const client = this.aclClient ?? this.client;
     try {
       await client.command({ query: sql, query_params: params });

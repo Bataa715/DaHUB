@@ -59,7 +59,7 @@ export class AuditLogService {
     limit?: number;
   }) {
     const conditions: string[] = ["1=1"];
-    const params: Record<string, any> = {};
+    const params: Record<string, unknown> = {};
 
     if (filters.userId) {
       conditions.push("userId = {userId:String}");
@@ -113,7 +113,18 @@ export class AuditLogService {
       LIMIT {limit:UInt32}
     `;
 
-    const logs = await this.clickhouse.query<any>(query, params);
+    const logs = await this.clickhouse.query<{
+      id: string;
+      userId: string;
+      action: string;
+      resource: string;
+      resourceId: string;
+      method: string;
+      status: string;
+      errorMessage: string;
+      metadata: unknown;
+      createdAt: string;
+    }>(query, params);
 
     return logs.map((log) => {
       let metadata: Record<string, unknown> = {};
@@ -138,7 +149,7 @@ export class AuditLogService {
   /** Нэвтрэх оролдлогын лог (brute-force хяналт) — нэгдсэн Log таб харуулна. */
   async getLoginAttempts(limit = 200) {
     const lim = Math.min(Math.max(Number(limit) || 200, 1), 1000);
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{ lockKey: string; attemptedAt: string; success: number }>(
       `SELECT lockKey, toString(attemptedAt) AS attemptedAt, success
        FROM login_attempts
        ORDER BY attemptedAt DESC

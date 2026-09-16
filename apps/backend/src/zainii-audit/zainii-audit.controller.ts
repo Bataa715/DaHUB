@@ -18,7 +18,11 @@ import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { ZainiiAuditService } from "./zainii-audit.service";
 import { ZainiiAuditDocxService } from "./zainii-audit-docx.service";
+import { ZainiiAuditVerificationService } from "./zainii-audit-verification.service";
+import { ZainiiAuditSettingsService } from "./zainii-audit-settings.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
+import { AuditLogService } from "../audit/audit-log.service";
+import { errMessage } from "../common/utils/error-message";
 import {
   RelatedPartyTransactionsDto,
   ExpenseOverviewDto,
@@ -51,7 +55,44 @@ export class ZainiiAuditController {
   constructor(
     private readonly zainiiAudit: ZainiiAuditService,
     private readonly zainiiAuditDocx: ZainiiAuditDocxService,
+    private readonly verification: ZainiiAuditVerificationService,
+    private readonly settings: ZainiiAuditSettingsService,
+    private readonly auditLog: AuditLogService,
   ) {}
+
+  /**
+   * [AUDIT] Төлөв өөрчлөх үйлдэл бүрийг амжилттай/амжилтгүй аль алинаар нь
+   * бүртгэнэ — аудиторын баталгаажуулалт, лавлах тохиргоо нь нотлох баримт.
+   */
+  private async audited<T>(
+    req: AuthenticatedRequest,
+    action: string,
+    resourceId: string,
+    method: string,
+    run: () => Promise<T>,
+    metadata?: Record<string, unknown>,
+  ): Promise<T> {
+    const base = {
+      userId: req.user.id,
+      action,
+      resource: "zainii_audit",
+      resourceId,
+      method,
+      ...(metadata ? { metadata } : {}),
+    };
+    try {
+      const result = await run();
+      await this.auditLog.log({ ...base, status: "success" });
+      return result;
+    } catch (error: unknown) {
+      await this.auditLog.log({
+        ...base,
+        status: "failure",
+        errorMessage: errMessage(error),
+      });
+      throw error;
+    }
+  }
 
   @RequireTools("zainii_audit_rpt")
   @Post("related-party-transactions")
@@ -89,10 +130,18 @@ export class ZainiiAuditController {
     @Body() dto: ExpenseVerificationDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.zainiiAudit.upsertVerification(dto, {
-      userId: req.user.userId,
-      name: req.user.name,
-    });
+    return this.audited(
+      req,
+      "expense_verification_upsert",
+      dto.bookNumber,
+      "POST",
+      () =>
+        this.verification.upsertVerification(dto, {
+          userId: req.user.userId,
+          name: req.user.name,
+        }),
+      { verificationType: dto.verificationType ?? null },
+    );
   }
 
   @RequireTools("zainii_audit_expense")
@@ -134,13 +183,23 @@ export class ZainiiAuditController {
   @RequireTools("zainii_audit_expense")
   @Get("expense-verification-types")
   listVerificationTypes(@Query("activeOnly") activeOnly?: string) {
-    return this.zainiiAudit.listVerificationTypes(activeOnly === "1");
+    return this.verification.listVerificationTypes(activeOnly === "1");
   }
 
   @UseGuards(SuperAdminGuard)
   @Post("expense-verification-types")
-  createVerificationType(@Body() dto: CreateVerificationTypeDto) {
-    return this.zainiiAudit.createVerificationType(dto);
+  createVerificationType(
+    @Body() dto: CreateVerificationTypeDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.audited(
+      req,
+      "expense_verification_type_create",
+      "",
+      "POST",
+      () => this.verification.createVerificationType(dto),
+      { name: dto.name },
+    );
   }
 
   @UseGuards(SuperAdminGuard)
@@ -148,14 +207,31 @@ export class ZainiiAuditController {
   updateVerificationType(
     @Param("id") id: string,
     @Body() dto: UpdateVerificationTypeDto,
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.zainiiAudit.updateVerificationType(id, dto);
+    return this.audited(
+      req,
+      "expense_verification_type_update",
+      id,
+      "PATCH",
+      () => this.verification.updateVerificationType(id, dto),
+      { ...dto },
+    );
   }
 
   @UseGuards(SuperAdminGuard)
   @Delete("expense-verification-types/:id")
-  deleteVerificationType(@Param("id") id: string) {
-    return this.zainiiAudit.deleteVerificationType(id);
+  deleteVerificationType(
+    @Param("id") id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.audited(
+      req,
+      "expense_verification_type_delete",
+      id,
+      "DELETE",
+      () => this.verification.deleteVerificationType(id),
+    );
   }
 
   // ── Анхдагч тохиргоо ────────────────────────────────────────────────────
@@ -164,7 +240,7 @@ export class ZainiiAuditController {
 
   @Get("settings")
   getSettings() {
-    return this.zainiiAudit.getSettings();
+    return this.settings.getSettings();
   }
 
   @UseGuards(SuperAdminGuard)
@@ -173,6 +249,13 @@ export class ZainiiAuditController {
     @Body() dto: UpdateZainiiAuditSettingsDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.zainiiAudit.updateSettings(dto, { userId: req.user.userId });
+    return this.audited(
+      req,
+      "zainii_audit_settings_update",
+      "settings",
+      "PATCH",
+      () => this.settings.updateSettings(dto, { userId: req.user.userId }),
+      { ...dto },
+    );
   }
 }

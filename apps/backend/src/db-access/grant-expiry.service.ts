@@ -11,6 +11,7 @@ import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import { ClickHouseAccessService } from "./clickhouse-access.service";
 import { AuditLogService } from "../audit/audit-log.service";
 import { errMessage } from "../common/utils/error-message";
+import type { AccessGrantDbRow } from "../common/types/db-rows";
 
 @Injectable()
 export class GrantExpiryService {
@@ -29,7 +30,7 @@ export class GrantExpiryService {
     const nowStr = now.toISOString().slice(0, 19).replace("T", " ");
 
     // Find all active grants that have expired
-    const expired = await this.clickhouse.query<any>(
+    const expired = await this.clickhouse.query<AccessGrantDbRow>(
       `SELECT *
        FROM access_grants FINAL
        WHERE isActive = 1

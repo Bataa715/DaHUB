@@ -17,9 +17,12 @@ function makeService() {
     replaceRows: vi.fn().mockResolvedValue(undefined),
     exec: vi.fn().mockResolvedValue(undefined),
   };
-  const authService = { invalidateUserValidation: vi.fn() };
+  const authService = {
+    invalidateUserValidation: vi.fn(),
+    revokeRefreshTokens: vi.fn().mockResolvedValue(undefined),
+  };
   const svc = new UsersService(clickhouse as never, authService as never);
-  return { svc, clickhouse };
+  return { svc, clickhouse, authService };
 }
 
 function targetRow(allowedTools: string[]) {
@@ -87,5 +90,14 @@ describe("updateTools — grantableTools scope enforcement", () => {
     });
 
     expect(savedTools(ctx.clickhouse)).toEqual(["b"]);
+  });
+});
+
+describe("resetPassword — хуучин сессийг хаана", () => {
+  it("нууц үг сэргээсний дараа бүх refresh token хүчингүй болно", async () => {
+    const { svc, clickhouse, authService } = makeService();
+    (clickhouse.query as Mock).mockResolvedValue([targetRow([])]);
+    await svc.resetPassword("u1", "NewPass#2026", true);
+    expect(authService.revokeRefreshTokens).toHaveBeenCalledWith("u1");
   });
 });

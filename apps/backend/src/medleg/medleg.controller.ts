@@ -127,7 +127,10 @@ export class MedlegController {
   @RequireTools("medleg_write")
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post()
-  async create(@Body() createMedlegDto: CreateMedlegDto, @Request() req) {
+  async create(
+    @Body() createMedlegDto: CreateMedlegDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.medlegService.create(createMedlegDto, req.user.id);
   }
 
@@ -163,7 +166,29 @@ export class MedlegController {
   // Authenticated user can delete their own мэдлэг
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
-  async remove(@Param("id") id: string, @Request() req) {
-    return this.medlegService.removeByOwner(id, req.user.id);
+  async remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
+    try {
+      const result = await this.medlegService.removeByOwner(id, req.user.id);
+      await this.auditLogService.log({
+        userId: req.user.id,
+        action: "medleg_delete",
+        resource: "medleg",
+        method: "delete",
+        status: "success",
+        metadata: { targetId: id },
+      });
+      return result;
+    } catch (error: unknown) {
+      await this.auditLogService.log({
+        userId: req.user.id,
+        action: "medleg_delete",
+        resource: "medleg",
+        method: "delete",
+        status: "failure",
+        errorMessage: errMessage(error),
+        metadata: { targetId: id },
+      });
+      throw error;
+    }
   }
 }

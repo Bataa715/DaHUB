@@ -18,7 +18,11 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
     return super.canActivate(context);
   }
 
-  handleRequest(err, user, info) {
+  handleRequest<TUser = unknown>(
+    err: unknown,
+    user: TUser | false,
+    info?: { message?: string },
+  ): TUser {
     if (err || !user) {
       const reason = info?.message;
       // "No auth token" / хугацаа дууссан токен нь хэвийн нөхцөл —

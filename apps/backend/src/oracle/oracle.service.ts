@@ -207,9 +207,9 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     return this.authFailed;
   }
 
-  async query<T = Record<string, any>>(
+  async query<T = Record<string, unknown>>(
     sql: string,
-    params: any[] | Record<string, any> = [],
+    params: oracledb.BindParameters = [],
     options?: { maxRows?: number },
   ): Promise<T[]> {
     // Эхлээд SQL comment-уудыг арилгана: -- мөрийн төгсгөл хүртэл, /* ... */ блок
@@ -259,7 +259,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     const maxRows = Math.min(Math.max(options?.maxRows ?? 10_000, 1), 50_000);
     const conn = await this.acquire();
     try {
-      const result = await conn.execute(sql, params as any, {
+      const result = await conn.execute<T>(sql, params, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
         fetchArraySize: Math.min(1000, maxRows),
         maxRows,
@@ -278,9 +278,9 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
    * @param inParams Дараалсан IN параметрүүд (proc-ийн дарааллаар)
    * @param allowList Зөвшөөрөгдсөн procedure нэрсийн жагсаалт
    */
-  async callRefCursorProc<T = Record<string, any>>(
+  async callRefCursorProc<T = Record<string, unknown>>(
     procName: string,
-    inParams: any[],
+    inParams: oracledb.BindValue[],
     allowList: readonly string[],
   ): Promise<T[]> {
     const normalized = procName.trim().toUpperCase();
@@ -299,7 +299,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
         inParams.length ? ", " : ""
       }:cur); END;`;
 
-      const binds: Record<string, any> = {
+      const binds: Record<string, oracledb.BindValue> = {
         cur: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT },
       };
       inParams.forEach((v, i) => {
@@ -310,7 +310,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
       });
 
-      const cursor = (result.outBinds as any)?.cur as oracledb.ResultSet<T>;
+      const cursor = result.outBinds?.cur as oracledb.ResultSet<T> | undefined;
       if (!cursor) return [];
       const rows: T[] = [];
       try {

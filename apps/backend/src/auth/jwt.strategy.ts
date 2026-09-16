@@ -56,7 +56,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     this.logger.log("JwtStrategy initialized");
   }
 
-  async validate(payload: any) {
+  async validate(payload: { id: string }) {
     // payload.id нь UUID, payload.userId нь string (e.g., "DAG-EKSAH-BATAA")
     const user = await this.authService.validateUser(payload.id);
     if (!user) {

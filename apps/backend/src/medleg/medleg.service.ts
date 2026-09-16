@@ -8,6 +8,13 @@ import { assertRealImage } from "../common/utils/image-signature";
 import { CreateMedlegDto, UpdateMedlegDto } from "./dto/medleg.dto";
 import { randomUUID } from "crypto";
 import sanitizeHtml from "sanitize-html";
+import type { MedlegDbRow } from "../common/types/db-rows";
+
+/** Жагсаалтын мөр — зургийн өгөгдөлгүй (hasImage), зохиогчийн нэртэй */
+type MedlegListRow = Omit<MedlegDbRow, "imageUrl" | "imageMime"> & {
+  hasImage: number;
+  authorName: string | null;
+};
 
 // [MED-3] Client-side DOMPurify (knowledge/page.tsx) is not a security
 // boundary — anything hitting this API directly (curl, another client,
@@ -194,7 +201,7 @@ export class MedlegService {
 
   async findAll(published = true, limit = 100, offset = 0) {
     const filter = published ? "WHERE isPublished = 1" : "";
-    const items = await this.clickhouse.query<any>(
+    const items = await this.clickhouse.query<MedlegListRow>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.imagesJson,
@@ -221,7 +228,7 @@ export class MedlegService {
 
   /** Админ: нийтлэгдсэн/нийтлэгдээгүй бүх мэдлэгийг харна (жагсаалт, удирдлагын зорилготой). */
   async findAllAdmin(limit = 200, offset = 0) {
-    const items = await this.clickhouse.query<any>(
+    const items = await this.clickhouse.query<MedlegListRow>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.imagesJson,
@@ -247,7 +254,7 @@ export class MedlegService {
   }
 
   async findOne(id: string) {
-    const items = await this.clickhouse.query<any>(
+    const items = await this.clickhouse.query<MedlegListRow>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.imagesJson,
@@ -275,7 +282,7 @@ export class MedlegService {
   }
 
   async removeByOwner(id: string, userId: string) {
-    const existing = await this.clickhouse.query<any>(
+    const existing = await this.clickhouse.query<{ id: string; authorId: string }>(
       `SELECT id, authorId FROM medleg WHERE id = {id:String} LIMIT 1`,
       { id },
     );
@@ -298,7 +305,7 @@ export class MedlegService {
 
   /** Админ: эзэмшигчээс үл хамааран мэдлэгийн нийтлэлийг устгана. */
   async removeAsAdmin(id: string) {
-    const existing = await this.clickhouse.query<any>(
+    const existing = await this.clickhouse.query<{ id: string }>(
       `SELECT id FROM medleg WHERE id = {id:String} LIMIT 1`,
       { id },
     );
@@ -314,7 +321,7 @@ export class MedlegService {
 
   /** Админ: мэдлэгийн нийтлэлийг засах (эзэмшигчээс үл хамааран). */
   async update(id: string, dto: UpdateMedlegDto) {
-    const existing = await this.clickhouse.query<any>(
+    const existing = await this.clickhouse.query<MedlegDbRow>(
       `SELECT * FROM medleg WHERE id = {id:String} LIMIT 1`,
       { id },
     );
@@ -382,7 +389,7 @@ export class MedlegService {
     id: string,
     index = 0,
   ): Promise<{ buffer: Buffer; mimeType: string } | null> {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<Pick<MedlegDbRow, "imageUrl" | "imageMime" | "imagesJson">>(
       `SELECT imageUrl, imageMime, imagesJson FROM medleg
        WHERE id = {id:String} AND isPublished = 1 LIMIT 1`,
       { id },

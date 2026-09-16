@@ -13,6 +13,11 @@ import { AuditLogService } from "../audit/audit-log.service";
 import * as bcrypt from "bcryptjs";
 import { randomUUID, createHash } from "crypto";
 import {
+  buildRefreshToken,
+  isSessionExpired,
+  sessionStartOf,
+} from "./session-limit";
+import {
   buildUserId,
   buildUsersTableRow,
   safeParseTools,
@@ -32,8 +37,37 @@ import {
   ReviewRegistrationDto,
 } from "./dto/auth.dto";
 import { errMessage } from "../common/utils/error-message";
+import type {
+  DepartmentDbRow,
+  RegistrationRequestDbRow,
+  UserDbRow,
+  UserWithDepartmentDbRow,
+} from "../common/types/db-rows";
 
 // [LOW-1] buildUserId and safeParseTools imported from src/common/utils/user-utils.ts
+
+/** Клиент рүү буцаах хэрэглэгчийн мэдээлэл (formatUserResponse) — нууц талбаргүй */
+export type AuthUserResponse = {
+  id: string;
+  userId: string;
+  name: string;
+  position: string;
+  department: string | null | undefined;
+  departmentId: string;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  allowedTools: string[];
+  grantableTools: string[];
+  profileImage: string | null;
+  isActive: boolean;
+};
+
+/** Refresh token rotation-ий үр дүн — token-ууд HttpOnly cookie болж тавигдана */
+type RefreshResult = {
+  user: AuthUserResponse;
+  accessToken: string;
+  refreshToken: string;
+};
 
 @Injectable()
 export class AuthService {
@@ -65,7 +99,7 @@ export class AuthService {
   private static readonly REFRESH_GRACE_MS = 30_000;
   private readonly recentlyRotated = new Map<
     string,
-    { result: unknown; at: number; userId: string }
+    { result: RefreshResult; at: number; userId: string }
   >();
 
   private pruneRotated(now: number): void {
@@ -110,7 +144,7 @@ export class AuthService {
       (Date.now() - this.ATTEMPT_WINDOW_MS) / 1000,
     );
 
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{ failures: number; lastFailureEpoch: number }>(
       `SELECT
          countIf(success = 0) AS failures,
          toUnixTimestamp(maxIf(attemptedAt, success = 0)) AS lastFailureEpoch
@@ -174,7 +208,9 @@ export class AuthService {
   // ─── Private Helpers ───────────────────────────────────────────────────────
 
   /** Format a DB user row into the standard API response shape */
-  private formatUserResponse(user: any) {
+  private formatUserResponse(
+    user: UserDbRow & { departmentName?: string | null },
+  ): AuthUserResponse {
     return {
       id: user.id,
       userId: user.userId,
@@ -198,7 +234,7 @@ export class AuthService {
    * NestJS API routes still call validateUser() on every request via
    * JwtStrategy to get fresh DB data (deactivation, permission revocation).
    */
-  private generateTokenForUser(user: any): string {
+  private generateTokenForUser(user: UserDbRow): string {
     return this.jwtService.sign({
       sub: user.id, // standard JWT subject claim
       id: user.id, // kept for backwards compatibility
@@ -221,9 +257,16 @@ export class AuthService {
     return createHash("sha256").update(token).digest("hex");
   }
 
-  /** Generate a refresh token and store it (hashed) in the database */
-  private async generateRefreshToken(userId: string): Promise<string> {
-    const refreshToken = randomUUID();
+  /**
+   * Generate a refresh token and store it (hashed) in the database.
+   * `sessionStartEpoch` — нэвтэрсэн агшин; rotation үед хуучин token-оос
+   * уламжилна (сессийн дээд хугацааг тоолохын тулд, session-limit.ts).
+   */
+  private async generateRefreshToken(
+    userId: string,
+    sessionStartEpoch = Math.floor(Date.now() / 1000),
+  ): Promise<string> {
+    const refreshToken = buildRefreshToken(sessionStartEpoch);
     // Store expiresAt as Unix epoch integer — ClickHouse JSONEachRow treats numbers
     // as UTC-based Unix timestamps regardless of the server's configured timezone.
     const expiresAtEpoch = Math.floor(Date.now() / 1000) + 3 * 3600; // 3 hours from now
@@ -242,8 +285,11 @@ export class AuthService {
   }
 
   /** Validate and use a refresh token to generate a new access token */
-  async refreshAccessToken(refreshTokenDto: RefreshTokenDto): Promise<any> {
+  async refreshAccessToken(refreshTokenDto: RefreshTokenDto): Promise<RefreshResult> {
     const { refreshToken } = refreshTokenDto;
+    if (!refreshToken) {
+      throw new UnauthorizedException("Invalid or expired refresh token");
+    }
     const tokenHash = this.hashToken(refreshToken);
 
     const nowMs = Date.now();
@@ -258,7 +304,7 @@ export class AuthService {
          AND toUnixTimestamp(expiresAt) > {nowEpoch:UInt32}
        LIMIT 1`,
       { token: tokenHash, nowEpoch },
-    )) as any[];
+    )) as { userId: string }[];
 
     const tokenRecord = tokens[0];
     if (!tokenRecord) {
@@ -274,13 +320,27 @@ export class AuthService {
       throw new UnauthorizedException("Invalid or expired refresh token");
     }
 
+    // [SEC] Сессийн үнэмлэхүй дээд хугацаа — хэтэрсэн бол token-ийг устгаж
+    // дахин нэвтрүүлнэ (refresh бүр шинэ 3 цаг олгодог тул үүнгүйгээр сесс
+    // хязгааргүй үргэлжилдэг байсан).
+    const sessionStart = sessionStartOf(refreshToken, nowEpoch);
+    if (isSessionExpired(sessionStart, nowEpoch)) {
+      await this.clickhouse.exec(
+        "ALTER TABLE refresh_tokens DELETE WHERE token = {token:String} SETTINGS mutations_sync = 1",
+        { token: tokenHash },
+      );
+      throw new UnauthorizedException(
+        "Сессийн хугацаа дууссан. Дахин нэвтэрнэ үү.",
+      );
+    }
+
     // Get the user
     const users = (await this.clickhouse.query(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE u.id = {userId:String} AND u.isActive = 1 LIMIT 1`,
       { userId: tokenRecord.userId },
-    )) as any[];
+    )) as UserWithDepartmentDbRow[];
 
     const user = users[0];
     if (!user) {
@@ -299,7 +359,10 @@ export class AuthService {
 
     // Generate new tokens after old token is revoked
     const accessToken = this.generateTokenForUser(user);
-    const newRefreshToken = await this.generateRefreshToken(user.id);
+    const newRefreshToken = await this.generateRefreshToken(
+      user.id,
+      sessionStart,
+    );
 
     const result = {
       user: this.formatUserResponse(user),
@@ -314,7 +377,7 @@ export class AuthService {
   }
 
   /** Revoke all refresh tokens for a user (on logout) */
-  async revokeRefreshTokens(userId: string): Promise<any> {
+  async revokeRefreshTokens(userId: string): Promise<{ success: boolean; message: string }> {
     await this.clickhouse.exec(
       "ALTER TABLE refresh_tokens DELETE WHERE userId = {userId:String} SETTINGS mutations_sync = 1",
       { userId },
@@ -329,7 +392,7 @@ export class AuthService {
 
   /** Stamp the user's lastLoginAt */
   private async updateLastLogin(userId: string): Promise<void> {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id: userId },
     );
@@ -344,7 +407,7 @@ export class AuthService {
 
   /** Ensure/create a department and return its record */
   private async ensureDepartment(department: string) {
-    const deptResults = await this.clickhouse.query<any>(
+    const deptResults = await this.clickhouse.query<DepartmentDbRow>(
       "SELECT * FROM departments WHERE name = {name:String} LIMIT 1",
       { name: department },
     );
@@ -363,7 +426,15 @@ export class AuthService {
           updatedAt: now,
         },
       ]);
-      dept = { id: deptId, name: department };
+      dept = {
+        id: deptId,
+        name: department,
+        description: "",
+        manager: "",
+        code: "",
+        createdAt: now,
+        updatedAt: now,
+      };
     }
     return dept;
   }
@@ -381,7 +452,7 @@ export class AuthService {
   private readonly LOCK_DURATION_MS = 30 * 60 * 1000; // 30 минут
 
   /** Түгжээ хүчинтэй хэвээр байгаа эсэх (30 мин дотор). */
-  private isLockActive(user: any): boolean {
+  private isLockActive(user: UserDbRow): boolean {
     if (Number(user.isLocked) !== 1) return false;
     const lockedAt = Date.parse(String(user.lockedAt ?? "") + "Z");
     // lockedAt байхгүй/уншигдахгүй хуучин мөр — түгжээг хүчинтэйд тооцно
@@ -390,7 +461,7 @@ export class AuthService {
     return Date.now() - lockedAt < this.LOCK_DURATION_MS;
   }
 
-  private async registerFailedPasswordAttempt(user: any): Promise<void> {
+  private async registerFailedPasswordAttempt(user: UserDbRow): Promise<void> {
     const nextCount = Number(user.failedLoginCount ?? 0) + 1;
     const willLock = nextCount >= this.MAX_FAILED_LOGINS;
     try {
@@ -416,7 +487,7 @@ export class AuthService {
     }
   }
 
-  private async resetFailedPasswordAttempts(user: any): Promise<void> {
+  private async resetFailedPasswordAttempts(user: UserDbRow): Promise<void> {
     try {
       await this.clickhouse.replaceRows(
         "users",
@@ -431,10 +502,10 @@ export class AuthService {
 
   /** Validate credentials and return the DB user (or throw) */
   private async validateCredentials(
-    user: any | null,
+    user: UserDbRow | null | undefined,
     password: string,
     logContext: string,
-  ): Promise<any> {
+  ): Promise<UserDbRow> {
     if (!user) {
       this.logger.warn(`Login failed — user not found [${logContext}]`);
       throw new UnauthorizedException(
@@ -513,7 +584,7 @@ export class AuthService {
 
     try {
       const dept = (
-        await this.clickhouse.query<any>(
+        await this.clickhouse.query<DepartmentDbRow>(
           "SELECT * FROM departments WHERE name = {name:String} LIMIT 1",
           { name: department },
         )
@@ -532,7 +603,7 @@ export class AuthService {
       }
 
       const user = (
-        await this.clickhouse.query<any>(
+        await this.clickhouse.query<UserWithDepartmentDbRow>(
           `SELECT u.*, d.name as departmentName
          FROM users u LEFT JOIN departments d ON u.departmentId = d.id
          WHERE u.name = {username:String} AND u.departmentId = {deptId:String} LIMIT 1`,
@@ -590,7 +661,7 @@ export class AuthService {
 
     try {
       const user = (
-        await this.clickhouse.query<any>(
+        await this.clickhouse.query<UserWithDepartmentDbRow>(
           `SELECT u.*, d.name as departmentName
          FROM users u LEFT JOIN departments d ON u.departmentId = d.id
          WHERE u.userId = {userId:String} AND u.isActive = 1 LIMIT 1`,
@@ -655,7 +726,7 @@ export class AuthService {
 
     try {
       const user = (
-        await this.clickhouse.query<any>(
+        await this.clickhouse.query<UserWithDepartmentDbRow>(
           `SELECT u.*, d.name as departmentName
          FROM users u LEFT JOIN departments d ON u.departmentId = d.id
          WHERE u.userId = {userId:String} AND u.isAdmin = 1 LIMIT 1`,
@@ -715,7 +786,7 @@ export class AuthService {
 
     // C-1: AND isActive = 1 ensures deactivated users are rejected on every request,
     // not just at login — their existing JWT becomes invalid immediately after deactivation.
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserWithDepartmentDbRow>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE u.id = {userId:String} AND u.isActive = 1 LIMIT 1`,
@@ -744,7 +815,7 @@ export class AuthService {
     const adminFilter = adminOnly
       ? "AND u.isAdmin = 1"
       : `AND ${webVisibleUserSql("u")}`;
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<Pick<UserWithDepartmentDbRow, "id" | "name" | "userId" | "position" | "departmentName">>(
       `SELECT u.id, u.name, u.userId, u.position, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE (u.isActive = 1 OR u.password LIKE 'PENDING:%')
@@ -775,7 +846,7 @@ export class AuthService {
    */
   async listUsersByDepartment(department: string) {
     if (!department) return { users: [] };
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<Pick<UserDbRow, "name" | "userId" | "position">>(
       `SELECT u.name, u.userId, u.position
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE (u.isActive = 1 OR u.password LIKE 'PENDING:%')
@@ -796,7 +867,7 @@ export class AuthService {
 
   async checkUser(checkUserDto: CheckUserDto) {
     const { userId } = checkUserDto;
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<Pick<UserDbRow, "userId" | "name" | "password" | "isActive" | "isAdmin" | "isSuperAdmin">>(
       `SELECT userId, name, password, isActive, isAdmin, isSuperAdmin FROM users WHERE userId = {userId:String} LIMIT 1`,
       { userId },
     );
@@ -805,7 +876,7 @@ export class AuthService {
       // No live account yet — surface an in-flight registration request's
       // status (pending/rejected) instead of a bare "not found" so the login
       // page can show a helpful message.
-      const reqRows = await this.clickhouse.query<any>(
+      const reqRows = await this.clickhouse.query<{ status: string }>(
         `SELECT status FROM registration_requests FINAL
          WHERE userId = {userId:String} ORDER BY updatedAt DESC LIMIT 1`,
         { userId },
@@ -862,7 +933,7 @@ export class AuthService {
     // хэлтэст идэвхтэй эсвэл баталгаажаагүй (PENDING) хэрэглэгч аль хэдийн байвал
     // дахин бүртгэхийг хориглоно.
     if (department === "Удирдлага") {
-      const leaders = await this.clickhouse.query<any>(
+      const leaders = await this.clickhouse.query<{ cnt: string }>(
         `SELECT count() AS cnt
          FROM users u LEFT JOIN departments d ON u.departmentId = d.id
          WHERE d.name = {name:String}
@@ -877,7 +948,7 @@ export class AuthService {
     }
 
     // Хэлтсийн динамик prefix кодыг DB-аас уншина (employeeCount-г өсгөхгүйгээр)
-    const deptRows = await this.clickhouse.query<any>(
+    const deptRows = await this.clickhouse.query<{ code: string }>(
       "SELECT code FROM departments WHERE name = {name:String} LIMIT 1",
       { name: department },
     );
@@ -885,7 +956,7 @@ export class AuthService {
 
     const userId = this.generateUserId(department, name, deptCode, position);
 
-    const existing = await this.clickhouse.query<any>(
+    const existing = await this.clickhouse.query<{ id: string; password: string }>(
       "SELECT id, password FROM users WHERE userId = {userId:String} LIMIT 1",
       { userId },
     );
@@ -901,7 +972,7 @@ export class AuthService {
       );
     }
 
-    const pendingReq = await this.clickhouse.query<any>(
+    const pendingReq = await this.clickhouse.query<{ status: string }>(
       `SELECT status FROM registration_requests FINAL
        WHERE userId = {userId:String} ORDER BY updatedAt DESC LIMIT 1`,
       { userId },
@@ -959,12 +1030,12 @@ export class AuthService {
   /** Admin: list registration requests (optionally filtered by status) */
   async getRegistrationRequests(status?: string) {
     const rows = status
-      ? await this.clickhouse.query<any>(
+      ? await this.clickhouse.query<RegistrationRequestDbRow>(
           `SELECT * FROM registration_requests FINAL
            WHERE status = {status:String} ORDER BY requestedAt DESC`,
           { status },
         )
-      : await this.clickhouse.query<any>(
+      : await this.clickhouse.query<RegistrationRequestDbRow>(
           `SELECT * FROM registration_requests FINAL ORDER BY requestedAt DESC`,
         );
 
@@ -993,7 +1064,7 @@ export class AuthService {
     reviewer: { id: string; name?: string },
     dto: ReviewRegistrationDto,
   ) {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<RegistrationRequestDbRow>(
       `SELECT * FROM registration_requests FINAL WHERE id = {id:String} LIMIT 1`,
       { id: requestId },
     );
@@ -1031,7 +1102,7 @@ export class AuthService {
 
     // Approve — re-check for a userId collision (race: someone else may have
     // registered/been approved with the same derived ID meanwhile).
-    const existing = await this.clickhouse.query<any>(
+    const existing = await this.clickhouse.query<{ id: string }>(
       "SELECT id FROM users WHERE userId = {userId:String} LIMIT 1",
       { userId: req.userId },
     );
@@ -1125,7 +1196,7 @@ export class AuthService {
     // [H-3] Brute-force guard — rate-limit setPassword attempts per userId
     await this.guardLogin("setpw:" + userId);
 
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserWithDepartmentDbRow>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE u.userId = {userId:String} LIMIT 1`,
@@ -1185,7 +1256,7 @@ export class AuthService {
     // [MED-2] Validate new password complexity
     this.validatePasswordComplexity(newPassword);
 
-    const userResult = await this.clickhouse.query<any>(
+    const userResult = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE id = {userId:String} LIMIT 1",
       { userId },
     );

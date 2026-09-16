@@ -1,9 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { BadRequestException } from "@nestjs/common";
-import {
-  ZainiiAuditService,
-  ZAINII_AUDIT_SETTING_DEFAULTS,
-} from "./zainii-audit.service";
+import { ZainiiAuditSettingsService } from "./zainii-audit-settings.service";
+import { ZAINII_AUDIT_SETTING_DEFAULTS } from "./zainii-audit.types";
 import type { ClickHouseService } from "../clickhouse/clickhouse.service";
 
 /**
@@ -28,7 +26,7 @@ function makeService(opts: {
     return (opts.rows ?? []) as unknown[];
   });
   const ch = { query, insert, exec: vi.fn() } as unknown as ClickHouseService;
-  return { svc: new ZainiiAuditService(ch), query, insert };
+  return { svc: new ZainiiAuditSettingsService(ch), query, insert };
 }
 
 describe("getSettings", () => {

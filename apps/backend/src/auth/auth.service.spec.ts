@@ -73,6 +73,26 @@ describe("refreshAccessToken — rotation grace", () => {
     expect(ctx.clickhouse.exec).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects and deletes a token whose session exceeded the absolute limit", async () => {
+    const started = Math.floor(Date.now() / 1000) - 13 * 3600;
+    (ctx.clickhouse.query as Mock).mockResolvedValueOnce([{ userId: "u1" }]);
+    await expect(
+      ctx.service.refreshAccessToken({ refreshToken: `rt-old.${started}` }),
+    ).rejects.toThrow("Сессийн хугацаа дууссан");
+    expect(ctx.clickhouse.exec).toHaveBeenCalledTimes(1); // token deleted
+    expect(ctx.clickhouse.query).toHaveBeenCalledTimes(1); // user never loaded
+  });
+
+  it("keeps the original session start across rotation", async () => {
+    const started = Math.floor(Date.now() / 1000) - 3600;
+    const q = ctx.clickhouse.query as Mock;
+    q.mockResolvedValueOnce([{ userId: "u1" }]).mockResolvedValueOnce([userRow]);
+    const res = await ctx.service.refreshAccessToken({
+      refreshToken: `rt-1.${started}`,
+    });
+    expect(res.refreshToken.endsWith(`.${started}`)).toBe(true);
+  });
+
   it("rejects an unknown token that was never rotated", async () => {
     (ctx.clickhouse.query as Mock).mockResolvedValueOnce([]);
     await expect(

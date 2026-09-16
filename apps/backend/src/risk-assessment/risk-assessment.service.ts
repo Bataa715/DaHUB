@@ -212,7 +212,7 @@ export class RiskAssessmentService implements OnModuleInit {
   async listManualIndicators(): Promise<
     Record<string, Record<string, number>>
   > {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{ branchId: string; indicatorId: string; value: number }>(
       `SELECT branchId, indicatorId, value
        FROM risk_manual_indicators FINAL
        WHERE value > 0`,
@@ -275,13 +275,13 @@ export class RiskAssessmentService implements OnModuleInit {
   }
 
   async listHistory(): Promise<RiskHistoryEntry[]> {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<RiskHistoryEntry>(
       `SELECT id, name, pDate, pDateBeg, branchCount, oracleFetchedAt,
               createdBy, createdByName, toString(createdAt) AS createdAt
        FROM risk_assessment_history FINAL
        ORDER BY createdAt DESC LIMIT 200`,
     );
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       ...r,
       branchCount: Number(r.branchCount ?? 0),
     }));
@@ -289,11 +289,17 @@ export class RiskAssessmentService implements OnModuleInit {
 
   async getHistory(id: string): Promise<{
     entry: RiskHistoryEntry;
-    rows: any[];
+    rows: RiskCurrentRow[];
     manualMap: Record<string, Record<string, number>>;
     judgementComments: Record<string, string>;
   }> {
-    const found = await this.clickhouse.query<any>(
+    const found = await this.clickhouse.query<
+      RiskHistoryEntry & {
+        rowsJson: string;
+        manualJson: string;
+        judgementCommentsJson: string;
+      }
+    >(
       `SELECT id, name, pDate, pDateBeg, branchCount, oracleFetchedAt,
               createdBy, createdByName, toString(createdAt) AS createdAt,
               rowsJson, manualJson, judgementCommentsJson
@@ -302,7 +308,7 @@ export class RiskAssessmentService implements OnModuleInit {
     );
     if (!found[0]) throw new NotFoundException("Түүх олдсонгүй");
     const r = found[0];
-    let rows: any[] = [];
+    let rows: RiskCurrentRow[] = [];
     let manualMap: Record<string, Record<string, number>> = {};
     let judgementComments: Record<string, string> = {};
     try {
@@ -345,13 +351,13 @@ export class RiskAssessmentService implements OnModuleInit {
   async listHolds(
     period: string,
   ): Promise<{ indicatorId: string; isHeld: number }[]> {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{ indicatorId: string; isHeld: number }>(
       `SELECT indicatorId, isHeld
        FROM risk_indicator_holds FINAL
        WHERE period = {period:String} AND isHeld = 1`,
       { period },
     );
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       indicatorId: String(r.indicatorId),
       isHeld: Number(r.isHeld),
     }));
@@ -466,7 +472,7 @@ export class RiskAssessmentService implements OnModuleInit {
     // өөрөө бүрэн — өмнөх сар руу мөр тус бүрээр fill-forward хийх шаардлагагүй.
     // fetchedDate range нь PK prefix ашиглана. Тухайн огноо дотор дахин ingest
     // хийсэн давхардлыг argMax(col, ord)-оор шийднэ.
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<RiskCurrentRow>(
       `SELECT
          argMax(rowKey, ord)              AS rowKey,
          'oracle'                         AS rowType,
@@ -535,7 +541,7 @@ export class RiskAssessmentService implements OnModuleInit {
 
   /** Одоо lock хийгдсэн огноог авах (байхгүй бол null) */
   async getLockedDate(): Promise<string | null> {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{ fetchedDate: string }>(
       `SELECT fetchedDate FROM riskbranch_locks FINAL ORDER BY lockedAt DESC LIMIT 1`,
     );
     return rows[0]?.fetchedDate ?? null;
@@ -554,13 +560,19 @@ export class RiskAssessmentService implements OnModuleInit {
     }[]
   > {
     const d = fetchedDate ? String(fetchedDate).slice(0, 10) : undefined;
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{
+      branchId: string;
+      branchName: string;
+      fetchedDate: string;
+      score: number;
+      comment: string;
+    }>(
       d
         ? `SELECT branchId, branchName, fetchedDate, score, comment FROM risk_judgement FINAL WHERE LEFT(fetchedDate, 10) = {d:String} AND score > 0 ORDER BY branchId`
         : `SELECT branchId, branchName, fetchedDate, score, comment FROM risk_judgement FINAL WHERE score > 0 ORDER BY fetchedDate DESC, branchId`,
       d ? { d } : {},
     );
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       branchId: String(r.branchId),
       branchName: String(r.branchName ?? ""),
       fetchedDate: String(r.fetchedDate),
@@ -604,16 +616,19 @@ export class RiskAssessmentService implements OnModuleInit {
     userId: string;
     userName: string;
     /** Дэлгэц дээр харагдаж буй snapshot — өгвөл дахин татахгүй */
-    rows?: any[];
+    rows?: unknown[];
     manualMap?: Record<string, Record<string, number>>;
     judgementComments?: Record<string, string>;
   }): Promise<RiskHistoryEntry> {
-    let oracleRows: any[];
+    let oracleRows: RiskCurrentRow[];
     let manualMap: Record<string, Record<string, number>>;
     let judgementComments: Record<string, string> = {};
 
     if (Array.isArray(args.rows) && args.rows.length > 0) {
-      oracleRows = args.rows.filter((r) => r?.rowType === "oracle");
+      oracleRows = args.rows.filter(
+        (r): r is RiskCurrentRow =>
+          (r as Partial<RiskCurrentRow> | null)?.rowType === "oracle",
+      );
       manualMap = args.manualMap ?? {};
       judgementComments = args.judgementComments ?? {};
     } else {
@@ -644,7 +659,7 @@ export class RiskAssessmentService implements OnModuleInit {
       ).slice(0, 10) || "";
     const id = randomUUID();
     const createdAt = nowCH();
-    const branchCount = new Set(oracleRows.map((r: any) => r.SOLID)).size;
+    const branchCount = new Set(oracleRows.map((r) => r.SOLID)).size;
     const pDate = args.fetchedDate;
     await this.clickhouse.insert("risk_assessment_history", [
       {
@@ -758,14 +773,28 @@ export class RiskAssessmentService implements OnModuleInit {
   > {
     let date = fetchDate;
     if (!date) {
-      const latest = await this.clickhouse.query<any>(
+      const latest = await this.clickhouse.query<{ fetch_date: string }>(
         `SELECT fetch_date FROM risk_branch_scores FINAL
          ORDER BY fetch_date DESC LIMIT 1`,
       );
       date = latest[0]?.fetch_date ?? "";
     }
     if (!date) return [];
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{
+      fetch_date: string;
+      branch_id: string;
+      branch_name: string;
+      solid: string;
+      rating: string;
+      region: string;
+      s1: number | null;
+      s2: number | null;
+      s3: number | null;
+      s4: number;
+      j: number;
+      total: number | null;
+      level: string;
+    }>(
       `SELECT fetch_date, branch_id, branch_name, solid, rating, region,
               s1, s2, s3, s4, j, total, level
        FROM risk_branch_scores FINAL
@@ -773,7 +802,7 @@ export class RiskAssessmentService implements OnModuleInit {
        ORDER BY branch_name`,
       { d: date },
     );
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       fetchDate: String(r.fetch_date),
       branchId: String(r.branch_id),
       branchName: String(r.branch_name ?? ""),

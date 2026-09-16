@@ -19,6 +19,10 @@ import {
   RiskIndicatorConfigService,
   IndicatorConfig,
 } from "./risk-indicator-config.service";
+import {
+  CreateIndicatorConfigDto,
+  UpdateIndicatorConfigDto,
+} from "./dto/risk-indicator-config.dto";
 import { errMessage } from "../common/utils/error-message";
 
 @Controller("risk-indicator-config")
@@ -40,27 +44,19 @@ export class RiskIndicatorConfigController {
   @UseGuards(SuperAdminGuard)
   @Post()
   async create(
-    @Body()
-    dto: Omit<
-      IndicatorConfig,
-      "seq" | "updated_at" | "is_active" | "updated_by"
-    > & {
-      hint?: string;
-    },
+    @Body() dto: CreateIndicatorConfigDto,
     @CurrentUser() user: { id: string },
   ): Promise<IndicatorConfig> {
     try {
-      const result = await this.svc.upsertIndicator(
-        { ...dto, id: undefined },
-        user.id,
-      );
+      const result = await this.svc.createIndicator(dto, user.id);
       await this.auditLogService.log({
         userId: user.id,
         action: "risk_indicator_config_create",
         resource: "risk_indicator_config",
+        resourceId: result.id,
         method: "create",
         status: "success",
-        metadata: { name: (dto as any)?.name, group: (dto as any)?.group },
+        metadata: { name: dto.name, group: dto.group_num },
       });
       return result;
     } catch (error: unknown) {
@@ -80,14 +76,11 @@ export class RiskIndicatorConfigController {
   @Patch(":id")
   async update(
     @Param("id") id: string,
-    @Body() dto: Partial<IndicatorConfig>,
+    @Body() dto: UpdateIndicatorConfigDto,
     @CurrentUser() user: { id: string },
   ): Promise<IndicatorConfig> {
     try {
-      const result = await this.svc.upsertIndicator(
-        { ...dto, id } as any,
-        user.id,
-      );
+      const result = await this.svc.updateIndicator(id, dto, user.id);
       await this.auditLogService.log({
         userId: user.id,
         action: "risk_indicator_config_update",

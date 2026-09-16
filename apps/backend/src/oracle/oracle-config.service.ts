@@ -150,7 +150,10 @@ export class OracleConfigService implements OnModuleInit {
 
   async updateDashboard(
     id: number,
-    dto: Partial<Omit<OracleDashboardConfig, "id">>,
+    // fromClause: null → арилгах, undefined → хэвээр үлдээх
+    dto: Partial<Omit<OracleDashboardConfig, "id" | "fromClause">> & {
+      fromClause?: string | null;
+    },
   ): Promise<OracleDashboardConfig> {
     const existing = this.dashboardsCache.find((d) => d.id === id);
     if (!existing) throw new NotFoundException(`Dashboard олдсонгүй: id=${id}`);
@@ -277,6 +280,15 @@ export class OracleConfigService implements OnModuleInit {
     const trimmed = clause.trim();
     if (!trimmed) return;
 
+    // [SEC] Blacklist биш whitelist — өмнө нь зөвхөн нэр хэсгийг шалгадаг
+    // байсан тул `$`, `#` зэрэг тэмдэгт нэвтэрч `SYS.USER$` маягийн
+    // системийн хүснэгтийг JOIN хийх боломжтой байв. Хүснэгт, JOIN, ON
+    // нөхцөлд үсэг, тоо, _, цэг, хоосон зай, харьцуулах тэмдэг л хэрэгтэй.
+    if (/[^A-Za-z0-9_.\s=<>!]/.test(trimmed)) {
+      throw new BadRequestException(
+        "fromClause-д зөвхөн үсэг, тоо, _, цэг, =, <, >, ! тэмдэгт зөвшөөрнө",
+      );
+    }
     if (/['";]|--|\/\*|\*\/|@|\(|\)|,/.test(trimmed)) {
       throw new BadRequestException(
         "fromClause-д зөвхөн хүснэгт, JOIN, ON илэрхийлэл зөвшөөрнө",

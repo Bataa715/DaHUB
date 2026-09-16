@@ -120,7 +120,7 @@ export const WEB_VISIBLE_USER_SQL = webVisibleUserSql();
  * forward.
  */
 export function buildUsersTableRow(
-  existing: Record<string, any>,
+  existing: Record<string, unknown>,
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {

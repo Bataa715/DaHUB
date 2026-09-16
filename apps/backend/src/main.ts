@@ -106,7 +106,10 @@ async function bootstrap() {
   const corsOrigins = process.env.CORS_ORIGINS.split(",").map((s) => s.trim());
 
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       // Allow requests with no Origin header (Docker healthcheck, server-to-server, curl).
       // Browser-originated traffic still goes through strict whitelist validation below.
       if (!origin) {

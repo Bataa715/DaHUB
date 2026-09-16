@@ -8,6 +8,23 @@ import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
 import { randomUUID } from "crypto";
 import { CreateQuizDto, AnswerQuizDto } from "./dto/quiz.dto";
 
+type QuizQuestionRow = {
+  id: string;
+  quizId: string;
+  seq: number;
+  question: string;
+  options: string;
+  correctIndex: number;
+};
+
+type QuizAttemptRow = {
+  quizId: string;
+  userId: string;
+  correctCount: number;
+  totalQuestions: number;
+  timeTakenMs: number;
+};
+
 // Нэг quiz дотор зөвшөөрөгдөх асуултын дээд тоо — DTO-той тааруулав.
 const MAX_QUESTIONS_PER_QUIZ = 20;
 
@@ -80,7 +97,14 @@ export class QuizService {
   async findAll(userId: string) {
     // Quiz-уудыг medleg_quiz_questions.quizId-аар ялгана. Хуучин мөрөнд
     // title/authorId хоосон бол medleg_quizzes-ээс нөхнө (унших л үлдэнэ).
-    const quizzes = await this.clickhouse.query<any>(
+    const quizzes = await this.clickhouse.query<{
+      id: string;
+      title: string;
+      authorId: string;
+      createdAt: string;
+      isActive: number;
+      authorName: string | null;
+    }>(
       `SELECT q.id, q.title, q.authorId, q.createdAt, q.isActive,
               u.name AS authorName
        FROM (
@@ -101,22 +125,22 @@ export class QuizService {
     );
     if (quizzes.length === 0) return [];
 
-    const ids = quizzes.map((q: any) => q.id);
+    const ids = quizzes.map((q) => q.id);
 
-    const questions = await this.clickhouse.query<any>(
+    const questions = await this.clickhouse.query<QuizQuestionRow>(
       `SELECT id, quizId, seq, question, options, correctIndex
        FROM medleg_quiz_questions
        WHERE quizId IN {ids:Array(String)}
        ORDER BY quizId, seq`,
       { ids },
     );
-    const questionsByQuiz = new Map<string, any[]>();
+    const questionsByQuiz = new Map<string, QuizQuestionRow[]>();
     for (const q of questions) {
       if (!questionsByQuiz.has(q.quizId)) questionsByQuiz.set(q.quizId, []);
       questionsByQuiz.get(q.quizId)!.push(q);
     }
 
-    const attempts = await this.clickhouse.query<any>(
+    const attempts = await this.clickhouse.query<QuizAttemptRow>(
       `SELECT quizId, userId, correctCount, totalQuestions, timeTakenMs
        FROM medleg_quiz_answers
        WHERE quizId IN {ids:Array(String)}`,
@@ -124,7 +148,7 @@ export class QuizService {
     );
     const attemptCountByQuiz = new Map<string, number>();
     const scoreSumByQuiz = new Map<string, number>();
-    const myAttemptByQuiz = new Map<string, any>();
+    const myAttemptByQuiz = new Map<string, QuizAttemptRow>();
     for (const a of attempts) {
       attemptCountByQuiz.set(a.quizId, (attemptCountByQuiz.get(a.quizId) ?? 0) + 1);
       const total = Number(a.totalQuestions) || 0;
@@ -133,7 +157,7 @@ export class QuizService {
       if (a.userId === userId) myAttemptByQuiz.set(a.quizId, a);
     }
 
-    return quizzes.map((q: any) => {
+    return quizzes.map((q) => {
       const mine = myAttemptByQuiz.get(q.id);
       const isAuthor = q.authorId === userId;
       const revealed = !!mine || isAuthor;
@@ -182,14 +206,14 @@ export class QuizService {
       throw new BadRequestException("Энэ quiz хаагдсан байна");
     }
 
-    const questions = await this.clickhouse.query<any>(
+    const questions = await this.clickhouse.query<Pick<QuizQuestionRow, "id" | "correctIndex" | "options">>(
       `SELECT id, correctIndex, options FROM medleg_quiz_questions
        WHERE quizId = {quizId:String}`,
       { quizId },
     );
     if (questions.length === 0) throw new NotFoundException("Асуулт олдсонгүй");
 
-    const existing = await this.clickhouse.query<any>(
+    const existing = await this.clickhouse.query<{ id: string }>(
       `SELECT id FROM medleg_quiz_answers
        WHERE quizId = {quizId:String} AND userId = {userId:String} LIMIT 1`,
       { quizId, userId },
@@ -199,7 +223,7 @@ export class QuizService {
     }
 
     // Бүх асуултад яг нэг удаа хариулсан эсэхийг шалгана (дутуу/давхардсан байж болохгүй).
-    const questionById = new Map(questions.map((q: any) => [q.id, q]));
+    const questionById = new Map(questions.map((q) => [q.id, q]));
     const answeredIds = new Set(dto.answers.map((a) => a.questionId));
     if (
       answeredIds.size !== questions.length ||
@@ -268,7 +292,7 @@ export class QuizService {
     if (!quiz) throw new NotFoundException("Quiz олдсонгүй");
 
     if (quiz.authorId !== requesterId && !isAdmin) {
-      const mine = await this.clickhouse.query<any>(
+      const mine = await this.clickhouse.query<{ id: string }>(
         `SELECT id FROM medleg_quiz_answers
          WHERE quizId = {quizId:String} AND userId = {userId:String} LIMIT 1`,
         { quizId, userId: requesterId },
@@ -280,7 +304,7 @@ export class QuizService {
       }
     }
 
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<QuizAttemptRow & { userName: string; answeredAt: string }>(
       `SELECT userId, userName, correctCount, totalQuestions, timeTakenMs, answeredAt
        FROM medleg_quiz_answers
        WHERE quizId = {quizId:String}
@@ -288,7 +312,7 @@ export class QuizService {
       { quizId },
     );
 
-    return rows.map((r: any, i: number) => ({
+    return rows.map((r, i: number) => ({
       rank: i + 1,
       userId: r.userId,
       userName: r.userName,
@@ -311,7 +335,14 @@ export class QuizService {
       return this.leaderboardCache.data;
     }
 
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{
+      userId: string;
+      userName: string;
+      totalAttempts: string;
+      totalCorrect: string;
+      totalQuestions: string;
+      avgTimeMs: number;
+    }>(
       `SELECT userId, userName,
               count() AS totalAttempts,
               sum(correctCount) AS totalCorrect,
@@ -322,7 +353,7 @@ export class QuizService {
        ORDER BY totalCorrect DESC, avgTimeMs ASC
        LIMIT 50`,
     );
-    const result = rows.map((r: any, i: number) => ({
+    const result = rows.map((r, i: number) => ({
       rank: i + 1,
       userId: r.userId,
       userName: r.userName,

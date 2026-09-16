@@ -14,7 +14,6 @@ export class HealthController {
       status: "ok",
       timestamp: new Date().toISOString(),
       service: "internal-audit-backend",
-      docs: "/api/docs",
     };
   }
 

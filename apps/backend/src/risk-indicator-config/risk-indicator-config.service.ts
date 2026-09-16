@@ -1,6 +1,15 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { ClickHouseService, nowCH } from "../clickhouse/clickhouse.service";
+import {
+  CreateIndicatorConfigDto,
+  UpdateIndicatorConfigDto,
+} from "./dto/risk-indicator-config.dto";
 
 // ─── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -73,72 +82,61 @@ export class RiskIndicatorConfigService implements OnModuleInit {
     return rows.map((r) => ({ ...r, subid: (r.subid ?? "").trim() }));
   }
 
-  async upsertIndicator(
-    dto: {
-      id?: string;
-      subid: string;
-      name: string;
-      group_num: number;
-      sort_order?: number;
-      weight: number;
-      is_manual: 0 | 1;
-      is_judgment: 0 | 1;
-      score_scale: string;
-      hint?: string;
-    },
+  async createIndicator(
+    dto: CreateIndicatorConfigDto,
     updatedBy: string,
   ): Promise<IndicatorConfig> {
-    const seq = Date.now();
-    const now = nowCH();
+    const record: IndicatorConfig = {
+      id: randomUUID(),
+      subid: dto.subid.trim(),
+      name: dto.name,
+      group_num: dto.group_num,
+      sort_order: dto.sort_order ?? 0,
+      weight: dto.weight,
+      is_manual: dto.is_manual,
+      is_judgment: dto.is_judgment,
+      is_active: 1,
+      score_scale: dto.score_scale,
+      hint: dto.hint ?? "",
+      updated_by: updatedBy,
+      seq: Date.now(),
+      updated_at: nowCH(),
+    };
+    await this.clickhouse.insert("risk_indicator_config", [
+      record as unknown as Record<string, unknown>,
+    ]);
+    return record;
+  }
 
-    let record: IndicatorConfig;
+  /** ReplacingMergeTree — байгаа мөрийг уншиж, өөрчлөлтийг нийлүүлээд бүтнээр нь бичнэ. */
+  async updateIndicator(
+    id: string,
+    dto: UpdateIndicatorConfigDto,
+    updatedBy: string,
+  ): Promise<IndicatorConfig> {
+    const existing = await this.clickhouse.query<IndicatorConfig>(
+      `SELECT * FROM risk_indicator_config FINAL WHERE id = {id:String} LIMIT 1`,
+      { id },
+    );
+    const base = existing[0];
+    if (!base) throw new NotFoundException("Үзүүлэлт олдсонгүй");
 
-    if (dto.id) {
-      // Update: fetch existing to merge fields
-      const existing = await this.clickhouse.query<IndicatorConfig>(
-        `
-        SELECT * FROM risk_indicator_config FINAL WHERE id = {id:String} LIMIT 1
-      `,
-        { id: dto.id },
-      );
-
-      const base = existing[0] ?? {};
-      record = {
-        id: dto.id,
-        subid: (dto.subid ?? (base as any).subid ?? dto.id).trim(),
-        name: dto.name ?? (base as any).name ?? "",
-        group_num: dto.group_num ?? (base as any).group_num ?? 1,
-        sort_order: dto.sort_order ?? (base as any).sort_order ?? 0,
-        weight: dto.weight ?? (base as any).weight ?? 0,
-        is_manual: dto.is_manual ?? (base as any).is_manual ?? 0,
-        is_judgment: dto.is_judgment ?? (base as any).is_judgment ?? 0,
-        is_active: (base as any).is_active ?? 1,
-        score_scale: dto.score_scale ?? (base as any).score_scale ?? "{}",
-        hint: dto.hint ?? (base as any).hint ?? "",
-        updated_by: updatedBy,
-        seq,
-        updated_at: now,
-      };
-    } else {
-      // Insert: new record
-      record = {
-        id: randomUUID(),
-        subid: dto.subid.trim(),
-        name: dto.name,
-        group_num: dto.group_num,
-        sort_order: dto.sort_order ?? 0,
-        weight: dto.weight,
-        is_manual: dto.is_manual,
-        is_judgment: dto.is_judgment,
-        is_active: 1,
-        score_scale: dto.score_scale,
-        hint: dto.hint ?? "",
-        updated_by: updatedBy,
-        seq,
-        updated_at: now,
-      };
-    }
-
+    const record: IndicatorConfig = {
+      id,
+      subid: (dto.subid ?? base.subid ?? id).trim(),
+      name: dto.name ?? base.name ?? "",
+      group_num: dto.group_num ?? base.group_num ?? 1,
+      sort_order: dto.sort_order ?? base.sort_order ?? 0,
+      weight: dto.weight ?? base.weight ?? 0,
+      is_manual: dto.is_manual ?? base.is_manual ?? 0,
+      is_judgment: dto.is_judgment ?? base.is_judgment ?? 0,
+      is_active: base.is_active ?? 1,
+      score_scale: dto.score_scale ?? base.score_scale ?? "{}",
+      hint: dto.hint ?? base.hint ?? "",
+      updated_by: updatedBy,
+      seq: Date.now(),
+      updated_at: nowCH(),
+    };
     await this.clickhouse.insert("risk_indicator_config", [
       record as unknown as Record<string, unknown>,
     ]);

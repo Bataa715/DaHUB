@@ -11,6 +11,12 @@ import { UpdateDepartmentDto } from "./dto/department.dto";
 import { buildUserId, WEB_VISIBLE_USER_SQL } from "../common/utils/user-utils";
 import { DEPARTMENT_CODES } from "../common/constants/departments";
 import { UserFacingBadRequestException } from "../common/exceptions/user-facing.exception";
+import type { DepartmentDbRow, UserDbRow } from "../common/types/db-rows";
+
+type DepartmentUserRow = Pick<
+  UserDbRow,
+  "id" | "userId" | "name" | "position" | "isActive" | "departmentId"
+> & { hasProfileImage: number };
 
 @Injectable()
 export class DepartmentsService implements OnModuleInit {
@@ -64,7 +70,7 @@ export class DepartmentsService implements OnModuleInit {
   }
 
   async findAll() {
-    const departments = await this.clickhouse.query<any>(
+    const departments = await this.clickhouse.query<DepartmentDbRow>(
       "SELECT * FROM departments ORDER BY createdAt DESC",
     );
     if (departments.length === 0) return [];
@@ -76,7 +82,7 @@ export class DepartmentsService implements OnModuleInit {
     // ажилтан бүрийн бүтэн зургийг оруулснаас employee directory хэдэн арван MB
     // болж prod дээр маш удаан ачаалагддаг байв. Оронд нь hasProfileImage туг л
     // буцаана; аватарыг frontend нь /users/:id/avatar-аас lazy, кэштэйгээр татна.
-    const allUsers = await this.clickhouse.query<any>(
+    const allUsers = await this.clickhouse.query<DepartmentUserRow>(
       `SELECT id, userId, name, position, isActive, departmentId,
               if(profileImage != '', 1, 0) AS hasProfileImage
        FROM users
@@ -84,14 +90,14 @@ export class DepartmentsService implements OnModuleInit {
          AND ${WEB_VISIBLE_USER_SQL}`,
       { deptIds: departments.map((d: { id: string }) => d.id) },
     );
-    const usersByDept = new Map<string, any[]>();
+    const usersByDept = new Map<string, DepartmentUserRow[]>();
     for (const u of allUsers) {
       const list = usersByDept.get(u.departmentId);
       if (list) list.push(u);
       else usersByDept.set(u.departmentId, [u]);
     }
 
-    return departments.map((dept: any) => {
+    return departments.map((dept) => {
       const users = usersByDept.get(dept.id) ?? [];
 
       // manager талбар буруу (System Admin г.м.) байвал албан тушаалаар захирлыг олно
@@ -114,7 +120,7 @@ export class DepartmentsService implements OnModuleInit {
   }
 
   async update(id: string, updateDepartmentDto: UpdateDepartmentDto) {
-    const departments = await this.clickhouse.query<any>(
+    const departments = await this.clickhouse.query<DepartmentDbRow>(
       "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
       { id },
     );
@@ -129,7 +135,7 @@ export class DepartmentsService implements OnModuleInit {
       updateDepartmentDto.name &&
       updateDepartmentDto.name !== department.name
     ) {
-      const existing = await this.clickhouse.query<any>(
+      const existing = await this.clickhouse.query<{ id: string }>(
         "SELECT id FROM departments WHERE name = {name:String} AND id != {id:String} LIMIT 1",
         { name: updateDepartmentDto.name, id },
       );
@@ -202,7 +208,7 @@ export class DepartmentsService implements OnModuleInit {
     departmentName: string,
     newCode: string,
   ) {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE departmentId = {deptId:String}",
       { deptId: departmentId },
     );
@@ -250,7 +256,7 @@ export class DepartmentsService implements OnModuleInit {
   }
 
   async remove(id: string) {
-    const departments = await this.clickhouse.query<any>(
+    const departments = await this.clickhouse.query<DepartmentDbRow>(
       "SELECT * FROM departments WHERE id = {id:String} LIMIT 1",
       { id },
     );
@@ -259,7 +265,7 @@ export class DepartmentsService implements OnModuleInit {
       throw new NotFoundException("Хэлтэс олдсонгүй");
     }
 
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<{ id: string }>(
       "SELECT id FROM users WHERE departmentId = {id:String}",
       { id },
     );

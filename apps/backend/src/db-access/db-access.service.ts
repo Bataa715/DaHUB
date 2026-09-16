@@ -22,6 +22,13 @@ import {
 } from "./dto/db-access.dto";
 import { AuthenticatedUser } from "../common/types/authenticated-request";
 import { errMessage } from "../common/utils/error-message";
+import type {
+  AccessGrantDbRow,
+  AccessRequestDbRow,
+} from "../common/types/db-rows";
+
+/** Хүсэлт шийдвэрлэж / эрх цуцалж буй хэрэглэгч (req.user) */
+type ActingUser = AuthenticatedUser;
 
 // Databases exposed to auditors
 const ALLOWED_DATABASES = ["FINACLE", "ERP", "CARDZONE", "EBANK"];
@@ -144,7 +151,7 @@ export class DbAccessService {
     const dbList = ALLOWED_DATABASES.map((d) => `'${d}'`).join(", ");
     const exList = EXCLUDED_TABLES.map((t) => `'${t}'`).join(", ");
 
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{ database: string; name: string }>(
       `SELECT database, name
        FROM system.tables
        WHERE database IN (${dbList})
@@ -185,7 +192,7 @@ export class DbAccessService {
     // grants are revoked so approval won't create a conflicting ClickHouse role.
     const newTables = new Set(dto.tables);
 
-    const activeGrants = await this.clickhouse.query<any>(
+    const activeGrants = await this.clickhouse.query<AccessGrantDbRow>(
       `SELECT * FROM access_grants FINAL
        WHERE userId = {uid:String} AND isActive = 1 AND validUntil > now()`,
       { uid: user.id },
@@ -193,7 +200,7 @@ export class DbAccessService {
 
     // Filter to only grants that share at least one table with the new request.
     // access_grants rows have a single `tableName` field (one row per table).
-    const overlappingGrants = activeGrants.filter((g: any) =>
+    const overlappingGrants = activeGrants.filter((g) =>
       newTables.has(g.tableName),
     );
 
@@ -201,13 +208,13 @@ export class DbAccessService {
       // Group by requestId: one ClickHouse role per request → one full revoke per role
       const byRequest = new Map<
         string,
-        { grants: any[]; requesterUserId: string }
+        { grants: AccessGrantDbRow[]; requesterUserId: string }
       >();
       for (const g of overlappingGrants) {
         if (!byRequest.has(g.requestId)) {
           byRequest.set(g.requestId, {
             grants: [],
-            requesterUserId: g.requesterUserId ?? g.userUserId,
+            requesterUserId: g.userUserId,
           });
         }
         byRequest.get(g.requestId)!.grants.push(g);
@@ -288,7 +295,7 @@ export class DbAccessService {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
 
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<AccessRequestDbRow>(
       `SELECT *
        FROM access_requests FINAL
        WHERE status = 'pending'
@@ -302,7 +309,7 @@ export class DbAccessService {
     if (!this.canGrantAccess(user)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<AccessRequestDbRow>(
       `SELECT *
        FROM access_requests FINAL
        ORDER BY requestTime DESC`,
@@ -315,7 +322,7 @@ export class DbAccessService {
     if (!this.canGrantAccess(user)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<{ id: string; status: string }>(
       `SELECT id, status FROM access_requests FINAL WHERE id = {id:String} LIMIT 1`,
       { id },
     );
@@ -374,12 +381,12 @@ export class DbAccessService {
   }
 
   /** Approve or reject a request */
-  async reviewRequest(requestId: string, reviewer: any, dto: ReviewRequestDto) {
+  async reviewRequest(requestId: string, reviewer: ActingUser, dto: ReviewRequestDto) {
     if (!this.canGrantAccess(reviewer)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
 
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<AccessRequestDbRow>(
       `SELECT * FROM access_requests FINAL WHERE id = {id:String} LIMIT 1`,
       { id: requestId },
     );
@@ -458,10 +465,10 @@ export class DbAccessService {
       // Step 2: grant all tables in parallel (even if setup failed — role may have been partially created)
       await Promise.all(
         tables.map((table) =>
-          this.chAccess.grantTableToRole(requestId, table).catch((err: any) => {
+          this.chAccess.grantTableToRole(requestId, table).catch((err: unknown) => {
             chSetupFailed = true;
             this.logger.warn(
-              `[CH ACL] Failed to grant ${table}: ${err?.message}`,
+              `[CH ACL] Failed to grant ${table}: ${errMessage(err)}`,
             );
           }),
         ),
@@ -526,7 +533,7 @@ export class DbAccessService {
 
   /** Get active grants for the current user (includes decrypted chPassword for credentials display) */
   async getMyGrants(userId: string) {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<AccessGrantDbRow>(
       `SELECT *
        FROM access_grants FINAL
        WHERE userId = {userId:String}
@@ -546,7 +553,7 @@ export class DbAccessService {
     if (!this.canGrantAccess(user)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<AccessGrantDbRow>(
       `SELECT *
        FROM access_grants FINAL
        WHERE isActive = 1
@@ -557,12 +564,12 @@ export class DbAccessService {
   }
 
   /** Revoke a grant */
-  async revokeGrant(grantId: string, revoker: any, dto: RevokeGrantDto) {
+  async revokeGrant(grantId: string, revoker: ActingUser, dto: RevokeGrantDto) {
     if (!this.canGrantAccess(revoker)) {
       throw new ForbiddenException("Энэ үйлдлийг гүйцэтгэх эрх байхгүй");
     }
 
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<AccessGrantDbRow>(
       `SELECT * FROM access_grants FINAL WHERE id = {id:String} LIMIT 1`,
       { id: grantId },
     );
@@ -653,7 +660,7 @@ export class DbAccessService {
 
   /** User self-cancels their own active grant before expiry */
   async selfRevokeGrant(grantId: string, requester: AuthenticatedUser) {
-    const rows = await this.clickhouse.query<any>(
+    const rows = await this.clickhouse.query<AccessGrantDbRow>(
       `SELECT * FROM access_grants FINAL WHERE id = {id:String} LIMIT 1`,
       { id: grantId },
     );
@@ -740,8 +747,8 @@ export class DbAccessService {
    */
   // ─── Formatters ─────────────────────────────────────────────────────────────
 
-  private formatRequest(r: any) {
-    const toArr = (v: any): string[] => {
+  private formatRequest(r: AccessRequestDbRow) {
+    const toArr = (v: unknown): string[] => {
       if (Array.isArray(v)) return v;
       if (typeof v === "string") {
         try {
@@ -771,8 +778,8 @@ export class DbAccessService {
     };
   }
 
-  private formatGrant = (g: any) => {
-    const toArr = (v: any): string[] => {
+  private formatGrant = (g: AccessGrantDbRow) => {
+    const toArr = (v: unknown): string[] => {
       if (Array.isArray(v)) return v;
       if (typeof v === "string") {
         try {

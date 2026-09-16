@@ -21,6 +21,10 @@ import {
   webVisibleUserSql,
   isPrivilegedUser,
 } from "../common/utils/user-utils";
+import type {
+  UserDbRow,
+  UserWithDepartmentDbRow,
+} from "../common/types/db-rows";
 
 // [LOW-1] buildUserId and safeParseTools moved to src/common/utils/user-utils.ts
 
@@ -42,7 +46,12 @@ export class UsersService {
     // дээр мэдрэгддэггүй). Оронд нь hasProfileImage туг л буцаана; бодит зураг
     // хэрэгтэй бол /users/:id-ээр нэг бүрчлэн авна. Тодорхой багана сонгосон нь
     // мөн password зэрэг ашиглагдаагүй талбарыг татахаас сэргийлнэ.
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<
+      Omit<
+        UserWithDepartmentDbRow,
+        "password" | "profileImage" | "grantableTools" | "lockedAt" | "updatedAt"
+      > & { hasProfileImage: number }
+    >(
       `SELECT u.id, u.userId, u.name, u.position, u.departmentId,
               u.isAdmin, u.isSuperAdmin, u.isActive, u.allowedTools,
               u.lastLoginAt, u.createdAt, u.isLocked, u.failedLoginCount,
@@ -87,7 +96,7 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserWithDepartmentDbRow>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE u.id = {id:String} LIMIT 1`,
@@ -115,7 +124,12 @@ export class UsersService {
   }
 
   async getAdmins() {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<
+      Pick<
+        UserWithDepartmentDbRow,
+        "id" | "userId" | "name" | "departmentId" | "isAdmin" | "isSuperAdmin" | "isActive" | "grantableTools" | "createdAt" | "departmentName"
+      >
+    >(
       `SELECT u.id, u.userId, u.name, u.departmentId, u.isAdmin, u.isSuperAdmin, u.isActive,
               u.grantableTools, u.createdAt, d.name AS departmentName
        FROM users u
@@ -138,7 +152,7 @@ export class UsersService {
 
   private async replaceUser(
     id: string,
-    existing: Record<string, any>,
+    existing: Record<string, unknown>,
     overrides: Record<string, unknown> = {},
   ) {
     await this.clickhouse.replaceRows("users", "id = {id:String}", { id }, [
@@ -155,7 +169,7 @@ export class UsersService {
     isSuperAdmin: boolean,
     grantableTools?: string[],
   ) {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
@@ -185,7 +199,7 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
@@ -230,7 +244,7 @@ export class UsersService {
 
       // Auto-generate userId only when not explicitly provided
       if (updateUserDto.userId === undefined) {
-        const depts = await this.clickhouse.query<any>(
+        const depts = await this.clickhouse.query<{ name: string; code: string }>(
           "SELECT name, code FROM departments WHERE id = {deptId:String} LIMIT 1",
           { deptId: updateUserDto.departmentId },
         );
@@ -292,7 +306,7 @@ export class UsersService {
       }
     }
 
-    const updated = await this.clickhouse.query<any>(
+    const updated = await this.clickhouse.query<UserWithDepartmentDbRow>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE u.id = {id:String} LIMIT 1`,
@@ -333,7 +347,7 @@ export class UsersService {
   }
 
   async remove(id: string, callerIsSuperAdmin: boolean) {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<Pick<UserDbRow, "id" | "isAdmin" | "isSuperAdmin">>(
       "SELECT id, isAdmin, isSuperAdmin FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
@@ -357,7 +371,7 @@ export class UsersService {
     requestedTools: string[],
     caller: { isSuperAdmin: boolean; grantableTools: string[] },
   ) {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
@@ -392,7 +406,7 @@ export class UsersService {
       allowedTools: JSON.stringify(finalTools),
     });
 
-    const updated = await this.clickhouse.query<any>(
+    const updated = await this.clickhouse.query<UserWithDepartmentDbRow>(
       `SELECT u.*, d.name as departmentName
        FROM users u LEFT JOIN departments d ON u.departmentId = d.id
        WHERE u.id = {id:String} LIMIT 1`,
@@ -424,7 +438,7 @@ export class UsersService {
         "Нууц үг нь том үсэг, жижиг үсэг, тоо, тусгай тэмдэгт агуулсан байх ёстой",
       );
     }
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );
@@ -438,6 +452,10 @@ export class UsersService {
       isLocked: 0,
       failedLoginCount: 0,
     });
+    // [SEC] Нууц үг сэргээх нь ихэвчлэн "account алдагдсан" үед хийгддэг —
+    // хуучин нууц үгээр нээгдсэн бүх сессийг (refresh token) хаана. Үгүй бол
+    // хулгайлагдсан cookie нууц үг солигдсон ч ажилласаар байна.
+    await this.authService.revokeRefreshTokens(id);
     this.logger.warn(
       `Password reset by admin for user: ${users[0].userId} (${users[0].name})`,
     );
@@ -450,7 +468,7 @@ export class UsersService {
 
   /** Admin: clear the persistent brute-force lockout (5 wrong passwords). */
   async unlockUser(id: string, callerIsSuperAdmin: boolean) {
-    const users = await this.clickhouse.query<any>(
+    const users = await this.clickhouse.query<UserDbRow>(
       "SELECT * FROM users WHERE id = {id:String} LIMIT 1",
       { id },
     );

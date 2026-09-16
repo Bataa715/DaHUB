@@ -14,7 +14,8 @@ import {
   ShadingType,
   TableLayoutType,
 } from "docx";
-import { ExpenseReportData } from "./zainii-audit.service";
+import type { IImageOptions, ITableBordersOptions } from "docx";
+import { ExpenseReportData } from "./zainii-audit.types";
 
 // [FIX] `layout` анхдагчаар "autofit" тул Word эсийн агуулгаас хамааруулж
 // баганын өргөнийг ДАХИН тооцоолдог — тэгэхээр % өргөнөөрөө биш, урт
@@ -137,10 +138,7 @@ function donutSlicePath(
 }
 
 /** Категори тус бүрийн дүнгээс дугуй (donut) диаграм үүсгэнэ — хувийн шошготой. */
-function buildDonutSvg(
-  slices: { value: number }[],
-  size = 320,
-): string | null {
+function buildDonutSvg(slices: { value: number }[], size = 320): string | null {
   const total = slices.reduce((s, x) => s + Math.max(0, x.value), 0);
   if (total <= 0) return null;
   const cx = size / 2;
@@ -265,7 +263,9 @@ export class ZainiiAuditDocxService {
     // байсан тул хамгийн энгийн, найдвартай бүтэц рүү шилжүүлэв.
     const legendColDxa = Math.round(CONTENT_WIDTH_DXA * 0.35);
     const top5ColDxa = CONTENT_WIDTH_DXA - donutColWidthDxa - legendColDxa;
-    const donutColPct = Math.round((donutColWidthDxa / CONTENT_WIDTH_DXA) * 100);
+    const donutColPct = Math.round(
+      (donutColWidthDxa / CONTENT_WIDTH_DXA) * 100,
+    );
     const legendColPct = Math.round((legendColDxa / CONTENT_WIDTH_DXA) * 100);
     const top5ColPct = 100 - donutColPct - legendColPct;
 
@@ -307,10 +307,9 @@ export class ZainiiAuditDocxService {
                           fallback: {
                             type: "png",
                             data: Buffer.from(BLANK_PNG_BASE64, "base64"),
-                            transformation: { width: DONUT_PX, height: DONUT_PX },
                           },
                           transformation: { width: DONUT_PX, height: DONUT_PX },
-                        } as any),
+                        } satisfies IImageOptions),
                       ],
                     })
                   : this.bodyPara("Мэдээлэл алга"),
@@ -388,9 +387,13 @@ export class ZainiiAuditDocxService {
 
       const totals = cat.customers.reduce(
         (acc, c) => ({
-          contract: acc.contract + (c.contract_total_amount > 0 ? c.contract_total_amount : 0),
+          contract:
+            acc.contract +
+            (c.contract_total_amount > 0 ? c.contract_total_amount : 0),
           paid: acc.paid + c.paid_amount,
-          remaining: acc.remaining + (c.contract_total_amount > 0 ? c.remaining_amount : 0),
+          remaining:
+            acc.remaining +
+            (c.contract_total_amount > 0 ? c.remaining_amount : 0),
         }),
         { contract: 0, paid: 0, remaining: 0 },
       );
@@ -417,7 +420,9 @@ export class ZainiiAuditDocxService {
               c.contract_date || "-",
               fmtMillionOrDash(c.contract_total_amount),
               fmtMillion(c.paid_amount),
-              c.contract_total_amount > 0 ? fmtMillion(c.remaining_amount) : "-",
+              c.contract_total_amount > 0
+                ? fmtMillion(c.remaining_amount)
+                : "-",
               c.budget_type ? `✓ ${c.budget_type}` : "-",
             ]),
             [
@@ -504,7 +509,9 @@ export class ZainiiAuditDocxService {
   private subHeading(text: string, size = 24) {
     return new Paragraph({
       spacing: { before: 220, after: 60 },
-      children: [new TextRun({ text, bold: true, size, font: "Times New Roman" })],
+      children: [
+        new TextRun({ text, bold: true, size, font: "Times New Roman" }),
+      ],
     });
   }
 
@@ -550,7 +557,11 @@ export class ZainiiAuditDocxService {
                 ...lines.map(
                   (l, i) =>
                     new Paragraph({
-                      spacing: { before: i === 0 ? 0 : 40, after: 0, line: 260 },
+                      spacing: {
+                        before: i === 0 ? 0 : 40,
+                        after: 0,
+                        line: 260,
+                      },
                       children: [
                         new TextRun({
                           text: l.text,
@@ -587,7 +598,12 @@ export class ZainiiAuditDocxService {
               width: { size: 100, type: WidthType.PERCENTAGE },
               borders: this.border(GRAY_BOX_BORDER),
               shading: { type: ShadingType.SOLID, color: CONTENT_BG },
-              margins: { top: FRAME_PAD, bottom: FRAME_PAD, left: FRAME_PAD, right: FRAME_PAD },
+              margins: {
+                top: FRAME_PAD,
+                bottom: FRAME_PAD,
+                left: FRAME_PAD,
+                right: FRAME_PAD,
+              },
               children: [content],
             }),
           ],
@@ -634,7 +650,10 @@ export class ZainiiAuditDocxService {
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       layout: TableLayoutType.FIXED,
-      columnWidths: [Math.round(containerWidthDxa / 2), Math.round(containerWidthDxa / 2)],
+      columnWidths: [
+        Math.round(containerWidthDxa / 2),
+        Math.round(containerWidthDxa / 2),
+      ],
       borders: this.noBorders(),
       rows,
     });
@@ -658,20 +677,31 @@ export class ZainiiAuditDocxService {
         new TableCell({
           width: { size: 10, type: WidthType.PERCENTAGE },
           borders: this.noBorders(),
-          children: [this.plainCellText("", false, AlignmentType.LEFT, fontSize)],
+          children: [
+            this.plainCellText("", false, AlignmentType.LEFT, fontSize),
+          ],
         }),
         new TableCell({
           width: { size: 60, type: WidthType.PERCENTAGE },
-          borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER } },
+          borders: {
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
+          },
           children: [
             this.plainCellText("Ангилал", true, AlignmentType.LEFT, fontSize),
           ],
         }),
         new TableCell({
           width: { size: 30, type: WidthType.PERCENTAGE },
-          borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER } },
+          borders: {
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
+          },
           children: [
-            this.plainCellText("Дүн (сая.₮)", true, AlignmentType.RIGHT, fontSize),
+            this.plainCellText(
+              "Дүн (сая.₮)",
+              true,
+              AlignmentType.RIGHT,
+              fontSize,
+            ),
           ],
         }),
       ],
@@ -723,19 +753,27 @@ export class ZainiiAuditDocxService {
       children: [
         new TableCell({
           width: { size: 10, type: WidthType.PERCENTAGE },
-          borders: { top: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER } },
-          children: [this.plainCellText("", false, AlignmentType.LEFT, fontSize)],
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
+          },
+          children: [
+            this.plainCellText("", false, AlignmentType.LEFT, fontSize),
+          ],
         }),
         new TableCell({
           width: { size: 60, type: WidthType.PERCENTAGE },
-          borders: { top: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER } },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
+          },
           children: [
             this.plainCellText("Нийт", true, AlignmentType.LEFT, fontSize),
           ],
         }),
         new TableCell({
           width: { size: 30, type: WidthType.PERCENTAGE },
-          borders: { top: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER } },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
+          },
           children: [
             this.plainCellText(
               fmtMillion(total),
@@ -821,14 +859,24 @@ export class ZainiiAuditDocxService {
     });
   }
 
-  private gridBorders() {
+  private gridBorders(): ITableBordersOptions {
     return {
       top: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
       bottom: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
       left: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
       right: { style: BorderStyle.SINGLE, size: 4, color: TABLE_BORDER },
-      insideH: { style: BorderStyle.SINGLE, size: 2, color: TABLE_BORDER },
-      insideV: { style: BorderStyle.SINGLE, size: 2, color: TABLE_BORDER },
+      // [AUDIT] docx-ийн түлхүүр нь insideHorizontal/insideVertical — өмнө нь
+      // insideH/insideV гэж бичээд `as any`-гаар нуусан тул дотоод шугам гардаггүй байв.
+      insideHorizontal: {
+        style: BorderStyle.SINGLE,
+        size: 2,
+        color: TABLE_BORDER,
+      },
+      insideVertical: {
+        style: BorderStyle.SINGLE,
+        size: 2,
+        color: TABLE_BORDER,
+      },
     };
   }
 
@@ -877,7 +925,12 @@ export class ZainiiAuditDocxService {
             (row) =>
               new TableRow({
                 children: row.map((cell, ci) =>
-                  this.tcNoB(cell, colWidths[ci], aligns[ci] ?? "left", fontSize),
+                  this.tcNoB(
+                    cell,
+                    colWidths[ci],
+                    aligns[ci] ?? "left",
+                    fontSize,
+                  ),
                 ),
               }),
           )
@@ -892,7 +945,13 @@ export class ZainiiAuditDocxService {
       ? [
           new TableRow({
             children: totalsRow.map((cell, ci) =>
-              this.tcNoB(cell, colWidths[ci], aligns[ci] ?? "left", fontSize, true),
+              this.tcNoB(
+                cell,
+                colWidths[ci],
+                aligns[ci] ?? "left",
+                fontSize,
+                true,
+              ),
             ),
           }),
         ]
@@ -903,7 +962,7 @@ export class ZainiiAuditDocxService {
       columnWidths: colWidths.map((p) =>
         Math.round((p / 100) * containerWidthDxa),
       ),
-      borders: this.gridBorders() as any,
+      borders: this.gridBorders(),
       rows: [headerRow, ...rows, ...totalRows],
     });
   }

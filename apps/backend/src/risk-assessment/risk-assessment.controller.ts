@@ -15,6 +15,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ToolGuard } from "../auth/guards/tool.guard";
 import { RequireTools } from "../auth/guards/require-tools.decorator";
+import { AuthenticatedRequest } from "../common/types/authenticated-request";
 import {
   UpsertManualIndicatorDto,
   SetHoldDto,
@@ -47,7 +48,7 @@ export class RiskAssessmentController {
   @Put("manual-indicators")
   async upsertManualIndicator(
     @Body() body: UpsertManualIndicatorDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     await this.service.upsertManualIndicator({ ...body, userId: req.user.id });
     return { ok: true };
@@ -66,7 +67,7 @@ export class RiskAssessmentController {
 
   @UseGuards(AdminGuard)
   @Delete("history/:id")
-  async deleteHistory(@Param("id") id: string, @Request() req) {
+  async deleteHistory(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     await this.service.deleteHistory(id, req.user.id);
     return { ok: true };
   }
@@ -79,7 +80,7 @@ export class RiskAssessmentController {
 
   @RequireTools("risk_assessment")
   @Put("holds")
-  async setHold(@Body() body: SetHoldDto, @Request() req) {
+  async setHold(@Body() body: SetHoldDto, @Request() req: AuthenticatedRequest) {
     await this.service.setHold(
       body.indicatorId,
       body.period,
@@ -103,14 +104,14 @@ export class RiskAssessmentController {
 
   @RequireTools("risk_assessment")
   @Post("riskbranch/lock")
-  async lockDate(@Body() body: LockDateBodyDto, @Request() req) {
+  async lockDate(@Body() body: LockDateBodyDto, @Request() req: AuthenticatedRequest) {
     await this.service.lockDate(body.date, req.user.id);
     return { ok: true };
   }
 
   @RequireTools("risk_assessment")
   @Delete("riskbranch/lock/:date")
-  async unlockDate(@Param("date") date: string, @Request() req) {
+  async unlockDate(@Param("date") date: string, @Request() req: AuthenticatedRequest) {
     await this.service.unlockDate(date, req.user.id);
     return { ok: true };
   }
@@ -129,7 +130,7 @@ export class RiskAssessmentController {
 
   @RequireTools("risk_assessment")
   @Put("judgement")
-  async upsertJudgement(@Body() body: UpsertJudgementDto, @Request() req) {
+  async upsertJudgement(@Body() body: UpsertJudgementDto, @Request() req: AuthenticatedRequest) {
     await this.service.upsertJudgement({ ...body, userId: req.user.id });
     return { ok: true };
   }
@@ -138,7 +139,7 @@ export class RiskAssessmentController {
   @Post("history/from-riskbranch")
   async saveHistoryFromRiskbranch(
     @Body() body: SaveHistoryFromRiskbranchDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.service.saveHistoryFromRiskbranch({
       fetchedDate: body.fetchedDate,
@@ -161,7 +162,7 @@ export class RiskAssessmentController {
   @Post("branch-scores")
   async upsertBranchScores(
     @Body() body: UpsertBranchScoresDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     await this.service.upsertBranchScores(
       body.fetchDate,
