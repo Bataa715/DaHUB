@@ -635,6 +635,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           comment String DEFAULT '',
           verificationType String DEFAULT '',
           contractTotalAmount Float64 DEFAULT 0,
+          contractDate String DEFAULT '',
+          contractNumber String DEFAULT '',
+          remainingAmount Float64 DEFAULT 0,
           status String DEFAULT '',
           updatedBy String DEFAULT '',
           updatedByName String DEFAULT '',
@@ -794,6 +797,22 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       ).catch(() => {});
       await this.exec(
         `ALTER TABLE medleg ADD COLUMN IF NOT EXISTS imagesJson String DEFAULT '[]'`,
+      ).catch(() => {});
+
+      // 1f) avlaga_verifications.contractDate — Word тайлангийн "Гэрээний
+      // огноо" багана; аудитор баталгаажуулалтын дэлгэцээс гараар оруулна.
+      await this.exec(
+        `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS contractDate String DEFAULT ''`,
+      ).catch(() => {});
+
+      // 1g) avlaga_verifications.contractNumber / remainingAmount —
+      // Баталгаажуулалтын дэлгэцэд аудитор гараар оруулдаг "Гэрээний
+      // дугаар" ба "Үлдэгдэл төлбөр" талбарууд.
+      await this.exec(
+        `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS contractNumber String DEFAULT ''`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS remainingAmount Float64 DEFAULT 0`,
       ).catch(() => {});
 
       // [SAFETY] DROP TABLE/DROP COLUMN migration-уудыг эндээс хассан — app boot

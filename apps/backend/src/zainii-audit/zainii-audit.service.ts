@@ -18,6 +18,8 @@ import {
   CreateVerificationTypeDto,
   UpdateVerificationTypeDto,
   UpdateZainiiAuditSettingsDto,
+  GenerateExpenseReportDto,
+  ExpenseRelationsDto,
 } from "./dto/zainii-audit.dto";
 import { nowCH } from "../clickhouse/clickhouse.service";
 
@@ -116,6 +118,10 @@ export interface ExpenseTxRow {
   has_verification: 0 | 1;
   verification_type: string;
   contract_total_amount: number;
+  contract_date: string;
+  contract_number: string;
+  /** Аудитор гараар оруулсан үлдэгдэл төлбөр (0 = оруулаагүй/бүрэн төлөгдсөн). */
+  remaining_amount: number;
   verification_status: string;
   comment: string;
   /** Хамгийн сүүлийн холбогдох budget мөрийн description (эсвэл "" —
@@ -128,6 +134,9 @@ export interface ExpenseVerificationRow {
   comment: string;
   verificationType: string;
   contractTotalAmount: number;
+  contractDate: string;
+  contractNumber: string;
+  remainingAmount: number;
   status: string;
   updatedBy: string;
   updatedByName: string;
@@ -245,7 +254,63 @@ const MAX_EXPENSE_TX_ROWS = 20_000;
 const MAX_EXPENSE_TOTAL_ROWS = 10_000;
 const MAX_EXPENSE_DRILLDOWN_ROWS = 5_000;
 const MAX_EXPENSE_SIDE_ROWS = 1_000;
+const MAX_RELATIONS_ROWS = 5_000;
 const DEFAULT_MIN_AMOUNT = 50_000_000;
+
+// ─── Хамааралтай / Холбоотой (hamaaral / holbootoi — гадны ETL хүснэгт) ────
+export interface HamaaralRow {
+  cif: string;
+  cifname: string;
+  empid: string;
+  empname: string;
+  typename: string;
+  status: string;
+}
+
+export interface ExpenseRelationsResult {
+  hamaaral: Record<string, HamaaralRow[]>;
+  holbootoi: string[];
+}
+
+// ─── Зардлын хяналтын Word тайлан ───────────────────────────────────────────
+export interface ExpenseReportTop5Row {
+  customer_name: string;
+  customer_code: string;
+  debit_amount: number;
+  description: string;
+}
+
+export interface ExpenseReportCategoryCustomerRow {
+  customer_code: string;
+  customer_name: string;
+  description: string;
+  contract_date: string;
+  contract_number: string;
+  contract_total_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  budget_type: string;
+}
+
+export interface ExpenseReportCategory {
+  name: string;
+  totalAmount: number;
+  customers: ExpenseReportCategoryCustomerRow[];
+}
+
+export interface ExpenseReportData {
+  reportNumber: string;
+  conclusionText: string;
+  startDate: string;
+  endDate: string;
+  minAmount: number;
+  scopeCategoryNames: string[];
+  qualifyingCount: number;
+  qualifyingTotalDebit: number;
+  top5: ExpenseReportTop5Row[];
+  categories: ExpenseReportCategory[];
+  uncategorizedTotal: number;
+}
 
 /** ClickHouse JSON often serializes UInt64/Float64 as strings — coerce for charts. */
 function toBreakdown(rows: ExpenseGroupBreakdown[]): ExpenseGroupBreakdown[] {
@@ -565,6 +630,9 @@ export class ZainiiAuditService implements OnModuleInit {
           (ifNull(v.bookNumber, '') != '') AS has_verification,
           ifNull(v.verificationType, '') AS verification_type,
           ifNull(v.contractTotalAmount, 0) AS contract_total_amount,
+          ifNull(v.contractDate, '') AS contract_date,
+          ifNull(v.contractNumber, '') AS contract_number,
+          ifNull(v.remainingAmount, 0) AS remaining_amount,
           ifNull(v.status, '') AS verification_status,
           ifNull(v.comment, '') AS comment,
           if(ifNull(t.gl_number, '') = '', '', ifNull(bt.budget_type, '')) AS budget_type
@@ -596,6 +664,9 @@ export class ZainiiAuditService implements OnModuleInit {
             bookNumber,
             argMax(verificationType, updatedAt) AS verificationType,
             argMax(contractTotalAmount, updatedAt) AS contractTotalAmount,
+            argMax(contractDate, updatedAt) AS contractDate,
+            argMax(contractNumber, updatedAt) AS contractNumber,
+            argMax(remainingAmount, updatedAt) AS remainingAmount,
             argMax(status, updatedAt) AS status,
             argMax(comment, updatedAt) AS comment
           FROM avlaga_verifications
@@ -924,10 +995,13 @@ export class ZainiiAuditService implements OnModuleInit {
       dto.comment === undefined &&
       dto.verificationType === undefined &&
       dto.contractTotalAmount === undefined &&
+      dto.contractDate === undefined &&
+      dto.contractNumber === undefined &&
+      dto.remainingAmount === undefined &&
       dto.status === undefined
     ) {
       throw new BadRequestException(
-        "Тайлбар, төрөл, гэрээний дүн, статусын аль нэгийг дамжуулна уу",
+        "Тайлбар, төрөл, гэрээний дүн/дугаар/огноо, үлдэгдэл төлбөр, статусын аль нэгийг дамжуулна уу",
       );
     }
 
@@ -949,6 +1023,18 @@ export class ZainiiAuditService implements OnModuleInit {
         dto.contractTotalAmount !== undefined
           ? dto.contractTotalAmount
           : (current?.contractTotalAmount ?? 0),
+      contractDate:
+        dto.contractDate !== undefined
+          ? dto.contractDate
+          : (current?.contractDate ?? ""),
+      contractNumber:
+        dto.contractNumber !== undefined
+          ? dto.contractNumber
+          : (current?.contractNumber ?? ""),
+      remainingAmount:
+        dto.remainingAmount !== undefined
+          ? dto.remainingAmount
+          : (current?.remainingAmount ?? 0),
       status: dto.status !== undefined ? dto.status : (current?.status ?? ""),
       updatedBy: user.userId,
       updatedByName: user.name,
@@ -1044,5 +1130,155 @@ export class ZainiiAuditService implements OnModuleInit {
     }
     await this.clickhouse.insert("zainii_audit_settings", rows);
     return this.getSettings();
+  }
+
+  // ── Хамааралтай / Холбоотой (hamaaral / holbootoi — гадны ETL хүснэгт) ──
+  async getExpenseRelations(
+    dto: ExpenseRelationsDto,
+  ): Promise<ExpenseRelationsResult> {
+    const customerCodes = Array.from(new Set(dto.customerCodes.map(String)));
+
+    const [hamaaralRows, holbootoiRows] = await Promise.all([
+      this.clickhouse.query<HamaaralRow>(
+        `
+        SELECT
+          ifNull(cif, '') AS cif,
+          ifNull(cifname, '') AS cifname,
+          ifNull(empid, '') AS empid,
+          ifNull(empname, '') AS empname,
+          ifNull(typename, '') AS typename,
+          ifNull(status, '') AS status
+        FROM hamaaral
+        WHERE cif IN ({customerCodes:Array(String)})
+        LIMIT ${MAX_RELATIONS_ROWS}
+        `,
+        { customerCodes },
+      ),
+      this.clickhouse.query<{ cif: string }>(
+        `
+        SELECT DISTINCT cif
+        FROM holbootoi
+        WHERE cif IN ({customerCodes:Array(String)})
+        LIMIT ${MAX_RELATIONS_ROWS}
+        `,
+        { customerCodes },
+      ),
+    ]);
+
+    const hamaaral: Record<string, HamaaralRow[]> = {};
+    for (const row of hamaaralRows) {
+      (hamaaral[row.cif] ??= []).push(row);
+    }
+
+    return {
+      hamaaral,
+      holbootoi: holbootoiRows.map((r) => r.cif),
+    };
+  }
+
+  // ── Зардлын хяналтын Word тайлан ─────────────────────────────────────────
+  /**
+   * Тайлангийн бүх өгөгдлийг цуглуулна — docx үүсгэх нь тусдаа
+   * ZainiiAuditDocxService-ийн үүрэг (энд зөвхөн бизнес логик/тооцоолол).
+   */
+  async getExpenseReportData(
+    dto: GenerateExpenseReportDto,
+  ): Promise<ExpenseReportData> {
+    const overview = await this.getExpenseOverview({
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      minAmount: dto.minAmount,
+    });
+    const activeTypes = await this.listVerificationTypes(true);
+    const scopeCategoryNames = activeTypes.map((t) => t.name);
+
+    const top5: ExpenseReportTop5Row[] = overview.transactions
+      .slice(0, 5)
+      .map((tx) => ({
+        customer_name: tx.customer_name,
+        customer_code: tx.customer_code,
+        debit_amount: Number(tx.debit_amount) || 0,
+        description: tx.description,
+      }));
+
+    // verification_type → customer_code → тухайн харилцагчийн энэ ангилал
+    // доторх бүх мөр (нэг харилцагч хэд хэдэн book_number-тэй байж болно).
+    const byCategory = new Map<string, Map<string, ExpenseTxRow[]>>();
+    let uncategorizedTotal = 0;
+
+    for (const tx of overview.transactions) {
+      const type = (tx.verification_type || "").trim();
+      const amount = Number(tx.debit_amount) || 0;
+      if (!type) {
+        uncategorizedTotal += amount;
+        continue;
+      }
+      let customerMap = byCategory.get(type);
+      if (!customerMap) {
+        customerMap = new Map();
+        byCategory.set(type, customerMap);
+      }
+      const bucket = customerMap.get(tx.customer_code);
+      if (bucket) bucket.push(tx);
+      else customerMap.set(tx.customer_code, [tx]);
+    }
+
+    const categories: ExpenseReportCategory[] = [];
+    for (const name of scopeCategoryNames) {
+      const customerMap = byCategory.get(name);
+      if (!customerMap || customerMap.size === 0) continue;
+
+      let categoryTotal = 0;
+      const customers: ExpenseReportCategoryCustomerRow[] = [];
+      for (const [customerCode, rows] of customerMap) {
+        // Нэг харилцагч тухайн ангилалд хэд хэдэн book_number-тэй байж
+        // болно — гэрээний дэлгэрэнгүй (огноо/дүн/зориулалт/төсөв)-ийг хамгийн
+        // сүүлийн (book_date-ээр) гүйлгээнээс авна, харин "төлсөн дүн"-г
+        // БҮХ book_number-ээр нийлбэрлэнэ.
+        const sorted = [...rows].sort((a, b) =>
+          b.book_date.localeCompare(a.book_date),
+        );
+        const latest = sorted[0];
+        const paidAmount = rows.reduce(
+          (sum, r) => sum + (Number(r.debit_amount) || 0),
+          0,
+        );
+        categoryTotal += paidAmount;
+        const contractTotal = Number(latest.contract_total_amount) || 0;
+        // Аудитор "Үлдэгдэл төлбөр"-ийг гараар оруулсан бол (жишээ нь
+        // avlaga-д тусгагдаагүй төлбөр байгаа тул тооцоолсон утга бодит
+        // байдалтай зөрдөг тохиолдолд) түүнийг илүүд үзнэ; эс бөгөөс
+        // Гэрээний нийт дүн − Төлсөн дүн-ээр тооцоолно.
+        const manualRemaining = Number(latest.remaining_amount) || 0;
+        customers.push({
+          customer_code: customerCode,
+          customer_name: latest.customer_name,
+          description: latest.description,
+          contract_date: latest.contract_date,
+          contract_number: latest.contract_number,
+          contract_total_amount: contractTotal,
+          paid_amount: paidAmount,
+          remaining_amount:
+            manualRemaining > 0 ? manualRemaining : contractTotal - paidAmount,
+          budget_type: latest.budget_type,
+        });
+      }
+      customers.sort((a, b) => b.paid_amount - a.paid_amount);
+      categories.push({ name, totalAmount: categoryTotal, customers });
+    }
+
+    return {
+      reportNumber: dto.reportNumber,
+      conclusionText: dto.conclusionText ?? "",
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      minAmount: dto.minAmount ?? DEFAULT_MIN_AMOUNT,
+      scopeCategoryNames,
+      qualifyingCount: overview.qualifyingCount,
+      qualifyingTotalDebit: overview.qualifyingTotalDebit,
+      top5,
+      categories,
+      uncategorizedTotal,
+    };
   }
 }

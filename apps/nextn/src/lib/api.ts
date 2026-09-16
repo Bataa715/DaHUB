@@ -791,6 +791,9 @@ export interface ExpenseTxRow {
   has_verification: 0 | 1;
   verification_type: string;
   contract_total_amount: number;
+  contract_date: string;
+  contract_number: string;
+  remaining_amount: number;
   verification_status: string;
   comment: string;
   budget_type: string;
@@ -801,6 +804,9 @@ export interface ExpenseVerificationRow {
   comment: string;
   verificationType: string;
   contractTotalAmount: number;
+  contractDate: string;
+  contractNumber: string;
+  remainingAmount: number;
   status: string;
   updatedBy: string;
   updatedByName: string;
@@ -925,6 +931,30 @@ export interface ZainiiAuditSettings {
   defaultDaysBack: number;
 }
 
+// ── Хамааралтай / Холбоотой (hamaaral / holbootoi) ──────────────────────
+export interface HamaaralRow {
+  cif: string;
+  cifname: string;
+  empid: string;
+  empname: string;
+  typename: string;
+  status: string;
+}
+
+export interface ExpenseRelationsResult {
+  hamaaral: Record<string, HamaaralRow[]>;
+  holbootoi: string[];
+}
+
+// ── Зайны аудит: Word тайлан ─────────────────────────────────────────────
+export interface GenerateExpenseReportRequest {
+  startDate: string;
+  endDate: string;
+  minAmount?: number;
+  reportNumber: string;
+  conclusionText?: string;
+}
+
 export const zainiiAuditExpenseApi = {
   getOverview: async (
     req: ExpenseOverviewRequest,
@@ -971,6 +1001,9 @@ export const zainiiAuditExpenseApi = {
     comment?: string;
     verificationType?: string;
     contractTotalAmount?: number;
+    contractDate?: string;
+    contractNumber?: string;
+    remainingAmount?: number;
     status?: ExpenseVerificationStatus;
   }): Promise<ExpenseVerificationRow> => {
     const res = await api.post("/zainii-audit/expense-verification", req, {
@@ -1041,6 +1074,29 @@ export const zainiiAuditExpenseApi = {
       { timeout: TIMEOUT_LONG },
     );
     return res.data;
+  },
+
+  // ── Хамааралтай / Холбоотой ─────────────────────────────────────────────
+  getExpenseRelations: async (
+    customerCodes: string[],
+  ): Promise<ExpenseRelationsResult> => {
+    const res = await api.post(
+      "/zainii-audit/expense-relations",
+      { customerCodes },
+      { timeout: TIMEOUT_LONG },
+    );
+    return res.data;
+  },
+
+  // ── Word тайлан ─────────────────────────────────────────────────────────
+  downloadExpenseReportDocx: async (
+    req: GenerateExpenseReportRequest,
+  ): Promise<Blob> => {
+    const res = await api.post("/zainii-audit/expense-report-docx", req, {
+      responseType: "blob",
+      timeout: TIMEOUT_LONG,
+    });
+    return res.data as Blob;
   },
 };
 
