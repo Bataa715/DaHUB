@@ -132,7 +132,7 @@ describe("SuperAdminGuard", () => {
   });
 
   it("ЭНГИЙН АДМИНЫГ ТАТГАЛЗАНА — энэ нь AdminGuard-аас ялгарах гол цэг", () => {
-    // Зайны аудит / python-api / oracle тохиргоо зэрэг нь superadmin-only.
+    // Зайны аудит / системийн лог / oracle тохиргоо зэрэг нь superadmin-only.
     expect(() =>
       guard.canActivate(ctx({ isAdmin: true, isSuperAdmin: false })),
     ).toThrow(ForbiddenException);

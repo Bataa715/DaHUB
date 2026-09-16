@@ -2,8 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 
 /**
  * BadRequestException variant whose message IS safe to show to the client
- * as-is (curated, non-sensitive text — e.g. Python sandbox validation
- * errors like "import зөвшөөрөгдөхгүй"). The global AllExceptionsFilter
+ * as-is (curated, non-sensitive text). The global AllExceptionsFilter
  * masks all other 400s with a generic message to avoid leaking internal
  * details; this class opts a specific error out of that masking.
  *

@@ -12,7 +12,6 @@ const PUBLIC_ROUTES = ["/login", "/admin/login"];
 // departments, homepage ethics, admin management, reports) is superadmin-only.
 const SUPERADMIN_ROUTES = [
   "/admin/admins",
-  "/admin/reports",
   "/admin/users",
   "/admin/registrations",
   "/admin/medleg",
@@ -41,10 +40,20 @@ const TOOL_GUARDS: Record<string, string[]> = {
   "/tools/risk-assessment/work": ["risk_assessment"],
   "/tools/risk-assessment": ["risk_assessment", "risk_assessment_report"],
   "/tools/alert-box": ["alert_box"],
-  "/tools/reports": ["reports"],
+  // Салбарын аудит — эрхийн id нь хуучин "reports" хэвээр (DB өгөгдөл).
+  "/tools/salbar-audit": ["reports"],
   // Зайны аудит: аль нэг дэд эрх байвал хуудас нээгдэнэ; дотор нь ямар
   // карт харагдахыг page.tsx эрхийн дагуу шүүнэ.
+  "/tools/zainii-audit/related-party": ["zainii_audit_rpt"],
+  "/tools/zainii-audit/expense": ["zainii_audit_expense"],
   "/tools/zainii-audit": ["zainii_audit_rpt", "zainii_audit_expense"],
+  // Сүлжээний шинжилгээ — хоёр дашбоард тус бүр өөрийн эрхтэй
+  "/tools/network-analysis/config-changes": ["net_config_changes"],
+  "/tools/network-analysis/xdr": ["net_xdr"],
+  "/tools/network-analysis": ["net_config_changes", "net_xdr"],
+  // Сөрөг мэдээ — бүртгэл оруулах (хэрэгсэл) ба дашбоард тусдаа эрхтэй
+  "/tools/negative-news/dashboard": ["negative_news_dashboard"],
+  "/tools/negative-news": ["negative_news_upload"],
 };
 
 async function getTokenPayload(token: string | undefined) {
@@ -142,11 +151,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Legacy tools grid — sidebar is primary nav
-  if (pathname === "/tools") {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
   //  Tool route permission check
   // [AUDIT] Токен хугацаа дууссан ч refreshToken-той нэвтэрч буй үед
   // (silent refresh pass-through) эрхийн шалгалтыг алгасахгүй — хуучирсан
@@ -189,8 +193,7 @@ export async function proxy(request: NextRequest) {
         }
         const hasAccess = requiredTools.some((t) => userTools.includes(t));
         if (!hasAccess) {
-          // "/tools" grid is no longer the primary nav surface (sidebar is) —
-          // send unauthorized tool visits back to the home page instead.
+          // Эрхгүй хэрэгсэл рүү шууд хандвал нүүр хуудас руу буцаана.
           return NextResponse.redirect(new URL("/", request.url));
         }
       }

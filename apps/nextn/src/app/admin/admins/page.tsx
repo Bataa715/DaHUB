@@ -42,7 +42,7 @@ const ALL_TOOLS: { id: string; name: string; nameKey?: TranslationKey }[] = [
     name: "Эрх олгогч",
     nameKey: "admAdminsToolAccessGranter",
   },
-  { id: "reports", name: "Тайлан татах", nameKey: "toolReportsTitle" },
+  { id: "reports", name: "Салбарын аудит", nameKey: "toolBranchAuditTitle" },
   { id: "alert_box", name: "Alert Box", nameKey: "toolAlertBoxTitle" },
   {
     id: "risk_assessment",

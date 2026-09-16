@@ -95,7 +95,7 @@ export default function RedFlagPage() {
     return (
       <div
         key={chain.id}
-        className="bg-surface-card rounded-xl border border-surface-border overflow-hidden"
+        className="rounded-2xl border border-surface-border bg-surface-card overflow-hidden"
       >
         <button
           onClick={() => toggleExpand(chain.id)}
@@ -108,15 +108,15 @@ export default function RedFlagPage() {
               {chain.id}
             </span>
             <div className="flex-1 min-w-0 text-left">
-              <h3 className="text-[13px] font-bold text-txt truncate">
+              <h3 className="text-sm font-bold text-txt truncate">
                 {chain.name}
               </h3>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-elevated text-txt-dim font-mono">
+                <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface-elevated text-txt-dim font-mono">
                   DB{chain.sourceIds.join("+")}
                 </span>
                 <ArrowRight size={10} className="text-txt-dim" />
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-elevated text-txt-dim font-mono">
+                <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface-elevated text-txt-dim font-mono">
                   DB{chain.targetIds.join("+")}
                 </span>
               </div>
@@ -124,7 +124,7 @@ export default function RedFlagPage() {
           </div>
           <div className="flex items-center gap-3">
             <div
-              className={`px-2.5 py-1 rounded-lg border text-[12px] font-bold ${s.bg} ${s.border} ${s.text}`}
+              className={`px-2.5 py-1 rounded-lg border text-xs font-bold ${s.bg} ${s.border} ${s.text}`}
             >
               {chain.matchCount}
             </div>
@@ -144,13 +144,13 @@ export default function RedFlagPage() {
 
             <div className="flex items-center gap-3 p-3 bg-surface-card rounded-lg border border-surface-border">
               <div className="flex-1 text-center p-2 rounded-lg bg-blue-500/5 border border-blue-500/15">
-                <p className="text-[10px] font-semibold text-blue-400">
+                <p className="text-[11px] font-semibold text-blue-400">
                   {chain.sourceLabel}
                 </p>
               </div>
               <ArrowRight size={16} className="text-txt-dim shrink-0" />
               <div className="flex-1 text-center p-2 rounded-lg bg-red-500/5 border border-red-500/15">
-                <p className="text-[10px] font-semibold text-red-400">
+                <p className="text-[11px] font-semibold text-red-400">
                   {chain.targetLabel}
                 </p>
               </div>
@@ -162,7 +162,7 @@ export default function RedFlagPage() {
               </p>
             ) : (
               <div>
-                <p className="text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-2">
+                <p className="text-xs font-semibold text-txt-dim mb-2">
                   {t("redflagTotalMatches")} ({chain.matchCount})
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -172,13 +172,13 @@ export default function RedFlagPage() {
                       onClick={() =>
                         router.push(`/tools/alert-box/search?cif=${cif}`)
                       }
-                      className={`px-2 py-1 rounded-md text-[10px] font-mono font-medium transition-colors hover:opacity-80 ${s.bg} ${s.border} border ${s.text}`}
+                      className={`px-2 py-1 rounded-md text-[11px] font-mono font-medium transition-colors hover:opacity-80 ${s.bg} ${s.border} border ${s.text}`}
                     >
                       {cif}
                     </button>
                   ))}
                   {chain.matchCount > chain.matches.length && (
-                    <span className="px-2 py-1 text-[10px] text-txt-dim">
+                    <span className="px-2 py-1 text-[11px] text-txt-dim">
                       +{chain.matchCount - chain.matches.length}{" "}
                       {t("abRedflagMoreLabel")}
                     </span>
@@ -237,12 +237,12 @@ export default function RedFlagPage() {
       <div key={group.range}>
         <div className="flex items-center gap-2 mb-3">
           <Icon size={14} className={group.iconClass} />
-          <h2 className="text-[13px] font-bold text-txt">{group.title}</h2>
-          <span className="text-[10px] text-txt-dim">
+          <h2 className="text-sm font-bold text-txt">{group.title}</h2>
+          <span className="text-[11px] text-txt-dim">
             (Chain {group.range}, {chains.length})
           </span>
         </div>
-        <p className="text-[10px] text-txt-muted mb-3">{group.hint}</p>
+        <p className="text-[11px] text-txt-muted mb-3">{group.hint}</p>
         <div className="space-y-2">{chains.map(renderChain)}</div>
       </div>
     );
@@ -258,7 +258,7 @@ export default function RedFlagPage() {
 
   return (
     <div className="space-y-5">
-      <div className="px-6 flex items-center justify-between gap-3">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Flag size={16} className="text-red-400 shrink-0" />
           <h1 className="text-sm font-bold text-txt truncate">Red Flag</h1>
@@ -274,44 +274,42 @@ export default function RedFlagPage() {
           />
         </button>
       </div>
-      <div className="px-6 space-y-5">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-5">
         {loading && (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-red-400" />
-            <span className="text-[12px] text-txt-dim ml-3">
+            <span className="text-xs text-txt-dim ml-3">
               {t("redflagLoading")}
             </span>
           </div>
         )}
 
         {error && (
-          <p className="text-red-400 text-[12px] text-center py-8">{error}</p>
+          <p className="text-red-400 text-xs text-center py-8">{error}</p>
         )}
 
         {data && !loading && (
           <div className="space-y-5">
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-surface-card rounded-xl border border-surface-border p-4 text-center">
+              <div className="rounded-2xl border border-surface-border bg-surface-card p-4 text-center">
                 <p className="text-2xl font-extrabold text-txt">
                   {data.totalChains}
                 </p>
-                <p className="text-[10px] text-txt-dim uppercase">
+                <p className="text-[11px] text-txt-dim">
                   {t("redflagTotalRules")}
                 </p>
               </div>
-              <div className="bg-surface-card rounded-xl border border-surface-border p-4 text-center">
+              <div className="rounded-2xl border border-surface-border bg-surface-card p-4 text-center">
                 <p className="text-2xl font-extrabold text-red-400">
                   {data.triggeredChains}
                 </p>
-                <p className="text-[10px] text-txt-dim uppercase">
-                  {t("redflagActive")}
-                </p>
+                <p className="text-[11px] text-txt-dim">{t("redflagActive")}</p>
               </div>
-              <div className="bg-surface-card rounded-xl border border-surface-border p-4 text-center">
+              <div className="rounded-2xl border border-surface-border bg-surface-card p-4 text-center">
                 <p className="text-2xl font-extrabold text-amber-400">
                   {data.totalMatches}
                 </p>
-                <p className="text-[10px] text-txt-dim uppercase">
+                <p className="text-[11px] text-txt-dim">
                   {t("redflagTotalMatches")}
                 </p>
               </div>
@@ -325,10 +323,10 @@ export default function RedFlagPage() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Flag size={14} className="text-txt-dim" />
-                  <h2 className="text-[13px] font-bold text-txt">
+                  <h2 className="text-sm font-bold text-txt">
                     {t("admLayoutOtherSectionLabel")}
                   </h2>
-                  <span className="text-[10px] text-txt-dim">
+                  <span className="text-[11px] text-txt-dim">
                     ({otherChains.length})
                   </span>
                 </div>

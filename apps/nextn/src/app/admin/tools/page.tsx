@@ -22,12 +22,15 @@ import {
   Wrench,
   Dice6,
   Database,
-  FileSpreadsheet,
+  Building2,
   BellDot,
   Search,
   UserMinus,
   ShieldAlert,
   Activity,
+  PenLine,
+  Network,
+  Newspaper,
 } from "lucide-react";
 import Link from "next/link";
 import { usersApi } from "@/lib/api";
@@ -95,16 +98,15 @@ const TOOL_GROUPS: ToolGroup[] = [
     ],
   },
   {
+    // Салбарын аудит — эрхийн id нь хуучин "reports" хэвээр (DB өгөгдөл).
     id: "reports",
     category: "tool",
-    nameKey: "toolReportsTitle",
-    descKey: "admToolsPageReportsDesc",
-    icon: FileSpreadsheet,
+    nameKey: "toolBranchAuditTitle",
+    descKey: "toolBranchAuditDesc",
+    icon: Building2,
     color: "from-emerald-500 to-violet-500",
     gradient: "bg-gradient-to-br from-emerald-500/20 to-violet-500/20",
-    adminPath: "/admin/reports",
-    adminLabelKey: "admToolsPageReportArrow",
-    variants: [{ id: "reports", labelKey: "toolReportsTitle" }],
+    variants: [{ id: "reports", labelKey: "toolBranchAuditTitle" }],
   },
   {
     id: "alert_box",
@@ -149,6 +151,48 @@ const TOOL_GROUPS: ToolGroup[] = [
     variants: [
       { id: "zainii_audit_rpt", labelKey: "zaBoxRelatedPartyTitle" },
       { id: "zainii_audit_expense", labelKey: "zaBoxExpenseTitle" },
+    ],
+  },
+  {
+    id: "negative_news",
+    category: "tool",
+    nameKey: "nnToolTitle",
+    descKey: "admToolsPageNegativeNewsDesc",
+    icon: Newspaper,
+    color: "from-rose-500 to-pink-600",
+    gradient: "bg-gradient-to-br from-rose-500/20 to-pink-600/20",
+    variants: [
+      { id: "negative_news_upload", labelKey: "nnPermUpload" },
+      { id: "negative_news_dashboard", labelKey: "nnDashboardTitle" },
+    ],
+  },
+  {
+    id: "network_analysis",
+    category: "dashboard",
+    nameKey: "netGroupTitle",
+    descKey: "admToolsPageNetworkDesc",
+    icon: Network,
+    color: "from-orange-500 to-sky-600",
+    gradient: "bg-gradient-to-br from-orange-500/20 to-sky-600/20",
+    variants: [
+      { id: "net_config_changes", labelKey: "netConfigTitle" },
+      { id: "net_xdr", labelKey: "netXdrTitle" },
+    ],
+  },
+  {
+    // Унших нь бүх ажилтанд нээлттэй — энэ эрх нь зөвхөн үүсгэх эрх.
+    id: "dag_news",
+    category: "tool",
+    nameKey: "navNews",
+    descKey: "admToolsPageDagNewsDesc",
+    icon: PenLine,
+    color: "from-blue-500 to-indigo-600",
+    gradient: "bg-gradient-to-br from-blue-500/20 to-indigo-600/20",
+    adminPath: "/admin/medleg",
+    adminLabelKey: "admToolsPageSettingsArrow",
+    variants: [
+      { id: "medleg_write", labelKey: "knowledgeShare" },
+      { id: "quiz_write", labelKey: "quizCreateBtn" },
     ],
   },
 ];

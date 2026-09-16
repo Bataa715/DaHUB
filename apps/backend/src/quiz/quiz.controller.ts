@@ -12,6 +12,8 @@ import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
 import { QuizService } from "./quiz.service";
 import { CreateQuizDto, AnswerQuizDto } from "./dto/quiz.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ToolGuard } from "../auth/guards/tool.guard";
+import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
 
 // [ROUTE ORDER] Энэ controller-ийг QuizModule нь app.module.ts дотор
@@ -24,7 +26,9 @@ import { AuthenticatedRequest } from "../common/types/authenticated-request";
 export class QuizController {
   constructor(private quizService: QuizService) {}
 
-  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  // Quiz үүсгэхэд тусдаа эрх — бөглөх нь бүх ажилтанд нээлттэй.
+  @UseGuards(JwtAuthGuard, ToolGuard, ThrottlerGuard)
+  @RequireTools("quiz_write")
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post()
   async create(
@@ -48,10 +52,7 @@ export class QuizController {
 
   @UseGuards(JwtAuthGuard)
   @Get(":id/results")
-  async results(
-    @Param("id") id: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
+  async results(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     return this.quizService.results(id, req.user.id, !!req.user.isAdmin);
   }
 
@@ -68,10 +69,7 @@ export class QuizController {
 
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
-  async remove(
-    @Param("id") id: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
+  async remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
     return this.quizService.remove(id, req.user.id, !!req.user.isAdmin);
   }
 }

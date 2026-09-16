@@ -22,8 +22,6 @@ function prodEnv(over: Record<string, string> = {}) {
   return baseEnv({
     NODE_ENV: "production",
     CLICKHOUSE_PASSWORD: "secret",
-    PYTHON_SERVICE_URL: "http://python:8001",
-    PYTHON_API_KEY: "key",
     COOKIE_SECURE: "true",
     CONFIG_ENC_KEY: "b".repeat(32),
     ...over,
@@ -85,24 +83,6 @@ describe("collectEnvIssues — зөвхөн production", () => {
     expect(errors.some((e) => e.includes("CLICKHOUSE_PASSWORD"))).toBe(true);
   });
 
-  it("PYTHON_API_URL нь PYTHON_SERVICE_URL-ийг орлож чадна", () => {
-    const env = prodEnv({ PYTHON_API_URL: "http://python:8001" });
-    delete (env as Record<string, string>).PYTHON_SERVICE_URL;
-    expect(collectEnvIssues(env).errors).toEqual([]);
-  });
-
-  it("Python URL хоёулаа дутуу бол алдаа", () => {
-    const env = prodEnv();
-    delete (env as Record<string, string>).PYTHON_SERVICE_URL;
-    const { errors } = collectEnvIssues(env);
-    expect(errors.some((e) => e.includes("PYTHON_SERVICE_URL"))).toBe(true);
-  });
-
-  it("PYTHON_API_KEY дутуу бол алдаа (сервис рүү код илгээдэг)", () => {
-    const { errors } = collectEnvIssues(prodEnv({ PYTHON_API_KEY: "" }));
-    expect(errors.some((e) => e.includes("PYTHON_API_KEY"))).toBe(true);
-  });
-
   it("COOKIE_SECURE дутуу бол алдаа", () => {
     const { errors } = collectEnvIssues(prodEnv({ COOKIE_SECURE: "" }));
     expect(errors.some((e) => e.includes("COOKIE_SECURE"))).toBe(true);
@@ -140,7 +120,7 @@ describe("collectEnvIssues — зөвхөн production", () => {
   });
 
   it("development дээр prod-ын шаардлагууд хэрэглэгдэхгүй", () => {
-    // CLICKHOUSE_PASSWORD, PYTHON_*, COOKIE_SECURE байхгүй ч алдаагүй
+    // CLICKHOUSE_PASSWORD, COOKIE_SECURE байхгүй ч алдаагүй
     expect(collectEnvIssues(baseEnv()).errors).toEqual([]);
   });
 });

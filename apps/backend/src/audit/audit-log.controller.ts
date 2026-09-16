@@ -5,8 +5,11 @@ import { AuditLogService } from "./audit-log.service";
 
 /**
  * Нэгдсэн Log таб-ын backend — зөвхөн super admin. Бүх төрлийн логийг нэг
- * дороос харах: audit (мутаци), нэвтрэх оролдлого. (Python run-log нь
- * python-api/admin/run-logs endpoint-оос ирнэ.)
+ * дороос харах: audit (мутаци), нэвтрэх оролдлого.
+ *
+ * [ROUTE] Прод дээр nginx нь Nest-ийн prefix бүрийг тусад нь чиглүүлдэг.
+ * `/users/audit-logs` нь UsersController дээр байгаа (nginx `/users/` нээлттэй).
+ * Энэ controller нь `/audit-logs` prefix-д үлдэнэ.
  */
 @Controller("audit-logs")
 @UseGuards(JwtAuthGuard, SuperAdminGuard)

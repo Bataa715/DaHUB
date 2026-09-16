@@ -18,6 +18,8 @@ import { MedlegService } from "./medleg.service";
 import { CreateMedlegDto, UpdateMedlegDto } from "./dto/medleg.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
+import { ToolGuard } from "../auth/guards/tool.guard";
+import { RequireTools } from "../auth/guards/require-tools.decorator";
 import { AuditLogService } from "../audit/audit-log.service";
 import { AuthenticatedRequest } from "../common/types/authenticated-request";
 import { errMessage } from "../common/utils/error-message";
@@ -36,13 +38,6 @@ export class MedlegController {
     const take = Math.min(Number(limit), 200);
     const skip = (Number(page) - 1) * take;
     return this.medlegService.findAll(true, take, skip); // always published=true
-  }
-
-  // Top publishers leaderboard (by total views) — must be before :id
-  @UseGuards(JwtAuthGuard)
-  @Get("stats/top-publishers")
-  async topPublishers() {
-    return this.medlegService.getTopPublishers();
   }
 
   // ── Admin management (view/edit/delete ANY post, incl. unpublished) ──────
@@ -122,12 +117,14 @@ export class MedlegController {
   // Authenticated users only
   @UseGuards(JwtAuthGuard)
   @Get(":id")
-  async findOne(@Param("id") id: string, @Request() req) {
-    return this.medlegService.findOne(id, req.user.id);
+  async findOne(@Param("id") id: string) {
+    return this.medlegService.findOne(id);
   }
 
-  // Any authenticated user can create мэдлэг
-  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  // Нийтлэл үүсгэхэд тусдаа эрх шаардана (унших нь бүх ажилтанд нээлттэй).
+  // Админ/супер админ ToolGuard-ыг давна.
+  @UseGuards(JwtAuthGuard, ToolGuard, ThrottlerGuard)
+  @RequireTools("medleg_write")
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post()
   async create(@Body() createMedlegDto: CreateMedlegDto, @Request() req) {
@@ -168,58 +165,5 @@ export class MedlegController {
   @Delete(":id")
   async remove(@Param("id") id: string, @Request() req) {
     return this.medlegService.removeByOwner(id, req.user.id);
-  }
-
-  // ── Reactions ────────────────────────────────────────────────────────────
-  @UseGuards(JwtAuthGuard)
-  @Get(":id/reactions")
-  async getReactions(@Param("id") id: string, @Request() req) {
-    return this.medlegService.getReactions(id, req.user.id);
-  }
-
-  @UseGuards(JwtAuthGuard, ThrottlerGuard)
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
-  @Post(":id/react")
-  async react(
-    @Param("id") id: string,
-    @Body() body: { emoji: string },
-    @Request() req,
-  ) {
-    return this.medlegService.react(id, req.user.id, body.emoji);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete(":id/react")
-  async removeReaction(@Param("id") id: string, @Request() req) {
-    return this.medlegService.removeReaction(id, req.user.id);
-  }
-
-  // ── Comments ─────────────────────────────────────────────────────────────
-  @UseGuards(JwtAuthGuard)
-  @Get(":id/comments")
-  async getComments(@Param("id") id: string) {
-    return this.medlegService.getComments(id);
-  }
-
-  @UseGuards(JwtAuthGuard, ThrottlerGuard)
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
-  @Post(":id/comments")
-  async addComment(
-    @Param("id") id: string,
-    @Body() body: { content: string },
-    @Request() req,
-  ) {
-    return this.medlegService.addComment(
-      id,
-      req.user.id,
-      req.user.name ?? "",
-      body.content,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete(":id/comments/:commentId")
-  async deleteComment(@Param("commentId") commentId: string, @Request() req) {
-    return this.medlegService.deleteComment(commentId, req.user.id);
   }
 }

@@ -228,8 +228,9 @@ export default function RiskReportsPage() {
   const [comparisonJudgements, setComparisonJudgements] = useState<
     Record<string, number>
   >({});
-  const [, setComparisonJudgementComments] =
-    useState<Record<string, string>>({});
+  const [, setComparisonJudgementComments] = useState<Record<string, string>>(
+    {},
+  );
   const [loadingComparison, setLoadingComparison] = useState(false);
   const [compareOptOut, setCompareOptOut] = useState(false);
 
@@ -260,9 +261,7 @@ export default function RiskReportsPage() {
         const latest =
           dates?.[0] ||
           (history?.[0]?.pDate ? history[0].pDate.slice(0, 10) : "");
-        const month = latest
-          ? monthKeyFromDate(latest)
-          : currentMonthKey();
+        const month = latest ? monthKeyFromDate(latest) : currentMonthKey();
         const prev = prevMonthKey(month);
         setFilterMonth(month);
         setCompareMonth(prev);
@@ -337,19 +336,13 @@ export default function RiskReportsPage() {
       try {
         const cached = riskbranchDatesRef.current;
         const dates =
-          cached.length > 0
-            ? cached
-            : await riskApi.listRiskbranchDates();
+          cached.length > 0 ? cached : await riskApi.listRiskbranchDates();
         if (cancelled || gen !== monthLoadGen.current) return;
         if (cached.length === 0 && dates.length > 0) {
           setRiskbranchDates(dates);
         }
 
-        const primaryPromise = loadRiskbranchMonth(
-          filterMonth,
-          catalog,
-          dates,
-        );
+        const primaryPromise = loadRiskbranchMonth(filterMonth, catalog, dates);
         const comparePromise = compareMonth
           ? loadRiskbranchMonth(compareMonth, catalog, dates)
           : Promise.resolve(null);
@@ -395,9 +388,7 @@ export default function RiskReportsPage() {
         setLoadingComparison(false);
       } catch (e: unknown) {
         if (cancelled || gen !== monthLoadGen.current) return;
-        setErrorMsg(
-          getApiErrorMessage(e) || t("raTailanPageMonthLoadError"),
-        );
+        setErrorMsg(getApiErrorMessage(e) || t("raTailanPageMonthLoadError"));
         setReportRows([]);
         setComparisonRows([]);
         setLoadingComparison(false);
@@ -548,13 +539,7 @@ export default function RiskReportsPage() {
       .filter((h) => h.id !== selectedReportId && h.pDate < selP)
       .sort((a, b) => b.pDate.localeCompare(a.pDate));
     setComparisonReportId(earlier[0]?.id ?? "");
-  }, [
-    filterMode,
-    selectedReportId,
-    historyList,
-    compareOptOut,
-    compareMonth,
-  ]);
+  }, [filterMode, selectedReportId, historyList, compareOptOut, compareMonth]);
 
   const openDeleteConfirm = useCallback((id: string) => {
     setDeleteTargetId(id);
@@ -618,8 +603,7 @@ export default function RiskReportsPage() {
 
   /** Хүснэгт байвал ачаалж байхад бүү нуу */
   const showReportTable =
-    reportRows.length > 0 &&
-    !(filterMode === "quarter" && !selectedReportId);
+    reportRows.length > 0 && !(filterMode === "quarter" && !selectedReportId);
 
   const isRefreshing = Boolean(
     showReportTable && (loadingReport || loadingComparison),
@@ -644,7 +628,7 @@ export default function RiskReportsPage() {
             }
           }}
           className={cn(
-            "h-6 px-2.5 rounded text-[10px] font-semibold transition-colors",
+            "h-6 px-2.5 rounded text-[11px] font-semibold transition-colors",
             filterMode === "month"
               ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
               : "text-muted-foreground hover:text-foreground",
@@ -665,7 +649,7 @@ export default function RiskReportsPage() {
             }
           }}
           className={cn(
-            "h-6 px-2.5 rounded text-[10px] font-semibold transition-colors",
+            "h-6 px-2.5 rounded text-[11px] font-semibold transition-colors",
             filterMode === "quarter"
               ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
               : "text-muted-foreground hover:text-foreground",
@@ -764,7 +748,7 @@ export default function RiskReportsPage() {
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
-          <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+          <span className="text-xs font-semibold text-muted-foreground shrink-0">
             {t("raReportViewPrevCol")}
           </span>
           <select
@@ -797,9 +781,9 @@ export default function RiskReportsPage() {
   );
 
   return (
-    <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-gradient-to-br from-background via-background to-emerald-500/[0.02] text-foreground flex flex-col">
+    <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-background text-foreground flex flex-col">
       <ToolPageHeader
-        href="/tools/risk-assessment"
+        href="/risk-assessment/salbar"
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
         title={t("riskReportPageTitle")}
         rightContent={
@@ -808,7 +792,7 @@ export default function RiskReportsPage() {
               <button
                 type="button"
                 onClick={() => setCsvModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-xs font-semibold hover:bg-sky-500/20 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-sky-500/40 bg-sky-500/10 text-primary text-xs font-semibold hover:bg-sky-500/20 transition-colors"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 {t("raTailanPageDownloadBtn")}
@@ -818,9 +802,9 @@ export default function RiskReportsPage() {
         }
       />
 
-      <div className="container mx-auto px-4 py-6 space-y-5 flex-1 min-w-0 w-full max-w-[1800px]">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex-1 space-y-5 py-6">
         {errorMsg && (
-          <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
+          <div className="rounded-xl border border-red-500/30 bg-destructive/10 p-4 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1 text-xs text-red-600/80">{errorMsg}</div>
             <button
@@ -843,13 +827,13 @@ export default function RiskReportsPage() {
         ) : filterMode === "month" &&
           riskbranchDates.length === 0 &&
           !filterMonth ? (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
               {t("raTailanPageNoRiskbranchData")}
             </div>
           </div>
         ) : monthHasNoData ? (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
               {formatMonthMn(filterMonth)}
               {t("raTailanPageNoDataForMonth")}
@@ -859,7 +843,7 @@ export default function RiskReportsPage() {
             </div>
           </div>
         ) : filterMode === "quarter" && historyList.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
               <Bookmark className="w-6 h-6 text-muted-foreground/60" />
             </div>
@@ -871,7 +855,7 @@ export default function RiskReportsPage() {
             </div>
           </div>
         ) : filterMode === "quarter" && !selectedReportId ? (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
             <div className="text-sm font-semibold text-muted-foreground">
               {t("raTailanPageSelectReportAboveHint")}
             </div>
@@ -956,7 +940,7 @@ export default function RiskReportsPage() {
           onClick={() => setDeleteModalOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-premium-xl ring-hairline p-6"
+            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-5">

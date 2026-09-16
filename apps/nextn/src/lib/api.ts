@@ -361,267 +361,37 @@ export const dbAccessApi = {
   },
 };
 
-// ── Python API Tools ──────────────────────────────────────────────────────────
-
-export interface FilterDef {
-  key: string;
-  label: string;
-  placeholder?: string;
-  required?: boolean;
-  /** "list" — олон утга (CIF/дугаар зэрэг) шинэ мөр эсвэл ","-аар зааглаж
-   * нэг талбарт оруулах боломжтой textarea. Дараа нь Python код талд
-   * `filters["<key>"]` нь ","-аар холбогдсон нэг string байдлаар ирнэ —
-   * `filters["<key>"].split(",")` гэж бичиж жагсаалт болгоно. */
-  type?: "text" | "list";
-}
-
-export interface PythonTool {
+// ── Систем лог (Админ → Систем лог) ─────────────────────────────────────────
+// [ROUTE] `/users/` nginx-д нээлттэй тул `/users/audit-logs` ашиглана.
+export interface AuditLogRow {
   id: string;
-  name: string;
-  apiPath: string;
-  description: string;
-  connectionType: "clickhouse" | "oracle" | "clickhouse_oracle";
-  outputFormat: "excel" | "csv";
-  dateMode: "none" | "single" | "range";
-  color: string;
-  filters: string; // JSON string of FilterDef[]
+  userId: string;
+  action: string;
+  resource: string;
+  resourceId?: string;
+  method?: string;
+  status: string;
+  errorMessage?: string;
+  metadata?: Record<string, unknown>;
   createdAt: string;
-  updatedAt: string;
-  isActive: number;
 }
 
-export interface PythonToolAdmin extends PythonTool {
-  pythonCode: string;
-  connectionConfig: string; // JSON string (ClickHouse/Oracle/MSSQL параметрүүд)
+export interface LoginAttemptRow {
+  lockKey: string;
+  attemptedAt: string;
+  success: boolean;
 }
 
-export const pythonToolApi = {
-  // ── User ──────────────────────────────────────────────────────────────────
-  getTools: async (): Promise<PythonTool[]> => {
-    const res = await api.get("/python-api/tools");
-    return res.data;
+export const auditLogApi = {
+  getAuditLogs: async (limit = 300): Promise<AuditLogRow[]> => {
+    const r = await api.get("/users/audit-logs", { params: { limit } });
+    return r.data;
   },
-
-  runTool: async (
-    toolId: string,
-    startDate?: string,
-    endDate?: string,
-    filters?: Record<string, string>,
-    onProgress?: (pct: number) => void,
-    signal?: AbortSignal,
-  ): Promise<Blob> => {
-    const res = await api.post(
-      "/python-api/run",
-      { toolId, startDate, endDate, filters },
-      {
-        responseType: "blob",
-        timeout: TIMEOUT_LONG,
-        signal,
-        onDownloadProgress: (e) => {
-          if (!onProgress) return;
-          const pct =
-            e.total && e.total > 0
-              ? Math.min(99, Math.round((e.loaded / e.total) * 100))
-              : 0;
-          onProgress(pct);
-        },
-      },
-    );
-    onProgress?.(100);
-    return res.data as Blob;
-  },
-
-  previewTool: async (
-    toolId: string,
-    startDate?: string,
-    endDate?: string,
-    filters?: Record<string, string>,
-    signal?: AbortSignal,
-  ): Promise<{ columns: string[]; rows: unknown[][]; totalCount: number }> => {
-    const res = await api.post(
-      "/python-api/preview",
-      {
-        toolId,
-        startDate,
-        endDate,
-        filters,
-      },
-      { signal, timeout: TIMEOUT_LONG },
-    );
-    return res.data as {
-      columns: string[];
-      rows: unknown[][];
-      totalCount: number;
-    };
-  },
-
-  // ── Admin ─────────────────────────────────────────────────────────────────
-  adminGetAll: async (): Promise<PythonToolAdmin[]> => {
-    const res = await api.get("/python-api/admin/tools");
-    return res.data;
-  },
-
-  adminCreate: async (data: {
-    name: string;
-    apiPath: string;
-    description?: string;
-    pythonCode: string;
-    connectionType?: "clickhouse" | "oracle" | "clickhouse_oracle";
-    connectionConfig?: string;
-    outputFormat?: "excel" | "csv";
-    dateMode?: "none" | "single" | "range";
-    color?: string;
-    filters?: string;
-  }): Promise<PythonToolAdmin> => {
-    const res = await api.post("/python-api/admin/tools", data);
-    return res.data;
-  },
-
-  adminUpdate: async (
-    id: string,
-    data: Partial<{
-      name: string;
-      apiPath: string;
-      description: string;
-      pythonCode: string;
-      connectionType: "clickhouse" | "oracle" | "clickhouse_oracle";
-      connectionConfig: string;
-      outputFormat: "excel" | "csv";
-      dateMode: "none" | "single" | "range";
-      color: string;
-      filters: string;
-    }>,
-  ): Promise<PythonToolAdmin> => {
-    const res = await api.patch(`/python-api/admin/tools/${id}`, data);
-    return res.data;
-  },
-
-  adminToggle: async (
-    id: string,
-    isActive: boolean,
-  ): Promise<PythonToolAdmin> => {
-    const res = await api.patch(`/python-api/admin/tools/${id}/toggle`, {
-      isActive,
-    });
-    return res.data;
-  },
-
-  adminDelete: async (id: string): Promise<void> => {
-    await api.delete(`/python-api/admin/tools/${id}`);
-  },
-
-  adminReorder: async (ids: string[]): Promise<void> => {
-    await api.post("/python-api/admin/tools/reorder", { ids });
-  },
-
-  /** Editor: кодыг ажиллуулахгүйгээр syntax + аюулгүй байдлын шалгалт */
-  adminValidateCode: async (
-    code: string,
-  ): Promise<{
-    ok: boolean;
-    error?: string;
-    warning?: string | null;
-    line?: number | null;
-  }> => {
-    const res = await api.post("/python-api/admin/validate-code", { code });
-    return res.data;
-  },
-
-  /** Editor: хадгалаагүй кодыг шууд тест ажиллуулах (эхний 50 мөр) */
-  adminPreviewCode: async (input: {
-    code: string;
-    connectionType?: string;
-    connectionConfig?: string;
-    startDate?: string;
-    endDate?: string;
-    filters?: Record<string, string>;
-  }): Promise<{ columns: string[]; rows: unknown[][]; totalCount: number }> => {
-    const res = await api.post("/python-api/admin/preview-code", input);
-    return res.data;
-  },
-
-  // ── Permissions ────────────────────────────────────────────────────────────
-
-  adminGetPermissions: async (): Promise<
-    {
-      userId: string;
-      templateId: string;
-      grantedBy: string;
-      grantedAt: string;
-    }[]
-  > => {
-    const res = await api.get("/python-api/admin/permissions");
-    return res.data;
-  },
-
-  adminGrantPermission: async (
-    userId: string,
-    templateId: string,
-  ): Promise<void> => {
-    await api.post("/python-api/admin/permissions", { userId, templateId });
-  },
-
-  adminRevokePermission: async (
-    userId: string,
-    templateId: string,
-  ): Promise<void> => {
-    await api.delete("/python-api/admin/permissions", {
-      data: { userId, templateId },
-    });
-  },
-
-  // ── Run logs ──────────────────────────────────────────────────────────────
-
-  adminGetRunLogs: async (
-    limit = 200,
-  ): Promise<
-    {
-      id: string;
-      userId: string;
-      userName: string;
-      toolId: string;
-      toolName: string;
-      kind?: string;
-      status?: string;
-      startDate?: string;
-      endDate?: string;
-      filtersJson?: string;
-      errorMessage?: string;
-      ranAt: string;
-    }[]
-  > => {
-    const res = await api.get(`/python-api/admin/run-logs?limit=${limit}`);
-    return res.data;
-  },
-
-  adminGetAuditLogs: async (
-    limit = 300,
-  ): Promise<
-    {
-      id: string;
-      userId: string;
-      action: string;
-      resource: string;
-      resourceId?: string;
-      status: string;
-      errorMessage?: string;
-      metadata?: Record<string, unknown>;
-      createdAt: string;
-    }[]
-  > => {
-    const res = await api.get("/python-api/admin/audit-logs", {
+  getLoginAttempts: async (limit = 300): Promise<LoginAttemptRow[]> => {
+    const r = await api.get("/users/audit-logs/login-attempts", {
       params: { limit },
     });
-    return res.data;
-  },
-
-  adminGetLoginAttempts: async (
-    limit = 300,
-  ): Promise<{ lockKey: string; attemptedAt: string; success: boolean }[]> => {
-    const res = await api.get("/python-api/admin/login-attempts", {
-      params: { limit },
-    });
-    return res.data;
+    return r.data;
   },
 };
 
@@ -1376,11 +1146,6 @@ export const knowledgeApi = {
     return r.data;
   },
 
-  getTopPublishers: async () => {
-    const r = await api.get(`${KNOWLEDGE_BACKEND}/stats/top-publishers`);
-    return r.data;
-  },
-
   create: async (data: Record<string, unknown>) => {
     const r = await api.post(KNOWLEDGE_BACKEND, data);
     return r.data;
@@ -1443,7 +1208,7 @@ export const adminKnowledgeApi = {
   },
 };
 
-/** Мэдлэг мэдээлэл хуудасны QUIZ хэсэг */
+/** DAG news хуудасны QUIZ хэсэг */
 export interface QuizQuestionInput {
   question: string;
   options: string[];
@@ -1490,46 +1255,263 @@ export const quizApi = {
   },
 };
 
-export const knowledgeReactionsApi = {
-  get: async (itemId: string) => {
-    const r = await api.get(`${KNOWLEDGE_BACKEND}/${itemId}/reactions`);
-    return r.data as {
-      counts: Record<string, number>;
-      myReaction: string | null;
-    };
+// ─── Сүлжээний шинжилгээ (Palo Alto тохиргооны өөрчлөлт, Defender XDR) ───────
+export type NetRiskLevel = "Critical" | "High" | "Medium" | "Low";
+export type NetReviewStatus = "pending" | "approved" | "rejected";
+export type NetXdrStatus =
+  "New" | "In Progress" | "Resolved" | "Dismissed" | "Escalated";
+
+export interface NetConfigChangesRequest {
+  startDate: string;
+  endDate: string;
+  riskLevel?: NetRiskLevel;
+  reviewStatus?: NetReviewStatus;
+  search?: string;
+}
+
+export interface NetConfigChangeItem {
+  seqno: string;
+  deviceName: string;
+  receiveTime: string;
+  cmd: string;
+  result: string;
+  path: string;
+  adminUsername: string;
+  adminSourceIp: string;
+  adminClientType: string;
+  riskLevel: NetRiskLevel;
+  riskScore: number;
+  riskRule: string | null;
+  reviewStatus: NetReviewStatus;
+  description: string;
+  comment: string;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+}
+
+export interface NetConfigChangeDetail extends NetConfigChangeItem {
+  before: string;
+  after: string;
+}
+
+export interface NetConfigChangesResult {
+  items: NetConfigChangeItem[];
+  matched: number;
+  truncated: boolean;
+  stats: {
+    total: number;
+    devices: number;
+    admins: number;
+    highRisk: number;
+    pendingReview: number;
+    byRisk: Record<string, number>;
+    byCmd: Record<string, number>;
+    byReview: Record<string, number>;
+    topAdmins: { username: string; changes: number; highRisk: number }[];
+  };
+}
+
+export interface NetXdrRequest {
+  startDate: string;
+  endDate: string;
+  riskLevel?: NetRiskLevel;
+  status?: NetXdrStatus;
+}
+
+export interface NetXdrItem {
+  notificationId: string;
+  detectedAt: string;
+  rawText: string;
+  device: string;
+  userName: string;
+  alertId: string;
+  detectionSource: string;
+  investigationUrl: string;
+  actionKeyword: string;
+  category: string;
+  baseRisk: NetRiskLevel;
+  riskLevel: NetRiskLevel;
+  privilegedAction: boolean;
+  requiresReview: boolean;
+  adjustments: string[];
+  status: NetXdrStatus;
+  note: string;
+  assignedTo: string;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+}
+
+export interface NetXdrResult {
+  items: NetXdrItem[];
+  matched: number;
+  truncated: boolean;
+  stats: {
+    total: number;
+    highRisk: number;
+    openReview: number;
+    privileged: number;
+    devices: number;
+    byRisk: Record<string, number>;
+    byStatus: Record<string, number>;
+    byCategory: Record<string, number>;
+  };
+}
+
+export const networkAnalysisApi = {
+  listConfigChanges: async (
+    req: NetConfigChangesRequest,
+    signal?: AbortSignal,
+  ): Promise<NetConfigChangesResult> => {
+    const res = await api.post("/network-analysis/config-changes", req, {
+      timeout: TIMEOUT_LONG,
+      signal,
+    });
+    return res.data;
   },
-  react: async (itemId: string, emoji: string) => {
-    const r = await api.post(`${KNOWLEDGE_BACKEND}/${itemId}/react`, { emoji });
-    return r.data;
+
+  getConfigChange: async (seqno: string): Promise<NetConfigChangeDetail> => {
+    const res = await api.get(
+      `/network-analysis/config-changes/${encodeURIComponent(seqno)}`,
+    );
+    return res.data;
   },
-  remove: async (itemId: string) => {
-    const r = await api.delete(`${KNOWLEDGE_BACKEND}/${itemId}/react`);
-    return r.data;
+
+  reviewConfigChange: async (
+    seqno: string,
+    body: {
+      reviewStatus?: NetReviewStatus;
+      description?: string;
+      comment?: string;
+    },
+  ) => {
+    const res = await api.patch(
+      `/network-analysis/config-changes/${encodeURIComponent(seqno)}/review`,
+      body,
+    );
+    return res.data;
+  },
+
+  listXdr: async (
+    req: NetXdrRequest,
+    signal?: AbortSignal,
+  ): Promise<NetXdrResult> => {
+    const res = await api.post("/network-analysis/xdr", req, {
+      timeout: TIMEOUT_LONG,
+      signal,
+    });
+    return res.data;
+  },
+
+  updateXdrStatus: async (
+    notificationId: string,
+    body: { status: NetXdrStatus; note?: string; assignedTo?: string },
+  ) => {
+    const res = await api.patch(
+      `/network-analysis/xdr/${encodeURIComponent(notificationId)}/status`,
+      body,
+    );
+    return res.data;
   },
 };
 
-export const knowledgeCommentsApi = {
-  get: async (itemId: string) => {
-    const r = await api.get(`${KNOWLEDGE_BACKEND}/${itemId}/comments`);
-    return r.data as {
-      id: string;
-      newsId: string;
-      authorId: string;
-      authorName: string;
-      content: string;
-      createdAt: string;
-    }[];
-  },
-  add: async (itemId: string, content: string) => {
-    const r = await api.post(`${KNOWLEDGE_BACKEND}/${itemId}/comments`, {
-      content,
+// ─── Сөрөг мэдээ (Excel бүртгэл + дашбоард) ───────────────────────────────
+export interface NegativeNewsRowInput {
+  newsDate: string;
+  channel: string;
+  bank: string;
+  category: string;
+  content: string;
+}
+
+export interface NegativeNewsImportResult {
+  batchId: string;
+  received: number;
+  inserted: number;
+  duplicates: number;
+  skipped: number;
+}
+
+export interface NegativeNewsBatch {
+  batchId: string;
+  fileName: string;
+  sheetName: string;
+  rowCount: number;
+  newRows: number;
+  duplicateRows: number;
+  skippedRows: number;
+  minDate: string;
+  maxDate: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+}
+
+export interface NegativeNewsItem extends NegativeNewsRowInput {
+  rowHash: string;
+}
+
+export interface NegativeNewsDashboardRequest {
+  startDate: string;
+  endDate: string;
+  bank?: string;
+  channel?: string;
+  category?: string;
+  search?: string;
+}
+
+export interface NegativeNewsDashboardResult {
+  stats: { total: number; golomt: number; banks: number; channels: number };
+  daily: { date: string; count: number }[];
+  byChannel: { name: string; count: number }[];
+  byBank: { name: string; count: number }[];
+  byCategory: { name: string; count: number }[];
+  similar: {
+    size: number;
+    representative: NegativeNewsItem;
+    dates: string[];
+    channels: string[];
+  }[];
+  items: NegativeNewsItem[];
+  matched: number;
+  options: { banks: string[]; channels: string[]; categories: string[] };
+  truncated: boolean;
+}
+
+export const negativeNewsApi = {
+  importRows: async (body: {
+    batchId?: string;
+    fileName: string;
+    sheetName?: string;
+    rows: NegativeNewsRowInput[];
+  }): Promise<NegativeNewsImportResult> => {
+    const res = await api.post("/negative-news/import", body, {
+      timeout: TIMEOUT_LONG,
     });
-    return r.data;
+    return res.data;
   },
-  delete: async (itemId: string, commentId: string) => {
-    const r = await api.delete(
-      `${KNOWLEDGE_BACKEND}/${itemId}/comments/${commentId}`,
+
+  listBatches: async (): Promise<NegativeNewsBatch[]> => {
+    const res = await api.get("/negative-news/batches");
+    return res.data;
+  },
+
+  deleteBatch: async (
+    batchId: string,
+  ): Promise<{ batchId: string; deletedRows: number }> => {
+    const res = await api.delete(
+      `/negative-news/batches/${encodeURIComponent(batchId)}`,
     );
-    return r.data;
+    return res.data;
+  },
+
+  dashboard: async (
+    req: NegativeNewsDashboardRequest,
+    signal?: AbortSignal,
+  ): Promise<NegativeNewsDashboardResult> => {
+    const res = await api.post("/negative-news/dashboard", req, {
+      timeout: TIMEOUT_LONG,
+      signal,
+    });
+    return res.data;
   },
 };

@@ -433,9 +433,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const scoredRows = useMemo(() => toScored(rows, catalog), [rows, catalog]);
 
   return (
-    <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-gradient-to-br from-background via-background to-rose-500/[0.02] text-foreground flex flex-col">
+    <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-background text-foreground flex flex-col">
       <ToolPageHeader
-        href="/tools/risk-assessment"
+        href="/risk-assessment/salbar"
         icon={<ClipboardEdit className="w-4 h-4 text-rose-500" />}
         title={t("riskWorkPageTitle")}
         rightContent={
@@ -506,7 +506,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             {hasData && isLocked && (
               <button
                 onClick={() => saveModalOpenHandler({ pDate: fetchedDate })}
-                className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-amber-600 hover:bg-amber-500 text-foreground text-xs font-semibold transition-all"
+                className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition-all"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
                 {t("raWorkPageSaveReportBtn")}
@@ -515,9 +515,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
           </div>
         }
       />
-      <div className="container mx-auto px-4 py-6 space-y-4 flex-1 min-w-0 w-full max-w-[1800px]">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex-1 space-y-4 py-6">
         {errorMsg && (
-          <div className="rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-4 flex items-start gap-3">
+          <div className="rounded-xl border border-red-500/30 bg-destructive/10 p-4 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1 text-xs text-red-600/80">{errorMsg}</div>
             <button
@@ -532,7 +532,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
         {loading && !hasData ? (
           <ReportSkeleton rows={10} />
         ) : monthHasNoData ? (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
               <Activity className="w-6 h-6 text-muted-foreground/60" />
             </div>
@@ -544,7 +544,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
             </div>
           </div>
         ) : !hasData ? (
-          <div className="rounded-2xl border border-border bg-card shadow-premium ring-hairline px-6 py-16 text-center">
+          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-muted/50 border border-border items-center justify-center mb-3">
               <Activity className="w-6 h-6 text-muted-foreground/60" />
             </div>
@@ -646,7 +646,7 @@ export default function RiskWorkPage() {
           onClick={() => setSaveModalOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-premium-xl ring-hairline p-6"
+            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-4">
@@ -686,7 +686,7 @@ export default function RiskWorkPage() {
               <button
                 onClick={doSaveHistory}
                 disabled={saving || !saveName.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-foreground text-xs font-semibold disabled:opacity-40 transition-all"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold disabled:opacity-40 transition-all"
               >
                 {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {t("save")}

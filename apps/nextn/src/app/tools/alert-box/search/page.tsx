@@ -86,16 +86,16 @@ function SearchContent() {
 
   return (
     <div className="space-y-5">
-      <div className="px-6 flex items-center gap-2">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex items-center gap-2">
         <Search size={16} className="text-blue-400 shrink-0" />
         <h1 className="text-sm font-bold text-txt">Search Engine</h1>
       </div>
-      <div className="px-6 space-y-5">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-5">
         {/* Search Form */}
-        <div className="bg-surface-card rounded-xl border border-surface-border p-5">
+        <div className="rounded-2xl border border-surface-border bg-surface-card p-5">
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-txt-dim mb-1.5">
                 {t("abSearchCifLabel")}
               </label>
               <div className="relative">
@@ -109,12 +109,12 @@ function SearchContent() {
                   onChange={(e) => setCif(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   placeholder={t("abSearchCifPlaceholder")}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-elevated border border-surface-border text-[12px] text-txt placeholder:text-txt-dim focus:outline-none focus:ring-2 focus:ring-golomt-500/30 focus:border-golomt-500/50"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-txt placeholder:text-txt-dim focus:outline-none focus:ring-2 focus:border-primary/50 focus:ring-ring/30"
                 />
               </div>
             </div>
             <div className="w-[170px]">
-              <label className="block text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-txt-dim mb-1.5">
                 {t("tailan_startDateLabel")}
               </label>
               <div className="relative">
@@ -126,12 +126,12 @@ function SearchContent() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-elevated border border-surface-border text-[12px] text-txt focus:outline-none focus:ring-2 focus:ring-golomt-500/30 focus:border-golomt-500/50"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-txt focus:outline-none focus:ring-2 focus:border-primary/50 focus:ring-ring/30"
                 />
               </div>
             </div>
             <div className="w-[170px]">
-              <label className="block text-[10px] font-semibold text-txt-dim uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-txt-dim mb-1.5">
                 {t("tailan_endDateLabel")}
               </label>
               <div className="relative">
@@ -143,14 +143,14 @@ function SearchContent() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-elevated border border-surface-border text-[12px] text-txt focus:outline-none focus:ring-2 focus:ring-golomt-500/30 focus:border-golomt-500/50"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-txt focus:outline-none focus:ring-2 focus:border-primary/50 focus:ring-ring/30"
                 />
               </div>
             </div>
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="px-5 py-2.5 rounded-lg bg-golomt-600 hover:bg-golomt-700 text-foreground font-semibold text-[12px] transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-xs transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {searching ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -165,8 +165,8 @@ function SearchContent() {
 
         {searching && (
           <div className="flex items-center justify-center py-16">
-            <Loader2 size={20} className="animate-spin text-golomt-400" />
-            <span className="text-[12px] text-txt-dim ml-3">
+            <Loader2 size={20} className="animate-spin text-primary" />
+            <span className="text-xs text-txt-dim ml-3">
               {t("searchLoading")}
             </span>
           </div>
@@ -174,22 +174,23 @@ function SearchContent() {
 
         {!result && !searching && !error && (
           <div className="text-center py-16">
-            <Search size={32} className="mx-auto text-txt-dim mb-3 opacity-40" />
-            <p className="text-[13px] text-txt-dim">
-              {t("abSearchEmptyHint")}
-            </p>
+            <Search
+              size={32}
+              className="mx-auto text-txt-dim mb-3 opacity-40"
+            />
+            <p className="text-sm text-txt-dim">{t("abSearchEmptyHint")}</p>
           </div>
         )}
 
         {result && !searching && (
           <div className="space-y-4">
-            <div className="bg-surface-card rounded-xl border border-surface-border p-4">
+            <div className="rounded-2xl border border-surface-border bg-surface-card p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[11px] text-txt-dim">
                     {t("abSearchResultLabel")}{" "}
                   </span>
-                  <span className="text-[13px] font-bold text-txt">
+                  <span className="text-sm font-bold text-txt">
                     {result.cif}
                   </span>
                 </div>
@@ -198,22 +199,20 @@ function SearchContent() {
                     <p className="text-xl font-extrabold text-txt">
                       {result.totalDashboards}
                     </p>
-                    <p className="text-[9px] text-txt-dim uppercase">
-                      Dashboard
-                    </p>
+                    <p className="text-[11px] text-txt-dim">Dashboard</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xl font-extrabold text-txt">
                       {result.totalMatches}
                     </p>
-                    <p className="text-[9px] text-txt-dim uppercase">
+                    <p className="text-[11px] text-txt-dim">
                       {t("reportsStatTotal")}
                     </p>
                   </div>
                 </div>
               </div>
               {result.dateFrom && (
-                <p className="text-[10px] text-txt-dim mt-1">
+                <p className="text-[11px] text-txt-dim mt-1">
                   {t("abSearchPeriodLabel")}: {result.dateFrom} —{" "}
                   {result.dateTo || t("raReportViewColNow")}
                 </p>
@@ -226,7 +225,7 @@ function SearchContent() {
                   size={32}
                   className="mx-auto text-txt-dim mb-2 opacity-50"
                 />
-                <p className="text-[13px] text-txt-dim">
+                <p className="text-sm text-txt-dim">
                   {t("abSearchNoMatchInAnyDashboard")}
                 </p>
               </div>
@@ -235,37 +234,41 @@ function SearchContent() {
             {result.results.map((d) => (
               <div
                 key={d.dashboardId}
-                className="bg-surface-card rounded-xl border border-surface-border overflow-hidden"
+                className="rounded-2xl border border-surface-border bg-surface-card overflow-hidden"
               >
                 <button
                   onClick={() => toggleExpand(d.dashboardId)}
                   className="w-full p-4 flex items-center justify-between hover:bg-surface-elevated/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-golomt-500/10 flex items-center justify-center">
-                      <span className="text-[12px] font-bold text-golomt-400">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="text-xs font-bold text-primary">
                         DB{d.dashboardId}
                       </span>
                     </div>
                     <div className="text-left">
-                      <h3 className="text-[13px] font-bold text-txt">
+                      <h3 className="text-sm font-bold text-txt">
                         {d.dashboardName}
                       </h3>
-                      <p className="text-[10px] text-txt-dim">{d.table}</p>
+                      <p className="text-[11px] text-txt-dim">{d.table}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="text-[14px] font-bold text-txt">
+                      <p className="text-sm font-bold text-txt">
                         {d.matchCount}
                       </p>
-                      <p className="text-[9px] text-txt-dim">{t("abSearchRowsUnit")}</p>
+                      <p className="text-[11px] text-txt-dim">
+                        {t("abSearchRowsUnit")}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[12px] font-bold text-amber-400">
+                      <p className="text-xs font-bold text-amber-400">
                         {formatAmount(d.totalAmount)}₮
                       </p>
-                      <p className="text-[9px] text-txt-dim">{t("abSearchAmountUnit")}</p>
+                      <p className="text-[11px] text-txt-dim">
+                        {t("abSearchAmountUnit")}
+                      </p>
                     </div>
                     {expanded[d.dashboardId] ? (
                       <ChevronUp size={16} className="text-txt-dim" />
@@ -299,7 +302,7 @@ function SearchContent() {
                             key={idx}
                             className="border-t border-surface-border hover:bg-surface-elevated/30"
                           >
-                            <td className="px-3 py-2 text-txt-dim text-[10px] whitespace-nowrap">
+                            <td className="px-3 py-2 text-txt-dim text-[11px] whitespace-nowrap">
                               {idx + 1}
                             </td>
                             {Object.values(row).map((val, ci) => (

@@ -468,12 +468,7 @@ export default function ReportView({
         previousManualMap,
         previousJudgements ?? {},
       ),
-    [
-      previousScoredRows,
-      previousManualMap,
-      previousJudgements,
-      getAggregates,
-    ],
+    [previousScoredRows, previousManualMap, previousJudgements, getAggregates],
   );
 
   const previousAggMap = useMemo<Map<string, BranchAggregate>>(
@@ -557,7 +552,7 @@ export default function ReportView({
     <div className="space-y-5 p-4 sm:p-5 w-full min-w-0 max-w-full overflow-x-hidden">
       {/* ── Fallback config анхааруулга ── */}
       {dynamicConfig.isFallback && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-[12px] text-amber-400">
+        <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-xs text-amber-400">
           <span className="text-base">⚠</span>
           <span>
             <b>{t("raReportViewOfflineBadge")}</b> {t("raReportViewOfflineMsg")}
@@ -681,7 +676,11 @@ export default function ReportView({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryBlock
             title={t("raReportViewEval1Title")}
-            cols={[t("raReportViewColIndicator"), t("raReportViewColNow"), t("raReportViewColPrev")]}
+            cols={[
+              t("raReportViewColIndicator"),
+              t("raReportViewColNow"),
+              t("raReportViewColPrev"),
+            ]}
           >
             <SRow
               label="Өндөр"

@@ -44,7 +44,6 @@ apps/
       auth/guards/  JwtAuthGuard, ToolGuard, AdminGuard, SuperAdminGuard
       common/       constants (tools, departments), utils, filters, types
       config/       env.validation.ts, configuration.ts
-    python/main.py  Python API tool-уудыг ажиллуулах sandbox runner
   nextn/            Next.js 16 (App Router) + React 19 frontend
     src/
       app/          Маршрутууд (§5.1)
@@ -132,8 +131,6 @@ dto/<нэр>.dto.ts      class-validator-тай DTO
 | `replaceRows(table, where, params, rows)` | UPDATE эрхгүй тул DELETE+INSERT |
 | `queryAcl` / `execAcl` | Зөвхөн ACL (CREATE USER, GRANT) — тусдаа client |
 | `nowCH()` | ClickHouse-ийн DateTime формат (`YYYY-MM-DD HH:MM:SS`) |
-| `uuid()` | Мөрийн id |
-
 **Параметржүүлэлт — үл хэлэлцэх дүрэм:**
 
 ```ts
@@ -185,7 +182,7 @@ DDL-ийн хоёр байршил бий, аль нэгийг нь сонго �
    [clickhouse.service.ts](apps/backend/src/clickhouse/clickhouse.service.ts)-ийн
    `onModuleInit` доторх `CREATE TABLE IF NOT EXISTS` блокууд.
 2. **Модулийн өөрийн хүснэгт** → тухайн Service-ийн `onModuleInit`
-   (жишээ: `risk-assessment.service.ts`, `python-api.service.ts`).
+   (жишээ: `risk-assessment.service.ts`).
 
 **Байгаа хүснэгтэд багана нэмэх:** `CREATE TABLE IF NOT EXISTS` нь байгаа
 хүснэгтийг ӨӨРЧИЛДӨГГҮЙ. Тиймээс DDL-д нэмэхээс гадна **заавал**:
@@ -298,7 +295,6 @@ proxy-д булаагдаж 404 өгч байсан — иймээс `zainii-aud
 | `auth/auth.service.ts` | Токен эргэлт (rotation), brute-force түгжээ |
 | `clickhouse/clickhouse.service.ts` | Бүх хүснэгтийн DDL + миграц |
 | `db-access/*` | Аудиторуудад ClickHouse эрх олгодог — AES шифрлэлт |
-| `python-api/*` + `python/main.py` | Хэрэглэгчийн Python код ажиллуулдаг sandbox |
 | `main.ts` | CORS, helmet, trust proxy, body limit |
 | `config/env.validation.ts` | Startup дээр орчны хувьсагч шалгадаг |
 | `common/constants/tools.ts` | Эрхийн жагсаалт |
@@ -455,10 +451,6 @@ const result = await zainiiAuditRptApi.findRelatedPartyTransactions(req);
 гүйцэтгэ: (1) `system.parts`, `system.query_log`, `system.columns`-оор
 ашиглалтыг батал, (2) `RENAME TABLE … TO zz_deprecated_*` эсвэл нөөц хүснэгт
 рүү хуулж ав, (3) дараа нь л `DROP`. Шууд `DROP` хийхийг хориглоно.
-
-> Санамж: `python_api_tools.pythonCode` нь **ClickHouse дотор** хадгалагддаг
-> Python код. Тиймээс "репод хайхад олдсонгүй" гэдэг нь "ашиглагддаггүй"
-> гэсэн үг БИШ — DB-г бас шалга.
 
 ---
 

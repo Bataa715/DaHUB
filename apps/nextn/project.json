@@ -6,35 +6,28 @@
   "tags": [],
   "targets": {
     "build": {
-      "executor": "@nx/next:build",
-      "outputs": ["{projectRoot}/.next"],
-      "options": {
-        "outputPath": "dist/apps/nextn"
-      },
+      "outputs": [
+        "{projectRoot}/.next",
+        "{workspaceRoot}/apps/nextn/.next/!(cache)/**/*",
+        "{workspaceRoot}/apps/nextn/.next/!(cache)"
+      ],
       "configurations": {
-        "production": {},
-        "development": {
-          "outputPath": "dist/apps/nextn"
-        }
+        "development": {}
       }
     },
     "serve": {
-      "executor": "@nx/next:server",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "nextn:build",
-        "dev": true,
         "port": 9002
       },
       "configurations": {
-        "development": {
-          "buildTarget": "nextn:build:development",
-          "dev": true
-        },
-        "production": {
-          "buildTarget": "nextn:build:production",
-          "dev": false
-        }
+        "development": {}
+      }
+    },
+    "start": {
+      "dependsOn": ["build"],
+      "options": {
+        "port": 9002
       }
     }
   }

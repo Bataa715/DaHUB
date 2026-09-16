@@ -50,15 +50,7 @@ export class QuizService {
 
     const id = randomUUID();
     const now = nowCH();
-    await this.clickhouse.insert("medleg_quizzes", [
-      {
-        id,
-        title: dto.title.trim(),
-        authorId,
-        isActive: 1,
-        createdAt: now,
-      },
-    ]);
+    const title = dto.title.trim();
 
     await this.clickhouse.insert(
       "medleg_quiz_questions",
@@ -69,6 +61,9 @@ export class QuizService {
         question: q.question,
         options: JSON.stringify(q.options),
         correctIndex: q.correctIndex,
+        title,
+        authorId,
+        isActive: 1,
         createdAt: now,
       })),
     );
@@ -83,10 +78,22 @@ export class QuizService {
    * болохгүй.
    */
   async findAll(userId: string) {
+    // Quiz-уудыг medleg_quiz_questions.quizId-аар ялгана. Хуучин мөрөнд
+    // title/authorId хоосон бол medleg_quizzes-ээс нөхнө (унших л үлдэнэ).
     const quizzes = await this.clickhouse.query<any>(
       `SELECT q.id, q.title, q.authorId, q.createdAt, q.isActive,
-              u.name as authorName
-       FROM medleg_quizzes q
+              u.name AS authorName
+       FROM (
+         SELECT
+           qq.quizId AS id,
+           if(nullIf(any(qq.title), '') IS NULL, any(z.title), any(qq.title)) AS title,
+           if(nullIf(any(qq.authorId), '') IS NULL, any(z.authorId), any(qq.authorId)) AS authorId,
+           if(any(z.id) != '', any(z.isActive), max(qq.isActive)) AS isActive,
+           min(qq.createdAt) AS createdAt
+         FROM medleg_quiz_questions qq
+         LEFT JOIN medleg_quizzes z ON z.id = qq.quizId
+         GROUP BY qq.quizId
+       ) q
        LEFT JOIN users u ON q.authorId = u.id
        WHERE q.isActive = 1
        ORDER BY q.createdAt DESC
@@ -169,12 +176,8 @@ export class QuizService {
     userName: string,
     dto: AnswerQuizDto,
   ) {
-    const quizzes = await this.clickhouse.query<any>(
-      `SELECT * FROM medleg_quizzes WHERE id = {id:String} LIMIT 1`,
-      { id: quizId },
-    );
-    if (quizzes.length === 0) throw new NotFoundException("Quiz олдсонгүй");
-    const quiz = quizzes[0];
+    const quiz = await this.getQuizHeader(quizId);
+    if (!quiz) throw new NotFoundException("Quiz олдсонгүй");
     if (!Number(quiz.isActive)) {
       throw new BadRequestException("Энэ quiz хаагдсан байна");
     }
@@ -261,13 +264,10 @@ export class QuizService {
    * хариулсан, (b) зохиогч, эсвэл (c) админ хэрэглэгчид харагдана.
    */
   async results(quizId: string, requesterId: string, isAdmin: boolean) {
-    const quizzes = await this.clickhouse.query<any>(
-      `SELECT id, authorId FROM medleg_quizzes WHERE id = {id:String} LIMIT 1`,
-      { id: quizId },
-    );
-    if (quizzes.length === 0) throw new NotFoundException("Quiz олдсонгүй");
+    const quiz = await this.getQuizHeader(quizId);
+    if (!quiz) throw new NotFoundException("Quiz олдсонгүй");
 
-    if (quizzes[0].authorId !== requesterId && !isAdmin) {
+    if (quiz.authorId !== requesterId && !isAdmin) {
       const mine = await this.clickhouse.query<any>(
         `SELECT id FROM medleg_quiz_answers
          WHERE quizId = {quizId:String} AND userId = {userId:String} LIMIT 1`,
@@ -335,21 +335,64 @@ export class QuizService {
     return result;
   }
 
-  async remove(id: string, userId: string, isAdmin: boolean) {
-    const quizzes = await this.clickhouse.query<any>(
-      `SELECT id, authorId FROM medleg_quizzes WHERE id = {id:String} LIMIT 1`,
-      { id },
+  /** quizId-аар нэг quiz — асуултын мөр + хуучин medleg_quizzes нөхөлт. */
+  private async getQuizHeader(quizId: string): Promise<{
+    id: string;
+    title: string;
+    authorId: string;
+    isActive: number;
+  } | null> {
+    const fromQ = await this.clickhouse.query<{
+      cnt: number;
+      title: string;
+      authorId: string;
+      isActive: number;
+    }>(
+      `SELECT count() AS cnt, any(title) AS title, any(authorId) AS authorId, max(isActive) AS isActive
+       FROM medleg_quiz_questions
+       WHERE quizId = {quizId:String}`,
+      { quizId },
     );
-    if (quizzes.length === 0) throw new NotFoundException("Quiz олдсонгүй");
-    if (quizzes[0].authorId !== userId && !isAdmin) {
+    const q = fromQ[0];
+    const hasQuestions = !!q && Number(q.cnt) > 0;
+    let title = hasQuestions ? (q.title ?? "") : "";
+    let authorId = hasQuestions ? (q.authorId ?? "") : "";
+    let isActive = hasQuestions ? Number(q.isActive ?? 1) : 1;
+
+    if (!title || !authorId) {
+      const fromZ = await this.clickhouse.query<{
+        title: string;
+        authorId: string;
+        isActive: number;
+      }>(
+        `SELECT title, authorId, isActive FROM medleg_quizzes WHERE id = {id:String} LIMIT 1`,
+        { id: quizId },
+      );
+      const z = fromZ[0];
+      if (z) {
+        if (!title) title = z.title ?? "";
+        if (!authorId) authorId = z.authorId ?? "";
+        if (!hasQuestions) isActive = Number(z.isActive);
+      } else if (!hasQuestions) {
+        return null;
+      }
+    }
+
+    return { id: quizId, title, authorId, isActive };
+  }
+
+  async remove(id: string, userId: string, isAdmin: boolean) {
+    const quiz = await this.getQuizHeader(id);
+    if (!quiz) throw new NotFoundException("Quiz олдсонгүй");
+    if (quiz.authorId !== userId && !isAdmin) {
       throw new ForbiddenException("Зөвхөн өөрийн quiz-ийг устгах боломжтой");
     }
     await this.clickhouse.exec(
-      `ALTER TABLE medleg_quizzes DELETE WHERE id = {id:String}`,
+      `ALTER TABLE medleg_quiz_questions DELETE WHERE quizId = {id:String}`,
       { id },
     );
     await this.clickhouse.exec(
-      `ALTER TABLE medleg_quiz_questions DELETE WHERE quizId = {id:String}`,
+      `ALTER TABLE medleg_quizzes DELETE WHERE id = {id:String}`,
       { id },
     );
     await this.clickhouse.exec(

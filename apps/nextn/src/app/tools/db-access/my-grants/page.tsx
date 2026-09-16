@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { TOOL_CONTAINER } from "@/components/shared/tool-ui";
+import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   CheckCircle2,
@@ -151,7 +153,7 @@ export default function MyGrantsPage() {
   }, [load]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       <ToolPageHeader
         href="/tools/db-access"
         icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
@@ -170,7 +172,7 @@ export default function MyGrantsPage() {
         }
       />
 
-      <div className="w-full px-4 md:px-6 py-6">
+      <div className={cn(TOOL_CONTAINER, "py-6")}>
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -178,20 +180,22 @@ export default function MyGrantsPage() {
         ) : grants.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground/50">
             <Database className="h-8 w-8 opacity-40" />
-            <p className="text-sm text-muted-foreground">{t("myGrantsEmpty")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("myGrantsEmpty")}
+            </p>
             <p className="text-[11px]">{t("myGrantsEmptyHint")}</p>
             <Link href="/tools/db-access">
               <Button
                 variant="ghost"
                 size="sm"
-                className="mt-2 h-8 text-xs text-cyan-400 hover:text-cyan-300"
+                className="mt-2 h-8 text-xs text-primary hover:text-primary"
               >
                 {t("myGrantsRequestBtn")}
               </Button>
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-border/40 border border-border/40 rounded-xl overflow-hidden max-w-3xl">
+          <div className="max-w-3xl divide-y divide-border overflow-hidden rounded-2xl border border-border">
             {groupGrants(grants).map((grp) => {
               const days = daysLeft(grp.validUntil);
               const expiringSoon = days <= 3;
@@ -200,7 +204,7 @@ export default function MyGrantsPage() {
               return (
                 <div
                   key={grp.requestId}
-                  className={`px-4 py-3.5 space-y-2.5 bg-card/30 ${
+                  className={`px-4 py-3.5 space-y-2.5 bg-card ${
                     expired ? "opacity-50" : ""
                   }`}
                 >
@@ -210,7 +214,7 @@ export default function MyGrantsPage() {
                         {grp.tables.map((tbl) => (
                           <span
                             key={tbl}
-                            className="text-[10px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
+                            className="text-[11px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
                           >
                             {tbl}
                           </span>
@@ -218,13 +222,13 @@ export default function MyGrantsPage() {
                         {grp.accessTypes.map((a) => (
                           <span
                             key={a}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300"
+                            className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary"
                           >
                             {a}
                           </span>
                         ))}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         {t("myGrantsGrantedBy")} {grp.grantedByName}
                       </p>
                     </div>
@@ -269,12 +273,12 @@ export default function MyGrantsPage() {
                   </div>
 
                   {grp.chPassword && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2 space-y-1.5">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    <div className="space-y-1.5 rounded-xl border border-border bg-muted/30 px-3 py-2">
+                      <p className="text-xs font-semibold text-muted-foreground">
                         {t("myGrantsChCreds")}
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground w-16 shrink-0">
+                        <span className="text-[11px] text-muted-foreground w-16 shrink-0">
                           {t("myGrantsChUser")}
                         </span>
                         <code className="text-[11px] font-mono bg-muted/60 px-2 py-0.5 rounded flex-1 truncate">
@@ -291,7 +295,7 @@ export default function MyGrantsPage() {
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground w-16 shrink-0">
+                        <span className="text-[11px] text-muted-foreground w-16 shrink-0">
                           {t("myGrantsChPassword")}
                         </span>
                         <code className="text-[11px] font-mono bg-muted/60 px-2 py-0.5 rounded flex-1 tracking-widest truncate">

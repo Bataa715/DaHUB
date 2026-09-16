@@ -63,6 +63,36 @@ export class UsersController {
     return this.usersService.getAdmins();
   }
 
+  /**
+   * Супер админ: систем лог. `/users/` nginx-д нээлттэй тул энд байрлуулсан —
+   * тусдаа `/audit-logs` prefix 404 өгөхгүй. [ROUTE ORDER] :id-ээс ӨМНӨ.
+   */
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @Get("audit-logs")
+  listAuditLogs(
+    @Query("limit") limit?: string,
+    @Query("action") action?: string,
+    @Query("status") status?: string,
+    @Query("resource") resource?: string,
+    @Query("userId") userId?: string,
+  ) {
+    return this.auditLogService.getLogs({
+      limit: limit ? Number(limit) : 200,
+      action: action || undefined,
+      status: status || undefined,
+      resource: resource || undefined,
+      userId: userId || undefined,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @Get("audit-logs/login-attempts")
+  listLoginAttempts(@Query("limit") limit?: string) {
+    return this.auditLogService.getLoginAttempts(
+      limit ? Number(limit) : 200,
+    );
+  }
+
   /** Authenticated users can view their own profile; admins can view any profile */
   @UseGuards(JwtAuthGuard)
   @Get(":id")

@@ -63,15 +63,6 @@ export function collectEnvIssues(
     if (!str("CLICKHOUSE_PASSWORD")) {
       errors.push("production дээр CLICKHOUSE_PASSWORD шаардлагатай");
     }
-    // Python сервис рүү код илгээдэг тул түлхүүргүй ажиллахыг хориглоно
-    if (!str("PYTHON_SERVICE_URL") && !str("PYTHON_API_URL")) {
-      errors.push(
-        "production дээр PYTHON_SERVICE_URL (эсвэл PYTHON_API_URL) шаардлагатай",
-      );
-    }
-    if (!str("PYTHON_API_KEY")) {
-      errors.push("production дээр PYTHON_API_KEY шаардлагатай");
-    }
     // cookie-ийн secure горимыг ил тод сонгосон байх ёстой
     if (!str("COOKIE_SECURE")) {
       errors.push("production дээр COOKIE_SECURE шаардлагатай");
@@ -81,12 +72,7 @@ export function collectEnvIssues(
       );
     }
 
-    for (const key of [
-      "PYTHON_SERVICE_URL",
-      "PYTHON_API_URL",
-      "CLICKHOUSE_HOST",
-      "CORS_ORIGINS",
-    ]) {
+    for (const key of ["CLICKHOUSE_HOST", "CORS_ORIGINS"]) {
       const v = str(key);
       if (v && LOCALISH.test(v)) {
         warnings.push(

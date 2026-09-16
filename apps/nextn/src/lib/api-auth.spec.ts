@@ -62,7 +62,7 @@ describe("isAdminPayload / isSuperAdminPayload", () => {
   });
 
   it("энгийн админ нь супер админ БИШ", () => {
-    // Зайны аудит / python-api зэрэг нь superadmin-only тул энэ чухал.
+    // Зайны аудит / системийн лог зэрэг нь superadmin-only тул энэ чухал.
     expect(isSuperAdminPayload({ isAdmin: true })).toBe(false);
   });
 

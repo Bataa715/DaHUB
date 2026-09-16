@@ -17,6 +17,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  TOOL_CONTAINER,
+  TOOL_PANEL,
+  TOOL_PANEL_BODY,
+  TOOL_PANEL_HEADER,
+  TOOL_PANEL_TITLE,
+} from "@/components/shared/tool-ui";
+import { cn } from "@/lib/utils";
+import {
   Table2,
   Upload,
   FileSpreadsheet,
@@ -363,7 +371,7 @@ export default function PivotPage() {
   const prefixList = prefixGroups?.map((g) => g.prefix) ?? [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       <ToolPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-cyan-500 flex items-center justify-center">
@@ -374,10 +382,10 @@ export default function PivotPage() {
         title={t("pivotTitle")}
       />
 
-      <div className="w-full px-4 md:px-6 py-6 space-y-4">
+      <div className={cn(TOOL_CONTAINER, "space-y-5 py-6")}>
         {/* File upload + Create — 50/50 minimal */}
-        <Card className="rounded-none border-0 shadow-none bg-transparent">
-          <CardContent className="pt-5 space-y-3">
+        <Card className={TOOL_PANEL}>
+          <CardContent className={cn(TOOL_PANEL_BODY, "space-y-3")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
               <div className="min-w-0 flex flex-col gap-1.5">
                 <Label className="text-xs text-muted-foreground">
@@ -393,10 +401,10 @@ export default function PivotPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className={`flex-1 min-h-[4.5rem] border border-dashed rounded-lg px-3 py-2.5 flex items-center justify-center gap-2.5 cursor-pointer transition-colors ${
                     isDragging
-                      ? "border-cyan-400 bg-cyan-50 dark:bg-cyan-950/20"
+                      ? "border-primary bg-primary/5"
                       : fileName
                         ? "border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20"
-                        : "border-border hover:border-cyan-300 hover:bg-muted/30"
+                        : "border-border hover:border-primary/40 hover:bg-muted/40"
                   }`}
                 >
                   <input
@@ -413,7 +421,7 @@ export default function PivotPage() {
                         <p className="text-emerald-600 dark:text-emerald-400 font-medium text-xs truncate">
                           {fileName}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground">
                           {fileData?.length} {t("reportsStatRows")},{" "}
                           {headers.length} {t("reportsPreviewColumns")}
                         </p>
@@ -426,16 +434,14 @@ export default function PivotPage() {
                         <p className="text-xs font-medium text-foreground leading-snug">
                           {t("pivotDropZone")}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground">
                           XLSX, XLS, CSV
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
-                {error && (
-                  <p className="text-destructive text-xs">{error}</p>
-                )}
+                {error && <p className="text-destructive text-xs">{error}</p>}
               </div>
 
               <div className="min-w-0 flex flex-col gap-1.5">
@@ -445,7 +451,7 @@ export default function PivotPage() {
                 <Button
                   onClick={handleBuild}
                   disabled={!fileData || !dateCol || !codeCol}
-                  className="flex-1 min-h-[4.5rem] w-full bg-cyan-600 hover:bg-cyan-700 text-foreground font-semibold text-sm disabled:opacity-40"
+                  className="min-h-[4.5rem] w-full flex-1 text-sm font-semibold"
                 >
                   <Table2 className="w-4 h-4 mr-2 shrink-0" />
                   <span className="leading-snug">{t("pivotCreateBtn")}</span>
@@ -457,14 +463,14 @@ export default function PivotPage() {
 
         {/* Config — shown when file is loaded */}
         {fileData && headers.length > 0 && (
-          <Card className="rounded-none border-0 shadow-none bg-transparent">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Table2 className="w-4 h-4 text-cyan-500" />
+          <Card className={TOOL_PANEL}>
+            <CardHeader className={TOOL_PANEL_HEADER}>
+              <CardTitle className={TOOL_PANEL_TITLE}>
+                <Table2 className="w-4 h-4 text-muted-foreground" />
                 {t("sampleConfigTitle")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className={cn(TOOL_PANEL_BODY, "space-y-5")}>
               {/* Year filter pills */}
               <div className="space-y-2">
                 <Label className="text-sm">{t("pivotYearFilter")}</Label>
@@ -473,8 +479,8 @@ export default function PivotPage() {
                     onClick={() => setSelectedYear("all")}
                     className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                       selectedYear === "all"
-                        ? "bg-cyan-500 border-cyan-500 text-foreground"
-                        : "border-border bg-background text-foreground hover:border-cyan-400"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:border-primary/50"
                     }`}
                   >
                     {t("pivotAllYears")}
@@ -485,8 +491,8 @@ export default function PivotPage() {
                       onClick={() => setSelectedYear(y)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                         selectedYear === y
-                          ? "bg-cyan-500 border-cyan-500 text-foreground"
-                          : "border-border bg-background text-foreground hover:border-cyan-400"
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground hover:border-primary/50"
                       }`}
                     >
                       {y}
@@ -536,8 +542,8 @@ export default function PivotPage() {
                         onClick={() => setPrefixLen(n)}
                         className={`flex-1 py-2 rounded-md text-xs font-bold border transition-colors ${
                           prefixLen === n
-                            ? "bg-cyan-500 border-cyan-500 text-foreground"
-                            : "border-border bg-background text-foreground hover:border-cyan-400"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-foreground hover:border-primary/50"
                         }`}
                       >
                         {n}
@@ -633,7 +639,7 @@ export default function PivotPage() {
                 <Button
                   onClick={handleExport}
                   disabled={!selectedPrefix}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-foreground disabled:opacity-40"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40"
                 >
                   <Download className="w-4 h-4 mr-1.5" />
                   {t("pivotExportBtn")}
@@ -642,12 +648,9 @@ export default function PivotPage() {
             </div>
 
             {prefixGroups.map((group) => (
-              <Card
-                key={group.prefix}
-                className="border border-border shadow-sm"
-              >
+              <Card key={group.prefix} className={TOOL_PANEL}>
                 <CardHeader
-                  className="py-3 cursor-pointer"
+                  className="cursor-pointer px-5 py-3.5"
                   onClick={() => toggleExpand(group.prefix)}
                 >
                   <div className="flex items-center justify-between">
@@ -657,7 +660,7 @@ export default function PivotPage() {
                       ) : (
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       )}
-                      <span className="font-mono bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded text-xs">
+                      <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
                         {group.prefix}
                       </span>
                       <span className="text-muted-foreground font-normal">
@@ -672,30 +675,30 @@ export default function PivotPage() {
                   </div>
                 </CardHeader>
                 {expandedPrefixes.has(group.prefix) && (
-                  <CardContent className="pt-0">
+                  <CardContent className="px-5 pb-5 pt-0">
                     <ScrollArea className="max-h-80">
                       <div className="overflow-x-auto">
-                        <table className="w-full text-xs border-collapse">
+                        <table className="w-full text-xs">
                           <thead>
-                            <tr className="bg-muted/60">
-                              <th className="px-3 py-2 text-left text-muted-foreground border border-border font-medium">
+                            <tr className="bg-muted/40">
+                              <th className="px-3 py-2 text-left text-muted-foreground border-b border-border/60 font-medium">
                                 {t("pivotPageYearHeader")}
                               </th>
                               {group.codes.map((c) => (
                                 <th
                                   key={c}
-                                  className="px-3 py-2 text-right text-cyan-600 dark:text-cyan-400 border border-border whitespace-nowrap font-medium"
+                                  className="px-3 py-2 text-right text-primary border-b border-border/60 whitespace-nowrap font-medium"
                                 >
                                   {c}
                                 </th>
                               ))}
-                              <th className="px-3 py-2 text-right text-foreground border border-border font-bold">
+                              <th className="px-3 py-2 text-right text-foreground border-b border-border/60 font-bold">
                                 {t("dbManageSummary")}
                               </th>
-                              <th className="px-3 py-2 text-right text-muted-foreground border border-border font-medium">
+                              <th className="px-3 py-2 text-right text-muted-foreground border-b border-border/60 font-medium">
                                 {t("pivotPagePercentHeader")}
                               </th>
-                              <th className="px-3 py-2 text-right text-amber-600 dark:text-amber-400 border border-border whitespace-nowrap font-medium">
+                              <th className="px-3 py-2 text-right text-amber-600 dark:text-amber-400 border-b border-border/60 whitespace-nowrap font-medium">
                                 {t("sampleGroupDefaultLabel")} (
                                 {Math.round(confidence * 100)}/
                                 {Math.round(marginError * 100)})
@@ -710,24 +713,24 @@ export default function PivotPage() {
                                   i % 2 === 0 ? "bg-background" : "bg-muted/20"
                                 }
                               >
-                                <td className="px-3 py-2 text-foreground border border-border font-medium">
+                                <td className="px-3 py-2 text-foreground border-b border-border/60 font-medium">
                                   {row.year}
                                 </td>
                                 {group.codes.map((c) => (
                                   <td
                                     key={c}
-                                    className="px-3 py-2 text-foreground text-right border border-border"
+                                    className="px-3 py-2 text-foreground text-right border-b border-border/60"
                                   >
                                     {row.codeCounts[c] ?? 0}
                                   </td>
                                 ))}
-                                <td className="px-3 py-2 text-foreground font-bold text-right border border-border">
+                                <td className="px-3 py-2 text-foreground font-bold text-right border-b border-border/60">
                                   {row.total}
                                 </td>
-                                <td className="px-3 py-2 text-muted-foreground text-right border border-border">
+                                <td className="px-3 py-2 text-muted-foreground text-right border-b border-border/60">
                                   {row.pct.toFixed(2)}%
                                 </td>
-                                <td className="px-3 py-2 text-amber-600 dark:text-amber-400 font-bold text-right border border-border">
+                                <td className="px-3 py-2 text-amber-600 dark:text-amber-400 font-bold text-right border-b border-border/60">
                                   {row.sampleSize}
                                 </td>
                               </tr>
@@ -735,13 +738,13 @@ export default function PivotPage() {
                           </tbody>
                           <tfoot>
                             <tr className="bg-muted/50 font-bold">
-                              <td className="px-3 py-2 text-foreground border border-border">
+                              <td className="px-3 py-2 text-foreground border-b border-border/60">
                                 {t("dbManageSummary")}
                               </td>
                               {group.codes.map((c) => (
                                 <td
                                   key={c}
-                                  className="px-3 py-2 text-foreground text-right border border-border"
+                                  className="px-3 py-2 text-foreground text-right border-b border-border/60"
                                 >
                                   {group.rows.reduce(
                                     (s, r) => s + (r.codeCounts[c] ?? 0),
@@ -749,13 +752,13 @@ export default function PivotPage() {
                                   )}
                                 </td>
                               ))}
-                              <td className="px-3 py-2 text-cyan-600 dark:text-cyan-400 text-right border border-border">
+                              <td className="px-3 py-2 text-primary text-right border-b border-border/60">
                                 {group.rows.reduce((s, r) => s + r.total, 0)}
                               </td>
-                              <td className="px-3 py-2 text-muted-foreground text-right border border-border">
+                              <td className="px-3 py-2 text-muted-foreground text-right border-b border-border/60">
                                 100%
                               </td>
-                              <td className="px-3 py-2 text-amber-600 dark:text-amber-400 text-right border border-border">
+                              <td className="px-3 py-2 text-amber-600 dark:text-amber-400 text-right border-b border-border/60">
                                 {group.rows.reduce(
                                   (s, r) => s + r.sampleSize,
                                   0,
@@ -774,13 +777,18 @@ export default function PivotPage() {
         )}
 
         {/* Info */}
-        <Card className="rounded-none border-0 shadow-none bg-transparent">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
+        <Card className={TOOL_PANEL}>
+          <CardHeader className={TOOL_PANEL_HEADER}>
+            <CardTitle className={TOOL_PANEL_TITLE}>
               {t("sampleNotesTitle")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2.5">
+          <CardContent
+            className={cn(
+              TOOL_PANEL_BODY,
+              "space-y-2.5 text-sm text-muted-foreground",
+            )}
+          >
             <p>
               <strong className="text-foreground">
                 {t("pivotPageInfoDateColLabel")}
@@ -805,7 +813,7 @@ export default function PivotPage() {
               </strong>{" "}
               {t("pivotPageInfoTableTail")}
             </p>
-            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
+            <div className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm text-foreground">
               <strong>{t("pivotPageInfoUsageLabel")}</strong>{" "}
               {t("pivotPageInfoUsageDesc1")}{" "}
               <strong>{t("pivotCreateBtn")}</strong>{" "}

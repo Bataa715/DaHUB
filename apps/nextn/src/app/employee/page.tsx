@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Loader2, Users, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ToolPageHeader from "@/components/shared/ToolPageHeader";
 
 interface DepartmentUser {
   id: string;
@@ -113,7 +114,7 @@ function EmployeeCard({
 
   return (
     <div
-      className={`w-36 flex-shrink-0 rounded-2xl border-2 ${color.border} ${color.bg} p-3 flex flex-col items-center gap-2.5 text-center transition-all duration-300 shadow-premium hover:shadow-premium-lg hover:-translate-y-0.5 ${
+      className={`w-36 flex-shrink-0 rounded-2xl border-2 ${color.border} ${color.bg} p-3 flex flex-col items-center gap-2.5 text-center transition-all duration-300 hover:-translate-y-0.5 ${
         isSelf ? "ring-2 ring-blue-500/30" : ""
       }`}
     >
@@ -139,7 +140,7 @@ function EmployeeCard({
           {member.name}
         </p>
         {member.position && (
-          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
             {member.position}
           </p>
         )}
@@ -147,7 +148,7 @@ function EmployeeCard({
 
       {isSelf && (
         <div className="flex flex-wrap justify-center gap-1.5">
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
             {t("youBadge")}
           </span>
         </div>
@@ -275,26 +276,15 @@ export default function EmployeesPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col bg-background">
-      {/* Гарчиг — тогтмол дээд хэсэг (скролл болохгүй) */}
-      <div className="shrink-0 w-full max-w-6xl mx-auto px-6 pt-8 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-foreground/5 border border-border flex items-center justify-center shadow-premium ring-hairline">
-            <Users className="w-5 h-5 text-foreground/70" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 mb-0.5">
-              {t("navEmployees")}
-            </p>
-            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
-              {t("navEmployees")}
-            </h1>
-          </div>
-        </div>
-      </div>
-
+      {/* Sidebar хасагдсан тул нүүр рүү буцах зам */}
+      <ToolPageHeader
+        href="/"
+        icon={<Users className="w-4 h-4 text-blue-500" />}
+        title={t("navEmployees")}
+      />
       {/* Ажилтны хэсэг — ЗӨВХӨН энэ хэсэг дотроо скролл болно */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="w-full max-w-6xl mx-auto px-6 pb-8">
+        <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
           {departments.length > 0 ? (
             <div className="space-y-6">
               {departments.map((dept) => (

@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import ToolPageHeader from "@/components/shared/ToolPageHeader";
+import { TOOL_CONTAINER } from "@/components/shared/tool-ui";
+import { cn } from "@/lib/utils";
 import { useLanguage, type TranslationKey } from "@/contexts/LanguageContext";
 import {
   Clock,
@@ -302,7 +304,7 @@ export default function DbAccessManagePage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       <ToolPageHeader
         href="/"
         icon={<ShieldCheck className="w-4 h-4 text-emerald-500" />}
@@ -335,7 +337,7 @@ export default function DbAccessManagePage() {
         }
       />
 
-      <div className="w-full px-4 md:px-6 py-6 space-y-4">
+      <div className={cn(TOOL_CONTAINER, "space-y-5 py-6")}>
         {/* Tabs — muted pills */}
         <div className="flex flex-wrap gap-1.5">
           {(
@@ -356,7 +358,7 @@ export default function DbAccessManagePage() {
             >
               {tb.label}
               {tb.key === "pending" && pendingCount > 0 && (
-                <span className="ml-1.5 text-[10px] text-amber-400">
+                <span className="ml-1.5 text-[11px] text-amber-400">
                   {pendingCount}
                 </span>
               )}
@@ -380,20 +382,18 @@ export default function DbAccessManagePage() {
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-border/40 border border-border/40 rounded-xl overflow-hidden">
+              <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
                 {requests.map((req) => {
                   const cfg = STATUS_CONFIG[req.status];
                   const StatusIcon = cfg.icon;
                   const expanded = expandedId === req.id;
                   return (
-                    <div key={req.id} className="bg-card/30">
+                    <div key={req.id} className="bg-card">
                       <div
                         className="flex items-center gap-3 px-3.5 py-3 cursor-pointer hover:bg-muted/20 transition-colors"
-                        onClick={() =>
-                          setExpandedId(expanded ? null : req.id)
-                        }
+                        onClick={() => setExpandedId(expanded ? null : req.id)}
                       >
-                        <div className="w-7 h-7 rounded-lg bg-muted/60 border border-border/40 flex items-center justify-center shrink-0 text-[11px] font-semibold text-muted-foreground">
+                        <div className="w-7 h-7 rounded-lg bg-muted/60 border border-border flex items-center justify-center shrink-0 text-xs font-semibold text-muted-foreground">
                           {req.requesterName?.[0] ?? "?"}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -401,30 +401,30 @@ export default function DbAccessManagePage() {
                             <span className="font-semibold text-sm text-foreground">
                               {req.requesterName}
                             </span>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-[11px] text-muted-foreground">
                               {req.requesterUserId}
                             </span>
                             {req.tables.slice(0, 3).map((tbl) => (
                               <span
                                 key={tbl}
-                                className="text-[10px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded"
+                                className="text-[11px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded"
                               >
                                 {tbl}
                               </span>
                             ))}
                             {req.tables.length > 3 && (
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-[11px] text-muted-foreground">
                                 +{req.tables.length - 3}
                               </span>
                             )}
                           </div>
-                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
                             {t("dbManageSentAt")} {fmt24(req.requestTime)} ·{" "}
                             {t("dbManageValidUntil")} {fmt24(req.validUntil)}
                           </p>
                         </div>
                         <span
-                          className={`flex items-center gap-1 text-[10px] font-medium shrink-0 ${cfg.color}`}
+                          className={`flex items-center gap-1 text-[11px] font-medium shrink-0 ${cfg.color}`}
                         >
                           <StatusIcon className="h-3 w-3" />
                           {t(cfg.labelKey as TranslationKey)}
@@ -454,14 +454,14 @@ export default function DbAccessManagePage() {
                         <div className="px-3.5 pb-3.5 pt-1 space-y-3 border-t border-border/30 bg-muted/10">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                              <p className="text-xs font-semibold text-muted-foreground mb-1.5">
                                 {t("dbManageTables")}
                               </p>
                               <div className="flex flex-wrap gap-1">
                                 {req.tables.map((tbl) => (
                                   <span
                                     key={tbl}
-                                    className="text-[10px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
+                                    className="text-[11px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
                                   >
                                     {tbl}
                                   </span>
@@ -469,14 +469,14 @@ export default function DbAccessManagePage() {
                               </div>
                             </div>
                             <div>
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                              <p className="text-xs font-semibold text-muted-foreground mb-1.5">
                                 {t("dbManageGrantType")}
                               </p>
                               <div className="flex gap-1">
                                 {req.accessTypes.map((a) => (
                                   <span
                                     key={a}
-                                    className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground"
+                                    className="text-[11px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground"
                                   >
                                     {a}
                                   </span>
@@ -485,7 +485,7 @@ export default function DbAccessManagePage() {
                             </div>
                             {req.reason && (
                               <div className="sm:col-span-2">
-                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                <p className="text-xs font-semibold text-muted-foreground mb-1">
                                   {t("dbManageReasonLabel")}
                                 </p>
                                 <p className="text-xs text-muted-foreground italic">
@@ -494,7 +494,7 @@ export default function DbAccessManagePage() {
                               </div>
                             )}
                             {req.reviewedByName && (
-                              <div className="sm:col-span-2 text-[10px] text-muted-foreground">
+                              <div className="sm:col-span-2 text-[11px] text-muted-foreground">
                                 {t("dbManageResolvedAt")}{" "}
                                 <span className="text-foreground">
                                   {req.reviewedByName}
@@ -510,7 +510,7 @@ export default function DbAccessManagePage() {
                             <div>
                               {reviewingId === req.id ? (
                                 <div className="space-y-2">
-                                  <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                  <Label className="text-xs font-semibold text-muted-foreground">
                                     {t("dbManageDecisionNote")}
                                   </Label>
                                   <Textarea
@@ -522,11 +522,11 @@ export default function DbAccessManagePage() {
                                       setReviewNote(e.target.value)
                                     }
                                     rows={2}
-                                    className="bg-muted/60 border-border/50 text-xs resize-none focus-visible:ring-0 focus-visible:border-emerald-500/60"
+                                    className="bg-muted/60 border-border text-xs resize-none focus-visible:ring-0 focus-visible:border-emerald-500/60"
                                   />
                                   <div className="flex flex-wrap gap-2">
                                     <Button
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-foreground h-8 text-xs"
+                                      className="bg-emerald-600 hover:bg-emerald-500 text-white h-8 text-xs"
                                       size="sm"
                                       disabled={reviewLoading}
                                       onClick={() =>
@@ -571,7 +571,7 @@ export default function DbAccessManagePage() {
                                 </div>
                               ) : (
                                 <Button
-                                  className="bg-emerald-600 hover:bg-emerald-500 text-foreground h-8 text-xs"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white h-8 text-xs"
                                   size="sm"
                                   onClick={() => {
                                     setReviewingId(req.id);
@@ -627,31 +627,31 @@ export default function DbAccessManagePage() {
                 return (
                   <div key={u.id} className="space-y-2">
                     <div className="flex items-center gap-2 px-0.5">
-                      <div className="w-6 h-6 rounded-md bg-muted/60 border border-border/40 flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+                      <div className="w-6 h-6 rounded-md bg-muted/60 border border-border flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0">
                         {u.name[0]}
                       </div>
                       <span className="font-semibold text-sm">{u.name}</span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         {u.code}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/60 ml-1">
+                      <span className="text-[11px] text-muted-foreground/60 ml-1">
                         {groupByRequest(uGrants).length}{" "}
                         {t("dbManageGrantUnit")}
                       </span>
                     </div>
 
-                    <div className="divide-y divide-border/40 border border-border/40 rounded-xl overflow-hidden">
+                    <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
                       {groupByRequest(uGrants).map((grp) => (
                         <div
                           key={grp.requestId}
-                          className="px-3.5 py-3 flex items-start gap-3 bg-card/30"
+                          className="px-3.5 py-3 flex items-start gap-3 bg-card"
                         >
                           <div className="flex-1 min-w-0 space-y-1.5">
                             <div className="flex flex-wrap gap-1">
                               {grp.tables.map((tbl) => (
                                 <span
                                   key={tbl}
-                                  className="text-[10px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
+                                  className="text-[11px] font-mono bg-muted/60 text-foreground/80 px-1.5 py-0.5 rounded"
                                 >
                                   {tbl}
                                 </span>
@@ -659,18 +659,19 @@ export default function DbAccessManagePage() {
                               {grp.accessTypes.map((a) => (
                                 <span
                                   key={a}
-                                  className="text-[10px] px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground"
+                                  className="text-[11px] px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground"
                                 >
                                   {a}
                                 </span>
                               ))}
                             </div>
-                            <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                            <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
                               <span>
                                 {grp.grantedByName} · {fmt24(grp.grantedAt)}
                               </span>
                               <span suppressHydrationWarning>
-                                {t("dbManageValidUntil")} {fmt24(grp.validUntil)}
+                                {t("dbManageValidUntil")}{" "}
+                                {fmt24(grp.validUntil)}
                               </span>
                             </div>
                           </div>

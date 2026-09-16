@@ -242,7 +242,7 @@ export function RegisterFlow({
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="p-4 bg-primary/5 rounded-xl border border-primary/20"
+                          className="p-4 bg-primary/5 rounded-md border border-primary/20"
                         >
                           <p className="text-xs text-muted-foreground mb-1">
                             {t("regFlowYourIdLabel")}
@@ -279,7 +279,7 @@ export function RegisterFlow({
                 transition={{ duration: 0.25 }}
                 className="text-center"
               >
-                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-6">
+                <div className="w-16 h-16 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-6">
                   <Clock className="w-8 h-8 text-amber-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">

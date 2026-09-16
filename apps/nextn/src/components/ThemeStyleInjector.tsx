@@ -77,9 +77,19 @@ function buildCSS(): string {
       theme.name === "default" ? ".ab-theme" : `html.${theme.name} .ab-theme`;
 
     blocks.push(
-      `${sel} {\n${shadcnVars(theme.tokens)}\n}`,
+      // color-scheme — scrollbar, date picker, autofill зэрэг браузерын үндсэн
+      // элементүүд тухайн горимын өнгөөр зурагдана.
+      `${sel} {\n  color-scheme:${theme.isDark ? "dark" : "light"};\n${shadcnVars(theme.tokens)}\n}`,
       `${surfSel} {\n${surfaceVars(theme.tokens)}\n}`,
     );
+  }
+
+  // Бараан гадаргуу (hero, толгой хэсэг, нэвтрэх самбар) — цайвар theme-д ч бараан.
+  // Дотор нь байх token-д суурилсан товч/badge/dropdown trigger зөв харагдахын тулд
+  // бараан theme-ийн token-уудыг тухайн элемент дээр дахин тодорхойлно.
+  const dark = themes.find((theme) => theme.isDark);
+  if (dark) {
+    blocks.push(`.dark-surface {\n  color-scheme:dark;\n${shadcnVars(dark.tokens)}\n}`);
   }
 
   return blocks.join("\n\n");

@@ -42,7 +42,7 @@ export class DbAccessService {
   // stored in access_grants.chPassword. Format: enc:v1:<base64(iv|tag|ciphertext)>.
   // Old plaintext rows are still readable (auto-detected by missing prefix).
   //
-  // [AUDIT] Multi-key: python-api.service-тэй ижил загвараар тусгай
+  // [AUDIT] Multi-key: тусгай
   // CONFIG_ENC_KEY/CREDENTIAL_ENCRYPTION_KEY-г нэн тэргүүнд ашиглаж,
   // JWT_SECRET-ээс гарсан түлхүүрийг унших fallback болгож үлдээнэ —
   // ингэснээр JWT_SECRET солиход хуучин мөрүүд уншигдсаар байна.

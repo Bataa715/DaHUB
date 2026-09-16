@@ -1,4 +1,5 @@
 import "./alert-box.css";
+import { DashboardShell } from "@/components/shared/DashboardShell";
 import AlertBoxShell from "./_components/AlertBoxShell";
 
 export default function AlertBoxLayout({
@@ -6,5 +7,9 @@ export default function AlertBoxLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AlertBoxShell>{children}</AlertBoxShell>;
+  return (
+    <DashboardShell>
+      <AlertBoxShell>{children}</AlertBoxShell>
+    </DashboardShell>
+  );
 }

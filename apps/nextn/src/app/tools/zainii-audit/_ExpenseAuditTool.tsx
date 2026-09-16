@@ -673,7 +673,7 @@ export function ExpenseAuditTool() {
 
   if (totalOpen) {
     return (
-      <div className="bg-background text-foreground min-h-screen">
+      <div className="min-h-full bg-background text-foreground">
         <ToolPageHeader
           onBack={() => setTotalOpen(false)}
           icon={<PieChart className="w-4 h-4 text-sky-500" />}
@@ -682,11 +682,11 @@ export function ExpenseAuditTool() {
 
         {/* Зардлын хяналтын хуудастай ЯГ ИЖИЛ шүүлтүүрийн мөр —
             огноо, доод дүн, хайлт, Excel татах. */}
-        <div className="sticky top-14 z-[19] w-full min-w-0 border-b border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl shadow-premium">
-          <div className="px-4 md:px-6 py-2.5 flex flex-wrap items-end gap-3">
+        <div className="sticky top-14 z-[19] w-full min-w-0 border-b border-border bg-background/90 backdrop-blur">
+          <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex flex-wrap items-end gap-3 py-2.5">
             <div className="flex flex-wrap items-end gap-2">
               <div className="w-[138px]">
-                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   {t("tailan_startDateLabel")}
                 </label>
                 <Input
@@ -698,7 +698,7 @@ export function ExpenseAuditTool() {
                 />
               </div>
               <div className="w-[138px]">
-                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   {t("tailan_endDateLabel")}
                 </label>
                 <Input
@@ -710,7 +710,7 @@ export function ExpenseAuditTool() {
                 />
               </div>
               <div className="w-[160px]">
-                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   {t("zaExpMinAmountLabel")}
                 </label>
                 <Input
@@ -757,7 +757,7 @@ export function ExpenseAuditTool() {
             <div className="hidden sm:block w-px self-stretch min-h-[36px] bg-border/80" />
             <div className="flex flex-wrap items-end gap-2 sm:ml-auto">
               <div className="w-[240px]">
-                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   {t("zaExpTableSearchLabel")}
                 </label>
                 <Input
@@ -789,7 +789,7 @@ export function ExpenseAuditTool() {
           </div>
         </div>
 
-        <div className="w-full px-4 md:px-6 py-5 space-y-5">
+        <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-5 py-6">
           {totalLoading && (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -829,7 +829,7 @@ export function ExpenseAuditTool() {
                 />
               </div>
 
-              <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
                 {filteredTotalTx.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     {t("zaExpTableSearchEmpty")}
@@ -867,18 +867,17 @@ export function ExpenseAuditTool() {
   }
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
+    <div className="min-h-full bg-background text-foreground">
       <ToolPageHeader
-        href="/tools/zainii-audit"
         icon={<Wallet className="w-4 h-4 text-sky-500" />}
         title={t("zaBoxExpenseTitle")}
       />
 
-      <div className="sticky top-14 z-[19] w-full min-w-0 border-b border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl shadow-premium">
-        <div className="px-4 md:px-6 py-2.5 flex flex-wrap items-end gap-3">
+      <div className="sticky top-14 z-[19] w-full min-w-0 border-b border-border bg-background/90 backdrop-blur">
+        <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex flex-wrap items-end gap-3 py-2.5">
           <div className="flex flex-wrap items-end gap-2">
             <div className="w-[138px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 {t("tailan_startDateLabel")}
               </label>
               <Input
@@ -890,7 +889,7 @@ export function ExpenseAuditTool() {
               />
             </div>
             <div className="w-[138px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 {t("tailan_endDateLabel")}
               </label>
               <Input
@@ -902,7 +901,7 @@ export function ExpenseAuditTool() {
               />
             </div>
             <div className="w-[160px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 {t("zaExpMinAmountLabel")}
               </label>
               <Input
@@ -952,7 +951,7 @@ export function ExpenseAuditTool() {
           <div className="hidden sm:block w-px self-stretch min-h-[36px] bg-border/80" />
           <div className="flex flex-wrap items-end gap-2 sm:ml-auto">
             <div className="w-[240px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 {t("zaExpTableSearchLabel")}
               </label>
               <Input
@@ -984,7 +983,7 @@ export function ExpenseAuditTool() {
         </div>
       </div>
 
-      <div className="w-full px-4 md:px-6 py-5 space-y-5">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-5 py-6">
         {error && (
           <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-sm text-destructive">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -993,7 +992,7 @@ export function ExpenseAuditTool() {
         )}
 
         {!result && !loading && !error && (
-          <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center">
             <p className="text-sm font-medium text-foreground">
               {t("zaExpEmptyState")}
             </p>
@@ -1024,14 +1023,14 @@ export function ExpenseAuditTool() {
         {result && (
           <>
             {result.truncated && (
-              <div className="flex items-center gap-2 rounded-sm border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-600 dark:text-amber-400 shadow-premium ring-hairline">
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                 {t("zaExpTruncatedWarning")}
               </div>
             )}
 
             {Number(result.qualifyingCount) === 0 ? (
-              <div className="rounded-sm border border-dashed border-border bg-card/40 px-6 py-10 text-center shadow-premium ring-hairline">
+              <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center">
                 <p className="text-sm font-medium text-foreground">
                   {t("zaExpNoQualifyingCustomers")}
                 </p>
@@ -1039,8 +1038,8 @@ export function ExpenseAuditTool() {
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
-                  <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline flex flex-col">
-                    <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col">
+                    <div className="px-4 py-3 border-b border-border bg-muted/40">
                       <h3 className="text-sm font-semibold text-foreground">
                         {t("zaExpKpiTitle")}
                       </h3>
@@ -1050,13 +1049,13 @@ export function ExpenseAuditTool() {
                         icon={Users2}
                         label={t("zaExpQualifyingCustomers")}
                         value={String(Number(result.qualifyingCount) || 0)}
-                        tint="text-sky-500 bg-sky-500/10 border-sky-500/20"
+                        tint="text-primary bg-primary/10 border-primary/20"
                       />
                       <StatRow
                         icon={List}
                         label={t("zaExpListedTxCount")}
                         value={String(result.transactions.length)}
-                        tint="text-sky-500 bg-sky-500/10 border-sky-500/20"
+                        tint="text-primary bg-primary/10 border-primary/20"
                       />
                       <StatRow
                         icon={Wallet}
@@ -1067,8 +1066,8 @@ export function ExpenseAuditTool() {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-2 rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline flex flex-col">
-                    <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20">
+                  <div className="lg:col-span-2 rounded-2xl border border-border bg-card overflow-hidden flex flex-col">
+                    <div className="px-4 py-3 border-b border-border bg-muted/40">
                       <h3 className="text-sm font-semibold text-foreground">
                         {t("zaExpChartTitle")}
                       </h3>
@@ -1080,7 +1079,7 @@ export function ExpenseAuditTool() {
                   </div>
                 </div>
 
-                <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline">
+                <div className="rounded-2xl border border-border bg-card overflow-hidden">
                   {filteredTx.length === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                       {t("zaExpTableSearchEmpty")}
@@ -1282,7 +1281,7 @@ export function ExpenseAuditTool() {
                                       "noopener,noreferrer",
                                     )
                                   }
-                                  className="inline-flex items-center gap-1.5 text-xs text-sky-600 dark:text-sky-400 hover:underline text-left"
+                                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline text-left"
                                 >
                                   <ExternalLink className="w-3 h-3 shrink-0" />
                                   <span className="truncate">
@@ -1311,7 +1310,7 @@ export function ExpenseAuditTool() {
                             {budgetState.rows.map((b, k) => (
                               <div
                                 key={k}
-                                className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border-b border-border/40 last:border-0 pb-2 last:pb-0"
+                                className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border-b border-border last:border-0 pb-2 last:pb-0"
                               >
                                 <Field
                                   label={t("zaExpBudgetColFromActivity")}
@@ -1370,7 +1369,7 @@ export function ExpenseAuditTool() {
                  дэлгэц солилгүй харна ────────────────────────────────── */}
           {verificationDialogTx && (
             <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <div className="text-xs font-semibold text-muted-foreground mb-2">
                 {t("zaExpVerContextTitle")}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-xs">
@@ -1405,7 +1404,7 @@ export function ExpenseAuditTool() {
           <div className="space-y-4 pt-1">
             {/* ── Аудитын дүгнэлт — сонголт биш, харагдахуйц товчнууд ── */}
             <div>
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-muted-foreground mb-2">
                 {t("zaExpStatusLabel")}
                 <span className="ml-2 normal-case font-normal tracking-normal text-[11px] text-muted-foreground/80">
                   {t("zaExpVerStatusHint")}
@@ -1458,7 +1457,7 @@ export function ExpenseAuditTool() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-muted-foreground">
                     {t("zaExpVerTypeLabel")}
                   </label>
                   {isSuperAdmin && (
@@ -1492,7 +1491,7 @@ export function ExpenseAuditTool() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                   {t("zaExpContractAmountLabel")}
                 </label>
                 <Input
@@ -1518,7 +1517,7 @@ export function ExpenseAuditTool() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 {t("zaExpBudgetColDescription")}
               </label>
               <Textarea
@@ -1578,13 +1577,13 @@ function DetailPanel({
 
   return (
     <div className="rounded-lg border border-border/60 bg-muted/20 overflow-hidden">
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/50 bg-muted/40">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border bg-muted/40">
         <span className="text-muted-foreground">{icon}</span>
         <span className="text-[11px] font-semibold text-foreground">
           {title}
         </span>
         {!loading && !error && (count ?? 0) > 0 && (
-          <span className="ml-auto rounded-full bg-foreground/10 px-1.5 text-[10px] font-medium tabular-nums text-foreground">
+          <span className="ml-auto rounded-full bg-foreground/10 px-1.5 text-[11px] font-medium tabular-nums text-foreground">
             {count}
           </span>
         )}
@@ -2073,9 +2072,8 @@ function ExpenseTxTable({
                   }
                   onClick={() => toggleSort(col.key)}
                   className={cn(
-                    "relative px-2 py-2.5 text-xs font-bold text-foreground select-none border-b border-border cursor-pointer hover:bg-muted/50 group bg-card",
+                    "group relative cursor-pointer select-none border-b border-border bg-muted/40 px-3 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground",
                     stickyHeader && "sticky top-0 z-[1]",
-                    i < cols.length - 1 && "border-r border-border",
                     col.align === "right" ? "text-right" : "text-left",
                   )}
                 >
@@ -2113,42 +2111,36 @@ function ExpenseTxTable({
           <tbody>
             {displayedRows.map((tx, i) => {
               const statusMeta = STATUS_META[tx.verification_status ?? ""];
-              const cellLine = "border-r border-border";
               return (
                 <tr
                   key={`${tx.book_number}-${tx.customer_code}-${i}`}
                   className="border-t border-border hover:bg-muted/40"
                 >
-                  <Td className={cellLine}>{tx.book_date || "—"}</Td>
-                  <Td className={cellLine}>
+                  <Td>{tx.book_date || "—"}</Td>
+                  <Td>
                     <CellPair code={tx.customer_code} name={tx.customer_name} />
                   </Td>
-                  <Td className={cellLine}>
+                  <Td>
                     <CellPair code={tx.account_code} name={tx.account_name} />
                   </Td>
-                  <Td
-                    className={cn(
-                      "text-right font-semibold tabular-nums",
-                      cellLine,
-                    )}
-                  >
+                  <Td className="text-right font-semibold tabular-nums">
                     {fmtAmount(tx.debit_amount)} {tx.currency_code}
                   </Td>
-                  <Td className={cellLine}>{tx.description || "—"}</Td>
-                  <Td className={cellLine}>{tx.department_name || "—"}</Td>
-                  <Td className={cellLine}>
+                  <Td>{tx.description || "—"}</Td>
+                  <Td>{tx.department_name || "—"}</Td>
+                  <Td>
                     <CellPair
                       code={tx.co_a_group_code}
                       name={tx.co_a_group_name}
                     />
                   </Td>
-                  <Td className={cellLine}>
+                  <Td>
                     <CellPair
                       code={tx.recievable_type_code}
                       name={tx.recievable_type_name}
                     />
                   </Td>
-                  <Td className={showVerification ? cellLine : undefined}>
+                  <Td>
                     <PayRequestBadge
                       state={payState(tx)}
                       title={tx.book_number}
@@ -2270,10 +2262,10 @@ function BudgetTypeTable({
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr>
-            <Th className="text-xs font-bold text-foreground bg-background border-b border-border">
+            <Th className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground">
               {t("zaExpChartTitle")}
             </Th>
-            <Th className="text-right text-xs font-bold text-foreground bg-background border-b border-border">
+            <Th className="border-b border-border bg-muted/40 text-right text-xs font-semibold text-muted-foreground">
               {t("zaExpColCount")}
             </Th>
           </tr>
@@ -2363,7 +2355,7 @@ function TotalKpiRow({
       icon: List,
       label: t("zaExpKpiTxCount"),
       value: fmtAmount(stats.count),
-      tint: "text-sky-500 bg-sky-500/10 border-sky-500/20",
+      tint: "text-primary bg-primary/10 border-primary/20",
     },
     {
       icon: Users2,
@@ -2386,7 +2378,7 @@ function TotalKpiRow({
         return (
           <div
             key={tile.label}
-            className="rounded-xl border border-border bg-card shadow-premium ring-hairline px-4 py-3 flex items-center gap-3 min-w-0"
+            className="rounded-2xl border border-border bg-card px-4 py-3 flex items-center gap-3 min-w-0"
           >
             <span
               className={cn(
@@ -2397,7 +2389,7 @@ function TotalKpiRow({
               <Icon className="w-4 h-4" />
             </span>
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              <div className="text-xs font-semibold text-muted-foreground truncate">
                 {tile.label}
               </div>
               <div className="text-base font-bold tabular-nums text-foreground truncate">
@@ -2446,7 +2438,7 @@ function BreakdownChart({
   const max = rows[0]?.total || 1;
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-premium ring-hairline flex flex-col min-h-0">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col min-h-0">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         <span className="text-[11px] tabular-nums text-muted-foreground">
@@ -2477,7 +2469,7 @@ function BreakdownChart({
                       <div className="text-xs font-medium text-foreground truncate">
                         {r.name}
                       </div>
-                      <div className="font-mono text-[10px] text-muted-foreground truncate">
+                      <div className="font-mono text-[11px] text-muted-foreground truncate">
                         {r.code} · {fmtAmount(r.count)}
                       </div>
                     </div>
@@ -2485,7 +2477,7 @@ function BreakdownChart({
                       <div className="text-xs font-semibold tabular-nums text-foreground">
                         ₮{fmtAmount(r.total)}
                       </div>
-                      <div className="text-[10px] tabular-nums text-muted-foreground">
+                      <div className="text-[11px] tabular-nums text-muted-foreground">
                         {share.toFixed(1)}%
                       </div>
                     </div>

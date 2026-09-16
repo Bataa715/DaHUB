@@ -62,13 +62,8 @@ function sanitizeRichText(html: string): string {
   return sanitizeHtml(html ?? "", RICH_TEXT_SANITIZE_OPTIONS);
 }
 
-// [PERF] getTopPublishers() recomputes a JOIN+GROUP BY every call; TTL cache.
-const TOP_PUBLISHERS_CACHE_TTL_MS = 60_000;
-
 @Injectable()
 export class MedlegService {
-  private topPublishersCache: { data: unknown; loadedAt: number } | null = null;
-
   constructor(private clickhouse: ClickHouseService) {}
 
   /**
@@ -183,13 +178,12 @@ export class MedlegService {
         id,
         title: createMedlegDto.title,
         content: sanitizeRichText(createMedlegDto.content ?? ""),
-        category: createMedlegDto.category || "Аудит",
+        category: createMedlegDto.category || "General knowledge",
         imageUrl: first?.imageData ?? "",
         imageMime: first?.imageMime ?? "",
         imagesJson: JSON.stringify(images),
         authorId,
         isPublished: 1,
-        views: 0,
         createdAt: now,
         updatedAt: now,
       },
@@ -204,12 +198,12 @@ export class MedlegService {
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.imagesJson,
-              n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
+              n.authorId, n.isPublished, n.createdAt, n.updatedAt,
               u.name as authorName
        FROM medleg AS n
        LEFT JOIN users u ON n.authorId = u.id
        ${filter}
-       ORDER BY n.views DESC, n.createdAt DESC
+       ORDER BY n.createdAt DESC
        LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
       { limit, offset },
     );
@@ -231,7 +225,7 @@ export class MedlegService {
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.imagesJson,
-              n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
+              n.authorId, n.isPublished, n.createdAt, n.updatedAt,
               u.name as authorName
        FROM medleg AS n
        LEFT JOIN users u ON n.authorId = u.id
@@ -252,12 +246,12 @@ export class MedlegService {
     });
   }
 
-  async findOne(id: string, userId?: string) {
+  async findOne(id: string) {
     const items = await this.clickhouse.query<any>(
       `SELECT n.id, n.title, n.content, n.category,
               notEmpty(n.imageUrl) AS hasImage,
               n.imagesJson,
-              n.authorId, n.isPublished, n.views, n.createdAt, n.updatedAt,
+              n.authorId, n.isPublished, n.createdAt, n.updatedAt,
               u.name as authorName
        FROM medleg AS n
        LEFT JOIN users u ON n.authorId = u.id
@@ -268,45 +262,6 @@ export class MedlegService {
 
     if (!items || items.length === 0) {
       throw new NotFoundException("Мэдлэг олдсонгүй");
-    }
-
-    // Only increment view count once per user per article
-    if (userId) {
-      const alreadyViewed = await this.clickhouse
-        .query<{ cnt: string }>(
-          `SELECT count() as cnt FROM medleg_views
-           WHERE newsId = {newsId:String} AND userId = {userId:String}`,
-          { newsId: id, userId },
-        )
-        .catch(() => [{ cnt: "1" }]); // on error, assume already viewed
-
-      if (Number(alreadyViewed?.[0]?.cnt ?? 0) === 0) {
-        this.clickhouse
-          .insert("medleg_views", [{ newsId: id, userId, viewedAt: nowCH() }])
-          .catch(() => {});
-        // ALTER UPDATE биш — views + 1-ийг DELETE + INSERT-ээр
-        this.clickhouse
-          .query<any>(`SELECT * FROM medleg WHERE id = {id:String} LIMIT 1`, {
-            id,
-          })
-          .then(async (rows) => {
-            if (!rows[0]) return;
-            const row = rows[0];
-            await this.clickhouse.replaceRows(
-              "medleg",
-              "id = {id:String}",
-              { id },
-              [
-                {
-                  ...row,
-                  views: Number(row.views ?? 0) + 1,
-                  updatedAt: nowCH(),
-                },
-              ],
-            );
-          })
-          .catch(() => {});
-      }
     }
 
     const n = items[0];
@@ -412,7 +367,6 @@ export class MedlegService {
             ? 1
             : 0
           : Number(row.isPublished) || 0,
-      views: row.views,
       createdAt: row.createdAt,
       updatedAt: nowCH(),
     };
@@ -463,129 +417,5 @@ export class MedlegService {
       : "image/jpeg";
     const buffer = Buffer.from(imageData, "base64");
     return { buffer, mimeType };
-  }
-
-  async getTopPublishers() {
-    if (
-      this.topPublishersCache &&
-      Date.now() - this.topPublishersCache.loadedAt <
-        TOP_PUBLISHERS_CACHE_TTL_MS
-    ) {
-      return this.topPublishersCache.data;
-    }
-
-    const rows = await this.clickhouse.query<any>(
-      `SELECT n.authorId,
-              u.name AS authorName,
-              count() AS medlegCount,
-              sum(n.views) AS totalViews
-       FROM medleg AS n
-       LEFT JOIN users u ON n.authorId = u.id
-       WHERE n.isPublished = 1
-       GROUP BY n.authorId, u.name
-       ORDER BY totalViews DESC
-       LIMIT 50`,
-      {},
-    );
-    const result = rows.map((r: any, i: number) => ({
-      rank: i + 1,
-      authorId: r.authorId,
-      authorName: r.authorName || "Unknown",
-      medlegCount: Number(r.medlegCount),
-      totalViews: Number(r.totalViews),
-    }));
-    this.topPublishersCache = { data: result, loadedAt: Date.now() };
-    return result;
-  }
-
-  async getReactions(newsId: string, userId: string) {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT emoji, count() as cnt FROM medleg_reactions FINAL
-       WHERE newsId = {newsId:String}
-       GROUP BY emoji`,
-      { newsId },
-    );
-    const myRow = await this.clickhouse.query<any>(
-      `SELECT emoji FROM medleg_reactions FINAL
-       WHERE newsId = {newsId:String} AND userId = {userId:String}
-       LIMIT 1`,
-      { newsId, userId },
-    );
-    const counts: Record<string, number> = {};
-    for (const r of rows) counts[r.emoji] = Number(r.cnt);
-    return { counts, myReaction: myRow[0]?.emoji ?? null };
-  }
-
-  async react(newsId: string, userId: string, emoji: string) {
-    const ALLOWED = ["👍", "❤️", "😮", "💡", "🔥"];
-    if (!ALLOWED.includes(emoji))
-      throw new BadRequestException("Invalid emoji");
-    await this.clickhouse.insert("medleg_reactions", [
-      { newsId, userId, emoji, createdAt: nowCH() },
-    ]);
-    return { ok: true };
-  }
-
-  async removeReaction(newsId: string, userId: string) {
-    await this.clickhouse.exec(
-      `ALTER TABLE medleg_reactions DELETE WHERE newsId = {newsId:String} AND userId = {userId:String}`,
-      { newsId, userId },
-    );
-    return { ok: true };
-  }
-
-  async getComments(newsId: string) {
-    return this.clickhouse.query<any>(
-      `SELECT id, newsId, authorId, authorName, content, createdAt
-       FROM medleg_comments
-       WHERE newsId = {newsId:String}
-       ORDER BY createdAt ASC`,
-      { newsId },
-    );
-  }
-
-  async addComment(
-    newsId: string,
-    authorId: string,
-    authorName: string,
-    content: string,
-  ) {
-    if (!content?.trim())
-      throw new BadRequestException("Comment cannot be empty");
-    if (content.length > 1000)
-      throw new BadRequestException("Comment too long");
-    const id = randomUUID();
-    await this.clickhouse.insert("medleg_comments", [
-      {
-        id,
-        newsId,
-        authorId,
-        authorName,
-        // Comments are rendered as plain text on the client — strip all
-        // markup here too so a stored comment can never carry live HTML.
-        content: sanitizeHtml(content.trim(), {
-          allowedTags: [],
-          allowedAttributes: {},
-        }),
-        createdAt: nowCH(),
-      },
-    ]);
-    return { id, ok: true };
-  }
-
-  async deleteComment(commentId: string, userId: string) {
-    const rows = await this.clickhouse.query<any>(
-      `SELECT id, authorId FROM medleg_comments WHERE id = {id:String} LIMIT 1`,
-      { id: commentId },
-    );
-    if (!rows || rows.length === 0)
-      throw new NotFoundException("Comment not found");
-    if (rows[0].authorId !== userId)
-      throw new BadRequestException("Not your comment");
-    await this.clickhouse.exec(
-      `ALTER TABLE medleg_comments DELETE WHERE id = {id:String}`,
-      { id: commentId },
-    );
-    return { ok: true };
   }
 }

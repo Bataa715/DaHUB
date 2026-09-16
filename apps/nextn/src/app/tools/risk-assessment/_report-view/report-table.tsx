@@ -105,9 +105,21 @@ type ReportColDef = {
 };
 
 const REPORT_COLS: ReportColDef[] = [
-  { key: "expand", label: "⊕", align: "center", defaultWidth: 36, minWidth: 32 },
+  {
+    key: "expand",
+    label: "⊕",
+    align: "center",
+    defaultWidth: 36,
+    minWidth: 32,
+  },
   { key: "num", label: "№", align: "center", defaultWidth: 44, minWidth: 36 },
-  { key: "solid", label: "SOL", align: "center", defaultWidth: 64, minWidth: 48 },
+  {
+    key: "solid",
+    label: "SOL",
+    align: "center",
+    defaultWidth: 64,
+    minWidth: 48,
+  },
   {
     key: "name",
     label: "Салбарын нэр",
@@ -275,8 +287,7 @@ export function ReportTable({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const visibleCols = useMemo(
-    () =>
-      REPORT_COLS.filter((c) => (c.compareOnly ? !hideComparison : true)),
+    () => REPORT_COLS.filter((c) => (c.compareOnly ? !hideComparison : true)),
     [hideComparison],
   );
   const [widths, setWidths] = useState<Partial<Record<ReportColKey, number>>>(
@@ -380,9 +391,9 @@ export function ReportTable({
   } as const;
 
   return (
-    <div className="rounded-sm border border-border bg-card overflow-hidden shadow-premium ring-hairline w-full min-w-0 max-w-full">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden w-full min-w-0 max-w-full">
       <div
-        className={`px-4 py-3 border-b border-border bg-gradient-to-r from-muted/40 to-muted/20 ${
+        className={`px-4 py-3 border-b border-border bg-muted/40 ${
           region === "UB"
             ? "border-l-[3px] border-l-blue-500/40"
             : region === "LOC"
@@ -392,7 +403,7 @@ export function ReportTable({
       >
         <div className="flex items-center gap-2 mb-1.5">
           {region && (
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold bg-muted text-foreground border border-border">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold bg-muted text-foreground border border-border">
               {region === "UB" ? "УБ" : "ОН"}
             </span>
           )}
@@ -401,14 +412,12 @@ export function ReportTable({
           >
             {title}
           </h3>
-          <span className="ml-auto text-[10px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
+          <span className="ml-auto text-[11px] tabular-nums text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border">
             {rows.length} {t("raCsvExportBranchWord")}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-          <span className="font-semibold uppercase tracking-wider">
-            {t("raReportViewWeightLabel")}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <span className="font-semibold">{t("raReportViewWeightLabel")}</span>
           <span>
             S1{" "}
             <b className="text-foreground tabular-nums">
@@ -440,13 +449,14 @@ export function ReportTable({
             </b>
           </span>
           <span
-            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold ${
+            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold ${
               filledJCount > 0
                 ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
                 : "border-border text-muted-foreground/50"
             }`}
           >
-            {t("raReportViewJudgementFilledLabel")}: {filledJCount}/{rows.length}
+            {t("raReportViewJudgementFilledLabel")}: {filledJCount}/
+            {rows.length}
           </span>
         </div>
       </div>
@@ -475,7 +485,7 @@ export function ReportTable({
                       : undefined
                   }
                   className={cn(
-                    "relative px-2 py-2.5 text-xs font-bold text-foreground bg-background select-none border-b border-border",
+                    "relative select-none border-b border-border bg-muted/40 px-3 py-2.5 text-xs font-semibold text-muted-foreground",
                     alignClass[col.align],
                     col.key === "total" || col.key === "diff"
                       ? "font-extrabold"
@@ -519,7 +529,7 @@ export function ReportTable({
                         title={t("raReportViewExpandTooltip")}
                         className={`inline-flex items-center justify-center w-6 h-6 rounded-md border transition-all ${
                           isExpanded
-                            ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                            ? "border-sky-500/40 bg-sky-500/15 text-primary"
                             : "border-border bg-muted/40 text-muted-foreground hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-500"
                         }`}
                       >
@@ -663,7 +673,7 @@ export function ReportTable({
                                 ? b.j.toFixed(0)
                                 : b.j.toFixed(1)
                               : "—"}
-                            <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[10px] leading-none">
+                            <span className="opacity-0 group-hover/jbtn:opacity-100 transition-opacity text-[11px] leading-none">
                               ✎
                             </span>
                           </button>
@@ -688,7 +698,7 @@ export function ReportTable({
                             prev?.level &&
                             prev.level !== b.level && (
                               <span
-                                className={`text-[9px] font-semibold ${
+                                className={`text-[11px] font-semibold ${
                                   (prev.level === "Бага" &&
                                     b.level !== "Бага") ||
                                   (prev.level === "Дунд" && b.level === "Өндөр")
@@ -711,7 +721,7 @@ export function ReportTable({
                             </span>
                             {prev.level && (
                               <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0 rounded text-[9px] font-semibold border ${riskLevelClass(prev.level)}`}
+                                className={`inline-flex items-center gap-1 px-1.5 py-0 rounded text-[11px] font-semibold border ${riskLevelClass(prev.level)}`}
                               >
                                 <span
                                   className={`w-1 h-1 rounded-full ${prev.level === "Өндөр" ? "bg-red-500" : prev.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
@@ -734,12 +744,12 @@ export function ReportTable({
                             —
                           </span>
                         ) : diff === 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-[10px] font-semibold text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted text-xs font-semibold text-muted-foreground">
                             ━ 0.00
                           </span>
                         ) : (
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${
                               diff > 0
                                 ? "bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400"
                                 : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400"
@@ -798,7 +808,7 @@ export function ReportTable({
           onClick={() => setCommentModal(null)}
         >
           <div
-            className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-premium-xl ring-hairline p-6"
+            className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4">
@@ -852,13 +862,7 @@ export function ReportTable({
   );
 }
 
-function ScoreCell({
-  value,
-  colBg,
-}: {
-  value: number | null;
-  colBg: string;
-}) {
+function ScoreCell({ value, colBg }: { value: number | null; colBg: string }) {
   return (
     <td
       className={`px-2 py-2 text-center tabular-nums font-semibold text-foreground ${colBg}`}

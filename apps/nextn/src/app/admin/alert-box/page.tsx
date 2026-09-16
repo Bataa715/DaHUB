@@ -357,7 +357,7 @@ export default function AdminAlertBoxPage() {
   const enabledChains = chains.filter((c) => c.enabled).length;
 
   return (
-    <div className="admin-shell min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <AdminPageHeader
         icon={
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center shadow-premium">

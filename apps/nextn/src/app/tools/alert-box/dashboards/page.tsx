@@ -139,7 +139,7 @@ function DetailPanel({
 }) {
   const { t } = useLanguage();
   return (
-    <div className="px-4 pb-4 pt-3 space-y-3 border-t border-border/50 bg-muted/10">
+    <div className="px-4 pb-4 pt-3 space-y-3 border-t border-border bg-muted/10">
       <div className="relative max-w-xs">
         <Search
           size={12}
@@ -149,7 +149,7 @@ function DetailPanel({
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder={t("abDashDetailCifSearchPlaceholder")}
-          className="w-full bg-background border border-border rounded-lg pl-7 pr-8 py-1.5 text-[11px] placeholder:text-muted-foreground/60 outline-none focus:border-violet-500/50"
+          className="w-full bg-background border border-border rounded-lg pl-7 pr-8 py-1.5 text-[11px] placeholder:text-muted-foreground/60 outline-none focus:border-primary/50"
         />
         {search && (
           <button
@@ -173,12 +173,12 @@ function DetailPanel({
           <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1.5">
             <AlertTriangle size={12} /> {t("errorBoundaryTitle")}
           </p>
-          <p className="text-[10px] text-red-300/70 font-mono whitespace-pre-wrap break-all">
+          <p className="text-[11px] text-red-300/70 font-mono whitespace-pre-wrap break-all">
             {detail.error}
           </p>
           <button
             onClick={onRetry}
-            className="flex items-center gap-1.5 text-[10px] text-red-400 border border-red-500/30 rounded px-2 py-0.5 hover:bg-red-500/10 transition-colors"
+            className="flex items-center gap-1.5 text-[11px] text-red-400 border border-red-500/30 rounded px-2 py-0.5 hover:bg-red-500/10 transition-colors"
           >
             <RefreshCw size={10} /> {t("errorBoundaryRetry")}
           </button>
@@ -194,8 +194,8 @@ function DetailPanel({
       {detail.status === "done" && detail.rows.length > 0 && (
         <div className="space-y-4">
           {/* Chart */}
-          <div className="rounded-xl border border-border bg-card p-3">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          <div className="rounded-2xl border border-border bg-card p-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-3">
               {detail.hasAmount
                 ? t("abDashChartTitleAmount")
                 : t("abDashChartTitleCount")}
@@ -249,7 +249,7 @@ function DetailPanel({
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-border overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-border">
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="bg-muted/30 border-b border-border">
@@ -286,7 +286,7 @@ function DetailPanel({
                   return (
                     <tr
                       key={i}
-                      className="border-b border-border/40 hover:bg-muted/20 transition-colors last:border-0"
+                      className="border-b border-border hover:bg-muted/20 transition-colors last:border-0"
                     >
                       <td className="px-3 py-2 text-muted-foreground/50 tabular-nums">
                         {i + 1}
@@ -320,7 +320,7 @@ function DetailPanel({
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] text-muted-foreground/40 text-right font-mono">
+          <p className="text-[11px] text-muted-foreground/40 text-right font-mono">
             {d.tableName}
           </p>
         </div>
@@ -362,7 +362,7 @@ function DashboardCard({
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left bg-card hover:bg-muted/20 transition-colors"
       >
         <span
-          className={`flex-shrink-0 inline-flex items-center justify-center gap-0.5 w-12 h-6 rounded-md font-bold text-[10px] border ${
+          className={`flex-shrink-0 inline-flex items-center justify-center gap-0.5 w-12 h-6 rounded-md font-bold text-[11px] border ${
             isML
               ? "bg-amber-500/10 border-amber-500/25 text-amber-400"
               : "bg-violet-500/10 border-violet-500/20 text-violet-400"
@@ -371,7 +371,7 @@ function DashboardCard({
           {isML && <Brain size={9} />}
           {isML ? `ML${d.id}` : `DB${d.id}`}
         </span>
-        <span className="flex-1 text-[12px] font-medium leading-snug">
+        <span className="flex-1 text-xs font-medium leading-snug">
           {d.name}
         </span>
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -439,21 +439,28 @@ export default function DashboardsPage() {
       .finally(() => setSummLoading(false));
   }, []);
 
-  const loadDetail = useCallback((id: number, s = "") => {
-    setDetail({ status: "loading", hasAmount: false, rows: [] });
-    abFetchDashboardTop(id, 10, s)
-      .then((res) =>
-        setDetail({ status: "done", hasAmount: res.hasAmount, rows: res.rows }),
-      )
-      .catch((e) =>
-        setDetail({
-          status: "error",
-          hasAmount: false,
-          rows: [],
-          error: e?.message || t("abDashOracleError"),
-        }),
-      );
-  }, [t]);
+  const loadDetail = useCallback(
+    (id: number, s = "") => {
+      setDetail({ status: "loading", hasAmount: false, rows: [] });
+      abFetchDashboardTop(id, 10, s)
+        .then((res) =>
+          setDetail({
+            status: "done",
+            hasAmount: res.hasAmount,
+            rows: res.rows,
+          }),
+        )
+        .catch((e) =>
+          setDetail({
+            status: "error",
+            hasAmount: false,
+            rows: [],
+            error: e?.message || t("abDashOracleError"),
+          }),
+        );
+    },
+    [t],
+  );
 
   const handleToggle = (id: number) => {
     if (openId === id) {
@@ -496,12 +503,12 @@ export default function DashboardsPage() {
 
   return (
     <div className="space-y-5 pb-8">
-      <div className="px-6 flex items-center gap-2">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex items-center gap-2">
         <LayoutDashboard size={16} className="text-violet-400 shrink-0" />
         <h1 className="text-sm font-bold text-foreground">Dashboards</h1>
       </div>
 
-      <div className="px-6 space-y-5">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-5">
         {/* Search */}
         <div className="relative">
           <Search
@@ -512,7 +519,7 @@ export default function DashboardsPage() {
             value={listSearch}
             onChange={(e) => setListSearch(e.target.value)}
             placeholder={t("abDashSearchPlaceholder")}
-            className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-[12px] placeholder:text-muted-foreground/60 outline-none focus:border-violet-500/50 transition-colors"
+            className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-xs placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition-colors"
           />
           {listSearch && (
             <button
@@ -527,12 +534,12 @@ export default function DashboardsPage() {
         {loading && (
           <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
             <Loader2 size={18} className="animate-spin" />
-            <span className="text-[12px]">{t("abDashLoadingList")}</span>
+            <span className="text-xs">{t("abDashLoadingList")}</span>
           </div>
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-[12px] text-red-400">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-400">
             {error}
           </div>
         )}
@@ -544,10 +551,10 @@ export default function DashboardsPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
                   <Database size={13} className="text-violet-400" />
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {t("abDashStandardModel")}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-mono">
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-mono">
                     {filteredStd.length}
                   </span>
                 </div>
@@ -578,13 +585,13 @@ export default function DashboardsPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
                   <Brain size={13} className="text-amber-400" />
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {t("abDashMlBased")}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
                     {filteredML.length}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/50 ml-1">
+                  <span className="text-[11px] text-muted-foreground/50 ml-1">
                     {t("abDashMlExcludedNote")}
                   </span>
                 </div>
@@ -620,7 +627,7 @@ export default function DashboardsPage() {
             )}
 
             {filteredStd.length === 0 && filteredML.length === 0 && (
-              <div className="text-center py-12 text-[12px] text-muted-foreground">
+              <div className="text-center py-12 text-xs text-muted-foreground">
                 {t("abDashNoSearchResults")}
               </div>
             )}

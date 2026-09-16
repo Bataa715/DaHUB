@@ -13,8 +13,8 @@ export const VALID_TOOLS = [
   //   `pivot`            → Санамсаргүй түүвэрт нэгтгэгдсэн (`sanamsargui-tuuwer`-ээр нээгдэнэ)
   //   `data_doc`         → Өгөгдлийн толь бичиг устгагдсан
   //   `excel_report`,
-  //   `python_api_tools` → хэзээ ч эрх болгож шалгагддаггүй байсан (тайлангийн
-  //                        хандалтыг `reports` + excel_report_permissions хүснэгт хянадаг)
+  //   `python_api_tools` → Python тайлангийн систем бүхэлдээ устгагдсан
+  //                        (`reports` эрх нь одоо "Салбарын аудит" хэрэгслийг нээнэ)
   // allowedTools-д үлдсэн хуучин утгыг дараагийн удаа эрх хадгалахад
   // UsersController автоматаар шүүж хаяна.
   "sanamsargui-tuuwer",
@@ -32,6 +32,22 @@ export const VALID_TOOLS = [
   // (/admin/tools эсвэл /admin/zainii-audit).
   "zainii_audit_rpt",
   "zainii_audit_expense",
+  // ── DAG news ───────────────────────────────────────────────────────────
+  // Уншихад эрх шаардлагагүй — зөвхөн үүсгэхэд:
+  //   medleg_write → Мэдлэг хуваалцах (нийтлэл нийтлэх)
+  //   quiz_write   → Quiz үүсгэх
+  "medleg_write",
+  "quiz_write",
+  // ── Сүлжээний шинжилгээ (дашбоард) ───────────────────────────────────────
+  //   net_config_changes → Palo Alto тохиргооны өөрчлөлт
+  //   net_xdr            → Microsoft Defender XDR мэдэгдэл
+  "net_config_changes",
+  "net_xdr",
+  // ── Сөрөг мэдээ ──────────────────────────────────────────────────────────
+  //   negative_news_upload    → Excel-ээр бүртгэл оруулах (Хэрэгсэл)
+  //   negative_news_dashboard → Шинжилгээний дашбоард
+  "negative_news_upload",
+  "negative_news_dashboard",
 ] as const;
 
 /** O(1) lookup — use this for runtime `.has()` checks */

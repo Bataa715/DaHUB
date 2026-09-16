@@ -16,26 +16,15 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Loader2,
-  BookOpen,
-  Pencil,
-  Trash2,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { Loader2, BookOpen, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { KnowledgeCoverImage } from "@/app/knowledge/_components/KnowledgeCoverImage";
 
-const CATEGORY_OPTIONS = [
-  "Аудит",
-  "Технологи",
-  "Сонин хачин",
-  "Банк санхүү",
-  "Risk",
-];
+import { POST_CATEGORIES } from "@/app/knowledge/_lib/knowledge-utils";
+
+const CATEGORY_OPTIONS = POST_CATEGORIES.map((c) => c.key);
 
 interface MedlegItem {
   id: string;
@@ -45,7 +34,6 @@ interface MedlegItem {
   authorId: string;
   authorName?: string;
   isPublished: boolean;
-  views: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -194,9 +182,6 @@ export default function AdminMedlegPage() {
                   <th className="px-4 py-2.5 text-left font-medium">
                     {t("admMedlegColStatus")}
                   </th>
-                  <th className="px-4 py-2.5 text-right font-medium">
-                    {t("admMedlegColViews")}
-                  </th>
                   <th className="px-4 py-2.5 text-right font-medium w-24" />
                 </tr>
               </thead>
@@ -238,9 +223,6 @@ export default function AdminMedlegPage() {
                           <EyeOff className="w-3 h-3" /> {t("admMedlegDraft")}
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
-                      {item.views}
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center justify-end gap-0.5">
@@ -302,7 +284,14 @@ export default function AdminMedlegPage() {
               }
               className="w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {CATEGORY_OPTIONS.map((c) => (
+              {/* Хуучин нийтлэлийн ангилал жагсаалтад байхгүй бол алдагдахгүйн тулд нэмнэ */}
+              {[
+                ...new Set(
+                  editForm.category
+                    ? [...CATEGORY_OPTIONS, editForm.category]
+                    : CATEGORY_OPTIONS,
+                ),
+              ].map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

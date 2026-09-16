@@ -20,7 +20,7 @@ const GROUP_ORDER: number[] = [1, 2, 3, 4, 5];
 function IndicatorCard({ ind }: { ind: DynamicCatalogIndicator }) {
   const { t } = useLanguage();
   return (
-    <div className="p-4 space-y-2 break-inside-avoid border-b border-border/40 last:border-b-0">
+    <div className="p-4 space-y-2 break-inside-avoid border-b border-border last:border-b-0">
       <div className="flex items-start gap-3">
         <span className="shrink-0 mt-0.5 font-mono text-[11px] px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
           {ind.subid}
@@ -31,11 +31,11 @@ function IndicatorCard({ ind }: { ind: DynamicCatalogIndicator }) {
       </div>
 
       {ind.hint ? (
-        <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
+        <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
           {ind.hint}
         </p>
       ) : (
-        <p className="text-[13px] italic text-muted-foreground/50">
+        <p className="text-sm italic text-muted-foreground/50">
           {t("raArgachlalNoHint")}
         </p>
       )}
@@ -70,21 +70,21 @@ export default function ArgachlalPage() {
   }, [catalog, query]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       <ToolPageHeader
         href="/tools/risk-assessment/work"
         icon={<BookOpen className="w-4 h-4 text-primary" />}
         title={t("admRiskIndMethodologyLabel")}
       />
 
-      <div className="w-full px-4 md:px-6 py-6 space-y-5">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("zaRptSearchBtn")}
-            className="w-full h-8 pl-8 pr-3 rounded-lg bg-foreground/5 border border-border/50 text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+            className="w-full h-8 pl-8 pr-3 rounded-lg bg-foreground/5 border border-border text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
         </div>
 

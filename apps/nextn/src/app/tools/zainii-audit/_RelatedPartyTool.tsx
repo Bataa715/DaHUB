@@ -199,9 +199,8 @@ export function RelatedPartyTool() {
       : [];
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
+    <div className="min-h-full bg-background text-foreground">
       <ToolPageHeader
-        href="/tools/zainii-audit"
         icon={<Users2 className="w-4 h-4 text-orange-500" />}
         title={t("zaBoxRelatedPartyTitle")}
         rightContent={
@@ -224,12 +223,12 @@ export function RelatedPartyTool() {
         }
       />
 
-      <div className="w-full px-4 md:px-6 py-5 space-y-5 max-w-6xl">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-5 py-6">
         {/* ── Filters ─────────────────────────────────────────────── */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[220px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 {t("zaRptCifListLabel")}
               </label>
               {cifIds.length > 0 && (
@@ -274,7 +273,7 @@ export function RelatedPartyTool() {
             </div>
 
             <div className="w-[150px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 {t("tailan_startDateLabel")}
               </label>
               <Input
@@ -286,7 +285,7 @@ export function RelatedPartyTool() {
               />
             </div>
             <div className="w-[150px]">
-              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 {t("tailan_endDateLabel")}
               </label>
               <Input
@@ -321,7 +320,7 @@ export function RelatedPartyTool() {
         )}
 
         {!result && !loading && !error && (
-          <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center">
             <p className="text-sm font-medium text-foreground mb-3">
               {t("zaRptEmptyState")}
             </p>
@@ -348,7 +347,7 @@ export function RelatedPartyTool() {
                 icon={Users2}
                 label={t("zaRptMatchedAccounts")}
                 value={result.accounts.length}
-                tint="text-sky-500 bg-sky-500/10 border-sky-500/20"
+                tint="text-primary bg-primary/10 border-primary/20"
               />
               <StatCard
                 icon={ArrowRightLeft}
@@ -361,7 +360,7 @@ export function RelatedPartyTool() {
                 }
               />
               {totalsByCurrency.length > 0 && (
-                <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-2 sm:col-span-2 lg:col-span-1">
+                <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-2 sm:col-span-2 lg:col-span-1">
                   <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <span className="w-8 h-8 rounded-lg border border-border bg-muted/50 flex items-center justify-center shrink-0">
                       <Wallet className="w-4 h-4 text-muted-foreground" />
@@ -395,7 +394,7 @@ export function RelatedPartyTool() {
             )}
 
             {/* ── Tabs ──────────────────────────────────────────────── */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-1 px-2 pt-2 border-b border-border overflow-x-auto scrollbar-none">
                 {tabs.map((tab) => (
                   <button
@@ -425,7 +424,7 @@ export function RelatedPartyTool() {
                     <TableScroll>
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-xs text-muted-foreground border-b border-border sticky top-0 bg-card">
+                          <tr className="sticky top-0 border-b border-border bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                             <Th>FROM_CIF</Th>
                             <Th>TO_CIF</Th>
                             <Th>{t("zaRptColCurrency")}</Th>
@@ -441,7 +440,7 @@ export function RelatedPartyTool() {
                           {result.summary.map((row, i) => (
                             <tr
                               key={i}
-                              className="border-b border-border/40 hover:bg-muted/30"
+                              className="border-b border-border hover:bg-muted/30"
                             >
                               <Td className="font-mono">{row.FROM_CIF}</Td>
                               <Td className="font-mono">{row.TO_CIF}</Td>
@@ -466,7 +465,7 @@ export function RelatedPartyTool() {
                     <TableScroll maxHeight="360px">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-xs text-muted-foreground border-b border-border sticky top-0 bg-card">
+                          <tr className="sticky top-0 border-b border-border bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                             <Th>CIF</Th>
                             <Th>{t("zaRptColAccount")}</Th>
                             <Th>ACID</Th>
@@ -477,7 +476,7 @@ export function RelatedPartyTool() {
                           {result.accounts.map((a, i) => (
                             <tr
                               key={i}
-                              className="border-b border-border/40 hover:bg-muted/30"
+                              className="border-b border-border hover:bg-muted/30"
                             >
                               <Td className="font-mono">{a.CIF_ID}</Td>
                               <Td className="font-mono">{a.FORACID}</Td>
@@ -593,7 +592,7 @@ function StatCard({
   tint: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+    <div className="rounded-2xl border border-border bg-card p-4 flex items-center gap-3">
       <div
         className={cn(
           "w-9 h-9 rounded-lg border flex items-center justify-center shrink-0",

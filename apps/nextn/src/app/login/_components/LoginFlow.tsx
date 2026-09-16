@@ -183,7 +183,7 @@ export function LoginFlow({
                               onClick={() => handleSelectLoginDepartment(dept)}
                               aria-pressed={active}
                               aria-label={dept}
-                              className={`flex items-center justify-center text-center min-h-[46px] px-0.5 py-1.5 rounded-xl border text-[10px] font-mono font-semibold whitespace-nowrap transition-all duration-200 active:scale-[0.97] ${
+                              className={`flex items-center justify-center text-center min-h-[46px] px-0.5 py-1.5 rounded-md border text-[10px] font-mono font-semibold whitespace-nowrap transition-all duration-200 active:scale-[0.97] ${
                                 active
                                   ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
                                   : "bg-muted/50 border-border/80 text-foreground hover:border-primary/40 hover:bg-muted hover:shadow-sm"
@@ -209,7 +209,7 @@ export function LoginFlow({
                             <div
                               role="listbox"
                               aria-label={t("loginLabelEmployee")}
-                              className="rounded-2xl border border-border/80 bg-muted/30 overflow-hidden h-[180px] flex flex-col"
+                              className="rounded-md border border-border/80 bg-muted/30 overflow-hidden h-[180px] flex flex-col"
                             >
                               {!loginDepartment ? (
                                 <p className="flex-1 flex items-center justify-center px-4 text-sm text-muted-foreground text-center">
@@ -247,7 +247,7 @@ export function LoginFlow({
                                         onClick={() =>
                                           field.onChange(user.userId)
                                         }
-                                        className={`w-full text-left rounded-xl px-3 py-2.5 transition-all duration-150 active:scale-[0.99] ${
+                                        className={`w-full text-left rounded-md px-3 py-2.5 transition-all duration-150 active:scale-[0.99] ${
                                           selected
                                             ? "bg-primary/10 border border-primary/40 text-primary shadow-sm"
                                             : "border border-transparent hover:bg-muted hover:border-border/60 text-foreground"

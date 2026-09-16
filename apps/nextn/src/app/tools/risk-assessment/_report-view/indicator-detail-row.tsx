@@ -13,7 +13,7 @@ import { type AnyRow } from "./types";
 const GROUP_LABELS: Record<number, { label: string; color: string }> = {
   1: {
     label: "S1",
-    color: "text-sky-600 dark:text-sky-400 bg-sky-500/10 border-sky-500/25",
+    color: "text-primary bg-sky-500/10 border-sky-500/25",
   },
   2: {
     label: "S2",
@@ -40,7 +40,7 @@ const SCORE_COMPARISON_COLS = [
   {
     label: "S1",
     key: "s1" as const,
-    cls: "text-sky-600 dark:text-sky-400 bg-sky-500/5 border-sky-500/20",
+    cls: "text-primary bg-sky-500/5 border-sky-500/20",
   },
   {
     label: "S2",
@@ -164,21 +164,22 @@ export function IndicatorDetailRow({
       <td colSpan={colSpan} className="px-0 py-0">
         <div className="px-4 py-3 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+            <div className="text-[11px] font-bold text-primary">
               {branchName} — {t("raReportViewDetailSuffix")}
             </div>
             <div className="flex items-center gap-2">
               {currentAgg?.total != null && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border bg-muted/40 text-[10px] font-bold tabular-nums text-foreground/80">
-                  {t("raReportViewFinalScoreLabel")} {currentAgg.total.toFixed(2)} / 5
-                  <span className="text-sky-600 dark:text-sky-400">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border bg-muted/40 text-[11px] font-bold tabular-nums text-foreground/80">
+                  {t("raReportViewFinalScoreLabel")}{" "}
+                  {currentAgg.total.toFixed(2)} / 5
+                  <span className="text-primary">
                     ({Math.round((currentAgg.total / 5) * 100)}%)
                   </span>
                 </span>
               )}
               {currentAgg?.level && (
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${riskLevelClass(currentAgg.level)}`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${riskLevelClass(currentAgg.level)}`}
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${currentAgg.level === "Өндөр" ? "bg-red-500" : currentAgg.level === "Дунд" ? "bg-amber-500" : "bg-emerald-500"}`}
@@ -192,7 +193,7 @@ export function IndicatorDetailRow({
           {(judgementScore != null && judgementScore > 0) ||
           judgementComment ? (
             <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-3 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+              <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
                 {t("raReportViewAuditorJudgementLabel")}
               </p>
               {judgementScore != null && judgementScore > 0 && (
@@ -221,8 +222,8 @@ export function IndicatorDetailRow({
 
           {/* ── Харьцуулалтын score карт ── */}
           {!hideComparison && currentAgg && previousAgg && (
-            <div className="rounded-xl border border-dashed border-border bg-gradient-to-br from-muted/30 to-muted/10 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3">
+              <p className="text-[11px] font-bold text-muted-foreground mb-2.5 flex items-center gap-1.5">
                 <span className="w-3 h-px bg-muted-foreground/40" />
                 {t("raReportViewComparisonTitle")}
                 <span className="w-3 h-px bg-muted-foreground/40" />
@@ -247,20 +248,22 @@ export function IndicatorDetailRow({
                       key={label}
                       className={`rounded-lg border p-2.5 ${cls}`}
                     >
-                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5">
-                        {key === "total" ? t("raReportViewTotalCardLabel") : label}
+                      <p className="text-[11px] font-bold mb-1.5">
+                        {key === "total"
+                          ? t("raReportViewTotalCardLabel")
+                          : label}
                       </p>
                       <div className="flex items-baseline gap-1">
                         <span className="text-base font-bold tabular-nums leading-none">
                           {cur != null ? cur.toFixed(2) : "—"}
                         </span>
-                        <span className="text-[9px] text-muted-foreground tabular-nums">
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
                           ← {pv != null ? pv.toFixed(2) : "—"}
                         </span>
                       </div>
                       {d != null ? (
                         <p
-                          className={`text-[10px] font-bold tabular-nums mt-1 ${
+                          className={`text-[11px] font-bold tabular-nums mt-1 ${
                             d > 0.005
                               ? "text-rose-500"
                               : d < -0.005
@@ -275,7 +278,7 @@ export function IndicatorDetailRow({
                               : "━ 0.00"}
                         </p>
                       ) : (
-                        <p className="text-[10px] text-muted-foreground/30 mt-1">
+                        <p className="text-[11px] text-muted-foreground/30 mt-1">
                           {t("raReportViewNewLabel")}
                         </p>
                       )}
@@ -292,13 +295,13 @@ export function IndicatorDetailRow({
             return (
               <div key={grp}>
                 <div
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold mb-1.5 ${gl.color}`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-bold mb-1.5 ${gl.color}`}
                 >
                   {gl.label}
                 </div>
                 <table className="w-full text-[11px]">
                   <thead>
-                    <tr className="text-muted-foreground/60 uppercase text-[10px]">
+                    <tr className="text-muted-foreground/60 text-[11px]">
                       <th className="text-left py-0.5 pr-3 font-semibold w-8">
                         ID
                       </th>

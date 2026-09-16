@@ -84,8 +84,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       500: "Серверийн алдаа гарлаа",
     };
     // Explicitly opted-in errors (curated, non-sensitive text) pass their
-    // real message through so users get actionable feedback — e.g. Python
-    // sandbox validation errors ("import зөвшөөрөгдөхгүй", syntax errors).
+    // real message through so users get actionable feedback.
     const safeMessage =
       exception instanceof UserFacingBadRequestException
         ? message

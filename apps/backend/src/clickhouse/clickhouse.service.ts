@@ -415,6 +415,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           grantableTools String DEFAULT '[]',
           isLocked UInt8 DEFAULT 0,
           failedLoginCount UInt16 DEFAULT 0,
+          lockedAt DateTime DEFAULT toDateTime(0),
           lastLoginAt Nullable(DateTime),
           createdAt DateTime DEFAULT now(),
           updatedAt DateTime DEFAULT now()
@@ -422,31 +423,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
-      // Migration: rename legacy news_* tables to medleg_* (one-time).
-      // Хуучин өгөгдлийг хадгалж шинэ нэр рүү шилжүүлнэ. Зөвхөн хуучин нэр
-      // байгаа бөгөөд шинэ нэр байхгүй үед л RENAME хийнэ.
-      const tableExists = async (name: string): Promise<boolean> => {
-        const rows = await this.query<{ c: string }>(
-          `SELECT count() AS c FROM system.tables
-           WHERE database = currentDatabase() AND name = {name:String}`,
-          { name },
-        );
-        return Number(rows?.[0]?.c ?? 0) > 0;
-      };
-      const medlegRenames: [string, string][] = [
-        ["news", "medleg"],
-        ["news_reactions", "medleg_reactions"],
-        ["news_comments", "medleg_comments"],
-        ["news_views", "medleg_views"],
-      ];
-      for (const [oldName, newName] of medlegRenames) {
-        if ((await tableExists(oldName)) && !(await tableExists(newName))) {
-          await this.exec(`RENAME TABLE ${oldName} TO ${newName}`);
-          this.logger.log(`Migrated table ${oldName} → ${newName}`);
-        }
-      }
-
-      // Create medleg table
+      // Create medleg table (DAG news нийтлэл)
       await this.exec(`
         CREATE TABLE IF NOT EXISTS medleg (
           id String,
@@ -458,52 +435,15 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           imagesJson String DEFAULT '[]',
           authorId String,
           isPublished UInt8 DEFAULT 1,
-          views UInt32 DEFAULT 0,
           createdAt DateTime DEFAULT now(),
           updatedAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY createdAt
       `);
 
-      // Create medleg_reactions table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS medleg_reactions (
-          newsId String,
-          userId String,
-          emoji String,
-          createdAt DateTime DEFAULT now()
-        ) ENGINE = ReplacingMergeTree(createdAt)
-        ORDER BY (newsId, userId)
-      `);
-
-      // Create medleg_comments table
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS medleg_comments (
-          id String,
-          newsId String,
-          authorId String,
-          authorName String,
-          content String,
-          createdAt DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (newsId, createdAt)
-      `);
-
-      // Create medleg_views table (per-user view dedup)
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS medleg_views (
-          newsId String,
-          userId String,
-          viewedAt DateTime DEFAULT now()
-        ) ENGINE = ReplacingMergeTree(viewedAt)
-        ORDER BY (newsId, userId)
-      `);
-
-      // Create medleg_quizzes table — Мэдлэг мэдээлэл хуудасны QUIZ хэсэг:
-      // quiz-ийн ерөнхий мэдээлэл (гарчиг/сэдэв). Асуулт бүр тус тусдаа
-      // medleg_quiz_questions хүснэгтэд хадгалагдана (нэг quiz-д олон асуулт
-      // байж болно). [MIGRATION] Хуучин "options"/"correctIndex" багана
-      // deployed DB-д үлдэж болзошгүй ч кодоор ашиглагдахгүй.
+      // Create medleg_quizzes table — хуучин quiz-ийн гарчиг/зохиогч энд
+      // байсан. Шинэ бичилт medleg_quiz_questions дээр (quizId-аар) хийгдэнэ.
+      // Хүснэгтийг DROP хийхгүй — унших fallback-д ашиглана.
       await this.exec(`
         CREATE TABLE IF NOT EXISTS medleg_quizzes (
           id String,
@@ -525,10 +465,33 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           question String,
           options String,
           correctIndex UInt8,
+          title String DEFAULT '',
+          authorId String DEFAULT '',
+          isActive UInt8 DEFAULT 1,
           createdAt DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (quizId, seq)
+          ORDER BY (quizId, seq)
       `);
+      // [AUDIT] medleg_quizzes-ийг уншихаа больсон — quiz-ийн гарчиг/зохиогч
+      // асуултын мөр дээр хадгална. Хуучин хүснэгт DROP хийхгүй (өгөгдөл).
+      await this.exec(
+        `ALTER TABLE medleg_quiz_questions ADD COLUMN IF NOT EXISTS title String DEFAULT ''`,
+        undefined,
+        1,
+        true,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE medleg_quiz_questions ADD COLUMN IF NOT EXISTS authorId String DEFAULT ''`,
+        undefined,
+        1,
+        true,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE medleg_quiz_questions ADD COLUMN IF NOT EXISTS isActive UInt8 DEFAULT 1`,
+        undefined,
+        1,
+        true,
+      ).catch(() => {});
 
       // Create medleg_quiz_answers table — хэрэглэгч тус бүр quiz-д (бүх
       // асуултаараа) нэг л удаа бүхэлд нь хариулна (app-level шалгалт).
@@ -789,22 +752,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         ORDER BY id
       `);
 
-      // Homepage ethics carousel (Аудиторын ёс зүйн код)
-      await this.exec(`
-        CREATE TABLE IF NOT EXISTS homepage_ethics_slides (
-          id          String,
-          title       String,
-          body        String,
-          sort_order  UInt32,
-          is_active   UInt8,
-          updated_by  String,
-          seq         UInt64,
-          updated_at  DateTime DEFAULT now()
-        ) ENGINE = ReplacingMergeTree(seq)
-        ORDER BY id
-        SETTINGS index_granularity = 8192
-      `);
-
       // Migration: add `code` column to departments (хэрэглэгчийн ID-н prefix).
       // ALTER ... ADD COLUMN IF NOT EXISTS нь хуучин table-д шинэ багана нэмнэ.
       await this.exec(
@@ -862,12 +809,6 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       ).catch(() => {});
       await this.exec(
         `ALTER TABLE refresh_tokens MODIFY TTL expiresAt + INTERVAL 1 DAY`,
-        undefined,
-        1,
-        true,
-      ).catch(() => {});
-      await this.exec(
-        `ALTER TABLE python_api_run_logs MODIFY TTL ranAt + INTERVAL 2 YEAR`,
         undefined,
         1,
         true,
@@ -1012,7 +953,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.logger.log(
-        "Schema tables initialized (departments, users, medleg, medleg_reactions, medleg_comments, refresh_tokens, audit_logs, access_requests, access_grants, login_attempts, avlaga, tulbur, budget, havsralt, avlaga_verifications, expense_verification_types)",
+        "Schema tables initialized (departments, users, medleg, medleg_quizzes, medleg_quiz_questions, medleg_quiz_answers, registration_requests, refresh_tokens, audit_logs, access_requests, access_grants, login_attempts, avlaga, tulbur, budget, havsralt, avlaga_verifications, expense_verification_types)",
       );
     } catch (error: unknown) {
       this.logger.error(`Schema initialization failed: ${errMessage(error)}`);

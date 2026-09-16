@@ -7,7 +7,7 @@
     "dev": "nx serve nextn",
     "build": "cd apps/nextn && next build",
     "build:nx": "nx build nextn",
-    "start": "nx serve nextn --prod",
+    "start": "nx run nextn:start",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css}\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css}\"",
     "typecheck": "tsc --noEmit",

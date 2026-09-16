@@ -193,7 +193,7 @@ export default function IndicatorFilterPanel({
         {selectedInd && (
           <div className="flex items-center gap-2">
             <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+              className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
                 selectedInd.is_manual || isJudgmentSelected
                   ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                   : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
@@ -203,17 +203,18 @@ export default function IndicatorFilterPanel({
                 ? t("raFilterPanelManualBadge")
                 : t("raFilterPanelAutoBadge")}
             </span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground">
               Score {selectedInd.group}
             </span>
-            <span className="text-[10px] text-muted-foreground">·</span>
-            <span className="text-[10px] text-muted-foreground">
-              {filledCount}/{branchScores.length} {t("raFilterPanelEvaluatedSuffix")}
+            <span className="text-[11px] text-muted-foreground">·</span>
+            <span className="text-[11px] text-muted-foreground">
+              {filledCount}/{branchScores.length}{" "}
+              {t("raFilterPanelEvaluatedSuffix")}
             </span>
             {avgScore != null && (
               <>
-                <span className="text-[10px] text-muted-foreground">·</span>
-                <span className="text-[10px] font-semibold text-foreground/70">
+                <span className="text-[11px] text-muted-foreground">·</span>
+                <span className="text-[11px] font-semibold text-foreground/70">
                   {t("tailan_avgLabel")}: {avgScore.toFixed(2)}
                 </span>
               </>
@@ -231,26 +232,26 @@ export default function IndicatorFilterPanel({
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-muted/30 sticky top-0 z-10">
-                <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-9">
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground w-9">
                   #
                 </th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">
                   {t("raSharedBranchNameCol")}
                 </th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-24">
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground w-24">
                   SOLID
                 </th>
                 {!isJudgmentSelected && (
-                  <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-32">
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground w-32">
                     {t("raFilterPanelValueCol")}
                   </th>
                 )}
-                <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-24">
+                <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground w-24">
                   {t("admRiskIndColScore")}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40">
+            <tbody className="divide-y divide-border">
               {branchScores.map((b, i) => (
                 <tr
                   key={b.solid}
@@ -259,10 +260,8 @@ export default function IndicatorFilterPanel({
                   <td className="px-4 py-2.5 text-muted-foreground/40 tabular-nums text-[11px]">
                     {i + 1}
                   </td>
-                  <td className="px-4 py-2.5 font-medium text-[12px]">
-                    {b.name}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">
+                  <td className="px-4 py-2.5 font-medium text-xs">{b.name}</td>
+                  <td className="px-4 py-2.5 font-mono text-[11px] text-muted-foreground">
                     {b.solid}
                   </td>
                   {!isJudgmentSelected && (

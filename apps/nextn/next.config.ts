@@ -86,6 +86,18 @@ const nextConfig: NextConfig = {
         destination: "/tools/zainii-audit/:path*",
         permanent: false,
       },
+      // Python "Тайлан татах" хэрэгсэл → "Салбарын аудит" болж солигдсон.
+      // Хуучин Python тайлангийн дэд хуудсууд устсан тул бүгдийг үндсэн хуудас руу.
+      {
+        source: "/tools/reports",
+        destination: "/tools/salbar-audit",
+        permanent: false,
+      },
+      {
+        source: "/tools/reports/:path*",
+        destination: "/tools/salbar-audit",
+        permanent: false,
+      },
     ];
   },
   images: {

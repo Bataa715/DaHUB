@@ -247,7 +247,11 @@ export default function MonthFilter({
   return (
     <div
       ref={rootRef}
-      className={cn("relative", disabled && "pointer-events-none opacity-50", className)}
+      className={cn(
+        "relative",
+        disabled && "pointer-events-none opacity-50",
+        className,
+      )}
     >
       <div
         className={cn(

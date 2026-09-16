@@ -507,71 +507,6 @@ html.light .tabular-nums:not([class*="text-"]) {
   color: hsl(222 47% 11%);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Admin хэсэг — Source Sans 3 (400/500/600/700), уншихад тод
-   `.admin-shell` нь зөвхөн /admin доорх хуудаснуудад хэрэгжинэ.
-═══════════════════════════════════════════════════════════════════════════ */
-
-.admin-shell {
-  font-weight: 400;
-}
-
-.admin-shell :is(p, span, label, a, td, th, li, dt, dd, button, div) {
-  font-weight: 400;
-}
-.admin-shell h1,
-.admin-shell h2,
-.admin-shell h3,
-.admin-shell h4 {
-  font-weight: 700;
-}
-
-.admin-shell
-  :is([class*="rounded-xl"], [class*="rounded-lg"], [class*="rounded-2xl"])
-  :is(p, span, h1, h2, h3, h4, dt, dd) {
-  font-weight: 500;
-}
-.admin-shell .font-medium {
-  font-weight: 500 !important;
-}
-.admin-shell .font-semibold {
-  font-weight: 600 !important;
-}
-.admin-shell .font-bold {
-  font-weight: 700 !important;
-}
-
-/* Бүх muted-foreground хувилбарыг (opacity-тэй ч гэсэн) тод болгох */
-.admin-shell [class*="text-muted-foreground"] {
-  color: hsl(var(--foreground) / 0.95) !important;
-}
-.admin-shell .text-foreground\/20,
-.admin-shell .text-foreground\/30,
-.admin-shell .text-foreground\/40,
-.admin-shell .text-foreground\/50,
-.admin-shell .text-foreground\/60,
-.admin-shell .text-foreground\/70,
-.admin-shell .text-foreground\/80 {
-  color: hsl(var(--foreground) / 0.97) !important;
-}
-
-/* Light theme admin: хамгийн гүн хар */
-html.light .admin-shell [class*="text-muted-foreground"],
-html.light .admin-shell .text-foreground\/20,
-html.light .admin-shell .text-foreground\/30,
-html.light .admin-shell .text-foreground\/40,
-html.light .admin-shell .text-foreground\/50,
-html.light .admin-shell .text-foreground\/60,
-html.light .admin-shell .text-foreground\/70,
-html.light .admin-shell .text-foreground\/80 {
-  color: hsl(222 47% 10%) !important;
-}
-html.light .admin-shell [class*="text-gray-"],
-html.light .admin-shell [class*="text-slate-"],
-html.light .admin-shell [class*="text-zinc-"] {
-  color: hsl(222 47% 12%) !important;
-}
-
 /* Light mode: foreground-based backgrounds (inputs, cards) ──────────── */
 /* bg-foreground/* classes create near-invisible backgrounds on white in
    light mode (foreground is dark navy, 5% of that on white ≈ white). */
@@ -848,402 +783,167 @@ html.light .animated-border-wrapper {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Login / Register — brand gradient + card (light/dark хоёуланд тод)
-   ═══════════════════════════════════════════════════════════════════════════ */
-.login-page {
-  background: linear-gradient(
-    165deg,
-    hsl(var(--background)) 0%,
-    hsl(221 83% 97%) 45%,
-    hsl(var(--background)) 100%
-  );
+   Бараан гадаргуу (.dark-surface) — hero, толгой хэсэг, нэвтрэх самбар нь theme-ээс үл хамааран бараан.
+   Token-ууд нь ThemeStyleInjector-оор бараан theme-ийн утгатай. Цайвар горимын
+   дээрх !important тодруулга (бараан текст) энд харагдахгүй болгодог тул
+   бараан горимын утгыг сэргээнэ (илүү өндөр specificity).
+═══════════════════════════════════════════════════════════════════════════ */
+html.light .dark-surface .text-muted-foreground {
+  color: hsl(var(--foreground) / 0.75) !important;
 }
-html:not(.light) .login-page {
-  background: linear-gradient(
-    165deg,
-    hsl(240 10% 4%) 0%,
-    hsl(240 12% 7%) 50%,
-    hsl(240 10% 3.9%) 100%
-  );
+html.light .dark-surface .text-muted-foreground\/80 {
+  color: hsl(var(--foreground) / 0.72) !important;
 }
-
-.login-brand-title {
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.1;
-  background-image: linear-gradient(
-    115deg,
-    #1e40af 0%,
-    #2563eb 35%,
-    #4338ca 65%,
-    #0e7490 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
+html.light .dark-surface .text-muted-foreground\/70 {
+  color: hsl(var(--foreground) / 0.66) !important;
 }
-html:not(.light) .login-brand-title {
-  background-image: linear-gradient(
-    115deg,
-    #e0e7ff 0%,
-    #a5b4fc 30%,
-    #67e8f9 60%,
-    #c4b5fd 100%
-  );
+html.light .dark-surface .text-muted-foreground\/60 {
+  color: hsl(var(--foreground) / 0.62) !important;
 }
-
-.login-brand-subtitle {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(215 20% 38%);
+html.light .dark-surface .text-muted-foreground\/50 {
+  color: hsl(var(--foreground) / 0.56) !important;
 }
-html:not(.light) .login-brand-subtitle {
-  color: hsl(240 8% 72%);
+html.light .dark-surface .text-muted-foreground\/40 {
+  color: hsl(var(--foreground) / 0.52) !important;
 }
-
-/* Login step logo — 3D elevated badge */
-.login-step-logo-glow {
-  background: radial-gradient(
-    circle at 50% 55%,
-    hsl(262 83% 58% / 0.35) 0%,
-    hsl(221 83% 53% / 0.18) 45%,
-    transparent 72%
-  );
+html.light .dark-surface .text-muted-foreground\/30 {
+  color: hsl(var(--foreground) / 0.48) !important;
 }
-html:not(.light) .login-step-logo-glow {
-  background: radial-gradient(
-    circle at 50% 55%,
-    hsl(262 83% 58% / 0.42) 0%,
-    hsl(199 89% 48% / 0.2) 42%,
-    transparent 72%
-  );
+html.light .dark-surface .text-muted-foreground\/20 {
+  color: hsl(var(--foreground) / 0.44) !important;
 }
-
-.login-step-logo-frame {
-  background: linear-gradient(
-    145deg,
-    hsl(214 28% 92%) 0%,
-    hsl(221 83% 53% / 0.55) 38%,
-    hsl(262 83% 58% / 0.5) 62%,
-    hsl(214 28% 88%) 100%
-  );
-  box-shadow:
-    0 14px 28px hsl(221 83% 53% / 0.22),
-    0 4px 10px hsl(0 0% 0% / 0.12),
-    inset 0 1px 0 hsl(0 0% 100% / 0.65);
-  transform: translateY(-2px);
+html.light .dark-surface .text-foreground\/80 {
+  color: hsl(var(--foreground) / 0.88) !important;
 }
-html:not(.light) .login-step-logo-frame {
-  background: linear-gradient(
-    145deg,
-    hsl(240 6% 34%) 0%,
-    hsl(221 83% 53% / 0.65) 40%,
-    hsl(262 83% 58% / 0.55) 65%,
-    hsl(240 6% 28%) 100%
-  );
-  box-shadow:
-    0 18px 36px hsl(0 0% 0% / 0.55),
-    0 6px 14px hsl(221 83% 53% / 0.25),
-    inset 0 1px 0 hsl(0 0% 100% / 0.14);
+html.light .dark-surface .text-foreground\/70 {
+  color: hsl(var(--foreground) / 0.8) !important;
 }
-
-.login-step-logo-surface {
-  background: linear-gradient(
-    165deg,
-    hsl(0 0% 100%) 0%,
-    hsl(214 32% 97%) 48%,
-    hsl(214 24% 92%) 100%
-  );
-  box-shadow:
-    inset 0 2px 4px hsl(0 0% 100% / 0.9),
-    inset 0 -8px 16px hsl(221 83% 53% / 0.08),
-    inset 0 -1px 0 hsl(214 20% 82%);
+html.light .dark-surface .text-foreground\/60 {
+  color: hsl(var(--foreground) / 0.74) !important;
 }
-html:not(.light) .login-step-logo-surface {
-  background: linear-gradient(
-    165deg,
-    hsl(240 6% 22%) 0%,
-    hsl(240 5% 16%) 52%,
-    hsl(240 6% 12%) 100%
-  );
-  box-shadow:
-    inset 0 2px 3px hsl(0 0% 100% / 0.08),
-    inset 0 -10px 18px hsl(0 0% 0% / 0.45),
-    inset 0 -1px 0 hsl(240 4% 8%);
+html.light .dark-surface .text-foreground\/50 {
+  color: hsl(var(--foreground) / 0.68) !important;
 }
-
-.login-step-logo-shadow {
-  background: radial-gradient(
-    ellipse at center,
-    hsl(221 83% 53% / 0.28) 0%,
-    transparent 72%
-  );
+html.light .dark-surface .text-foreground\/40 {
+  color: hsl(var(--foreground) / 0.62) !important;
 }
-html:not(.light) .login-step-logo-shadow {
-  background: radial-gradient(
-    ellipse at center,
-    hsl(0 0% 0% / 0.55) 0%,
-    transparent 72%
-  );
+html.light .dark-surface .text-foreground\/30 {
+  color: hsl(var(--foreground) / 0.56) !important;
 }
-
-/* Login submit — logo-той ижил 3D */
-.login-submit-btn-glow {
-  background: radial-gradient(
-    circle at 50% 55%,
-    hsl(262 83% 58% / 0.32) 0%,
-    hsl(221 83% 53% / 0.16) 45%,
-    transparent 72%
-  );
+html.light .dark-surface .text-foreground\/20 {
+  color: hsl(var(--foreground) / 0.5) !important;
 }
-html:not(.light) .login-submit-btn-glow {
-  background: radial-gradient(
-    circle at 50% 55%,
-    hsl(262 83% 58% / 0.38) 0%,
-    hsl(199 89% 48% / 0.18) 42%,
-    transparent 72%
-  );
+html.light .dark-surface .text-gray-400 {
+  color: hsl(0 0% 80%) !important;
 }
-
-.login-submit-btn-frame {
-  background: linear-gradient(
-    145deg,
-    hsl(214 28% 92%) 0%,
-    hsl(221 83% 53% / 0.55) 38%,
-    hsl(262 83% 58% / 0.5) 62%,
-    hsl(214 28% 88%) 100%
-  );
-  box-shadow:
-    0 12px 24px hsl(221 83% 53% / 0.2),
-    0 4px 10px hsl(0 0% 0% / 0.1),
-    inset 0 1px 0 hsl(0 0% 100% / 0.65);
+html.light .dark-surface .text-gray-500 {
+  color: hsl(0 0% 75%) !important;
 }
-html:not(.light) .login-submit-btn-frame {
-  background: linear-gradient(
-    145deg,
-    hsl(240 6% 34%) 0%,
-    hsl(221 83% 53% / 0.65) 40%,
-    hsl(262 83% 58% / 0.55) 65%,
-    hsl(240 6% 28%) 100%
-  );
-  box-shadow:
-    0 14px 28px hsl(0 0% 0% / 0.5),
-    0 5px 12px hsl(221 83% 53% / 0.22),
-    inset 0 1px 0 hsl(0 0% 100% / 0.14);
+html.light .dark-surface .text-gray-600 {
+  color: hsl(0 0% 70%) !important;
 }
-
-.login-submit-btn-surface {
-  color: hsl(0 0% 9%);
-  background: linear-gradient(
-    165deg,
-    hsl(0 0% 100%) 0%,
-    hsl(214 32% 97%) 48%,
-    hsl(214 24% 92%) 100%
-  );
-  box-shadow:
-    inset 0 2px 4px hsl(0 0% 100% / 0.9),
-    inset 0 -8px 16px hsl(221 83% 53% / 0.08),
-    inset 0 -1px 0 hsl(214 20% 82%);
+html.light .dark-surface .text-slate-400 {
+  color: hsl(215 15% 78%) !important;
 }
-html:not(.light) .login-submit-btn-surface {
-  color: hsl(0 0% 100%);
-  background: linear-gradient(
-    165deg,
-    hsl(240 6% 22%) 0%,
-    hsl(240 5% 16%) 52%,
-    hsl(240 6% 12%) 100%
-  );
-  box-shadow:
-    inset 0 2px 3px hsl(0 0% 100% / 0.08),
-    inset 0 -10px 18px hsl(0 0% 0% / 0.45),
-    inset 0 -1px 0 hsl(240 4% 8%);
+html.light .dark-surface .text-slate-500 {
+  color: hsl(215 15% 72%) !important;
 }
-
-.login-submit-btn-shadow {
-  background: radial-gradient(
-    ellipse at center,
-    hsl(221 83% 53% / 0.26) 0%,
-    transparent 72%
-  );
+html.light .dark-surface .text-slate-600 {
+  color: hsl(215 15% 66%) !important;
 }
-html:not(.light) .login-submit-btn-shadow {
-  background: radial-gradient(
-    ellipse at center,
-    hsl(0 0% 0% / 0.5) 0%,
-    transparent 72%
-  );
+html.light .dark-surface .text-zinc-400 {
+  color: hsl(0 0% 78%) !important;
 }
-
-/* Hero profile portrait — login logo-той ижил 3D */
-.hero-profile-glow {
-  background: radial-gradient(
-    circle at 50% 55%,
-    hsl(262 83% 58% / 0.28) 0%,
-    hsl(221 83% 53% / 0.14) 45%,
-    transparent 72%
-  );
+html.light .dark-surface .text-zinc-500 {
+  color: hsl(0 0% 72%) !important;
 }
-html:not(.light) .hero-profile-glow {
-  background: radial-gradient(
-    circle at 50% 55%,
-    hsl(262 83% 58% / 0.36) 0%,
-    hsl(199 89% 48% / 0.16) 42%,
-    transparent 72%
-  );
+html.light .dark-surface .text-zinc-600 {
+  color: hsl(0 0% 66%) !important;
 }
-
-.hero-profile-frame {
-  /* [AUDIT] Булангийн зогсоолт өмнө нь hsl(214 28% 92%) байсан нь хуудасны
-     дэвсгэртэй (hsl(220 20% 97%)) бараг ялгагдахгүй тул хүрээ зөвхөн
-     голоороо харагдаж, карт бүтэн контургүй "уусч" байв. Булангуудыг
-     тод slate болгосноор гэрэлт горимд карт тодорхой хүрээтэй болно. */
-  background: linear-gradient(
-    145deg,
-    hsl(215 22% 72%) 0%,
-    hsl(221 83% 53% / 0.7) 38%,
-    hsl(262 83% 58% / 0.65) 62%,
-    hsl(215 22% 68%) 100%
-  );
-  box-shadow:
-    0 20px 40px hsl(221 83% 53% / 0.26),
-    0 8px 18px hsl(222 39% 12% / 0.18),
-    inset 0 1px 0 hsl(0 0% 100% / 0.65);
-  position: relative;
-  top: -3px;
+html.light .dark-surface .text-neutral-400 {
+  color: hsl(0 0% 78%) !important;
 }
-html:not(.light) .hero-profile-frame {
-  background: linear-gradient(
-    145deg,
-    hsl(240 6% 34%) 0%,
-    hsl(221 83% 53% / 0.65) 40%,
-    hsl(262 83% 58% / 0.55) 65%,
-    hsl(240 6% 28%) 100%
-  );
-  box-shadow:
-    0 22px 44px hsl(0 0% 0% / 0.55),
-    0 8px 18px hsl(221 83% 53% / 0.24),
-    inset 0 1px 0 hsl(0 0% 100% / 0.14);
+html.light .dark-surface .text-neutral-500 {
+  color: hsl(0 0% 72%) !important;
 }
-
-.hero-profile-surface {
-  /* Дээд тал нь цэвэр цагаан — хуудасны саарал дэвсгэрээс дээш "өргөгдөж"
-     харагдана; доод тал нь арай гүн, доор нь тод зааглах зураас. */
-  background: linear-gradient(
-    165deg,
-    hsl(0 0% 100%) 0%,
-    hsl(214 32% 98%) 48%,
-    hsl(214 26% 93%) 100%
-  );
-  box-shadow:
-    inset 0 2px 4px hsl(0 0% 100% / 0.9),
-    inset 0 -10px 20px hsl(221 83% 53% / 0.1),
-    inset 0 -1px 0 hsl(214 20% 76%);
+html.light .dark-surface .text-neutral-600 {
+  color: hsl(0 0% 66%) !important;
 }
-html:not(.light) .hero-profile-surface {
-  background: linear-gradient(
-    165deg,
-    hsl(240 6% 22%) 0%,
-    hsl(240 5% 16%) 52%,
-    hsl(240 6% 12%) 100%
-  );
-  box-shadow:
-    inset 0 2px 3px hsl(0 0% 100% / 0.08),
-    inset 0 -12px 22px hsl(0 0% 0% / 0.45),
-    inset 0 -1px 0 hsl(240 4% 8%);
+html.light .dark-surface .text-blue-400 {
+  color: #60a5fa !important;
 }
-
-.hero-profile-shadow {
-  background: radial-gradient(
-    ellipse at center,
-    hsl(221 83% 53% / 0.28) 0%,
-    transparent 72%
-  );
+html.light .dark-surface .text-sky-400 {
+  color: #38bdf8 !important;
 }
-html:not(.light) .hero-profile-shadow {
-  background: radial-gradient(
-    ellipse at center,
-    hsl(0 0% 0% / 0.55) 0%,
-    transparent 72%
-  );
+html.light .dark-surface .text-teal-400 {
+  color: #2dd4bf !important;
 }
-
-.login-card-border {
-  background: linear-gradient(
-    145deg,
-    hsl(214 28% 82%),
-    hsl(221 83% 53% / 0.45),
-    hsl(262 83% 58% / 0.35),
-    hsl(214 28% 82%)
-  );
+html.light .dark-surface .text-cyan-300 {
+  color: #67e8f9 !important;
 }
-html:not(.light) .login-card-border {
-  background: linear-gradient(
-    145deg,
-    hsl(240 4% 20%),
-    hsl(251 78% 79% / 0.35),
-    hsl(182 100% 74% / 0.25),
-    hsl(240 4% 20%)
-  );
+html.light .dark-surface .text-cyan-400 {
+  color: #67e8f9 !important;
 }
-
-.login-card-inner {
-  backdrop-filter: blur(16px);
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.85);
+html.light .dark-surface .text-violet-400 {
+  color: #c4b5fd !important;
 }
-html:not(.light) .login-card-inner {
-  background: hsl(var(--card) / 0.92) !important;
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+html.light .dark-surface .text-purple-400 {
+  color: #c084fc !important;
 }
-
-.login-icon-box {
-  background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
-  color: #ffffff;
+html.light .dark-surface .text-indigo-400 {
+  color: #818cf8 !important;
 }
-html:not(.light) .login-icon-box {
-  background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
+html.light .dark-surface .text-emerald-400 {
+  color: #6ee7b7 !important;
 }
-
-.login-ambient-a {
-  background: radial-gradient(
-    circle at center,
-    hsl(221 83% 53% / 0.14) 0%,
-    transparent 68%
-  );
+html.light .dark-surface .text-green-400 {
+  color: #4ade80 !important;
 }
-.login-ambient-b {
-  background: radial-gradient(
-    circle at center,
-    hsl(262 83% 58% / 0.1) 0%,
-    transparent 68%
-  );
+html.light .dark-surface .text-amber-400 {
+  color: #fcd34d !important;
 }
-html:not(.light) .login-ambient-a {
-  background: radial-gradient(
-    circle at center,
-    hsl(251 78% 79% / 0.12) 0%,
-    transparent 68%
-  );
+html.light .dark-surface .text-orange-400 {
+  color: #fb923c !important;
 }
-html:not(.light) .login-ambient-b {
-  background: radial-gradient(
-    circle at center,
-    hsl(182 100% 74% / 0.08) 0%,
-    transparent 68%
-  );
+html.light .dark-surface .text-rose-400 {
+  color: #fb7185 !important;
 }
-
-.login-ambient-grid {
-  background-image:
-    linear-gradient(hsl(221 83% 53% / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(221 83% 53% / 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black, transparent);
+html.light .dark-surface .text-red-300 {
+  color: #fca5a5 !important;
 }
-html:not(.light) .login-ambient-grid {
-  background-image:
-    linear-gradient(hsl(0 0% 100% / 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(0 0% 100% / 0.03) 1px, transparent 1px);
+html.light .dark-surface .text-red-400 {
+  color: #f87171 !important;
+}
+html.light .dark-surface .text-pink-400 {
+  color: #f472b6 !important;
+}
+html.light .dark-surface .bg-foreground\/5 {
+  background-color: hsl(var(--foreground) / 0.05) !important;
+}
+html.light .dark-surface .bg-foreground\/8 {
+  background-color: hsl(var(--foreground) / 0.08) !important;
+}
+html.light .dark-surface .bg-foreground\/10 {
+  background-color: hsl(var(--foreground) / 0.1) !important;
+}
+html.light .dark-surface .bg-foreground\/\[0\.03\] {
+  background-color: hsl(var(--foreground) / 0.03) !important;
+}
+html.light .dark-surface .bg-foreground\/\[0\.02\] {
+  background-color: hsl(var(--foreground) / 0.02) !important;
+}
+html.light .dark-surface .bg-foreground\/\[0\.015\] {
+  background-color: hsl(var(--foreground) / 0.015) !important;
+}
+html.light .dark-surface .bg-muted\/20 {
+  background-color: hsl(var(--muted) / 0.2) !important;
+}
+html.light .dark-surface .bg-muted\/30 {
+  background-color: hsl(var(--muted) / 0.3) !important;
+}
+html.light .dark-surface .bg-muted\/40 {
+  background-color: hsl(var(--muted) / 0.4) !important;
+}
+html.light .dark-surface .tabular-nums:not([class*="text-"]) {
+  color: hsl(var(--foreground) / 0.92);
 }

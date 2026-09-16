@@ -107,7 +107,7 @@ function createTop10Tooltip(t: (key: TranslationKey) => string) {
         {d.mlAmount > 0 && (
           <p className="text-txt-dim">
             ML:{" "}
-            <span className="text-golomt-400 font-bold">
+            <span className="text-primary font-bold">
               +{formatAmount(d.mlAmount)}₮
             </span>
           </p>
@@ -118,7 +118,7 @@ function createTop10Tooltip(t: (key: TranslationKey) => string) {
         </p>
         <p className="text-txt-dim">
           Dashboard:{" "}
-          <span className="text-golomt-400 font-bold">
+          <span className="text-primary font-bold">
             {d.dashboardCount}
             {t("abAlertsCountSuffix")}
           </span>
@@ -300,7 +300,6 @@ export default function AlertsPage() {
       top10,
       reversedTop10,
     };
-     
   }, [data]);
 
   const getSeverityColor = (count: number) => {
@@ -313,14 +312,14 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="px-6 flex items-center justify-between gap-3">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <AlertTriangle size={16} className="text-red-400 shrink-0" />
           <h1 className="text-sm font-bold text-txt truncate">Alert</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-1.5 bg-surface-card border border-surface-border rounded-lg px-3 py-1.5">
-            <span className="text-[10px] text-txt-dim">
+            <span className="text-[11px] text-txt-dim">
               {t("alertMinDash")}
             </span>
             <select
@@ -347,11 +346,11 @@ export default function AlertsPage() {
           </button>
         </div>
       </div>
-      <div className="px-6 space-y-4">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-4">
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-golomt-400" />
-            <span className="text-[12px] text-txt-dim ml-3">
+            <Loader2 size={24} className="animate-spin text-primary" />
+            <span className="text-xs text-txt-dim ml-3">
               {t("alertLoading")}
             </span>
           </div>
@@ -359,7 +358,7 @@ export default function AlertsPage() {
 
         {error && (
           <div className="flex flex-col items-center gap-3 py-8">
-            <p className="text-red-400 text-[12px] text-center">{error}</p>
+            <p className="text-red-400 text-xs text-center">{error}</p>
             <button
               onClick={() => loadAlerts()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-surface-border text-[11px] font-semibold text-txt hover:bg-surface-elevated transition-colors"
@@ -405,12 +404,12 @@ export default function AlertsPage() {
                 value={cifSearch}
                 onChange={(e) => handleCifSearch(e.target.value)}
                 placeholder={t("alertCifSearch")}
-                className="w-full bg-surface-card border border-surface-border rounded-xl pl-8 pr-9 py-2 text-[12px] text-txt placeholder:text-txt-dim outline-none focus:border-golomt-500/50"
+                className="w-full bg-surface-card border border-surface-border rounded-xl pl-8 pr-9 py-2 text-xs text-txt placeholder:text-txt-dim outline-none focus:border-primary/50"
               />
               {cifSearchResult.loading && (
                 <Loader2
                   size={12}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-golomt-400"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-primary"
                 />
               )}
               {cifSearch && !cifSearchResult.loading && (
@@ -427,8 +426,8 @@ export default function AlertsPage() {
             {cifSearch.trim() ? (
               cifSearchResult.loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 size={16} className="animate-spin text-golomt-400" />
-                  <span className="text-[12px] text-txt-dim ml-2">
+                  <Loader2 size={16} className="animate-spin text-primary" />
+                  <span className="text-xs text-txt-dim ml-2">
                     {t("alertOracleSearching")}
                   </span>
                 </div>
@@ -445,7 +444,7 @@ export default function AlertsPage() {
                     {cifSearchResult.alerts.map((alert) => (
                       <div
                         key={alert.cif}
-                        className="bg-surface-card rounded-xl border border-surface-border overflow-hidden"
+                        className="rounded-2xl border border-surface-border bg-surface-card overflow-hidden"
                       >
                         <button
                           onClick={() => handleExpand(alert.cif)}
@@ -470,7 +469,7 @@ export default function AlertsPage() {
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                              <p className="text-[15px] font-extrabold text-txt">
+                              <p className="text-base font-extrabold text-txt">
                                 {alert.totalTransactions}
                               </p>
                               <p className="text-xs text-txt-dim">
@@ -478,14 +477,14 @@ export default function AlertsPage() {
                               </p>
                             </div>
                             <div className="text-right">
-                              <p className="text-[15px] font-extrabold text-amber-400">
+                              <p className="text-base font-extrabold text-amber-400">
                                 {formatAmount(getStdAmount(alert))}₮
                               </p>
                               <p className="text-xs text-txt-dim">
                                 {t("abAlertsStdAmountLabel")}
                               </p>
                               {(alert.mlAmount ?? 0) > 0 && (
-                                <p className="text-xs text-golomt-400/70">
+                                <p className="text-xs text-primary/70">
                                   +ML {formatAmount(alert.mlAmount ?? 0)}₮
                                 </p>
                               )}
@@ -507,7 +506,7 @@ export default function AlertsPage() {
                                   className="bg-surface-card rounded-lg border border-surface-border p-3"
                                 >
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-extrabold text-golomt-400">
+                                    <span className="text-xs font-extrabold text-primary">
                                       DB{d.id}
                                     </span>
                                     <span className="text-xs text-txt-dim">
@@ -530,7 +529,7 @@ export default function AlertsPage() {
                               <div className="flex items-center gap-2 py-3">
                                 <Loader2
                                   size={14}
-                                  className="animate-spin text-golomt-400"
+                                  className="animate-spin text-primary"
                                 />
                                 <span className="text-[11px] text-txt-dim">
                                   {t("alertLoadingDetail")}
@@ -606,7 +605,7 @@ export default function AlertsPage() {
                                   `/tools/alert-box/search?cif=${alert.cif}`,
                                 )
                               }
-                              className="mt-3 text-sm font-semibold text-golomt-400 hover:underline"
+                              className="mt-3 text-sm font-semibold text-primary hover:underline"
                             >
                               {t("abAlertsViewOnSearchEngine")}
                             </button>
@@ -669,11 +668,11 @@ export default function AlertsPage() {
                           </div>
                           {totalMLAmt > 0 && (
                             <div className="flex items-center gap-2.5 bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
-                              <div className="w-2 h-2 rounded-full bg-golomt-400" />
+                              <div className="w-2 h-2 rounded-full bg-primary" />
                               <span className="text-xs text-txt-dim">
                                 {t("abAlertsMlAmountLabel")}
                               </span>
-                              <span className="text-xl font-extrabold text-golomt-400">
+                              <span className="text-xl font-extrabold text-primary">
                                 +{formatAmount(totalMLAmt)}₮
                               </span>
                             </div>
@@ -685,7 +684,8 @@ export default function AlertsPage() {
                           {/* Top 10 CIFs horizontal bar */}
                           <div className="lg:col-span-3 bg-surface-card border border-surface-border rounded-2xl p-5">
                             <p className="text-sm font-bold text-txt">
-                              Top {top10.length} CIF — {t("abAlertsByAmountLabel")}
+                              Top {top10.length} CIF —{" "}
+                              {t("abAlertsByAmountLabel")}
                             </p>
                             <p className="text-xs text-txt-dim mb-4">
                               {t("abAlertsSortedByStdAmount")}
@@ -852,7 +852,7 @@ export default function AlertsPage() {
                         {/* Divider */}
                         <div className="flex items-center gap-3 py-1">
                           <div className="h-px flex-1 bg-surface-border" />
-                          <span className="text-xs text-txt-dim font-medium tracking-wide uppercase">
+                          <span className="text-xs text-txt-dim font-medium">
                             {data.alerts.length} {t("abAlertsCifListLabel")}
                           </span>
                           <div className="h-px flex-1 bg-surface-border" />
@@ -867,16 +867,14 @@ export default function AlertsPage() {
                       size={32}
                       className="mx-auto text-txt-dim mb-2 opacity-50"
                     />
-                    <p className="text-[13px] text-txt-dim">
-                      {t("alertNoResult")}
-                    </p>
+                    <p className="text-sm text-txt-dim">{t("alertNoResult")}</p>
                   </div>
                 )}
 
                 {data.alerts.slice(0, visibleCount).map((alert, idx) => (
                   <div
                     key={alert.cif}
-                    className="bg-surface-card rounded-xl border border-surface-border overflow-hidden"
+                    className="rounded-2xl border border-surface-border bg-surface-card overflow-hidden"
                   >
                     <button
                       onClick={() => handleExpand(alert.cif)}
@@ -904,7 +902,7 @@ export default function AlertsPage() {
                       </div>
                       <div className="flex items-center gap-6">
                         <div className="text-right">
-                          <p className="text-[15px] font-extrabold text-txt">
+                          <p className="text-base font-extrabold text-txt">
                             {alert.totalTransactions}
                           </p>
                           <p className="text-xs text-txt-dim">
@@ -912,14 +910,14 @@ export default function AlertsPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[15px] font-extrabold text-amber-400">
+                          <p className="text-base font-extrabold text-amber-400">
                             {formatAmount(getStdAmount(alert))}₮
                           </p>
                           <p className="text-xs text-txt-dim">
                             {t("abAlertsStdAmountLabel")}
                           </p>
                           {(alert.mlAmount ?? 0) > 0 && (
-                            <p className="text-xs text-golomt-400/70">
+                            <p className="text-xs text-primary/70">
                               +ML {formatAmount(alert.mlAmount ?? 0)}₮
                             </p>
                           )}
@@ -941,7 +939,7 @@ export default function AlertsPage() {
                               className="bg-surface-card rounded-lg border border-surface-border p-3"
                             >
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-extrabold text-golomt-400">
+                                <span className="text-xs font-extrabold text-primary">
                                   DB{d.id}
                                 </span>
                                 <span className="text-xs text-txt-dim">
@@ -964,7 +962,7 @@ export default function AlertsPage() {
                           <div className="flex items-center gap-2 py-3">
                             <Loader2
                               size={14}
-                              className="animate-spin text-golomt-400"
+                              className="animate-spin text-primary"
                             />
                             <span className="text-[11px] text-txt-dim">
                               {t("alertLoadingDetail")}
@@ -985,7 +983,7 @@ export default function AlertsPage() {
                                   </span>
                                 </summary>
                                 <div className="overflow-auto border-t border-surface-border max-h-[380px]">
-                                  <table className="text-[10px] border-collapse">
+                                  <table className="text-[11px] border-collapse">
                                     <thead className="sticky top-0 z-10">
                                       <tr className="bg-surface-elevated">
                                         <th className="px-3 py-2 text-left font-semibold text-txt-dim whitespace-nowrap bg-surface-elevated">
@@ -1040,7 +1038,7 @@ export default function AlertsPage() {
                               `/tools/alert-box/search?cif=${alert.cif}`,
                             )
                           }
-                          className="mt-3 text-sm font-semibold text-golomt-400 hover:underline"
+                          className="mt-3 text-sm font-semibold text-primary hover:underline"
                         >
                           {t("abAlertsViewOnSearchEngine")}
                         </button>
@@ -1055,11 +1053,11 @@ export default function AlertsPage() {
                       onClick={() =>
                         setVisibleCount((c) => c + ALERTS_PAGE_SIZE)
                       }
-                      className="px-5 py-2 rounded-lg bg-surface-card border border-surface-border text-[12px] font-semibold text-txt hover:bg-surface-elevated transition-colors"
+                      className="px-5 py-2 rounded-lg bg-surface-card border border-surface-border text-xs font-semibold text-txt hover:bg-surface-elevated transition-colors"
                     >
                       {t("abAlertsLoadMoreBtn")}
                     </button>
-                    <span className="text-[10px] text-txt-dim">
+                    <span className="text-[11px] text-txt-dim">
                       {visibleCount} / {data.alerts.length}
                     </span>
                   </div>

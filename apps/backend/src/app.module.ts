@@ -12,11 +12,12 @@ import { QuizModule } from "./quiz/quiz.module";
 import { AuditLogModule } from "./audit/audit-log.module";
 import { DbAccessModule } from "./db-access/db-access.module";
 import { OracleModule } from "./oracle/oracle.module";
-import { PythonApiModule } from "./python-api/python-api.module";
 import { RiskAssessmentModule } from "./risk-assessment/risk-assessment.module";
 import { RiskIndicatorConfigModule } from "./risk-indicator-config/risk-indicator-config.module";
 import { HomepageEthicsModule } from "./homepage-ethics/homepage-ethics.module";
 import { ZainiiAuditModule } from "./zainii-audit/zainii-audit.module";
+import { NetworkAnalysisModule } from "./network-analysis/network-analysis.module";
+import { NegativeNewsModule } from "./negative-news/negative-news.module";
 import { HealthController } from "./health.controller";
 import configuration from "./config/configuration";
 import { validateEnv } from "./config/env.validation";
@@ -51,11 +52,12 @@ import { validateEnv } from "./config/env.validation";
     MedlegModule,
     DbAccessModule,
     OracleModule,
-    PythonApiModule,
     RiskAssessmentModule,
     RiskIndicatorConfigModule,
     HomepageEthicsModule,
     ZainiiAuditModule,
+    NetworkAnalysisModule,
+    NegativeNewsModule,
   ],
   controllers: [HealthController],
   providers: [

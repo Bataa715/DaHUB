@@ -28,6 +28,16 @@ import {
   CheckCircle2,
   Table2,
 } from "lucide-react";
+import {
+  TOOL_CONTAINER,
+  TOOL_PANEL,
+  TOOL_PANEL_BODY,
+  TOOL_PANEL_HEADER,
+  TOOL_PANEL_TITLE,
+  toolTdClass,
+  toolThClass,
+} from "@/components/shared/tool-ui";
+import { cn } from "@/lib/utils";
 import { DESIGN_LABEL_KEYS, type DesignType } from "./_lib/sampling";
 import { useSampling } from "./_hooks/useSampling";
 import { useState } from "react";
@@ -41,11 +51,11 @@ export default function SanamsarguiTuuwerPage() {
   const confLabel = (s.confidence * 100).toFixed(0) + "%";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       {s.exporting && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="bg-card border border-border rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-xl">
-            <Loader2 className="w-9 h-9 text-violet-500 animate-spin" />
+            <Loader2 className="w-9 h-9 text-primary animate-spin" />
             <p className="text-foreground font-semibold text-base">
               {t("samplePreparing")}
             </p>
@@ -73,16 +83,16 @@ export default function SanamsarguiTuuwerPage() {
         }
       />
 
-      <div className="w-full px-4 md:px-6 py-6 space-y-4">
+      <div className={cn(TOOL_CONTAINER, "space-y-5 py-6")}>
         {/* Config Card */}
-        <Card className="rounded-none border-0 shadow-none bg-transparent">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-violet-500" />
+        <Card className={TOOL_PANEL}>
+          <CardHeader className={TOOL_PANEL_HEADER}>
+            <CardTitle className={TOOL_PANEL_TITLE}>
+              <Calculator className="w-4 h-4 text-muted-foreground" />
               {t("sampleConfigTitle")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className={cn(TOOL_PANEL_BODY, "space-y-5")}>
             {/* Design + Confidence row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -112,7 +122,7 @@ export default function SanamsarguiTuuwerPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm">{t("sampleConfidence")}</Label>
-                  <span className="text-violet-600 font-bold text-sm tabular-nums">
+                  <span className="text-primary font-bold text-sm tabular-nums">
                     {confLabel}
                   </span>
                 </div>
@@ -221,7 +231,7 @@ export default function SanamsarguiTuuwerPage() {
                     type="checkbox"
                     checked={s.preferSaveDialog}
                     onChange={(e) => s.setPreferSaveDialog(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded accent-violet-500 cursor-pointer"
+                    className="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
                   />
                   {t("sampleSaveDialog")}
                 </label>
@@ -246,10 +256,10 @@ export default function SanamsarguiTuuwerPage() {
                       onClick={() => s.fileInputRef.current?.click()}
                       className={`flex-1 min-h-[4.5rem] border border-dashed rounded-lg px-3 py-2.5 flex items-center justify-center gap-2.5 cursor-pointer transition-colors ${
                         s.isDragging
-                          ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20"
+                          ? "border-primary bg-primary/5"
                           : s.fileName
                             ? "border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20"
-                            : "border-border hover:border-violet-300 hover:bg-muted/30"
+                            : "border-border hover:border-primary/40 hover:bg-muted/40"
                       }`}
                     >
                       <input
@@ -269,7 +279,7 @@ export default function SanamsarguiTuuwerPage() {
                             <p className="text-emerald-600 dark:text-emerald-400 font-medium text-xs truncate">
                               {s.fileName}
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground">
                               {s.fileData?.length} {t("alertRows")}
                             </p>
                           </div>
@@ -281,7 +291,7 @@ export default function SanamsarguiTuuwerPage() {
                             <p className="text-xs font-medium text-foreground leading-snug">
                               {t("sampleDropZone")}
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground">
                               XLSX, XLS
                             </p>
                           </div>
@@ -300,22 +310,23 @@ export default function SanamsarguiTuuwerPage() {
                     <Button
                       onClick={s.handleCalculate}
                       disabled={!s.fileData}
-                      className="flex-1 min-h-[4.5rem] w-full bg-violet-600 hover:bg-violet-700 text-foreground font-semibold text-sm disabled:opacity-40"
+                      className="min-h-[4.5rem] w-full flex-1 text-sm font-semibold"
                     >
                       <Shuffle className="w-4 h-4 mr-2 shrink-0" />
-                      <span className="leading-snug">{t("sampleSizeLabel")}</span>
+                      <span className="leading-snug">
+                        {t("sampleSizeLabel")}
+                      </span>
                     </Button>
                     {s.computedN !== null && (
-                      <div className="flex items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-2.5 py-1.5 text-xs">
+                      <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-xs">
                         <span className="text-muted-foreground truncate">
                           n (
-                          {!s.useColumnFilter ||
-                          s.selectedFilterValue === "all"
+                          {!s.useColumnFilter || s.selectedFilterValue === "all"
                             ? t("sampleAllValues")
                             : `${s.filterCol}=${s.selectedFilterValue}`}
                           )
                         </span>
-                        <strong className="text-violet-600 tabular-nums">
+                        <strong className="text-primary tabular-nums">
                           {s.computedN}
                         </strong>
                       </div>
@@ -325,7 +336,7 @@ export default function SanamsarguiTuuwerPage() {
 
                 {/* Column filter */}
                 {s.fileData && s.fileHeaders.length > 0 && (
-                  <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+                  <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -338,7 +349,7 @@ export default function SanamsarguiTuuwerPage() {
                             s.setCoverAllValues(false);
                           }
                         }}
-                        className="w-4 h-4 rounded accent-violet-500 cursor-pointer"
+                        className="w-4 h-4 rounded accent-primary cursor-pointer"
                       />
                       <span className="text-sm font-medium">
                         {t("sampleFilterByCol")}
@@ -405,7 +416,7 @@ export default function SanamsarguiTuuwerPage() {
                                   setFilterExpanded(true);
                                 }}
                                 placeholder={t("sampleSearchValues")}
-                                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                               />
                             </div>
                             {(() => {
@@ -432,8 +443,8 @@ export default function SanamsarguiTuuwerPage() {
                                       }}
                                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                         s.selectedFilterValue === "all"
-                                          ? "bg-violet-500 border-violet-500 text-foreground"
-                                          : "border-border bg-background text-foreground hover:border-violet-400"
+                                          ? "border-primary bg-primary text-primary-foreground"
+                                          : "border-border bg-background text-foreground hover:border-primary/50"
                                       }`}
                                     >
                                       {t("sampleAllValues")}
@@ -446,8 +457,8 @@ export default function SanamsarguiTuuwerPage() {
                                         }
                                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                           s.selectedFilterValue === v
-                                            ? "bg-violet-500 border-violet-500 text-foreground"
-                                            : "border-border bg-background text-foreground hover:border-violet-400"
+                                            ? "border-primary bg-primary text-primary-foreground"
+                                            : "border-border bg-background text-foreground hover:border-primary/50"
                                         }`}
                                       >
                                         {v}
@@ -459,7 +470,7 @@ export default function SanamsarguiTuuwerPage() {
                                       onClick={() =>
                                         setFilterExpanded((p) => !p)
                                       }
-                                      className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-500 transition-colors mt-0.5"
+                                      className="mt-0.5 flex items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80"
                                     >
                                       {filterExpanded ? (
                                         <>
@@ -492,7 +503,7 @@ export default function SanamsarguiTuuwerPage() {
                                   s.setCoverAllValues(e.target.checked)
                                 }
                                 disabled={s.selectedFilterValue !== "all"}
-                                className="w-3.5 h-3.5 rounded accent-violet-500 cursor-pointer disabled:opacity-50"
+                                className="w-3.5 h-3.5 rounded accent-primary cursor-pointer disabled:opacity-50"
                               />
                               {t("sampleForceAll")}
                             </label>
@@ -545,11 +556,11 @@ export default function SanamsarguiTuuwerPage() {
                   </div>
                 </div>
                 {s.computedN !== null && (
-                  <div className="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 px-4 py-2.5 text-sm">
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
                     <span className="text-muted-foreground">
                       {t("sampleSizeLabel")}:
                     </span>
-                    <strong className="text-violet-600 text-base">
+                    <strong className="text-primary text-base">
                       {s.computedN}
                     </strong>
                   </div>
@@ -593,7 +604,7 @@ export default function SanamsarguiTuuwerPage() {
 
                 <Button
                   onClick={s.handleCalculate}
-                  className="w-full bg-violet-600 hover:bg-violet-700 text-foreground font-semibold py-5 text-base"
+                  className="w-full py-5 text-base font-semibold"
                 >
                   <Shuffle className="w-4 h-4 mr-2" />
                   {t("sampleStratifiedBtn")}
@@ -608,10 +619,10 @@ export default function SanamsarguiTuuwerPage() {
           (() => {
             const result = s.result!;
             return (
-              <Card className="rounded-none border-0 shadow-none bg-transparent">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Card className={TOOL_PANEL}>
+                <CardHeader className={TOOL_PANEL_HEADER}>
+                  <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                    <CardTitle className={TOOL_PANEL_TITLE}>
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                       {t("sampleSizeLabel")}
                     </CardTitle>
@@ -619,14 +630,13 @@ export default function SanamsarguiTuuwerPage() {
                       onClick={s.handleExport}
                       size="sm"
                       variant="outline"
-                      className="border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10/30"
                     >
                       <Download className="w-4 h-4 mr-1.5" />
                       {t("pivotExportBtn")}
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className={TOOL_PANEL_BODY}>
                   {s.exportError && (
                     <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                       {s.exportError}
@@ -635,15 +645,15 @@ export default function SanamsarguiTuuwerPage() {
 
                   {/* Stats row */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                    <div className="rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/20 p-3 text-center">
-                      <div className="text-3xl font-bold text-violet-600">
+                    <div className="rounded-xl border border-border bg-muted/40 p-3 text-center">
+                      <div className="text-3xl font-bold text-primary">
                         {result.n}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         {t("sampleSizeLabel")} (n)
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                    <div className="rounded-2xl border border-border bg-card p-3 text-center">
                       <div className="text-2xl font-bold text-foreground">
                         {result.N}
                       </div>
@@ -651,7 +661,7 @@ export default function SanamsarguiTuuwerPage() {
                         {t("samplePopN")} (N)
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                    <div className="rounded-2xl border border-border bg-card p-3 text-center">
                       <div className="text-2xl font-bold text-foreground">
                         {result.Z}
                       </div>
@@ -659,7 +669,7 @@ export default function SanamsarguiTuuwerPage() {
                         Z {t("sampleStdDev")}
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                    <div className="rounded-2xl border border-border bg-card p-3 text-center">
                       <div className="text-2xl font-bold text-foreground">
                         {(result.confidence * 100).toFixed(0)}%
                       </div>
@@ -687,23 +697,20 @@ export default function SanamsarguiTuuwerPage() {
                             ` (${t("sampleFirst50Suffix")})`}
                         </span>
                       </p>
-                      <div className="overflow-x-auto rounded-lg border border-border">
-                        <table className="text-xs min-w-full">
-                          <thead>
-                            <tr className="bg-muted/60">
-                              <th className="px-3 py-2 text-muted-foreground text-center whitespace-nowrap border-r border-border font-medium">
+                      <div className="overflow-x-auto rounded-2xl border border-border">
+                        <table className="min-w-full text-xs">
+                          <thead className="bg-muted/40">
+                            <tr>
+                              <th className={cn(toolThClass, "text-center")}>
                                 {t("alertRows")} №
                               </th>
                               {s.isStratified ? (
-                                <th className="px-3 py-2 text-muted-foreground text-left border-r border-border/50 font-medium">
+                                <th className={toolThClass}>
                                   {t("sampleDesign")}
                                 </th>
                               ) : (
                                 result.headers.map((h, hi) => (
-                                  <th
-                                    key={hi}
-                                    className="px-3 py-2 text-muted-foreground text-left whitespace-nowrap border-r border-border/50 font-medium"
-                                  >
+                                  <th key={hi} className={toolThClass}>
                                     {h}
                                   </th>
                                 ))
@@ -712,24 +719,27 @@ export default function SanamsarguiTuuwerPage() {
                           </thead>
                           <tbody>
                             {g.indices.slice(0, 50).map((idx, i) => (
-                              <tr
-                                key={i}
-                                className={
-                                  i % 2 === 0 ? "bg-background" : "bg-muted/20"
-                                }
-                              >
-                                <td className="px-3 py-1.5 text-violet-600 font-mono font-bold text-center border-r border-border">
+                              <tr key={i}>
+                                <td
+                                  className={cn(
+                                    toolTdClass,
+                                    "text-center font-mono font-bold text-primary",
+                                  )}
+                                >
                                   {idx}
                                 </td>
                                 {s.isStratified ? (
-                                  <td className="px-3 py-1.5 text-foreground font-mono border-r border-border/30">
+                                  <td className={cn(toolTdClass, "font-mono")}>
                                     {idx}
                                   </td>
                                 ) : (
                                   (g.rows[i] ?? []).map((cell, ci) => (
                                     <td
                                       key={ci}
-                                      className="px-3 py-1.5 text-foreground whitespace-nowrap border-r border-border/30"
+                                      className={cn(
+                                        toolTdClass,
+                                        "whitespace-nowrap",
+                                      )}
                                     >
                                       {cell instanceof Date
                                         ? cell.toLocaleDateString("mn-MN")
@@ -756,15 +766,20 @@ export default function SanamsarguiTuuwerPage() {
           })()}
 
         {/* Notes */}
-        <Card className="rounded-none border-0 shadow-none bg-transparent">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
+        <Card className={TOOL_PANEL}>
+          <CardHeader className={TOOL_PANEL_HEADER}>
+            <CardTitle className={TOOL_PANEL_TITLE}>
               {t("sampleNotesTitle")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-3">
+          <CardContent
+            className={cn(
+              TOOL_PANEL_BODY,
+              "space-y-3 text-sm text-muted-foreground",
+            )}
+          >
             <p>{t("sampleStdDevExplain")}</p>
-            <div className="rounded-lg border border-border bg-muted/30 p-4 text-center font-mono text-base text-foreground">
+            <div className="rounded-xl border border-border bg-muted/40 p-4 text-center font-mono text-base text-foreground">
               σ = √( Σ(x<sub>i</sub> − μ)² / N )
             </div>
             <ul className="space-y-1 text-xs">
@@ -785,10 +800,10 @@ export default function SanamsarguiTuuwerPage() {
                 {t("sampleFormulaN")}
               </li>
             </ul>
-            <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20 px-3 py-2.5 text-sm text-red-700 dark:text-red-400">
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
               {t("sampleMarginWarning")}
             </div>
-            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
+            <div className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm text-foreground">
               <strong>{t("sampleNoteLabel")}</strong> {t("sampleNoteText")}
             </div>
           </CardContent>

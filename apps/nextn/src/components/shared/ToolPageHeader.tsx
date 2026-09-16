@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getTools } from "@/lib/tools-config";
+import { cn } from "@/lib/utils";
+import { AccountMenu } from "./AccountMenu";
+import { isDashboardRoute } from "./DashboardShell";
+import { HUB_BG } from "./HubPage";
 
 interface ToolPageHeaderProps {
+  /** Буцах зам. Өгөөгүй (эсвэл "/") бол хэрэгслийн хэсгийг (Хэрэгсэл/Дашбоард) автоматаар олно. */
   href?: string;
   onBack?: () => void;
   icon: ReactNode;
@@ -13,49 +20,82 @@ interface ToolPageHeaderProps {
   rightContent?: ReactNode;
 }
 
+const roundBtn =
+  "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60";
+
 export default function ToolPageHeader({
-  href = "/",
+  href,
   onBack,
   icon,
   title,
   rightContent,
 }: ToolPageHeaderProps) {
   const { t } = useLanguage();
+  const pathname = usePathname();
+
+  // Одоогийн зам аль хэрэгсэлд хамаарахыг (хамгийн урт prefix) олж, буцах замыг тодорхойлно.
+  // Бүртгэлийн href дээр query байж болно — зөвхөн замаар нь тааруулна.
+  const tool = getTools(t)
+    .map((item) => ({ section: item.section, path: item.href.split("?")[0] }))
+    .filter(
+      (item) => pathname === item.path || pathname.startsWith(`${item.path}/`),
+    )
+    .sort((a, b) => b.path.length - a.path.length)[0];
+
+  // Дашбоард: /dashboard нь эхний самбар руу буцааж чиглүүлдэг тул буцах товч нүүр рүү.
+  const sectionHref =
+    tool?.section === "tool"
+      ? "/tools"
+      : tool?.section === "risk"
+        ? "/risk-assessment"
+        : "/";
+  const backHref =
+    href && href !== "/" ? href : sectionHref !== pathname ? sectionHref : "/";
 
   return (
-    // h-14 + border-b ижил box — sidebar толгойтой 1px зөрөхгүй.
-    // shrink-0: урт хүснэгт/их өгөгдөл үед flex багана header-ийг шахахгүй.
-    // min-w-0 max-w-full: өргөн table page-ийг тэлэхэд header дагаж сунахгүй.
-    <div className="sticky top-0 z-20 shrink-0 h-14 min-h-14 w-full min-w-0 max-w-full px-4 flex items-center gap-3 border-b border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl box-border">
-      {onBack ? (
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-sm shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4 stroke-[1.75]" />
-          {t("back")}
-        </button>
-      ) : (
-        <Link
-          href={href}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-sm shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4 stroke-[1.75]" />
-          {t("back")}
-        </Link>
+    <header
+      className={cn(
+        "sticky top-0 z-30 w-full min-w-0 max-w-full shrink-0 text-white",
+        HUB_BG,
       )}
-      <span className="text-border/70 select-none shrink-0">/</span>
-      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-        <span className="shrink-0 flex items-center">{icon}</span>
-        <span className="text-sm font-semibold text-foreground tracking-tight truncate leading-none">
-          {title}
-        </span>
-      </div>
-      {rightContent && (
-        <div className="ml-auto flex items-center gap-2 shrink-0 max-w-[55%] overflow-x-auto scrollbar-none">
-          {rightContent}
+    >
+      {/* h-14 хэвээр — Зардлын хяналт г.м. хуудсууд доороо `sticky top-14` мөртэй. */}
+      <div className="flex h-14 min-w-0 items-center gap-3 px-4 sm:px-8 lg:px-12 2xl:px-16">
+        {/* Дашбоард дээр зүүн цэсэнд "Нүүр хуудас" байгаа тул буцах товч давхардана */}
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={t("back")}
+            title={t("back")}
+            className={roundBtn}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+        ) : isDashboardRoute(pathname) ? null : (
+          <Link
+            href={backHref}
+            aria-label={t("back")}
+            title={t("back")}
+            className={roundBtn}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        )}
+
+        {/* Зөвхөн хуудасны icon + нэр */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+          <span className="flex shrink-0 items-center">{icon}</span>
+          <span className="truncate font-bold tracking-tight">{title}</span>
         </div>
-      )}
-    </div>
+
+        {rightContent && (
+          <div className="flex max-w-[55%] shrink-0 items-center gap-2 overflow-x-auto scrollbar-none">
+            {rightContent}
+          </div>
+        )}
+        <AccountMenu />
+      </div>
+    </header>
   );
 }

@@ -33,7 +33,7 @@ export default function ReportSkeleton({ rows = 8 }: { rows?: number }) {
         {Array.from({ length: rows }).map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-4 px-4 py-3 border-b border-border/50 last:border-0"
+            className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-0"
             style={{ opacity: 1 - i * (0.5 / rows) }}
           >
             <Skeleton className="h-4 w-9 rounded-full" />
