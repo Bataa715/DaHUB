@@ -106,7 +106,10 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   const [selectedMonth, setSelectedMonth] = useState("");
   const [riskbranchDates, setRiskbranchDates] = useState<string[]>([]);
   const riskbranchDatesRef = useRef<string[]>([]);
-  riskbranchDatesRef.current = riskbranchDates;
+  // Callback-ууд хамгийн сүүлийн утгыг уншина — render үед ref бичихгүй
+  useEffect(() => {
+    riskbranchDatesRef.current = riskbranchDates;
+  }, [riskbranchDates]);
   const [lockedDate, setLockedDate] = useState<string | null>(null);
   const [judgements, setJudgements] = useState<Record<string, number>>({});
   const [judgementComments, setJudgementComments] = useState<
@@ -128,7 +131,9 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
     {},
   );
   const judgementCommentsRef = useRef(judgementComments);
-  judgementCommentsRef.current = judgementComments;
+  useEffect(() => {
+    judgementCommentsRef.current = judgementComments;
+  }, [judgementComments]);
   const manualTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );

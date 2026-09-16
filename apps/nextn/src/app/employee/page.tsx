@@ -218,11 +218,8 @@ export default function EmployeesPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
+    // Нэвтрээгүй бол ачаалахгүй — loading-ийг доор user-ээс тооцно
+    if (authLoading || !user) return;
     departmentsApi
       .getAll()
       .then((data: DepartmentData[]) => {
@@ -248,7 +245,7 @@ export default function EmployeesPage() {
 
   const currentUserId = user?.id ?? user?.userId ?? "";
 
-  if (authLoading || isLoading) {
+  if (authLoading || (!!user && isLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-7 h-7 animate-spin text-muted-foreground" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -17,25 +17,25 @@ const QUERY = "(prefers-reduced-motion: reduce)";
  * SSR болон hydration-ы үед `false` буцаана — сервер дээр хэрэглэгчийн
  * тохиргоо мэдэгдэхгүй тул зөрүү (hydration mismatch) гаргахгүйн тулд.
  */
+function subscribe(onChange: () => void): () => void {
+  if (typeof window === "undefined" || !window.matchMedia) return () => {};
+  const mql = window.matchMedia(QUERY);
+  // Safari 13 ба түүнээс өмнөх хувилбарт addEventListener байхгүй.
+  if (typeof mql.addEventListener === "function") {
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }
+  mql.addListener(onChange);
+  return () => mql.removeListener(onChange);
+}
+
+const getSnapshot = () =>
+  typeof window !== "undefined" && !!window.matchMedia
+    ? window.matchMedia(QUERY).matches
+    : false;
+
 export function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-
-    const mql = window.matchMedia(QUERY);
-    setReduced(mql.matches);
-
-    const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
-
-    // Safari 13 ба түүнээс өмнөх хувилбарт addEventListener байхгүй.
-    if (typeof mql.addEventListener === "function") {
-      mql.addEventListener("change", onChange);
-      return () => mql.removeEventListener("change", onChange);
-    }
-    mql.addListener(onChange);
-    return () => mql.removeListener(onChange);
-  }, []);
-
-  return reduced;
+  // useSyncExternalStore: сервер/hydration үед getServerSnapshot (false),
+  // дараа нь хөтчийн утга — effect дотор setState хийх шаардлагагүй.
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }

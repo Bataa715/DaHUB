@@ -11,10 +11,7 @@ import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, X, AlertTriangle, ArrowDownUp } from "lucide-react";
-import {
-  useLanguage,
-  type TranslationKey,
-} from "@/contexts/LanguageContext";
+import { useLanguage, type TranslationKey } from "@/contexts/LanguageContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -814,7 +811,10 @@ export function ScaleEditor({
   const [scale, setScale] = useState<ScoreScale>(() => parseScale(value));
   const isMounted = useRef(false);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  // Хамгийн сүүлийн onChange-ийг effect-ээр хадгална (render үед ref бичихгүй)
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Fire onChange only on user edits, not on initial mount
   useEffect(() => {

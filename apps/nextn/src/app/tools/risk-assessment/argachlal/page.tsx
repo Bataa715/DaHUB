@@ -67,7 +67,7 @@ export default function ArgachlalPage() {
           a.subid.localeCompare(b.subid, undefined, { numeric: true }),
         ),
     })).filter((s) => s.items.length > 0);
-  }, [catalog, query]);
+  }, [catalog, query, t]);
 
   return (
     <div className="min-h-full bg-background">

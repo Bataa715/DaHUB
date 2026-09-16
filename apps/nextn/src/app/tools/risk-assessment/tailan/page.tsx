@@ -181,11 +181,30 @@ async function loadRiskbranchMonth(
   };
 }
 
+/**
+ * Түлхүүрийн утгууд өмнөх render-ээс өөрчлөгдсөн эсэх (mount-д false).
+ * "Өмнөх утгаас state тохируулах" React загвар — effect дотор синхрон setState
+ * хийж нэмэлт render (cascading) үүсгэхийн оронд render үед нэг удаа тохируулна.
+ */
+function useKeyChanged(key: readonly unknown[]): boolean {
+  const [prev, setPrev] = useState(key);
+  const changed =
+    key.length !== prev.length || key.some((k, i) => !Object.is(k, prev[i]));
+  if (changed) setPrev(key);
+  return changed;
+}
+
 export default function RiskReportsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const isAdmin = user?.isAdmin === true;
   const { catalog, weights } = useIndicatorConfig();
+  // Async callback-ууд хамгийн сүүлийн орчуулгыг уншина — t-г effect deps-д
+  // оруулбал хэл солиход бүх тайлан дахин ачаалагдана.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   const [historyList, setHistoryList] = useState<RiskHistoryEntry[]>([]);
   const [riskbranchDates, setRiskbranchDates] = useState<string[]>([]);
@@ -204,7 +223,9 @@ export default function RiskReportsPage() {
 
   const [selectedReportId, setSelectedReportId] = useState<string>("");
   const selectedReportIdRef = useRef(selectedReportId);
-  selectedReportIdRef.current = selectedReportId;
+  useEffect(() => {
+    selectedReportIdRef.current = selectedReportId;
+  }, [selectedReportId]);
   const [reportRows, setReportRows] = useState<RiskCurrentRow[]>([]);
   const [reportManualMap, setReportManualMap] = useState<
     Record<string, Record<string, number>>
@@ -220,7 +241,9 @@ export default function RiskReportsPage() {
 
   const [comparisonReportId, setComparisonReportId] = useState<string>("");
   const comparisonReportIdRef = useRef(comparisonReportId);
-  comparisonReportIdRef.current = comparisonReportId;
+  useEffect(() => {
+    comparisonReportIdRef.current = comparisonReportId;
+  }, [comparisonReportId]);
   const [comparisonRows, setComparisonRows] = useState<RiskCurrentRow[]>([]);
   const [comparisonManualMap, setComparisonManualMap] = useState<
     Record<string, Record<string, number>>
@@ -243,7 +266,9 @@ export default function RiskReportsPage() {
 
   const monthLoadGen = useRef(0);
   const riskbranchDatesRef = useRef<string[]>([]);
-  riskbranchDatesRef.current = riskbranchDates;
+  useEffect(() => {
+    riskbranchDatesRef.current = riskbranchDates;
+  }, [riskbranchDates]);
 
   // Init: riskbranch огноо + хадгалсан тайлан (улирлаар)
   useEffect(() => {
@@ -270,7 +295,9 @@ export default function RiskReportsPage() {
         if (history?.length) setSelectedReportId(history[0].id);
       } catch (e: unknown) {
         if (!cancelled)
-          setErrorMsg(getApiErrorMessage(e) || t("raTailanPageLoadError"));
+          setErrorMsg(
+            getApiErrorMessage(e) || tRef.current("raTailanPageLoadError"),
+          );
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -281,25 +308,23 @@ export default function RiskReportsPage() {
   }, []);
 
   /** Draft үндсэн сар солигдоход — өмнөх сарыг default; гар combо/цэвэрлэсэн бол үл тооно */
-  useEffect(() => {
+  if (useKeyChanged([draftFilterMonth, compareMonthOptOut])) {
     if (!draftFilterMonth) {
-      setDraftCompareMonth("");
-      return;
-    }
-    if (compareMonthOptOut) {
+      if (draftCompareMonth) setDraftCompareMonth("");
+    } else if (compareMonthOptOut) {
       // Хэрэглэгч өөрөө сонгосон эсвэл цэвэрлэсэн — автомат бөглөхгүй
+      // (хоосон = харьцуулалтгүй хайлт; хүрээнээс гарсан бол өмнөх сар)
       const minInc = shiftMonthKey(draftFilterMonth, -12);
-      setDraftCompareMonth((cur) => {
-        if (!cur) return cur; // хоосон = харьцуулалтгүй хайлт
-        if (cur >= draftFilterMonth || cur < minInc) {
-          return prevMonthKey(draftFilterMonth);
-        }
-        return cur;
-      });
-      return;
+      if (
+        draftCompareMonth &&
+        (draftCompareMonth >= draftFilterMonth || draftCompareMonth < minInc)
+      ) {
+        setDraftCompareMonth(prevMonthKey(draftFilterMonth));
+      }
+    } else {
+      setDraftCompareMonth(prevMonthKey(draftFilterMonth));
     }
-    setDraftCompareMonth(prevMonthKey(draftFilterMonth));
-  }, [draftFilterMonth, compareMonthOptOut]);
+  }
 
   const monthFilterDirty =
     draftFilterMonth !== filterMonth || draftCompareMonth !== compareMonth;
@@ -318,10 +343,12 @@ export default function RiskReportsPage() {
   }, [draftFilterMonth, draftCompareMonth]);
 
   // ── Сараар: сарын хамгийн сүүлийн дата (эсвэл урагш fill-forward) ───────
-  useEffect(() => {
-    if (filterMode !== "month" || !filterMonth) return;
-    const gen = ++monthLoadGen.current;
-    let cancelled = false;
+  // Шүүлтүүр солигдоход өмнөх үр дүнг render үед цэвэрлэнэ; fetch нь доорх effect-д.
+  if (
+    useKeyChanged([filterMode, filterMonth, compareMonth, catalog]) &&
+    filterMode === "month" &&
+    filterMonth
+  ) {
     setLoadingReport(true);
     setErrorMsg(null);
     setSelectedReportId("");
@@ -331,6 +358,12 @@ export default function RiskReportsPage() {
     setComparisonManualMap({});
     setComparisonJudgements({});
     setComparisonJudgementComments({});
+  }
+
+  useEffect(() => {
+    if (filterMode !== "month" || !filterMonth) return;
+    const gen = ++monthLoadGen.current;
+    let cancelled = false;
 
     (async () => {
       try {
@@ -388,7 +421,9 @@ export default function RiskReportsPage() {
         setLoadingComparison(false);
       } catch (e: unknown) {
         if (cancelled || gen !== monthLoadGen.current) return;
-        setErrorMsg(getApiErrorMessage(e) || t("raTailanPageMonthLoadError"));
+        setErrorMsg(
+          getApiErrorMessage(e) || tRef.current("raTailanPageMonthLoadError"),
+        );
         setReportRows([]);
         setComparisonRows([]);
         setLoadingComparison(false);
@@ -407,21 +442,27 @@ export default function RiskReportsPage() {
   // riskbranchDates зөвхөн init-д бөглөгдөнө — effect deps-д оруулахгүй (давтан ачаалалт)
 
   // ── Улирлаар: хадгалсан тайлан ───────────────────────────────────────────
-  useEffect(() => {
-    if (filterMode !== "quarter") return;
+  if (
+    useKeyChanged([filterMode, selectedReportId, historyList, catalog]) &&
+    filterMode === "quarter"
+  ) {
     if (!selectedReportId) {
       setReportRows([]);
       setReportManualMap({});
       setReportJudgements({});
       setReportJudgementComments({});
       setMonthAnchorDate("");
-      return;
+    } else {
+      setLoadingReport(true);
+      setErrorMsg(null);
     }
+  }
+
+  useEffect(() => {
+    if (filterMode !== "quarter" || !selectedReportId) return;
     const requestId = selectedReportId;
     const pDate = historyList.find((h) => h.id === requestId)?.pDate;
     let cancelled = false;
-    setLoadingReport(true);
-    setErrorMsg(null);
     Promise.all([
       riskApi.getHistory(requestId),
       pDate ? riskApi.listJudgements(pDate.slice(0, 10)) : Promise.resolve([]),
@@ -455,7 +496,9 @@ export default function RiskReportsPage() {
       })
       .catch((e: unknown) => {
         if (cancelled || requestId !== selectedReportIdRef.current) return;
-        setErrorMsg(getApiErrorMessage(e) || t("raTailanPageReportLoadError"));
+        setErrorMsg(
+          getApiErrorMessage(e) || tRef.current("raTailanPageReportLoadError"),
+        );
       })
       .finally(() => {
         if (!cancelled && requestId === selectedReportIdRef.current) {
@@ -467,19 +510,25 @@ export default function RiskReportsPage() {
     };
   }, [filterMode, selectedReportId, historyList, catalog]);
 
-  useEffect(() => {
-    if (filterMode !== "quarter") return;
+  if (
+    useKeyChanged([filterMode, comparisonReportId, historyList, catalog]) &&
+    filterMode === "quarter"
+  ) {
     if (!comparisonReportId) {
       setComparisonRows([]);
       setComparisonManualMap({});
       setComparisonJudgements({});
       setComparisonJudgementComments({});
-      return;
+    } else {
+      setLoadingComparison(true);
     }
+  }
+
+  useEffect(() => {
+    if (filterMode !== "quarter" || !comparisonReportId) return;
     const requestId = comparisonReportId;
     const pDate = historyList.find((h) => h.id === requestId)?.pDate;
     let cancelled = false;
-    setLoadingComparison(true);
     Promise.all([
       riskApi.getHistory(requestId),
       pDate ? riskApi.listJudgements(pDate.slice(0, 10)) : Promise.resolve([]),
@@ -520,26 +569,38 @@ export default function RiskReportsPage() {
     };
   }, [filterMode, comparisonReportId, historyList, catalog]);
 
-  // Улирлаар: авто өмнөх тайлан
-  useEffect(() => {
-    if (filterMode !== "quarter") return;
+  // Улирлаар: тайлан солигдоход автомат харьцуулалтыг дахин идэвхжүүлнэ
+  if (
+    useKeyChanged([filterMode, selectedReportId]) &&
+    filterMode === "quarter" &&
+    compareOptOut
+  ) {
     setCompareOptOut(false);
-  }, [filterMode, selectedReportId]);
+  }
 
-  useEffect(() => {
-    if (filterMode !== "quarter") return;
-    if (compareMonth) return;
+  // Улирлаар: авто өмнөх тайлан
+  if (
+    useKeyChanged([
+      filterMode,
+      selectedReportId,
+      historyList,
+      compareOptOut,
+      compareMonth,
+    ]) &&
+    filterMode === "quarter" &&
+    !compareMonth
+  ) {
     const selP = historyList.find((h) => h.id === selectedReportId)?.pDate;
     if (!selectedReportId || !selP) {
-      setComparisonReportId("");
-      return;
+      if (comparisonReportId) setComparisonReportId("");
+    } else if (!compareOptOut) {
+      const earlier = historyList
+        .filter((h) => h.id !== selectedReportId && h.pDate < selP)
+        .sort((a, b) => b.pDate.localeCompare(a.pDate));
+      const auto = earlier[0]?.id ?? "";
+      if (auto !== comparisonReportId) setComparisonReportId(auto);
     }
-    if (compareOptOut) return;
-    const earlier = historyList
-      .filter((h) => h.id !== selectedReportId && h.pDate < selP)
-      .sort((a, b) => b.pDate.localeCompare(a.pDate));
-    setComparisonReportId(earlier[0]?.id ?? "");
-  }, [filterMode, selectedReportId, historyList, compareOptOut, compareMonth]);
+  }
 
   const openDeleteConfirm = useCallback((id: string) => {
     setDeleteTargetId(id);
@@ -560,7 +621,7 @@ export default function RiskReportsPage() {
       setErrorMsg(getApiErrorMessage(e) || t("dbManageDeleteError"));
     }
     setDeleteTargetId(null);
-  }, [deleteTargetId, selectedReportId]);
+  }, [deleteTargetId, selectedReportId, t]);
 
   const selectedReportInfo = useMemo(() => {
     return historyList.find((h) => h.id === selectedReportId) || null;

@@ -9,9 +9,12 @@ import {
   type ReactNode,
 } from "react";
 import { Loader2 } from "lucide-react";
-import Cookies from "js-cookie";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { riskApi, HOLD_GLOBAL_PERIOD } from "@/lib/api";
+import {
+  flushManualIndicatorsOnUnload,
+  riskApi,
+  HOLD_GLOBAL_PERIOD,
+} from "@/lib/api";
 import {
   aggregateBranch,
   classifyBranchTableGroup,
@@ -133,7 +136,10 @@ export default function ReportView({
   const { t } = useLanguage();
   // ── Гар оруулсан үзүүлэлтийн утгууд (per-branch × per-indicator) ──
   const [manualMap, setManualMap] = useState<ManualMap>({});
-  const [manualLoading, setManualLoading] = useState(false);
+  // work/tailan горимд (initialManualMap өгсөн) эсвэл readOnly үед fetch хийхгүй
+  const [manualLoading, setManualLoading] = useState(
+    initialManualMap === undefined && !readOnly,
+  );
   const dynamicConfig = useIndicatorConfig();
   const judgmentInd = useMemo(
     () =>
@@ -149,9 +155,6 @@ export default function ReportView({
   const pendingSavePayloads = useRef<
     Record<string, { branchId: string; indicatorId: string; value: number }>
   >({});
-  // initialManualMap sync: pDate өөрчлөгдсөн үед л apply хийнэ
-  // (judgements update бүрт ref өөрчлөгдөхөд useEffect давтагдахаас сэргийлнэ)
-  const lastAppliedKey = useRef<string>("__unset__");
 
   // ── Indicator hold state ──────────────────────────────────────────────────
   // Hold нь огноо/улирлаас үл хамаарч БҮХ тооцоонд нэгэн зэрэг үйлчилнэ (global).
@@ -160,7 +163,6 @@ export default function ReportView({
   const [holdsLoaded, setHoldsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
-    setHoldsLoaded(false);
     riskApi
       .listHolds(HOLD_GLOBAL_PERIOD)
       .then((data) => {
@@ -190,51 +192,37 @@ export default function ReportView({
       Object.values(saveTimers.current).forEach(clearTimeout);
       saveTimers.current = {};
       pendingSavePayloads.current = {};
-      // keepalive fetch-ээр flush хийх (axios биш — browser-ийн native fetch)
-      const token = Cookies.get(
-        window.location.pathname.startsWith("/admin") ? "adminToken" : "token",
-      );
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!baseUrl) return;
-      for (const p of payloads) {
-        fetch(`${baseUrl}/risk-assessment/manual-indicators`, {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(p),
-          keepalive: true,
-        }).catch(() => {
-          /* intentional: keepalive fire-and-forget on beforeunload */
-        });
-      }
+      // keepalive flush — token нь HttpOnly cookie-гоор явна (JS уншиж чадахгүй)
+      flushManualIndicatorsOnUnload(payloads);
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, []);
 
-  // ClickHouse-аас гарын утгуудыг ачаалах (нэг удаа)
-  // initialManualMap өгөгдсөн бол (work session горим) fetch хийхгүй.
-  // Key = pDate + judgmentIndId: pDate өөрчлөгдвөл (шинэ огноо) эсвэл catalog
-  // ачааллагдаж judgment id өөрчлөгдвөл дахин apply хийнэ.
-  // (зүгээр л judgements update болж ref өөрчлөгдсөн бол skip хийнэ)
-  // readOnly tailan: initialManualMap өөрчлөгдөх бүрт синк хийнэ
+  // initialManualMap-аас синк — render үед (effect дотор setState хийхгүй):
+  //  - readOnly tailan: initialManualMap-ийн утга (reference) солигдох бүрт
+  //  - work горим: pDate эсвэл judgment id солигдоход л (judgements update бүрт
+  //    reference солигдоход хэрэглэгчийн засварыг дарахгүйн тулд)
+  const manualSyncKey: unknown =
+    initialManualMap === undefined
+      ? null
+      : readOnly
+        ? initialManualMap
+        : `${pDate ?? ""}::${judgmentIndId}`;
+  const [appliedManualSyncKey, setAppliedManualSyncKey] =
+    useState<unknown>(null);
+  if (
+    initialManualMap !== undefined &&
+    manualSyncKey !== appliedManualSyncKey
+  ) {
+    setAppliedManualSyncKey(manualSyncKey);
+    setManualMap(initialManualMap);
+  }
+
+  // initialManualMap өгөөгүй энгийн горимд ClickHouse-аас гарын утгуудыг ачаална
   useEffect(() => {
-    if (initialManualMap !== undefined) {
-      if (readOnly) {
-        setManualMap(initialManualMap);
-        return;
-      }
-      const key = `${pDate ?? ""}::${judgmentIndId}`;
-      if (lastAppliedKey.current === key) return;
-      lastAppliedKey.current = key;
-      setManualMap(initialManualMap);
-      return;
-    }
+    if (initialManualMap !== undefined) return;
     if (readOnly) return;
-    setManualLoading(true);
     riskApi
       .listManualIndicators()
       .then((data) => setManualMap(data || {}))
@@ -320,7 +308,7 @@ export default function ReportView({
       // Group rows by branch
       const byBranch = new Map<string, AnyRow[]>();
       for (const r of rows) {
-        const id = String((r as any).SOLID || "");
+        const id = String((r as { SOLID?: unknown }).SOLID || "");
         if (!id) continue;
         let arr = byBranch.get(id);
         if (!arr) {
@@ -424,10 +412,11 @@ export default function ReportView({
 
   /** Holds/catalog хүлээлгүй хүснэгтийг харуулна — сар солиход бүү нуу. */
   const scoringReady = holdsLoaded && dynamicConfig.loaded;
-  const scoringReadyOnce = useRef(false);
-  if (scoringReady) scoringReadyOnce.current = true;
+  // Нэг л удаа бэлэн болсон бол дараа нь (сар солиход) хүснэгтийг нуухгүй
+  const [scoringEverReady, setScoringEverReady] = useState(false);
+  if (scoringReady && !scoringEverReady) setScoringEverReady(true);
   const showScoredTable =
-    scoredRows.length > 0 && (scoringReady || scoringReadyOnce.current);
+    scoredRows.length > 0 && (scoringReady || scoringEverReady);
 
   const sortedFiltered = useMemo(() => {
     const bySolid = (a: BranchAggregate, b: BranchAggregate) => {

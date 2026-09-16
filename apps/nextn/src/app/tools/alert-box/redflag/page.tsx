@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { startAsync } from "@/lib/start-async";
 import { useRouter } from "next/navigation";
 import { abFetchRedFlags } from "../_lib/api";
 import { getApiErrorMessage } from "@/lib/api";
@@ -42,22 +43,21 @@ export default function RedFlagPage() {
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
+  const load = useCallback(async () => {
     try {
       const res = await abFetchRedFlags();
+      setError("");
       setData(res);
     } catch (e: unknown) {
       setError(getApiErrorMessage(e) || t("redflagNoResult"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
-    load();
-  }, []);
+    startAsync(load);
+  }, [load]);
 
   const toggleExpand = (id: number) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -264,7 +264,10 @@ export default function RedFlagPage() {
           <h1 className="text-sm font-bold text-txt truncate">Red Flag</h1>
         </div>
         <button
-          onClick={load}
+          onClick={() => {
+            setLoading(true);
+            startAsync(load);
+          }}
           disabled={loading}
           className="p-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated transition-colors disabled:opacity-50 shrink-0"
         >

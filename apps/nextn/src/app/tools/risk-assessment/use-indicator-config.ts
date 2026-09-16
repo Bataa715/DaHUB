@@ -183,14 +183,20 @@ export function useIndicatorConfig(): DynamicConfig & {
     _cachedConfig ?? { catalog: [], weights: { ...WEIGHTS }, loaded: false },
   );
 
+  // fetchConfig нь cache байвал шууд буцаана — mount-ийн хооронд өөр component
+  // cache дүүргэсэн тохиолдлыг ч хамарна (promise callback-аар setState).
   useEffect(() => {
-    if (_cachedConfig) {
-      setConfig(_cachedConfig);
-      return;
-    }
+    let cancelled = false;
     fetchConfig()
-      .then(setConfig)
-      .catch(() => setConfig(buildFallbackConfig()));
+      .then((cfg) => {
+        if (!cancelled) setConfig(cfg);
+      })
+      .catch(() => {
+        if (!cancelled) setConfig(buildFallbackConfig());
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const reload = useCallback(async () => {

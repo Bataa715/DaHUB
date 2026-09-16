@@ -290,13 +290,10 @@ export function ReportTable({
     () => REPORT_COLS.filter((c) => (c.compareOnly ? !hideComparison : true)),
     [hideComparison],
   );
+  // Хүснэгт нь тайлан ачаалсны дараа (клиент дээр) зурагддаг — localStorage-оос шууд уншина
   const [widths, setWidths] = useState<Partial<Record<ReportColKey, number>>>(
-    {},
+    readReportStoredWidths,
   );
-
-  useEffect(() => {
-    setWidths(readReportStoredWidths());
-  }, []);
 
   const widthOf = useCallback(
     (col: ReportColDef) => widths[col.key] ?? col.defaultWidth,

@@ -1,9 +1,17 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { usePrefersReducedMotion } from "@/hooks/use-reduced-motion";
+import {
+  useMounted,
+} from "@/hooks/use-mounted";
+import {
+  motion,
+} from "framer-motion";
+import {
+  usePathname,
+} from "next/navigation";
+import {
+  usePrefersReducedMotion,
+} from "@/hooks/use-reduced-motion";
 
 const WRAPPER_CLASS =
   "flex flex-col flex-1 min-h-0 min-w-0 w-full max-w-full overflow-x-hidden";
@@ -29,11 +37,7 @@ export default function PageTransition({
 }) {
   const pathname = usePathname();
   const reduceMotion = usePrefersReducedMotion();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   if (!mounted || reduceMotion) {
     return <div className={WRAPPER_CLASS}>{children}</div>;

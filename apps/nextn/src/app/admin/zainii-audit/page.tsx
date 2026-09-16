@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -156,7 +157,6 @@ export default function ZainiiAuditAdminPage() {
 
   const loadTypes = useCallback(async () => {
     try {
-      setTypesLoading(true);
       setTypes(await zainiiAuditExpenseApi.listVerificationTypes(false));
     } catch (e) {
       fail(e);
@@ -178,7 +178,6 @@ export default function ZainiiAuditAdminPage() {
 
   const loadUsers = useCallback(async () => {
     try {
-      setUsersLoading(true);
       const data = (await usersApi.getAll({
         excludeAdmins: true,
         limit: 1000,
@@ -192,9 +191,9 @@ export default function ZainiiAuditAdminPage() {
   }, [fail]);
 
   useEffect(() => {
-    void loadTypes();
-    void loadSettings();
-    void loadUsers();
+    startAsync(loadTypes);
+    startAsync(loadSettings);
+    startAsync(loadUsers);
   }, [loadTypes, loadSettings, loadUsers]);
 
   // ── Төрлийн үйлдлүүд ───────────────────────────────────────────────────

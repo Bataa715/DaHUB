@@ -65,12 +65,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/tools/zainii-audit/related-party-transactions",
-        destination: "/tools/zainii-audit?tool=related-party",
+        destination: "/tools/zainii-audit/related-party",
         permanent: false,
       },
       {
         source: "/tools/zainii-audit/related-party-transactions/",
-        destination: "/tools/zainii-audit?tool=related-party",
+        destination: "/tools/zainii-audit/related-party",
         permanent: false,
       },
       // [AUDIT] "Monitoring Box" → "Зайны аудит" болж нэр/зам солигдсон.

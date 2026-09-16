@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -107,7 +108,6 @@ export default function AdminAlertBoxPage() {
   >(null);
 
   const loadAll = useCallback(async () => {
-    setIsLoading(true);
     try {
       const [d, c] = await Promise.all([
         oracleConfigApi.listDashboards(),
@@ -127,7 +127,7 @@ export default function AdminAlertBoxPage() {
   }, [toast, t]);
 
   useEffect(() => {
-    void loadAll();
+    startAsync(loadAll);
   }, [loadAll]);
 
   const openCreateDashboard = () => {
@@ -815,7 +815,9 @@ export default function AdminAlertBoxPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("admReportsDeleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("admReportsDeleteConfirmTitle")}
+            </AlertDialogTitle>
           </AlertDialogHeader>
           <p className="text-sm text-muted-foreground">
             {deleteTarget?.type === "dashboard"

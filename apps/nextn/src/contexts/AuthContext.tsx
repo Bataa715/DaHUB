@@ -9,12 +9,10 @@ import {
   useMemo,
   ReactNode,
 } from "react";
-import { authApi, refreshSession } from "@/lib/api";
+import { authApi, publicAuthApi, refreshSession } from "@/lib/api";
 import Cookies from "js-cookie";
 import { z } from "zod";
 import axios from "axios";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 /** Token expiry constants — 3 hours (js-cookie expires нь өдрөөр: 3/24) */
 const REFRESH_TOKEN_EXPIRY_DAYS = 3 / 24;
@@ -243,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     // Call backend to clear HttpOnly token cookies. best-effort — local cleanup proceeds regardless.
     try {
-      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+      await publicAuthApi.logout();
     } catch {
       // ignore
     }
@@ -300,9 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, loading, login, loginById, adminLogin, logout, refreshUser],
   );
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

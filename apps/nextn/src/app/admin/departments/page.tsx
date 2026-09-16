@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { startAsync } from "@/lib/start-async";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { departmentsApi } from "@/lib/api";
 import axios from "axios";
@@ -60,11 +61,7 @@ export default function AdminDepartmentsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({ name: "", code: "" });
 
-  useEffect(() => {
-    loadDepartments();
-  }, []);
-
-  const loadDepartments = async () => {
+  const loadDepartments = useCallback(async () => {
     try {
       const data = await departmentsApi.getAll();
       const filtered = data.map((dept: DepartmentData) => ({
@@ -96,7 +93,11 @@ export default function AdminDepartmentsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t, toast]);
+
+  useEffect(() => {
+    startAsync(loadDepartments);
+  }, [loadDepartments]);
 
   const handleViewDepartment = (dept: DepartmentData) => {
     setSelectedDepartment(dept);

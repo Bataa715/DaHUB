@@ -132,9 +132,12 @@ export default function MonthFilter({
   const listRef = useRef<HTMLDivElement>(null);
   const isPrimary = emphasis === "primary";
 
-  useEffect(() => {
+  // value (prop) солигдоход оролтын текстийг render үед тааруулна
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     setDraft(value ? formatMonthMn(value) : "");
-  }, [value]);
+  }
 
   useEffect(() => {
     if (!open) return;

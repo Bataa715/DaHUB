@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { registrationRequestsApi, getApiErrorMessage } from "@/lib/api";
@@ -89,9 +90,9 @@ export default function RegistrationRequestsPage() {
     }
   }, [filter, toast, t]);
 
+  // loading-ийг шүүлтүүр солих handler тохируулна (эффект дотор синхрон setState хийхгүй)
   useEffect(() => {
-    setIsLoading(true);
-    loadRequests();
+    startAsync(loadRequests);
   }, [loadRequests]);
 
   const handleApprove = async (req: RegistrationRequest) => {
@@ -184,7 +185,10 @@ export default function RegistrationRequestsPage() {
           {TABS.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setFilter(tab.key)}
+              onClick={() => {
+                if (tab.key !== filter) setIsLoading(true);
+                setFilter(tab.key);
+              }}
               className={cn(
                 "px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
                 filter === tab.key

@@ -40,10 +40,13 @@ import {
 import { cn } from "@/lib/utils";
 import { DESIGN_LABEL_KEYS, type DesignType } from "./_lib/sampling";
 import { useSampling } from "./_hooks/useSampling";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function SanamsarguiTuuwerPage() {
   const s = useSampling();
+  // Ref-ийг hook-ийн буцаах объектод хийхгүй — React Compiler тэр объектын
+  // бүх талбарыг render үеийн ref хандалт гэж үзэж оновчлолоо алгасдаг.
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
   const [filterSearch, setFilterSearch] = useState("");
   const [filterExpanded, setFilterExpanded] = useState(false);
@@ -253,7 +256,7 @@ export default function SanamsarguiTuuwerPage() {
                       }}
                       onDragLeave={() => s.setIsDragging(false)}
                       onDrop={s.handleDrop}
-                      onClick={() => s.fileInputRef.current?.click()}
+                      onClick={() => fileInputRef.current?.click()}
                       className={`flex-1 min-h-[4.5rem] border border-dashed rounded-lg px-3 py-2.5 flex items-center justify-center gap-2.5 cursor-pointer transition-colors ${
                         s.isDragging
                           ? "border-primary bg-primary/5"
@@ -263,7 +266,7 @@ export default function SanamsarguiTuuwerPage() {
                       }`}
                     >
                       <input
-                        ref={s.fileInputRef}
+                        ref={fileInputRef}
                         type="file"
                         accept=".xlsx,.xls"
                         className="hidden"

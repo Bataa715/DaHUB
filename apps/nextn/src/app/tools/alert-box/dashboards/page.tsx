@@ -437,7 +437,7 @@ export default function DashboardsPage() {
       .then(setSummaries)
       .catch(() => setSummaries([]))
       .finally(() => setSummLoading(false));
-  }, []);
+  }, [t]);
 
   const loadDetail = useCallback(
     (id: number, s = "") => {

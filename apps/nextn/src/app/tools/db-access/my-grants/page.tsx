@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useState, useEffect, useCallback } from "react";
 import { dbAccessApi, getApiErrorMessage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -110,7 +111,6 @@ export default function MyGrantsPage() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await dbAccessApi.getMyGrants();
       setGrants(data);
     } catch {
@@ -149,7 +149,7 @@ export default function MyGrantsPage() {
   };
 
   useEffect(() => {
-    load();
+    startAsync(load);
   }, [load]);
 
   return (

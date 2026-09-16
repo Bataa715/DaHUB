@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +35,32 @@ const fieldCls =
   "bg-muted/60 border-border text-xs focus-visible:border-primary/60 focus-visible:ring-0";
 const labelCls = "text-xs font-semibold text-muted-foreground";
 
+/** Хүснэгт сонгох checkbox — module scope (render бүрт шинэ component үүсгэвэл state алдагдана) */
+function CheckBox({
+  checked,
+  partial = false,
+}: {
+  checked: boolean;
+  partial?: boolean;
+}) {
+  return (
+    <div
+      className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 border ${
+        checked
+          ? "border-primary bg-primary"
+          : partial
+            ? "border-primary bg-primary/30"
+            : "border-border"
+      }`}
+    >
+      {checked && <Check className="h-2 w-2 text-foreground" />}
+      {!checked && partial && (
+        <div className="h-px w-1.5 rounded bg-primary-foreground" />
+      )}
+    </div>
+  );
+}
+
 export default function DbAccessRequestPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -53,21 +80,19 @@ export default function DbAccessRequestPage() {
   const [tablesLoading, setTablesLoading] = useState(true);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const [accessTypes] = useState<string[]>(["SELECT"]);
-  const [validUntilDate, setValidUntilDate] = useState("");
+  // Анхдагч: маргааш (lazy initializer — effect дотор setState хийхгүй)
+  const [validUntilDate, setValidUntilDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  });
   const [validUntilTime, setValidUntilTime] = useState("18:00");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
 
-  useEffect(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setValidUntilDate(tomorrow.toISOString().split("T")[0]);
-  }, []);
-
   const loadTables = useCallback(async () => {
     try {
-      setTablesLoading(true);
       const data = await dbAccessApi.getTables();
       setTables(data);
     } catch {
@@ -82,7 +107,7 @@ export default function DbAccessRequestPage() {
   }, [toast, t]);
 
   useEffect(() => {
-    loadTables();
+    startAsync(loadTables);
   }, [loadTables]);
 
   const toggleTable = (full: string) => {
@@ -180,29 +205,6 @@ export default function DbAccessRequestPage() {
       (acc[x.database] = acc[x.database] || []).push(x);
       return acc;
     }, {});
-
-  const CheckBox = ({
-    checked,
-    partial = false,
-  }: {
-    checked: boolean;
-    partial?: boolean;
-  }) => (
-    <div
-      className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 border ${
-        checked
-          ? "border-primary bg-primary"
-          : partial
-            ? "border-primary bg-primary/30"
-            : "border-border"
-      }`}
-    >
-      {checked && <Check className="h-2 w-2 text-foreground" />}
-      {!checked && partial && (
-        <div className="h-px w-1.5 rounded bg-primary-foreground" />
-      )}
-    </div>
-  );
 
   return (
     <div className="min-h-full bg-background">

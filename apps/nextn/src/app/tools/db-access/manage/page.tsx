@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -136,8 +137,6 @@ export default function DbAccessManagePage() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const router = useRouter();
-  const [, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!user) return;
@@ -164,7 +163,6 @@ export default function DbAccessManagePage() {
   const loadRequests = useCallback(
     async (all = false) => {
       try {
-        setLoading(true);
         const data = all
           ? await dbAccessApi.getAllRequests()
           : await dbAccessApi.getPendingRequests();
@@ -188,7 +186,6 @@ export default function DbAccessManagePage() {
 
   const loadAllGrants = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await dbAccessApi.getAllGrants();
       setAllGrants(data);
     } catch {
@@ -198,10 +195,11 @@ export default function DbAccessManagePage() {
     }
   }, []);
 
+  // loading-ийг таб солих / refresh handler тохируулна
   useEffect(() => {
-    if (tab === "pending") loadRequests(false);
-    else if (tab === "all") loadRequests(true);
-    else loadAllGrants();
+    if (tab === "pending") startAsync(() => loadRequests(false));
+    else if (tab === "all") startAsync(() => loadRequests(true));
+    else startAsync(loadAllGrants);
   }, [tab, loadRequests, loadAllGrants]);
 
   const uniqueUsers = useMemo(() => {
@@ -323,9 +321,11 @@ export default function DbAccessManagePage() {
             </Link>
             <button
               type="button"
-              onClick={() =>
-                tab === "grants" ? loadAllGrants() : loadRequests(tab === "all")
-              }
+              onClick={() => {
+                setLoading(true);
+                if (tab === "grants") startAsync(loadAllGrants);
+                else startAsync(() => loadRequests(tab === "all"));
+              }}
               disabled={loading}
               className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
@@ -349,7 +349,10 @@ export default function DbAccessManagePage() {
           ).map((tb) => (
             <button
               key={tb.key}
-              onClick={() => setTab(tb.key)}
+              onClick={() => {
+                if (tb.key !== tab) setLoading(true);
+                setTab(tb.key);
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 tab === tb.key
                   ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"

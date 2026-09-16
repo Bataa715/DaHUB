@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Cookies from "js-cookie";
@@ -14,6 +14,11 @@ import {
   NO_DAG_PREFIX_DEPARTMENTS,
   NO_DIRECTOR_DEPARTMENTS,
 } from "@/lib/constants";
+import {
+  getApiErrorStatus,
+  getApiResponseMessage,
+  publicAuthApi,
+} from "@/lib/api";
 import { RegisterFlow } from "./_components/RegisterFlow";
 import { LoginFlow } from "./_components/LoginFlow";
 import {
@@ -31,8 +36,6 @@ import {
   type UserCheckResult,
 } from "./_components/login.types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
 export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
@@ -42,8 +45,6 @@ export default function LoginPage() {
 
   // Register state
   const [registerStep, setRegisterStep] = useState<RegisterStep>("info");
-  const [positions, setPositions] = useState<string[]>([]);
-  const [generatedUserId, setGeneratedUserId] = useState<string>("");
   const [registeredUser, setRegisteredUser] = useState<{
     userId: string;
     name: string;
@@ -95,20 +96,32 @@ export default function LoginPage() {
     defaultValues: { password: "" },
   });
 
-  const selectedDepartment = registerForm.watch("department");
-  const selectedPosition = registerForm.watch("position");
-  const enteredName = registerForm.watch("name");
-  const password = claimPasswordForm.watch("password");
+  // useWatch — watch() нь React Compiler-т memo хийгдэхгүй (incompatible-library)
+  const selectedDepartment = useWatch({
+    control: registerForm.control,
+    name: "department",
+  });
+  const selectedPosition = useWatch({
+    control: registerForm.control,
+    name: "position",
+  });
+  const enteredName = useWatch({ control: registerForm.control, name: "name" });
+  const password =
+    useWatch({ control: claimPasswordForm.control, name: "password" }) ?? "";
 
-  useEffect(() => {
-    if (selectedDepartment) {
-      setPositions(DEPARTMENT_POSITIONS[selectedDepartment] || []);
-      registerForm.setValue("position", "");
-    }
-  }, [selectedDepartment]);
+  const positions = useMemo(
+    () =>
+      selectedDepartment ? DEPARTMENT_POSITIONS[selectedDepartment] || [] : [],
+    [selectedDepartment],
+  );
 
-  // Backend buildUserId-тай ижил preview
+  // Хэлтэс солигдоход өмнөх албан тушаалыг цэвэрлэнэ (form-ийн утга — React state биш)
   useEffect(() => {
+    if (selectedDepartment) registerForm.setValue("position", "");
+  }, [selectedDepartment, registerForm]);
+
+  // Backend buildUserId-тай ижил preview — оролтоос шууд тооцно (effect/state хэрэггүй)
+  const generatedUserId = useMemo(() => {
     if (selectedDepartment && enteredName) {
       const deptCode = DEPARTMENT_CODES[selectedDepartment] || "USR";
       const namePart = enteredName
@@ -127,8 +140,7 @@ export default function LoginPage() {
 
       // DAA / CHBA — захирал байхгүй
       if (NO_DIRECTOR_DEPARTMENTS.has(selectedDepartment)) {
-        setGeneratedUserId(staffId);
-        return;
+        return staffId;
       }
 
       const isDirector =
@@ -137,17 +149,15 @@ export default function LoginPage() {
           .toLowerCase()
           .includes("захирал");
       if (isDirector) {
-        if (!withDagPrefix) setGeneratedUserId(`.${namePart}-${deptCode}`);
-        else if (/^DAG-/i.test(deptCode))
-          setGeneratedUserId(`.${namePart}-${deptCode}`);
-        else if (/^DAG$/i.test(deptCode))
-          setGeneratedUserId(`.${namePart}-DAG`);
-        else setGeneratedUserId(`.${namePart}-DAG-${deptCode}`);
+        if (!withDagPrefix) return `.${namePart}-${deptCode}`;
+        else if (/^DAG-/i.test(deptCode)) return `.${namePart}-${deptCode}`;
+        else if (/^DAG$/i.test(deptCode)) return `.${namePart}-DAG`;
+        else return `.${namePart}-DAG-${deptCode}`;
       } else {
-        setGeneratedUserId(staffId);
+        return staffId;
       }
     } else {
-      setGeneratedUserId("");
+      return "";
     }
   }, [selectedDepartment, selectedPosition, enteredName]);
 
@@ -197,20 +207,16 @@ export default function LoginPage() {
       setDepartmentEmployees([]);
       setIsLoadingEmployees(true);
       try {
-        const response = await fetch(
-          `/api/auth/by-department?department=${encodeURIComponent(department)}`,
-        );
-        if (response.status === 429) {
-          setDepartmentEmployees([]);
-          return;
-        }
-        const data = await response.json();
-        const users = Array.isArray(data.users) ? data.users : [];
+        // 429 (хэт олон хүсэлт) болон бусад алдаа catch-д хоосон жагсаалт болно
+        const users = await publicAuthApi.listByDepartment(department);
         // Албан тушаалын эрэмбэ (1. захирал → 2. ахлах → 3. аудитор). Position
         // string-ийг DB-д том/жижиг үсэг, зайгаар бага зэрэг зөрж болзошгүй тул
         // NORMALIZE (жижиг үсэг + trim) хийж харьцуулна — ингэснээр эрэмбэ
         // найдвартай ажиллана.
-        const norm = (s?: string) => String(s ?? "").toLowerCase().trim();
+        const norm = (s?: string) =>
+          String(s ?? "")
+            .toLowerCase()
+            .trim();
         const rank = (DEPARTMENT_POSITIONS[department] ?? []).map(norm);
         const rankOf = (pos?: string) => {
           const idx = rank.indexOf(norm(pos));
@@ -241,18 +247,10 @@ export default function LoginPage() {
     [loginForm],
   );
 
-  const authFetchError = async (response: Response, fallback: string) => {
-    if (response.status === 429) {
-      throw new Error(t("loginErrTooManyRequests"));
-    }
-    let message = fallback;
-    try {
-      const data = await response.json();
-      if (typeof data?.message === "string") message = data.message;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(message);
+  /** Нэвтрэхээс өмнөх дуудлагын алдааг хэрэглэгчид ойлгомжтой мессеж болгоно */
+  const authErrorMessage = (error: unknown, fallback: string) => {
+    if (getApiErrorStatus(error) === 429) return t("loginErrTooManyRequests");
+    return getApiResponseMessage(error) ?? fallback;
   };
 
   const handleRegisterInfo = async (
@@ -260,15 +258,7 @@ export default function LoginPage() {
   ) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-      if (!response.ok) {
-        await authFetchError(response, t("loginErrRegisterFailed"));
-      }
-      const data = await response.json();
+      const data = await publicAuthApi.register(values);
       setRegisteredUser({
         userId: data.userId,
         name: data.name,
@@ -281,7 +271,7 @@ export default function LoginPage() {
     } catch (error: unknown) {
       toast({
         title: t("error"),
-        description: (error as Error).message,
+        description: authErrorMessage(error, t("loginErrRegisterFailed")),
         variant: "destructive",
       });
     } finally {
@@ -296,20 +286,11 @@ export default function LoginPage() {
     if (!userId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/set-password`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          password: values.password,
-          claimToken: values.claimCode,
-        }),
+      const data = await publicAuthApi.setPassword({
+        userId,
+        password: values.password,
+        claimToken: values.claimCode,
       });
-      if (!response.ok) {
-        await authFetchError(response, t("loginErrSetPasswordFailed"));
-      }
-      const data = await response.json();
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
       const secure =
         typeof window !== "undefined" && window.location.protocol === "https:";
@@ -327,7 +308,7 @@ export default function LoginPage() {
     } catch (error: unknown) {
       toast({
         title: t("error"),
-        description: (error as Error).message,
+        description: authErrorMessage(error, t("loginErrSetPasswordFailed")),
         variant: "destructive",
       });
     } finally {
@@ -338,15 +319,7 @@ export default function LoginPage() {
   const handleCheckUser = async (values: z.infer<typeof loginFormSchema>) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/check-user`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-      if (!response.ok) {
-        await authFetchError(response, t("loginErrCheckUserFailed"));
-      }
-      const data: UserCheckResult = await response.json();
+      const data: UserCheckResult = await publicAuthApi.checkUser(values);
       if (!data.exists) {
         if (data.registrationStatus === "pending") {
           toast({
@@ -387,8 +360,7 @@ export default function LoginPage() {
     } catch (error: unknown) {
       toast({
         title: t("error"),
-        description:
-          (error as Error).message || t("loginErrCheckUserFailed"),
+        description: authErrorMessage(error, t("loginErrCheckUserFailed")),
         variant: "destructive",
       });
     } finally {
@@ -400,25 +372,10 @@ export default function LoginPage() {
     if (!checkedUser?.userId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/login-by-id`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: checkedUser.userId,
-          password: values.password,
-        }),
+      const data = await publicAuthApi.loginById({
+        userId: checkedUser.userId,
+        password: values.password,
       });
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(t("loginErrWrongPassword"));
-        }
-        if (response.status === 403) {
-          await authFetchError(response, t("loginErrAdminCannotLoginHere"));
-        }
-        await authFetchError(response, t("loginErrLoginFailed"));
-      }
-      const data = await response.json();
       // [N-2] token/refreshToken cookies are set by backend as HttpOnly
       const secure =
         typeof window !== "undefined" && window.location.protocol === "https:";
@@ -434,9 +391,18 @@ export default function LoginPage() {
       });
       window.location.replace("/");
     } catch (error: unknown) {
+      const status = getApiErrorStatus(error);
       toast({
         title: t("loginToastLoginFailedTitle"),
-        description: (error as Error).message,
+        description:
+          status === 401
+            ? t("loginErrWrongPassword")
+            : authErrorMessage(
+                error,
+                status === 403
+                  ? t("loginErrAdminCannotLoginHere")
+                  : t("loginErrLoginFailed"),
+              ),
         variant: "destructive",
       });
     } finally {
@@ -467,7 +433,6 @@ export default function LoginPage() {
     setDepartmentEmployees([]);
     setRegisterStep("info");
     setRegisteredUser(null);
-    setGeneratedUserId("");
     registerForm.reset();
     claimPasswordForm.reset();
     setFlowType("register");
@@ -476,7 +441,6 @@ export default function LoginPage() {
   const switchToLogin = () => {
     setRegisterStep("info");
     setRegisteredUser(null);
-    setGeneratedUserId("");
     registerForm.reset();
     setLoginStep("userId");
     setCheckedUser(null);

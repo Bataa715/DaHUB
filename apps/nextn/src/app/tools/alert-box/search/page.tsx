@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { startAsync } from "@/lib/start-async";
 import { useSearchParams } from "next/navigation";
 import { abSearchByCif } from "../_lib/api";
 import { getApiErrorMessage } from "@/lib/api";
@@ -19,7 +20,7 @@ interface DashboardResult {
   table: string;
   matchCount: number;
   totalAmount: number;
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
 }
 
 interface SearchResult {
@@ -35,7 +36,14 @@ function SearchContent() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
 
-  const [cif, setCif] = useState("");
+  const cifParam = searchParams.get("cif") ?? "";
+  const [cif, setCif] = useState(cifParam);
+  // URL-ийн cif солигдоход оролтыг render үед тааруулна (effect дотор setState хийхгүй)
+  const [prevCifParam, setPrevCifParam] = useState(cifParam);
+  if (cifParam !== prevCifParam) {
+    setPrevCifParam(cifParam);
+    if (cifParam) setCif(cifParam);
+  }
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searching, setSearching] = useState(false);
@@ -43,36 +51,36 @@ function SearchContent() {
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
-    const cifParam = searchParams.get("cif");
-    if (cifParam) {
-      setCif(cifParam);
-      doSearch(cifParam);
-    }
-  }, [searchParams]);
+  const doSearch = useCallback(
+    async (cifVal: string, from?: string, to?: string) => {
+      if (!cifVal.trim()) {
+        setError(t("abSearchCifRequired"));
+        return;
+      }
+      setError("");
+      setSearching(true);
+      setResult(null);
+      setExpanded({});
+      try {
+        const data = await abSearchByCif(
+          cifVal.trim(),
+          from || undefined,
+          to || undefined,
+        );
+        setResult(data);
+      } catch (e: unknown) {
+        setError(getApiErrorMessage(e) || t("abSearchFailed"));
+      } finally {
+        setSearching(false);
+      }
+    },
+    [t],
+  );
 
-  const doSearch = async (cifVal: string, from?: string, to?: string) => {
-    if (!cifVal.trim()) {
-      setError(t("abSearchCifRequired"));
-      return;
-    }
-    setError("");
-    setSearching(true);
-    setResult(null);
-    setExpanded({});
-    try {
-      const data = await abSearchByCif(
-        cifVal.trim(),
-        from || undefined,
-        to || undefined,
-      );
-      setResult(data);
-    } catch (e: unknown) {
-      setError(getApiErrorMessage(e) || t("abSearchFailed"));
-    } finally {
-      setSearching(false);
-    }
-  };
+  // URL-аар cif ирвэл автоматаар хайна
+  useEffect(() => {
+    if (cifParam) startAsync(() => doSearch(cifParam));
+  }, [cifParam, doSearch]);
 
   const handleSearch = () => doSearch(cif, dateFrom, dateTo);
 

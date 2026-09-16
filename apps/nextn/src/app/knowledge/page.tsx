@@ -1,5 +1,7 @@
 "use client";
 
+import { useMounted } from "@/hooks/use-mounted";
+import { startAsync } from "@/lib/start-async";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence } from "framer-motion";
@@ -95,7 +97,7 @@ export default function ShineMedlegPage() {
   const [news, setNews] = useState<News[]>([]);
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
 
   const [activeCategory, setActiveCategory] = useState(ALL_CATEGORY);
   const [search, setSearch] = useState("");
@@ -105,17 +107,8 @@ export default function ShineMedlegPage() {
     useState<KnowledgeCreateForm>(emptyCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    fetchNews();
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  const fetchNews = async () => {
+  const fetchNews = useCallback(async () => {
     try {
-      setIsLoading(true);
       const data = await knowledgeApi.listPublished();
       setNews(data);
     } catch {
@@ -123,7 +116,14 @@ export default function ShineMedlegPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    startAsync(fetchNews);
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [fetchNews]);
 
   // ── Шүүлтүүр ба хэсэг бүрийн өгөгдөл ──────────────────────────────────────
   const isQuiz = activeCategory === QUIZ_KEY;

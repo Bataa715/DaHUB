@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DesignType, SamplingResult, GroupResult } from "../_lib/sampling";
 import {
@@ -36,7 +36,6 @@ export function useSampling() {
   const [selectedFilterValue, setSelectedFilterValue] = useState<string>("all");
   const [coverAllValues, setCoverAllValues] = useState(false);
   const [preferSaveDialog, setPreferSaveDialog] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Stratified
   const [totalVars, setTotalVars] = useState(100);
@@ -549,7 +548,6 @@ export function useSampling() {
     setSelectedFilterValue,
     coverAllValues,
     setCoverAllValues,
-    fileInputRef,
     processFile,
     handleDrop,
     // stratified

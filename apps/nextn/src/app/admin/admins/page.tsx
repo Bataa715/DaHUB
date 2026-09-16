@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useState, useEffect, useCallback } from "react";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -166,10 +167,9 @@ export default function AdminsPage() {
   const [expandedAdmin, setExpandedAdmin] = useState<string | null>(null);
 
   const fetchAdmins = useCallback(async () => {
-    setLoading(true);
-    setError("");
     try {
       const data = await usersApi.getAdmins();
+      setError("");
       setAdmins(
         data.map((a: AdminUser) => ({
           ...a,
@@ -190,9 +190,10 @@ export default function AdminsPage() {
     } catch {}
   }, []);
 
+  // Эхний ачаалал — loading анхнаасаа true; дахин ачаалахад handler тохируулна.
   useEffect(() => {
-    fetchAdmins();
-    fetchAllUsers();
+    startAsync(fetchAdmins);
+    startAsync(fetchAllUsers);
   }, [fetchAdmins, fetchAllUsers]);
 
   const handleToggleSuperAdmin = async (admin: AdminUser) => {
@@ -320,7 +321,11 @@ export default function AdminsPage() {
             const isExpanded = expandedAdmin === admin.id;
             const toolNames = (admin.grantableTools ?? []).map((tid) => {
               const found = ALL_TOOLS.find((tool) => tool.id === tid);
-              return found ? (found.nameKey ? t(found.nameKey) : found.name) : tid;
+              return found
+                ? found.nameKey
+                  ? t(found.nameKey)
+                  : found.name
+                : tid;
             });
 
             return (

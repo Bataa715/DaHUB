@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { startAsync } from "@/lib/start-async";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminKnowledgeApi } from "@/lib/api";
 import axios from "axios";
@@ -59,11 +60,7 @@ export default function AdminMedlegPage() {
     isPublished: true,
   });
 
-  useEffect(() => {
-    loadItems();
-  }, []);
-
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     try {
       const data = await adminKnowledgeApi.listAll();
       setItems(data);
@@ -76,7 +73,11 @@ export default function AdminMedlegPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t, toast]);
+
+  useEffect(() => {
+    startAsync(loadItems);
+  }, [loadItems]);
 
   const handleEdit = (item: MedlegDetail) => {
     setEditingId(item.id);

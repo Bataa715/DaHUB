@@ -1,10 +1,11 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Plus, Trash2, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getApiErrorMessage } from "@/lib/api";
+import { getApiErrorMessage, teamGalleryApi } from "@/lib/api";
 import { loadTeamGallery } from "@/app/_components/team-gallery";
 
 type Slide = { id: string; src: string; alt: string };
@@ -34,23 +35,14 @@ export function TeamGalleryAdmin() {
   }, [toast, t]);
 
   useEffect(() => {
-    load();
+    startAsync(load);
   }, [load]);
 
   const onPick = async (file: File | undefined) => {
     if (!file) return;
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/team-gallery", {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { slides?: Slide[] };
-      setSlides(Array.isArray(data.slides) ? data.slides : []);
+      setSlides(await teamGalleryApi.upload(file));
       toast({ title: t("admTeamPhotoAdded") });
     } catch (e: unknown) {
       toast({
@@ -68,13 +60,7 @@ export function TeamGalleryAdmin() {
     if (!confirm(`"${slide.id}" ${t("admTeamPhotoDeleteConfirm")}`)) return;
     setBusyId(slide.id);
     try {
-      const res = await fetch(
-        `/team-gallery/${encodeURIComponent(slide.id)}`,
-        { method: "DELETE", credentials: "include" },
-      );
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { slides?: Slide[] };
-      setSlides(Array.isArray(data.slides) ? data.slides : []);
+      setSlides(await teamGalleryApi.remove(slide.id));
       toast({ title: t("admTeamPhotoDeleted") });
     } catch (e: unknown) {
       toast({

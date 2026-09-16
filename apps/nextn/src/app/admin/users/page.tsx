@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { startAsync } from "@/lib/start-async";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usersApi, departmentsApi } from "@/lib/api";
 import { DEPARTMENT_POSITIONS } from "@/lib/constants";
@@ -121,12 +122,7 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [isResetting, setIsResetting] = useState(false);
 
-  useEffect(() => {
-    loadUsers();
-    loadDepartments();
-  }, []);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const data = await usersApi.getAll({ excludeAdmins: true });
       setUsers((data || []).filter((u: UserData) => isRegularAppUser(u)));
@@ -139,9 +135,9 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t, toast]);
 
-  const loadDepartments = async () => {
+  const loadDepartments = useCallback(async () => {
     try {
       const data = await departmentsApi.getAll();
       setDepartments(
@@ -151,14 +147,21 @@ export default function UsersPage() {
         })),
       );
     } catch {}
-  };
+  }, []);
+
+  useEffect(() => {
+    startAsync(loadUsers);
+    startAsync(loadDepartments);
+  }, [loadUsers, loadDepartments]);
 
   // [PERF] Засвар бүрийн дараа БҮХ хэрэглэгчийн жагсаалтыг дахин татахын оронд
   // зөвхөн тухайн хэрэглэгчийн мөрийг local-оор шинэчилнэ — үйлдэл шууд
   // мэдрэгдэж, prod дахь сүлжээний нэмэлт round-trip арилна ("засвар удаж
   // орно / refresh laga" шинжийг засна).
   const patchUserLocal = (id: string, changes: Partial<UserData>) =>
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...changes } : u)));
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...changes } : u)),
+    );
 
   const handleChangeDept = (userData: UserData) => {
     if (!user?.isSuperAdmin) return;
@@ -488,15 +491,16 @@ export default function UsersPage() {
                   <span className="text-[10px] text-muted-foreground/50 w-12 shrink-0">
                     {t("regFlowLabelDept")}
                   </span>
-                  {user?.isSuperAdmin &&
-                  changingDeptUserId === userData.id ? (
+                  {user?.isSuperAdmin && changingDeptUserId === userData.id ? (
                     <div className="flex items-center gap-1 flex-wrap">
                       <Select
                         value={selectedDeptId}
                         onValueChange={handleSelectDept}
                       >
                         <SelectTrigger className="h-7 bg-muted border-border text-foreground text-xs">
-                          <SelectValue placeholder={t("admUsersSelectPlaceholder")} />
+                          <SelectValue
+                            placeholder={t("admUsersSelectPlaceholder")}
+                          />
                         </SelectTrigger>
                         <SelectContent className="bg-background border-border">
                           {departments.map((dept) => (
@@ -719,7 +723,9 @@ export default function UsersPage() {
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
         <AlertDialogContent className="bg-background border-border text-foreground max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("admUsersDeleteDialogTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("admUsersDeleteDialogTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
               &ldquo;{deleteUser?.name}&rdquo;{" "}
               {t("admUsersDeleteConfirmSuffix")}

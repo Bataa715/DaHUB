@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   riskIndicatorConfigApi,
@@ -36,14 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminPageHeader from "@/components/shared/AdminPageHeader";
-import {
-  Loader2,
-  Plus,
-  Pencil,
-  Trash2,
-  Search,
-  BarChart3,
-} from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Search, BarChart3 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { invalidateIndicatorCache } from "@/app/tools/risk-assessment/use-indicator-config";
 
@@ -117,11 +111,10 @@ export default function RiskIndicatorsPage() {
   // Holds — огноо/улирлаас үл хамаарах нэгдсэн (global) hold
   const holdsPeriod = HOLD_GLOBAL_PERIOD;
   const [heldIds, setHeldIds] = useState<Set<string>>(new Set());
-  const [holdsLoading, setHoldsLoading] = useState(false);
+  const [holdsLoading, setHoldsLoading] = useState(Boolean(holdsPeriod));
 
   // ── Data loading ───────────────────────────────────────────────────────────
   const loadIndicators = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await riskIndicatorConfigApi.list();
       setIndicators(data ?? []);
@@ -134,15 +127,14 @@ export default function RiskIndicatorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
-    loadIndicators();
+    startAsync(loadIndicators);
   }, [loadIndicators]);
 
   useEffect(() => {
     if (!holdsPeriod) return;
-    setHoldsLoading(true);
     riskApi
       .listHolds(holdsPeriod)
       .then((data) => setHeldIds(new Set(data.map((d) => d.indicatorId))))
@@ -290,7 +282,8 @@ export default function RiskIndicatorsPage() {
       setHeldIds((prev) => {
         const next = new Set(prev);
         const wasHeld = next.has(indicatorId);
-        wasHeld ? next.delete(indicatorId) : next.add(indicatorId);
+        if (wasHeld) next.delete(indicatorId);
+        else next.add(indicatorId);
         riskApi
           .setHold({ indicatorId, period: holdsPeriod, isHeld: !wasHeld })
           .catch(() => {
@@ -303,7 +296,7 @@ export default function RiskIndicatorsPage() {
         return next;
       });
     },
-    [holdsPeriod, toast],
+    [holdsPeriod, toast, t],
   );
 
   // ── Counts ─────────────────────────────────────────────────────────────────
@@ -320,7 +313,8 @@ export default function RiskIndicatorsPage() {
         rightContent={
           !loading ? (
             <span className="text-xs text-muted-foreground/60">
-              {indicators.length} {t("admRiskIndCountUnit")} · {t("admRiskIndTotalWeightLabel")}{" "}
+              {indicators.length} {t("admRiskIndCountUnit")} ·{" "}
+              {t("admRiskIndTotalWeightLabel")}{" "}
               <span
                 className={`font-semibold ${Math.abs(totalAllWeight - 100) > 0.01 ? "text-amber-500" : "text-emerald-500"}`}
               >
@@ -498,7 +492,9 @@ export default function RiskIndicatorsPage() {
           <TabsContent value="holds" className="mt-0">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-sm font-medium">{t("admRiskIndHoldSectionTitle")}</p>
+                <p className="text-sm font-medium">
+                  {t("admRiskIndHoldSectionTitle")}
+                </p>
                 <p className="text-xs text-muted-foreground/60 mt-0.5">
                   {t("admRiskIndHoldSectionDesc")}
                 </p>
@@ -624,7 +620,9 @@ export default function RiskIndicatorsPage() {
           <TabsContent value="settings" className="mt-0">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-sm font-medium">{t("admRiskIndSavedReportsTitle")}</p>
+                <p className="text-sm font-medium">
+                  {t("admRiskIndSavedReportsTitle")}
+                </p>
                 <p className="text-xs text-muted-foreground/60 mt-0.5">
                   {t("admRiskIndSavedReportsDesc")}
                 </p>
@@ -690,7 +688,9 @@ export default function RiskIndicatorsPage() {
                                 disabled={historyDeleting}
                                 className="h-7 px-3 text-[11px] font-semibold bg-red-500 hover:bg-red-400 text-white rounded-lg disabled:opacity-50"
                               >
-                                {historyDeleting ? "..." : t("admRiskIndConfirmYes")}
+                                {historyDeleting
+                                  ? "..."
+                                  : t("admRiskIndConfirmYes")}
                               </button>
                               <button
                                 onClick={() => setHistoryDeleteTarget(null)}
@@ -740,7 +740,9 @@ export default function RiskIndicatorsPage() {
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t("admRiskIndWeightLabel")}</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    {t("admRiskIndWeightLabel")}
+                  </Label>
                   <Input
                     type="number"
                     min={0}
@@ -774,7 +776,8 @@ export default function RiskIndicatorsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      {t("admRiskIndNameCol")} <span className="text-red-400">*</span>
+                      {t("admRiskIndNameCol")}{" "}
+                      <span className="text-red-400">*</span>
                     </Label>
                     <Input
                       value={form.name}

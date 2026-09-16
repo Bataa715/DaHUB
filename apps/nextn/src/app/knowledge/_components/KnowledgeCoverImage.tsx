@@ -23,20 +23,20 @@ export function KnowledgeCoverImage({
   className,
   fill,
 }: KnowledgeCoverImageProps) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  // Аль path-ийн зураг болохыг хамт хадгална — path солигдоход хуучин зураг
+  // харагдахгүй (effect дотор setState-ээр цэвэрлэхийн оронд render үед тооцно).
+  const [loaded, setLoaded] = useState<{
+    path?: string;
+    src: string | null;
+    failed: boolean;
+  }>({ src: null, failed: false });
+  const current = loaded.path === path ? loaded : { src: null, failed: false };
+  const { src, failed } = current;
 
   useEffect(() => {
+    if (!path) return;
     let objectUrl: string | null = null;
     let cancelled = false;
-
-    setSrc(null);
-    setFailed(false);
-
-    if (!path) {
-      setFailed(true);
-      return;
-    }
 
     knowledgeApi
       .fetchImageObjectUrl(path)
@@ -46,14 +46,14 @@ export function KnowledgeCoverImage({
           return;
         }
         if (!url) {
-          setFailed(true);
+          setLoaded({ path, src: null, failed: true });
           return;
         }
         objectUrl = url;
-        setSrc(url);
+        setLoaded({ path, src: url, failed: false });
       })
       .catch(() => {
-        if (!cancelled) setFailed(true);
+        if (!cancelled) setLoaded({ path, src: null, failed: true });
       });
 
     return () => {

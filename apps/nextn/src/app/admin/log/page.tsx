@@ -1,5 +1,6 @@
 "use client";
 
+import { startAsync } from "@/lib/start-async";
 import { useCallback, useEffect, useState } from "react";
 import {
   auditLogApi,
@@ -21,15 +22,14 @@ const TABS: { id: LogTab; label: string; icon: typeof ScrollText }[] = [
 export default function AdminLogPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<LogTab>("audit");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [audit, setAudit] = useState<AuditLogRow[]>([]);
   const [logins, setLogins] = useState<LoginAttemptRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async (which: LogTab) => {
-    setLoading(true);
-    setLoadError(null);
     try {
+      setLoadError(null);
       if (which === "audit") {
         const data = await auditLogApi.getAuditLogs(300);
         setAudit(Array.isArray(data) ? data : []);
@@ -45,7 +45,7 @@ export default function AdminLogPage() {
   }, []);
 
   useEffect(() => {
-    load(tab);
+    startAsync(() => load(tab));
   }, [tab, load]);
 
   if (!user?.isSuperAdmin) {
@@ -63,7 +63,10 @@ export default function AdminLogPage() {
         title="Систем лог"
         rightContent={
           <button
-            onClick={() => load(tab)}
+            onClick={() => {
+              setLoading(true);
+              load(tab).catch(() => {});
+            }}
             className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-muted"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Шинэчлэх
@@ -79,7 +82,10 @@ export default function AdminLogPage() {
             return (
               <button
                 key={tb.id}
-                onClick={() => setTab(tb.id)}
+                onClick={() => {
+                  if (tb.id !== tab) setLoading(true);
+                  setTab(tb.id);
+                }}
                 className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${
                   active
                     ? "border-accent text-foreground"
