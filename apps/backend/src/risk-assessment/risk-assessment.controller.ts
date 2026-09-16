@@ -148,7 +148,8 @@ export class RiskAssessmentController {
       manualMap: body.manualMap,
       judgementComments: body.judgementComments,
       userId: req.user.id,
-      userName: req.user.name ?? req.user.username ?? "",
+      // `username` нь AuthenticatedUser-д зарлагдаагүй (unknown) — string болгож авна
+      userName: req.user.name || String(req.user.username ?? ""),
     });
   }
 
