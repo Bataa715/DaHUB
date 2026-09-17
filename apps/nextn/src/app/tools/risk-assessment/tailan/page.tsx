@@ -844,7 +844,7 @@ export default function RiskReportsPage() {
   return (
     <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-background text-foreground flex flex-col">
       <ToolPageHeader
-        href="/risk-assessment/salbar"
+        href="/ersdel/salbar"
         icon={<BookmarkCheck className="w-4 h-4 text-emerald-500" />}
         title={t("riskReportPageTitle")}
         rightContent={

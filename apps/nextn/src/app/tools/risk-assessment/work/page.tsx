@@ -440,7 +440,7 @@ function MonitorContent({ saveModalOpenHandler }: MonitorContentProps) {
   return (
     <div className="min-h-0 flex-1 w-full min-w-0 max-w-full overflow-x-hidden bg-background text-foreground flex flex-col">
       <ToolPageHeader
-        href="/risk-assessment/salbar"
+        href="/ersdel/salbar"
         icon={<ClipboardEdit className="w-4 h-4 text-rose-500" />}
         title={t("riskWorkPageTitle")}
         rightContent={

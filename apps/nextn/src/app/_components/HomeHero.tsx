@@ -141,7 +141,7 @@ export default function HomeHero() {
     {
       // 3 төрлийн үнэлгээ тус бүр тусдаа эрхтэй — хаб өөрөө үргэлж нээлттэй.
       id: "risk",
-      href: "/risk-assessment",
+      href: "/ersdel",
       title: t("homeSectionRisk"),
       bullets: [],
     },

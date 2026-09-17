@@ -9,6 +9,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
  * Төрөл рүү дарж ороод доторх дэд хуудсууд (үнэлгээ хийх, тайлан) харагдана.
  * /tools/risk-assessment нь салбарын үнэлгээний эрхээр хамгаалагдсан тул хаб
  * энэ хамгаалалтгүй зам дээр байрлана (/dashboard, /tools-тай адил).
+ *
+ * [ROUTE] Өмнө нь /risk-assessment байсан — прод nginx тэр угтварыг Nest-ийн
+ * `risk-assessment` controller руу чиглүүлдэг тул хуудас backend-ийн 404 өгч
+ * байв. Next хуудасны дээд түвшний зам Nest controller-ийн угтвартай ХЭЗЭЭ Ч
+ * давхцах ёсгүй.
  */
 export default function RiskAssessmentHubPage() {
   const { t } = useLanguage();
@@ -19,7 +24,7 @@ export default function RiskAssessmentHubPage() {
       items: [
         {
           id: "branch",
-          href: "/risk-assessment/salbar",
+          href: "/ersdel/salbar",
           icon: Building2,
           title: t("toolRiskAssessmentTitle"),
           gradient: "from-rose-500 to-orange-500",

@@ -47,7 +47,7 @@ export default function ToolPageHeader({
     tool?.section === "tool"
       ? "/tools"
       : tool?.section === "risk"
-        ? "/risk-assessment"
+        ? "/ersdel"
         : "/";
   const backHref =
     href && href !== "/" ? href : sectionHref !== pathname ? sectionHref : "/";

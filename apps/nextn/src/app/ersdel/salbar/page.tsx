@@ -44,7 +44,7 @@ export default function BranchRiskHubPage() {
       title={t("toolRiskAssessmentTitle")}
       accent="from-rose-600 to-orange-600"
       sections={sections}
-      backHref="/risk-assessment"
+      backHref="/ersdel"
     />
   );
 }
