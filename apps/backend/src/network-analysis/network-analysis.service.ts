@@ -27,7 +27,12 @@ const MAX_SCAN_ROWS = 20_000;
 /** Жагсаалтад буцаах дээд мөр (статистик нь бүх уншсан мөрөөр тооцогдоно) */
 const MAX_LIST_ROWS = 1_000;
 const MAX_RANGE_DAYS = 366;
-const DT = "%Y-%m-%d %H:%i:%S";
+// [AUDIT] DateTime-ийг SQL дотор форматлахгүй — JSON гаралт аль ч ClickHouse
+// хувилбар дээр "YYYY-MM-DD HH:MM:SS" текст өгдөг. formatDateTime-ийн `%i`
+// (минут) хуучин хувилбарт байхгүй тул UAT дээр "Wrong pattern" 500 өгч байсан.
+// Мөн `toString(c.seqno) AS seqno` маягийн ижил нэртэй alias хуучин analyzer
+// дээр баганыг дарж JOIN/WHERE-ийг эвдэж болзошгүй тул баганыг шууд сонгоно
+// (UInt64 нь JSON-д аль хэдийн текст болж ирдэг).
 
 type User = { userId: string; name: string };
 
@@ -233,9 +238,9 @@ export class NetworkAnalysisService implements OnModuleInit {
   private configSelect(where: string) {
     return `
       SELECT
-        toString(c.seqno) AS seqno,
+        c.seqno AS seqno,
         c.deviceName AS deviceName,
-        formatDateTime(c.receiveTime, '${DT}') AS receiveTime,
+        c.receiveTime AS receiveTime,
         c.cmd AS cmd,
         c.result AS result,
         c.path AS path,
@@ -249,7 +254,7 @@ export class NetworkAnalysisService implements OnModuleInit {
         r.description AS description,
         r.comment AS comment,
         r.updatedByName AS reviewedByName,
-        formatDateTime(r.updatedAt, '${DT}') AS reviewedAt
+        r.updatedAt AS reviewedAt
       FROM net_config_changes AS c FINAL
       LEFT JOIN (SELECT * FROM net_config_change_reviews FINAL) AS r
         ON r.seqno = c.seqno
@@ -413,7 +418,7 @@ export class NetworkAnalysisService implements OnModuleInit {
     const rows = await this.clickhouse.query<XdrRow>(
       `SELECT
          n.notificationId AS notificationId,
-         formatDateTime(n.detectedAt, '${DT}') AS detectedAt,
+         n.detectedAt AS detectedAt,
          n.rawText AS rawText,
          n.device AS device,
          n.userName AS userName,
@@ -426,7 +431,7 @@ export class NetworkAnalysisService implements OnModuleInit {
          r.note AS note,
          r.assignedTo AS assignedTo,
          r.updatedByName AS reviewedByName,
-         formatDateTime(r.updatedAt, '${DT}') AS reviewedAt
+         r.updatedAt AS reviewedAt
        FROM net_xdr_notifications AS n FINAL
        -- Төхөөрөмж давтагдсан эсэхийг бүх түүхээр тооцно (зөвхөн сонгосон хугацаагаар биш)
        LEFT JOIN (

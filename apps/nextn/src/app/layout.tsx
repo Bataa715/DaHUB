@@ -34,7 +34,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="mn" suppressHydrationWarning>
+    // data-scroll-behavior: globals.css дахь smooth scroll-ийг маршрут солиход
+    // Next түр унтраана (Next 16 анхааруулга, upgrading/version-16.md)
+    <html lang="mn" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <ThemeStyleInjector />
         <link rel="dns-prefetch" href="https://cdn.simpleicons.org" />
