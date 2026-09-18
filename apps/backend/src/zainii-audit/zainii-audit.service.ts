@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ClickHouseService } from "../clickhouse/clickhouse.service";
 import {
   RelatedPartyTransactionsDto,
@@ -31,10 +31,12 @@ import {
   MAX_RELATIONS_ROWS,
   DEFAULT_MIN_AMOUNT,
   HamaaralRow,
+  ManagementRow,
   ExpenseRelationsResult,
   ExpenseReportTop5Row,
   ExpenseReportCategoryCustomerRow,
   ExpenseReportCategory,
+  ExpenseReportAuthorityViolationRow,
   ExpenseReportData,
   toBreakdown,
 } from "./zainii-audit.types";
@@ -42,6 +44,8 @@ import { ZainiiAuditVerificationService } from "./zainii-audit-verification.serv
 
 @Injectable()
 export class ZainiiAuditService {
+  private readonly logger = new Logger(ZainiiAuditService.name);
+
   constructor(
     private readonly clickhouse: ClickHouseService,
     private readonly verification: ZainiiAuditVerificationService,
@@ -334,7 +338,11 @@ export class ZainiiAuditService {
           ifNull(v.remainingAmount, 0) AS remaining_amount,
           ifNull(v.status, '') AS verification_status,
           ifNull(v.comment, '') AS comment,
-          if(ifNull(t.gl_number, '') = '', '', ifNull(bt.budget_type, '')) AS budget_type
+          if(ifNull(t.gl_number, '') = '', '', ifNull(bt.budget_type, '')) AS budget_type,
+          ifNull(v.contractCurrency, 'MNT') AS contract_currency,
+          ifNull(v.budgetStatusOverride, '') AS budget_status_override,
+          ifNull(v.authorityMatrixViolated, 0) AS authority_matrix_violated,
+          ifNull(v.authorityMatrixComment, '') AS authority_matrix_comment
         FROM avlaga AS a
         INNER JOIN qualifying AS q ON q.customer_code = a.customer_code
         LEFT JOIN (
@@ -367,7 +375,11 @@ export class ZainiiAuditService {
             argMax(contractNumber, updatedAt) AS contractNumber,
             argMax(remainingAmount, updatedAt) AS remainingAmount,
             argMax(status, updatedAt) AS status,
-            argMax(comment, updatedAt) AS comment
+            argMax(comment, updatedAt) AS comment,
+            argMax(contractCurrency, updatedAt) AS contractCurrency,
+            argMax(budgetStatusOverride, updatedAt) AS budgetStatusOverride,
+            argMax(authorityMatrixViolated, updatedAt) AS authorityMatrixViolated,
+            argMax(authorityMatrixComment, updatedAt) AS authorityMatrixComment
           FROM avlaga_verifications
           GROUP BY bookNumber
         ) AS v ON v.bookNumber = a.book_number
@@ -516,6 +528,9 @@ export class ZainiiAuditService {
         -- ёстой. Өмнө нь энэ query-д JOIN огт байгаагүй тул "Нийт зардал"
         -- дээр БҮХ мөр "Төлбөрийн хүсэлтгүй" гэж улаанаар харагддаг байв.
         -- JOIN-ууд нь getExpenseOverview-тэй ЯГ ижил хамрах хүрээтэй.
+        -- [FIX] budget_type/budgetStatusOverride мөн адил нэмэгдсэн —
+        -- эс бөгөөс "Төсөвтэй эсэх" 3-төлөвт логик энд ялгаагдахгүй
+        -- (getExpenseOverview-той ижил төрлийн зөрүү дахин давтагдана).
         WITH
         scoped_books AS (
           SELECT DISTINCT book_number
@@ -545,10 +560,29 @@ export class ZainiiAuditService {
           a.receivable_type_code AS recievable_type_code,
           a.receivable_type_name AS recievable_type_name,
           (ifNull(t.gl_number, '') != '') AS has_payment_request,
-          (ifNull(tc.pay_customer, '') != '') AS has_customer_payment_request
+          (ifNull(tc.pay_customer, '') != '') AS has_customer_payment_request,
+          if(ifNull(t.gl_number, '') = '', '', ifNull(bt.budget_type, '')) AS budget_type,
+          ifNull(v.budgetStatusOverride, '') AS budget_status_override
         FROM avlaga AS a
         LEFT JOIN pay_books AS t ON t.gl_number = a.book_number
         LEFT JOIN pay_customers AS tc ON tc.pay_customer = a.customer_code
+        LEFT JOIN (
+          SELECT
+            ifNull(t2.gl_number, '') AS pay_book_number,
+            argMax(ifNull(b.description, ''), b.book_date) AS budget_type
+          FROM tulbur AS t2
+          INNER JOIN budget AS b
+            ON ifNull(b.related_book_number, '') = t2.book_number
+          WHERE ifNull(t2.gl_number, '') IN (SELECT book_number FROM scoped_books)
+          GROUP BY ifNull(t2.gl_number, '')
+        ) AS bt ON bt.pay_book_number = a.book_number
+        LEFT JOIN (
+          SELECT
+            bookNumber,
+            argMax(budgetStatusOverride, updatedAt) AS budgetStatusOverride
+          FROM avlaga_verifications
+          GROUP BY bookNumber
+        ) AS v ON v.bookNumber = a.book_number
         WHERE a.book_date BETWEEN toDate({startDate:String}) AND toDate({endDate:String})
         ORDER BY a.debit_amount DESC
         LIMIT ${MAX_EXPENSE_TOTAL_ROWS + 1}
@@ -618,9 +652,10 @@ export class ZainiiAuditService {
   ): Promise<ExpenseRelationsResult> {
     const customerCodes = Array.from(new Set(dto.customerCodes.map(String)));
 
-    const [hamaaralRows, holbootoiRows] = await Promise.all([
-      this.clickhouse.query<HamaaralRow>(
-        `
+    const [hamaaralRows, holbootoiRows, verificationRows, managementRows] =
+      await Promise.all([
+        this.clickhouse.query<Omit<HamaaralRow, "verifiedStatus">>(
+          `
         SELECT
           ifNull(cif, '') AS cif,
           ifNull(cifname, '') AS cifname,
@@ -632,28 +667,94 @@ export class ZainiiAuditService {
         WHERE cif IN ({customerCodes:Array(String)})
         LIMIT ${MAX_RELATIONS_ROWS}
         `,
-        { customerCodes },
-      ),
-      this.clickhouse.query<{ cif: string }>(
-        `
+          { customerCodes },
+        ),
+        this.clickhouse.query<{ cif: string }>(
+          `
         SELECT DISTINCT cif
         FROM holbootoi
         WHERE cif IN ({customerCodes:Array(String)})
         LIMIT ${MAX_RELATIONS_ROWS}
         `,
-        { customerCodes },
-      ),
-    ]);
+          { customerCodes },
+        ),
+        // Аудиторын өөрсдийн баталгаажуулсан төлөв (Батлагдсан/Нотлогдоогүй).
+        this.clickhouse.query<{
+          cif: string;
+          empid: string;
+          typename: string;
+          verifiedStatus: string;
+        }>(
+          `
+        SELECT cif, empid, typename,
+          argMax(verifiedStatus, updatedAt) AS verifiedStatus
+        FROM hamaaral_verifications
+        WHERE cif IN ({customerCodes:Array(String)})
+        GROUP BY cif, empid, typename
+        LIMIT ${MAX_RELATIONS_ROWS}
+        `,
+          { customerCodes },
+        ),
+        // [FIX] `management` хүснэгт зарим орчинд (жишээ: ETL хараахан
+        // дүүргээгүй dev/шинэ орчин) байхгүй байж болно — энэ нэмэлт
+        // "Удирдлага" тодруулга л алдвал ЗАРДЛЫН ХЯНАЛТ, ТАЙЛАН зэрэг
+        // үндсэн боломж бүхэлдээ 500 өгч унахгүй байх ёстой тул тусад нь
+        // catch хийж хоосон массиваар зөөлөн доройтуулна.
+        this.getManagementInfo(customerCodes).catch((err) => {
+          this.logger.warn(
+            `Удирдлагын мэдээлэл (management хүснэгт) уншиж чадсангүй: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          return [] as ManagementRow[];
+        }),
+      ]);
+
+    const verifiedMap = new Map<string, string>();
+    for (const row of verificationRows) {
+      verifiedMap.set(
+        `${row.cif}|${row.empid}|${row.typename}`,
+        row.verifiedStatus,
+      );
+    }
 
     const hamaaral: Record<string, HamaaralRow[]> = {};
     for (const row of hamaaralRows) {
-      (hamaaral[row.cif] ??= []).push(row);
+      const verifiedStatus =
+        verifiedMap.get(`${row.cif}|${row.empid}|${row.typename}`) ?? "";
+      (hamaaral[row.cif] ??= []).push({ ...row, verifiedStatus });
+    }
+
+    const management: Record<string, ManagementRow> = {};
+    for (const row of managementRows) {
+      management[row.cif] = row;
     }
 
     return {
       hamaaral,
       holbootoi: holbootoiRows.map((r) => r.cif),
+      management,
     };
+  }
+
+  /** Удирдлагын мэдээлэл (хувьцаа эзэмшигч/гүйцэтгэх удирдлага/эцсийн
+   *  өмчлөгч) — гадны ETL `management` хүснэгт, `cif`-ээр холбоно. Тусдаа
+   *  функц болгосон нь: хэрэв бодит хүснэгт/баганын нэр өөр бол энд ганц
+   *  газар засварлахад хангалттай байлгах зорилготой. */
+  private async getManagementInfo(
+    customerCodes: string[],
+  ): Promise<ManagementRow[]> {
+    return this.clickhouse.query<ManagementRow>(
+      `
+      SELECT
+        ifNull(cif, '') AS cif,
+        ifNull(shareholders, '') AS shareholders,
+        ifNull(executives, '') AS executives,
+        ifNull(ultimate_owner, '') AS ultimate_owner
+      FROM management
+      WHERE cif IN ({customerCodes:Array(String)})
+      LIMIT ${MAX_RELATIONS_ROWS}
+      `,
+      { customerCodes },
+    );
   }
 
   // ── Зардлын хяналтын Word тайлан ─────────────────────────────────────────
@@ -678,7 +779,10 @@ export class ZainiiAuditService {
         customer_name: tx.customer_name,
         customer_code: tx.customer_code,
         debit_amount: Number(tx.debit_amount) || 0,
-        description: tx.description,
+        // Аудитор засварласан "Төлбөрийн зориулалт" (comment) байвал
+        // түүнийг ашиглана — raw ETL тайлбар зарим үед бэлэн бус/алдаатай
+        // текст агуулдаг тул аудитор эхлээд засаж баталгаажуулсан байх ёстой.
+        description: tx.comment || tx.description,
       }));
 
     // verification_type → customer_code → тухайн харилцагчийн энэ ангилал
@@ -733,7 +837,7 @@ export class ZainiiAuditService {
         customers.push({
           customer_code: customerCode,
           customer_name: latest.customer_name,
-          description: latest.description,
+          description: latest.comment || latest.description,
           contract_date: latest.contract_date,
           contract_number: latest.contract_number,
           contract_total_amount: contractTotal,
@@ -741,11 +845,54 @@ export class ZainiiAuditService {
           remaining_amount:
             manualRemaining > 0 ? manualRemaining : contractTotal - paidAmount,
           budget_type: latest.budget_type,
+          contract_currency: latest.contract_currency || "MNT",
+          authority_matrix_violated: rows.some(
+            (r) => Number(r.authority_matrix_violated) === 1,
+          )
+            ? 1
+            : 0,
+          authority_matrix_comment:
+            rows.find((r) => Number(r.authority_matrix_violated) === 1)
+              ?.authority_matrix_comment ?? "",
         });
       }
       customers.sort((a, b) => b.paid_amount - a.paid_amount);
       categories.push({ name, totalAmount: categoryTotal, customers });
     }
+
+    // ── Холбоотой/Хамааралтай харилцагчаас хийсэн худалдан авалт ──────────
+    const uniqueCustomerCodes = Array.from(
+      new Set(overview.transactions.map((tx) => tx.customer_code)),
+    );
+    let relatedPurchaseTotal = 0;
+    let connectedPurchaseTotal = 0;
+    if (uniqueCustomerCodes.length > 0) {
+      const relations = await this.getExpenseRelations({
+        customerCodes: uniqueCustomerCodes,
+      });
+      const holbootoiSet = new Set(relations.holbootoi);
+      for (const tx of overview.transactions) {
+        const amount = Number(tx.debit_amount) || 0;
+        if (relations.hamaaral[tx.customer_code]?.length) {
+          relatedPurchaseTotal += amount;
+        }
+        if (holbootoiSet.has(tx.customer_code)) {
+          connectedPurchaseTotal += amount;
+        }
+      }
+    }
+
+    // ── Эрхийн матриц зөрчсөн гүйлгээ ───────────────────────────────────────
+    const authorityViolations: ExpenseReportAuthorityViolationRow[] =
+      overview.transactions
+        .filter((tx) => Number(tx.authority_matrix_violated) === 1)
+        .map((tx) => ({
+          customer_name: tx.customer_name,
+          customer_code: tx.customer_code,
+          book_number: tx.book_number,
+          debit_amount: Number(tx.debit_amount) || 0,
+          comment: tx.authority_matrix_comment,
+        }));
 
     return {
       reportNumber: dto.reportNumber,
@@ -759,6 +906,9 @@ export class ZainiiAuditService {
       top5,
       categories,
       uncategorizedTotal,
+      relatedPurchaseTotal,
+      connectedPurchaseTotal,
+      authorityViolations,
     };
   }
 }

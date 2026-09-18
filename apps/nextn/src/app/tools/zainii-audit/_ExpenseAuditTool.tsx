@@ -38,6 +38,9 @@ import {
   ExpenseVerificationStatus,
   ExpenseTotalResult,
   HamaaralRow,
+  ManagementRow,
+  ContractCurrency,
+  BudgetStatusOverride,
 } from "@/lib/api";
 import {
   DEFAULT_MIN_AMOUNT,
@@ -51,6 +54,8 @@ import {
   rowSearchHaystack,
   CHART_COLORS,
   DrillSectionState,
+  budgetState,
+  BUDGET_STATE_META,
 } from "./_expense/expense-format";
 import { StatRow } from "./_expense/expense-ui";
 import { ExpenseTxTable } from "./_expense/ExpenseTxTable";
@@ -161,9 +166,15 @@ export function ExpenseAuditTool() {
   const [verComment, setVerComment] = useState("");
   const [verType, setVerType] = useState("");
   const [verContractAmount, setVerContractAmount] = useState(0);
+  const [verContractCurrency, setVerContractCurrency] =
+    useState<ContractCurrency>("MNT");
   const [verContractDate, setVerContractDate] = useState("");
   const [verContractNumber, setVerContractNumber] = useState("");
   const [verRemainingAmount, setVerRemainingAmount] = useState(0);
+  const [verBudgetOverride, setVerBudgetOverride] =
+    useState<BudgetStatusOverride>("");
+  const [verAuthorityViolated, setVerAuthorityViolated] = useState(false);
+  const [verAuthorityComment, setVerAuthorityComment] = useState("");
   const [verStatus, setVerStatus] = useState<ExpenseVerificationStatus | "">(
     "",
   );
@@ -237,12 +248,18 @@ export function ExpenseAuditTool() {
 
   function openVerificationDialog(tx: ExpenseTxRow) {
     setVerificationDialogTx(tx);
-    setVerComment(tx.comment);
+    // [FIX] Тайлбар хоосон бол авлагын raw ETL тайлбарыг анхны утга болгож
+    // өгнө — аудитор шууд засварлаад "Төлбөрийн зориулалт" болгож хадгална.
+    setVerComment(tx.comment || tx.description || "");
     setVerType(tx.verification_type);
     setVerContractAmount(tx.contract_total_amount);
+    setVerContractCurrency((tx.contract_currency as ContractCurrency) || "MNT");
     setVerContractDate(tx.contract_date || "");
     setVerContractNumber(tx.contract_number || "");
     setVerRemainingAmount(tx.remaining_amount || 0);
+    setVerBudgetOverride((tx.budget_status_override as BudgetStatusOverride) || "");
+    setVerAuthorityViolated(Number(tx.authority_matrix_violated) === 1);
+    setVerAuthorityComment(tx.authority_matrix_comment || "");
     setVerStatus((tx.verification_status as ExpenseVerificationStatus) || "");
     void loadVerificationTypes();
   }
@@ -256,18 +273,26 @@ export function ExpenseAuditTool() {
         comment: verComment,
         verificationType: verType,
         contractTotalAmount: verContractAmount,
+        contractCurrency: verContractCurrency,
         contractDate: verContractDate || undefined,
         contractNumber: verContractNumber || undefined,
         remainingAmount: verRemainingAmount,
+        budgetStatusOverride: verBudgetOverride,
+        authorityMatrixViolated: verAuthorityViolated,
+        authorityMatrixComment: verAuthorityViolated ? verAuthorityComment : "",
         status: verStatus || undefined,
       });
       patchTransaction(verificationDialogTx.book_number, {
         comment: row.comment,
         verification_type: row.verificationType,
         contract_total_amount: row.contractTotalAmount,
+        contract_currency: row.contractCurrency,
         contract_date: row.contractDate,
         contract_number: row.contractNumber,
         remaining_amount: row.remainingAmount,
+        budget_status_override: row.budgetStatusOverride,
+        authority_matrix_violated: row.authorityMatrixViolated,
+        authority_matrix_comment: row.authorityMatrixComment,
         verification_status: row.status,
         has_verification: 1,
       });
@@ -451,14 +476,19 @@ export function ExpenseAuditTool() {
   // "Төсвийн төрөл" barchart — төлбөрийн хүсэлтгүй бол "Төсөвгүй", хүсэлттэй
   // ч холбогдох budget мөргүй бол "Тодорхойгүй", үгүй бол latest budget
   // мөрийн description-оор ангилна (backend аль хэдийн argMax-аар сонгосон).
+  // [FIX] `budgetState()`-ийг ExpenseTxTable-ийн "book" баганатай ЯГ ижил
+  // ашиглана (аудиторын гараар тохируулсан budgetStatusOverride-ийг ч
+  // тооцно) — өмнө нь энд тусдаа inline логик байсан тул хоёр газар
+  // өөр дүр зурагтай харагдах эрсдэлтэй байв.
   const chartData = useMemo(() => {
     if (!result) return [];
     const counts = new Map<string, number>();
     for (const tx of result.transactions) {
+      const state = budgetState(tx);
       let category: string;
-      if (!tx.has_payment_request) category = t("zaExpChartNoBudget");
-      else if (!tx.budget_type) category = t("zaExpChartUnspecified");
-      else category = tx.budget_type;
+      if (state === "no_budget") category = t("zaExpChartNoBudget");
+      else if (state === "has_budget") category = t("zaExpChartUnspecified");
+      else category = tx.budget_type || t(BUDGET_STATE_META.additional_budget.labelKey);
       counts.set(category, (counts.get(category) ?? 0) + 1);
     }
     return Array.from(counts.entries())
@@ -542,6 +572,9 @@ export function ExpenseAuditTool() {
     Record<string, HamaaralRow[]>
   >({});
   const [holbootoiSet, setHolbootoiSet] = useState<Set<string>>(new Set());
+  const [managementMap, setManagementMap] = useState<
+    Record<string, ManagementRow>
+  >({});
   const [relationsLoading, setRelationsLoading] = useState(false);
   const fetchedRelationCodes = useRef<Set<string>>(new Set());
 
@@ -564,6 +597,7 @@ export function ExpenseAuditTool() {
             res.holbootoi.forEach((c) => next.add(c));
             return next;
           });
+          setManagementMap((prev) => ({ ...prev, ...res.management }));
         }
       } catch (e) {
         toast({
@@ -577,6 +611,40 @@ export function ExpenseAuditTool() {
     },
     [toast, t],
   );
+
+  /** Хамааралтай харилцагчийн мэдээллийг аудитор баталгаажуулах
+   *  (Батлагдсан/Нотлогдоогүй) — HamaaralDetailDialog-оос дуудагдана. */
+  async function handleHamaaralVerify(
+    row: HamaaralRow,
+    status: "" | "confirmed",
+  ) {
+    try {
+      await zainiiAuditExpenseApi.upsertHamaaralVerification({
+        cif: row.cif,
+        empid: row.empid,
+        typename: row.typename,
+        status,
+      });
+      setRelationsMap((prev) => {
+        const rows = prev[row.cif];
+        if (!rows) return prev;
+        return {
+          ...prev,
+          [row.cif]: rows.map((r) =>
+            r.empid === row.empid && r.typename === row.typename
+              ? { ...r, verifiedStatus: status }
+              : r,
+          ),
+        };
+      });
+    } catch (e) {
+      toast({
+        title: t("errorBoundaryTitle"),
+        description: getApiErrorMessage(e),
+        variant: "destructive",
+      });
+    }
+  }
 
   useEffect(() => {
     if (!showRelations || !result) return;
@@ -822,6 +890,8 @@ export function ExpenseAuditTool() {
                     showRelations={showRelations}
                     relationsMap={relationsMap}
                     holbootoiSet={holbootoiSet}
+                    managementMap={managementMap}
+                    onHamaaralVerify={handleHamaaralVerify}
                   />
                 )}
                 {visibleTotalCount < filteredTotalTx.length && (
@@ -1099,6 +1169,8 @@ export function ExpenseAuditTool() {
                       showRelations={showRelations}
                       relationsMap={relationsMap}
                       holbootoiSet={holbootoiSet}
+                      managementMap={managementMap}
+                      onHamaaralVerify={handleHamaaralVerify}
                     />
                   )}
                   {visibleTxCount < filteredTx.length && (
@@ -1148,12 +1220,20 @@ export function ExpenseAuditTool() {
         setVerContractDate={setVerContractDate}
         verContractAmount={verContractAmount}
         setVerContractAmount={setVerContractAmount}
+        verContractCurrency={verContractCurrency}
+        setVerContractCurrency={setVerContractCurrency}
         verContractNumber={verContractNumber}
         setVerContractNumber={setVerContractNumber}
         verRemainingAmount={verRemainingAmount}
         setVerRemainingAmount={setVerRemainingAmount}
+        verBudgetOverride={verBudgetOverride}
+        setVerBudgetOverride={setVerBudgetOverride}
         verComment={verComment}
         setVerComment={setVerComment}
+        verAuthorityViolated={verAuthorityViolated}
+        setVerAuthorityViolated={setVerAuthorityViolated}
+        verAuthorityComment={verAuthorityComment}
+        setVerAuthorityComment={setVerAuthorityComment}
         savingVerification={savingVerification}
         verificationTypes={verificationTypes}
         typesLoading={typesLoading}

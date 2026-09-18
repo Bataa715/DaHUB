@@ -915,6 +915,21 @@ export const zainiiAuditRptApi = {
 
 // ── Зайны аудит: Expense monitoring (Зардлын хяналт) ────────────────────
 export type ExpenseVerificationStatus = "normal" | "questionable" | "attention";
+export const CONTRACT_CURRENCIES = [
+  "MNT",
+  "USD",
+  "EUR",
+  "CNY",
+  "JPY",
+  "KRW",
+  "RUB",
+] as const;
+export type ContractCurrency = (typeof CONTRACT_CURRENCIES)[number];
+export type BudgetStatusOverride =
+  | ""
+  | "has_budget"
+  | "additional_budget"
+  | "no_budget";
 
 export interface ExpenseTxRow {
   load_date: string;
@@ -944,6 +959,10 @@ export interface ExpenseTxRow {
   verification_status: string;
   comment: string;
   budget_type: string;
+  contract_currency: string;
+  budget_status_override: string;
+  authority_matrix_violated: 0 | 1;
+  authority_matrix_comment: string;
 }
 
 export interface ExpenseVerificationRow {
@@ -955,6 +974,10 @@ export interface ExpenseVerificationRow {
   contractNumber: string;
   remainingAmount: number;
   status: string;
+  contractCurrency: string;
+  budgetStatusOverride: string;
+  authorityMatrixViolated: 0 | 1;
+  authorityMatrixComment: string;
   updatedBy: string;
   updatedByName: string;
   updatedAt: string;
@@ -992,6 +1015,8 @@ export interface ExpenseTotalTxRow {
   recievable_type_name: string;
   has_payment_request: 0 | 1;
   has_customer_payment_request: 0 | 1;
+  budget_type: string;
+  budget_status_override: string;
 }
 
 export interface ExpenseGroupBreakdown {
@@ -1086,11 +1111,20 @@ export interface HamaaralRow {
   empname: string;
   typename: string;
   status: string;
+  verifiedStatus: string;
+}
+
+export interface ManagementRow {
+  cif: string;
+  shareholders: string;
+  executives: string;
+  ultimate_owner: string;
 }
 
 export interface ExpenseRelationsResult {
   hamaaral: Record<string, HamaaralRow[]>;
   holbootoi: string[];
+  management: Record<string, ManagementRow>;
 }
 
 // ── Зайны аудит: Word тайлан ─────────────────────────────────────────────
@@ -1152,6 +1186,10 @@ export const zainiiAuditExpenseApi = {
     contractNumber?: string;
     remainingAmount?: number;
     status?: ExpenseVerificationStatus;
+    contractCurrency?: ContractCurrency;
+    budgetStatusOverride?: BudgetStatusOverride;
+    authorityMatrixViolated?: boolean;
+    authorityMatrixComment?: string;
   }): Promise<ExpenseVerificationRow> => {
     const res = await api.post("/zainii-audit/expense-verification", req, {
       timeout: TIMEOUT_LONG,
@@ -1232,6 +1270,18 @@ export const zainiiAuditExpenseApi = {
       { customerCodes },
       { timeout: TIMEOUT_LONG },
     );
+    return res.data;
+  },
+
+  upsertHamaaralVerification: async (req: {
+    cif: string;
+    empid: string;
+    typename: string;
+    status: "" | "confirmed";
+  }): Promise<{ verifiedStatus: string }> => {
+    const res = await api.post("/zainii-audit/hamaaral-verification", req, {
+      timeout: TIMEOUT_LONG,
+    });
     return res.data;
   },
 

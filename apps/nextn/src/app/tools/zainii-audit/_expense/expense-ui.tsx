@@ -1,10 +1,55 @@
 "use client";
 
 // Зардлын хяналт — жижиг дэлгэцийн бүрдлүүд (панел, мөр, нүд).
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
-import { fmtAmount } from "./expense-format";
+import { fmtAmount, fmtMoneyInput, parseMoneyInput } from "./expense-format";
+
+/**
+ * Санхүүгийн формат (таслалаар мянгат, 1 оронгийн нарийвчлал) дүн бичих
+ * талбар. `type="number"`-ийн оронд текст ашиглаж, `onBlur` дээр л
+ * парс/дахин формат хийнэ — ингэснээр хэрэглэгч бичиж байхдаа таслал
+ * зэргээс болж caret үсэрч алдагдахгүй. `value` prop гаднаас өөрчлөгдвөл
+ * (жишээ: өөр гүйлгээ сонгогдох) `useEffect`-ээр биш render үеийн
+ * "state adjustment" загвараар (React-ийн зөвлөдөг арга) синк хийнэ.
+ */
+export function MoneyInput({
+  value,
+  onChange,
+  disabled,
+  className,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [text, setText] = useState(() => fmtMoneyInput(value));
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
+    setText(fmtMoneyInput(value));
+  }
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const parsed = parseMoneyInput(text);
+        onChange(parsed);
+        setText(fmtMoneyInput(parsed));
+      }}
+      disabled={disabled}
+      className={cn("tabular-nums text-right", className)}
+    />
+  );
+}
 
 /**
  * Төлбөрийн хүсэлтийн доорх нэмэлт мэдээллийн самбар (хавсралт / төсөв).

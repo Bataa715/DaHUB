@@ -24,7 +24,7 @@ import type {
 } from "@/lib/api";
 import { fmtAmount, type DrillSectionState } from "./expense-format";
 import { DetailPanel, Field } from "./expense-ui";
-import { PayRequestBadge, payState } from "./ExpenseTxTable";
+import { BudgetStatusBadge } from "./ExpenseTxTable";
 
 /**
  * Нэг гүйлгээний харилцагчийн төлбөрийн хүсэлтүүд — хавсралт, төсвийн
@@ -94,7 +94,7 @@ export function ExpenseDrilldownDialog({
             </div>
 
             <div className="mt-2.5 pt-2.5 border-t border-border/60 flex flex-wrap items-center gap-3">
-              <PayRequestBadge state={payState(selectedTx)} />
+              <BudgetStatusBadge tx={selectedTx} />
               {!drillLoading && !drillError && (
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   {t("zaExpDialogSummary")}: {drillRows.length}

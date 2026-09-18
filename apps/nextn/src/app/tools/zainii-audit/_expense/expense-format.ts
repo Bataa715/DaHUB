@@ -39,6 +39,40 @@ export function fmtAmount(n: number): string {
   );
 }
 
+// Баталгаажуулалтын дэлгэц дэх гэрээний дүн/үлдэгдэл зэрэг "дүн бичих"
+// талбаруудад зориулсан санхүүгийн формат — Word тайлангийн `fmtMillion`-тэй
+// ижил en-US бүлэглэлт (16,626.6), 1 оронгийн нарийвчлал.
+export function fmtMoneyInput(n: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(n || 0);
+}
+
+/** fmtMoneyInput-ийн урвуу үйлдэл — таслал/зайг арилгаад тоо болгоно. */
+export function parseMoneyInput(s: string): number {
+  const cleaned = s.replace(/,/g, "").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export const CONTRACT_CURRENCIES = [
+  "MNT",
+  "USD",
+  "EUR",
+  "CNY",
+  "JPY",
+  "KRW",
+  "RUB",
+] as const;
+export type ContractCurrency = (typeof CONTRACT_CURRENCIES)[number];
+
+export type BudgetStatusOverride =
+  | ""
+  | "has_budget"
+  | "additional_budget"
+  | "no_budget";
+
 export function rowSearchHaystack(tx: {
   book_date?: string;
   customer_code?: string;
@@ -104,6 +138,46 @@ export const STATUS_META: Record<
     labelKey: "zaExpStatusAttention",
     dot: "bg-rose-500",
     text: "text-rose-600 dark:text-rose-400",
+  },
+};
+
+// ── "Төсөвтэй эсэх" 3-төлөвт логик (Backend-ийн getExpenseOverview-тэй
+// ЯГ ижил дүрэм байх ёстой — модулийн түүхэнд яг ийм зөрүүгийн алдаа
+// давтагдсан удаатай) ────────────────────────────────────────────────────
+export type BudgetState = "has_budget" | "additional_budget" | "no_budget";
+
+export function budgetState(tx: {
+  has_payment_request?: 0 | 1;
+  budget_type?: string;
+  budget_status_override?: string;
+}): BudgetState {
+  const override = (tx.budget_status_override || "").trim();
+  if (
+    override === "has_budget" ||
+    override === "additional_budget" ||
+    override === "no_budget"
+  ) {
+    return override;
+  }
+  if (!Number(tx.has_payment_request)) return "no_budget";
+  return (tx.budget_type || "").trim() ? "additional_budget" : "has_budget";
+}
+
+export const BUDGET_STATE_META: Record<
+  BudgetState,
+  { labelKey: TranslationKey; cls: string }
+> = {
+  has_budget: {
+    labelKey: "zaExpBudgetHasBudget",
+    cls: "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
+  },
+  additional_budget: {
+    labelKey: "zaExpBudgetAdditional",
+    cls: "text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
+  },
+  no_budget: {
+    labelKey: "zaExpBudgetNoBudget",
+    cls: "text-rose-700 dark:text-rose-400 bg-rose-500/10 border-rose-500/30",
   },
 };
 

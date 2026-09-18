@@ -7,7 +7,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Pencil,
-  Users2,
+  Landmark,
+  Building2,
   ChevronUp,
   ChevronDown,
   ShieldAlert,
@@ -19,10 +20,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useLanguage, TranslationKey } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
-import { ExpenseTxRow, HamaaralRow } from "@/lib/api";
-import { fmtAmount, STATUS_META } from "./expense-format";
+import { ExpenseTxRow, HamaaralRow, ManagementRow } from "@/lib/api";
+import {
+  fmtAmount,
+  STATUS_META,
+  budgetState,
+  BUDGET_STATE_META,
+  BudgetState,
+} from "./expense-format";
 import { CellPair, Field, Td } from "./expense-ui";
 
 export type ExpColKey =
@@ -37,7 +51,8 @@ export type ExpColKey =
   | "book"
   | "verification"
   | "related"
-  | "connected";
+  | "connected"
+  | "management";
 
 export type ExpColDef = {
   key: ExpColKey;
@@ -63,6 +78,8 @@ export function colSortValue(
     recievable_type_name?: string;
     book_number?: string;
     has_payment_request?: 0 | 1;
+    budget_type?: string;
+    budget_status_override?: string;
     verification_type?: string;
     verification_status?: string;
     contract_total_amount?: number;
@@ -90,8 +107,14 @@ export function colSortValue(
         tx.recievable_type_code ||
         ""
       ).toLowerCase();
-    case "book":
-      return Number(tx.has_payment_request) || 0;
+    case "book": {
+      const rank: Record<BudgetState, number> = {
+        no_budget: 0,
+        has_budget: 1,
+        additional_budget: 2,
+      };
+      return rank[budgetState(tx)];
+    }
     case "verification":
       return (
         tx.verification_type ||
@@ -100,6 +123,7 @@ export function colSortValue(
       ).toLowerCase();
     case "related":
     case "connected":
+    case "management":
       return (tx.customer_code || "").toLowerCase();
   }
 }
@@ -117,59 +141,25 @@ export function readExpStoredWidths(): Partial<Record<ExpColKey, number>> {
 }
 
 /**
- * Төлбөрийн хүсэлтийн холбоосын ГУРВАН төлөв.
- *
- * Аудиторын хувьд "яг тохирсон" ба "харилцагчаар нь таамагласан" хоёрын
- * ялгаа чухал тул нэг өнгөөр харуулж болохгүй:
- *
- *   matched   — gl_number нь гүйлгээний дугаартай ЯГ тохирсон  → ногоон
- *   inferred  — зөвхөн харилцагчийн кодоор олдсон              → цагаан
- *   none      — огт олдоогүй                                   → улаавтар
+ * "Төсөвтэй эсэх" гурван төлөвийн тэмдэг ("book" багана) — логик нь
+ * `expense-format.ts`-ийн `budgetState()`-д бүрэн байрлана.
  */
-export type PayState = "matched" | "inferred" | "none";
-
-export function payState(tx: {
-  has_payment_request?: 0 | 1;
-  has_customer_payment_request?: 0 | 1;
-}): PayState {
-  if (Number(tx.has_payment_request)) return "matched";
-  if (Number(tx.has_customer_payment_request)) return "inferred";
-  return "none";
-}
-
-export const PAY_BADGE: Record<
-  PayState,
-  { cls: string; labelKey: TranslationKey; hintKey: TranslationKey }
-> = {
-  matched: {
-    cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    labelKey: "zaExpPayMatch",
-    hintKey: "zaExpPayMatchHint",
-  },
-  inferred: {
-    // Цагаан дэвсгэр — "байгаа ч шууд нотлогдоогүй" гэдгийг зөөлөн илэрхийлнэ
-    cls: "border-border bg-background text-foreground",
-    labelKey: "zaExpPayInferred",
-    hintKey: "zaExpPayInferredHint",
-  },
-  none: {
-    cls: "border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400",
-    labelKey: "zaExpPayNone",
-    hintKey: "zaExpPayNoneHint",
-  },
-};
-
-export function PayRequestBadge({
-  state,
+export function BudgetStatusBadge({
+  tx,
   onClick,
   title,
 }: {
-  state: PayState;
+  tx: {
+    has_payment_request?: 0 | 1;
+    budget_type?: string;
+    budget_status_override?: string;
+  };
   onClick?: () => void;
   title?: string;
 }) {
   const { t } = useLanguage();
-  const meta = PAY_BADGE[state];
+  const state = budgetState(tx);
+  const meta = BUDGET_STATE_META[state];
   const content = (
     <span
       className={cn(
@@ -177,14 +167,16 @@ export function PayRequestBadge({
         meta.cls,
       )}
     >
-      {state === "matched" && <CheckCircle2 className="w-3 h-3 shrink-0" />}
-      {state === "inferred" && <Users2 className="w-3 h-3 shrink-0" />}
-      {state === "none" && <AlertTriangle className="w-3 h-3 shrink-0" />}
+      {state === "has_budget" && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+      {state === "additional_budget" && (
+        <Landmark className="w-3 h-3 shrink-0" />
+      )}
+      {state === "no_budget" && <AlertTriangle className="w-3 h-3 shrink-0" />}
       {t(meta.labelKey)}
     </span>
   );
 
-  const hint = `${t(meta.hintKey)}${title ? ` \u2014 ${title}` : ""}`;
+  const hint = `${t(meta.labelKey)}${title ? ` \u2014 ${title}` : ""}`;
 
   return onClick ? (
     <button
@@ -272,10 +264,12 @@ export function HamaaralDetailDialog({
   customerCode,
   rows,
   onClose,
+  onVerify,
 }: {
   customerCode: string | null;
   rows: HamaaralRow[];
   onClose: () => void;
+  onVerify?: (row: HamaaralRow, status: "" | "confirmed") => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -313,10 +307,86 @@ export function HamaaralDetailDialog({
                 />
                 <Field label={t("zaExpRelatedColType")} value={r.typename} />
                 <Field label={t("zaExpRelatedColStatus")} value={r.status} />
+                <div className="col-span-2">
+                  <div className="text-muted-foreground mb-1">
+                    {t("zaExpRelatedVerifiedLabel")}
+                  </div>
+                  <Select
+                    value={r.verifiedStatus || "unverified"}
+                    onValueChange={(v) =>
+                      onVerify?.(r, v === "confirmed" ? "confirmed" : "")
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unverified">
+                        {t("zaExpRelatedUnverified")}
+                      </SelectItem>
+                      <SelectItem value="confirmed">
+                        {t("zaExpRelatedConfirmed")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             ))}
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Харилцагчид "Удирдлага" (management) мэдээлэл бар эсэхийг шалгана. */
+export function hasManagementInfo(row: ManagementRow | undefined): boolean {
+  if (!row) return false;
+  return Boolean(
+    (row.shareholders || "").trim() ||
+      (row.executives || "").trim() ||
+      (row.ultimate_owner || "").trim(),
+  );
+}
+
+/** "Удирдлага" баганын дэлгэрэнгүй — хувьцаа эзэмшигч/гүйцэтгэх удирдлага/
+ *  эцсийн өмчлөгч (гадны ETL `management` хүснэгт). */
+export function ManagementDetailDialog({
+  customerCode,
+  row,
+  onClose,
+}: {
+  customerCode: string | null;
+  row: ManagementRow | undefined;
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <Dialog
+      open={customerCode != null}
+      onOpenChange={(open) => !open && onClose()}
+    >
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-sky-500" />
+            {t("zaExpManagementDialogTitle")} — {customerCode}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <Field
+            label={t("zaExpManagementShareholders")}
+            value={row?.shareholders || "—"}
+          />
+          <Field
+            label={t("zaExpManagementExecutives")}
+            value={row?.executives || "—"}
+          />
+          <Field
+            label={t("zaExpManagementUltimateOwner")}
+            value={row?.ultimate_owner || "—"}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -332,6 +402,8 @@ export function ExpenseTxTable({
   showRelations = false,
   relationsMap = {},
   holbootoiSet = new Set(),
+  managementMap = {},
+  onHamaaralVerify,
 }: {
   rows: Array<
     Pick<
@@ -360,6 +432,8 @@ export function ExpenseTxTable({
           | "has_verification"
           | "has_payment_request"
           | "has_customer_payment_request"
+          | "budget_type"
+          | "budget_status_override"
         >
       >
   >;
@@ -371,9 +445,17 @@ export function ExpenseTxTable({
   showRelations?: boolean;
   relationsMap?: Record<string, HamaaralRow[]>;
   holbootoiSet?: Set<string>;
+  managementMap?: Record<string, ManagementRow>;
+  onHamaaralVerify?: (
+    row: HamaaralRow,
+    status: "" | "confirmed",
+  ) => void;
 }) {
   const { t } = useLanguage();
   const [hamaaralDialogCustomer, setHamaaralDialogCustomer] = useState<
+    string | null
+  >(null);
+  const [managementDialogCustomer, setManagementDialogCustomer] = useState<
     string | null
   >(null);
   const cols = useMemo<ExpColDef[]>(() => {
@@ -466,6 +548,13 @@ export function ExpenseTxTable({
           align: "left",
           defaultWidth: 90,
           minWidth: 70,
+        },
+        {
+          key: "management",
+          label: t("zaExpColManagement"),
+          align: "left",
+          defaultWidth: 110,
+          minWidth: 80,
         },
       );
     }
@@ -561,12 +650,16 @@ export function ExpenseTxTable({
 
   return (
     <div>
+      {/* [FIX] "Дэлгэрэнгүй харах" (Хамааралтай/Холбоотой/Удирдлага багана
+          нэмэгдэх) үед хүснэгт хажуу тийш гүйлгэгдэхгүй байсан асуудлыг
+          шийдэхийн тулд `resize-y` (native drag handle-аар өндрийг
+          томруулж/жижигрүүлэх) + `overflow-auto` (хоёр чиглэлд гүйлгэх)
+          хослуулав — шинэ сан шаардахгүй хамгийн бага эрсдэлтэй шийдэл. */}
       <div
-        className={
-          stickyHeader
-            ? "max-h-[calc(100vh-8rem)] overflow-auto"
-            : "overflow-x-auto"
-        }
+        className={cn(
+          "resize-y overflow-auto min-h-[240px]",
+          stickyHeader ? "max-h-[calc(100vh-8rem)]" : "max-h-[80vh]",
+        )}
       >
         <table
           className="text-sm border-collapse"
@@ -669,8 +762,8 @@ export function ExpenseTxTable({
                       showVerification || showRelations ? cellLine : undefined
                     }
                   >
-                    <PayRequestBadge
-                      state={payState(tx)}
+                    <BudgetStatusBadge
+                      tx={tx}
                       title={tx.book_number}
                       onClick={
                         onBookClick
@@ -724,9 +817,25 @@ export function ExpenseTxTable({
                           }
                         />
                       </Td>
-                      <Td>
+                      <Td className={cellLine}>
                         {holbootoiSet.has(tx.customer_code) ? (
                           <Link2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </Td>
+                      <Td>
+                        {hasManagementInfo(managementMap[tx.customer_code]) ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setManagementDialogCustomer(tx.customer_code)
+                            }
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-700 dark:text-sky-400 hover:opacity-80"
+                          >
+                            <Building2 className="w-3.5 h-3.5 shrink-0" />
+                            {t("zaExpColManagement")}
+                          </button>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -740,15 +849,27 @@ export function ExpenseTxTable({
         </table>
       </div>
       {showRelations && (
-        <HamaaralDetailDialog
-          customerCode={hamaaralDialogCustomer}
-          rows={
-            hamaaralDialogCustomer
-              ? (relationsMap[hamaaralDialogCustomer] ?? [])
-              : []
-          }
-          onClose={() => setHamaaralDialogCustomer(null)}
-        />
+        <>
+          <HamaaralDetailDialog
+            customerCode={hamaaralDialogCustomer}
+            rows={
+              hamaaralDialogCustomer
+                ? (relationsMap[hamaaralDialogCustomer] ?? [])
+                : []
+            }
+            onClose={() => setHamaaralDialogCustomer(null)}
+            onVerify={onHamaaralVerify}
+          />
+          <ManagementDetailDialog
+            customerCode={managementDialogCustomer}
+            row={
+              managementDialogCustomer
+                ? managementMap[managementDialogCustomer]
+                : undefined
+            }
+            onClose={() => setManagementDialogCustomer(null)}
+          />
+        </>
       )}
     </div>
   );

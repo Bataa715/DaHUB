@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -25,9 +26,16 @@ import type {
   ExpenseTxRow,
   ExpenseVerificationStatus,
   ExpenseVerificationTypeRow,
+  ContractCurrency,
+  BudgetStatusOverride,
 } from "@/lib/api";
-import { STATUS_META, fmtAmount } from "./expense-format";
-import { VarianceHint } from "./expense-ui";
+import {
+  STATUS_META,
+  fmtAmount,
+  CONTRACT_CURRENCIES,
+  BUDGET_STATE_META,
+} from "./expense-format";
+import { VarianceHint, MoneyInput } from "./expense-ui";
 
 /**
  * Аудиторын баталгаажуулалт — дүгнэлт, төрөл, гэрээний мэдээлэл, тайлбар.
@@ -44,12 +52,20 @@ export function ExpenseVerificationDialog({
   setVerContractDate,
   verContractAmount,
   setVerContractAmount,
+  verContractCurrency,
+  setVerContractCurrency,
   verContractNumber,
   setVerContractNumber,
   verRemainingAmount,
   setVerRemainingAmount,
+  verBudgetOverride,
+  setVerBudgetOverride,
   verComment,
   setVerComment,
+  verAuthorityViolated,
+  setVerAuthorityViolated,
+  verAuthorityComment,
+  setVerAuthorityComment,
   savingVerification,
   verificationTypes,
   typesLoading,
@@ -66,12 +82,20 @@ export function ExpenseVerificationDialog({
   setVerContractDate: (value: string) => void;
   verContractAmount: number;
   setVerContractAmount: (value: number) => void;
+  verContractCurrency: ContractCurrency;
+  setVerContractCurrency: (value: ContractCurrency) => void;
   verContractNumber: string;
   setVerContractNumber: (value: string) => void;
   verRemainingAmount: number;
   setVerRemainingAmount: (value: number) => void;
+  verBudgetOverride: BudgetStatusOverride;
+  setVerBudgetOverride: (value: BudgetStatusOverride) => void;
   verComment: string;
   setVerComment: (value: string) => void;
+  verAuthorityViolated: boolean;
+  setVerAuthorityViolated: (value: boolean) => void;
+  verAuthorityComment: string;
+  setVerAuthorityComment: (value: string) => void;
   savingVerification: boolean;
   verificationTypes: ExpenseVerificationTypeRow[];
   typesLoading: boolean;
@@ -235,17 +259,35 @@ export function ExpenseVerificationDialog({
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 {t("zaExpContractAmountLabel")}
               </label>
-              <Input
-                type="number"
-                min={0}
-                step={1_000_000}
-                value={verContractAmount}
-                onChange={(e) =>
-                  setVerContractAmount(Number(e.target.value) || 0)
-                }
-                disabled={savingVerification}
-                className="tabular-nums"
-              />
+              <div className="flex gap-1.5">
+                <Select
+                  value={verContractCurrency}
+                  onValueChange={(v) =>
+                    setVerContractCurrency(v as ContractCurrency)
+                  }
+                  disabled={savingVerification}
+                >
+                  <SelectTrigger
+                    className="w-[84px] shrink-0"
+                    aria-label={t("zaExpContractCurrencyLabel")}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONTRACT_CURRENCIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <MoneyInput
+                  value={verContractAmount}
+                  onChange={setVerContractAmount}
+                  disabled={savingVerification}
+                  className="flex-1"
+                />
+              </div>
               {/* Гэрээний дүн ба гүйлгээний дүнгийн зөрүүг шууд харуулна —
                   аудитор тооцоолол хийхгүйгээр хазайлтыг олж харна. */}
               {verContractAmount > 0 && verificationDialogTx && (
@@ -257,8 +299,8 @@ export function ExpenseVerificationDialog({
             </div>
           </div>
 
-          {/* ── Гэрээний дугаар + Үлдэгдэл төлбөр ─────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* ── Гэрээний дугаар + Үлдэгдэл төлбөр + Төсөвтэй эсэх (гараар) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 {t("zaExpContractNumberLabel")}
@@ -275,23 +317,50 @@ export function ExpenseVerificationDialog({
               <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 {t("zaExpRemainingAmountLabel")}
               </label>
-              <Input
-                type="number"
-                min={0}
-                step={1_000_000}
+              <MoneyInput
                 value={verRemainingAmount}
-                onChange={(e) =>
-                  setVerRemainingAmount(Number(e.target.value) || 0)
+                onChange={setVerRemainingAmount}
+                disabled={savingVerification}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                {t("zaExpBudgetOverrideLabel")}
+              </label>
+              <Select
+                value={verBudgetOverride || "auto"}
+                onValueChange={(v) =>
+                  setVerBudgetOverride(
+                    v === "auto" ? "" : (v as BudgetStatusOverride),
+                  )
                 }
                 disabled={savingVerification}
-                className="tabular-nums"
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">
+                    {t("zaExpBudgetOverrideAuto")}
+                  </SelectItem>
+                  <SelectItem value="has_budget">
+                    {t(BUDGET_STATE_META.has_budget.labelKey)}
+                  </SelectItem>
+                  <SelectItem value="additional_budget">
+                    {t(BUDGET_STATE_META.additional_budget.labelKey)}
+                  </SelectItem>
+                  <SelectItem value="no_budget">
+                    {t(BUDGET_STATE_META.no_budget.labelKey)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              {t("zaExpBudgetColDescription")}
+              {t("zaExpPaymentPurposeLabel")}
             </label>
             <Textarea
               value={verComment}
@@ -300,6 +369,28 @@ export function ExpenseVerificationDialog({
               rows={4}
               disabled={savingVerification}
             />
+          </div>
+
+          {/* ── Эрхийн матриц зөрчсөн эсэх ─────────────────────────────── */}
+          <div>
+            <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <Checkbox
+                checked={verAuthorityViolated}
+                onCheckedChange={(v) => setVerAuthorityViolated(v === true)}
+                disabled={savingVerification}
+              />
+              {t("zaExpAuthorityViolatedLabel")}
+            </label>
+            {verAuthorityViolated && (
+              <Textarea
+                className="mt-2"
+                value={verAuthorityComment}
+                onChange={(e) => setVerAuthorityComment(e.target.value)}
+                placeholder={t("zaExpAuthorityCommentPlaceholder")}
+                rows={3}
+                disabled={savingVerification}
+              />
+            )}
           </div>
         </div>
 

@@ -639,11 +639,33 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
           contractNumber String DEFAULT '',
           remainingAmount Float64 DEFAULT 0,
           status String DEFAULT '',
+          contractCurrency String DEFAULT 'MNT',
+          budgetStatusOverride String DEFAULT '',
+          authorityMatrixViolated UInt8 DEFAULT 0,
+          authorityMatrixComment String DEFAULT '',
           updatedBy String DEFAULT '',
           updatedByName String DEFAULT '',
           updatedAt DateTime DEFAULT now()
         ) ENGINE = ReplacingMergeTree(updatedAt)
         ORDER BY bookNumber
+      `);
+
+      // Create hamaaral_verifications table — Хамааралтай харилцагчийн
+      // мэдээллийг (гадны ETL hamaaral хүснэгтээс) аудитор баталгаажуулах
+      // (Батлагдсан/Нотлогдоогүй) төлөв. Нэг харилцагч (cif) хэд хэдэн
+      // хамаарлын мөртэй байж болох тул (cif, empid, typename) хослол
+      // тухайн нэг хамаарлыг өвөрмөц тодорхойлно.
+      await this.exec(`
+        CREATE TABLE IF NOT EXISTS hamaaral_verifications (
+          cif String,
+          empid String,
+          typename String,
+          verifiedStatus String DEFAULT '',
+          updatedBy String DEFAULT '',
+          updatedByName String DEFAULT '',
+          updatedAt DateTime DEFAULT now()
+        ) ENGINE = ReplacingMergeTree(updatedAt)
+        ORDER BY (cif, empid, typename)
       `);
 
       // Зардлын хяналтын эх хүснэгтүүд — өөр компьютер дээр эхний асаалтад
@@ -813,6 +835,31 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       ).catch(() => {});
       await this.exec(
         `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS remainingAmount Float64 DEFAULT 0`,
+      ).catch(() => {});
+
+      // 1h) avlaga_verifications.contractCurrency — гэрээ MNT-ээс өөр
+      // валюттай байж болдог тул аудитор баталгаажуулалтын дэлгэцээс
+      // гараар сонгоно (Word тайланд валютаар нь тусад нь бүлэглэнэ).
+      await this.exec(
+        `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS contractCurrency String DEFAULT 'MNT'`,
+      ).catch(() => {});
+
+      // 1i) avlaga_verifications.budgetStatusOverride — "Төсөвтэй эсэх"
+      // автоматаар тооцоолсон төлөв ETL өгөгдөлд байхгүй тохиолдолд
+      // (жишээ: бодит төсөвтэй ч tulbur/budget мөр ирээгүй) аудитор
+      // гараар дарж тохируулах боломж.
+      await this.exec(
+        `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS budgetStatusOverride String DEFAULT ''`,
+      ).catch(() => {});
+
+      // 1j) avlaga_verifications.authorityMatrixViolated/Comment — гүйлгээ
+      // эрхийн матриц зөрчсөн эсэхийг аудитор баталгаажуулалтын дэлгэцээс
+      // тэмдэглэнэ (чеклэвэл тайлбар заавал).
+      await this.exec(
+        `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS authorityMatrixViolated UInt8 DEFAULT 0`,
+      ).catch(() => {});
+      await this.exec(
+        `ALTER TABLE avlaga_verifications ADD COLUMN IF NOT EXISTS authorityMatrixComment String DEFAULT ''`,
       ).catch(() => {});
 
       // [SAFETY] DROP TABLE/DROP COLUMN migration-уудыг эндээс хассан — app boot

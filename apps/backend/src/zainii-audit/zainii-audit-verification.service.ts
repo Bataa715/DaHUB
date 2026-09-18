@@ -9,12 +9,23 @@ import {
   ExpenseVerificationDto,
   CreateVerificationTypeDto,
   UpdateVerificationTypeDto,
+  HamaaralVerificationDto,
 } from "./dto/zainii-audit.dto";
 import { nowCH } from "../clickhouse/clickhouse.service";
 import {
   ExpenseVerificationRow,
   ExpenseVerificationTypeRow,
 } from "./zainii-audit.types";
+
+export interface HamaaralVerificationRow {
+  cif: string;
+  empid: string;
+  typename: string;
+  verifiedStatus: string;
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: string;
+}
 
 /** Зардлын гүйлгээний аудиторын баталгаажуулалт ба баталгаажуулалтын төрлийн лавлах. */
 @Injectable()
@@ -113,10 +124,14 @@ export class ZainiiAuditVerificationService {
       dto.contractDate === undefined &&
       dto.contractNumber === undefined &&
       dto.remainingAmount === undefined &&
-      dto.status === undefined
+      dto.status === undefined &&
+      dto.contractCurrency === undefined &&
+      dto.budgetStatusOverride === undefined &&
+      dto.authorityMatrixViolated === undefined &&
+      dto.authorityMatrixComment === undefined
     ) {
       throw new BadRequestException(
-        "Тайлбар, төрөл, гэрээний дүн/дугаар/огноо, үлдэгдэл төлбөр, статусын аль нэгийг дамжуулна уу",
+        "Тайлбар, төрөл, гэрээний дүн/дугаар/огноо/валют, үлдэгдэл төлбөр, статус, төсвийн төлөв, эрхийн матрицын аль нэгийг дамжуулна уу",
       );
     }
 
@@ -151,12 +166,49 @@ export class ZainiiAuditVerificationService {
           ? dto.remainingAmount
           : (current?.remainingAmount ?? 0),
       status: dto.status !== undefined ? dto.status : (current?.status ?? ""),
+      contractCurrency:
+        dto.contractCurrency !== undefined
+          ? dto.contractCurrency
+          : (current?.contractCurrency ?? "MNT"),
+      budgetStatusOverride:
+        dto.budgetStatusOverride !== undefined
+          ? dto.budgetStatusOverride
+          : (current?.budgetStatusOverride ?? ""),
+      authorityMatrixViolated:
+        dto.authorityMatrixViolated !== undefined
+          ? dto.authorityMatrixViolated
+            ? 1
+            : 0
+          : (current?.authorityMatrixViolated ?? 0),
+      authorityMatrixComment:
+        dto.authorityMatrixComment !== undefined
+          ? dto.authorityMatrixComment
+          : (current?.authorityMatrixComment ?? ""),
       updatedBy: user.userId,
       updatedByName: user.name,
       updatedAt: nowCH(),
     };
 
     await this.clickhouse.insert("avlaga_verifications", [{ ...row }]);
+    return row;
+  }
+
+  /** Хамааралтай (hamaaral) харилцагчийн мэдээллийг аудитор баталгаажуулах
+   *  (Батлагдсан/Нотлогдоогүй) — (cif, empid, typename) хослолоор өвөрмөц. */
+  async upsertHamaaralVerification(
+    dto: HamaaralVerificationDto,
+    user: { userId: string; name: string },
+  ): Promise<HamaaralVerificationRow> {
+    const row: HamaaralVerificationRow = {
+      cif: dto.cif,
+      empid: dto.empid,
+      typename: dto.typename,
+      verifiedStatus: dto.status,
+      updatedBy: user.userId,
+      updatedByName: user.name,
+      updatedAt: nowCH(),
+    };
+    await this.clickhouse.insert("hamaaral_verifications", [{ ...row }]);
     return row;
   }
 }

@@ -39,15 +39,13 @@ const FRAME_PAD = 100;
 // импортлох боломжгүй (§5.3-тай ижил зарчим — модуль хоорондоо дотоод
 // файлаа шүүрхийлэхгүй) — иймд энд бие даан давтав.
 //
-// [DESIGN] Банкны бодит "Гүйлгээний анализын тайлан"-тай ижил харагдахаар
-// (хэрэглэгчийн өгсөн эх загварын screenshot-оор) тохируулсан: гарчиг/
-// гарчигнууд ХАР, зөвхөн хүснэгтийн толгой мөр, дугуй диаграм, "✓" тэмдэг
-// л ногоон. Тоог en-US таслалын бүлэглэлтэй (16,626.6) харуулна — эх
-// загварт яг ийм форматтай байсан.
-
-// [DESIGN] Бараа/бүдэг ("muted") ногоон гамма — эхний хувилбар хэт цайлган/
-// тод байсан тул илүү намуухан, бага ханасан ("бараа бүдэг") өнгө рүү
-// шилжүүлэв.
+// [DESIGN] Анх банкны бодит "Гүйлгээний анализын тайлан"-тай яг адилхан
+// харагдахаар (зөвхөн ХАР гарчиг, нэг ногоон гамма) хатуу тохируулсан
+// байсан. Хэрэглэгчийн зөвшөөрлөөр (2026-09) илүү өнгөлөг/инфографик
+// загвар руу шилжүүлэв — категори тус бүр өөрийн өнгөтэй, KPI хайрцаг,
+// шинэ хэсгүүд (Холбоотой/Хамааралтай худалдан авалт, Эрхийн матриц
+// зөрчил) нэмэгдсэн. Тоог en-US таслалын бүлэглэлтэй (16,626.6) хэвээр
+// харуулна.
 const TABLE_HEADER_BG = "B9CCC0"; // намуухан бүдэг ногоон (хүснэгтийн толгой)
 const TABLE_BORDER = "404040";
 const GRAY_BOX = "F2F2F2";
@@ -56,19 +54,24 @@ const CHECK_GREEN = "1B4332";
 // Хүснэгт/зураг/диаграмын ард — цагаанаас бага зэрэг саарал (өмнө нь цэвэр
 // цагаан байсан).
 const CONTENT_BG = "F4F5F4";
+// Мөр ээлжлэн (zebra) сүүдэрлэх өнгө — толгойгоос илүү цайвар.
+const ZEBRA_BG = "EEF1EF";
 
-// Дугуй диаграмын бүдэг ногоон гамма — хамгийн том хэсгээс хамгийн жижиг
-// хэсэг рүү бараанаас цайвар руу шилжинэ (эх загвартай ижил эффект, гэхдээ
-// намуухан).
+// Дугуй диаграмын гамма — категори тус бүр ялгаатай өнгөтэй (эхний хувилбар
+// зөвхөн ногоон-муж байсныг илүү олон өнгөт болгов).
 const DONUT_RAMP = [
-  "1B4332",
-  "2D6A4F",
-  "40916C",
-  "74A892",
-  "A3C4B0",
-  "CBDED2",
+  "2D6A4F", // ногоон
+  "1D4ED8", // цэнхэр
+  "B45309", // улбар шар
+  "7C3AED", // ягаан-нил
+  "0E7490", // хөх ногоон
+  "BE123C", // час улаан
+  "CA8A04", // шар
   "9E9E9E", // "Тодорхойгүй" ангилалд зориулсан саарал
 ];
+
+// KPI хайрцгийн 4 өнгөт tile — ногоон/цэнхэр/индиго/час улаан.
+const KPI_TILE_COLORS = ["2D6A4F", "1D4ED8", "6D28D9", "BE123C"];
 
 // [AUDIT] docx ImageRun(type:"svg") нь SVG рендер хийхгүй хуучин Word-д зориулж
 // заавал fallback зураг шаарддаг — бид зөвхөн орчин үеийн Word дээр SVG
@@ -93,6 +96,15 @@ function fmtMillion(n: number): string {
 /** Гэрээ/дүн байхгүй бол "-" — сөрөг тооцоолсон утга ("0 - төлсөн дүн") бүү харуул. */
 function fmtMillionOrDash(n: number): string {
   return n > 0 ? fmtMillion(n) : "-";
+}
+
+/** ISO (YYYY-MM-DD) огноог тайлангийн уламжлалт "YYYY.MM.DD" форматруу
+ *  хөрвүүлнэ. Хадгалалт (ClickHouse/DTO validation) dash хэвээр — зөвхөн
+ *  Word тайлан дээрх ХАРУУЛАЛТЫГ л цэгтэй болгоно. */
+function fmtDotDate(iso: string): string {
+  const s = (iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}/.test(s)) return s;
+  return s.slice(0, 10).replace(/-/g, ".");
 }
 
 /** Hex өнгө цайвар эсэхийг (relative luminance) тодорхойлно — текстийн контраст сонгоход. */
@@ -212,7 +224,7 @@ export class ZainiiAuditDocxService {
         spacing: { after: 200 },
         children: [
           new TextRun({
-            text: `Тайлант хугацаа: ${data.startDate} — ${data.endDate}`,
+            text: `Тайлант хугацаа: ${fmtDotDate(data.startDate)} — ${fmtDotDate(data.endDate)}`,
             size: 18,
             italics: true,
             font: "Times New Roman",
@@ -232,6 +244,34 @@ export class ZainiiAuditDocxService {
         ],
         [this.twoColumnList(data.scopeCategoryNames, CONTENT_WIDTH_DXA - 320)],
       ),
+    );
+
+    // ── KPI хайрцаг мөр — тайлангийн ерөнхий дүр зургийг нэг харцаар. ──────
+    children.push(
+      this.kpiRow([
+        {
+          label: "Тэнцсэн харилцагчийн тоо",
+          value: fmtInt(data.qualifyingCount),
+          color: KPI_TILE_COLORS[0],
+        },
+        {
+          label: "Нийт дүн (сая.₮)",
+          value: fmtMillion(data.qualifyingTotalDebit),
+          color: KPI_TILE_COLORS[1],
+        },
+        {
+          label: "Холбоотой/Хамааралтай худалдан авалт (сая.₮)",
+          value: fmtMillion(
+            data.relatedPurchaseTotal + data.connectedPurchaseTotal,
+          ),
+          color: KPI_TILE_COLORS[2],
+        },
+        {
+          label: "Эрхийн матриц зөрчсөн гүйлгээ",
+          value: fmtInt(data.authorityViolations.length),
+          color: KPI_TILE_COLORS[3],
+        },
+      ]),
     );
 
     // ── I. ГҮЙЛГЭЭНИЙ АНГИЛАЛ ──────────────────────────────────────────────
@@ -385,65 +425,133 @@ export class ZainiiAuditDocxService {
         }),
       );
 
-      const totals = cat.customers.reduce(
-        (acc, c) => ({
-          contract:
-            acc.contract +
-            (c.contract_total_amount > 0 ? c.contract_total_amount : 0),
-          paid: acc.paid + c.paid_amount,
-          remaining:
-            acc.remaining +
-            (c.contract_total_amount > 0 ? c.remaining_amount : 0),
-        }),
-        { contract: 0, paid: 0, remaining: 0 },
+      // Валютаар бүлэглэнэ — MNT-ээс өөр валюттай гэрээг тусдаа дэд
+      // хүснэгт болгож харуулна (нэг ерөнхий "Нийт" мөрөнд MNT бус
+      // дүнг MNT-той хольж нэмбэл утгагүй болно).
+      const byCurrency = new Map<string, typeof cat.customers>();
+      for (const c of cat.customers) {
+        const cur = c.contract_currency || "MNT";
+        const bucket = byCurrency.get(cur);
+        if (bucket) bucket.push(c);
+        else byCurrency.set(cur, [c]);
+      }
+      const currencies = Array.from(byCurrency.keys()).sort((a, b) =>
+        a === "MNT" ? -1 : b === "MNT" ? 1 : a.localeCompare(b),
       );
 
-      const rowCount = cat.customers.length;
-      const fontSize = rowCount > 15 ? 16 : 18;
+      for (const currency of currencies) {
+        const customers = byCurrency.get(currency)!;
+        if (currency !== "MNT") {
+          children.push(this.subHeading(`${cat.name} (${currency}):`, 18));
+        }
+
+        const totals = customers.reduce(
+          (acc, c) => ({
+            contract:
+              acc.contract +
+              (c.contract_total_amount > 0 ? c.contract_total_amount : 0),
+            paid: acc.paid + c.paid_amount,
+            remaining:
+              acc.remaining +
+              (c.contract_total_amount > 0 ? c.remaining_amount : 0),
+          }),
+          { contract: 0, paid: 0, remaining: 0 },
+        );
+
+        const rowCount = customers.length;
+        const fontSize = rowCount > 15 ? 16 : 18;
+        children.push(
+          this.frame(
+            this.dataTable(
+              [
+                "Харилцагч",
+                "Төлбөрийн зориулалт",
+                "Гэрээний огноо",
+                "Гэрээний нийт дүн",
+                "Тайлант хугацаанд төлсөн дүн",
+                "Үлдэгдэл дүн",
+                "Төсөв",
+              ],
+              [16, 22, 10, 13, 15, 12, 12],
+              ["left", "left", "center", "right", "right", "right", "center"],
+              customers.map((c) => [
+                c.customer_name || c.customer_code,
+                c.description,
+                fmtDotDate(c.contract_date) || "-",
+                fmtMillionOrDash(c.contract_total_amount),
+                fmtMillion(c.paid_amount),
+                c.contract_total_amount > 0
+                  ? fmtMillion(c.remaining_amount)
+                  : "-",
+                c.budget_type ? `✓ ${c.budget_type}` : "-",
+              ]),
+              [
+                "Нийт",
+                "",
+                "",
+                fmtMillion(totals.contract),
+                fmtMillion(totals.paid),
+                fmtMillion(totals.remaining),
+                "",
+              ],
+              fontSize,
+              CONTENT_WIDTH_DXA - FRAME_PAD * 2,
+              true,
+            ),
+            CONTENT_WIDTH_DXA,
+          ),
+        );
+      }
+    });
+
+    // ── IV. ХОЛБООТОЙ/ХАМААРАЛТАЙ ЭТГЭЭДЭЭС ХИЙСЭН ХУДАЛДАН АВАЛТ ──────────
+    children.push(
+      this.bigHeading("IV. ХОЛБООТОЙ/ХАМААРАЛТАЙ ЭТГЭЭДЭЭС ХИЙСЭН ХУДАЛДАН АВАЛТ:"),
+    );
+    children.push(
+      this.kpiRow([
+        {
+          label: "Хамааралтай харилцагчаас хийсэн худалдан авалт (сая.₮)",
+          value: fmtMillion(data.relatedPurchaseTotal),
+          color: KPI_TILE_COLORS[0],
+        },
+        {
+          label: "Холбоотой харилцагчаас хийсэн худалдан авалт (сая.₮)",
+          value: fmtMillion(data.connectedPurchaseTotal),
+          color: KPI_TILE_COLORS[1],
+        },
+      ]),
+    );
+
+    // ── V. ЭРХИЙН МАТРИЦ ЗӨРЧСӨН ГҮЙЛГЭЭ ────────────────────────────────────
+    children.push(this.bigHeading("V. ЭРХИЙН МАТРИЦ ЗӨРЧСӨН ГҮЙЛГЭЭ:"));
+    if (data.authorityViolations.length === 0) {
+      children.push(this.bodyPara("Илэрсэн зөрчил байхгүй."));
+    } else {
       children.push(
         this.frame(
           this.dataTable(
-            [
-              "Харилцагч",
-              "Гэрээний зориулалт",
-              "Гэрээний огноо",
-              "Гэрээний нийт дүн",
-              "Тайлант хугацаанд төлсөн дүн",
-              "Үлдэгдэл дүн",
-              "Төсөв",
-            ],
-            [16, 22, 10, 13, 15, 12, 12],
-            ["left", "left", "center", "right", "right", "right", "center"],
-            cat.customers.map((c) => [
-              c.customer_name || c.customer_code,
-              c.description,
-              c.contract_date || "-",
-              fmtMillionOrDash(c.contract_total_amount),
-              fmtMillion(c.paid_amount),
-              c.contract_total_amount > 0
-                ? fmtMillion(c.remaining_amount)
-                : "-",
-              c.budget_type ? `✓ ${c.budget_type}` : "-",
+            ["Харилцагч", "Баримтын дугаар", "Дүн (сая.₮)", "Тайлбар"],
+            [24, 16, 15, 45],
+            ["left", "left", "right", "left"],
+            data.authorityViolations.map((v) => [
+              v.customer_name || v.customer_code,
+              v.book_number,
+              fmtMillion(v.debit_amount),
+              v.comment || "-",
             ]),
-            [
-              "Нийт",
-              "",
-              "",
-              fmtMillion(totals.contract),
-              fmtMillion(totals.paid),
-              fmtMillion(totals.remaining),
-              "",
-            ],
-            fontSize,
+            undefined,
+            18,
             CONTENT_WIDTH_DXA - FRAME_PAD * 2,
+            true,
           ),
           CONTENT_WIDTH_DXA,
         ),
       );
-    });
+    }
 
-    // ── III. ДҮГНЭЛТ ─────────────────────────────────────────────────────────
-    children.push(this.bigHeading("III. ДҮГНЭЛТ"));
+    // ── VI. ДҮГНЭЛТ ─────────────────────────────────────────────────────────
+    children.push(this.bigHeading("VI. ДҮГНЭЛТ"));
     const conclusionLines = (data.conclusionText || "")
       .split("\n")
       .filter((l) => l.trim() !== "");
@@ -576,6 +684,61 @@ export class ZainiiAuditDocxService {
               ],
             }),
           ],
+        }),
+      ],
+    });
+  }
+
+  /**
+   * KPI хайрцаг мөр — өнгөт tile бүр 1 үзүүлэлт (тоо/дүн) харуулна.
+   * Инфографик загварын нэг хэсэг (§ 2026-09 "илүү өнгөлөг" шинэчлэл).
+   */
+  private kpiRow(tiles: { label: string; value: string; color: string }[]) {
+    const colDxa = Math.floor(CONTENT_WIDTH_DXA / tiles.length);
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      layout: TableLayoutType.FIXED,
+      columnWidths: tiles.map(() => colDxa),
+      borders: this.noBorders(),
+      rows: [
+        new TableRow({
+          children: tiles.map(
+            (tile) =>
+              new TableCell({
+                width: {
+                  size: Math.floor(100 / tiles.length),
+                  type: WidthType.PERCENTAGE,
+                },
+                borders: this.border(GRAY_BOX_BORDER),
+                shading: { type: ShadingType.SOLID, color: CONTENT_BG },
+                margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 40 },
+                    children: [
+                      new TextRun({
+                        text: tile.value,
+                        bold: true,
+                        size: 26,
+                        color: tile.color,
+                        font: "Times New Roman",
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new TextRun({
+                        text: tile.label,
+                        size: 15,
+                        font: "Times New Roman",
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+          ),
         }),
       ],
     });
@@ -837,10 +1000,14 @@ export class ZainiiAuditDocxService {
     align: Align,
     fontSize: number,
     bold = false,
+    bgColor?: string,
   ) {
     return new TableCell({
       width: { size: widthPct, type: WidthType.PERCENTAGE },
       margins: { top: 30, bottom: 30, left: 60, right: 60 },
+      ...(bgColor
+        ? { shading: { type: ShadingType.SOLID, color: bgColor } }
+        : {}),
       children: [
         new Paragraph({
           alignment: this.alignmentOf(align),
@@ -893,6 +1060,7 @@ export class ZainiiAuditDocxService {
     totalsRow?: string[],
     fontSize = 18,
     containerWidthDxa: number = CONTENT_WIDTH_DXA,
+    zebra = false,
   ) {
     const headerRow = new TableRow({
       tableHeader: true,
@@ -922,7 +1090,7 @@ export class ZainiiAuditDocxService {
     const rows =
       dataRows.length > 0
         ? dataRows.map(
-            (row) =>
+            (row, ri) =>
               new TableRow({
                 children: row.map((cell, ci) =>
                   this.tcNoB(
@@ -930,6 +1098,8 @@ export class ZainiiAuditDocxService {
                     colWidths[ci],
                     aligns[ci] ?? "left",
                     fontSize,
+                    false,
+                    zebra && ri % 2 === 1 ? ZEBRA_BG : undefined,
                   ),
                 ),
               }),

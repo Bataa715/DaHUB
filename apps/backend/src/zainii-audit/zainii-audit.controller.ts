@@ -36,6 +36,7 @@ import {
   UpdateZainiiAuditSettingsDto,
   GenerateExpenseReportDto,
   ExpenseRelationsDto,
+  HamaaralVerificationDto,
 } from "./dto/zainii-audit.dto";
 
 @UseGuards(JwtAuthGuard, ToolGuard)
@@ -155,6 +156,26 @@ export class ZainiiAuditController {
   @Post("expense-relations")
   getExpenseRelations(@Body() dto: ExpenseRelationsDto) {
     return this.zainiiAudit.getExpenseRelations(dto);
+  }
+
+  @RequireTools("zainii_audit_expense")
+  @Post("hamaaral-verification")
+  upsertHamaaralVerification(
+    @Body() dto: HamaaralVerificationDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.audited(
+      req,
+      "hamaaral_verification_upsert",
+      dto.cif,
+      "POST",
+      () =>
+        this.verification.upsertHamaaralVerification(dto, {
+          userId: req.user.userId,
+          name: req.user.name,
+        }),
+      { empid: dto.empid, typename: dto.typename, status: dto.status },
+    );
   }
 
   // ── Word тайлан ───────────────────────────────────────────────────────

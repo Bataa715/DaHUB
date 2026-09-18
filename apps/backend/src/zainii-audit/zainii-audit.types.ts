@@ -104,6 +104,12 @@ export interface ExpenseTxRow {
   /** Хамгийн сүүлийн холбогдох budget мөрийн description (эсвэл "" —
    *  төлбөрийн хүсэлтгүй бол ч, төлбөрийн хүсэлттэй ч budget мөргүй бол ч ""). */
   budget_type: string;
+  /** Гэрээний дүнгийн валют — аудитор баталгаажуулалтын дэлгэцээс гараар сонгоно. */
+  contract_currency: string;
+  /** Аудиторын гараар тохируулсан "Төсөвтэй эсэх" төлөв ('' = автомат тооцоолол). */
+  budget_status_override: string;
+  authority_matrix_violated: 0 | 1;
+  authority_matrix_comment: string;
 }
 
 export interface ExpenseVerificationRow {
@@ -115,6 +121,10 @@ export interface ExpenseVerificationRow {
   contractNumber: string;
   remainingAmount: number;
   status: string;
+  contractCurrency: string;
+  budgetStatusOverride: string;
+  authorityMatrixViolated: 0 | 1;
+  authorityMatrixComment: string;
   updatedBy: string;
   updatedByName: string;
   updatedAt: string;
@@ -155,6 +165,9 @@ export interface ExpenseTotalTxRow {
    *  дэлгэц дээр өөр төлөвтэй харагдана. */
   has_payment_request: 0 | 1;
   has_customer_payment_request: 0 | 1;
+  /** getExpenseOverview-тэй ижил "Төсөвтэй эсэх" 3-төлөвт логикийн эх өгөгдөл. */
+  budget_type: string;
+  budget_status_override: string;
 }
 
 export interface ExpenseGroupBreakdown {
@@ -242,11 +255,22 @@ export interface HamaaralRow {
   empname: string;
   typename: string;
   status: string;
+  /** Аудиторын баталгаажуулсан төлөв ('' = Нотлогдоогүй, 'confirmed' = Батлагдсан). */
+  verifiedStatus: string;
+}
+
+/** Удирдлагын мэдээлэл — гадны ETL `management` хүснэгт (cif-ээр холбоно). */
+export interface ManagementRow {
+  cif: string;
+  shareholders: string;
+  executives: string;
+  ultimate_owner: string;
 }
 
 export interface ExpenseRelationsResult {
   hamaaral: Record<string, HamaaralRow[]>;
   holbootoi: string[];
+  management: Record<string, ManagementRow>;
 }
 
 // ─── Зардлын хяналтын Word тайлан ───────────────────────────────────────────
@@ -267,12 +291,23 @@ export interface ExpenseReportCategoryCustomerRow {
   paid_amount: number;
   remaining_amount: number;
   budget_type: string;
+  contract_currency: string;
+  authority_matrix_violated: 0 | 1;
+  authority_matrix_comment: string;
 }
 
 export interface ExpenseReportCategory {
   name: string;
   totalAmount: number;
   customers: ExpenseReportCategoryCustomerRow[];
+}
+
+export interface ExpenseReportAuthorityViolationRow {
+  customer_name: string;
+  customer_code: string;
+  book_number: string;
+  debit_amount: number;
+  comment: string;
 }
 
 export interface ExpenseReportData {
@@ -287,6 +322,11 @@ export interface ExpenseReportData {
   top5: ExpenseReportTop5Row[];
   categories: ExpenseReportCategory[];
   uncategorizedTotal: number;
+  /** Хамааралтай (hamaaral) харилцагчаас хийсэн худалдан авалтын нийт дүн. */
+  relatedPurchaseTotal: number;
+  /** Холбоотой (holbootoi) харилцагчаас хийсэн худалдан авалтын нийт дүн. */
+  connectedPurchaseTotal: number;
+  authorityViolations: ExpenseReportAuthorityViolationRow[];
 }
 
 /** ClickHouse JSON often serializes UInt64/Float64 as strings — coerce for charts. */

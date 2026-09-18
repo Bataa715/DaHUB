@@ -23,6 +23,29 @@ export const EXPENSE_VERIFICATION_STATUSES = [
 export type ExpenseVerificationStatus =
   (typeof EXPENSE_VERIFICATION_STATUSES)[number];
 
+export const CONTRACT_CURRENCIES = [
+  "MNT",
+  "USD",
+  "EUR",
+  "CNY",
+  "JPY",
+  "KRW",
+  "RUB",
+] as const;
+export type ContractCurrency = (typeof CONTRACT_CURRENCIES)[number];
+
+export const BUDGET_STATUS_OVERRIDES = [
+  "",
+  "has_budget",
+  "additional_budget",
+  "no_budget",
+] as const;
+export type BudgetStatusOverride = (typeof BUDGET_STATUS_OVERRIDES)[number];
+
+export const HAMAARAL_VERIFIED_STATUSES = ["", "confirmed"] as const;
+export type HamaaralVerifiedStatus =
+  (typeof HAMAARAL_VERIFIED_STATUSES)[number];
+
 export class RelatedPartyTransactionsDto {
   @IsArray()
   @ArrayMinSize(2, { message: "Хамгийн багадаа 2 CIF/FORACID шаардлагатай" })
@@ -126,6 +149,44 @@ export class ExpenseVerificationDto {
     message: "Статус буруу байна",
   })
   status?: ExpenseVerificationStatus;
+
+  @IsOptional()
+  @IsIn(CONTRACT_CURRENCIES, { message: "Валют буруу байна" })
+  contractCurrency?: ContractCurrency;
+
+  @IsOptional()
+  @IsIn(BUDGET_STATUS_OVERRIDES, { message: "Төсвийн төлөв буруу байна" })
+  budgetStatusOverride?: BudgetStatusOverride;
+
+  @IsOptional()
+  @IsBoolean({ message: "Эрхийн матриц зөрчсөн эсэх утга буруу байна" })
+  authorityMatrixViolated?: boolean;
+
+  @IsOptional()
+  @IsString({ message: "Эрхийн матрицын тайлбар текст байх ёстой" })
+  @MaxLength(2000, { message: "Эрхийн матрицын тайлбар хэт урт байна" })
+  authorityMatrixComment?: string;
+}
+
+// ─── Хамаарлын баталгаажуулалт (Батлагдсан / Нотлогдоогүй) ─────────────────
+export class HamaaralVerificationDto {
+  @IsString()
+  @IsNotEmpty({ message: "Харилцагчийн код (cif) заавал шаардлагатай" })
+  @MaxLength(64, { message: "cif хэт урт байна" })
+  cif: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Ажилтны дугаар заавал шаардлагатай" })
+  @MaxLength(64, { message: "Ажилтны дугаар хэт урт байна" })
+  empid: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Хамаарлын төрөл заавал шаардлагатай" })
+  @MaxLength(120, { message: "Хамаарлын төрөл хэт урт байна" })
+  typename: string;
+
+  @IsIn(HAMAARAL_VERIFIED_STATUSES, { message: "Төлөв буруу байна" })
+  status: HamaaralVerifiedStatus;
 }
 
 export class ExpenseTotalDto {
